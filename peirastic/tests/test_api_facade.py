@@ -87,6 +87,45 @@ def test_payloads_match_live_dict_keys() -> None:
     assert hfvc["desired_z"] == pytest.approx(2.0)
 
 
+def test_hfpc_ellipse_and_hfvc_shuttle_compile() -> None:
+    raw, ctx = _ctx()
+    pose = ctx.kin.fk_pose(_SEED)
+    del pose
+    arm = _arm(ctx=ctx)
+    assert arm.hfpc_ellipse(
+        amplitude_x_m=0.05,
+        amplitude_y_m=0.15,
+        max_vel_m_s=0.04,
+        force=0.0,
+        force_axes=[0, 0, 1, 0, 0, 0],
+        duration_s=2.0,
+        label="hfpc_ellipse",
+    ) == OK
+    req = arm.last_request
+    assert req is not None
+    assert req.mode == Mode.TRACK_HYBRID
+    assert req.payload["reference"] == "ellipse"
+    assert req.payload["use_tff_split"] is True
+    assert req.payload["desired_z"] == pytest.approx(0.0)
+    phase = compile_request(ctx, req, raw=raw)
+    assert isinstance(phase.outer, HybridTffOuter)
+    assert np.allclose(phase.outer.selection, [1, 1, 0, 1, 1, 1])
+    assert arm.hfvc(
+        source="twist",
+        force=0.0,
+        force_axes=[0, 0, 1, 0, 0, 0],
+        duration_s=1.5,
+        label="hfvc_shuttle",
+    ) == OK
+    req_v = arm.last_request
+    assert req_v is not None
+    assert req_v.mode == Mode.TRACK_HYBRID
+    assert req_v.payload["reference"] == "twist"
+    phase_v = compile_request(ctx, req_v, raw=raw)
+    assert isinstance(phase_v.outer, HybridTffOuter)
+    assert isinstance(phase_v.outer.position, ServoTwistOuter)
+
+
 def test_hfpc_compiles_to_pose_tff() -> None:
     raw, ctx = _ctx()
     pose = ctx.kin.fk_pose(_SEED)

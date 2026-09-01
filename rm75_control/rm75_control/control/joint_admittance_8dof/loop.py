@@ -35,6 +35,7 @@ from rm75_control.control.joint_admittance_8dof.model import (
     full_q_from_arm,
     max_joint_err_deg,
     pose_distance,
+    mask_base_pose_error,
     pose_error,
     pose_track_error_mm_deg,
     rad2deg,
@@ -2954,6 +2955,8 @@ class CartesianTrackConfig:
     control_frame: str = "tool"
     path_feedforward: bool = True
     fb_lpf_tau_s: float = 0.0
+    # 1 = count in PD / last_err_mm, 0 = force axis (ignored). Default: all track.
+    track_axes: np.ndarray = field(default_factory=lambda: np.ones(6))
 
 
 class CartesianTrackOuterLoop:
@@ -2989,8 +2992,18 @@ class CartesianTrackOuterLoop:
             ref = self.reference.sample(t_s)
         self.last_pose_d = np.asarray(ref.pose_d, dtype=float).copy()
         self.last_vel_ff = np.asarray(ref.vel_ff, dtype=float).copy()
+        track_axes = np.clip(
+            np.asarray(cfg.track_axes, dtype=float).reshape(6), 0.0, 1.0
+        )
         err = pose_error(ref.pose_d, current_pose, cfg.euler_order)
-        self.last_err_mm = float(np.linalg.norm(err[:3]) * 1000.0)
+        err = mask_base_pose_error(err, current_pose, track_axes, cfg.euler_order)
+        tr_mm, _tr_deg = pose_track_error_mm_deg(
+            ref.pose_d,
+            current_pose,
+            track_axes=track_axes,
+            euler_order=cfg.euler_order,
+        )
+        self.last_err_mm = tr_mm
         err_sat = saturate_error(err, cfg.max_pos_err_m, cfg.max_rot_err_rad)
         v_ff = np.asarray(ref.vel_ff, dtype=float)
         path_base = v_ff.copy() if cfg.path_feedforward else np.zeros(6)

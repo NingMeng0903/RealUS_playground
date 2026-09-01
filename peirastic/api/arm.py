@@ -7,6 +7,7 @@ from typing import Any
 
 import numpy as np
 
+from peirastic.api.rm_api2 import _RmApi2Mixin
 from peirastic.api.codes import (
     ERR_CONTROLLER,
     ERR_NO_ACK,
@@ -136,13 +137,13 @@ class _ClientMixin:
             return ERR_UNIMPLEMENTED
         return None
 
-    def _with_aux(self, payload: dict[str, Any]) -> dict[str, Any]:
+    def _with_aux(self, payload: dict[str, Any], *, mode: Mode | None = None) -> dict[str, Any]:
         out = dict(payload)
         if self._qp_aux:
             merged = dict(out.get("qp_aux") or {})
             merged.update(self._qp_aux)
             out["qp_aux"] = merged
-        if self._force_extra:
+        if self._force_extra and mode == Mode.TRACK_HYBRID:
             for key, val in self._force_extra.items():
                 out.setdefault(key, val)
         return out
@@ -157,8 +158,10 @@ class _ClientMixin:
         return None
 
     def _send(self, mode: Mode, payload: dict[str, Any], *, block: float | int = 0) -> int:
-        req = ModeRequest(mode, self._with_aux(payload))
+        req = ModeRequest(mode, self._with_aux(payload, mode=mode))
         self.last_request = req
+        if mode not in (Mode.SERVO_TWIST, Mode.SERVO_TWIST_HOLD):
+            self._movev_session = False
         if self.client is None:
             try:
                 self._compile_local(req)
@@ -496,6 +499,7 @@ class _VelocityMixin(_ClientMixin):
         ret = self._send(mode, payload, block=0)
         if ret != OK:
             return ret
+        self._movev_session = True
         if not block:
             return OK
         return self.wait_done(block=_track_wait_s(block, duration_s))
@@ -512,7 +516,19 @@ class _VelocityMixin(_ClientMixin):
         return OK
 
     def movev_canfd(self, twist) -> int:
-        return self.cartesian_velocity(twist, block=0, label="movev_canfd")
+        """One ``v*`` tick. Enters SERVO once, then only writes the twist bus.
+
+        Offline / no bus: one-shot constant ``v_cmd`` (same as a single
+        ``cartesian_velocity(twist)``).
+        """
+
+        if self.twist is None:
+            return self.cartesian_velocity(twist, block=0, label="movev_canfd")
+        if not getattr(self, "_movev_session", False):
+            ret = self.cartesian_velocity(None, block=0, label="movev_canfd")
+            if ret != OK:
+                return ret
+        return self.set_cartesian_velocity(twist)
 
     def track_twist(
         self,
@@ -607,6 +623,12 @@ class _ForceMixin(_ClientMixin):
             self._enter_confirm_s = float(enter_confirm_s)
         return OK
 
+    def clear_force_control(self) -> int:
+        self._force_extra.clear()
+        self._contact_enter_n = None
+        self._enter_confirm_s = None
+        return OK
+
     def set_force_raw_override(self, raw: dict[str, Any]) -> int:
         """Escape hatch for research/safety blocks that stay in force.yaml."""
 
@@ -660,7 +682,11 @@ class _ForceMixin(_ClientMixin):
         period_s: float | None = None,
         max_vel_m_s: float | None = None,
         duration_s: float | None = None,
+        soft_start: bool = True,
+        ramp_s: float | None = None,
         label: str = "hfpc_ellipse",
+        block: float | int = 0,
+        errors: list[float] | None = None,
     ) -> int:
         payload = HfpcPayload(
             reference="ellipse",
@@ -672,9 +698,16 @@ class _ForceMixin(_ClientMixin):
             period_s=period_s,
             max_vel_m_s=max_vel_m_s,
             duration_s=duration_s,
+            soft_start=bool(soft_start),
+            ramp_s=ramp_s,
             label=label,
         ).to_json()
-        return self._send(Mode.TRACK_HYBRID, payload, block=0)
+        ret = self._send(Mode.TRACK_HYBRID, payload, block=0)
+        if ret != OK:
+            return ret
+        if not block and errors is None:
+            return OK
+        return self.wait_done(block=_track_wait_s(block, duration_s), errors=errors)
 
     def hfvc(
         self,
@@ -855,6 +888,7 @@ class _StateMixin(_ClientMixin):
 
 
 class PeirasticArm(
+    _RmApi2Mixin,
     _MovePlanMixin,
     _TrackMixin,
     _VelocityMixin,
@@ -885,6 +919,7 @@ class PeirasticArm(
         self.last_seq = 0
         self._qp_aux: dict[str, Any] = {}
         self._force_extra: dict[str, Any] = {}
+        self._movev_session = False
         self._contact_enter_n: float | None = None
         self._enter_confirm_s: float | None = None
         self._max_line_speed = 0.4

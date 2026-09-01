@@ -368,6 +368,71 @@ def test_hybrid_tff_and_legacy_force_law() -> None:
     assert np.isfinite(fout.v_force_z)
 
 
+def test_hybrid_track_err_excludes_force_axis() -> None:
+    from peirastic.realman8dof.force.protocol import ForceOutput
+    from peirastic.realman8dof.modes.track import HybridTffOuter
+    from scipy.spatial.transform import Rotation as Rsc
+
+    class _Law:
+        def reset(self, *, pose, f_ext) -> None:
+            del pose, f_ext
+
+        def update(self, **kwargs) -> ForceOutput:
+            del kwargs
+            return ForceOutput(v_force=np.zeros(6), v_force_z=0.0)
+
+    raw, ctx = _ctx()
+    pose = ctx.kin.fk_pose(_SEED)
+    tff = compile_request(
+        ctx,
+        ModeRequest(
+            ModeE.TRACK_HYBRID,
+            {"reference": "hold", "desired_z": 0.0, "use_tff_split": True},
+        ),
+        raw=raw,
+    )
+    assert isinstance(tff.outer, HybridTffOuter)
+    tff.outer.force_law = _Law()
+    tff.outer.set_origin(pose, t_s=0.0)
+    rot = Rsc.from_euler("xyz", pose[3:6], degrees=False).as_matrix()
+    along_z = pose.copy()
+    along_z[:3] = pose[:3] + 0.05 * rot[:, 2]
+    tff.outer.sample(0.1, along_z, np.zeros(6))
+    assert tff.outer.last_err_mm == pytest.approx(0.0, abs=0.05)
+    assert tff.outer.last_force_err_mm == pytest.approx(50.0, abs=0.05)
+    along_y = pose.copy()
+    along_y[:3] = pose[:3] + 0.02 * rot[:, 1]
+    tff.outer.sample(0.2, along_y, np.zeros(6))
+    assert tff.outer.last_err_mm == pytest.approx(20.0, abs=0.05)
+    assert tff.outer.last_force_err_mm == pytest.approx(0.0, abs=0.05)
+
+
+def test_cartesian_track_saturate_ignores_force_axis() -> None:
+    from rm75_control.control.joint_admittance_8dof.loop import (
+        CartesianTrackConfig,
+        CartesianTrackOuterLoop,
+    )
+    from rm75_control.control.joint_admittance_8dof.reference import HoldReference
+
+    pose = np.zeros(6)
+    cfg = CartesianTrackConfig(
+        control_frame="base",
+        k_task=np.ones(6),
+        max_pos_err_m=0.05,
+        track_axes=np.array([1.0, 1.0, 0.0, 1.0, 1.0, 1.0]),
+    )
+    outer = CartesianTrackOuterLoop(HoldReference(), cfg)
+    outer.set_origin(pose)
+    current = pose.copy()
+    current[0] += 0.01
+    current[2] += 0.20
+    command = outer.sample(0.0, current, np.zeros(6))
+    assert np.all(np.isfinite(command))
+    assert outer.last_err_mm == pytest.approx(10.0, abs=1e-6)
+    assert abs(outer.last_feedback_twist[0]) == pytest.approx(0.01, abs=1e-6)
+    assert outer.last_feedback_twist[2] == pytest.approx(0.0, abs=1e-12)
+
+
 def test_panel_ansi_refresh_and_event_tags() -> None:
     from peirastic.core.panel import Panel
 

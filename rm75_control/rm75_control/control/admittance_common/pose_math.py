@@ -44,3 +44,25 @@ def pose_track_error_mm_deg(
     pos_mm = float(np.linalg.norm(err_tool[:3]) * 1000.0)
     rot_deg = float(np.degrees(np.linalg.norm(err_tool[3:6])))
     return pos_mm, rot_deg
+
+
+def mask_base_pose_error(
+    err_base: np.ndarray,
+    current_pose: np.ndarray,
+    track_axes: np.ndarray,
+    euler_order: str = "xyz",
+) -> np.ndarray:
+    """Zero force-axis components of a base-frame pose error (tool selection)."""
+
+    err = np.asarray(err_base, dtype=float).reshape(6).copy()
+    r_cur = Rsc.from_euler(
+        euler_order, np.asarray(current_pose[3:6], dtype=float), degrees=False
+    ).as_matrix()
+    tool = np.zeros(6, dtype=float)
+    tool[:3] = r_cur.T @ err[:3]
+    tool[3:6] = r_cur.T @ err[3:6]
+    tool *= np.clip(np.asarray(track_axes, dtype=float).reshape(6), 0.0, 1.0)
+    out = np.zeros(6, dtype=float)
+    out[:3] = r_cur @ tool[:3]
+    out[3:6] = r_cur @ tool[3:6]
+    return out

@@ -14,6 +14,7 @@ import pinocchio as pin
 from scipy.spatial.transform import Rotation as Rsc
 
 from rm75_control.control.admittance_common.pose_math import (
+    mask_base_pose_error,
     pose_error,
     pose_track_error_mm_deg,
 )

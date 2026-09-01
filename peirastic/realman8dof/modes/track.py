@@ -12,6 +12,7 @@ from rm75_control.control.joint_admittance_8dof.api import (
     phase_cartesian_track,
     phase_hybrid_track,
 )
+from rm75_control.control.admittance_common.pose_math import pose_track_error_mm_deg
 from rm75_control.control.joint_admittance_8dof.loop import (
     AdmittanceOuterLoop,
     CartesianTrackOuterLoop,
@@ -47,11 +48,21 @@ class HybridTffOuter:
         self.dt = float(dt)
         self.mask_force_from_path = bool(mask_force_from_path)
         self.last_err_mm = 0.0
+        self.last_force_err_mm = 0.0
         self.last_vel_ff = np.zeros(6, dtype=float)
         self.last_pose_d: np.ndarray | None = None
         self.last_path_twist = np.zeros(6, dtype=float)
         self.last_feedback_twist = np.zeros(6, dtype=float)
         self.controller = getattr(force_law, "controller", None)
+        cfg = getattr(self.position, "cfg", None)
+        if cfg is not None and hasattr(cfg, "track_axes"):
+            cfg.track_axes = self.selection.copy()
+
+    def _euler_order(self) -> str:
+        cfg = getattr(self.position, "cfg", None)
+        if cfg is not None:
+            return str(getattr(cfg, "euler_order", "xyz"))
+        return str(getattr(self.position, "euler_order", "xyz"))
 
     def set_origin(self, pose0: np.ndarray, *, t_s: float | None = None) -> None:
         self.position.set_origin(pose0, t_s=t_s)
@@ -104,7 +115,24 @@ class HybridTffOuter:
             v_tcp_z_actual=v_actual,
         )
         v_star = compose_tff(v_pos, fout.v_force, self.selection)
-        self.last_err_mm = float(self.position.last_err_mm)
+        pose_d = getattr(self.position, "last_pose_d", None)
+        if pose_d is not None:
+            euler = self._euler_order()
+            self.last_err_mm, _ = pose_track_error_mm_deg(
+                pose_d,
+                current_pose,
+                track_axes=self.selection,
+                euler_order=euler,
+            )
+            self.last_force_err_mm, _ = pose_track_error_mm_deg(
+                pose_d,
+                current_pose,
+                track_axes=1.0 - self.selection,
+                euler_order=euler,
+            )
+        else:
+            self.last_err_mm = float(getattr(self.position, "last_err_mm", 0.0))
+            self.last_force_err_mm = 0.0
         self.last_vel_ff = np.asarray(self.position.last_vel_ff, dtype=float).copy()
         self.last_pose_d = (
             None
