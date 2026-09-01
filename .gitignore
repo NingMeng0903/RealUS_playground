@@ -40,7 +40,11 @@ peirastic/**/logs/
 # Controller / plant run CSVs (local only; GitHub rejects >100 MB)
 MD/todo_controller_logs/**/*.csv
 MD/recursive_sns_hw_*/csv/
+MD/csv_rail_*.csv
+MD/csv_run_*.csv
+MD/logs_sin_tool_y/**/*.csv
 identify_backup_events*.csv
+rm75_control/logs/
 
 # Python
 __pycache__/
