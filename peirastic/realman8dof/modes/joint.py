@@ -93,7 +93,7 @@ def build_movej_phase(
         gov_joint_max_deg=plan.gov_joint_max_deg,
     )
     compiled = compile_phase(spec, ctx)
-    attach_joint_move_rail(compiled.phase, ctx.inner)
+    attach_joint_move_rail(compiled.phase, ctx.inner, move_ref=move_ref)
     return compiled.phase
 
 

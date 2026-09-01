@@ -21,8 +21,8 @@ constexpr int kMaxCbf = 8;
 constexpr int kMaxPrefRows = 16;
 constexpr int kNTaskSlack = 6;
 
-// L1 reference-model jerk.  Hard QP box stays at qp.j_max_rail (120) so
-// a∩j stays nonempty (a_max*dt = 0.60*0.005).  Matches Python
+// L1 reference-model jerk.  Hard QP box is qp.j_max_rail (320) so
+// a∩j stays nonempty (a_max*dt = 1.6*0.005).  Matches Python
 // RailReferenceModel default.
 constexpr double kRailRefJerk = 60.0;
 

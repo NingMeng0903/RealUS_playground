@@ -72,7 +72,7 @@ def test_connect_and_blend_are_unimplemented() -> None:
     q = _SEED.tolist()
     pose = [0.4, 0.2, 0.3, 0.0, 0.0, 0.0]
     assert arm.movej(q, v=0.2, connect=1, block=0) == ERR_UNIMPLEMENTED
-    assert arm.movel(pose, v=0.2, r=0.01, block=0) == ERR_UNIMPLEMENTED
+    assert arm.cartesian(pose, v=0.2, r=0.01, block=0) == ERR_UNIMPLEMENTED
     assert arm.moves([pose], v=0.2, connect=1, block=0) == ERR_UNIMPLEMENTED
 
 
@@ -126,12 +126,12 @@ def test_selection_passthrough_default_and_force_x() -> None:
     assert np.allclose(phase_x.outer.selection, [0, 1, 1, 1, 1, 1])
 
 
-def test_movel_unreachable_is_code_1() -> None:
+def test_cartesian_unreachable_is_code_1() -> None:
     raw, ctx = _ctx()
     del raw
     arm = _arm(ctx=ctx)
     far = [10.0, 10.0, 10.0, 0.0, 0.0, 0.0]
-    assert arm.movel(far, v=0.2, block=0) == ERR_CONTROLLER
+    assert arm.cartesian(far, v=0.2, block=0) == ERR_CONTROLLER
 
 
 def test_mode_engine_samples_all_modes() -> None:
@@ -173,12 +173,12 @@ def test_mode_engine_samples_all_modes() -> None:
     near = pose.copy()
     near[1] += 0.01
     try:
-        eng.set_mode(ModeRequest(Mode.MOVEL, {"pose": near.tolist(), "v": 0.2, "q_start": _SEED.tolist()}))
+        eng.set_mode(ModeRequest(Mode.CARTESIAN_PTP, {"pose": near.tolist(), "v": 0.2, "q_start": _SEED.tolist()}))
         out = eng.sample(0.0, pose, f_ext, q_meas=_SEED)
         assert np.asarray(out, dtype=float).shape == (6,)
         assert np.all(np.isfinite(out))
     except ValueError:
-        pytest.skip("seed pose offset is unreachable for MOVEL on this model")
+        pytest.skip("seed pose offset is unreachable for CARTESIAN_PTP on this model")
     poses = [pose.tolist(), near.tolist()]
     try:
         eng.set_mode(ModeRequest(Mode.MOVES, {"poses": poses, "speed_m_s": 0.05}))
@@ -187,6 +187,28 @@ def test_mode_engine_samples_all_modes() -> None:
         assert np.all(np.isfinite(out))
     except ValueError:
         pytest.skip("polyline unreachable for MOVES on this model")
+
+
+def test_resolve_pose_q_prefers_ns_d_star() -> None:
+    from peirastic.realman8dof.modes.cartesian import reachable_rails, resolve_pose_q
+
+    raw, ctx = _ctx()
+    del raw
+    pose = ctx.kin.fk_pose(_SEED)
+    rails = reachable_rails(ctx.kin, pose, euler_order=ctx.euler_order)
+    if len(rails) < 2:
+        pytest.skip("need two reachable rails to rank by d*")
+    far = max(rails, key=lambda r: abs(float(r) - float(_SEED[0])))
+    if abs(float(far) - float(_SEED[0])) < 0.04:
+        pytest.skip("reachable rails are too close to test d* preference")
+    d_star = float(pose[1]) - float(far)
+    pr = ctx.inner.posture_retarget
+    if pr is None:
+        pytest.skip("posture_retarget disabled")
+    pr.d_star_m = d_star
+    pr.psi_star_rad = float(ctx.inner.cfg.psi_retarget.psi_attr_rad)
+    qt = resolve_pose_q(ctx, pose, q_seed=_SEED, require_path=False)
+    assert abs(float(qt[0]) - float(far)) < abs(float(qt[0]) - float(_SEED[0]))
 
 
 def test_cartesian_plan_is_joint_ptp() -> None:
@@ -216,7 +238,7 @@ def test_pad_yields_to_command_modes() -> None:
     assert pad_may_drive(Mode.TRACK_HYBRID, label="track_hybrid_pad") is True
     assert pad_may_drive(Mode.TRACK_HYBRID, label="vessel_close") is False
     assert pad_may_drive(Mode.TRACK_HYBRID, program=True, label="track_hybrid_pad") is False
-    assert pad_may_drive(Mode.MOVEL) is False
+    assert pad_may_drive(Mode.CARTESIAN_PTP) is False
     assert pad_may_drive(Mode.MOVEJ) is False
     assert pad_may_drive(Mode.TRACK_CARTESIAN) is False
     assert pad_may_drive(0) is False

@@ -254,10 +254,85 @@ def test_d_star_ref_slews_and_inits_from_live() -> None:
     assert dot3 == pytest.approx(0.0)
 
 
-def test_quiescent_tracks_minus_kp_e_d() -> None:
+def test_track_applied_clears_stale_ref_before_command() -> None:
+    d_live = -0.246
+    stale = RailCommandMixer(kp=1.2, ki=0.8, u_mid_max=0.12, kaw=8.0)
+    stale.d_star.ref = 0.0
+    stale.d_star.dot = 0.0
+    dumped = stale.step(
+        d_live=d_live,
+        d_star_target=d_live,
+        u_task_raw=0.0,
+        u_escape_raw=0.0,
+        escape_explicit=False,
+        dt=0.005,
+        u_max=0.12,
+    )
+    assert abs(dumped.e_d) > 0.20 or abs(dumped.d_star_dot_cmd) > 0.01
+
+    mix = RailCommandMixer(kp=1.2, ki=0.8, u_mid_max=0.12, kaw=8.0)
+    mix.d_star.ref = 0.0
+    mix.d_star.dot = 0.0
+    tel = mix.track_applied(
+        d_live=d_live,
+        d_star_target=d_live,
+        applied_rail_vel=0.04,
+        dt=0.005,
+    )
+    assert tel.d_star_ref == pytest.approx(d_live)
+    assert tel.e_d == pytest.approx(0.0, abs=1e-12)
+    assert mix.xi == pytest.approx(0.0, abs=1e-12)
+    assert tel.u_feasible == pytest.approx(0.04)
+    joined = mix.step(
+        d_live=d_live,
+        d_star_target=d_live,
+        u_task_raw=0.0,
+        u_escape_raw=0.0,
+        escape_explicit=False,
+        dt=0.005,
+        u_max=0.12,
+    )
+    assert abs(joined.e_d) < 1e-12
+    assert abs(joined.u_post_raw) < 1e-12
+
+
+def test_ptp_then_servo_does_not_dump_rail_mixer() -> None:
+    inner = _yaml_inner_at_rail(0.49)
+    q = inner.q_cmd.copy()
+    inner.rail_mixer.d_star.ref = 0.0
+    inner.rail_mixer.d_star.dot = 0.0
+    inner.set_direct_joint_ptp(True)
+    last = None
+    for _ in range(8):
+        last = inner.update(np.zeros(6), q_meas=q, qdot_ff=np.zeros(8))
+        q = np.asarray(last.q_send, dtype=float).copy()
+    assert last is not None
+    d_live = float(inner.kin.fk_pose(q)[1]) - float(q[0])
+    assert abs(float(last.e_d)) < 2.0e-3
+    assert abs(float(inner.rail_mixer.d_star.ref) - d_live) < 2.0e-3
+    assert abs(float(inner.rail_mixer.d_star.ref)) > 0.05
+    inner.set_direct_joint_ptp(False)
+    step = inner.update(np.zeros(6), q_meas=q)
+    assert abs(float(step.e_d)) < 2.0e-3
+    assert abs(float(step.u_post_raw)) < 5.0e-3
+
+
+def test_quiescent_does_not_mask_mixer_terms() -> None:
     mix = RailCommandMixer(kp=1.2, ki=0.8, u_mid_max=0.12, kaw=8.0)
     mix.d_star.init_from_live(0.20)
-    tel = mix.step(
+    tel_live = mix.step(
+        d_live=0.28,
+        d_star_target=0.20,
+        u_task_raw=0.05,
+        u_escape_raw=0.0,
+        escape_explicit=False,
+        dt=0.005,
+        u_max=0.12,
+        quiescent=False,
+    )
+    mix2 = RailCommandMixer(kp=1.2, ki=0.8, u_mid_max=0.12, kaw=8.0)
+    mix2.d_star.init_from_live(0.20)
+    tel_q = mix2.step(
         d_live=0.28,
         d_star_target=0.20,
         u_task_raw=0.05,
@@ -267,11 +342,10 @@ def test_quiescent_tracks_minus_kp_e_d() -> None:
         u_max=0.12,
         quiescent=True,
     )
-    assert tel.u_pi_raw == pytest.approx(0.0)
-    assert tel.u_post_feasible == pytest.approx(0.0)
-    assert tel.u_feasible == pytest.approx(0.0)
-    assert mix.xi == pytest.approx(-1.2 * tel.e_d)
-    tel_e = mix.step(
+    assert tel_q.u_task_raw == pytest.approx(tel_live.u_task_raw)
+    assert tel_q.u_post_raw == pytest.approx(tel_live.u_post_raw)
+    assert tel_q.u_feasible == pytest.approx(tel_live.u_feasible)
+    tel_e = mix2.step(
         d_live=0.28,
         d_star_target=0.20,
         u_task_raw=0.0,
@@ -606,9 +680,8 @@ def test_two_phase_stop_after_press_revoke() -> None:
         u_max=0.12,
         quiescent=True,
     )
-    assert tel_q.u_task_feasible == pytest.approx(0.0)
-    assert tel_q.u_post_feasible == pytest.approx(0.0)
-    assert tel_q.u_feasible == pytest.approx(0.0)
+    assert tel_q.u_task_feasible == pytest.approx(tel_off.u_task_feasible)
+    assert abs(tel_q.u_feasible - tel_off.u_feasible) < 0.02
 
 
 def test_dead_end_wall_cap_zeros_into_wall_keeps_raw() -> None:

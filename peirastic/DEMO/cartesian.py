@@ -33,6 +33,7 @@ from peirastic.api import PeirasticArm
 from peirastic.api.codes import CODE_NAMES, OK
 
 HOLD_S = 2.0
+V = 0.5
 POSE_WAIT_S = 15.0
 POSE_FILE = Path(__file__).resolve().parent / "recorded_tcp.json"
 
@@ -115,37 +116,27 @@ def main() -> int:
         print("      python -m peirastic.apps.run_controller", flush=True)
         return 1
 
-    print("[WAIT] live TCP from Window A relay…", flush=True)
     start = _live_pose(arm)
     if start is None:
         print("[ERR] no live TCP from Window A state relay.", flush=True)
         print("      Window A must print `[STATE] running` before this script.", flush=True)
-        print("      Do not start GENESIS — hardware daemon only.", flush=True)
         arm.close()
         return 1
 
-    dx = math.dist(start[:3], target[:3])
     print(f"[STATE] start   {_fmt_pose(start)}", flush=True)
-    print(f"[STATE] target  {_fmt_pose(target)}  ({POSE_FILE.name})", flush=True)
-    print(
-        f"[PLAN]  pose→pose joint PTP  Δxyz={dx * 1000.0:.1f} mm  hold={HOLD_S:.1f}s",
-        flush=True,
-    )
-    print("[MODE] CARTESIAN  current → recorded TCP  v=0.4", flush=True)
+    print(f"[STATE] target  {_fmt_pose(target)}", flush=True)
 
     try:
-        ret = arm.cartesian(target, v=0.4, r=0, connect=0, block=1)
-        name = CODE_NAMES.get(ret, str(ret))
-        print(f"[{'OK' if ret == OK else 'WARN'}] cartesian outbound -> {ret} ({name})", flush=True)
+        ret = arm.cartesian(target, v=V, r=0, connect=0, block=1)
         if ret != OK:
+            print(f"[ERR] outbound -> {ret} ({CODE_NAMES.get(ret, ret)})", flush=True)
             return 1
-        print(f"[STATE] hold {HOLD_S:.1f}s", flush=True)
         time.sleep(HOLD_S)
-        print("[MODE] CARTESIAN  recorded TCP → start", flush=True)
-        ret = arm.cartesian(start, v=0.4, r=0, connect=0, block=1)
-        name = CODE_NAMES.get(ret, str(ret))
-        print(f"[{'OK' if ret == OK else 'WARN'}] cartesian return -> {ret} ({name})", flush=True)
-        return 0 if ret == OK else 1
+        ret = arm.cartesian(start, v=V, r=0, connect=0, block=1)
+        if ret != OK:
+            print(f"[ERR] return -> {ret} ({CODE_NAMES.get(ret, ret)})", flush=True)
+            return 1
+        return 0
     except KeyboardInterrupt:
         arm.set_arm_stop()
         print("[STOP] interrupted", flush=True)

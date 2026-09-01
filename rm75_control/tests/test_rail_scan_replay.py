@@ -48,9 +48,9 @@ def _make_inner() -> JointIkController:
 
 def test_production_rail_speed_cap_is_absolute() -> None:
     inner = _make_inner()
-    # Yaml lists 0.15; the executable box and worker share the 0.12 m/s cap.
-    assert inner.cfg.rail.v_max_m_s == 0.15
-    assert inner.limits.v_max[0] == 0.12
+    # Yaml lists 0.40; the executable box and worker share the 0.40 m/s cap.
+    assert inner.cfg.rail.v_max_m_s == 0.40
+    assert inner.limits.v_max[0] == 0.40
     np.testing.assert_allclose(
         inner.limits.v_max[1:],
         inner.kin.v_max[1:] * inner.cfg.v_scale,

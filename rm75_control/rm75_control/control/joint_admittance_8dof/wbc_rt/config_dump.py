@@ -185,7 +185,7 @@ def dump_wbc_config(
         f"rail.mode {0 if str(getattr(rail.mode, 'name', rail.mode)).split('.')[-1].lower() == 'coupled' else 1}",
         f"rail.locked_style {_locked_style_u(rail.locked_style)}",
         f"rail.lock_vel_eps_m_s {_f(rail.lock_vel_eps_m_s)}",
-        f"rail.v_max_m_s {_f(rail.v_max_m_s if rail.v_max_m_s is not None else 0.15)}",
+        f"rail.v_max_m_s {_f(rail.v_max_m_s if rail.v_max_m_s is not None else 0.40)}",
         f"rail.soft_min_m {_f(rail.soft_min_m)}",
         f"rail.soft_max_m {_f(rail.soft_max_m)}",
         f"rail.hard_min_m {_f(rail.hard_min_m)}",

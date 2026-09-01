@@ -159,6 +159,19 @@ class DStarRef:
         self.ref = float(d_live)
         self.dot = 0.0
 
+    def follow_target(
+        self, d_target: float, d_live: float | None = None
+    ) -> tuple[float, float]:
+        """Ride the live target.  Used when this mixer is not commanding."""
+        if np.isfinite(d_target):
+            self.ref = float(d_target)
+        elif d_live is not None and np.isfinite(d_live):
+            self.ref = float(d_live)
+        elif self.ref is None:
+            self.ref = 0.0
+        self.dot = 0.0
+        return float(self.ref), 0.0
+
     def step(
         self,
         d_star_target: float,
@@ -198,7 +211,7 @@ class RailCommandMixer:
     Unsaturated and unprojected: ``u_mid_applied == u_pi_raw``, so Kaw is
     strictly zero.  PI saturation / share projection / ordinary velocity
     bounds still back-calculate.  ``wall_pi_frozen`` freezes ``ξ`` (no
-    integrate, no back-calc).  Quiescent tracking is ``ξ = -Kp e_d``.
+    integrate, no back-calc).  ``quiescent`` is telemetry only.
     """
 
     def __init__(
@@ -232,6 +245,47 @@ class RailCommandMixer:
         )
         self.wall_pi_frozen = False
 
+    def track_applied(
+        self,
+        *,
+        d_live: float,
+        d_star_target: float,
+        applied_rail_vel: float,
+        dt: float,
+    ) -> RailMixTelemetry:
+        """Keep ``d*_ref`` on the live target while another path owns the rail.
+
+        Integrator and mix terms stay as they are so a later ``step`` does
+        not inherit a second state jump.  ``u_feasible`` records the
+        velocity that was actually written.
+        """
+        del dt
+        d_ref, d_dot = self.d_star.follow_target(
+            float(d_star_target), d_live=float(d_live)
+        )
+        e_d = float(d_live) - float(d_ref)
+        prev = self.last
+        tel = RailMixTelemetry(
+            d_star_ref=float(d_ref),
+            d_star_dot_cmd=float(d_dot),
+            e_d=float(e_d),
+            V_d_proxy=0.5 * self.kp * e_d * e_d,
+            xi=float(self.xi),
+            u_pi_raw=float(prev.u_pi_raw),
+            u_mid_cmd=float(prev.u_mid_cmd),
+            u_post_raw=float(prev.u_post_raw),
+            u_post_feasible=float(prev.u_post_feasible),
+            u_mid_applied=float(prev.u_mid_applied),
+            u_task_raw=float(prev.u_task_raw),
+            u_task_feasible=float(prev.u_task_feasible),
+            u_escape_raw=float(prev.u_escape_raw),
+            u_escape_feasible=float(prev.u_escape_feasible),
+            u_feasible=float(applied_rail_vel),
+            u_base=float(applied_rail_vel),
+        )
+        self.last = tel
+        return tel
+
     def step(
         self,
         *,
@@ -259,7 +313,7 @@ class RailCommandMixer:
             prev_dir=int(self.escape_dir),
         )
         guard_dir = int(self.escape_dir) if escape_explicit else 0
-        hold = bool(hold_d_star) or (bool(quiescent) and not bool(escape_explicit))
+        hold = bool(hold_d_star)
         d_ref, d_dot = self.d_star.step(
             float(d_star_target),
             float(dt),
@@ -290,34 +344,28 @@ class RailCommandMixer:
             soft_saturate,
         )
 
-        task_hold = bool(quiescent) and not bool(escape_explicit)
         alpha = 0.0 if bool(posture_hold) else float(np.clip(secondary_alpha, 0.0, 1.0))
-        if task_hold and (not self.wall_pi_frozen):
-            self.xi = -self.kp * e_d
+        del quiescent
         u_pi_raw = self.kp * e_d + self.xi
         u_mid_cmd = soft_saturate(u_pi_raw, self.u_mid_max)
         u_post_raw = alpha * (u_mid_cmd - float(d_dot))
-        if task_hold:
-            u_post_raw = 0.0
-            tel.d_star_dot_cmd = 0.0
-            d_dot = 0.0
         tel.xi = float(self.xi)
         tel.u_pi_raw = float(u_pi_raw)
         tel.u_mid_cmd = float(u_mid_cmd)
         tel.u_post_raw = float(u_post_raw)
 
         shares = allocate_rail_shares(
-            u_task_raw=0.0 if task_hold else float(u_task_raw),
+            u_task_raw=float(u_task_raw),
             u_post_raw=float(u_post_raw),
-            u_escape_raw=0.0 if task_hold else float(u_escape_raw),
-            escape_dir=0 if task_hold else guard_dir,
+            u_escape_raw=float(u_escape_raw),
+            escape_dir=guard_dir,
             u_lo=u_lo,
             u_hi=u_hi,
         )
         u_post_f = float(shares["u_post_feasible"])
         u_mid_applied = u_post_f + float(d_dot)
         if (not self.wall_pi_frozen) and dt > 0.0:
-            if alpha < 1.0e-6 or task_hold:
+            if alpha < 1.0e-6:
                 self.xi = -self.kp * e_d
             else:
                 self.xi += (

@@ -291,16 +291,16 @@ def test_defaults_match_the_hardware_baseline() -> None:
         assert cfg.max_speed_rpm == 1800
         assert cfg.vel_amax_m_s2 == 0.8
         assert cfg.catch_v_max_m_s == pytest.approx(0.02)
-        assert cfg.catch_k == pytest.approx(5.0)
-        assert cfg.catch_frac == pytest.approx(0.3)
+        assert not hasattr(cfg, "catch_k")
+        assert not hasattr(cfg, "catch_frac")
         assert cfg.decel_request_margin_m_s == pytest.approx(0.005)
         assert not hasattr(cfg, "vel_ff_p_trim_m_s")
         assert cfg.match_drive_accel is True
         assert cfg.fa24_rpm_deadband == 0
         assert cfg.vel_deadband_mm == 0.05
-        assert cfg.standstill_enter_mm == 0.05
-        assert cfg.standstill_exit_mm == 0.25
-        assert cfg.standstill_dwell_s == 0.08
+        assert not hasattr(cfg, "standstill_enter_mm")
+        assert not hasattr(cfg, "standstill_exit_mm")
+        assert not hasattr(cfg, "standstill_dwell_s")
         assert cfg.approach_m == pytest.approx(0.040)
         assert cfg.wall_reaction_s == pytest.approx(0.06)
         assert not hasattr(cfg, "vel_ff_kp")
@@ -374,124 +374,10 @@ def test_continuous_follow_does_not_freeze_tiny_v_ref() -> None:
     assert v_raw0 == 0.0
 
 
-def test_follow_standstill_latches_on_e_track_not_x_goal() -> None:
-    """Live follow + v_ref=0 latches on x_ref−x_meas (not the 20 mm lead)."""
-
-    held, since = False, None
-    held, since = RailServoBridge._standstill_hold_update(
-        held=held,
-        enter_since_s=since,
-        now_s=1.0,
-        err_m=0.00004,
-        v_ref_m_s=0.0,
-        v_cmd_m_s=0.0,
-        v_meas_m_s=0.0,
-        enter_m=0.00005,
-        exit_m=0.00025,
-        dwell_s=0.08,
-    )
-    held, since = RailServoBridge._standstill_hold_update(
-        held=held,
-        enter_since_s=since,
-        now_s=1.09,
-        err_m=0.00004,
-        v_ref_m_s=0.0,
-        v_cmd_m_s=0.0,
-        v_meas_m_s=0.0,
-        enter_m=0.00005,
-        exit_m=0.00025,
-        dwell_s=0.08,
-    )
-    assert held is True
-    held_lead, _ = RailServoBridge._standstill_hold_update(
-        held=False,
-        enter_since_s=1.0,
-        now_s=1.09,
-        err_m=0.020,
-        v_ref_m_s=0.0,
-        v_cmd_m_s=0.0,
-        v_meas_m_s=0.0,
-        enter_m=0.00005,
-        exit_m=0.00025,
-        dwell_s=0.08,
-    )
-    assert held_lead is False
-
-
-def test_standstill_hysteresis_enters_tight_and_wakes_wide() -> None:
-    held, since = False, None
-    # Quiet inside enter band starts the dwell timer.
-    held, since = RailServoBridge._standstill_hold_update(
-        held=held,
-        enter_since_s=since,
-        now_s=1.0,
-        err_m=0.00004,
-        v_ref_m_s=0.0,
-        v_cmd_m_s=0.0,
-        v_meas_m_s=0.0,
-        enter_m=0.00005,
-        exit_m=0.00025,
-        dwell_s=0.08,
-    )
-    assert held is False
-    assert since == pytest.approx(1.0)
-    # After dwell → latch.
-    held, since = RailServoBridge._standstill_hold_update(
-        held=held,
-        enter_since_s=since,
-        now_s=1.09,
-        err_m=0.00004,
-        v_ref_m_s=0.0,
-        v_cmd_m_s=0.0,
-        v_meas_m_s=0.0,
-        enter_m=0.00005,
-        exit_m=0.00025,
-        dwell_s=0.08,
-    )
-    assert held is True
-    # Residual between enter and exit must NOT wake (no hum re-entry).
-    held, since = RailServoBridge._standstill_hold_update(
-        held=held,
-        enter_since_s=since,
-        now_s=1.20,
-        err_m=0.00012,
-        v_ref_m_s=0.0,
-        v_cmd_m_s=0.0,
-        v_meas_m_s=0.0,
-        enter_m=0.00005,
-        exit_m=0.00025,
-        dwell_s=0.08,
-    )
-    assert held is True
-    # Disturbance past exit wakes the loop.
-    held, since = RailServoBridge._standstill_hold_update(
-        held=held,
-        enter_since_s=since,
-        now_s=1.30,
-        err_m=0.00030,
-        v_ref_m_s=0.0,
-        v_cmd_m_s=0.0,
-        v_meas_m_s=0.0,
-        enter_m=0.00005,
-        exit_m=0.00025,
-        dwell_s=0.08,
-    )
-    assert held is False
-    # Motion reference also wakes immediately.
-    held, since = RailServoBridge._standstill_hold_update(
-        held=True,
-        enter_since_s=None,
-        now_s=2.0,
-        err_m=0.0,
-        v_ref_m_s=0.02,
-        v_cmd_m_s=0.0,
-        v_meas_m_s=0.0,
-        enter_m=0.00005,
-        exit_m=0.00025,
-        dwell_s=0.08,
-    )
-    assert held is False
-    assert since is None
+def test_standstill_helpers_are_gone() -> None:
+    assert not hasattr(RailServoBridge, "_standstill_hold_update")
+    assert not hasattr(RailServoBridge, "_parked_reanchor")
+    assert not hasattr(RailServoBridge, "_step_velocity_reference")
 
 
 def test_late_tick_position_stream_under_reads_without_v_ff() -> None:
@@ -596,29 +482,14 @@ def test_v_ff_cruise_does_not_chop_host_velocity() -> None:
     )
 
 
-def test_coupled_zero_cross_does_not_apply_position_p() -> None:
-    """Coupled FA24 is v_ref even with a 0.70 mm ghost and |v_ref|<1 mm/s."""
-    v_ref = -0.00091
+def test_coupled_mode_is_pure_velocity_follow() -> None:
+    """Coupled FA24 is v_ff; a 0.70 mm ghost must not add kp*err."""
+    v_ff = -0.00091
     e_track_m = -0.00070
-    x_ref = 0.17476
-    measured = x_ref - e_track_m
-    x_new, err = RailServoBridge._reanchor_coupled_x_ref(
-        x_ref, measured, follow=True, settling=False
-    )
-    assert x_new == pytest.approx(measured)
-    assert err == pytest.approx(0.0)
-    v_des = v_ref
-    assert v_des == pytest.approx(v_ref)
-    assert abs(v_des) < 0.002
+    v_des = v_ff
+    assert v_des == pytest.approx(v_ff)
     assert abs(14.0 * e_track_m) > 0.009
-
-
-def test_coupled_reanchor_is_idle_when_not_following() -> None:
-    x_ref, err = RailServoBridge._reanchor_coupled_x_ref(
-        0.40, 0.401, follow=False, settling=False
-    )
-    assert x_ref == pytest.approx(0.40)
-    assert err == pytest.approx(-0.001)
+    assert not hasattr(RailServoBridge, "_reanchor_coupled_x_ref")
 
 
 def test_stream_law_matches_position_plus_ff_cruise() -> None:
@@ -686,6 +557,6 @@ def test_servo_box_is_capped_by_the_qp_hard_limits() -> None:
             },
         }
     )
-    assert cfg.vel_max_m_s == pytest.approx(0.12)
+    assert cfg.vel_max_m_s == pytest.approx(0.15)
     assert cfg.vel_amax_m_s2 == pytest.approx(0.60)
     assert cfg.live_host_accel_m_s2() == pytest.approx(0.60)

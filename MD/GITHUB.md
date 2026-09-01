@@ -47,7 +47,7 @@ git push -u origin main
 cd /media/camp/EXT_DRIVE/RealUS_playground
 git status
 git add .
-git commit -m "修前测试"
+git commit -m "连续性还是有问题，JERK准备修"
 git push origin main
 
 

@@ -20,7 +20,7 @@ FINITE_MODES = frozenset(
     {
         Mode.GOTO_JOINTS,
         Mode.MOVEJ,
-        Mode.MOVEL,
+        Mode.CARTESIAN_PTP,
         Mode.MOVES,
     }
 )

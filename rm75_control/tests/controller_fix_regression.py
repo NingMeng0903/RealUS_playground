@@ -128,7 +128,7 @@ class PatchedSourceTest(unittest.TestCase):
         self.assertIn("slack_hold_latched_ = false", cpp_stop)
         self.assertIn("self._slack_hold_latched = False", py_stop)
 
-    def test_l1_jerk_is_sixty_hard_box_stays_120(self) -> None:
+    def test_l1_jerk_is_sixty_hard_box_stays_320(self) -> None:
         types = (ROOT / "native/wbc_rt/include/wbc_rt/types.hpp").read_text()
         cpp = (ROOT / "native/wbc_rt/src/inner.cpp").read_text()
         cfg = (ROOT / "native/wbc_rt/include/wbc_rt/config.hpp").read_text()
@@ -136,8 +136,8 @@ class PatchedSourceTest(unittest.TestCase):
         self.assertIn("constexpr double kRailRefJerk = 60.0;", types)
         self.assertIn("const double j_lim = std::min(kRailRefJerk, j_mir);", cpp)
         self.assertNotIn("std::min(cfg_.j_max_rail, j_mir)", cpp)
-        self.assertIn("double j_max_rail = 120.0;", cfg)
-        self.assertIn("j_max_rail_m_s3: 120.0", yaml)
+        self.assertIn("double j_max_rail = 320.0;", cfg)
+        self.assertIn("j_max_rail_m_s3: 320.0", yaml)
 
     def test_rail_box_excess_is_always_substantial(self) -> None:
         types = (ROOT / "native/wbc_rt/include/wbc_rt/types.hpp").read_text()

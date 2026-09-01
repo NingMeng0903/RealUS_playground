@@ -251,7 +251,7 @@ def test_velocity_modes_swap_in_place_joint_rebuilds() -> None:
     assert is_swappable(ModeE.TRACK_HYBRID)
     assert not is_swappable(ModeE.GOTO_JOINTS)
     assert not is_swappable(ModeE.MOVEJ)
-    assert not is_swappable(ModeE.MOVEL)
+    assert not is_swappable(ModeE.CARTESIAN_PTP)
     assert not is_swappable(ModeE.MOVES)
 
 
@@ -279,10 +279,10 @@ def test_movej_v_scales_plan_duration() -> None:
     assert t_slow > t_fast * 2.5
     pose = ctx.kin.fk_pose(q_t).tolist()
     cart_fast = compile_request(
-        ctx, ModeRequest(ModeE.MOVEL, {"pose": pose, "v": 1.0}), raw=raw
+        ctx, ModeRequest(ModeE.CARTESIAN_PTP, {"pose": pose, "v": 1.0}), raw=raw
     )
     cart_slow = compile_request(
-        ctx, ModeRequest(ModeE.MOVEL, {"pose": pose, "v": 0.2}), raw=raw
+        ctx, ModeRequest(ModeE.CARTESIAN_PTP, {"pose": pose, "v": 0.2}), raw=raw
     )
     assert float(cart_slow.arrival_plan_duration_s) > float(cart_fast.arrival_plan_duration_s) * 2.5
 

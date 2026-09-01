@@ -390,6 +390,7 @@ class NativeWbcClient:
         self._sync_q()
         q_cmd = np.asarray(o["q_cmd"], dtype=float).copy()
         qdot = np.asarray(o["qdot"], dtype=float).copy()
+        self.ctrl._record_applied_qdot(qdot)
         v_recv = np.asarray(o["v_cmd_received"], dtype=float).copy()
         v_feas = np.asarray(o["v_cmd_feasible"], dtype=float).copy()
         v_tcp = np.asarray(o["v_tcp_estimated"], dtype=float).copy()
@@ -471,7 +472,34 @@ class NativeWbcClient:
             rail_limited=bool(int(o["rail_limited"])),
             wall_active=bool(int(o["wall_active"])),
             secondary_suppressed=bool(int(o["secondary_suppressed"])),
-            controller_mode="qpik",
+            controller_mode=(
+                "direct_joint_ptp"
+                if bool(getattr(self.ctrl, "_direct_joint_ptp", False))
+                else "qpik"
+            ),
+            plan_drives_rail=bool(getattr(self.ctrl, "_plan_drives_rail", False)),
+            rail_vel_pin=(
+                float(np.asarray(qdot_ff, dtype=float).reshape(-1)[0])
+                if qdot_ff is not None
+                and (
+                    bool(getattr(self.ctrl, "_plan_drives_rail", False))
+                    or bool(getattr(self.ctrl, "_direct_joint_ptp", False))
+                )
+                else float("nan")
+            ),
+            rail_qdot_ff=(
+                float(np.asarray(qdot_ff, dtype=float).reshape(-1)[0])
+                if qdot_ff is not None
+                else float("nan")
+            ),
+            rail_q_hat_m=(
+                float(self.ctrl.rail_observer.q_hat)
+                if getattr(self.ctrl.rail_observer, "_initialized", False)
+                else float("nan")
+            ),
+            rail_goal_err_m=float(q_cmd[0]) - float(
+                np.asarray(q_meas, dtype=float).reshape(-1)[0]
+            ),
             nullspace_norm=float(o["ns_norm"]),
             nullspace_centering_norm=float(o["ns_centering"]),
             nullspace_manip_norm=float(o["ns_manip"]),

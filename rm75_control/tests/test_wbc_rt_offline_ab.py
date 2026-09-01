@@ -26,7 +26,9 @@ _CFG = Path(__file__).resolve().parents[2] / "peirastic" / "configs" / "controll
 if not _CFG.is_file():
     _CFG = Path(__file__).resolve().parents[1] / "configs" / "joint_admittance_8dof.yaml"
 _SEED_Q = np.array([0.375, 0.194, -0.503, -0.069, 1.979, -0.776, 0.547, -4.370])
-_ARM_P95_RAD = 1.0e-4
+# Arm bound is 2e-4 rad after the rail 0.5 mm/s hard-zero was removed;
+# that clip had been hiding sub-threshold mixer residuals from the QP.
+_ARM_P95_RAD = 2.0e-4
 _RAIL_MM = 0.1
 
 

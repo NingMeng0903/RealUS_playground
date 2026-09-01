@@ -848,6 +848,8 @@ def test_wbc_log_header_has_rail_cmd_meas_err() -> None:
         "joint_limited",
         "rail_limited",
         "wall_active",
+        "rail_q_hat_m",
+        "rail_goal_err_m",
     ):
         assert name in header
     assert len(header) == len(set(header))

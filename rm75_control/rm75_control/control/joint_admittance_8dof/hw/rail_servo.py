@@ -5,17 +5,17 @@ Controller path (virtual-rail WBC structure; motor replaces sim rail):
     optionally with ``v_ff_m_s`` so the worker does not differentiate a
     nominal-dt position stream (5 ms integrate / ~6.5 ms wall → 25% slow).
   * ``COUPLED_VELOCITY`` (QPIK): FA24 follows ``v_ref`` only.  Outer CLIK
-    closes pose.  No host ``kp*(x_ref−x)`` — that dumped a 0.7 mm ghost at
-    reversals (rpm 6→61).  The worker re-anchors ``x_ref`` to the encoder
-    while following so standstill ``e_track`` stays empty.
+    closes pose.  No host position loop — the arm absorbs rail residual.
+  * ``TRACKED_POSITION`` (direct PTP): FA24 follows
+    ``v_ff + clamp(kp*(x_goal−x) + kd*(v_ff−v_enc), ±catch_v_max)``.
+    The controller selects this mode explicitly; it is not inferred from
+    ``v_ff``.
   * POSITION scan/home: stream-aware ``(x_ref,v_ref)`` +
     ``v = v_ref + kp*(x_ref−x) + kd*(v_ref−v_enc)`` → FA24.
     ``v_enc`` is a bounded encoder-position difference (the 0x1000 speed
     register lags ~150 ms and plugged the carriage on every gamepad stop).
     Position is closed on the shaped reference, never ``x_goal`` (command
     lead / later KMP OTG stay outside).  Host ``a_max`` is capped to FA40.
-  * Standstill hysteresis freezes FA24 after a tight settle (enter band) and
-    only re-engages if disturbed past the wider exit band or ``v_ref≠0``.
   * Encoder → SHM / Genesis twin only. Encoder is **never** fed into the WBC.
   * Exit: FA24=0, SON held by default (``release_son_on_exit: false``) so a
     controller restart does not edge-enable and wipe the multi-turn monitor.
@@ -177,25 +177,14 @@ class RailServoConfig:
     vel_kd: float = 0.22  # dimensionless gain on velocity error
     vel_max_m_s: float = 0.30
     vel_amax_m_s2: float = 0.8  # softer slew vs Er-01 / host overshoot
-    # Coupled-mode bounded catch-up of x_ref toward x_goal while moving.
-    # Pure integration ratcheted 15.9 mm of e_shape over 84 s of gamepad.
+    # TRACKED_POSITION: cap on kp/kd correction added to v_ff.
     catch_v_max_m_s: float = 0.02
-    catch_k: float = 5.0
-    # Catch-up may not exceed this fraction of |v_goal|.  0.3 keeps it a
-    # correction term so a 1.4 mm/s turn cannot kick 7x via catch_v_max.
-    catch_frac: float = 0.3
     # Encoder-noise hysteresis for same-sign brake detection (m/s).
     decel_request_margin_m_s: float = 0.005
     match_drive_accel: bool = True
     # Skip FA24 writes smaller than this (r/min) while moving.  12 ≈ 2 mm/s.
     fa24_rpm_deadband: int = 0
     vel_deadband_mm: float = 0.05
-    # Standstill hysteresis: enter hold tightly, wake only if disturbed.
-    # Tracking deadband stays tight; this freezes FA24 after settle so the
-    # motor does not hum while fighting a sub-deadband residual forever.
-    standstill_enter_mm: float = 0.05
-    standstill_exit_mm: float = 0.25
-    standstill_dwell_s: float = 0.08
     # Soft-end braking band (m).  Envelope is one-sided and anchors at soft
     # limits; this is a speed-limit margin, not a travel cut.
     approach_m: float = 0.040
@@ -298,11 +287,14 @@ class RailCommandMode(str, Enum):
     """Execution semantics for a rail command.
 
     ``COUPLED_VELOCITY`` is the 8-DOF QPIK stream: velocity is authoritative
-    and position is only a travel/lead guard.  ``POSITION`` retains the old
-    soft-CSP behaviour and settles at the requested position.
+    and position is only a travel/lead guard.  ``TRACKED_POSITION`` is
+    feedforward plus a bounded position/velocity correction, selected
+    explicitly by the controller for direct PTP.  ``POSITION`` retains the
+    old soft-CSP behaviour and settles at the requested position.
     """
 
     COUPLED_VELOCITY = "coupled_velocity"
+    TRACKED_POSITION = "tracked_position"
     POSITION = "position"
 
     @classmethod
@@ -315,6 +307,9 @@ class RailCommandMode(str, Enum):
             "velocity": cls.COUPLED_VELOCITY,
             "coupled_velocity": cls.COUPLED_VELOCITY,
             "coupled-velocity": cls.COUPLED_VELOCITY,
+            "tracked": cls.TRACKED_POSITION,
+            "tracked_position": cls.TRACKED_POSITION,
+            "tracked-position": cls.TRACKED_POSITION,
             "position": cls.POSITION,
             "pos": cls.POSITION,
         }
@@ -323,7 +318,7 @@ class RailCommandMode(str, Enum):
         except KeyError as exc:
             raise ValueError(
                 f"unknown rail command mode {value!r}; expected "
-                "'coupled_velocity' or 'position'"
+                "'coupled_velocity', 'tracked_position', or 'position'"
             ) from exc
 
 
@@ -481,7 +476,9 @@ def parse_rail_servo_config(raw: dict) -> RailServoConfig:
     hw_vel_max = float(hw.get("vel_max_m_s", v_max))
     qp_v_max = qpik_rail.get("v_max_m_s")
     if qp_v_max is not None:
-        box_v = float(qp_v_max) * float(qpik_limits.get("v_scale", 1.0))
+        # yaml rail.v_max is the executable box; v_scale already derates URDF
+        # arm limits in the QP, not this servo cap.
+        box_v = float(qp_v_max)
         vel_max_m_s = min(hw_vel_max, box_v)
     else:
         vel_max_m_s = hw_vel_max
@@ -491,12 +488,6 @@ def parse_rail_servo_config(raw: dict) -> RailServoConfig:
         vel_amax_m_s2 = min(hw_a_max, float(qp_a_max))
     else:
         vel_amax_m_s2 = hw_a_max
-    standstill_enter_mm = max(float(hw.get("standstill_enter_mm", 0.05)), 0.01)
-    standstill_exit_mm = max(
-        float(hw.get("standstill_exit_mm", standstill_enter_mm * 5.0)),
-        standstill_enter_mm,
-    )
-    standstill_dwell_s = max(float(hw.get("standstill_dwell_s", 0.08)), 0.0)
     return RailServoConfig(
         enabled=bool(hw.get("enabled", False)),
         host=str(hw.get("host", "192.168.0.7")),
@@ -533,15 +524,10 @@ def parse_rail_servo_config(raw: dict) -> RailServoConfig:
         vel_max_m_s=vel_max_m_s,
         vel_amax_m_s2=vel_amax_m_s2,
         catch_v_max_m_s=float(hw.get("catch_v_max_m_s", 0.02)),
-        catch_k=float(hw.get("catch_k", 5.0)),
-        catch_frac=float(hw.get("catch_frac", 0.3)),
         decel_request_margin_m_s=float(hw.get("decel_request_margin_m_s", 0.005)),
         match_drive_accel=bool(hw.get("match_drive_accel", True)),
         fa24_rpm_deadband=max(0, int(hw.get("fa24_rpm_deadband", 0))),
         vel_deadband_mm=float(hw.get("vel_deadband_mm", 0.05)),
-        standstill_enter_mm=standstill_enter_mm,
-        standstill_exit_mm=standstill_exit_mm,
-        standstill_dwell_s=standstill_dwell_s,
         approach_m=float(hw.get("approach_m", 0.040)),
         wall_reaction_s=float(
             ((raw.get("inner") or {}).get("rail_allocator") or {}).get(
@@ -1064,10 +1050,11 @@ class RailServoBridge:
     ) -> bool:
         """Accept a rail goal and report whether it entered the follow buffer.
 
-        ``v_ff_m_s`` is the QPIK rail velocity for this tick.  When finite the
-        worker uses it as the authoritative velocity in
-        :attr:`RailCommandMode.COUPLED_VELOCITY`; the target position is then
-        only a travel/lead guard.
+        ``v_ff_m_s`` is the rail velocity for this tick.  When ``mode`` is
+        omitted, a finite feedforward still selects
+        :attr:`RailCommandMode.COUPLED_VELOCITY` (pure velocity follow).
+        :attr:`RailCommandMode.TRACKED_POSITION` is never inferred — the
+        controller must pass it explicitly.
         """
         raw_v = float("nan") if v_ff_m_s is None else float(v_ff_m_s)
         if mode is None:
@@ -2365,180 +2352,6 @@ class RailServoBridge:
             return float(x_goal), 0.0, 0.0
         return x_new, v_new, a_new
 
-    @staticmethod
-    def _step_velocity_reference(
-        x_ref: float,
-        v_ref: float,
-        v_goal: float,
-        *,
-        dt: float,
-        v_max: float,
-        a_max: float,
-        x_goal: float | None = None,
-        catch_v_max: float = 0.0,
-        k_catch: float = 0.0,
-        catch_frac: float = 0.3,
-        x_min: float | None = None,
-        x_max: float | None = None,
-    ) -> tuple[float, float, float]:
-        """Advance a velocity-authoritative reference with bounded catch-up.
-
-        Catch-up is a correction on top of ``v_goal``.  Its cap is
-        ``min(catch_v_max, catch_frac*|v_goal|)``, so a parked or near-zero
-        goal cannot fire a 7x kick.  Parked ticks still re-anchor ``x_ref``.
-        """
-        dt = max(float(dt), 1.0e-4)
-        v_max = max(float(v_max), 1.0e-6)
-        a_max = max(float(a_max), 1.0e-6)
-        v_goal = max(-v_max, min(v_max, float(v_goal)))
-        v_catch = 0.0
-        if x_goal is not None and math.isfinite(float(x_goal)):
-            err = float(x_goal) - float(x_ref)
-            cap = min(
-                max(float(catch_v_max), 0.0),
-                max(float(catch_frac), 0.0) * abs(v_goal),
-            )
-            gain = max(float(k_catch), 0.0)
-            v_catch = max(-cap, min(cap, gain * err))
-        v_target = max(-v_max, min(v_max, v_goal + v_catch))
-        dv_max = a_max * dt
-        v_new = max(float(v_ref) - dv_max, min(float(v_ref) + dv_max, v_target))
-        v_new = max(-v_max, min(v_max, v_new))
-        x_new = float(x_ref) + v_new * dt
-        if x_min is not None and x_new < float(x_min):
-            x_new = float(x_min)
-            if v_new < 0.0:
-                v_new = 0.0
-        if x_max is not None and x_new > float(x_max):
-            x_new = float(x_max)
-            if v_new > 0.0:
-                v_new = 0.0
-        a_new = (v_new - float(v_ref)) / dt
-        return x_new, v_new, a_new
-
-    @staticmethod
-    def _parked_reanchor(
-        x_ref: float,
-        v_ref: float,
-        a_ref: float,
-        *,
-        measured: float,
-        v_goal: float,
-        v_meas: float,
-        zero_eps: float = RAIL_IDLE_EPS_M_S,
-    ) -> tuple[float, float, float, bool]:
-        """Wipe leftover ``x_ref`` when the coupled stream is standing still.
-
-        Orthogonal to standstill hysteresis (FA24 hold): snaps ``x_ref``
-        to ``measured`` so ``e_track`` is empty on the release tick.
-        It does not move the carriage.
-        """
-        parked = (
-            abs(float(v_goal)) < float(zero_eps)
-            and abs(float(v_meas)) < float(zero_eps)
-            and abs(float(v_ref)) < float(zero_eps)
-        )
-        if parked:
-            return float(measured), 0.0, 0.0, True
-        return float(x_ref), float(v_ref), float(a_ref), False
-
-    @staticmethod
-    def _reanchor_coupled_x_ref(
-        x_ref: float,
-        measured: float,
-        *,
-        follow: bool,
-        settling: bool,
-    ) -> tuple[float, float]:
-        """Keep coupled ``x_ref`` on the encoder so standstill has no ghost debt."""
-        if follow and not settling:
-            x_ref = float(measured)
-        err_x = float(x_ref) - float(measured)
-        return float(x_ref), err_x
-
-    @staticmethod
-    def _clamp_zero_target_brake(
-        v_des: float,
-        *,
-        v_goal: float,
-        v_ref: float,
-        v_meas: float,
-        v_prev_cmd: float,
-        zero_eps: float = RAIL_IDLE_EPS_M_S,
-        margin: float = 0.005,
-    ) -> float:
-        """Do not turn a deceleration / stop into an active reversal.
-
-        Direction comes from actual motion (``v_meas`` first — encoder
-        difference after the 157 ms register lag fix), then ``v_ref``, then
-        the previous command.  Engages for the whole same-sign slowdown
-        (``v_goal * v_motion >= 0`` and ``|v_goal| <= |v_motion|``), not
-        only when ``v_goal≈0``.  An opposite-sign ``v_goal`` is a real
-        reverse and is left alone.
-        """
-        desired = float(v_des)
-        v_motion = RailServoBridge._motion_from_candidates(
-            v_meas, v_ref, v_prev_cmd, zero_eps=zero_eps
-        )
-        if abs(v_motion) < max(float(zero_eps), 0.0):
-            if abs(float(v_goal)) < max(float(zero_eps), 0.0):
-                return 0.0
-            return desired
-        if not RailServoBridge._is_decel_request(
-            v_goal, v_motion, zero_eps=zero_eps, margin=margin
-        ):
-            return desired
-        if v_motion > 0.0:
-            return max(desired, 0.0)
-        return min(desired, 0.0)
-
-    @staticmethod
-    def _standstill_hold_update(
-        *,
-        held: bool,
-        enter_since_s: float | None,
-        now_s: float,
-        err_m: float,
-        v_ref_m_s: float,
-        v_cmd_m_s: float,
-        v_meas_m_s: float,
-        enter_m: float,
-        exit_m: float,
-        dwell_s: float,
-        motion_wake_m_s: float = RAIL_IDLE_EPS_M_S,
-    ) -> tuple[bool, float | None]:
-        """Hysteresis standstill latch for FA24 freeze.
-
-        Enter when |err|<=enter for ``dwell_s`` with near-zero motion; release
-        only when |err|>exit or a non-trivial velocity reference appears.
-        Tracking accuracy is the enter band; exit is a disturbance wake gate.
-        """
-
-        enter_m = max(float(enter_m), 0.0)
-        exit_m = max(float(exit_m), enter_m)
-        dwell_s = max(float(dwell_s), 0.0)
-        wake = max(float(motion_wake_m_s), 0.0)
-        err_abs = abs(float(err_m))
-        motion_cmd = abs(float(v_ref_m_s)) >= wake
-        if motion_cmd:
-            return False, None
-        if held:
-            if err_abs > exit_m:
-                return False, None
-            return True, None
-        quiet = (
-            abs(float(v_cmd_m_s)) < wake
-            and abs(float(v_meas_m_s)) < wake
-            and err_abs <= enter_m
-        )
-        if not quiet:
-            return False, None
-        if enter_since_s is None:
-            return False, float(now_s)
-        if dwell_s <= 0.0 or (float(now_s) - float(enter_since_s)) >= dwell_s:
-            return True, None
-        return False, float(enter_since_s)
-
     def _worker_velocity(self) -> None:
         """Continuous soft-CSP → FA24: stream-aware reference + P–V law."""
         assert self._drive is not None
@@ -2597,8 +2410,6 @@ class RailServoBridge:
         arm_log_t = 0.0
         settling = False
         settle_deadline: float | None = None
-        standstill_held = False
-        standstill_enter_since: float | None = None
         last_bias = int(getattr(self._drive, "_counts_bias", 0) or 0)
         next_t = time.monotonic()
         di_streak = 0
@@ -2624,8 +2435,6 @@ class RailServoBridge:
                 v_ref = 0.0
                 a_ref = 0.0
                 ref_inited = False
-                standstill_held = False
-                standstill_enter_since = None
                 last_accepted_enc_t = time.monotonic()
                 enc_history.clear()
                 poll_period_history.clear()
@@ -3122,8 +2931,6 @@ class RailServoBridge:
                     moving_without_fb = False
                     settling = False
                     settle_deadline = None
-                    standstill_held = False
-                    standstill_enter_since = None
                     if (
                         not follow
                         and not panic
@@ -3143,6 +2950,9 @@ class RailServoBridge:
                     velocity_coupled = (
                         command_mode is RailCommandMode.COUPLED_VELOCITY
                     )
+                    tracked_position = (
+                        command_mode is RailCommandMode.TRACKED_POSITION
+                    )
                     if velocity_coupled:
                         v_goal_est = (
                             target_v_ff if math.isfinite(target_v_ff) else 0.0
@@ -3155,29 +2965,44 @@ class RailServoBridge:
                             if v_ff_live
                             else a_max
                         )
-                        x_ref, v_ref, a_ref, parked = self._parked_reanchor(
-                            x_ref,
-                            v_ref,
-                            a_ref,
-                            measured=measured,
-                            v_goal=v_goal_est,
-                            v_meas=v_meas,
+                        v_ref = v_goal_est
+                        a_ref = 0.0
+                        x_ref = measured
+                        err_x = 0.0
+                        v_raw = v_ref
+                    elif tracked_position:
+                        v_goal_est = (
+                            target_v_ff if math.isfinite(target_v_ff) else 0.0
                         )
-                        if not parked:
-                            x_ref, v_ref, a_ref = self._step_velocity_reference(
-                                x_ref,
-                                v_ref,
-                                v_goal_est,
-                                dt=dt,
-                                v_max=v_max,
-                                a_max=a_ref_max,
-                                x_goal=x_goal_eval,
-                                catch_v_max=float(self.config.catch_v_max_m_s),
-                                k_catch=0.0,
-                                catch_frac=float(self.config.catch_frac),
-                                x_min=soft_lo,
-                                x_max=soft_hi,
-                            )
+                        v_goal_est = max(-v_max, min(v_max, v_goal_est))
+                        x_goal_eval = max(soft_lo, min(soft_hi, x_goal))
+                        v_ff_live = bool(follow) and not settling
+                        a_ref_max = (
+                            float(self.config.live_host_accel_m_s2())
+                            if v_ff_live
+                            else a_max
+                        )
+                        v_ref = v_goal_est
+                        a_ref = 0.0
+                        x_ref = x_goal_eval
+                        kp = float(self.config.vel_kp)
+                        kd = float(self.config.vel_kd)
+                        err_x = x_goal_eval - measured
+                        err_v = v_ref - v_meas
+                        if settling:
+                            v_p_allow = abs(err_x) / max_stall_s
+                        else:
+                            v_p_allow = max(abs(err_x) / max_stall_s, stall_v_floor)
+                        v_p = max(-v_p_allow, min(v_p_allow, kp * err_x))
+                        d_cap = max(float(self.config.vel_kd_max_m_s), 0.0)
+                        v_d = kd * err_v
+                        if d_cap > 0.0:
+                            v_d = max(-d_cap, min(d_cap, v_d))
+                        catch = max(float(self.config.catch_v_max_m_s), 0.0)
+                        v_corr = v_p + v_d
+                        if catch > 0.0:
+                            v_corr = max(-catch, min(catch, v_corr))
+                        v_raw = v_ref + v_corr
                     else:
                         stream_v_ff = (
                             target_v_ff
@@ -3218,32 +3043,10 @@ class RailServoBridge:
                             v_max=v_max,
                             a_max=a_ref_max,
                         )
-
-                    brake_margin = float(self.config.decel_request_margin_m_s)
-                    if velocity_coupled:
-                        x_ref, err_x = self._reanchor_coupled_x_ref(
-                            x_ref,
-                            measured,
-                            follow=bool(follow),
-                            settling=bool(settling),
-                        )
-                        v_raw = v_ref
-                        v_raw = self._clamp_zero_target_brake(
-                            v_raw,
-                            v_goal=v_goal_est,
-                            v_ref=v_ref,
-                            v_meas=v_meas,
-                            v_prev_cmd=prev_v_cmd,
-                            margin=brake_margin,
-                        )
-                    else:
                         kp = float(self.config.vel_kp)
                         kd = float(self.config.vel_kd)
                         err_x = x_ref - measured
                         err_v = v_ref - v_meas
-                        # POSITION scan/home: ẋd + Kp(xd−x) + Kd(ẋd−ẋ).
-                        # xd is x_ref, never x_goal.  v_meas is encoder
-                        # difference, not the lagged 0x1000 register.
                         v_p = kp * err_x
                         if settling:
                             v_p_allow = abs(err_x) / max_stall_s
@@ -3255,58 +3058,6 @@ class RailServoBridge:
                         if d_cap > 0.0:
                             v_d = max(-d_cap, min(d_cap, v_d))
                         v_raw = v_ref + v_p + v_d
-
-                    # Standstill when the shaped reference has stopped
-                    # (|v_ref| < 1 mm/s), including live follow.  Do not
-                    # veto on follow — that left P hunting FA24 at idle.
-                    # Latch on e_track (x_ref−x_meas), never x_goal (20 mm lead).
-                    # Instant deadband only for a truly stopped ref so a
-                    # tiny nonzero v_ref still moves.
-                    target_stale = bool(
-                        last_rx <= 0.0 or (t0 - last_rx) > stream_dead_s
-                    )
-                    follow_live = bool(follow) and not settling and not target_stale
-                    v_ref_stopped = abs(v_ref) < RAIL_IDLE_EPS_M_S
-
-                    enter_m = max(float(self.config.standstill_enter_mm), 0.01) * 1e-3
-                    exit_m = max(float(self.config.standstill_exit_mm), 0.01) * 1e-3
-                    dwell_s = max(float(self.config.standstill_dwell_s), 0.0)
-                    was_held = standstill_held
-                    if not v_ref_stopped:
-                        standstill_held = False
-                        standstill_enter_since = None
-                    else:
-                        standstill_held, standstill_enter_since = (
-                            self._standstill_hold_update(
-                                held=standstill_held,
-                                enter_since_s=standstill_enter_since,
-                                now_s=t0,
-                                err_m=err_x,
-                                v_ref_m_s=v_ref,
-                                v_cmd_m_s=prev_v_cmd,
-                                v_meas_m_s=v_meas,
-                                enter_m=enter_m,
-                                exit_m=exit_m,
-                                dwell_s=dwell_s,
-                            )
-                        )
-                        if standstill_held:
-                            v_raw = 0.0
-                            v_ref = 0.0
-                            a_ref = 0.0
-                            x_ref = measured
-                            if verbose and not was_held:
-                                print(
-                                    f"lw100 rail: standstill latch "
-                                    f"|e_track|={abs(err_x) * 1000:.2f} mm → FA24=0",
-                                    flush=True,
-                                )
-                        elif verbose and was_held:
-                            print(
-                                f"lw100 rail: standstill wake "
-                                f"|e_track|={abs(err_x) * 1000:.2f} mm",
-                                flush=True,
-                            )
 
                     v_des = max(-v_max, min(v_max, v_raw))
                     if settling:
@@ -3346,19 +3097,13 @@ class RailServoBridge:
                         self._wall_override_last = False
                     v_cmd = v_env
                     a_cmd = (v_cmd - prev_v_cmd) / max(dt, 1.0e-6)
-                    if standstill_held:
-                        # Instant freeze — do not coast down through stiction hum.
-                        v_des = 0.0
+                    if (
+                        abs(v_ref) < RAIL_IDLE_EPS_M_S
+                        and abs(err_x) <= max(deadband_m, settle_tol_m)
+                        and abs(v_cmd) <= 1.0e-6
+                    ):
                         v_cmd = 0.0
                         a_cmd = 0.0
-                    elif not follow_live:
-                        if (
-                            abs(v_ref) < RAIL_IDLE_EPS_M_S
-                            and abs(err_x) <= max(deadband_m, settle_tol_m)
-                            and abs(v_cmd) <= 1.0e-6
-                        ):
-                            v_cmd = 0.0
-                            a_cmd = 0.0
 
                     # Single/double slow poll: coast. ≥3 → hard zero.
                     if not poll_ok:

@@ -18,7 +18,7 @@ namespace {
 
 constexpr int kNVar = kNv + kNTaskSlack + kNPref;
 constexpr int kNIn = kNv + kMaxCbf + kMaxPrefRows + kNPref;
-constexpr double kRailDriveCap = 0.12;
+constexpr double kRailDriveCap = 0.40;
 constexpr double kRailPrefW = 64.0;
 constexpr double kQuietLinEnter = 0.005;
 constexpr double kQuietRotEnter = 0.05;
@@ -189,7 +189,7 @@ InnerLoop::InnerLoop(const Config& cfg)
   q_lo_ = kin_.q_lower();
   q_hi_ = kin_.q_upper();
   v_max_ = kin_.v_max() * cfg.v_scale;
-  v_max_[0] = std::min({v_max_[0], cfg.rail_v_max, kRailDriveCap});
+  v_max_[0] = std::min(cfg.rail_v_max, kRailDriveCap);
   q_lo_[0] = std::max(q_lo_[0], cfg.hard_min);
   q_hi_[0] = std::min(q_hi_[0], cfg.hard_max);
   a_max_.setConstant(cfg.a_max_arm);
@@ -418,6 +418,54 @@ void InnerLoop::capture_rail_ext_ref(const Vec8& q) {
 }
 
 void InnerLoop::set_rail_ext_mode(int pose_attract) { rail_ext_mode_ = pose_attract; }
+
+void InnerLoop::track_rail_authority(double d_live, double d_star_target, double v_applied,
+                                     double dt) {
+  const double target = std::isfinite(d_star_target) ? d_star_target : d_live;
+  d_star_ref_ = target;
+  d_star_ref_init_ = true;
+  d_star_dot_cmd_ = 0.0;
+  u_base_ = v_applied;
+  u_feasible_ = v_applied;
+  (void)d_live;
+  if (v_r_init_ && dt > 1e-12) {
+    double a = (v_applied - v_r_ref_) / dt;
+    const double da = kRailRefJerk * dt;
+    a = clip(a, v_r_a_ - da, v_r_a_ + da);
+    a = clip(a, -cfg_.a_max_rail, cfg_.a_max_rail);
+    v_r_a_ = a;
+  } else {
+    v_r_a_ = 0.0;
+  }
+  v_r_ref_ = v_applied;
+  v_r_lpf_ = v_applied;
+  v_r_init_ = true;
+}
+
+void InnerLoop::fill_mixer_out(TickOut* out) const {
+  out->u_alloc = u_alloc_;
+  out->u_mid = u_mid_;
+  out->v_r_ref = v_r_ref_;
+  out->d_star = d_star_;
+  out->d_pref = d_pref_;
+  out->u_task_raw = u_task_raw_;
+  out->u_task_feasible = u_task_feasible_;
+  out->u_pi_raw = u_pi_raw_;
+  out->u_mid_cmd = u_mid_cmd_;
+  out->u_post_raw = u_post_raw_;
+  out->u_post_feasible = u_post_feasible_;
+  out->u_mid_applied = u_mid_applied_;
+  out->d_star_dot_cmd = d_star_dot_cmd_;
+  out->u_escape_raw = u_escape_raw_;
+  out->u_escape_feasible = u_escape_feasible_;
+  out->escape_active = escape_active_ ? 1.0 : 0.0;
+  out->escape_dir = static_cast<double>(escape_dir_);
+  out->u_base = u_base_;
+  out->u_feasible = u_feasible_;
+  out->v_r_lpf = v_r_lpf_;
+  out->e_d = e_d_;
+  out->V_d_proxy = V_d_proxy_;
+}
 
 void InnerLoop::apply_velocity_box(const Vec8& q_geom, const Vec8& q_cmd, const Vec8& q_meas,
                                    double dt, double h1, double h2, bool rail_locked,
@@ -949,7 +997,9 @@ TickOut InnerLoop::step(const TickIn& in) {
     }
   }
   Vec8 q_prev = q_cmd_;
-  if (rail_mode_ == kRailCoupled && obs_init_ && last_sample_t_ >= 0.0) {
+  const bool skip_rail_rebase = direct_ptp_ && plan_drives_rail_;
+  if (rail_mode_ == kRailCoupled && obs_init_ && last_sample_t_ >= 0.0 &&
+      !skip_rail_rebase) {
     q_prev[0] = q_hat_;
     q_cmd_[0] = q_hat_;
   }
@@ -969,41 +1019,6 @@ TickOut InnerLoop::step(const TickIn& in) {
   qdot_prev2_ = qdot_seen_;
   qdot_seen_ = qdot_prev_;
 
-  if (direct_ptp_ && (in.flags & kInHasQdotFf)) {
-    Vec8 qdot = in.qdot_ff;
-    for (int i = 0; i < kNv; ++i) qdot[i] = clip(qdot[i], -v_max_[i], v_max_[i]);
-    if (rail_only) qdot.tail<7>().setZero();
-    q_cmd_ = q_prev + qdot * dt;
-    qdot_prev_ = qdot;
-    if (cfg_.psi_enabled && rail_mode_ == kRailCoupled) {
-      const Vec6 pose = kin_.fk_pose_at(q_cmd_);
-      posture_.follow_live(q_cmd_, pose, dt);
-      d_star_ = posture_.d_star();
-      psi_cmd_ = posture_.psi_cmd();
-      psi_star_ = posture_.psi_star();
-      homotopy_s_ = posture_.homotopy_s();
-      d_pref_ = d_star_;
-    }
-    out.q_cmd = q_cmd_;
-    out.qdot = qdot;
-    out.sigma_min = last_sigma_;
-    out.sigma_arm = sigma_arm;
-    out.homotopy_s = homotopy_s_;
-    out.d_star = d_star_;
-    out.psi = psi_cmd_;
-    return out;
-  }
-
-  double rail_exec = qdot_prev_[0];
-  bool has_rail_exec = false;
-  if (in.flags & kInHasRailV) {
-    rail_exec = in.rail_v;
-    has_rail_exec = true;
-  } else if (obs_init_ && last_sample_t_ >= 0.0) {
-    rail_exec = v_hat_;
-    has_rail_exec = true;
-  }
-
   const double now = in.t_mono > 0.0 ? in.t_mono : 0.0;
   if (!obs_init_) {
     q_hat_ = q_state[0];
@@ -1021,6 +1036,47 @@ TickOut InnerLoop::step(const TickIn& in) {
       last_sample_t_ = now;
     }
     v_hat_ = clip(v_hat_, -v_max_[0], v_max_[0]);
+  }
+
+  if (direct_ptp_ && (in.flags & kInHasQdotFf)) {
+    Vec8 qdot = in.qdot_ff;
+    for (int i = 0; i < kNv; ++i) qdot[i] = clip(qdot[i], -v_max_[i], v_max_[i]);
+    if (rail_only) qdot.tail<7>().setZero();
+    q_cmd_ = q_prev + qdot * dt;
+    qdot_prev_ = qdot;
+    if (cfg_.psi_enabled && rail_mode_ == kRailCoupled) {
+      const Vec6 pose = kin_.fk_pose_at(q_cmd_);
+      posture_.follow_live(q_cmd_, pose, dt);
+      d_star_ = posture_.d_star();
+      psi_cmd_ = posture_.psi_cmd();
+      psi_star_ = posture_.psi_star();
+      homotopy_s_ = posture_.homotopy_s();
+      d_pref_ = d_star_;
+    }
+    {
+      const Vec6 pose_cmd = kin_.fk_pose_at(q_cmd_);
+      const double d_live = pose_cmd[1] - q_cmd_[0];
+      const double d_target = std::isfinite(d_star_) ? d_star_ : d_live;
+      track_rail_authority(d_live, d_target, qdot[0], dt);
+    }
+    out.q_cmd = q_cmd_;
+    out.qdot = qdot;
+    out.sigma_min = last_sigma_;
+    out.sigma_arm = sigma_arm;
+    out.homotopy_s = homotopy_s_;
+    out.psi = psi_cmd_;
+    fill_mixer_out(&out);
+    return out;
+  }
+
+  double rail_exec = qdot_prev_[0];
+  bool has_rail_exec = false;
+  if (in.flags & kInHasRailV) {
+    rail_exec = in.rail_v;
+    has_rail_exec = true;
+  } else if (obs_init_ && last_sample_t_ >= 0.0) {
+    rail_exec = v_hat_;
+    has_rail_exec = true;
   }
 
   double h1 = dt_nom;
@@ -1106,8 +1162,7 @@ TickOut InnerLoop::step(const TickIn& in) {
     const double enter = std::max(0.0, cfg_.ns_enter_fade_s);
     if (ns_enter_t_ < enter) ns_enter_t_ = std::min(ns_enter_t_ + dt, enter);
   }
-  const bool hold_d = quiescent_;
-  hold_d_prev_ = hold_d;
+  hold_d_prev_ = quiescent_;
 
   if (cfg_.psi_enabled && rail_mode_ == kRailCoupled) {
     const Vec6 pose = kin_.fk_pose_at(q_prev);
@@ -1186,7 +1241,7 @@ TickOut InnerLoop::step(const TickIn& in) {
 
   if (rail_mode_ == kRailCoupled && !locked_hold) {
     const double d_live = y_tcp - q_state[0];
-    const bool hold_ref = (hold_d && !escape_active_) || !std::isfinite(d_star_);
+    const bool hold_ref = !std::isfinite(d_star_);
     if (!d_star_ref_init_ || !std::isfinite(d_star_ref_)) {
       d_star_ref_ = d_live;
       d_star_ref_init_ = true;
@@ -1247,24 +1302,16 @@ TickOut InnerLoop::step(const TickIn& in) {
       wall_velocity_bounds(v_max_[0], leave, &u_lo, &u_hi);
     }
 
-    const bool task_hold = hold_d && !escape_active_;
     const double alpha = secondary_alpha_;
-    if (task_hold && !wall_pi_frozen_) {
-      mid_integ_ = -cfg_.kp_mid * e_d_;
-    }
     u_pi_raw_ = cfg_.kp_mid * e_d_ + mid_integ_;
     u_mid_cmd_ = soft_saturate(u_pi_raw_, cfg_.u_mid_max);
     u_post_raw_ = alpha * (u_mid_cmd_ - d_star_dot_cmd_);
     u_mid_ = u_mid_cmd_;
-    if (task_hold) {
-      u_post_raw_ = 0.0;
-      d_star_dot_cmd_ = 0.0;
-    }
     const RailShares shares = allocate_rail_shares(
-        task_hold ? 0.0 : u_task_raw_,
+        u_task_raw_,
         u_post_raw_,
-        task_hold ? 0.0 : u_escape_raw_,
-        task_hold ? 0 : guard_dir,
+        u_escape_raw_,
+        guard_dir,
         u_lo, u_hi);
     u_task_feasible_ = shares.u_task_feasible;
     u_escape_feasible_ = shares.u_escape_feasible;
@@ -1273,7 +1320,7 @@ TickOut InnerLoop::step(const TickIn& in) {
     u_feasible_ = shares.u_feasible;
     u_mid_applied_ = u_post_feasible_ + d_star_dot_cmd_;
     if (!wall_pi_frozen_ && dt > 0.0) {
-      if (alpha < 1.0e-6 || task_hold) {
+      if (alpha < 1.0e-6) {
         mid_integ_ = -cfg_.kp_mid * e_d_;
       } else {
         mid_integ_ += (cfg_.ki_mid * e_d_ + cfg_.kaw_mid * (u_mid_applied_ - u_pi_raw_)) * dt;
@@ -1298,7 +1345,6 @@ TickOut InnerLoop::step(const TickIn& in) {
     double lo_c, hi_c;
     wall_cap(q_state[0], cfg_.hard_min, cfg_.hard_max, a_lim, cfg_.rail_reaction_s, &lo_c, &hi_c);
     v = clip(v, lo_c, hi_c);
-    if (std::abs(v) < 5e-4 && std::abs(u_feasible_) < 5e-4) v = 0.0;
     v_r_ref_ = v;
     v_r_a_ = (v - (v_r_ref_ - a * dt)) / dt;
     rail_task_vel = v;
@@ -1506,6 +1552,14 @@ TickOut InnerLoop::step(const TickIn& in) {
   last_slack_ = slack;
   last_tcp_est_ = J * qdot;
   u_mid_committed_ = u_mid_applied_;
+  const bool mixer_owned =
+      published_ok && rail_mode_ == kRailCoupled && !locked_hold && !plan_rail;
+  if (!mixer_owned) {
+    const Vec6 pose_cmd = kin_.fk_pose_at(q_cmd_);
+    const double d_live = pose_cmd[1] - q_cmd_[0];
+    const double d_target = std::isfinite(d_star_) ? d_star_ : d_live;
+    track_rail_authority(d_live, d_target, qdot[0], dt);
+  }
 
   const auto t1 = std::chrono::steady_clock::now();
   out.q_cmd = q_cmd_;
@@ -1515,15 +1569,11 @@ TickOut InnerLoop::step(const TickIn& in) {
   out.residual = residual;
   out.slack = slack;
   out.e_qp = residual.norm();
-  out.u_alloc = u_alloc_;
-  out.u_mid = u_mid_;
-  out.v_r_ref = v_r_ref_;
   out.psi = psi_cmd_;
-  out.d_star = d_star_;
-  out.d_pref = d_pref_;
   out.sigma_min = last_sigma_;
   out.sigma_arm = sigma_arm;
   out.solve_ms = std::chrono::duration<double, std::milli>(t1 - t0).count();
+  fill_mixer_out(&out);
   for (int i = 1; i < kNv; ++i) {
     if (qdot[i] >= v_max_[i] - 1e-6 || qdot[i] <= -v_max_[i] + 1e-6) out.joint_limited = 1;
   }
@@ -1538,23 +1588,6 @@ TickOut InnerLoop::step(const TickIn& in) {
   out.sec_target_norm = sec_target_.norm();
   out.homotopy_s = homotopy_s_;
   out.psi_star = psi_star_;
-  out.u_task_raw = u_task_raw_;
-  out.u_task_feasible = u_task_feasible_;
-  out.u_pi_raw = u_pi_raw_;
-  out.u_mid_cmd = u_mid_cmd_;
-  out.u_post_raw = u_post_raw_;
-  out.u_post_feasible = u_post_feasible_;
-  out.u_mid_applied = u_mid_applied_;
-  out.d_star_dot_cmd = d_star_dot_cmd_;
-  out.u_escape_raw = u_escape_raw_;
-  out.u_escape_feasible = u_escape_feasible_;
-  out.escape_active = escape_active_ ? 1.0 : 0.0;
-  out.escape_dir = static_cast<double>(escape_dir_);
-  out.u_base = u_base_;
-  out.u_feasible = u_feasible_;
-  out.v_r_lpf = v_r_lpf_;
-  out.e_d = e_d_;
-  out.V_d_proxy = V_d_proxy_;
   out.j4_design_slack = j4_design_slack_;
   out.sigma_slack = sigma_slack_;
   out.rail_box_lo = rail_box_lo_;

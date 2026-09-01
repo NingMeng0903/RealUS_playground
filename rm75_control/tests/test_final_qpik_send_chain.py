@@ -194,8 +194,8 @@ def test_rail_rejection_stops_before_arm_half_of_8d_tick() -> None:
         panicked = False
         panic_reason = ""
 
-        def set_target_m(self, _target, v_ff_m_s=None):
-            del v_ff_m_s
+        def set_target_m(self, _target, v_ff_m_s=None, mode=None):
+            del v_ff_m_s, mode
             return False
 
     events: list[str] = []
@@ -276,8 +276,9 @@ def test_publish_forwards_v_ff_to_the_bridge() -> None:
         panic_reason = ""
         seen: tuple[float, float | None] | None = None
 
-        def set_target_m(self, target, v_ff_m_s=None):
+        def set_target_m(self, target, v_ff_m_s=None, mode=None):
             self.seen = (float(target), v_ff_m_s)
+            self.mode = mode
             return True
 
     rail = RecordingRail()

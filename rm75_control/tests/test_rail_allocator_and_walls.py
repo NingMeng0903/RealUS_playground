@@ -82,6 +82,19 @@ def test_margin_weight_pushes_task_to_rail() -> None:
     assert abs(q_w[1]) < abs(q_eq[1])
 
 
+def test_reference_model_track_joins_applied_velocity() -> None:
+    dt = 0.005
+    model = RailReferenceModel(f_c_hz=4.0, a_max=0.60, j_max=60.0, v_max=0.15)
+    model.reset(0.0)
+    model.step(0.0, dt, x_m=0.40, apply_wall=False)
+    for _ in range(8):
+        model.track(0.04, dt)
+    v = model.step(0.04, dt, x_m=0.40, apply_wall=False)
+    assert v == pytest.approx(0.04, abs=1e-9)
+    assert model.state.v == pytest.approx(0.04, abs=1e-9)
+    assert abs(model.state.a) < 1.0e-9
+
+
 def test_l1_reference_jerk_is_60_not_qp_box_120() -> None:
     dt = 0.005
     model = RailReferenceModel(f_c_hz=4.0, a_max=0.60, j_max=60.0, v_max=0.15)

@@ -7,13 +7,17 @@ import numpy as np
 from rm75_control.control.joint_admittance_8dof.api import CompileContext
 from rm75_control.control.joint_admittance_8dof.loop import Phase
 from rm75_control.control.joint_admittance_8dof.pose_ik import (
+    PlannerGoalWeights,
     UnreachablePathError,
+    goal_score,
     resolve_pose_ik_srs,
 )
 from rm75_control.control.joint_admittance_8dof.reference import WorldPolylineReference
+from rm75_control.control.joint_admittance_8dof.tasks.psi_retarget import d_from_q
 from rm75_control.kinematics.srs_ik import (
     flange_tcp_from_kin,
     is_reachable,
+    psi_from_q,
     shoulder_y_from_q_rail,
 )
 from peirastic.realman8dof.modes.joint import build_movej_phase, speed_frac
@@ -61,6 +65,62 @@ def assert_poses_reachable(kin, poses, *, euler_order: str = "xyz") -> None:
         raise ValueError(f"unreachable Cartesian pose(s) at index {bad}")
 
 
+def _finite_or_none(value) -> float | None:
+    if value is None:
+        return None
+    try:
+        out = float(value)
+    except (TypeError, ValueError):
+        return None
+    return out if np.isfinite(out) else None
+
+
+def ns_attractor(ctx: CompileContext) -> tuple[float, float]:
+    """Live ``(ψ*, d*)`` if finite, else yaml ``psi_attr`` / ``d_attr``."""
+
+    psi_home = None
+    d_star = None
+    pr = getattr(ctx.inner, "posture_retarget", None)
+    if pr is not None:
+        psi_home = _finite_or_none(getattr(pr, "psi_star_rad", None))
+        d_star = _finite_or_none(getattr(pr, "d_star_m", None))
+        cfg = getattr(pr, "cfg", None)
+        if psi_home is None and cfg is not None:
+            psi_home = _finite_or_none(getattr(cfg, "psi_attr_rad", None))
+        if d_star is None and cfg is not None:
+            d_star = _finite_or_none(getattr(cfg, "d_attr_m", None))
+    inner_cfg = getattr(ctx.inner, "cfg", None)
+    pr_cfg = getattr(inner_cfg, "psi_retarget", None) if inner_cfg is not None else None
+    if psi_home is None and pr_cfg is not None:
+        psi_home = _finite_or_none(getattr(pr_cfg, "psi_attr_rad", None))
+    if d_star is None and pr_cfg is not None:
+        d_star = _finite_or_none(getattr(pr_cfg, "d_attr_m", None))
+    if psi_home is None:
+        psi_home = float(np.deg2rad(68.0))
+    if d_star is None:
+        d_star = -0.185
+    return float(psi_home), float(d_star)
+
+
+def _ns_pose_cost(
+    kin,
+    q: np.ndarray,
+    *,
+    psi_home: float,
+    d_star: float,
+    weights: PlannerGoalWeights,
+) -> float:
+    """Lower is better. Matches online NS: ``goal_score(ψ)`` plus ``|d − d*|``."""
+
+    q = np.asarray(q, dtype=float).reshape(-1)
+    q_arm = q[1:]
+    psi = float(psi_from_q(q_arm))
+    sigma_min = float(kin.singular_values(kin.jacobian(q)).min())
+    score = float(goal_score(q_arm, q, psi, float(psi_home), sigma_min, kin, weights))
+    d_err = abs(float(d_from_q(kin, q)) - float(d_star))
+    return -score + 12.0 * d_err
+
+
 def resolve_pose_q(
     ctx: CompileContext,
     pose,
@@ -69,16 +129,33 @@ def resolve_pose_q(
     rail_m: float | None = None,
     require_path: bool = True,
 ) -> np.ndarray:
-    """8-DOF pose IK: sweep rail unless ``rail_m`` locks it."""
+    """8-DOF pose IK: sweep rail unless ``rail_m`` locks it.
+
+    Rank candidates by the same ``(ψ, d*)`` secondary used online. Hold may
+    still catch remaining d*; this only stops planning from preferring
+    ``min |Δrail|`` against that attractor.
+    """
 
     pose_a = _as_pose(pose)
     q0 = np.asarray(ctx.inner.q_cmd if q_seed is None else q_seed, dtype=float).reshape(-1)
     if q0.size != 8:
         raise ValueError(f"q_seed must be 8-vec, got {q0.size}")
+    psi_home, d_star = ns_attractor(ctx)
+    weights = PlannerGoalWeights()
     if rail_m is not None:
         rails = [float(rail_m)]
     else:
-        rails = reachable_rails(ctx.kin, pose_a, euler_order=ctx.euler_order)
+        rails = list(reachable_rails(ctx.kin, pose_a, euler_order=ctx.euler_order))
+        pref = float(np.clip(float(pose_a[1]) - d_star, float(ctx.kin.q_lower[0]), float(ctx.kin.q_upper[0])))
+        R_flange, t_flange = flange_tcp_from_kin(ctx.kin)
+        if is_reachable(
+            pose_a,
+            y_rail=shoulder_y_from_q_rail(pref),
+            euler_order=ctx.euler_order,
+            R_flange_tcp=R_flange,
+            t_flange_tcp=t_flange,
+        ):
+            rails.append(pref)
         if not rails:
             raise ValueError("pose unreachable: no rail puts the wrist in the SRS annulus")
     best: np.ndarray | None = None
@@ -90,16 +167,19 @@ def resolve_pose_q(
                 q0,
                 pose_a,
                 y_rail_target=float(rail),
+                psi_home_rad=psi_home,
                 require_path=bool(require_path),
                 euler_order=ctx.euler_order,
+                planner_weights=weights,
             )
         except UnreachablePathError:
             continue
         if not ok or q is None:
             continue
         q = np.asarray(q, dtype=float).reshape(-1)
-        dq = q - q0
-        cost = 2.0 * abs(float(dq[0])) + float(np.linalg.norm(dq[1:]))
+        cost = _ns_pose_cost(
+            ctx.kin, q, psi_home=psi_home, d_star=d_star, weights=weights
+        )
         if cost < best_cost:
             best = q
             best_cost = cost
@@ -112,7 +192,7 @@ def _v_frac(payload: dict) -> float:
     return speed_frac(payload.get("v"))
 
 
-def build_movel_phase(
+def build_cartesian_ptp_phase(
     ctx: CompileContext,
     payload: dict,
     *,

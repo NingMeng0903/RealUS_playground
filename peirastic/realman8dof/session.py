@@ -15,7 +15,7 @@ from rm75_control.control.joint_admittance_8dof.reference import (
 )
 from peirastic.core.modes import Mode, ModeRequest
 from peirastic.realman8dof.modes.cartesian import (
-    build_movel_phase,
+    build_cartesian_ptp_phase,
     build_moves_phase,
     resolve_pose_q,
 )
@@ -233,8 +233,8 @@ def compile_request(
         return _finish_phase(
             ctx, payload, build_movej_phase(ctx, q, q_start=q_start, duration_s=dur, v=v)
         )
-    if req.mode == Mode.MOVEL:
-        return _finish_phase(ctx, payload, build_movel_phase(ctx, payload, dt=dt))
+    if req.mode == Mode.CARTESIAN_PTP:
+        return _finish_phase(ctx, payload, build_cartesian_ptp_phase(ctx, payload, dt=dt))
     if req.mode == Mode.MOVES:
         return _finish_phase(ctx, payload, build_moves_phase(ctx, payload, dt=dt))
     raise ValueError(f"unknown mode {req.mode}")

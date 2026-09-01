@@ -20,7 +20,7 @@ struct Config {
   double feedback_timeout_s = 0.08;
   double v_scale = 0.8;
   double a_max_arm = 3.0;
-  double a_max_rail = 0.60;
+  double a_max_rail = 1.6;
   double position_margin_rad = 0.005236;
   double position_margin_rail_m = 0.0;
   double resync_err_rad = 0.10472;
@@ -56,7 +56,7 @@ struct Config {
   double rail_reaction_s = 0.06;
   double near_arm_margin_rad = 0.08;
   double j_max_arm = 300.0;
-  double j_max_rail = 120.0;
+  double j_max_rail = 320.0;
   double sr_lam0 = 0.05;
   double sr_sigma_ref = 0.08;
   double sr_sigma_floor = 1e-6;
@@ -160,7 +160,7 @@ struct Config {
   int rail_mode = 0;
   int locked_style = 0;
   double lock_vel_eps = 0.0;
-  double rail_v_max = 0.15;
+  double rail_v_max = 0.40;
   double soft_min = 0.030;
   double soft_max = 0.755;
   double hard_min = 0.005;

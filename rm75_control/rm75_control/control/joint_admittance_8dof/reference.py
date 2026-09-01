@@ -66,10 +66,27 @@ def _soft_start_time_warp(t_s: float, ramp_s: float) -> tuple[float, float]:
     return tau, tau_dot
 
 
+def _quintic_v0_coeffs(
+    dq: np.ndarray, qdot0: np.ndarray, duration_s: float
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """Quintic ``q(u)=q0+a1 u+a3 u³+a4 u⁴+a5 u⁵`` with ``qdot(0)=qdot0``, rest at T.
+
+    ``a2=0`` keeps ``qddot(0)=0``.  ``qdot0=0`` recovers rest-to-rest smoothstep.
+    """
+    t = max(float(duration_s), 1.0e-9)
+    a1 = np.asarray(qdot0, dtype=float) * t
+    dq = np.asarray(dq, dtype=float)
+    a3 = 10.0 * dq - 6.0 * a1
+    a4 = 8.0 * a1 - 15.0 * dq
+    a5 = 6.0 * dq - 3.0 * a1
+    return a1, a3, a4, a5
+
+
 class JointSmoothMoveReference:
-    """Joint-space smoothstep (q_start→q_target) exposed via FK/J as Cartesian ref.
+    """Joint-space quintic (q_start→q_target) exposed via FK/J as Cartesian ref.
 
     Does no IK — interpolate a pre-resolved ``q_target`` only.
+    ``qdot0`` matches a live start velocity so a mid-hold PTP handoff is C¹.
     """
 
     def __init__(
@@ -78,27 +95,65 @@ class JointSmoothMoveReference:
         q_start_rad: np.ndarray,
         q_target_rad: np.ndarray,
         duration_s: float,
+        qdot0_rad_s: np.ndarray | None = None,
     ) -> None:
         self.kin = kin
         self.q_start = np.asarray(q_start_rad, dtype=float).copy()
         self.q_target = np.asarray(q_target_rad, dtype=float).copy()
         self.duration_s = float(duration_s)
+        if qdot0_rad_s is None:
+            self.qdot0 = np.zeros_like(self.q_start)
+        else:
+            self.qdot0 = np.asarray(qdot0_rad_s, dtype=float).reshape(-1).copy()
+            if self.qdot0.size != self.q_start.size:
+                raise ValueError(
+                    f"qdot0 size {self.qdot0.size} != q_start size {self.q_start.size}"
+                )
 
     def set_origin(self, pose0: np.ndarray, *, t_s: float | None = None) -> None:
         # q_start already anchors this reference; pose0 is implied by FK(q_start).
         del pose0, t_s
 
+    def reseed_start(
+        self,
+        q_start_rad: np.ndarray,
+        qdot0_rad_s: np.ndarray | None = None,
+    ) -> None:
+        """Re-anchor start from the live configuration (and optional live qdot)."""
+        self.q_start = np.asarray(q_start_rad, dtype=float).copy()
+        if qdot0_rad_s is not None:
+            qdot = np.asarray(qdot0_rad_s, dtype=float).reshape(-1).copy()
+            if qdot.size != self.q_start.size:
+                raise ValueError(
+                    f"qdot0 size {qdot.size} != q_start size {self.q_start.size}"
+                )
+            self.qdot0 = qdot
+
     def sample_q(self, t_s: float) -> tuple[np.ndarray, np.ndarray]:
         """Joint-space (q_ref(t), qdot_ff(t)) for Phase.qdot_ff_provider."""
         from rm75_control.control.joint_admittance_8dof.model import joint_ptp_delta
 
-        s, ds_dt = smoothstep_scalar(t_s, self.duration_s)
         # Limit-aware delta (not shortest-angle wrap) — see joint_ptp_delta.
         q_lo = getattr(self.kin, "q_lower", None)
         q_hi = getattr(self.kin, "q_upper", None)
         dq = joint_ptp_delta(self.q_start, self.q_target, q_lo, q_hi)
-        q = self.q_start + s * dq
-        qdot = ds_dt * dq
+        t = float(self.duration_s)
+        if t <= 0.0:
+            return self.q_start + dq, np.zeros_like(dq)
+        u = float(np.clip(float(t_s) / t, 0.0, 1.0))
+        qdot0 = self.qdot0
+        if qdot0.size != dq.size:
+            qdot0 = np.zeros_like(dq)
+        if float(np.max(np.abs(qdot0))) < 1.0e-12:
+            s, ds_dt = smoothstep_scalar(t_s, t)
+            return self.q_start + s * dq, ds_dt * dq
+        a1, a3, a4, a5 = _quintic_v0_coeffs(dq, qdot0, t)
+        u2 = u * u
+        u3 = u2 * u
+        u4 = u3 * u
+        u5 = u4 * u
+        q = self.q_start + a1 * u + a3 * u3 + a4 * u4 + a5 * u5
+        qdot = (a1 + 3.0 * a3 * u2 + 4.0 * a4 * u3 + 5.0 * a5 * u4) / t
         return q, qdot
 
     def sample(self, t_s: float) -> MotionReference:
@@ -185,8 +240,13 @@ class SrsSmoothMoveReference:
         self._ik_fail_streak = 0
         self._max_ik_fail_streak = int(max(1, max_ik_fail_streak))
 
-    def reseed_start(self, q_start_rad: np.ndarray) -> None:
+    def reseed_start(
+        self,
+        q_start_rad: np.ndarray,
+        qdot0_rad_s: np.ndarray | None = None,
+    ) -> None:
         """Re-anchor start from live encoders; keep pose/y/ψ targets."""
+        del qdot0_rad_s
         from rm75_control.kinematics.srs_ik import branch_from_q, psi_from_q
 
         self.q_start = np.asarray(q_start_rad, dtype=float).copy()

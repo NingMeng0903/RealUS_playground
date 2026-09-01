@@ -39,7 +39,7 @@ class RailAllocatorConfig:
     e_ref_m: float = 0.08
     # Reference-model cutoff.  τ = 1/(2π f_c).  4 Hz follows Y; stay below 5–10.
     f_c_hz: float = 4.0
-    # L1 jerk.  Hard QP box stays at qp.j_max_rail_m_s3 (120).
+    # L1 jerk.  Hard QP box stays at qp.j_max_rail_m_s3 (320).
     j_max_ref_m_s3: float = 60.0
     # Lillo ε: leave stays on until this far inside the soft line (8 mm).
     leave_exit_eps_m: float = 0.008
@@ -150,6 +150,23 @@ class RailReferenceModel:
         self.last_wall_override = False
         self.last_v_lpf = float(v0)
 
+    def track(self, v_applied: float, dt_s: float = 0.0) -> float:
+        """Shadow a rail velocity written by another authority."""
+        v = float(v_applied)
+        dt = float(dt_s)
+        if self.state.initialized and dt > 1.0e-12:
+            a_raw = (v - float(self.state.v)) / dt
+            da = float(self.j_max) * dt
+            a = float(np.clip(a_raw, float(self.state.a) - da, float(self.state.a) + da))
+            a = float(np.clip(a, -self.a_max, self.a_max))
+            self.state.a = a
+        else:
+            self.state.a = 0.0
+        self.state.v = v
+        self.state.initialized = True
+        self.last_v_lpf = v
+        return v
+
     def project_into_wall(self, leave_sign: float) -> None:
         from rm75_control.control.joint_admittance_8dof.tasks.rail_command import (
             project_lpf_into_wall,
@@ -211,9 +228,6 @@ class RailReferenceModel:
                 self.last_wall_override = True
             v = v_clamped
             a = (v - v_prev) / dt
-        if abs(v) < 5.0e-4 and abs(u) < 5.0e-4:
-            v = 0.0
-            a = 0.0
         self.state.v = float(v)
         self.state.a = float(a)
         return float(v)

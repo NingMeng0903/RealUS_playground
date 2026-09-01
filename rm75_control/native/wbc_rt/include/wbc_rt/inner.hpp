@@ -176,6 +176,9 @@ class InnerLoop {
                  bool rail_locked, double dt, double h1, double h2,
                  bool rail_open, double rail_pin, bool has_pin, bool lead_exempt,
                  double sigma_arm, Vec8* qdot, Vec6* residual, double* slack);
+  void track_rail_authority(double d_live, double d_star_target, double v_applied,
+                            double dt);
+  void fill_mixer_out(TickOut* out) const;
 
   Config cfg_;
   Kinematics kin_;

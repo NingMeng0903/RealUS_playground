@@ -229,17 +229,39 @@ def make_srs_move_reference(
     )
 
 
+def _live_qdot_for_reseed(inner: JointIkController) -> np.ndarray:
+    """Last sent 8-vector. Interpolator BVP starts from this ``q̇``, not rest."""
+
+    return inner.live_qdot()
+
+
 def attach_joint_move_rail(
     phase: Phase,
     inner: JointIkController,
+    move_ref: JointSmoothMoveReference | SrsSmoothMoveReference | None = None,
 ) -> None:
-    """Pin rail to the joint plan and enable direct joint PTP (no Cartesian QP)."""
+    """Pin rail to the joint plan and enable direct joint PTP (no Cartesian QP).
+
+    ``on_enter`` reseeds the interpolator from live ``q_cmd`` and the last sent
+    8-vector ``q̇`` so a PTP that starts mid-hold does not rest-to-rest slam.
+    """
     prev_on_enter = phase.on_enter
     prev_on_exit = phase.on_exit
 
     def _enter() -> None:
+        q_live = np.asarray(inner.q_cmd, dtype=float).copy()
+        qdot_live = _live_qdot_for_reseed(inner)
         if prev_on_enter is not None:
             prev_on_enter()
+        ref = move_ref
+        if ref is None:
+            ref = getattr(getattr(phase, "outer", None), "reference", None)
+        if ref is not None and hasattr(ref, "reseed_start"):
+            ref.reseed_start(q_live, qdot0_rad_s=qdot_live)
+        elif ref is not None and hasattr(ref, "q_start"):
+            ref.q_start = q_live.copy()
+            if hasattr(ref, "qdot0"):
+                ref.qdot0 = qdot_live.copy()
         inner.set_plan_drives_rail(True)
         inner.set_direct_joint_ptp(True)
 
@@ -344,7 +366,7 @@ def make_move_arrived(
     tol_mm: float = 3.0,
     tol_deg: float = 1.5,
     joint_tol_deg: float = 3.0,
-    rail_tol_mm: float = 5.0,
+    rail_tol_mm: float = 0.5,
     joint_only: bool = False,
     require_joints: bool = True,
     euler_order: str = "xyz",
@@ -723,7 +745,7 @@ def compile_phase(spec: JointPhaseSpec, ctx: CompileContext) -> CompiledPhase:
             force_observer=spec.force_observer,
         )
         if spec.move_mode == "joint":
-            attach_joint_move_rail(phase, ctx.inner)
+            attach_joint_move_rail(phase, ctx.inner, move_ref=spec.move_ref)
             phase.scale_qdot_ff_with_governor = True
         # Wire ψ_ref(t) + centering when the move plan is SRS.
         if (

@@ -258,9 +258,6 @@ class _MovePlanMixin(_ClientMixin):
         ).to_json()
         return self._send(Mode.MOVEJ, payload, block=block)
 
-    def movel(self, pose, v: float = 0.4, r: float = 0, connect: int = 0, block: int = 1) -> int:
-        return self.cartesian(pose, v=v, r=r, connect=connect, block=block)
-
     def cartesian(self, pose, v: float = 0.4, r: float = 0, connect: int = 0, block: int = 1) -> int:
         """Pose-to-pose: IK the goal, then joint-space smooth PTP (not a TCP line)."""
 
@@ -274,7 +271,7 @@ class _MovePlanMixin(_ClientMixin):
             max_lin_vel_m_s=float(self._max_line_speed) * v,
             label="cartesian",
         ).to_json()
-        return self._send(Mode.MOVEL, payload, block=block)
+        return self._send(Mode.CARTESIAN_PTP, payload, block=block)
 
     def moves(self, poses, v: float = 0.4, r: float = 0, connect: int = 0, block: int = 1) -> int:
         bad = self._check_tail(r, connect)

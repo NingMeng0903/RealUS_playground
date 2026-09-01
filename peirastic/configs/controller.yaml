@@ -50,7 +50,7 @@ qpik:
   hard_limits:
     v_scale: 0.8
     a_max_arm_rad_s2: 3.0
-    a_max_rail_m_s2: 0.60
+    a_max_rail_m_s2: 1.6
     position_margin_deg: 0.3
     position_margin_rail_mm: 0.0
     command_lead_arm_deg: 6.0
@@ -68,7 +68,7 @@ qpik:
       mode: coupled
       locked_style: hold
       lock_vel_eps_m_s: 0.0
-      v_max_m_s: 0.15
+      v_max_m_s: 0.40
       travel_m: 0.80
       # Linear taper inner edge (must match rail_band_m).  Stick-speed
       # braking is the stopping envelope, not a step at this line.
@@ -119,9 +119,8 @@ inner:
     # Measured jerk RMS was 250-570 rad/s³ with the acceleration flipping sign
     # on ~half the ticks while the reference twist was smooth.
     j_max_arm_rad_s3: 300.0
-    # nonempty accel ∩ jerk needs j_max·h1 ≥ a_max → 0.60/0.005 = 120.
-    # 60 only authorized 0.30 m/s² and emptied the box once |a| exceeded that.
-    j_max_rail_m_s3: 120.0
+    # nonempty accel ∩ jerk needs j_max·h1 ≥ a_max → 1.6/0.005 = 320.
+    j_max_rail_m_s3: 320.0
     sigma_setbased:
       enabled: true
       activate: 0.09
@@ -792,32 +791,27 @@ hw:
     timeout_s: 0.06             # poll-budget; was 0.15 / class-default 1.0
     retries: 1
     deadband_mm: 0.5
-    # FA23 overspeed trip: must sit ABOVE commanded peak (0.15 m/s ≈ 900 rpm
+    # FA23 overspeed trip: must sit ABOVE commanded peak (0.40 m/s = 2400 rpm
     # @ 10 mm/rev). Equal FA23=cmd caused Er-01 on scan overshoot (151334).
-    max_speed_rpm: 1200
+    # 2600 leaves headroom; raising FA23 further is an Er-01 risk if the
+    # drive overshoots the new host box.
+    max_speed_rpm: 2600
     # Soft CSP via FA24 (see apps/lw100_vel_pos_follow_demo.py).
     # POSITION scan/home PD.  Coupled QPIK is pure velocity (no FA24 P).
     # Loaded PD scan BEST (400±40 mm): kp=14/kd=0.22.
     vel_kp: 14.0
     vel_kd: 0.22
     vel_kd_max_m_s: 0.005
-    # Matches QP box rail.v_max_m_s 0.15 × v_scale 0.8.  parse_rail_servo_config
-    # also caps hw.vel_max by that product so the two cannot drift apart.
-    vel_max_m_s: 0.12
-    vel_amax_m_s2: 1.2
-    # Coupled-mode catch-up of x_ref toward x_goal while moving.  20 mm/s
-    # clears a 20 mm standing offset in ~1 s without outrunning FF.
+    # Matches QP box rail.v_max_m_s 0.40.  parse_rail_servo_config
+    # caps hw.vel_max by that box so the two cannot drift apart.
+    vel_max_m_s: 0.40
+    vel_amax_m_s2: 1.6
+    # TRACKED_POSITION catch-up cap: P+D correction on top of v_ff.
     catch_v_max_m_s: 0.02
-    catch_k: 5.0
-    catch_frac: 0.3
     decel_request_margin_m_s: 0.005
     match_drive_accel: true
     fa24_rpm_deadband: 0   # write every worker tick; skip only if rpm is unchanged
     vel_deadband_mm: 0.05   # tight tracking band (not a permanent accuracy sacrifice)
-    # Standstill hysteresis: freeze FA24 after tight settle; wake only if pushed.
-    standstill_enter_mm: 0.05
-    standstill_exit_mm: 0.25
-    standstill_dwell_s: 0.08
     approach_m: 0.040
     latch_watch_s: 0.12
     target_timeout_s: 0.25
@@ -837,11 +831,11 @@ hw:
     jump_margin_mm: 3.0
     jump_hard_mm: 50.0
     jump_soft_streak_panic: 2
-    # FA40/41: 120 ms → drive a ≈ 1.0 m/s².  Host a_max is min(this, QP
-    # a_max_rail_m_s2 0.60, 0.85 × vel_max/accel_s) so the servo cannot
-    # outrun the QP model.
-    accel_ms: 120
-    decel_ms: 120
+    # FA40/41: 80 ms → 0→1000 r/min.  Host a_max is min(vel_amax, QP
+    # a_max_rail_m_s2 1.6, 0.85 × a_drive) so a 110 mm move can reach 0.40 m/s
+    # (triangle v_peak = sqrt(a·s); 0.60 m/s² only peaked ~0.26 m/s).
+    accel_ms: 80
+    decel_ms: 80
     scurve_ms: 30            # FA42
     busy_speed_rpm: 1
     home_on_exit: false
