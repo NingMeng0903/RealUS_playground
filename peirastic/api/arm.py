@@ -183,7 +183,13 @@ class _ClientMixin:
             return {}
         return self.client.snapshot()
 
-    def _wait_done(self, seq: int, block: float | int) -> int:
+    def _wait_done(
+        self,
+        seq: int,
+        block: float | int,
+        *,
+        errors: list[float] | None = None,
+    ) -> int:
         timeout = DEFAULT_BLOCK_S if float(block) == 1.0 else float(block)
         deadline = time.monotonic() + timeout
         ack_deadline = time.monotonic() + min(ACK_TIMEOUT_S, timeout)
@@ -196,6 +202,10 @@ class _ClientMixin:
             st = int(snap.get("status", -1))
             if int(snap.get("ack_seq", 0)) >= seq:
                 saw_ack = True
+            if errors is not None and st == int(Status.RUNNING):
+                err_mm = float(snap.get("track_err_mm", float("nan")))
+                if np.isfinite(err_mm):
+                    errors.append(err_mm)
             if st == int(Status.ESTOP):
                 return ERR_STOPPED
             if st == int(Status.STOPPED):
@@ -212,6 +222,25 @@ class _ClientMixin:
         if not saw_ack:
             return ERR_NO_ACK
         return ERR_TIMEOUT
+
+    def wait_done(
+        self,
+        seq: int | None = None,
+        block: float | int = 1,
+        *,
+        errors: list[float] | None = None,
+    ) -> int:
+        """Block until ``done_seq``. Optionally append live ``track_err_mm``."""
+
+        if self.client is None:
+            return OK
+        if not block:
+            return OK
+        return self._wait_done(
+            int(self.last_seq if seq is None else seq),
+            block,
+            errors=errors,
+        )
 
 
 class _MovePlanMixin(_ClientMixin):
@@ -288,7 +317,71 @@ class _MovePlanMixin(_ClientMixin):
         return self._send(Mode.MOVES, payload, block=block)
 
 
+def _track_wait_s(block: float | int, duration_s: float | None) -> float:
+    if float(block) == 1.0:
+        wait_s = DEFAULT_BLOCK_S
+        if duration_s is not None:
+            wait_s = max(wait_s, float(duration_s) + 15.0)
+        return wait_s
+    if block:
+        return float(block)
+    wait_s = DEFAULT_BLOCK_S
+    if duration_s is not None:
+        wait_s = max(wait_s, float(duration_s) + 15.0)
+    return wait_s
+
+
 class _TrackMixin(_ClientMixin):
+    def cartesian_track(
+        self,
+        *,
+        reference: str = "ellipse",
+        amplitude_x_m: float | None = None,
+        amplitude_y_m: float | None = None,
+        period_s: float | None = None,
+        max_vel_m_s: float | None = None,
+        poses=None,
+        points=None,
+        speed_m_s: float | None = None,
+        soft_start: bool = True,
+        ramp_s: float | None = None,
+        duration_s: float | None = None,
+        max_lin_vel_m_s: float | None = None,
+        move_kp: float | None = None,
+        label: str = "cartesian_track",
+        block: float | int = 0,
+        errors: list[float] | None = None,
+    ) -> int:
+        """Position outer loop → ``v_cmd``. Swappable on the live 200 Hz runner.
+
+        ``block=0`` returns after the mode is sent (async). ``block=1`` waits
+        until Window A publishes done (duration end). Pass ``errors`` to
+        collect live ``track_err_mm`` while waiting.
+        """
+
+        payload = TrackCartesianPayload(
+            reference=str(reference or "ellipse"),
+            poses=None if poses is None else _as_poses(poses),
+            points=points,
+            speed_m_s=speed_m_s,
+            soft_start=bool(soft_start),
+            ramp_s=ramp_s,
+            amplitude_x_m=None if amplitude_x_m is None else float(amplitude_x_m),
+            amplitude_y_m=None if amplitude_y_m is None else float(amplitude_y_m),
+            period_s=period_s,
+            max_vel_m_s=max_vel_m_s,
+            duration_s=duration_s,
+            max_lin_vel_m_s=max_lin_vel_m_s,
+            move_kp=move_kp,
+            label=label,
+        ).to_json()
+        ret = self._send(Mode.TRACK_CARTESIAN, payload, block=0)
+        if ret != OK:
+            return ret
+        if not block and errors is None:
+            return OK
+        return self.wait_done(block=_track_wait_s(block, duration_s), errors=errors)
+
     def track_pose(
         self,
         pose,
@@ -345,8 +438,10 @@ class _TrackMixin(_ClientMixin):
         ramp_s: float = 2.0,
         duration_s: float | None = None,
         label: str = "track_ellipse",
+        block: float | int = 0,
+        errors: list[float] | None = None,
     ) -> int:
-        payload = TrackCartesianPayload(
+        return self.cartesian_track(
             reference="ellipse",
             amplitude_x_m=float(amplitude_x_m),
             amplitude_y_m=float(amplitude_y_m),
@@ -356,8 +451,9 @@ class _TrackMixin(_ClientMixin):
             ramp_s=float(ramp_s),
             duration_s=duration_s,
             label=label,
-        ).to_json()
-        return self._send(Mode.TRACK_CARTESIAN, payload, block=0)
+            block=block,
+            errors=errors,
+        )
 
     def movep_canfd(self, pose, follow: bool = False) -> int:
         del follow

@@ -25,13 +25,54 @@ from rm75_control.control.joint_admittance_8dof.loop import (
 )
 from rm75_control.control.joint_admittance_8dof.model import RobotKinematics
 from rm75_control.control.joint_admittance_8dof.reference import (
+    DEFAULT_STOP_RAMP_S,
     EllipseToolXYReference,
+    _soft_start_time_warp,
     ellipse_xy_motion,
 )
 
 
 _SEED_Q = np.array([0.375, 0.194, -0.503, -0.069, 1.979, -0.776, 0.547, -4.370])
 _CFG = Path(__file__).resolve().parents[1] / "configs" / "joint_admittance_8dof.yaml"
+
+
+def test_time_warp_soft_stop_reaches_rest_without_changing_start() -> None:
+    tau0, d0 = _soft_start_time_warp(0.0, 0.4)
+    assert tau0 == pytest.approx(0.0)
+    assert d0 == pytest.approx(0.0)
+    tau_c, d_c = _soft_start_time_warp(1.0, 0.4)
+    assert d_c == pytest.approx(1.0)
+    assert tau_c == pytest.approx(0.8)
+    T = 2.0
+    stop = 0.4
+    tau_e, d_e = _soft_start_time_warp(T, 0.4, duration_s=T, stop_ramp_s=stop)
+    assert d_e == pytest.approx(0.0)
+    assert tau_e == pytest.approx(1.6)
+    # Mid-stop is slower than cruise, not a step.
+    _, d_mid = _soft_start_time_warp(T - 0.5 * stop, 0.4, duration_s=T, stop_ramp_s=stop)
+    assert 0.0 < d_mid < 1.0
+    # C1 at the stop-start seam.
+    h = 1e-4
+    _, d_a = _soft_start_time_warp(T - stop - h, 0.4, duration_s=T, stop_ramp_s=stop)
+    _, d_b = _soft_start_time_warp(T - stop + h, 0.4, duration_s=T, stop_ramp_s=stop)
+    assert abs(d_a - d_b) < 5e-3
+
+
+def test_ellipse_soft_stop_zero_velocity_at_duration() -> None:
+    ax, ay, omega = 0.02, 0.04, 1.0
+    T = 3.0
+    stop = 0.4
+    dx, dy, vx, vy = ellipse_xy_motion(
+        T, ax, ay, omega, soft_start=True, ramp_s=0.4, duration_s=T, stop_ramp_s=stop
+    )
+    assert abs(vx) < 1e-12
+    assert abs(vy) < 1e-12
+    ref = EllipseToolXYReference(
+        ax, ay, period_s=2.0 * np.pi / omega, duration_s=2.5, stop_ramp_s=stop
+    )
+    assert ref.stop_ramp_s == pytest.approx(stop)
+    assert ref.duration_s == pytest.approx(2.5 + stop)
+    assert DEFAULT_STOP_RAMP_S == pytest.approx(0.5)
 
 
 def test_ellipse_starts_at_origin_with_zero_soft_start_vel() -> None:

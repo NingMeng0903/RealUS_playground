@@ -45,6 +45,8 @@ def _ellipse_ref(payload: dict, euler_order: str) -> EllipseToolXYReference:
     vmax = payload.get("max_vel_m_s")
     if vmax is None and payload.get("max_vel_cm_s") is not None:
         vmax = 0.01 * float(payload["max_vel_cm_s"])
+    stop = payload.get("stop_ramp_s")
+    scan = payload.get("duration_s")
     return EllipseToolXYReference(
         ax,
         ay,
@@ -52,6 +54,8 @@ def _ellipse_ref(payload: dict, euler_order: str) -> EllipseToolXYReference:
         max_vel_m_s=None if vmax is None else float(vmax),
         soft_start=bool(payload.get("soft_start", True)),
         ramp_s=float(payload.get("ramp_s", 2.0)),
+        duration_s=None if scan is None else float(scan),
+        stop_ramp_s=None if stop is None else float(stop),
         euler_order=euler_order,
     )
 
@@ -162,13 +166,16 @@ def compile_request(
             ref = _polyline_ref(payload, ctx.euler_order)
         else:
             ref = _ellipse_ref(payload, ctx.euler_order)
+        track_dur = payload.get("duration_s")
+        if kind == "ellipse":
+            track_dur = getattr(ref, "duration_s", track_dur)
         return _finish_phase(
             ctx,
             payload,
             build_track_cartesian_phase(
                 ctx,
                 ref,
-                duration_s=payload.get("duration_s"),
+                duration_s=track_dur,
                 label=str(payload.get("label", "track_cartesian")),
                 max_lin_vel_m_s=payload.get("max_lin_vel_m_s"),
                 move_kp=payload.get("move_kp"),
@@ -195,13 +202,16 @@ def compile_request(
             ref = _polyline_ref(payload, ctx.euler_order)
         else:
             ref = HoldReference()
+        hybrid_dur = payload.get("duration_s")
+        if kind == "ellipse":
+            hybrid_dur = getattr(ref, "duration_s", hybrid_dur)
         return _finish_phase(
             ctx,
             payload,
             build_track_hybrid_phase(
                 ctx,
                 ref,
-                duration_s=payload.get("duration_s"),
+                duration_s=hybrid_dur,
                 dt=dt,
                 use_tff_split=bool(payload.get("use_tff_split", False)),
                 payload=payload,

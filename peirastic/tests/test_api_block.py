@@ -137,6 +137,88 @@ def test_block_estop_returns_minus_6() -> None:
         hub.close()
 
 
+def test_cartesian_track_block_zero_is_async() -> None:
+    prefix = f"peir_track0_{os.getpid()}_"
+    hub = CommandHub(prefix=prefix)
+    client = CommandClient(prefix=prefix)
+    arm = PeirasticArm(client=client, attach=False)
+    try:
+        t0 = time.monotonic()
+        ret = arm.cartesian_track(
+            amplitude_x_m=0.05,
+            amplitude_y_m=0.15,
+            max_vel_m_s=0.04,
+            duration_s=8.0,
+            block=0,
+        )
+        assert ret == OK
+        assert time.monotonic() - t0 < 0.5
+        polled = hub.poll()
+        assert polled is not None
+        assert polled[2] is not None
+        assert polled[2].mode == Mode.TRACK_CARTESIAN
+    finally:
+        client.close()
+        hub.close()
+
+
+def test_cartesian_track_collects_errors() -> None:
+    prefix = f"peir_trackerr_{os.getpid()}_"
+    hub = CommandHub(prefix=prefix)
+    client = CommandClient(prefix=prefix)
+    arm = PeirasticArm(client=client, attach=False)
+    try:
+
+        def _ack_run_done() -> None:
+            deadline = time.monotonic() + 2.0
+            while time.monotonic() < deadline:
+                polled = hub.poll()
+                if polled is None:
+                    time.sleep(0.01)
+                    continue
+                seq = polled[1]
+                hub.ack(seq)
+                hub.publish(
+                    status=Status.RUNNING,
+                    mode=Mode.TRACK_CARTESIAN,
+                    track_err_mm=1.25,
+                )
+                time.sleep(0.05)
+                hub.publish(
+                    status=Status.RUNNING,
+                    mode=Mode.TRACK_CARTESIAN,
+                    track_err_mm=2.5,
+                )
+                time.sleep(0.05)
+                hub.publish(
+                    status=Status.DONE,
+                    mode=Mode.TRACK_CARTESIAN,
+                    done_seq=seq,
+                    err_code=0,
+                    track_err_mm=2.5,
+                )
+                return
+
+        worker = threading.Thread(target=_ack_run_done, daemon=True)
+        worker.start()
+        errors: list[float] = []
+        ret = arm.cartesian_track(
+            amplitude_x_m=0.05,
+            amplitude_y_m=0.15,
+            max_vel_m_s=0.04,
+            duration_s=1.0,
+            block=2,
+            errors=errors,
+        )
+        worker.join(timeout=2.0)
+        assert ret == OK
+        assert errors
+        assert min(errors) >= 1.0
+    finally:
+        client.close()
+        hub.close()
+
+
 def test_snapshot_exposes_done_seq() -> None:
     prefix = f"peir_snap_{os.getpid()}_"
     hub = CommandHub(prefix=prefix)

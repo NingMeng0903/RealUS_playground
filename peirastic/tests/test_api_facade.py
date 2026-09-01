@@ -224,10 +224,14 @@ def test_cartesian_plan_is_joint_ptp() -> None:
     assert isinstance(phase.outer.reference, JointSmoothMoveReference)
 
 
-def test_idle_after_finite_is_servo_twist() -> None:
-    from peirastic.core.session import idle_after_finite
+def test_idle_after_finite_is_hold_unless_gamepad() -> None:
+    from peirastic.core.session import idle_after_finite, pad_source_present
 
-    assert idle_after_finite() == Mode.SERVO_TWIST
+    assert idle_after_finite() == Mode.SERVO_TWIST_HOLD
+    assert idle_after_finite(pad_source=True) == Mode.SERVO_TWIST
+    assert pad_source_present(0.0, now_s=10.0) is False
+    assert pad_source_present(9.9, now_s=10.0) is True
+    assert pad_source_present(9.0, now_s=10.0) is False
 
 
 def test_pad_yields_to_command_modes() -> None:
@@ -256,6 +260,38 @@ def test_qp_aux_hits_inner() -> None:
     assert ctx.inner._centering_suppressed is True
     assert arm.set_singularity_escape(False) == OK
     assert ctx.inner.core.cfg.sigma_setbased.enabled is False
+
+
+def test_cartesian_track_ellipse_is_swappable_vcmd() -> None:
+    raw, ctx = _ctx()
+    arm = _arm(ctx=ctx)
+    assert arm.cartesian_track(
+        reference="ellipse",
+        amplitude_x_m=0.05,
+        amplitude_y_m=0.15,
+        max_vel_m_s=0.04,
+        duration_s=8.0,
+        block=0,
+    ) == OK
+    req = arm.last_request
+    assert req is not None
+    assert req.mode == Mode.TRACK_CARTESIAN
+    assert req.payload["reference"] == "ellipse"
+    phase = compile_request(ctx, req, raw=raw)
+    from rm75_control.control.joint_admittance_8dof.loop import CartesianTrackOuterLoop
+    from rm75_control.control.joint_admittance_8dof.reference import EllipseToolXYReference
+    from peirastic.core.session import is_swappable
+
+    assert isinstance(phase.outer, CartesianTrackOuterLoop)
+    assert isinstance(phase.outer.reference, EllipseToolXYReference)
+    assert phase.duration_s == pytest.approx(8.5)
+    assert is_swappable(Mode.TRACK_CARTESIAN)
+    pose = ctx.kin.fk_pose(_SEED)
+    phase.outer.set_origin(pose, t_s=0.0)
+    twist = np.asarray(phase.outer.sample(0.0, pose, np.zeros(6)), dtype=float)
+    assert twist.shape == (6,)
+    assert np.all(np.isfinite(twist))
+    assert float(phase.outer.last_err_mm) == pytest.approx(0.0, abs=1e-6)
 
 
 def test_track_and_servo_compile() -> None:

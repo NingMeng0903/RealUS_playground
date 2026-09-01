@@ -107,6 +107,7 @@ def build_ellipse_track_program(
     ax_m = float(getattr(params, "x_pp_cm", 0.0) or 0.0) * 0.01 / 2.0
     ay_m = float(params.y_pp_cm) * 0.01 / 2.0
     max_vel_m_s = float(params.max_vel_cm_s) * 0.01
+    duration = float(params.scan_duration)
     track_ref = EllipseToolXYReference(
         ax_m,
         ay_m,
@@ -114,6 +115,7 @@ def build_ellipse_track_program(
         max_vel_m_s=None if params.period_s is not None else max_vel_m_s,
         soft_start=True,
         ramp_s=2.0,
+        duration_s=None if duration <= 0.0 else duration,
         euler_order=inner_cfg.euler_order,
     )
     track_lin = (
@@ -121,12 +123,14 @@ def build_ellipse_track_program(
         if params.cartesian_max_lin_vel is not None
         else max(0.15, 3.0 * max_vel_m_s)
     )
-    duration = float(params.scan_duration)
+    wall_s = getattr(track_ref, "duration_s", None)
+    if wall_s is None and duration > 0.0:
+        wall_s = duration
     specs.append(
         phase_cartesian_track(
             track_ref,
             label="ellipse_track",
-            duration_s=None if duration <= 0.0 else duration,
+            duration_s=wall_s,
             move_kp=SinToolYTaskParams.optional_move_kp(params.move_kp),
             max_lin_vel_m_s=track_lin,
             secondary=SecondaryPolicy(preset="track", qdot_ff="off"),

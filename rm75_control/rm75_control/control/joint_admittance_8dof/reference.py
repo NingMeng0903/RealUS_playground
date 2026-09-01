@@ -47,23 +47,70 @@ def smoothstep_scalar(t_s: float, duration_s: float) -> tuple[float, float]:
     return s, ds_dt
 
 
-def _soft_start_time_warp(t_s: float, ramp_s: float) -> tuple[float, float]:
-    """C2 time warp whose speed rises from zero to one without overshoot."""
+DEFAULT_STOP_RAMP_S = 0.5
+
+
+def _quintic_smoothstep(u: float) -> tuple[float, float]:
+    """Quintic smoothstep ``s(u)`` and ``S(u)=∫₀ᵘ s``.  ``s(0)=0``, ``s(1)=1``."""
+
+    u = min(max(float(u), 0.0), 1.0)
+    u2 = u * u
+    u3 = u2 * u
+    u4 = u3 * u
+    u5 = u4 * u
+    u6 = u5 * u
+    return (10.0 * u3 - 15.0 * u4 + 6.0 * u5), (2.5 * u4 - 3.0 * u5 + u6)
+
+
+def _soft_start_time_warp(
+    t_s: float,
+    ramp_s: float,
+    duration_s: float | None = None,
+    stop_ramp_s: float | None = None,
+) -> tuple[float, float]:
+    """C2 time warp: ``τ̇`` 0→1 at start; 1→0 over a short stop when ``duration_s`` is set."""
 
     ramp = max(float(ramp_s), 0.0)
     time_s = max(float(t_s), 0.0)
+    stop_end: float | None = None
+    stop_r = 0.0
+    if duration_s is not None and math.isfinite(float(duration_s)) and float(duration_s) > 0.0:
+        stop_end = float(duration_s)
+        stop_r = (
+            max(float(stop_ramp_s), 0.0)
+            if stop_ramp_s is not None
+            else float(DEFAULT_STOP_RAMP_S)
+        )
+        if stop_end <= ramp + stop_r:
+            leftover = max(stop_end - ramp, 0.0)
+            stop_r = min(stop_r, 0.5 * leftover) if leftover > 0.0 else 0.0
+
     if ramp <= 0.0:
-        return time_s, 1.0
-    if time_s >= ramp:
-        return time_s - 0.5 * ramp, 1.0
-    u = time_s / ramp
-    u2 = u * u
-    u3 = u2 * u
-    # tau_dot is the quintic smoothstep.  Its exact integral is used for tau,
-    # so pose and velocity remain a consistent reference pair.
-    tau_dot = 10.0 * u3 - 15.0 * u3 * u + 6.0 * u3 * u2
-    tau = ramp * (2.5 * u3 * u - 3.0 * u3 * u2 + u3 * u3)
-    return tau, tau_dot
+        tau, tau_dot = time_s, 1.0
+    elif time_s >= ramp:
+        tau, tau_dot = time_s - 0.5 * ramp, 1.0
+    else:
+        s, ess = _quintic_smoothstep(time_s / ramp)
+        tau_dot = s
+        tau = ramp * ess
+
+    if stop_end is None or stop_r <= 0.0:
+        return tau, tau_dot
+    t0 = stop_end - stop_r
+    if time_s < t0:
+        return tau, tau_dot
+    t_use = min(time_s, stop_end)
+    u = (t_use - t0) / stop_r
+    s, ess = _quintic_smoothstep(u)
+    if t0 >= ramp:
+        tau0 = t0 - (0.5 * ramp if ramp > 0.0 else 0.0)
+    elif ramp > 0.0:
+        tau0 = ramp * _quintic_smoothstep(t0 / ramp)[1]
+    else:
+        tau0 = t0
+    if time_s >= stop_end:
+        return tau0 + 0.5 * stop_r, 0.0
+    return tau0 + stop_r * (u - ess), 1.0 - s
 
 
 def _quintic_v0_coeffs(
@@ -603,14 +650,21 @@ def ellipse_xy_motion(
     *,
     soft_start: bool,
     ramp_s: float = 2.0,
+    duration_s: float | None = None,
+    stop_ramp_s: float | None = None,
 ) -> tuple[float, float, float, float]:
     """Same-frequency tool-XY ellipse through the origin (bumpless ``set_origin``).
 
     ``x = ax sin(ωτ)``, ``y = ay (1 − cos(ωτ))``.  At τ=0 the pose is the
     origin and the C² time warp keeps velocity at zero.
     """
-    if soft_start:
-        tau, tau_dot = _soft_start_time_warp(t_s, ramp_s)
+    if soft_start or duration_s is not None:
+        tau, tau_dot = _soft_start_time_warp(
+            t_s,
+            ramp_s if soft_start else 0.0,
+            duration_s=duration_s,
+            stop_ramp_s=stop_ramp_s,
+        )
     else:
         tau = float(t_s)
         tau_dot = 1.0
@@ -641,6 +695,8 @@ class EllipseToolXYReference:
         max_vel_m_s: float | None = None,
         soft_start: bool = True,
         ramp_s: float = 2.0,
+        duration_s: float | None = None,
+        stop_ramp_s: float | None = None,
         euler_order: str = "xyz",
     ) -> None:
         self.amplitude_x_m = float(amplitude_x_m)
@@ -648,6 +704,20 @@ class EllipseToolXYReference:
         self.amplitude_m = float(amplitude_y_m)
         self.soft_start = bool(soft_start)
         self.ramp_s = float(ramp_s)
+        self.scan_duration_s = None if duration_s is None else float(duration_s)
+        if self.scan_duration_s is None:
+            self.stop_ramp_s = 0.0 if stop_ramp_s is None else max(float(stop_ramp_s), 0.0)
+        else:
+            self.stop_ramp_s = (
+                float(DEFAULT_STOP_RAMP_S)
+                if stop_ramp_s is None
+                else max(float(stop_ramp_s), 0.0)
+            )
+        self.duration_s = (
+            None
+            if self.scan_duration_s is None
+            else float(self.scan_duration_s) + float(self.stop_ramp_s)
+        )
         self.euler_order = str(euler_order)
         self._origin: np.ndarray | None = None
         self._t_anchor: float = 0.0
@@ -682,6 +752,8 @@ class EllipseToolXYReference:
             self.omega,
             soft_start=self.soft_start,
             ramp_s=self.ramp_s,
+            duration_s=self.duration_s,
+            stop_ramp_s=self.stop_ramp_s,
         )
         r_mat = Rsc.from_euler(self.euler_order, self._origin[3:6], degrees=False).as_matrix()
         pose = self._origin.copy()

@@ -27,7 +27,7 @@ from peirastic.core.estop import EstopBus
 from peirastic.core.ipc import Cmd, CommandHub, Status, TwistBus
 from peirastic.core.modes import MODE_LABEL, Mode, ModeRequest
 from peirastic.core.panel import Panel
-from peirastic.core.session import idle_after_finite, is_swappable
+from peirastic.core.session import idle_after_finite, is_swappable, pad_source_present
 from peirastic.realman8dof.binding import bind_controller, load_yaml
 from peirastic.realman8dof.session import ProxyOuter, compile_request
 
@@ -95,7 +95,7 @@ class ControllerService:
         self.hub = CommandHub(prefix=shm_prefix)
         self.twist = TwistBus(prefix=shm_prefix, create=True)
         self.kin, self.inner, self.ctx = bind_controller(raw)
-        self.mode = Mode.SERVO_TWIST
+        self.mode = Mode.SERVO_TWIST_HOLD
         self.ticks = 0
         self._stop = False
         self._pending: ModeRequest | None = None
@@ -110,6 +110,13 @@ class ControllerService:
 
     def _pad_row(self) -> dict:
         return self.twist.read()
+
+    def _pad_source_present(self) -> bool:
+        row = self._pad_row()
+        return pad_source_present(float(row.get("stamp") or 0.0))
+
+    def _idle_request(self) -> ModeRequest:
+        return ModeRequest(idle_after_finite(pad_source=self._pad_source_present()), {})
 
     def _pad_twist(self) -> np.ndarray:
         row = self._pad_row()
@@ -191,7 +198,7 @@ class ControllerService:
             )
         except Exception:
             pass
-        self.panel.event("STATE", "inner up; servo_twist(0)")
+        self.panel.event("STATE", "inner up; idle hold (SERVO when gamepad writes)")
         self.hub.publish(status=Status.RUNNING, mode=self.mode, msg="ready")
 
         while not self._stop:
@@ -211,7 +218,7 @@ class ControllerService:
                     self.panel.event("OK", "estop reset")
                 continue
 
-            req = self._pending or ModeRequest(Mode.SERVO_TWIST, {})
+            req = self._pending or self._idle_request()
             self._pending = None
             first = self.hub.poll()
             if first is not None:
@@ -347,16 +354,17 @@ class ControllerService:
                 ):
                     self.panel.event("OK", f"{phase.label} done")
                     try:
+                        idle_req = self._idle_request()
                         idle = compile_request(
                             self.ctx,
-                            ModeRequest(Mode.SERVO_TWIST, {}),
+                            idle_req,
                             raw=self.raw,
                             twist_read=self._pad_twist,
                             dt=dt,
                         )
                         _install_velocity(
                             idle,
-                            ModeRequest(Mode.SERVO_TWIST, {}),
+                            idle_req,
                             pose,
                             t_ref,
                             status=Status.DONE,
@@ -466,7 +474,7 @@ class ControllerService:
                     err_code=0,
                 )
                 if self._pending is None:
-                    self._pending = ModeRequest(idle_after_finite(), {})
+                    self._pending = self._idle_request()
 
 
 def run_service(
