@@ -27,7 +27,12 @@ from peirastic.core.estop import EstopBus
 from peirastic.core.ipc import Cmd, CommandHub, Status, TwistBus
 from peirastic.core.modes import MODE_LABEL, Mode, ModeRequest
 from peirastic.core.panel import Panel
-from peirastic.core.session import idle_after_finite, is_swappable, pad_source_present
+from peirastic.core.session import (
+    idle_after_finite,
+    is_swappable,
+    pad_source_present,
+    stay_after_duration,
+)
 from peirastic.realman8dof.binding import bind_controller, load_yaml
 from peirastic.realman8dof.session import ProxyOuter, compile_request
 
@@ -113,7 +118,11 @@ class ControllerService:
 
     def _pad_source_present(self) -> bool:
         row = self._pad_row()
-        return pad_source_present(float(row.get("stamp") or 0.0))
+        return pad_source_present(
+            float(row.get("stamp") or 0.0),
+            hz=row.get("hz"),
+            connected=bool(row.get("connected")),
+        )
 
     def _idle_request(self) -> ModeRequest:
         return ModeRequest(idle_after_finite(pad_source=self._pad_source_present()), {})
@@ -354,23 +363,34 @@ class ControllerService:
                 ):
                     self.panel.event("OK", f"{phase.label} done")
                     try:
-                        idle_req = self._idle_request()
-                        idle = compile_request(
-                            self.ctx,
-                            idle_req,
-                            raw=self.raw,
-                            twist_read=self._pad_twist,
-                            dt=dt,
-                        )
-                        _install_velocity(
-                            idle,
-                            idle_req,
-                            pose,
-                            t_ref,
-                            status=Status.DONE,
-                            done_seq=self._cmd_seq,
-                            err_code=0,
-                        )
+                        if stay_after_duration(self.mode):
+                            self._finite_duration = None
+                            phase.label = "servo_twist"
+                            self.hub.publish(
+                                status=Status.DONE,
+                                mode=self.mode,
+                                msg=phase.label,
+                                done_seq=self._cmd_seq,
+                                err_code=0,
+                            )
+                        else:
+                            idle_req = self._idle_request()
+                            idle = compile_request(
+                                self.ctx,
+                                idle_req,
+                                raw=self.raw,
+                                twist_read=self._pad_twist,
+                                dt=dt,
+                            )
+                            _install_velocity(
+                                idle,
+                                idle_req,
+                                pose,
+                                t_ref,
+                                status=Status.DONE,
+                                done_seq=self._cmd_seq,
+                                err_code=0,
+                            )
                     except Exception as exc:
                         self.panel.event("WARN", str(exc))
                 self.ticks += 1

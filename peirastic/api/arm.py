@@ -463,15 +463,56 @@ class _TrackMixin(_ClientMixin):
 class _VelocityMixin(_ClientMixin):
     _twist_frame: str
     _twist_dt_ms: float
+    twist: Any
 
     def set_movev_canfd_init(self, *, frame_type: str = "tool", dt_ms: float = 5) -> int:
         self._twist_frame = str(frame_type)
         self._twist_dt_ms = float(dt_ms)
         return OK
 
+    def cartesian_velocity(
+        self,
+        twist=None,
+        *,
+        duration_s: float | None = None,
+        hold: bool = False,
+        label: str = "cartesian_velocity",
+        block: float | int = 0,
+    ) -> int:
+        """Cartesian velocity mode: ``v*`` → inner QPIK. Swappable on the 200 Hz runner.
+
+        ``twist=None`` listens to the twist bus (``set_cartesian_velocity``).
+        A 6-vector is a constant ``v_cmd`` for ``duration_s``. ``block=0`` is async.
+        Receive-side a/j slew lives in Window A, not in the caller.
+        Commanded SERVO_TWIST may sit at ``v*=0``; HOLD does not steal that mode.
+        """
+
+        payload = ServoTwistPayload(
+            v_cmd=None if twist is None else _as_twist(twist),
+            duration_s=duration_s,
+            label=label,
+        ).to_json()
+        mode = Mode.SERVO_TWIST_HOLD if hold else Mode.SERVO_TWIST
+        ret = self._send(mode, payload, block=0)
+        if ret != OK:
+            return ret
+        if not block:
+            return OK
+        return self.wait_done(block=_track_wait_s(block, duration_s))
+
+    def set_cartesian_velocity(self, twist) -> int:
+        """Passthrough one ``v_cmd`` on the twist bus. Does not switch mode."""
+
+        if self.twist is None:
+            return ERR_SEND
+        try:
+            self.twist.write(_as_twist(twist), connected=True)
+        except Exception:
+            return ERR_SEND
+        return OK
+
     def movev_canfd(self, twist) -> int:
-        payload = ServoTwistPayload(v_cmd=_as_twist(twist), label="movev_canfd").to_json()
-        return self._send(Mode.SERVO_TWIST, payload, block=0)
+        return self.cartesian_velocity(twist, block=0, label="movev_canfd")
 
     def track_twist(
         self,
@@ -481,13 +522,13 @@ class _VelocityMixin(_ClientMixin):
         duration_s: float | None = None,
         label: str | None = None,
     ) -> int:
-        payload = ServoTwistPayload(
-            v_cmd=None if twist is None else _as_twist(twist),
+        return self.cartesian_velocity(
+            twist,
             duration_s=duration_s,
+            hold=hold,
             label=label or ("servo_twist_hold" if hold else "servo_twist"),
-        ).to_json()
-        mode = Mode.SERVO_TWIST_HOLD if hold else Mode.SERVO_TWIST
-        return self._send(mode, payload, block=0)
+            block=0,
+        )
 
 
 class _ForceMixin(_ClientMixin):

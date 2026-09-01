@@ -11,9 +11,60 @@ from rm75_control.control.admittance_common.pose_math import pose_error
 from rm75_control.control.joint_admittance_8dof.teleop.gamepad_twist import (
     apply_hold_deadband,
     compose_inner_twist,
+    slew_vec_jerk,
 )
 
 TwistFn = Callable[[], np.ndarray]
+
+
+class TwistSlew:
+    """Receive-side a/j limit on v*. First sample seeds; later ticks slew."""
+
+    def __init__(
+        self,
+        *,
+        a_lin_m_s2: float = 0.8,
+        j_lin_m_s3: float = 16.0,
+        a_ang_rad_s2: float = 4.0,
+        j_ang_rad_s3: float = 32.0,
+    ) -> None:
+        self.a_lin_m_s2 = float(a_lin_m_s2)
+        self.j_lin_m_s3 = float(j_lin_m_s3)
+        self.a_ang_rad_s2 = float(a_ang_rad_s2)
+        self.j_ang_rad_s3 = float(j_ang_rad_s3)
+        self._v: np.ndarray | None = None
+        self._a = np.zeros(6, dtype=float)
+        self._t_prev: float | None = None
+
+    def reset(self) -> None:
+        self._v = None
+        self._a[:] = 0.0
+        self._t_prev = None
+
+    def step(self, target: np.ndarray, t_s: float) -> np.ndarray:
+        raw = np.asarray(target, dtype=float).reshape(6).copy()
+        if self._v is None:
+            self._v = raw
+            self._a[:] = 0.0
+            self._t_prev = float(t_s)
+            return raw
+        dt = 0.005
+        if self._t_prev is not None:
+            raw_dt = float(t_s) - float(self._t_prev)
+            if np.isfinite(raw_dt) and raw_dt > 1.0e-4:
+                dt = float(np.clip(raw_dt, 0.001, 0.05))
+        self._t_prev = float(t_s)
+        lin, a_lin = slew_vec_jerk(
+            self._v[:3], self._a[:3], raw[:3], self.a_lin_m_s2, self.j_lin_m_s3, dt
+        )
+        ang, a_ang = slew_vec_jerk(
+            self._v[3:], self._a[3:], raw[3:], self.a_ang_rad_s2, self.j_ang_rad_s3, dt
+        )
+        self._v[:3] = lin
+        self._v[3:] = ang
+        self._a[:3] = a_lin
+        self._a[3:] = a_ang
+        return self._v.copy()
 
 
 def _as_twist(value) -> np.ndarray:
@@ -45,14 +96,16 @@ class ServoTwistOuter:
         self.last_pose_d: np.ndarray | None = None
         self.last_path_twist = np.zeros(6, dtype=float)
         self.last_feedback_twist = np.zeros(6, dtype=float)
+        self._slew = TwistSlew()
 
     def set_origin(self, pose0: np.ndarray, *, t_s: float | None = None) -> None:
         del t_s
         self.last_pose_d = np.asarray(pose0, dtype=float).reshape(6).copy()
+        self._slew.reset()
 
     def sample(self, t_s: float, current_pose: np.ndarray, f_ext: np.ndarray) -> np.ndarray:
-        del t_s, f_ext
-        twist = _as_twist(self.source)
+        del f_ext
+        twist = self._slew.step(_as_twist(self.source), float(t_s))
         self.last_path_twist = twist.copy()
         self.last_feedback_twist[:] = 0.0
         self.last_vel_ff = twist.copy()
@@ -102,6 +155,7 @@ class ServoTwistHoldOuter:
         self._holding = False
         self._coast = 0
         self._prev_pose: np.ndarray | None = None
+        self._slew = TwistSlew()
 
     def set_origin(self, pose0: np.ndarray, *, t_s: float | None = None) -> None:
         del t_s
@@ -110,14 +164,16 @@ class ServoTwistHoldOuter:
         self._holding = True
         self._coast = 0
         self._prev_pose = pose.copy()
+        self._slew.reset()
 
     def sample(self, t_s: float, current_pose: np.ndarray, f_ext: np.ndarray) -> np.ndarray:
-        del t_s, f_ext
+        del f_ext
         pose = np.asarray(current_pose, dtype=float).reshape(6).copy()
-        twist = _as_twist(self.source)
-        lin = float(np.linalg.norm(twist[:3]))
-        rot = float(np.linalg.norm(twist[3:6]))
+        raw = _as_twist(self.source)
+        lin = float(np.linalg.norm(raw[:3]))
+        rot = float(np.linalg.norm(raw[3:6]))
         live = lin > self.quiet_lin_m_s or rot > self.quiet_rot_rad_s
+        twist = self._slew.step(raw, float(t_s)) if live else raw
         tcp = 0.0
         if self._prev_pose is not None and self.dt > 1e-9:
             tcp = float(np.linalg.norm(pose[:3] - self._prev_pose[:3]) / self.dt)
@@ -135,6 +191,7 @@ class ServoTwistHoldOuter:
             self.last_pose_d = pose_d
             return twist
 
+        self._slew.reset()
         if not self._holding:
             self._coast += 1
             if self._coast >= 2 and tcp <= self.hold_settle_v_m_s:

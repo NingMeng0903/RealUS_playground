@@ -270,7 +270,7 @@ class TwistBus:
 
     def write(
         self,
-        twist,
+        twist=None,
         *,
         axes=None,
         buttons=None,
@@ -286,7 +286,8 @@ class TwistBus:
         row["connected"] = np.uint8(1 if connected else 0)
         row["l3"] = np.uint8(1 if l3 else 0)
         row["r3"] = np.uint8(1 if r3 else 0)
-        row["twist"] = np.asarray(twist, dtype=float).reshape(6)
+        if twist is not None:
+            row["twist"] = np.asarray(twist, dtype=float).reshape(6)
         if axes is not None:
             a = np.asarray(axes, dtype=float).reshape(-1)
             row["axes"][: min(6, a.size)] = a[:6]

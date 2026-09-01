@@ -143,7 +143,11 @@ def compile_request(
             control_frame=ctx.control_frame,
             euler_order=ctx.euler_order,
         )
-        phase = Phase(outer=outer, label="servo_twist", duration_s=payload.get("duration_s"))
+        phase = Phase(
+            outer=outer,
+            label=str(payload.get("label") or "servo_twist"),
+            duration_s=payload.get("duration_s"),
+        )
         phase.on_enter = lambda: SecondaryPolicy(preset="track").apply(ctx.inner)
         return _finish_phase(ctx, payload, phase)
     if req.mode == Mode.SERVO_TWIST_HOLD:
@@ -154,7 +158,9 @@ def compile_request(
             dt=dt,
         )
         phase = Phase(
-            outer=outer, label="servo_twist_hold", duration_s=payload.get("duration_s")
+            outer=outer,
+            label=str(payload.get("label") or "servo_twist_hold"),
+            duration_s=payload.get("duration_s"),
         )
         phase.on_enter = lambda: SecondaryPolicy(preset="track").apply(ctx.inner)
         return _finish_phase(ctx, payload, phase)

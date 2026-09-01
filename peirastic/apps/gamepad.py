@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """Window C: pad → filtered v_cmd → servo_twist.
 
-The pad may stay connected. It drives only in SERVO_TWIST / SERVO_TWIST_HOLD
-or its own L3 pad-hybrid. MOVEJ, Cartesian, TRACK_CARTESIAN, and a running
-program outrank the sticks; R3 e-stop still wins.
+The pad may stay connected. It drives only in pad-owned SERVO_TWIST /
+SERVO_TWIST_HOLD or its own L3 pad-hybrid. MOVEJ, Cartesian,
+TRACK_CARTESIAN, commanded cartesian_velocity, and a running program
+outrank the sticks; R3 e-stop still wins. When the pad does not own
+the mode it must not write zeros over the command twist bus.
 
 L3 toggles force-velocity hybrid: tool-Z from peirastic/configs/force.yaml,
 other axes stay on the pad. Y starts Window-8 SMPL-X capture. B runs the
@@ -149,8 +151,10 @@ def main() -> int:
                 program=program,
                 label=str(tel.get("msg") or ""),
             )
+            # Commanded cartesian_velocity shares this bus. Do not write
+            # zeros over v* when the pad does not own the mode.
             twist_bus.write(
-                snap["twist"] if pad_drive else [0.0] * 6,
+                snap["twist"] if pad_drive else None,
                 axes=snap["axes"],
                 buttons=snap["buttons"] if live else None,
                 hz=snap["hz"] if live else float("nan"),

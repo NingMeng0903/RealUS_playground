@@ -225,20 +225,33 @@ def test_cartesian_plan_is_joint_ptp() -> None:
 
 
 def test_idle_after_finite_is_hold_unless_gamepad() -> None:
-    from peirastic.core.session import idle_after_finite, pad_source_present
+    from peirastic.core.session import (
+        idle_after_finite,
+        pad_source_present,
+        stay_after_duration,
+    )
 
     assert idle_after_finite() == Mode.SERVO_TWIST_HOLD
     assert idle_after_finite(pad_source=True) == Mode.SERVO_TWIST
+    assert stay_after_duration(Mode.SERVO_TWIST) is True
+    assert stay_after_duration(Mode.SERVO_TWIST_HOLD) is False
+    assert stay_after_duration(Mode.TRACK_CARTESIAN) is False
     assert pad_source_present(0.0, now_s=10.0) is False
     assert pad_source_present(9.9, now_s=10.0) is True
     assert pad_source_present(9.0, now_s=10.0) is False
+    assert pad_source_present(9.9, now_s=10.0, hz=float("nan")) is False
+    assert pad_source_present(9.9, now_s=10.0, hz=125.0) is True
+    assert pad_source_present(9.9, now_s=10.0, hz=125.0, connected=False) is False
 
 
 def test_pad_yields_to_command_modes() -> None:
     from peirastic.core.session import pad_may_drive
 
     assert pad_may_drive(Mode.SERVO_TWIST) is True
+    assert pad_may_drive(Mode.SERVO_TWIST, label="servo_twist") is True
     assert pad_may_drive(Mode.SERVO_TWIST_HOLD) is True
+    assert pad_may_drive(Mode.SERVO_TWIST, label="cartesian_velocity") is False
+    assert pad_may_drive(Mode.SERVO_TWIST, label="movev_canfd") is False
     assert pad_may_drive(Mode.TRACK_HYBRID, label="track_hybrid_pad") is True
     assert pad_may_drive(Mode.TRACK_HYBRID, label="vessel_close") is False
     assert pad_may_drive(Mode.TRACK_HYBRID, program=True, label="track_hybrid_pad") is False
@@ -292,6 +305,31 @@ def test_cartesian_track_ellipse_is_swappable_vcmd() -> None:
     assert twist.shape == (6,)
     assert np.all(np.isfinite(twist))
     assert float(phase.outer.last_err_mm) == pytest.approx(0.0, abs=1e-6)
+
+
+def test_cartesian_velocity_is_swappable_passthrough() -> None:
+    raw, ctx = _ctx()
+    arm = _arm(ctx=ctx)
+    assert arm.cartesian_velocity([0.0, 0.02, 0.0, 0.0, 0.0, 0.0], duration_s=1.5, block=0) == OK
+    req = arm.last_request
+    assert req is not None
+    assert req.mode == Mode.SERVO_TWIST
+    assert req.payload["v_cmd"][1] == pytest.approx(0.02)
+    assert req.payload.get("label") == "cartesian_velocity"
+    phase = compile_request(ctx, req, raw=raw)
+    from peirastic.core.session import is_swappable
+    from peirastic.realman8dof.modes.servo import ServoTwistOuter
+
+    assert str(phase.label) == "cartesian_velocity"
+    assert isinstance(phase.outer, ServoTwistOuter)
+    assert is_swappable(Mode.SERVO_TWIST)
+    pose = ctx.kin.fk_pose(_SEED)
+    phase.outer.set_origin(pose, t_s=0.0)
+    out0 = np.asarray(phase.outer.sample(0.0, pose, np.zeros(6)), dtype=float)
+    assert out0[1] == pytest.approx(0.02)
+    phase.outer.source = lambda: np.array([0.0, 0.20, 0.0, 0.0, 0.0, 0.0])
+    out1 = np.asarray(phase.outer.sample(0.005, pose, np.zeros(6)), dtype=float)
+    assert 0.02 < float(out1[1]) < 0.20
 
 
 def test_track_and_servo_compile() -> None:
