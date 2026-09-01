@@ -34,6 +34,13 @@ outputs/anatomy_retarget/
 **/.cuda_shim/
 rm75_control/data/force_compensation/logs/
 rm75_control/data/velocity_admittance/logs/
+rm75_control/apps/logs/
+peirastic/**/logs/
+
+# Controller / plant run CSVs (local only; GitHub rejects >100 MB)
+MD/todo_controller_logs/**/*.csv
+MD/recursive_sns_hw_*/csv/
+identify_backup_events*.csv
 
 # Python
 __pycache__/
