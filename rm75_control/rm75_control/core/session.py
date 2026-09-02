@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import contextlib
+import sys
 import time
 from pathlib import Path
 from typing import Any, Sequence
@@ -19,6 +21,47 @@ from rm75_control.force.scan import ForceScanConfig, ForceScanController
 from rm75_control.motion.canfd import exit_canfd_session
 
 Pose6 = Sequence[float]
+
+
+@contextlib.contextmanager
+def _quiet_vendor_stdout():
+    """Drop Robotic_Arm's ``current c api version`` banner."""
+
+    class _Filter:
+        def __init__(self, dest) -> None:
+            self._dest = dest
+            self._buf = ""
+
+        def write(self, data) -> int:
+            self._buf += str(data)
+            written = 0
+            while "\n" in self._buf:
+                line, self._buf = self._buf.split("\n", 1)
+                if "c api version" in line.lower():
+                    continue
+                chunk = line + "\n"
+                self._dest.write(chunk)
+                written += len(chunk)
+            return written
+
+        def flush(self) -> None:
+            if self._buf and "c api version" not in self._buf.lower():
+                self._dest.write(self._buf)
+            self._buf = ""
+            self._dest.flush()
+
+        def __getattr__(self, name: str):
+            return getattr(self._dest, name)
+
+    old = sys.stdout
+    sys.stdout = _Filter(old)
+    try:
+        yield
+    finally:
+        try:
+            sys.stdout.flush()
+        finally:
+            sys.stdout = old
 
 
 class RobotSession:
@@ -75,7 +118,11 @@ class RobotSession:
             thread_mode=self.thread_mode,
         )
         if not self.dry_run:
-            self._backend.connect()
+            if self.quiet:
+                with _quiet_vendor_stdout():
+                    self._backend.connect()
+            else:
+                self._backend.connect()
         self.mode = ControlMode.IDLE
         if not self.quiet:
             print("Connected.", flush=True)

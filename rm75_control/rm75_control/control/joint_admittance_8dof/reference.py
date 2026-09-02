@@ -678,12 +678,73 @@ def ellipse_xy_motion(
     return dx, dy, vx, vy
 
 
+def _rot_amp_rad(value) -> np.ndarray:
+    if value is None:
+        return np.zeros(3, dtype=float)
+    raw = np.asarray(value, dtype=float).reshape(-1)
+    if raw.size == 0:
+        return np.zeros(3, dtype=float)
+    if raw.size == 1:
+        return np.array([0.0, 0.0, float(raw[0])])
+    out = np.zeros(3, dtype=float)
+    out[: min(3, raw.size)] = raw[:3]
+    return out
+
+
+def ellipse_tool_rpy(
+    t_s: float,
+    omega: float,
+    rot_amp_rad,
+    *,
+    soft_start: bool,
+    ramp_s: float = 2.0,
+    duration_s: float | None = None,
+    stop_ramp_s: float | None = None,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Same time warp as the XY ellipse. ``rpy = A sin(ωτ)`` so τ=0 is identity."""
+
+    if soft_start or duration_s is not None:
+        tau, tau_dot = _soft_start_time_warp(
+            t_s,
+            ramp_s if soft_start else 0.0,
+            duration_s=duration_s,
+            stop_ramp_s=stop_ramp_s,
+        )
+    else:
+        tau = float(t_s)
+        tau_dot = 1.0
+    amp = _rot_amp_rad(rot_amp_rad)
+    wt = float(omega) * tau
+    s = math.sin(wt)
+    c = math.cos(wt)
+    rpy = amp * s
+    rpy_dot = amp * float(omega) * c * tau_dot
+    return rpy, rpy_dot
+
+
+def _omega_base_from_tool_euler(
+    r_origin: np.ndarray,
+    rpy_tool: np.ndarray,
+    rpy_dot: np.ndarray,
+    euler_order: str,
+) -> np.ndarray:
+    if float(np.linalg.norm(rpy_dot)) < 1.0e-14:
+        return np.zeros(3, dtype=float)
+    h = 1.0e-5
+    rd0 = Rsc.from_euler(euler_order, rpy_tool, degrees=False).as_matrix()
+    rd1 = Rsc.from_euler(euler_order, rpy_tool + rpy_dot * h, degrees=False).as_matrix()
+    w_tool = Rsc.from_matrix(rd1 @ rd0.T).as_rotvec() / h
+    return np.asarray(r_origin, dtype=float) @ w_tool
+
+
 class EllipseToolXYReference:
-    """Tool-frame same-frequency XY ellipse about a fixed origin (orientation held).
+    """Tool-frame same-frequency XY ellipse about a live origin.
 
     Peak-to-peak: X is ``±ax`` (``x_pp = 2 ax``), Y is ``[0, 2 ay]``
     (``y_pp = 2 ay``).  The path is an ellipse centered at ``(0, ay)`` so the
-    live TCP can be the start without a jump.
+    live TCP can be the start without a jump.  Optional ``rot_amp_rad`` adds
+    a tool-frame Euler cycle ``A sin(ωτ)`` (same τ as XY) so attitude returns
+    to the origin every lap.
     """
 
     def __init__(
@@ -698,6 +759,7 @@ class EllipseToolXYReference:
         duration_s: float | None = None,
         stop_ramp_s: float | None = None,
         euler_order: str = "xyz",
+        rot_amp_rad=None,
     ) -> None:
         self.amplitude_x_m = float(amplitude_x_m)
         self.amplitude_y_m = float(amplitude_y_m)
@@ -735,6 +797,7 @@ class EllipseToolXYReference:
         if self.period_s <= 1.0e-9:
             raise ValueError("ellipse period_s must be > 0")
         self.omega = 2.0 * math.pi / self.period_s
+        self.rot_amp_rad = _rot_amp_rad(rot_amp_rad)
 
     def set_origin(self, pose0: np.ndarray, *, t_s: float | None = None) -> None:
         self._origin = np.asarray(pose0, dtype=float).copy()
@@ -760,6 +823,23 @@ class EllipseToolXYReference:
         pose[:3] = self._origin[:3] + r_mat @ np.array([dx, dy, 0.0])
         vel = np.zeros(6, dtype=float)
         vel[:3] = r_mat @ np.array([vx, vy, 0.0])
+        if float(np.linalg.norm(self.rot_amp_rad)) > 1.0e-12:
+            rpy, rpy_dot = ellipse_tool_rpy(
+                t_eff,
+                self.omega,
+                self.rot_amp_rad,
+                soft_start=self.soft_start,
+                ramp_s=self.ramp_s,
+                duration_s=self.duration_s,
+                stop_ramp_s=self.stop_ramp_s,
+            )
+            r_delta = Rsc.from_euler(self.euler_order, rpy, degrees=False).as_matrix()
+            pose[3:6] = Rsc.from_matrix(r_mat @ r_delta).as_euler(
+                self.euler_order, degrees=False
+            )
+            vel[3:6] = _omega_base_from_tool_euler(
+                r_mat, rpy, rpy_dot, self.euler_order
+            )
         return MotionReference(pose_d=pose, vel_ff=vel, t_ref=t_s)
 
 

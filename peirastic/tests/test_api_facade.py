@@ -321,6 +321,7 @@ def test_cartesian_track_ellipse_is_swappable_vcmd() -> None:
         reference="ellipse",
         amplitude_x_m=0.05,
         amplitude_y_m=0.15,
+        rot_amp_deg=[10.0, 8.0, 15.0],
         max_vel_m_s=0.04,
         duration_s=8.0,
         block=0,
@@ -336,6 +337,9 @@ def test_cartesian_track_ellipse_is_swappable_vcmd() -> None:
 
     assert isinstance(phase.outer, CartesianTrackOuterLoop)
     assert isinstance(phase.outer.reference, EllipseToolXYReference)
+    assert np.allclose(
+        phase.outer.reference.rot_amp_rad, np.deg2rad([10.0, 8.0, 15.0])
+    )
     assert phase.duration_s == pytest.approx(8.5)
     assert is_swappable(Mode.TRACK_CARTESIAN)
     pose = ctx.kin.fk_pose(_SEED)
@@ -344,6 +348,10 @@ def test_cartesian_track_ellipse_is_swappable_vcmd() -> None:
     assert twist.shape == (6,)
     assert np.all(np.isfinite(twist))
     assert float(phase.outer.last_err_mm) == pytest.approx(0.0, abs=1e-6)
+    assert float(phase.outer.last_rot_deg) == pytest.approx(0.0, abs=1e-6)
+    later = np.asarray(phase.outer.sample(1.2, pose, np.zeros(6)), dtype=float)
+    assert np.all(np.isfinite(later))
+    assert float(phase.outer.last_rot_deg) > 1.0
 
 
 def test_cartesian_velocity_is_swappable_passthrough() -> None:
@@ -382,3 +390,46 @@ def test_track_and_servo_compile() -> None:
     phase_v = compile_request(ctx, arm.last_request, raw=raw)
     out = np.asarray(phase_v.outer.sample(0.0, pose, np.zeros(6)), dtype=float)
     assert out[0] == pytest.approx(0.01)
+
+
+def test_window_a_ready_and_handoff_are_quiet() -> None:
+    from peirastic.realman8dof.daemon import is_handoff_stop, ready_state_msg
+
+    assert ready_state_msg(rail_m=0.6204, tcp="gripper2") == (
+        "ready  rail=620.4 mm  tcp=gripper2"
+    )
+    assert ready_state_msg(rail_m=None, tcp=None) == "ready"
+    assert is_handoff_stop("external_stop_before_send", pending_commanded=True)
+    assert not is_handoff_stop("external_stop_before_send", pending_commanded=False)
+    assert not is_handoff_stop("feedback_stale: age=1", pending_commanded=True)
+
+
+def test_quiet_vendor_banner_drops_c_api_version(capsys) -> None:
+    from rm75_control.core.session import _quiet_vendor_stdout
+
+    with _quiet_vendor_stdout():
+        print("current c api version:  1.1.3")
+        print("keep this")
+    assert capsys.readouterr().out == "keep this\n"
+
+
+def test_rail_progress_is_silent_by_default(capsys, monkeypatch) -> None:
+    from rm75_control.control.joint_admittance_8dof.hw.rail_servo import _rail_progress
+
+    monkeypatch.delenv("LW100_RAIL_VERBOSE", raising=False)
+    _rail_progress("lw100 rail: connecting hold @ +0.6204 m")
+    assert capsys.readouterr().out == ""
+    monkeypatch.setenv("LW100_RAIL_VERBOSE", "1")
+    _rail_progress("lw100 rail: connecting hold @ +0.6204 m")
+    assert "connecting hold" in capsys.readouterr().out
+
+
+def test_gamepad_link_event_skips_initial_missing() -> None:
+    from peirastic.apps.gamepad import pad_link_event
+
+    assert pad_link_event(None, False) is None
+    assert pad_link_event(None, True) == "[PAD] bluetooth live"
+    assert pad_link_event(False, False) is None
+    assert pad_link_event(False, True) == "[PAD] bluetooth live"
+    assert pad_link_event(True, False) == "[PAD] bluetooth lost"
+    assert pad_link_event(True, True) is None

@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import csv
 import math
+import os
 import queue
 import threading
 import time
@@ -43,6 +44,20 @@ RAIL_IDLE_EPS_M_S = 1.0e-3
 # Consecutive agreeing samples needed to re-anchor after a rejected leap.
 RESTITCH_REANCHOR_POLLS = 3
 RESTITCH_MARGIN_SCALE = 0.5
+
+
+def _rail_verbose_env() -> bool:
+    return os.environ.get("LW100_RAIL_VERBOSE", "").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
+
+
+def _rail_progress(msg: str, *, verbose: bool = False) -> None:
+    if verbose or _rail_verbose_env():
+        print(msg, flush=True)
 
 
 def encoder_jump_limit_m(
@@ -1159,12 +1174,15 @@ class RailServoBridge:
             target = float(self._target_m)
         if math.isfinite(meas) and math.isfinite(target) and self._encoder_sane(meas):
             err_mm = abs(target - meas) * 1000.0
-            print(
+            _rail_progress(
                 f"lw100 rail: task end hold (residual={err_mm:.2f} mm)",
-                flush=True,
+                verbose=bool(self.config.verbose),
             )
         else:
-            print("lw100 rail: task end hold (encoder/target invalid)", flush=True)
+            _rail_progress(
+                "lw100 rail: task end hold (encoder/target invalid)",
+                verbose=bool(self.config.verbose),
+            )
         self.hold_current()
         return True
 
@@ -1365,7 +1383,10 @@ class RailServoBridge:
             if not self.wait_limits_clear(timeout_s=min(timeout, 15.0)):
                 return False
             self.request_rearm()
-            print("lw100 rail: warming (Modbus read + FA24=0)…", flush=True)
+            _rail_progress(
+                "lw100 rail: warming (Modbus read + FA24=0)…",
+                verbose=bool(self.config.verbose),
+            )
         ok = self.wait_until_armed(timeout_s=timeout)
         if not ok:
             di3_p, di4_p = self.limits_pressed()
@@ -1764,10 +1785,10 @@ class RailServoBridge:
                     print(f"lw100 rail: WARN FA-20={exc}", flush=True)
                 try:
                     inner = self._drive.read_velocity_loop_params()
-                    print(
+                    _rail_progress(
                         "lw100 rail: drive velocity loop "
                         + " ".join(f"{name}={value}" for name, value in inner.items()),
-                        flush=True,
+                        verbose=bool(self.config.verbose),
                     )
                     self._log_event(
                         "DRIVE_VELOCITY_LOOP "
@@ -1879,7 +1900,7 @@ class RailServoBridge:
         self._thread.start()
         self._safety_thread.start()
         hard_lo, hard_hi = self._soft_lo_hi()
-        print(
+        _rail_progress(
             f"lw100 rail: connecting hold @ {measured:+.4f} m ({zero_note}, "
             f"raw={raw} bias={self._drive._counts_bias}, "
             f"hard=[{hard_lo * 1000:.0f}, {hard_hi * 1000:.0f}] mm "
@@ -1890,7 +1911,7 @@ class RailServoBridge:
             f"poll={self.config.poll_hz:.0f}Hz, "
             f"FA23={self.config.max_speed_rpm}, FA40/41={self.config.accel_ms}ms), "
             f"home_on_exit={self.config.home_on_exit}) — warming…",
-            flush=True,
+            verbose=bool(self.config.verbose),
         )
         if not self.ensure_armed(timeout_s=self.config.arm_timeout_s, rearm=False):
             self.stop(home=False)
@@ -1968,10 +1989,10 @@ class RailServoBridge:
             now = time.monotonic()
             if now - last_log >= 2.0:
                 last_log = now
-                print(
+                _rail_progress(
                     f"lw100 rail: park… meas={meas * 1000:.1f} mm cmd={cmd * 1000:.1f} mm "
                     f"busy={busy}",
-                    flush=True,
+                    verbose=bool(self.config.verbose),
                 )
             time.sleep(0.05)
         self.hold_current()
@@ -2444,7 +2465,10 @@ class RailServoBridge:
                     self._drive.set_velocity_rpm(0, force=True)
                 except Exception:
                     pass
-                print("lw100 rail: arming… (FA24=0, proving Modbus)", flush=True)
+                _rail_progress(
+                    "lw100 rail: arming… (FA24=0, proving Modbus)",
+                    verbose=verbose,
+                )
 
             t0 = time.monotonic()
             dt_wall = max(t0 - prev_t, 1e-4)
@@ -2768,11 +2792,11 @@ class RailServoBridge:
                             arm_settle_deadline = None
                         elif arm_settle_deadline is None:
                             arm_settle_deadline = t0 + arm_settle_s
-                            print(
+                            _rail_progress(
                                 f"lw100 rail: arming — {arm_need} good polls "
                                 f"@ {measured * 1000:.1f} mm; settle "
                                 f"{arm_settle_s:.2f}s…",
-                                flush=True,
+                                verbose=verbose,
                             )
                         elif t0 >= arm_settle_deadline:
                             with self._lock:
@@ -2784,8 +2808,7 @@ class RailServoBridge:
                                 self._follow_enabled = False
                                 self._panic = False
                             print(
-                                f"lw100 rail: ARMED @ {measured:+.4f} m "
-                                f"(FA24=0, Modbus OK, follow gated)",
+                                f"lw100 rail: ARMED @ {measured:+.4f} m",
                                 flush=True,
                             )
                             self._log_event(
@@ -2805,12 +2828,12 @@ class RailServoBridge:
                             arm_settle_deadline = None
                     elif t0 - arm_log_t >= 2.0:
                         arm_log_t = t0
-                        print(
+                        _rail_progress(
                             f"lw100 rail: NOT READY — arming "
                             f"{arm_good}/{arm_need} good polls "
                             f"meas={measured * 1000:.1f} mm"
                             f"{'' if poll_ok else ' SLOW'}",
-                            flush=True,
+                            verbose=verbose,
                         )
                     # Hold zero; skip soft loop until ARMED.
                     now = time.monotonic()
@@ -2858,11 +2881,11 @@ class RailServoBridge:
                             if not settling:
                                 settling = True
                                 settle_deadline = t0 + settle_timeout
-                                print(
+                                _rail_progress(
                                     f"lw100 rail: target stream ended — settling "
                                     f"residual={err_abs * 1000:.2f} mm "
                                     f"(tol={settle_tol_m * 1000:.2f} mm)",
-                                    flush=True,
+                                    verbose=verbose,
                                 )
                             elif settle_deadline is not None and t0 >= settle_deadline:
                                 settling = False
@@ -2907,10 +2930,10 @@ class RailServoBridge:
                         follow = False
                         with self._lock:
                             self._follow_enabled = False
-                        print(
+                        _rail_progress(
                             f"lw100 rail: settled @ "
                             f"{measured * 1000:.2f} mm (err={err_abs * 1000:.2f} mm)",
-                            flush=True,
+                            verbose=verbose,
                         )
 
                 if (
@@ -3307,7 +3330,14 @@ class RailServoBridge:
                 # One or two short USR-TCP232 misses coast on the latched FA24.
                 # Three consecutive failures hard-hold below; the independent
                 # 120 ms encoder-age watchdog remains the absolute safety bound.
-                if mb_fail_n in (1, 2, 3, 10) or mb_fail_n % 50 == 0:
+                if mb_fail_n >= 3 and (
+                    mb_fail_n in (3, 10) or mb_fail_n % 50 == 0
+                ):
+                    print(
+                        f"lw100 rail: modbus error ({mb_fail_n}x): {exc}",
+                        flush=True,
+                    )
+                elif verbose and (mb_fail_n in (1, 2)):
                     print(
                         f"lw100 rail: modbus error ({mb_fail_n}x): {exc}",
                         flush=True,

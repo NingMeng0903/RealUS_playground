@@ -26,6 +26,7 @@ from peirastic.DEMO.cartesian_track import (
     AY_M,
     N_LAPS,
     RAMP_S,
+    ROT_AMP_DEG,
     V_MAX_M_S,
     _print_track_errors,
     _track_duration_s,
@@ -53,8 +54,9 @@ def main() -> int:
         print(f"[STATE] from  {_fmt_q(rm_joint_to_si(q_now_rm))}", flush=True)
     print(f"[STATE] mid   {_fmt_q(rm_joint_to_si(q_rm))}", flush=True)
     print(
-        f"[MODE] RM movej v=40 + cartesian_track ellipse  "
+        f"[MODE] RM movej v=40 + cartesian_track ellipse+rpy  "
         f"pp=({2.0 * AX_M * 100.0:.0f} x {2.0 * AY_M * 100.0:.0f}) cm  "
+        f"rpy±=({ROT_AMP_DEG[0]:.0f},{ROT_AMP_DEG[1]:.0f},{ROT_AMP_DEG[2]:.0f}) deg  "
         f"v≤{V_MAX_M_S * 100.0:.1f} cm/s  T={period_s:.1f}s  scan={duration_s:.1f}s",
         flush=True,
     )
@@ -71,6 +73,7 @@ def main() -> int:
             amplitude_x_m=AX_M,
             amplitude_y_m=AY_M,
             max_vel_m_s=V_MAX_M_S,
+            rot_amp_deg=ROT_AMP_DEG,
             soft_start=True,
             ramp_s=RAMP_S,
             duration_s=duration_s,

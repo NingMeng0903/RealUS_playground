@@ -39,3 +39,16 @@ def test_sync_warns_when_tool_differs_from_urdf(capsys):
     err = capsys.readouterr().out
     assert "synced tool frame differs from URDF" in err
     assert "1.5" in err or "1.50" in err
+    assert "tcp sync:" not in err
+
+
+def test_matching_tcp_apply_is_silent(capsys):
+    from rm75_control.force.compensation.tool_pose import _apply_tcp_offset
+
+    kin = RobotKinematics()
+    _apply_tcp_offset(
+        kin,
+        kin.urdf_tcp_offset_pose.copy(),
+        "tcp sync: cached tool='gripper2' should stay quiet",
+    )
+    assert capsys.readouterr().out == ""

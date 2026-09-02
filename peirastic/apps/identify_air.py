@@ -996,7 +996,12 @@ def _save(fig, out_dir: Path, name: str) -> None:
     fig.savefig(svg, bbox_inches="tight")
 
 
-def plot_campaign(result: AirCampaignResult, out_dir: Path) -> None:
+def plot_campaign(
+    result: AirCampaignResult,
+    out_dir: Path,
+    *,
+    sweep_f1_hz: float = AIR_CHIRP_F1_HZ,
+) -> None:
     plt = _require_mpl()
     out_dir.mkdir(parents=True, exist_ok=True)
     edges = result.edges
@@ -1072,13 +1077,25 @@ def plot_campaign(result: AirCampaignResult, out_dir: Path) -> None:
     axes[2].axhline(COHERENCE_MIN, color="0.4", ls="--")
     axes[0].set_ylabel("|G| (dB)")
     axes[1].set_ylabel("phase (deg)")
-    axes[2].set_ylabel("γ²")
-    axes[2].set_xlabel("Hz")
-    axes[0].set_title("05 chirp Bode + coherence")
-    axes[0].legend()
+    axes[2].set_ylabel("coherence γ²")
+    axes[2].set_xlabel("frequency (Hz)")
+    axes[0].legend(title="velocity chirp amplitude")
+    f1 = max(float(sweep_f1_hz), 1.0)
+    xmax = max(9.0, f1 + 1.0)
+    ticks = [0.2, 0.5, 1.0, 2.0, 5.0, 8.0]
+    if f1 > 8.01:
+        ticks.append(10.0 if abs(f1 - 10.0) < 0.2 else f1)
     for ax in axes:
         ax.grid(True, which="both", alpha=0.3)
-        ax.set_xlim(0.15, 9.0)
+        ax.set_xlim(0.15, xmax)
+        ax.axvline(8.0, color="0.35", ls="--", lw=1)
+        if f1 > 8.01:
+            ax.axvline(f1, color="0.55", ls=":", lw=1)
+    axes[2].set_xticks(ticks)
+    axes[2].set_xticklabels(
+        ["0.2", "0.5", "1", "2", "5", "8"]
+        + ([f"{ticks[-1]:.0f}"] if len(ticks) > 6 else [])
+    )
     _save(fig, out_dir, "05_chirp_bode.png")
     plt.close(fig)
 
@@ -1202,16 +1219,29 @@ def analyze_air_paths(
     *,
     out_dir: Path,
     chirp_amps_mm_s: tuple[float, ...] = AIR_CHIRP_AMPS_MM_S,
+    chirp_f0_hz: float = AIR_CHIRP_F0_HZ,
+    chirp_f1_hz: float = AIR_CHIRP_F1_HZ,
 ) -> AirCampaignResult:
     result = AirCampaignResult(out_dir=out_dir)
     fb_all: list[np.ndarray] = []
     sn_all: list[np.ndarray] = []
     dt_all: list[np.ndarray] = []
+    f0 = max(float(chirp_f0_hz), 1e-3)
+    f1 = max(float(chirp_f1_hz), f0 + 1e-3)
     for path in paths:
         t, u, y, fb, sn, dt = load_tool_z_arrays(path)
         result.edges.extend(detect_step_edges(t, u, y))
         for amp, sl in split_chirp_windows(t, u, amps_mm_s=chirp_amps_mm_s):
-            result.chirps.append(fit_chirp_segment(t[sl], u[sl], y[sl], amp_mm_s=amp))
+            result.chirps.append(
+                fit_chirp_segment(
+                    t[sl],
+                    u[sl],
+                    y[sl],
+                    amp_mm_s=amp,
+                    f0=f0,
+                    f1=f1,
+                )
+            )
         fb_all.append(fb)
         sn_all.append(sn)
         dt_all.append(dt)
@@ -1225,7 +1255,7 @@ def analyze_air_paths(
         t0s = [c.t0_s for c in result.chirps if math.isfinite(c.t0_s)]
         result.t0_spread_s = float(max(t0s) - min(t0s)) if t0s else float("nan")
     write_tables(result, out_dir)
-    plot_campaign(result, out_dir)
+    plot_campaign(result, out_dir, sweep_f1_hz=f1)
     tdpa = shadow_tdpa_from_rows(load_tool_z_rows(paths[0]))
     (out_dir / "tdpa_shadow.json").write_text(json.dumps(tdpa, indent=2) + "\n")
     assert_plots_complete(out_dir)
@@ -1347,6 +1377,8 @@ def run_air_campaign(
     hz: float,
     log_csv: Path,
     out_dir: Path,
+    chirp_f0_hz: float = AIR_CHIRP_F0_HZ,
+    chirp_f1_hz: float = AIR_CHIRP_F1_HZ,
 ) -> int:
     """Drive SERVO_TWIST and write the campaign CSV.  Window A only servos."""
     import time
@@ -1460,8 +1492,8 @@ def run_air_campaign(
                     return 130
                 if not _hold(0.0, rest_s, "rest"):
                     return 130
-        f0 = AIR_CHIRP_F0_HZ
-        f1 = AIR_CHIRP_F1_HZ
+        f0 = max(float(chirp_f0_hz), 1e-3)
+        f1 = max(float(chirp_f1_hz), f0 + 1e-3)
         for amp in chirp_amps_m_s:
             print(
                 f"[CHIRP] {amp*1000:.1f} mm/s  {f0:.2f}–{f1:.1f} Hz  {chirp_s:.1f}s",
@@ -1482,7 +1514,12 @@ def run_air_campaign(
         _tick(0.0, "done")
         handle.flush()
         print(f"[OK] air campaign wrote {n_rows} rows → {log_csv}", flush=True)
-        result = analyze_air_paths([log_csv], out_dir=out_dir)
+        result = analyze_air_paths(
+            [log_csv],
+            out_dir=out_dir,
+            chirp_f0_hz=f0,
+            chirp_f1_hz=f1,
+        )
         print(
             f"[ID-AIR] out={out_dir} edges={len(result.edges)} "
             f"chirps={len(result.chirps)} "

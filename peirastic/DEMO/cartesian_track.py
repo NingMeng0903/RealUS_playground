@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Cartesian tracking demo: MOVEJ to mid-stroke, then a long tool-XY ellipse.
+"""Cartesian tracking demo: MOVEJ to mid-stroke, then a tool-XY ellipse
+with a cyclic TCP attitude (tool roll/pitch/yaw).
 
 Position outer loop (PD + path FF) converts pose error into ``v_cmd`` for the
 inner QPIK. TRACK_CARTESIAN is a swappable velocity mode: after MOVEJ the
@@ -34,13 +35,15 @@ from rm75_control.control.joint_admittance_8dof.reference import (
 )
 
 # Same taught mid-stroke as DEMO/movej. Ellipse matches peirastic/apps/ellipse.py
-# (10 cm × 30 cm peak-to-peak, long axis along tool Y).
+# (10 cm × 30 cm peak-to-peak, long axis along tool Y). Tool-frame Euler
+# A sin(ωτ) so attitude is identity at start/stop and every lap.
 AX_M = 0.05
 AY_M = 0.15
-V_MAX_M_S = 0.04
+ROT_AMP_DEG = (10.0, 8.0, 15.0)
+V_MAX_M_S = 0.08
 RAMP_S = 2.0
 N_LAPS = 2.0
-MOVEJ_V = 0.4
+MOVEJ_V = 0.5
 
 
 def _track_duration_s() -> float:
@@ -82,8 +85,9 @@ def main() -> int:
         print(f"[STATE] from  {_fmt_q(q_now)}", flush=True)
     print(f"[STATE] mid   {_fmt_q(q_mid)}", flush=True)
     print(
-        f"[MODE] TRACK_CARTESIAN ellipse  "
+        f"[MODE] TRACK_CARTESIAN ellipse+rpy  "
         f"pp=({2.0 * AX_M * 100.0:.0f} x {2.0 * AY_M * 100.0:.0f}) cm  "
+        f"rpy±=({ROT_AMP_DEG[0]:.0f},{ROT_AMP_DEG[1]:.0f},{ROT_AMP_DEG[2]:.0f}) deg  "
         f"v≤{V_MAX_M_S * 100.0:.1f} cm/s  T={period_s:.1f}s  "
         f"scan={duration_s:.1f}s",
         flush=True,
@@ -101,6 +105,7 @@ def main() -> int:
             amplitude_x_m=AX_M,
             amplitude_y_m=AY_M,
             max_vel_m_s=V_MAX_M_S,
+            rot_amp_deg=ROT_AMP_DEG,
             soft_start=True,
             ramp_s=RAMP_S,
             duration_s=duration_s,

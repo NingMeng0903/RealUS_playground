@@ -84,6 +84,8 @@ class TrackCartesianPayload:
     ramp_s: float | None = None
     amplitude_x_m: float | None = None
     amplitude_y_m: float | None = None
+    rot_amp_rad: list[float] | float | None = None
+    rot_amp_deg: list[float] | float | None = None
     period_s: float | None = None
     max_vel_m_s: float | None = None
     duration_s: float | None = None
@@ -103,6 +105,8 @@ class TrackCartesianPayload:
                 "ramp_s": self.ramp_s,
                 "amplitude_x_m": self.amplitude_x_m,
                 "amplitude_y_m": self.amplitude_y_m,
+                "rot_amp_rad": self.rot_amp_rad,
+                "rot_amp_deg": self.rot_amp_deg,
                 "period_s": self.period_s,
                 "max_vel_m_s": self.max_vel_m_s,
                 "duration_s": self.duration_s,

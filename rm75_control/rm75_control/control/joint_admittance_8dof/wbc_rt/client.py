@@ -128,11 +128,6 @@ class NativeWbcClient:
                         f"(in={P.WBC_IN_SIZE} out={P.WBC_OUT_SIZE})"
                     )
                 self._started = True
-                print(
-                    f"[joint_ik] inner.backend=native wbc_rt pid={self._proc.pid} "
-                    f"bin={binary}",
-                    flush=True,
-                )
                 return
             time.sleep(0.01)
         self.shutdown()

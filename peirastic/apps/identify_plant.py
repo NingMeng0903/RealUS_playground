@@ -2246,7 +2246,7 @@ def main() -> int:
     parser.add_argument(
         "--air-campaign",
         action="store_true",
-        help="dense 4–80 mm/s steps + three 0.2–8 Hz chirps; no stop-reverse",
+        help="dense 4–80 mm/s steps + three chirps (default 0.2–8 Hz; pass --chirp-f1 10 to sweep to 10 Hz); no stop-reverse",
     )
     parser.add_argument(
         "--tdpa-press",
@@ -2433,14 +2433,23 @@ def main() -> int:
     if args.analyze_air:
         from datetime import datetime
 
-        from peirastic.apps.identify_air import analyze_air_paths
+        from peirastic.apps.identify_air import AIR_CHIRP_F1_HZ, analyze_air_paths
 
         paths = [Path(p.strip()) for p in str(args.analyze_air).split(",") if p.strip()]
         stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         out = Path(args.air_out) if args.air_out else Path(
             "MD/todo_controller_logs"
         ) / f"id_air_{stamp}"
-        result = analyze_air_paths(paths, out_dir=out)
+        result = analyze_air_paths(
+            paths,
+            out_dir=out,
+            chirp_f0_hz=float(args.chirp_f0),
+            chirp_f1_hz=(
+                AIR_CHIRP_F1_HZ
+                if abs(float(args.chirp_f1) - 5.0) < 1e-12
+                else float(args.chirp_f1)
+            ),
+        )
         print(
             f"[ID-AIR] out={out} edges={len(result.edges)} chirps={len(result.chirps)} "
             f"linear≤{result.linear_speed_mm_s:.1f} mm/s "
@@ -2592,6 +2601,8 @@ def main() -> int:
 
         from peirastic.apps.identify_air import (
             AIR_CHIRP_AMPS_MM_S,
+            AIR_CHIRP_F0_HZ,
+            AIR_CHIRP_F1_HZ,
             AIR_CHIRP_S,
             AIR_HOLD_S,
             AIR_REST_S,
@@ -2624,6 +2635,14 @@ def main() -> int:
             hz=float(args.hz),
             log_csv=log,
             out_dir=out,
+            chirp_f0_hz=float(args.chirp_f0),
+            # Parser default --chirp-f1 is 5 Hz (short sequence). Air
+            # campaign keeps 8 Hz unless the operator passes --chirp-f1.
+            chirp_f1_hz=(
+                AIR_CHIRP_F1_HZ
+                if abs(float(args.chirp_f1) - 5.0) < 1e-12
+                else float(args.chirp_f1)
+            ),
         )
     extra_amps = _parse_speeds_mm_s(args.chirp_amps_mm_s)
     return run_sequence(

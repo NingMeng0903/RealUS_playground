@@ -72,7 +72,7 @@ def _apply_tcp_offset(
     if _LAST_TCP_OFFSET_PRINTED is not None and _offsets_equal(offset, _LAST_TCP_OFFSET_PRINTED):
         return
     _LAST_TCP_OFFSET_PRINTED = offset.copy()
-    print(message, flush=True)
+    del message
     _warn_if_tcp_differs_from_urdf(kin, euler_order=euler_order)
 
 

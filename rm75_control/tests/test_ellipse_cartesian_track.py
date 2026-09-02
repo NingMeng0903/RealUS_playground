@@ -6,6 +6,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+from scipy.spatial.transform import Rotation as Rsc
 
 from rm75_control.control.admittance_common.phase_ipc import SinToolYTaskParams
 from rm75_control.control.joint_admittance_8dof.api import (
@@ -99,6 +100,39 @@ def test_ellipse_is_offset_circle_and_pose_vel_consistent() -> None:
         m1 = ref.sample(t + h)
         v_fd = (m1.pose_d[:3] - m0.pose_d[:3]) / (2.0 * h)
         assert np.allclose(m.vel_ff[:3], v_fd, atol=2e-6)
+
+
+def test_ellipse_tool_rpy_cycles_and_matches_ff() -> None:
+    ax, ay = 0.02, 0.04
+    omega = 0.8
+    rot = np.deg2rad([10.0, 8.0, 15.0])
+    ref0 = EllipseToolXYReference(
+        ax, ay, period_s=2.0 * np.pi / omega, soft_start=True, rot_amp_rad=rot
+    )
+    origin = np.array([0.1, -0.2, 0.3, 0.05, -0.1, 0.2])
+    ref0.set_origin(origin)
+    m0 = ref0.sample(0.0)
+    assert np.allclose(m0.pose_d[3:6], origin[3:6], atol=1e-9)
+    assert float(np.linalg.norm(m0.vel_ff[3:6])) < 1e-9
+    ref = EllipseToolXYReference(
+        ax, ay, period_s=2.0 * np.pi / omega, soft_start=False, rot_amp_rad=rot
+    )
+    ref.set_origin(origin)
+    mT = ref.sample(ref.period_s)
+    assert np.allclose(mT.pose_d[:3], origin[:3], atol=1e-9)
+    assert np.allclose(mT.pose_d[3:6], origin[3:6], atol=1e-8)
+    h = 1e-4
+    t = 0.7
+    m = ref.sample(t)
+    assert float(np.linalg.norm(m.pose_d[3:6] - origin[3:6])) > 0.02
+    m_a = ref.sample(t - h)
+    m_b = ref.sample(t + h)
+    ra = Rsc.from_euler("xyz", m_a.pose_d[3:6], degrees=False).as_matrix()
+    rb = Rsc.from_euler("xyz", m_b.pose_d[3:6], degrees=False).as_matrix()
+    w_fd = Rsc.from_matrix(rb @ ra.T).as_rotvec() / (2.0 * h)
+    assert np.allclose(m.vel_ff[3:6], w_fd, atol=3e-4)
+    v_fd = (m_b.pose_d[:3] - m_a.pose_d[:3]) / (2.0 * h)
+    assert np.allclose(m.vel_ff[:3], v_fd, atol=2e-6)
 
 
 def test_ellipse_peak_speed_respects_max_vel() -> None:

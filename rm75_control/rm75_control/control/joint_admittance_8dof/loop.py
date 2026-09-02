@@ -2966,6 +2966,7 @@ class CartesianTrackOuterLoop:
         self.reference = reference
         self.cfg = cfg or CartesianTrackConfig()
         self.last_err_mm: float = 0.0
+        self.last_rot_deg: float = 0.0
         self.last_vel_ff: np.ndarray | None = None
         self.last_pose_d: np.ndarray | None = None
         self.last_path_twist = np.zeros(6)
@@ -2997,13 +2998,14 @@ class CartesianTrackOuterLoop:
         )
         err = pose_error(ref.pose_d, current_pose, cfg.euler_order)
         err = mask_base_pose_error(err, current_pose, track_axes, cfg.euler_order)
-        tr_mm, _tr_deg = pose_track_error_mm_deg(
+        tr_mm, tr_deg = pose_track_error_mm_deg(
             ref.pose_d,
             current_pose,
             track_axes=track_axes,
             euler_order=cfg.euler_order,
         )
         self.last_err_mm = tr_mm
+        self.last_rot_deg = tr_deg
         err_sat = saturate_error(err, cfg.max_pos_err_m, cfg.max_rot_err_rad)
         v_ff = np.asarray(ref.vel_ff, dtype=float)
         path_base = v_ff.copy() if cfg.path_feedforward else np.zeros(6)

@@ -22,6 +22,7 @@ from rm75_control.control.joint_admittance_8dof.hw.rail_servo import (
 )
 from rm75_control.control.joint_admittance_8dof.loop import Phase, run_joint_admittance_phases
 from rm75_control.core.session import RobotSession
+from rm75_control.force.compensation.tool_pose import read_tool_offset_cache
 from rm75_control.hw.lw100.rail_calibration import CalValidationError
 from peirastic.core.estop import EstopBus
 from peirastic.core.ipc import Cmd, CommandHub, Status, TwistBus
@@ -61,6 +62,24 @@ def resolve_log_csv(
         )
         return str(root / f"run_{stamp}.csv")
     return str(Path(text).expanduser())
+
+
+HANDOFF_STOP_REASONS = frozenset({"external_stop_before_send"})
+
+
+def is_handoff_stop(reason: str | None, *, pending_commanded: bool) -> bool:
+    """True when a phase ends only so the next commanded mode can start."""
+
+    return bool(reason) and str(reason) in HANDOFF_STOP_REASONS and bool(pending_commanded)
+
+
+def ready_state_msg(*, rail_m: float | None, tcp: str | None) -> str:
+    parts = ["ready"]
+    if rail_m is not None and math.isfinite(float(rail_m)):
+        parts.append(f"rail={float(rail_m) * 1000.0:.1f} mm")
+    if tcp:
+        parts.append(f"tcp={tcp}")
+    return "  ".join(parts)
 
 
 _PHASE_COPY = (
@@ -108,6 +127,7 @@ class ControllerService:
         self._mode_t0 = 0.0
         self._finite_duration: float | None = None
         self._cmd_seq = 0
+        self._pending_commanded = False
 
     def close(self) -> None:
         self.hub.close()
@@ -198,16 +218,6 @@ class ControllerService:
                 pass
         if self.log_csv:
             self.panel.event("STATE", f"csv {self.log_csv}")
-        try:
-            from peirastic.realman8dof.force.config import DEFAULT_FORCE_YAML, desired_z_n
-
-            self.panel.event(
-                "STATE",
-                f"force yaml {DEFAULT_FORCE_YAML} Fz*={desired_z_n():.2f}N",
-            )
-        except Exception:
-            pass
-        self.panel.event("STATE", "inner up; idle hold (SERVO when gamepad writes)")
         self.hub.publish(status=Status.RUNNING, mode=self.mode, msg="ready")
 
         while not self._stop:
@@ -227,8 +237,14 @@ class ControllerService:
                     self.panel.event("OK", "estop reset")
                 continue
 
-            req = self._pending or self._idle_request()
-            self._pending = None
+            commanded = False
+            if self._pending is not None:
+                commanded = bool(self._pending_commanded)
+                req = self._pending
+                self._pending = None
+                self._pending_commanded = False
+            else:
+                req = self._idle_request()
             first = self.hub.poll()
             if first is not None:
                 cmd, seq, parsed = first
@@ -241,6 +257,7 @@ class ControllerService:
                     continue
                 if cmd == Cmd.SET_MODE and parsed is not None:
                     req = parsed
+                    commanded = True
 
             try:
                 compiled = compile_request(
@@ -275,7 +292,8 @@ class ControllerService:
             self._mode_t0 = 0.0
             self._finite_duration = compiled.duration_s if velocity_loop else None
             self.hub.clear_stop()
-            self.panel.event("MODE", MODE_LABEL[self.mode])
+            if commanded:
+                self.panel.event("MODE", MODE_LABEL[self.mode])
             self.hub.publish(status=Status.RUNNING, mode=self.mode, msg=phase.label)
 
             def _install_velocity(
@@ -287,6 +305,7 @@ class ControllerService:
                 status: Status = Status.RUNNING,
                 done_seq: int | None = None,
                 err_code: int | None = None,
+                announce: bool = True,
             ) -> None:
                 if phase.on_exit is not None:
                     phase.on_exit()
@@ -307,7 +326,8 @@ class ControllerService:
                 self.mode = parsed_req.mode
                 self._mode_t0 = float(t_ref)
                 self._finite_duration = new.duration_s
-                self.panel.event("MODE", MODE_LABEL[self.mode])
+                if announce:
+                    self.panel.event("MODE", MODE_LABEL[self.mode])
                 self.hub.publish(
                     status=status,
                     mode=self.mode,
@@ -320,6 +340,7 @@ class ControllerService:
                 # Joint PTP runner is not a velocity proxy: any new mode rebuilds.
                 if not velocity_loop or not is_swappable(parsed_req.mode):
                     self._pending = parsed_req
+                    self._pending_commanded = True
                     self.hub.request_stop()
                     return
                 new = compile_request(
@@ -390,6 +411,7 @@ class ControllerService:
                                 status=Status.DONE,
                                 done_seq=self._cmd_seq,
                                 err_code=0,
+                                announce=False,
                             )
                     except Exception as exc:
                         self.panel.event("WARN", str(exc))
@@ -476,6 +498,10 @@ class ControllerService:
                     done_seq=self._cmd_seq,
                     err_code=-6,
                 )
+            elif is_handoff_stop(
+                result.stop_reason, pending_commanded=self._pending_commanded
+            ):
+                pass
             elif result.stop_reason:
                 self.panel.event("WARN", result.stop_reason)
                 self.hub.publish(
@@ -495,6 +521,7 @@ class ControllerService:
                 )
                 if self._pending is None:
                     self._pending = self._idle_request()
+                    self._pending_commanded = False
 
 
 def run_service(
@@ -554,25 +581,25 @@ def run_service(
                     rail_m_fn=_rail_m_fn,
                 )
                 relay.start()
-                enc = float(rail.measured_m) if rail.enabled else float("nan")
-                enc_s = (
-                    f"{enc * 1000.0:.1f} mm"
-                    if math.isfinite(enc)
-                    else "n/a (uncalibrated)"
-                )
-                print(
-                    f"[STATE] shm {relay_cfg.name!r} @ {relay_cfg.hz:.0f} Hz "
-                    f"(Genesis twin; rail encoder {enc_s})",
-                    flush=True,
-                )
             else:
                 print(
                     "[WARN] state_relay.enabled=false — "
                     "Genesis twin will stay at URDF default (no hardware DW)",
                     flush=True,
                 )
+            tcp = None
+            cached = read_tool_offset_cache()
+            if cached is not None:
+                tcp = str(cached[0] or "") or None
+            enc = float(rail.measured_m) if rail.enabled else float("nan")
+            svc.panel.event(
+                "STATE",
+                ready_state_msg(
+                    rail_m=enc if math.isfinite(enc) else None,
+                    tcp=tcp,
+                ),
+            )
             try:
-                svc.panel.event("STATE", "running")
                 svc.run(sess, bus, rail)
             finally:
                 if relay is not None:

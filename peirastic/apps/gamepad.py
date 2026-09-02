@@ -21,6 +21,8 @@ import time
 from dataclasses import replace
 from pathlib import Path
 
+os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
+
 _REPO = Path(os.environ.get("REALUS_PROJECT_ROOT", Path(__file__).resolve().parents[2]))
 for _p in (_REPO, _REPO / "rm75_control", _REPO / "src"):
     _s = str(_p)
@@ -53,6 +55,16 @@ def _fmt_vec(vec, n=3) -> str:
 
 def _green(msg: str) -> str:
     return f"\033[32m{msg}\033[0m"
+
+
+def pad_link_event(prev: bool | None, live: bool) -> str | None:
+    """Announce Bluetooth only on connect, or after a live pad drops."""
+
+    if prev is None:
+        return "[PAD] bluetooth live" if live else None
+    if live == prev:
+        return None
+    return "[PAD] bluetooth live" if live else "[PAD] bluetooth lost"
 
 
 def main() -> int:
@@ -109,33 +121,40 @@ def main() -> int:
     hybrid = False
     last_l3_s = 0.0
     last_log_s = 0.0
-    pad = getattr(src, "pad", None)
-    describe = getattr(pad, "describe", None)
-    print(f"[STATE] L3 hybrid Fz*={fz:.2f}N (peirastic/configs/force.yaml)", flush=True)
-    if args.no_capture_y:
-        print("[STATE] Y capture disabled (--no-capture-y)", flush=True)
+    if not quiet:
+        print(f"[STATE] L3 hybrid Fz*={fz:.2f}N (peirastic/configs/force.yaml)", flush=True)
+        if args.no_capture_y:
+            print("[STATE] Y capture disabled (--no-capture-y)", flush=True)
+        else:
+            print(
+                "[STATE] Y = SMPL-X (burst→beta, 1 sync frame→pose) + preview + Genesis",
+                flush=True,
+            )
+        if args.no_vessel_b:
+            print("[STATE] B vessel scan disabled (--no-vessel-b)", flush=True)
+        else:
+            print(
+                "[STATE] B = 8DOF TRACK 5cm standoff → hybrid close → 10cm R_SUPFEMV scan",
+                flush=True,
+            )
+        print("[STATE] motion requires live bluetooth pad (usb/missing inhibited)", flush=True)
+        pad = getattr(src, "pad", None)
+        describe = getattr(pad, "describe", None)
+        if describe is not None:
+            print("[STATE] " + str(describe()), flush=True)
     else:
-        print("[STATE] Y = SMPL-X (burst→beta, 1 sync frame→pose) + preview + Genesis", flush=True)
-    if args.no_vessel_b:
-        print("[STATE] B vessel scan disabled (--no-vessel-b)", flush=True)
-    else:
-        print("[STATE] B = 8DOF TRACK 5cm standoff → hybrid close → 10cm R_SUPFEMV scan", flush=True)
-    print("[STATE] motion requires live bluetooth pad (usb/missing inhibited)", flush=True)
-    if describe is not None:
-        print("[STATE] " + str(describe()), flush=True)
+        print("[STATE] ready", flush=True)
     last_live = None
     try:
         tel0 = client.snapshot()
         if try_mode(tel0.get("mode")) is None:
-            print("[PAD] waiting for Window A (controller mode unset)", flush=True)
+            print("[PAD] waiting for Window A", flush=True)
             while try_mode(tel0.get("mode")) is None:
                 time.sleep(0.05)
                 tel0 = client.snapshot()
-            print("[PAD] Window A live", flush=True)
         if pad_may_drive(int(tel0.get("mode") or 0), label=str(tel0.get("msg") or "")):
             client.set_mode(ModeRequest(vel_mode, {}))
-            print("[MODE] SERVO_TWIST" + ("_HOLD" if args.hold else ""), flush=True)
-        else:
+        elif not quiet:
             print(
                 "[PAD] connected — command mode has priority "
                 f"(live={tel0.get('msg') or tel0.get('mode')}); R3 e-stop still live",
@@ -162,16 +181,10 @@ def main() -> int:
                 l3=bool(snap["l3"]) if pad_drive else False,
                 r3=bool(snap["r3"]) if live else False,
             )
-            if last_live is None or live != last_live:
-                last_live = live
-                why = str(snap.get("transport") or "none")
-                if live:
-                    print(f"[PAD] bluetooth live transport={why} — motion enabled", flush=True)
-                else:
-                    print(
-                        f"[PAD] no live bluetooth (transport={why}) — motion inhibited",
-                        flush=True,
-                    )
+            link = pad_link_event(last_live, live)
+            last_live = live
+            if link:
+                print(link, flush=True)
             if live and snap["r3_edge"]:
                 print("[ESTOP] pad R3 — zero rail then stop", flush=True)
                 client.estop()

@@ -47,6 +47,9 @@ def _ellipse_ref(payload: dict, euler_order: str) -> EllipseToolXYReference:
         vmax = 0.01 * float(payload["max_vel_cm_s"])
     stop = payload.get("stop_ramp_s")
     scan = payload.get("duration_s")
+    rot = payload.get("rot_amp_rad")
+    if rot is None and payload.get("rot_amp_deg") is not None:
+        rot = np.deg2rad(np.asarray(payload["rot_amp_deg"], dtype=float))
     return EllipseToolXYReference(
         ax,
         ay,
@@ -57,6 +60,7 @@ def _ellipse_ref(payload: dict, euler_order: str) -> EllipseToolXYReference:
         duration_s=None if scan is None else float(scan),
         stop_ramp_s=None if stop is None else float(stop),
         euler_order=euler_order,
+        rot_amp_rad=rot,
     )
 
 
