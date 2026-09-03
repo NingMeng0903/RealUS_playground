@@ -20,7 +20,7 @@ from peirastic.realman8dof.modes.cartesian import (
     resolve_pose_q,
 )
 from peirastic.realman8dof.modes.joint import build_goto_joints_phase, build_movej_phase
-from peirastic.realman8dof.modes.servo import ServoTwistHoldOuter, ServoTwistOuter
+from peirastic.realman8dof.modes.servo import ServoTwistHoldOuter, ServoTwistOuter, slew_kwargs
 from peirastic.realman8dof.modes.track import (
     build_pad_hybrid_phase,
     build_track_cartesian_phase,
@@ -146,6 +146,7 @@ def compile_request(
             _twist_source(payload, twist_read),
             control_frame=ctx.control_frame,
             euler_order=ctx.euler_order,
+            **slew_kwargs(payload),
         )
         phase = Phase(
             outer=outer,
@@ -160,6 +161,7 @@ def compile_request(
             control_frame=ctx.control_frame,
             euler_order=ctx.euler_order,
             dt=dt,
+            **slew_kwargs(payload),
         )
         phase = Phase(
             outer=outer,

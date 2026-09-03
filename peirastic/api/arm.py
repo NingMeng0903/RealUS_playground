@@ -485,12 +485,16 @@ class _VelocityMixin(_ClientMixin):
         hold: bool = False,
         label: str = "cartesian_velocity",
         block: float | int = 0,
+        filter: bool | list[float] | None = None,
+        follow: bool | None = None,
     ) -> int:
         """Cartesian velocity mode: ``v*`` → inner QPIK. Swappable on the 200 Hz runner.
 
         ``twist=None`` listens to the twist bus (``set_cartesian_velocity``).
         A 6-vector is a constant ``v_cmd`` for ``duration_s``. ``block=0`` is async.
-        Receive-side a/j slew lives in Window A, not in the caller.
+        External callers send raw v*; Window A settles VCMD.
+        ``filter`` is the receive-side a/j switch (default off). A 6-mask is
+        per-axis. ``follow=True`` is RM 高跟随 (same as ``filter=False``).
         Commanded SERVO_TWIST may sit at ``v*=0``; HOLD does not steal that mode.
         """
 
@@ -498,6 +502,8 @@ class _VelocityMixin(_ClientMixin):
             v_cmd=None if twist is None else _as_twist(twist),
             duration_s=duration_s,
             label=label,
+            filter=filter,
+            follow=follow,
         ).to_json()
         mode = Mode.SERVO_TWIST_HOLD if hold else Mode.SERVO_TWIST
         ret = self._send(mode, payload, block=0)
@@ -722,6 +728,8 @@ class _ForceMixin(_ClientMixin):
         force_axes=None,
         duration_s: float | None = None,
         label: str = "hfvc",
+        filter: bool | list[float] | None = None,
+        follow: bool | None = None,
     ) -> int:
         payload = HfvcPayload(
             reference=source,
@@ -730,6 +738,8 @@ class _ForceMixin(_ClientMixin):
             force_axes=None if force_axes is None else list(np.asarray(force_axes, dtype=float).reshape(6)),
             duration_s=duration_s,
             label=label,
+            filter=filter,
+            follow=follow,
         ).to_json()
         return self._send(Mode.TRACK_HYBRID, payload, block=0)
 
@@ -924,6 +934,7 @@ class PeirasticArm(
         self._qp_aux: dict[str, Any] = {}
         self._force_extra: dict[str, Any] = {}
         self._movev_session = False
+        self._movev_follow = True
         self._contact_enter_n: float | None = None
         self._enter_confirm_s: float | None = None
         self._max_line_speed = 0.4

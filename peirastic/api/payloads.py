@@ -7,6 +7,8 @@ from typing import Any
 
 import numpy as np
 
+from peirastic.api.vel_filter import pack_vel_filter
+
 
 def _as_list(value: Any) -> Any:
     if value is None:
@@ -34,6 +36,10 @@ def _force_overlay(
     track_axes: list[float] | None = None,
     selection: list[float] | None = None,
     mask_force_from_path: bool | None = None,
+    filter: bool | list[float] | None = None,
+    follow: bool | None = None,
+    slew: bool | None = None,
+    slew_axes: list[float] | None = None,
     extra: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     raw = dict(extra or {})
@@ -54,6 +60,11 @@ def _force_overlay(
         raw["selection"] = list(selection)
     if mask_force_from_path is not None:
         raw["mask_force_from_path"] = bool(mask_force_from_path)
+    packed = pack_vel_filter(
+        filter=filter, follow=follow, slew=slew, slew_axes=slew_axes
+    )
+    if packed is not None:
+        raw["filter"] = packed
     return raw
 
 
@@ -62,6 +73,10 @@ class ServoTwistPayload:
     v_cmd: list[float] | None = None
     duration_s: float | None = None
     label: str | None = None
+    filter: bool | list[float] | None = None
+    follow: bool | None = None
+    slew: bool | None = None
+    slew_axes: list[float] | None = None
 
     def to_json(self) -> dict[str, Any]:
         return _dump(
@@ -69,6 +84,12 @@ class ServoTwistPayload:
                 "v_cmd": self.v_cmd,
                 "duration_s": self.duration_s,
                 "label": self.label,
+                "filter": pack_vel_filter(
+                    filter=self.filter,
+                    follow=self.follow,
+                    slew=self.slew,
+                    slew_axes=self.slew_axes,
+                ),
             }
         )
 
@@ -186,6 +207,10 @@ class HfvcPayload:
     track_axes: list[float] | None = None
     selection: list[float] | None = None
     mask_force_from_path: bool = True
+    filter: bool | list[float] | None = None
+    follow: bool | None = None
+    slew: bool | None = None
+    slew_axes: list[float] | None = None
     extra: dict[str, Any] = field(default_factory=dict)
 
     def to_json(self) -> dict[str, Any]:
@@ -207,6 +232,10 @@ class HfvcPayload:
                 track_axes=self.track_axes,
                 selection=self.selection,
                 mask_force_from_path=self.mask_force_from_path,
+                filter=self.filter,
+                follow=self.follow,
+                slew=self.slew,
+                slew_axes=self.slew_axes,
                 extra=self.extra,
             )
         )

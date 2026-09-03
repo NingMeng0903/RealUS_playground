@@ -68,11 +68,15 @@ class _RmApi2Mixin:
         avoid_singularity_flag: int = 1,
         frame_type: int = 0,
         dt: int = 5,
+        follow: bool = False,
     ) -> int:
         del avoid_singularity_flag
         frame = "world" if int(frame_type) == 1 else "tool"
         self.set_movev_canfd_init(frame_type=frame, dt_ms=float(dt))
-        return self.cartesian_velocity(duration_s=None, block=0, label="cartesian_velocity")
+        self._movev_follow = bool(follow)
+        return self.cartesian_velocity(
+            duration_s=None, block=0, label="cartesian_velocity", follow=bool(follow)
+        )
 
     def rm_movev_canfd(
         self,
@@ -81,8 +85,20 @@ class _RmApi2Mixin:
         trajectory_mode: int = 0,
         radio: int = 0,
     ) -> int:
-        del follow, trajectory_mode, radio
-        return self.movev_canfd(cartesian_velocity)
+        del trajectory_mode, radio
+        want = bool(follow)
+        if getattr(self, "twist", None) is None:
+            return self.cartesian_velocity(
+                cartesian_velocity, block=0, label="movev_canfd", follow=want
+            )
+        if not getattr(self, "_movev_session", False) or want != bool(
+            getattr(self, "_movev_follow", want)
+        ):
+            ret = self.cartesian_velocity(None, block=0, label="movev_canfd", follow=want)
+            if ret != OK:
+                return ret
+            self._movev_follow = want
+        return self.set_cartesian_velocity(cartesian_velocity)
 
     def rm_set_force_control(
         self,

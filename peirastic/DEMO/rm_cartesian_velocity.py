@@ -4,6 +4,7 @@
 Same tool-Y shuttle as ``DEMO.cartesian_velocity``. Init is
 ``rm_set_movev_canfd_init`` (enters SERVO once). Each tick is
 ``rm_movev_canfd`` — bus write only, no mode switch.
+RM ``follow`` defaults False (低跟随); this demo does not pass it.
 
     python -m peirastic.apps.run_controller
     python -m peirastic.DEMO.rm_cartesian_velocity

@@ -8,17 +8,43 @@ import numpy as np
 from scipy.spatial.transform import Rotation as Rsc
 
 from rm75_control.control.admittance_common.pose_math import pose_error
+from peirastic.api.vel_filter import payload_vel_filter, resolve_filter_axes
 from rm75_control.control.joint_admittance_8dof.teleop.gamepad_twist import (
     apply_hold_deadband,
     compose_inner_twist,
-    slew_vec_jerk,
+    slew_axes_jerk,
 )
 
 TwistFn = Callable[[], np.ndarray]
 
 
+def resolve_slew_axes(
+    *,
+    slew: bool | None = None,
+    slew_axes=None,
+    follow: bool | None = None,
+    filter: bool | list[float] | None = None,
+    default: bool = False,
+    mask=None,
+) -> np.ndarray:
+    """Per-axis receive filter. ``follow=True`` is RM high-follow: filter off."""
+
+    return resolve_filter_axes(
+        filter=filter,
+        follow=follow,
+        slew=slew,
+        slew_axes=slew_axes,
+        default=default,
+        mask=mask,
+    )
+
+
+def slew_kwargs(payload: dict | None) -> dict:
+    return {"filter": payload_vel_filter(payload)}
+
+
 class TwistSlew:
-    """Receive-side a/j limit on v*. First sample seeds; later ticks slew."""
+    """Receive-side a/j limit on selected axes. First sample seeds."""
 
     def __init__(
         self,
@@ -27,11 +53,17 @@ class TwistSlew:
         j_lin_m_s3: float = 16.0,
         a_ang_rad_s2: float = 4.0,
         j_ang_rad_s3: float = 32.0,
+        axes=None,
     ) -> None:
         self.a_lin_m_s2 = float(a_lin_m_s2)
         self.j_lin_m_s3 = float(j_lin_m_s3)
         self.a_ang_rad_s2 = float(a_ang_rad_s2)
         self.j_ang_rad_s3 = float(j_ang_rad_s3)
+        self.axes = (
+            np.ones(6, dtype=bool)
+            if axes is None
+            else np.asarray(axes, dtype=bool).reshape(6)
+        )
         self._v: np.ndarray | None = None
         self._a = np.zeros(6, dtype=float)
         self._t_prev: float | None = None
@@ -43,7 +75,7 @@ class TwistSlew:
 
     def step(self, target: np.ndarray, t_s: float) -> np.ndarray:
         raw = np.asarray(target, dtype=float).reshape(6).copy()
-        if self._v is None:
+        if self._v is None or not np.any(self.axes):
             self._v = raw
             self._a[:] = 0.0
             self._t_prev = float(t_s)
@@ -54,17 +86,18 @@ class TwistSlew:
             if np.isfinite(raw_dt) and raw_dt > 1.0e-4:
                 dt = float(np.clip(raw_dt, 0.001, 0.05))
         self._t_prev = float(t_s)
-        lin, a_lin = slew_vec_jerk(
+        lin, a_lin = slew_axes_jerk(
             self._v[:3], self._a[:3], raw[:3], self.a_lin_m_s2, self.j_lin_m_s3, dt
         )
-        ang, a_ang = slew_vec_jerk(
+        ang, a_ang = slew_axes_jerk(
             self._v[3:], self._a[3:], raw[3:], self.a_ang_rad_s2, self.j_ang_rad_s3, dt
         )
-        self._v[:3] = lin
-        self._v[3:] = ang
-        self._a[:3] = a_lin
-        self._a[3:] = a_ang
-        return self._v.copy()
+        shaped = np.concatenate([lin, ang])
+        shaped_a = np.concatenate([a_lin, a_ang])
+        out = np.where(self.axes, shaped, raw)
+        self._a = np.where(self.axes, shaped_a, 0.0)
+        self._v = out.copy()
+        return out.copy()
 
 
 def _as_twist(value) -> np.ndarray:
@@ -79,7 +112,11 @@ def _as_twist(value) -> np.ndarray:
 
 
 class ServoTwistOuter:
-    """v* = v_cmd. No pose lock, no pad."""
+    """v* = v_cmd. No pose lock, no pad.
+
+    Receive filter is off unless ``filter=True`` / a 6-mask / ``follow=False``.
+    External callers send raw v*; this layer optionally shapes VCMD.
+    """
 
     def __init__(
         self,
@@ -87,16 +124,33 @@ class ServoTwistOuter:
         *,
         control_frame: str = "tool",
         euler_order: str = "xyz",
+        filter: bool | list[float] | None = None,
+        follow: bool | None = None,
+        slew: bool | None = None,
+        slew_axes=None,
+        filter_default: bool = False,
+        filter_mask=None,
+        slew_default: bool | None = None,
+        slew_mask=None,
     ) -> None:
         self.source = source
         self.control_frame = str(control_frame)
         self.euler_order = str(euler_order)
+        self.filter_axes = resolve_filter_axes(
+            filter=filter,
+            follow=follow,
+            slew=slew,
+            slew_axes=slew_axes,
+            default=filter_default if slew_default is None else bool(slew_default),
+            mask=filter_mask if slew_mask is None else slew_mask,
+        )
+        self.slew_axes = self.filter_axes
         self.last_err_mm = 0.0
         self.last_vel_ff = np.zeros(6, dtype=float)
         self.last_pose_d: np.ndarray | None = None
         self.last_path_twist = np.zeros(6, dtype=float)
         self.last_feedback_twist = np.zeros(6, dtype=float)
-        self._slew = TwistSlew()
+        self._slew = TwistSlew(axes=self.filter_axes)
 
     def set_origin(self, pose0: np.ndarray, *, t_s: float | None = None) -> None:
         del t_s
@@ -134,10 +188,18 @@ class ServoTwistHoldOuter:
         quiet_lin_m_s: float = 0.002,
         quiet_rot_rad_s: float = 0.02,
         dt: float = 0.005,
+        filter: bool | list[float] | None = None,
+        follow: bool | None = None,
+        slew: bool | None = None,
+        slew_axes=None,
     ) -> None:
         self.source = source
         self.control_frame = str(control_frame)
         self.euler_order = str(euler_order)
+        self.filter_axes = resolve_filter_axes(
+            filter=filter, follow=follow, slew=slew, slew_axes=slew_axes, default=False
+        )
+        self.slew_axes = self.filter_axes
         self.hold_k_task = float(hold_k_task)
         self.hold_v_max_m_s = float(hold_v_max_m_s)
         self.hold_w_max_rad_s = float(hold_w_max_rad_s)
@@ -155,7 +217,7 @@ class ServoTwistHoldOuter:
         self._holding = False
         self._coast = 0
         self._prev_pose: np.ndarray | None = None
-        self._slew = TwistSlew()
+        self._slew = TwistSlew(axes=self.filter_axes)
 
     def set_origin(self, pose0: np.ndarray, *, t_s: float | None = None) -> None:
         del t_s

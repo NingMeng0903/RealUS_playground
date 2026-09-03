@@ -92,8 +92,8 @@ def run_sequence(
 ) -> int:
     client = CommandClient(prefix=prefix)
     bus = TwistBus(prefix=prefix, create=False)
-    client.set_mode(ModeRequest(Mode.SERVO_TWIST, {}))
-    print("[MODE] SERVO_TWIST identify_plant", flush=True)
+    client.set_mode(ModeRequest(Mode.SERVO_TWIST, {"filter": False}))
+    print("[MODE] SERVO_TWIST identify_plant  filter OFF", flush=True)
     dt = 1.0 / max(hz, 1.0)
     try:
         _write_vz(bus, 0.0, hz)
@@ -218,8 +218,8 @@ def run_stop_reverse_sequence(
     """
     client = CommandClient(prefix=prefix)
     bus = TwistBus(prefix=prefix, create=False)
-    client.set_mode(ModeRequest(Mode.SERVO_TWIST, {}))
-    print("[MODE] SERVO_TWIST identify_plant --stop-reverse", flush=True)
+    client.set_mode(ModeRequest(Mode.SERVO_TWIST, {"filter": False}))
+    print("[MODE] SERVO_TWIST identify_plant --stop-reverse  filter OFF", flush=True)
     try:
         if not _hold_cmd(bus, client, 0.0, rest_s, hz):
             return 130
@@ -309,9 +309,9 @@ def run_backup_replay_sequence(
             flush=True,
         )
         return 2
-    client.set_mode(ModeRequest(Mode.SERVO_TWIST, {}))
+    client.set_mode(ModeRequest(Mode.SERVO_TWIST, {"filter": False}))
     print(
-        "[MODE] SERVO_TWIST identify_plant --backup-replay  "
+        "[MODE] SERVO_TWIST identify_plant --backup-replay  filter OFF  "
         f"a_max={sh.cfg.a_max_m_s2} j_max={sh.cfg.j_max_m_s3} "
         f"u_retract={sh.cfg.u_retract_m_s}  "
         f"motion SHM max_age={1e3 * motion_max_age_s:.0f} ms  "

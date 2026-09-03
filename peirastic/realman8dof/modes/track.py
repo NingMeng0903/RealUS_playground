@@ -21,7 +21,7 @@ from rm75_control.control.joint_admittance_8dof.loop import (
 from peirastic.realman8dof.force.config import build_force_controller
 from peirastic.realman8dof.force.legacy import LegacyForceLaw
 from peirastic.realman8dof.force.tff import SELECTION_TOOL_Z_FORCE, compose_tff
-from peirastic.realman8dof.modes.servo import ServoTwistOuter
+from peirastic.realman8dof.modes.servo import ServoTwistOuter, slew_kwargs
 
 
 class HybridTffOuter:
@@ -215,16 +215,20 @@ def build_pad_hybrid_phase(
     if twist_read is None:
         raise ValueError("pad hybrid needs a live twist source")
     controller, f_des = _hybrid_controller(dt, payload)
+    selection = selection_from_payload(payload)
     pos = ServoTwistOuter(
         twist_read,
         control_frame=ctx.control_frame,
         euler_order=ctx.euler_order,
+        filter_default=True,
+        filter_mask=SELECTION_TOOL_Z_FORCE if selection is None else selection,
+        **slew_kwargs(payload),
     )
     outer = HybridTffOuter(
         pos,
         LegacyForceLaw(controller),
         desired_force=f_des,
-        selection=selection_from_payload(payload),
+        selection=selection,
         dt=dt,
         mask_force_from_path=_mask_force_from_path(payload, True),
     )

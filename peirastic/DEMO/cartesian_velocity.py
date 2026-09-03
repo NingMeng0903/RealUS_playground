@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Cartesian velocity demo: MOVEJ to mid-stroke, then a long tool-Y shuttle.
 
-Open-loop ``v*`` passthrough. Four +Y/−Y legs at 2 cm/s, 3 cm each way,
+Open-loop ``v*`` passthrough (Window A ``filter`` defaults off; this demo
+already ramps its own envelope). Four +Y/−Y legs at 2 cm/s, 3 cm each way,
 with a rest at every turnaround. Commanded SERVO_TWIST must keep the
 mode while ``v*=0``; HOLD (pose latch) is a different mode and must not
 steal the pauses.

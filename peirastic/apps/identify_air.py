@@ -1474,9 +1474,9 @@ def run_air_campaign(
             time.sleep(dt_nom)
         return True
 
-    client.set_mode(ModeRequest(Mode.SERVO_TWIST, {}))
+    client.set_mode(ModeRequest(Mode.SERVO_TWIST, {"filter": False}))
     print(
-        f"[MODE] SERVO_TWIST identify_air  log={log_csv}  "
+        f"[MODE] SERVO_TWIST identify_air  filter OFF  log={log_csv}  "
         "force loop stays off; Window A is servo only",
         flush=True,
     )
@@ -1664,9 +1664,9 @@ def run_tdpa_press_campaign(
         tw = np.zeros(6, dtype=float)
         bus.write(tw, hz=hz, connected=True)
 
-    client.set_mode(ModeRequest(Mode.SERVO_TWIST, {}))
+    client.set_mode(ModeRequest(Mode.SERVO_TWIST, {"filter": False}))
     print(
-        f"[MODE] SERVO_TWIST tdpa-press  log={log_csv}  "
+        f"[MODE] SERVO_TWIST tdpa-press  filter OFF  log={log_csv}  "
         "force loop OFF — do not start hybrid / F* tracking",
         flush=True,
     )

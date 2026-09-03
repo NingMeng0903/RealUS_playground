@@ -109,6 +109,7 @@ def main() -> int:
         "reference": "pad",
         "use_tff_split": True,
         "label": "track_hybrid_pad",
+        "filter": False,  # pad already LPF+jerk at source; force Z never filtered
     }
     if args.desired_z is not None:
         hybrid_payload["desired_z"] = float(args.desired_z)

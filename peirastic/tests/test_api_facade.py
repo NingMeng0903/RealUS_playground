@@ -22,6 +22,7 @@ from peirastic.api import (
 )
 from peirastic.api.codes import ERR_NO_ACK, ERR_SEND, ERR_STOPPED, ERR_TIMEOUT
 from peirastic.api.payloads import HfpcPayload, HfvcPayload, MoveJPayload
+from peirastic.api.vel_filter import pack_vel_filter, resolve_filter_axes
 from peirastic.core.modes import Mode
 from peirastic.realman8dof.modes.servo import ServoTwistOuter
 from peirastic.realman8dof.modes.track import HybridTffOuter
@@ -124,6 +125,10 @@ def test_hfpc_ellipse_and_hfvc_shuttle_compile() -> None:
     phase_v = compile_request(ctx, req_v, raw=raw)
     assert isinstance(phase_v.outer, HybridTffOuter)
     assert isinstance(phase_v.outer.position, ServoTwistOuter)
+    assert np.array_equal(
+        phase_v.outer.position.filter_axes,
+        [True, True, False, True, True, True],
+    )
 
 
 def test_hfpc_compiles_to_pose_tff() -> None:
@@ -151,6 +156,10 @@ def test_hfvc_compiles_to_twist_tff() -> None:
     phase = compile_request(ctx, req, raw=raw)
     assert isinstance(phase.outer, HybridTffOuter)
     assert isinstance(phase.outer.position, ServoTwistOuter)
+    assert np.array_equal(
+        phase.outer.position.filter_axes,
+        [True, True, False, True, True, True],
+    )
 
 
 def test_selection_passthrough_default_and_force_x() -> None:
@@ -354,6 +363,22 @@ def test_cartesian_track_ellipse_is_swappable_vcmd() -> None:
     assert float(phase.outer.last_rot_deg) > 1.0
 
 
+def test_pack_vel_filter_canonical() -> None:
+    assert pack_vel_filter() is None
+    assert pack_vel_filter(filter=False) is False
+    assert pack_vel_filter(filter=True) is True
+    assert pack_vel_filter(follow=True) is False
+    assert pack_vel_filter(follow=False) is True
+    assert pack_vel_filter(filter=True, follow=True) is True
+    assert pack_vel_filter(slew=False) is False
+    assert pack_vel_filter(filter=[1, 1, 0, 1, 1, 1]) == [1.0, 1.0, 0.0, 1.0, 1.0, 1.0]
+    assert not np.any(resolve_filter_axes(default=False))
+    assert np.array_equal(
+        resolve_filter_axes(filter=True, mask=[1, 1, 0, 1, 1, 1]),
+        [True, True, False, True, True, True],
+    )
+
+
 def test_cartesian_velocity_is_swappable_passthrough() -> None:
     raw, ctx = _ctx()
     arm = _arm(ctx=ctx)
@@ -363,12 +388,16 @@ def test_cartesian_velocity_is_swappable_passthrough() -> None:
     assert req.mode == Mode.SERVO_TWIST
     assert req.payload["v_cmd"][1] == pytest.approx(0.02)
     assert req.payload.get("label") == "cartesian_velocity"
+    assert "filter" not in req.payload
+    assert "slew" not in req.payload
+    assert "follow" not in req.payload
     phase = compile_request(ctx, req, raw=raw)
     from peirastic.core.session import is_swappable
     from peirastic.realman8dof.modes.servo import ServoTwistOuter
 
     assert str(phase.label) == "cartesian_velocity"
     assert isinstance(phase.outer, ServoTwistOuter)
+    assert not np.any(phase.outer.filter_axes)
     assert is_swappable(Mode.SERVO_TWIST)
     pose = ctx.kin.fk_pose(_SEED)
     phase.outer.set_origin(pose, t_s=0.0)
@@ -376,7 +405,48 @@ def test_cartesian_velocity_is_swappable_passthrough() -> None:
     assert out0[1] == pytest.approx(0.02)
     phase.outer.source = lambda: np.array([0.0, 0.20, 0.0, 0.0, 0.0, 0.0])
     out1 = np.asarray(phase.outer.sample(0.005, pose, np.zeros(6)), dtype=float)
+    assert out1[1] == pytest.approx(0.20)
+
+
+def test_cartesian_velocity_filter_and_follow() -> None:
+    raw, ctx = _ctx()
+    arm = _arm(ctx=ctx)
+    pose = ctx.kin.fk_pose(_SEED)
+    assert arm.cartesian_velocity([0.0, 0.02, 0.0, 0.0, 0.0, 0.0], filter=True, block=0) == OK
+    assert arm.last_request.payload.get("filter") is True
+    phase = compile_request(ctx, arm.last_request, raw=raw)
+    assert np.all(phase.outer.filter_axes)
+    phase.outer.set_origin(pose, t_s=0.0)
+    out0 = np.asarray(phase.outer.sample(0.0, pose, np.zeros(6)), dtype=float)
+    assert out0[1] == pytest.approx(0.02)
+    phase.outer.source = lambda: np.array([0.0, 0.20, 0.0, 0.0, 0.0, 0.0])
+    out1 = np.asarray(phase.outer.sample(0.005, pose, np.zeros(6)), dtype=float)
     assert 0.02 < float(out1[1]) < 0.20
+    assert arm.cartesian_velocity([0.0, 0.02, 0.0, 0.0, 0.0, 0.0], follow=True, block=0) == OK
+    assert arm.last_request.payload.get("filter") is False
+    phase_f = compile_request(ctx, arm.last_request, raw=raw)
+    assert not np.any(phase_f.outer.filter_axes)
+
+
+def test_hfvc_force_axis_skips_filter() -> None:
+    raw, ctx = _ctx()
+    arm = _arm(ctx=ctx)
+    pose = ctx.kin.fk_pose(_SEED)
+    assert arm.hfvc([0.0, 0.02, 0.02, 0.0, 0.0, 0.0], source="twist") == OK
+    phase = compile_request(ctx, arm.last_request, raw=raw)
+    pos = phase.outer.position
+    assert np.array_equal(pos.filter_axes, [True, True, False, True, True, True])
+    pos.set_origin(pose, t_s=0.0)
+    out0 = np.asarray(pos.sample(0.0, pose, np.zeros(6)), dtype=float)
+    assert out0[1] == pytest.approx(0.02)
+    assert out0[2] == pytest.approx(0.02)
+    pos.source = lambda: np.array([0.0, 0.20, 0.20, 0.0, 0.0, 0.0])
+    out1 = np.asarray(pos.sample(0.005, pose, np.zeros(6)), dtype=float)
+    assert 0.02 < float(out1[1]) < 0.20
+    assert out1[2] == pytest.approx(0.20)
+    assert arm.hfvc(source="twist", filter=False) == OK
+    phase_off = compile_request(ctx, arm.last_request, raw=raw)
+    assert not np.any(phase_off.outer.position.filter_axes)
 
 
 def test_track_and_servo_compile() -> None:

@@ -2,6 +2,7 @@
 """Force-velocity hybrid: MOVEJ to mid-stroke, then the tool-Y shuttle.
 
 Track axes take the same ±Y open-loop curve as cartesian_velocity.
+Force Z is never receive-filtered; this demo does not pass ``filter``.
 Tool Z is the force axis. Default F*=0 so this is air-safe. On a surface
 set FORCE_N to force.yaml (2 N).
 

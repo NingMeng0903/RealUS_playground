@@ -95,6 +95,22 @@ def test_commanded_servo_label_blocks_pad() -> None:
     assert stay_after_duration(Mode.TRACK_CARTESIAN) is False
 
 
+def test_rm_movev_follow_latches_filter() -> None:
+    raw, ctx = _ctx()
+    arm = _arm(ctx=ctx)
+    assert arm.rm_set_movev_canfd_init(1, 0, 5) == OK
+    req = arm.last_request
+    assert req is not None
+    assert req.payload.get("filter") is True
+    phase = compile_request(ctx, req, raw=raw)
+    assert np.all(phase.outer.filter_axes)
+    assert arm.rm_movev_canfd([0.0, 0.02, 0.0, 0.0, 0.0, 0.0], follow=True) == OK
+    req_hi = arm.last_request
+    assert req_hi.payload.get("filter") is False
+    phase_hi = compile_request(ctx, req_hi, raw=raw)
+    assert not np.any(phase_hi.outer.filter_axes)
+
+
 def test_swappable_track_then_servo_compile() -> None:
     raw, ctx = _ctx()
     arm = _arm(ctx=ctx)
