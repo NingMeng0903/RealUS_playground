@@ -61,7 +61,7 @@ class AdaptiveKeConfig:
     ke_forgetting: float = 0.995      # slow forget (surface softens)
     ke_forgetting_inc: float = 0.88   # fast track  (surface stiffens)
     ke_min: float = 40.0
-    ke_max: float = 2500.0
+    ke_max: float = 10000.0
     dx_threshold_m: float = 8e-5
     contact_force_n: float = 0.8
     # Stiff-first impact initialisation. On a contact rising edge K̂_e jumps
@@ -71,7 +71,7 @@ class AdaptiveKeConfig:
     ke_impact_initial: float = 0.0
     # Conservative Ke used for barrier speed limits until the first ΔF/Δz
     # sample after contact.  0 disables (use ke_est immediately).
-    ke_cap_ub_n_m: float = 2000.0
+    ke_cap_ub_n_m: float = 10000.0
     # Soft-decay time constants toward ke_initial (see module docstring).
     # ke_detach_decay_s: out of contact. 1.0 s keeps ~95 % of learned K̂_e
     # through a 50 ms bounce flight and returns to seed over ~5 s.
@@ -129,13 +129,13 @@ class AdaptiveKeConfig:
                 a.get("ke_forgetting_inc", parent.get("ke_forgetting_inc", 0.88))
             ),
             ke_min=float(a.get("ke_min", parent.get("ke_min", 40.0))),
-            ke_max=float(a.get("ke_max", parent.get("ke_max", 2500.0))),
+            ke_max=float(a.get("ke_max", parent.get("ke_max", 10000.0))),
             dx_threshold_m=float(a.get("dx_threshold_m", parent.get("ke_dx_threshold_m", 8e-5))),
             contact_force_n=float(
                 a.get("contact_force_n", parent.get("adaptive_contact_force_n", 0.8))
             ),
             ke_impact_initial=float(a.get("ke_impact_initial", 0.0)),
-            ke_cap_ub_n_m=float(a.get("ke_cap_ub_n_m", 2000.0)),
+            ke_cap_ub_n_m=float(a.get("ke_cap_ub_n_m", 10000.0)),
             ke_detach_decay_s=float(a.get("ke_detach_decay_s", 1.0)),
             ke_idle_decay_s=float(a.get("ke_idle_decay_s", 2.0)),
             ke_soft_floor=float(a.get("ke_soft_floor", 300.0)),

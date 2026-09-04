@@ -35,6 +35,7 @@ hybrid_motion:
   pos_correction_max_m_s: 0.08
   # Placeholder aligned to barrier t_react — never measured.  Certificates
   # use runtime Td, not this number.  Voice-coil later only changes Td.
+  # 2026-09-03 chirp centre is T0=28 ms; 55 ms stays a conservative band.
   system_delay_s: 0.055
   contact_threshold_n: 0.8
   contact_use_fz_only: true
@@ -76,13 +77,14 @@ hybrid_motion:
   xd_rate_max_m_s: 0.002
   max_vz_tool_m_s: 0.08
   desired_force_ramp_s: 0.8
+  # ΔD_hf replaced by Ke schedule.  I_s is still observed; d_u/m_u stay 0.
   var_damping_enabled: true
   var_damping_omega_c_hz: 2.5
   var_damping_lambda: 0.951
   var_damping_f_max_n: 7.0
-  var_damping_d_u: 90.0
-  var_damping_m_u: 1.5
-  var_damping_m_max: 3.0
+  var_damping_d_u: 0.0
+  var_damping_m_u: 0.0
+  var_damping_m_max: 8.0
   var_damping_dc_alpha: 0.02
   var_damping_hf_attack_s: 0.02
   var_damping_hf_hold_s: 0.18
@@ -122,8 +124,8 @@ hybrid_motion:
     v_min_press_m_s: 0.0
     v_underforce_press_m_s: 0.010
     underforce_band_n: 0.20
-    # Extra clip only.  First contact is K_ub T_stop, not this number.
-    v_seek_free_m_s: 0.020
+    # Independent air approach.  Touch / unknown-Ke still 8 mm/s.
+    v_seek_free_m_s: 0.030
     tau_stop_s: 0.080
     e_x_m: 0.0004
     e_f_n: 0.20
@@ -140,10 +142,10 @@ hybrid_motion:
   cdyob:
     mode: "off"
     omega_q_hz: 0.75
-    t0_s: 0.030
-    tp_s: 0.012
-    tau_s: 0.030
-    t_n_s: 0.012
+    t0_s: 0.028
+    tp_s: 0.014
+    tau_s: 0.028
+    t_n_s: 0.014
     pn_m: 0.0
     v_corr_max_m_s: 0.015
     blend_s: 0.30
@@ -159,10 +161,10 @@ hybrid_motion:
   # inner loop keeps this block and only changes plant delay / caps.
   tdpa:
     enabled: true
-    # Observer only.  apply:true with alpha_max=400 inverts D (222808).
-    apply: false
+    # Apply uses D+α (drive = e_f − α v).  α_max stays below D_min=22.
+    apply: true
     e_leak_pos_s: 2.0
-    alpha_max: 400.0
+    alpha_max: 20.0
     bias_lpf_s: 8.0
     v_bias_gate_m_s: 0.003
   # Certificate 3: set invariance of [F_keep, F_max], not passivity.
@@ -205,12 +207,11 @@ hybrid_motion:
     rho: 0.15
     e0_j: 0.004
     eps_j: 0.0005
-    # Free-space chirp 20260829_202437: T0=35 ms all 8/15/25 mm/s.
-    # Td is a band (feedback_age p95 6.3 ms).  Do not use 3 Hz group delay
-    # as T0 (65/49/20 ms disagree).  Not a passivity certificate.
+    # Free-space chirp 2026-09-03: T0=28 ms, Tp=14 ms, K=0.96 (Z).
+    # 8/29 was 35/12.  Td is still a band (age p95 ~4–6 ms).
     plant:
-      t0_s: 0.035
-      tp_s: 0.012
+      t0_s: 0.028
+      tp_s: 0.014
       horizon_steps: 40
     # stop_dx_ub is written by --analyze-stop --write-yaml.
     # certified: false until 200 Hz motion-SHM backup replay + independent
@@ -369,9 +370,9 @@ hybrid_motion:
     zeta: 0.9
     ke_initial: 80.0
     ke_min: 40.0
-    ke_max: 2500.0
+    ke_max: 10000.0
     ke_impact_initial: 0.0
-    ke_cap_ub_n_m: 2000.0
+    ke_cap_ub_n_m: 10000.0
     ke_forgetting: 0.995
     ke_forgetting_inc: 0.88
     ke_idle_decay_s: 2.0
@@ -387,16 +388,32 @@ hybrid_motion:
     df_spike_n: 4.0
     f_err_gate_n: 1.2
     f_err_gate_frac: 0.35
-    bd_min: 25.0
-    bd_max: 180.0
+    bd_min: 22.0
+    bd_max: 400.0
     bd_slew_max: 400.0
     ke_slew_max: 1200.0
-  proactive_feedforward: true
+  ke_schedule:
+    enabled: true
+    d_min: 22.0
+    d_max: 400.0
+    ke_div: 14.0
+    m_min: 1.0
+    m_max: 8.0
+    slew_s: 0.30
+    confirm_s: 0.15
+  energy_tank:
+    enabled: true
+    eps_j: 0.08
+    t_soft_j: 0.25
+    t_bar_j: 1.0
+    t0_j: 0.50
+  # κ=0 on hard / unknown Ke.  Soft-tissue optional κ is tank-gated at 0.
+  proactive_feedforward: false
   # Legacy parameters are retained for isolated non-CDYOB tests only.
   proactive_retract_only: false
-  # 014140 showed why this inactive v_r branch must not contaminate shadow.
-  proactive_gain: 0.24
-  proactive_retract_gain: 0.30
+  # κ=0: press and retract share a zero chase gain (symmetric).
+  proactive_gain: 0.0
+  proactive_retract_gain: 0.0
   proactive_leak_s: 0.25
   v_r_max_m_s: 0.06
   proactive_gate_press_on_is: false
@@ -414,7 +431,7 @@ hybrid_motion:
   force_scale_min_n: 0.18
   force_scale_fraction: 0.12
   fast_retract_guard:
-    enabled: true
+    enabled: false
     cutoff_hz: 20.0
     stop_margin_n: 0.25
     stop_margin_fraction: 0.05

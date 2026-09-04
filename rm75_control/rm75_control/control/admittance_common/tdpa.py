@@ -29,10 +29,11 @@ from dataclasses import dataclass
 class TdpaConfig:
     enabled: bool = False
     # Bookkeep E_obs / α.  Do not feed Fc into the admittance unless apply.
-    # α_max=400 with D=40 is (1 − α/D) < 0: the port law changes sign.
+    # apply:true adds α to D (D+α).  Never substitute Fc=Fe−αv into e_f.
     apply: bool = False
     e_leak_pos_s: float = 2.0
-    alpha_max: float = 400.0
+    # Must stay below D.  apply adds α to D (never F*−(Fe−αv)).
+    alpha_max: float = 20.0
     bias_lpf_s: float = 8.0
     v_bias_gate_m_s: float = 0.003
     e0_j: float = 0.0
@@ -50,7 +51,7 @@ class TdpaConfig:
             enabled=bool(block.get("enabled", False)),
             apply=bool(block.get("apply", False)),
             e_leak_pos_s=float(block.get("e_leak_pos_s", 2.0)),
-            alpha_max=float(block.get("alpha_max", 400.0)),
+            alpha_max=float(block.get("alpha_max", 20.0)),
             bias_lpf_s=float(block.get("bias_lpf_s", 8.0)),
             v_bias_gate_m_s=float(block.get("v_bias_gate_m_s", 0.003)),
             e0_j=float(block.get("e0_j", 0.0)),

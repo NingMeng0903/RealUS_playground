@@ -1,4 +1,4 @@
-"""Certificate 1 filter: 20 Hz first-order, not 10 Hz second-order."""
+"""Certificate 1 filter: 45 Hz first-order, not 10 Hz second-order."""
 
 from __future__ import annotations
 
@@ -6,9 +6,9 @@ from rm75_control.control.admittance_common.controller import AdmittanceConfig
 from rm75_control.control.admittance_common.observer import ForceObserverConfig
 
 
-def test_observer_default_is_20hz_first_order() -> None:
+def test_observer_default_is_45hz_first_order() -> None:
     cfg = ForceObserverConfig()
-    assert cfg.causal_fc_hz == 20.0
+    assert cfg.causal_fc_hz == 45.0
     assert cfg.causal_order == 1
 
 

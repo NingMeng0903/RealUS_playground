@@ -30,9 +30,9 @@ class ForceObserverConfig:
     delay_s: float = 0.0
     rail_stationary_only: bool = True
     poll_hz: float = 100.0
-    # Certificate 1: 20 Hz 1st-order (~7.9 ms at 3 Hz) instead of 10 Hz
-    # 2nd-order (~23.1 ms).  Hardware crossover check is deferred to contact.
-    causal_fc_hz: float = 20.0
+    # Certificate 1: 45 Hz 1st-order (~3.5 ms at 3 Hz).  Keemink G2:
+    # do not low-pass the wrench more than a light first-order.
+    causal_fc_hz: float = 45.0
     causal_order: int = 1
     causal_history: int = 5
 
@@ -270,7 +270,7 @@ class CompensatedForceObserver:
                 delay_s=float(f.get("delay_online_effective_s", f.get("delay_s", 0.0))),
                 rail_stationary_only=bool(f.get("rail_stationary_only", True)),
                 poll_hz=poll_hz,
-                causal_fc_hz=float(f.get("causal_fc_hz", 20.0)),
+                causal_fc_hz=float(f.get("causal_fc_hz", 45.0)),
                 causal_order=int(f.get("causal_order", 1)),
                 causal_history=int(f.get("causal_history", 5)),
             )

@@ -549,7 +549,7 @@ def test_hybrid_defaults_desired_z_from_force_yaml() -> None:
     assert float(force["hybrid_motion"]["max_vz_tool_m_s"]) == pytest.approx(0.08)
     assert float(force["hybrid_motion"]["system_delay_s"]) == pytest.approx(0.055)
     assert float(force["hybrid_motion"]["force_barrier"]["v_seek_free_m_s"]) == pytest.approx(
-        0.020
+        0.030
     )
     assert float(force["hybrid_motion"]["press_envelope"]["first_touch_m_s"]) == pytest.approx(
         0.0
@@ -563,8 +563,8 @@ def test_hybrid_defaults_desired_z_from_force_yaml() -> None:
     )
     assert float(force["hybrid_motion"]["force_scale_fraction"]) == pytest.approx(0.12)
     assert force["hybrid_motion"]["cdyob"]["mode"] == "off"
-    assert float(force["hybrid_motion"]["cdyob"]["t0_s"]) == pytest.approx(0.030)
-    assert float(force["hybrid_motion"]["cdyob"]["tp_s"]) == pytest.approx(0.012)
+    assert float(force["hybrid_motion"]["cdyob"]["t0_s"]) == pytest.approx(0.028)
+    assert float(force["hybrid_motion"]["cdyob"]["tp_s"]) == pytest.approx(0.014)
     assert float(force["hybrid_motion"]["cdyob"]["omega_q_hz"]) == pytest.approx(
         0.75
     )
@@ -586,7 +586,7 @@ def test_hybrid_defaults_desired_z_from_force_yaml() -> None:
     ) == pytest.approx(0.05)
     assert force["hybrid_motion"]["force_dob"]["enabled"] is True
     assert float(force["hybrid_motion"]["force_dob"]["ki"]) == pytest.approx(8.0)
-    assert force["hybrid_motion"]["proactive_feedforward"] is True
+    assert force["hybrid_motion"]["proactive_feedforward"] is False
     assert float(
         force["hybrid_motion"]["force_barrier"]["v_underforce_press_m_s"]
     ) == pytest.approx(0.010)

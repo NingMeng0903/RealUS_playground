@@ -273,7 +273,7 @@ def test_closed_loop_very_hard_surface_no_bounce_cascade():
 def test_dimeas_5hz_forced_oscillation_adds_zero_centered_damping():
     """A 5 Hz forced fz oscillation (in the contact-resonance band that
     ``_update_instability_index``'s HP-filter targets) must raise Iₛ.
-    e85 shipped ΔD_hf / m_u so the detector can add damping.
+    ΔD_hf is off (d_u=m_u=0); Ke schedule owns D/M.
     """
     import yaml
     from pathlib import Path
@@ -313,10 +313,11 @@ def test_dimeas_5hz_forced_oscillation_adds_zero_centered_damping():
         f"5 Hz forced oscillation must raise Iₛ above 0.1, got "
         f"{ctrl.instability_index:.4f}"
     )
-    assert cfg.var_damping_d_u == pytest.approx(90.0)
-    assert cfg.var_damping_m_u == pytest.approx(1.5)
-    assert max_mass <= max(float(cfg.var_damping_m_max), 0.0) + 1e-6
-    assert max_dimeas_damping >= 0.0
+    assert cfg.var_damping_d_u == pytest.approx(0.0)
+    assert cfg.var_damping_m_u == pytest.approx(0.0)
+    assert cfg.ke_schedule.enabled is True
+    assert max_mass <= max(float(cfg.ke_schedule.m_max), 0.0) + 1e-6
+    assert max_dimeas_damping == pytest.approx(0.0)
 
 
 def test_dimeas_disabled_leaves_mass_static():

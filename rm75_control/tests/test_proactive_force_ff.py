@@ -443,10 +443,10 @@ def test_high_instability_cannot_delay_overforce_escape_after_reversal():
 def test_yaml_proactive_parameters_retained_but_a_only_baseline_disables_loop():
     raw = yaml.safe_load(Path("configs/joint_admittance_8dof.yaml").read_text())
     hm = raw["hybrid_motion"]
-    assert hm["proactive_feedforward"] is True
+    assert hm["proactive_feedforward"] is False
     assert hm["proactive_retract_only"] is False
-    assert float(hm["proactive_gain"]) == pytest.approx(0.24)
-    assert float(hm["proactive_retract_gain"]) == pytest.approx(0.30)
+    assert float(hm["proactive_gain"]) == pytest.approx(0.0)
+    assert float(hm["proactive_retract_gain"]) == pytest.approx(0.0)
     assert float(hm["proactive_leak_s"]) == pytest.approx(0.25)
     assert float(hm["v_r_max_m_s"]) == pytest.approx(0.06)
     assert float(hm["proactive_in_band_n"]) == pytest.approx(0.08)

@@ -69,20 +69,22 @@ def test_yaml_smooth_chase_defaults_load():
     )
     cfg = AdmittanceConfig.from_dict(raw)
     assert cfg.force_dob.enabled is True
-    assert cfg.proactive_ff.enabled is True
+    assert cfg.proactive_ff.enabled is False
     assert cfg.proactive_ff.retract_only is False
     assert cfg.force_barrier.enabled is False
     assert cfg.track_axes[2] == pytest.approx(0.0)
     assert cfg.kp_pos[2] == pytest.approx(0.0)
     assert cfg.adaptive_ke.drive_damping is False
     assert cfg.proactive_ff.gate_press_on_is is False
-    assert cfg.var_damping_d_u == pytest.approx(90.0)
-    assert cfg.var_damping_m_u == pytest.approx(1.5)
+    assert cfg.var_damping_d_u == pytest.approx(0.0)
+    assert cfg.var_damping_m_u == pytest.approx(0.0)
+    assert cfg.ke_schedule.enabled is True
+    assert cfg.energy_tank.enabled is True
     assert cfg.cdyob.mode == "off"
     assert cfg.cdyob.applies() is False
     assert cfg.cdyob.omega_q_hz == pytest.approx(0.75)
-    assert cfg.cdyob.t0_s == pytest.approx(0.030)
-    assert cfg.cdyob.tp_s == pytest.approx(0.012)
+    assert cfg.cdyob.t0_s == pytest.approx(0.028)
+    assert cfg.cdyob.tp_s == pytest.approx(0.014)
     assert cfg.cdyob.v_corr_max_m_s == pytest.approx(0.015)
     assert cfg.cdyob.active_press_max_m_s == pytest.approx(0.010)
     assert cfg.cdyob.active_retract_max_m_s == pytest.approx(0.015)
@@ -95,7 +97,8 @@ def test_yaml_smooth_chase_defaults_load():
     assert cfg.force_barrier.v_underforce_press_m_s == pytest.approx(0.010)
     assert cfg.cdyob.active_model_validated is False
     assert cfg.tdpa.enabled is True
-    assert cfg.tdpa.apply is False
+    assert cfg.tdpa.apply is True
+    assert cfg.tdpa.alpha_max == pytest.approx(20.0)
     assert cfg.safety_shield.u_retract_m_s == pytest.approx(0.080)
     assert cfg.force_corridor.enabled is False
     assert cfg.press_envelope.max_force_axis_m_s == pytest.approx(0.0)
@@ -123,7 +126,8 @@ def test_yaml_smooth_chase_defaults_load():
             np.zeros(6), np.zeros(6), np.zeros(6), f_ext, f_des, in_contact=True
         )
     assert ctrl.v_force_z > 0.0
-    assert abs(ctrl.v_r_z) > 1e-4 or abs(ctrl.u_dob_z) > 1e-4
+    assert abs(ctrl.v_r_z) <= 1e-6
+    assert abs(ctrl.u_dob_z) > 1e-4
 
 
 def test_hf_delta_d_releases_after_hold():

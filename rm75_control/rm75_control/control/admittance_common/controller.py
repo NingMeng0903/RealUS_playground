@@ -59,6 +59,10 @@ from rm75_control.control.admittance_common.force_corridor import (
     ForceCorridorConfig,
     PressEnvelopeConfig,
 )
+from rm75_control.control.admittance_common.energy_tank import (
+    ActiveTermTank,
+    EnergyTankConfig,
+)
 from rm75_control.control.admittance_common.tdpa import (
     TdpaConfig,
     TimeDomainPassivityObserver,
@@ -121,6 +125,40 @@ class SurfaceForceModulationConfig:
             stable_contact_s=float(section.get("stable_contact_s", 0.20)),
             attack_s=float(section.get("attack_s", 0.05)),
             release_s=float(section.get("release_s", 0.15)),
+        )
+
+
+@dataclass
+class KeScheduleConfig:
+    """Delay-aware D(Ke)=Ke/14, M=D²/(2 Ke).  Replaces ΔD_hf."""
+
+    enabled: bool = False
+    d_min: float = 22.0
+    d_max: float = 400.0
+    ke_div: float = 14.0
+    m_min: float = 1.0
+    m_max: float = 8.0
+    slew_s: float = 0.30
+    confirm_s: float = 0.15
+
+    @classmethod
+    def from_dict(cls, raw: dict) -> "KeScheduleConfig":
+        root = raw if isinstance(raw, dict) else {}
+        controller = root.get("hybrid_motion", root.get("controller", root))
+        if not isinstance(controller, dict):
+            controller = root
+        block = controller.get("ke_schedule", root.get("ke_schedule", {}))
+        if not isinstance(block, dict):
+            block = {}
+        return cls(
+            enabled=bool(block.get("enabled", False)),
+            d_min=float(block.get("d_min", 22.0)),
+            d_max=float(block.get("d_max", 400.0)),
+            ke_div=float(block.get("ke_div", 14.0)),
+            m_min=float(block.get("m_min", 1.0)),
+            m_max=float(block.get("m_max", 8.0)),
+            slew_s=float(block.get("slew_s", 0.30)),
+            confirm_s=float(block.get("confirm_s", 0.15)),
         )
 
 
@@ -229,6 +267,8 @@ class AdmittanceConfig:
     tdpa: TdpaConfig = field(default_factory=TdpaConfig)
     force_corridor: ForceCorridorConfig = field(default_factory=ForceCorridorConfig)
     press_envelope: PressEnvelopeConfig = field(default_factory=PressEnvelopeConfig)
+    ke_schedule: KeScheduleConfig = field(default_factory=KeScheduleConfig)
+    energy_tank: EnergyTankConfig = field(default_factory=EnergyTankConfig)
 
     @classmethod
     def from_dict(cls, raw: dict) -> AdmittanceConfig:
@@ -368,6 +408,8 @@ class AdmittanceConfig:
             tdpa=TdpaConfig.from_dict(raw),
             force_corridor=ForceCorridorConfig.from_dict(raw),
             press_envelope=PressEnvelopeConfig.from_dict(raw),
+            ke_schedule=KeScheduleConfig.from_dict(raw),
+            energy_tank=EnergyTankConfig.from_dict(raw),
         )
 
 
@@ -460,6 +502,16 @@ class AdmittanceController:
         self.u_dob_z = 0.0
         self._force_barrier = ForceSpaceVelocityDamper(self.cfg.force_barrier)
         self._tdpa = TimeDomainPassivityObserver(self.cfg.tdpa)
+        self._energy_tank = ActiveTermTank(self.cfg.energy_tank)
+        self.tank_energy_j = float(self._energy_tank.energy_j)
+        self.tank_lambda = 1.0
+        self.tank_drained = False
+        if self.cfg.ke_schedule.enabled:
+            self._d_sched = float(self.cfg.ke_schedule.d_min)
+            self._m_sched = float(self.cfg.ke_schedule.m_min)
+        else:
+            self._d_sched = float(self.cfg.admittance_damping_z)
+            self._m_sched = float(self.cfg.admittance_mass_z)
         self._force_corridor = ForceCorridor(self.cfg.force_corridor)
         self._v_zoh_z = 0.0
         self.x_adm_z = 0.0
@@ -647,6 +699,16 @@ class AdmittanceController:
         self.u_dob_z = 0.0
         self._force_barrier.reset()
         self._tdpa.reset()
+        self._energy_tank.reset()
+        self.tank_energy_j = float(self._energy_tank.energy_j)
+        self.tank_lambda = 1.0
+        self.tank_drained = False
+        if self.cfg.ke_schedule.enabled:
+            self._d_sched = float(self.cfg.ke_schedule.d_min)
+            self._m_sched = float(self.cfg.ke_schedule.m_min)
+        else:
+            self._d_sched = float(self.cfg.admittance_damping_z)
+            self._m_sched = float(self.cfg.admittance_mass_z)
         self._force_corridor.reset()
         self._v_zoh_z = 0.0
         self.x_adm_z = 0.0
@@ -889,6 +951,53 @@ class AdmittanceController:
         """Independent air approach.  Admittance does not run F*/D here."""
         return self._v_air_seek()
 
+    def _ke_confirmed(self) -> bool:
+        """True after contact has lasted long enough for K̂e to be usable."""
+        if not bool(self.contact_present):
+            return False
+        need = max(float(self.cfg.ke_schedule.confirm_s), 0.0)
+        if self._contact_time_s + 1e-12 < need:
+            return False
+        return float(self.ke_est) >= max(float(self.cfg.adaptive_ke.ke_min), 1.0)
+
+    def _slew_schedule(self, current: float, target: float, dt_s: float, *, raise_fast: bool) -> float:
+        if dt_s <= 0.0:
+            return float(target)
+        slew = max(float(self.cfg.ke_schedule.slew_s), 0.0)
+        if slew <= 1e-12:
+            return float(target)
+        if raise_fast and target >= current:
+            tau = 0.05
+        else:
+            tau = slew
+        blend = min(1.0, dt_s / tau)
+        return float(current + blend * (target - current))
+
+    def _update_ke_schedule(self, *, in_contact: bool, dt_s: float) -> tuple[float, float]:
+        cfg = self.cfg.ke_schedule
+        if not cfg.enabled or self.cfg.cdyob.computes():
+            self._m_sched = float(self.cfg.admittance_mass_z)
+            self._d_sched = float(self.cfg.admittance_damping_z)
+            return self._m_sched, self._d_sched
+        d_min = max(float(cfg.d_min), 1e-3)
+        d_max = max(float(cfg.d_max), d_min)
+        m_min = max(float(cfg.m_min), 1e-3)
+        m_max = max(float(cfg.m_max), m_min)
+        if in_contact and self._ke_confirmed():
+            ke = max(float(self.ke_est), 1.0)
+            d_tgt = min(max(d_min, ke / max(float(cfg.ke_div), 1e-6)), d_max)
+            m_tgt = min(max((d_tgt * d_tgt) / (2.0 * ke), m_min), m_max)
+        else:
+            d_tgt = d_min
+            m_tgt = m_min
+        self._d_sched = self._slew_schedule(
+            self._d_sched, d_tgt, dt_s, raise_fast=True
+        )
+        self._m_sched = self._slew_schedule(
+            self._m_sched, m_tgt, dt_s, raise_fast=False
+        )
+        return self._m_sched, self._d_sched
+
     def _reset_force_axis_state(self) -> None:
         self.v_force_z = 0.0
         self._v_zoh_z = 0.0
@@ -964,10 +1073,13 @@ class AdmittanceController:
                 seek = self._v_air_seek()
                 if seek > 0.0:
                     cap = min(cap, seek)
-            elif self._recontact_timer_s > 0.0:
-                rec = max(float(self.cfg.recontact_vz_cap_m_s), 0.0)
-                if rec > 0.0:
-                    cap = min(cap, rec)
+            elif self.cfg.ke_schedule.enabled:
+                if self._recontact_timer_s > 0.0 or not self._ke_confirmed():
+                    rec = max(float(self.cfg.recontact_vz_cap_m_s), 0.0)
+                    if rec > 0.0:
+                        cap = min(cap, rec)
+            elif self._use_delay_safe_press():
+                cap = min(cap, self._v_delay_safe())
             return max(cap, 0.0)
         if self._use_delay_safe_press():
             cap = min(cap, self._v_delay_safe())
@@ -1578,6 +1690,10 @@ class AdmittanceController:
         if cfg.cdyob.computes():
             # Paper A-only baseline is fixed LTI A(s)=1/(Ms+D).
             mass_z = cfg.admittance_mass_z
+        elif cfg.ke_schedule.enabled:
+            mass_z, _d_sched = self._update_ke_schedule(
+                in_contact=physical_contact, dt_s=dt_flow
+            )
         elif cfg.var_damping_enabled:
             mass_z = (
                 cfg.admittance_mass_z
@@ -1787,9 +1903,20 @@ class AdmittanceController:
             )
             if self._precontact_barrier_hold_s <= 0.0 and not precontact_candidate:
                 self._precontact_peak_force_n = 0.0
-        if self._press_envelope_active() and self._use_delay_safe_press():
+        if self._use_delay_safe_press() and (
+            self._press_envelope_active() or not self.cfg.ke_schedule.enabled
+        ):
             self.cap_press_z = min(self.cap_press_z, self._v_delay_safe())
             self._force_barrier.cap_press_z = self.cap_press_z
+        elif (
+            self.cfg.ke_schedule.enabled
+            and bool(self.contact_present)
+            and (self._recontact_timer_s > 0.0 or not self._ke_confirmed())
+        ):
+            rec = max(float(self.cfg.recontact_vz_cap_m_s), 0.0)
+            if rec > 0.0:
+                self.cap_press_z = min(self.cap_press_z, rec)
+                self._force_barrier.cap_press_z = self.cap_press_z
         if retract_emit <= 0.0:
             self.cap_retract_z = 0.0
             self._force_barrier.cap_retract_z = 0.0
@@ -1826,20 +1953,30 @@ class AdmittanceController:
             feedback_age_s if feedback_age_s is not None else sensor_age_s
         )
         # R2: F* := 0 out of contact.  TDPA always bookkeeps F×v_cmd.
-        # Applying Fc = Fe − α v with α ≫ D inverts the admittance
-        # (hardware 222808: α=400, D=40, 12 Hz relay).  Observe unless apply.
+        # Apply is D+α: drive = e_f − α v, never F* − (Fe − α v) which
+        # inverted D when α > D (hardware 222808).
         if not physical_contact:
             f_err_adm = 0.0
         else:
             f_err_adm = float(f_err_z)
+        tdpa_alpha = 0.0
         if physical_contact and self.cfg.tdpa.enabled:
-            fc = self._tdpa.preview(
+            self._tdpa.preview(
                 force_normal_filtered,
                 float(self.u_sent_z),
                 dt_flow,
             )
             if self.cfg.tdpa.apply:
-                f_err_adm = float(force_normal_desired) - float(fc)
+                d_ref = (
+                    float(self._d_sched)
+                    if self.cfg.ke_schedule.enabled
+                    else float(self.cfg.admittance_damping_z)
+                )
+                cap = min(
+                    max(float(self.cfg.tdpa.alpha_max), 0.0),
+                    0.8 * max(d_ref, 1e-6),
+                )
+                tdpa_alpha = min(max(float(self._tdpa.alpha), 0.0), cap)
         v_adm_z = self._admittance_z(
             f_err_adm,
             physical_contact,
@@ -1856,6 +1993,7 @@ class AdmittanceController:
             chase_scale=chase_scale,
             force_pred_n=self.force_pred_z,
             overforce_escape=self.overforce_escape,
+            tdpa_alpha=tdpa_alpha,
         )
         self.v_force_z = float(v_adm_z)
         if not physical_contact:
@@ -2335,6 +2473,7 @@ class AdmittanceController:
         chase_scale: float = 1.0,
         force_pred_n: float | None = None,
         overforce_escape: bool = False,
+        tdpa_alpha: float = 0.0,
     ) -> float:
         cfg = self.cfg
         eff = smooth_deadband_eff(
@@ -2346,6 +2485,8 @@ class AdmittanceController:
         # Steady damping: D0 unless legacy drive_damping keeps Keemink b_d.
         if cfg.cdyob.computes():
             damping_ke = float(cfg.admittance_damping_z)
+        elif cfg.ke_schedule.enabled:
+            damping_ke = float(self._d_sched)
         elif (
             cfg.adaptive_ke.enabled
             and cfg.adaptive_ke.drive_damping
@@ -2354,9 +2495,12 @@ class AdmittanceController:
             damping_ke = float(self.adaptive_bd)
         else:
             damping_ke = float(cfg.admittance_damping_z)
-        damping_dimeas = self._update_delta_d_hf(
-            dt_eff, abs_eff_n=abs(float(eff))
-        )
+        if cfg.ke_schedule.enabled:
+            damping_dimeas = 0.0
+        else:
+            damping_dimeas = self._update_delta_d_hf(
+                dt_eff, abs_eff_n=abs(float(eff))
+            )
         if cfg.cdyob.computes():
             # Keep detecting instability, but do not change A during either
             # A-only baseline or CDYOB shadow/active operation.
@@ -2445,18 +2589,43 @@ class AdmittanceController:
             instability_index=self.instability_index,
             chase_scale=chase_scale,
         )
-        drive = float(eff) + float(self.u_dob_z)
+        f_star_tank = float(desired_force_n) if in_contact else 0.0
+        lam = self._energy_tank.update(
+            damping=float(damping),
+            v_cmd=float(self._v_zoh_z),
+            v_r=float(v_reference),
+            u_dob=float(self.u_dob_z),
+            f_star=f_star_tank,
+            dt_s=dt_eff,
+        )
+        self.tank_energy_j = float(self._energy_tank.energy_j)
+        self.tank_lambda = float(lam)
+        self.tank_drained = bool(self._energy_tank.drained)
+        if self._energy_tank.drained:
+            # Secchi floor: empty tank drops v_r / DOB / F* pay, keeps e_f.
+            v_reference = 0.0
+            self.u_dob_z = 0.0
+            self.v_r_z = 0.0
+            drive = float(eff)
+            lam_active = 0.0
+        else:
+            drive = float(lam) * (float(eff) + float(self.u_dob_z))
+            lam_active = float(lam)
         kc = max(float(cfg.admittance_stiffness_z), 0.0)
         state = float(self._v_zoh_z)
         if dt_eff <= 0.0:
             velocity = state
         else:
-            # Exact ZOH of M v̇ + D v + Kc x̃ = drive + D0 v_r.
-            # Spring force is held over the sample (rhs − Kc x̃).
-            damp = max(float(damping), 1e-9)
+            # Exact ZOH of M v̇ + (D+α) v + Kc x̃ = λ (e_f + u_DOB + D0 v_r).
+            # Drained tank: rhs = e_f (passive M–D–e_f).
+            damp = max(float(damping) + max(float(tdpa_alpha), 0.0), 1e-9)
             a_disc = math.exp(-damp * dt_eff / mass_z)
             b_disc = (1.0 - a_disc) / damp
-            rhs = drive + max(damping_base, 0.0) * v_reference - kc * float(self.x_tilde_z)
+            rhs = (
+                drive
+                + float(lam_active) * max(damping_base, 0.0) * v_reference
+                - kc * float(self.x_tilde_z)
+            )
             velocity = a_disc * state + b_disc * rhs
         if v_z_cap > 0.0:
             # Tool-Z clip.  Press may be −Z; the emit path maps to a

@@ -298,7 +298,8 @@ def test_tdpa_observe_does_not_relay_on_last_retract() -> None:
     assert float(ctrl.u_sent_z) > 0.0
 
 
-def test_tdpa_apply_follows_last_retract_when_alpha_clamped() -> None:
+def test_tdpa_apply_adds_damping_and_still_presses() -> None:
+    """D+α must not invert underforce into retract (hardware 222808)."""
     cfg = _first_touch_cfg()
     cfg.tdpa.enabled = True
     cfg.tdpa.apply = True
@@ -331,8 +332,9 @@ def test_tdpa_apply_follows_last_retract_when_alpha_clamped() -> None:
         dt_actual=0.005,
     )
     assert ctrl.contact_present
-    assert float(cmd[2]) < 0.0
-    assert float(ctrl.u_sent_z) < 0.0
+    assert float(ctrl.tdpa_alpha) > 0.0
+    assert float(cmd[2]) > 0.0
+    assert float(ctrl.u_sent_z) > 0.0
 
 
 def test_e85_confirmed_contact_overforce_reaches_eighty() -> None:
