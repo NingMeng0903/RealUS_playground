@@ -65,6 +65,7 @@ def build_movej_phase(
     duration_s: float | None = None,
     v: float | None = None,
     label: str = "movej",
+    secondary: str | None = None,
 ) -> Phase:
     q0 = np.asarray(ctx.inner.q_cmd if q_start is None else q_start, dtype=float)
     qt = np.asarray(q_target, dtype=float).reshape(-1)
@@ -91,6 +92,7 @@ def build_movej_phase(
         q_target_rad=qt,
         move_mode="joint",
         gov_joint_max_deg=plan.gov_joint_max_deg,
+        secondary_preset=str(secondary) if secondary else "move",
     )
     compiled = compile_phase(spec, ctx)
     attach_joint_move_rail(compiled.phase, ctx.inner, move_ref=move_ref)

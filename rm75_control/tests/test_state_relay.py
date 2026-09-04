@@ -54,6 +54,7 @@ class _FakeObserver:
             snap = AsyncStateSnapshot(
                 pose=np.array([0.1, 0.2, 0.3, 0.0, 0.0, 0.0]),
                 q_deg=self._q_deg.copy(),
+                qdot_deg_s=np.array([1.0, 0.0, -0.5, 0.0, 0.0, 0.0, 2.0], dtype=float),
                 force_raw=np.asarray(force, dtype=float).copy(),
                 t_s=time.monotonic(),
                 ok=True,
@@ -102,6 +103,8 @@ def test_relay_pub_sub_roundtrip(relay_name):
         assert int(getattr(snap, "wall_time_ns", 0) or 0) > 0
         assert snap.q_deg is not None
         assert snap.q_deg[0] == pytest.approx(10.0)
+        assert snap.qdot_deg_s is not None
+        np.testing.assert_allclose(snap.qdot_deg_s, [1.0, 0.0, -0.5, 0.0, 0.0, 0.0, 2.0])
         q8 = sub.q_meas_8dof()
         assert q8 is not None
         assert q8[0] == pytest.approx(0.05)

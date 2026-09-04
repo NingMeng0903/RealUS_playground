@@ -1,0 +1,86 @@
+# Payload ID V2. Static m,h,b is written to live force_id_phi.json after fit.
+# Inertia scan/fit stays off unless --inertia (algorithm is kept).
+
+force_sensor: configs/force_sensor.yaml
+required_tool_frame: gripper2
+canonical_payload_frame: link_7
+# Plan attitude about the mount (armtip). hold_point=tcp pins the taught TCP
+# so this mid keeps the 16-pose family; project to the live tool only at send.
+plan_frame: link_7
+hold_point: tcp
+command_tcp_frame: gripper2
+secondary: payload_id
+qp_aux:
+  collision: true
+  centering: false
+  arm_angle: false
+  manipulability: false
+  singularity_escape: false
+
+rail:
+  target_m: 0.40
+  pos_err_max_m: 0.0005
+  vel_p95_max_m_s: 0.0005
+
+safety:
+  # P2 only: abort dynamic excitation if any arm joint is within this of limit.
+  joint_margin_rad: 0.08
+  # P1 plan-time: skip static poses whose IK solution violates this margin.
+  static_plan_margin_rad: 0.08
+
+static:
+  # World-axis tilts at the taught mid, plus a tip-up (link_7 +Z world-up) family.
+  # Coverage is g_L / armtip attitude. WZ yaw is not used for m,h.
+  include_tool_tilts: false
+  include_yaw: false
+  include_tip_up: true
+  tip_up_approach_steps: 6
+  tip_up_tilt_degs: [15, 30, 45]
+  n_train: 16
+  n_holdout: 6
+  record_s: 0.6
+  min_wait_s: 0.20
+  settle_qdot_rad_s: 0.03
+  tilt_degs: [15, 30, 45, 60, 75, 90]
+  holdout_min_abs_deg: 60
+  p_l_band_m: 0.05
+  m_min: 0.05
+  m_max: 5.0
+  r_max_m: 0.12
+  drift_eps_b: 0.02
+
+dynamic:
+  f0_hz: 0.6
+  harmonics: [1, 2, 3, 4]
+  n_warmup: 1
+  n_measure: 5
+  n_cooldown: 1
+  post_hold_s: 0.25
+  v_peak_m_s: 0.15
+  w_peak_rad_s: 1.10
+  x_max_m: 0.055
+  v_max_m_s: 0.18
+  a_max_m_s2: 3.5
+  j_max_m_s3: 60.0
+  w_max_rad_s: 1.30
+  alpha_max_rad_s2: 16.0
+  j_ang_max: 100.0
+  ang_max_rad: 0.40
+  snr_ma_min: 3.0
+
+inertia:
+  enabled: false
+  snr_min: 3.0
+  f0_hz: 0.6
+  harmonics: [1, 2, 3]
+  n_warmup: 1
+  n_measure: 4
+  n_cooldown: 1
+  w_peak_rad_s: 1.10
+  w_max_rad_s: 1.30
+  alpha_max_rad_s2: 16.0
+  ang_max_rad: 0.40
+
+output:
+  sidecar: force_id_phi_v2.json
+  auto_promote_live: true

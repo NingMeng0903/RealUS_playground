@@ -163,14 +163,17 @@ class HfpcPayload:
 
     def to_json(self) -> dict[str, Any]:
         law = str(self.law or "tff").lower()
-        if law not in ("tff", "admittance"):
-            raise ValueError(f"hfpc law must be 'tff' or 'admittance', got {self.law!r}")
+        if law not in ("tff", "admittance", "fce"):
+            raise ValueError(
+                f"hfpc law must be 'tff', 'admittance', or 'fce', got {self.law!r}"
+            )
         out = _dump(
             {
                 "reference": self.reference,
                 "poses": self.poses,
                 "speed_m_s": self.speed_m_s,
-                "use_tff_split": law == "tff",
+                "law": None if law == "tff" else law,
+                "use_tff_split": law != "admittance",
                 "duration_s": self.duration_s,
                 "label": self.label,
                 "soft_start": self.soft_start,

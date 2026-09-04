@@ -263,12 +263,24 @@ class _MovePlanMixin(_ClientMixin):
         self._max_joint_speed = float(rad_s)
         return OK
 
-    def movej(self, q, v: float = 0.4, r: float = 0, connect: int = 0, block: int = 1) -> int:
+    def movej(
+        self,
+        q,
+        v: float = 0.4,
+        r: float = 0,
+        connect: int = 0,
+        block: int = 1,
+        *,
+        secondary: str | None = None,
+        label: str = "movej",
+    ) -> int:
         bad = self._check_tail(r, connect)
         if bad is not None:
             return bad
         v = _check_v(v)
-        payload = MoveJPayload(q_target=_as_q(q), v=v, label="movej").to_json()
+        payload = MoveJPayload(q_target=_as_q(q), v=v, label=label).to_json()
+        if secondary:
+            payload["secondary"] = str(secondary)
         return self._send(Mode.MOVEJ, payload, block=block)
 
     def movej_p(
@@ -290,7 +302,19 @@ class _MovePlanMixin(_ClientMixin):
         ).to_json()
         return self._send(Mode.MOVEJ, payload, block=block)
 
-    def cartesian(self, pose, v: float = 0.4, r: float = 0, connect: int = 0, block: int = 1) -> int:
+    def cartesian(
+        self,
+        pose,
+        v: float = 0.4,
+        r: float = 0,
+        connect: int = 0,
+        block: int = 1,
+        *,
+        rail_m: float | None = None,
+        q_target=None,
+        secondary: str | None = None,
+        label: str = "cartesian",
+    ) -> int:
         """Pose-to-pose: IK the goal, then joint-space smooth PTP (not a TCP line)."""
 
         bad = self._check_tail(r, connect)
@@ -299,10 +323,15 @@ class _MovePlanMixin(_ClientMixin):
         v = _check_v(v)
         payload = MoveLPayload(
             pose=_as_pose(pose),
+            q_target=None if q_target is None else _as_q(q_target),
             v=v,
             max_lin_vel_m_s=float(self._max_line_speed) * v,
-            label="cartesian",
+            label=label,
         ).to_json()
+        if rail_m is not None:
+            payload["rail_m"] = float(rail_m)
+        if secondary:
+            payload["secondary"] = str(secondary)
         return self._send(Mode.CARTESIAN_PTP, payload, block=block)
 
     def moves(self, poses, v: float = 0.4, r: float = 0, connect: int = 0, block: int = 1) -> int:
@@ -397,6 +426,9 @@ class _TrackMixin(_ClientMixin):
         block: int = 0,
         label: str = "track_hold",
         soft_start: bool = False,
+        secondary: str | None = None,
+        speed_m_s: float | None = None,
+        max_lin_vel_m_s: float | None = None,
     ) -> int:
         # Single-pose polyline so QPIK tracks the given TCP, not the live origin.
         payload = TrackCartesianPayload(
@@ -404,8 +436,12 @@ class _TrackMixin(_ClientMixin):
             poses=[_as_pose(pose)],
             soft_start=bool(soft_start),
             duration_s=duration_s,
+            speed_m_s=speed_m_s,
+            max_lin_vel_m_s=max_lin_vel_m_s,
             label=label,
         ).to_json()
+        if secondary:
+            payload["secondary"] = str(secondary)
         return self._send(Mode.TRACK_CARTESIAN, payload, block=block)
 
     def track_polyline(
@@ -420,6 +456,7 @@ class _TrackMixin(_ClientMixin):
         label: str = "track_polyline",
         max_lin_vel_m_s: float | None = None,
         move_kp: float | None = None,
+        secondary: str | None = None,
     ) -> int:
         payload = TrackCartesianPayload(
             reference="polyline",
@@ -432,6 +469,8 @@ class _TrackMixin(_ClientMixin):
             move_kp=move_kp,
             label=label,
         ).to_json()
+        if secondary:
+            payload["secondary"] = str(secondary)
         return self._send(Mode.TRACK_CARTESIAN, payload, block=block)
 
     def track_ellipse(
@@ -487,6 +526,8 @@ class _VelocityMixin(_ClientMixin):
         block: float | int = 0,
         filter: bool | list[float] | None = None,
         follow: bool | None = None,
+        secondary: str | None = None,
+        extra: dict[str, Any] | None = None,
     ) -> int:
         """Cartesian velocity mode: ``v*`` → inner QPIK. Swappable on the 200 Hz runner.
 
@@ -505,6 +546,10 @@ class _VelocityMixin(_ClientMixin):
             filter=filter,
             follow=follow,
         ).to_json()
+        if secondary:
+            payload["secondary"] = str(secondary)
+        if extra:
+            payload.update(extra)
         mode = Mode.SERVO_TWIST_HOLD if hold else Mode.SERVO_TWIST
         ret = self._send(mode, payload, block=0)
         if ret != OK:
@@ -647,8 +692,9 @@ class _ForceMixin(_ClientMixin):
 
     def hfpc(
         self,
-        poses,
+        poses=None,
         *,
+        reference: str | None = None,
         speed_m_s: float | None = None,
         law: str = "tff",
         force=None,
@@ -665,12 +711,18 @@ class _ForceMixin(_ClientMixin):
         bad = self._check_tail(r, connect)
         if bad is not None:
             return bad
-        v = _check_v(v)
-        arr = _as_poses(poses)
+        kind = str(reference or "polyline").lower()
+        if kind == "hold":
+            arr = None if poses is None else _as_poses(poses)
+            speed = speed_m_s
+        else:
+            v = _check_v(v)
+            arr = _as_poses(poses)
+            speed = speed_m_s if speed_m_s is not None else float(self._max_line_speed) * v
         payload = HfpcPayload(
-            reference="polyline",
+            reference=kind,
             poses=arr,
-            speed_m_s=speed_m_s if speed_m_s is not None else float(self._max_line_speed) * v,
+            speed_m_s=speed,
             law=law,
             force=force,
             force_axes=None if force_axes is None else list(np.asarray(force_axes, dtype=float).reshape(6)),

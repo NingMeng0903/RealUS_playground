@@ -235,6 +235,7 @@ def build_cartesian_ptp_phase(
         duration_s=None if dur is None else float(dur),
         v=_v_frac(payload),
         label=str(payload.get("label", "cartesian")),
+        secondary=payload.get("secondary"),
     )
 
 

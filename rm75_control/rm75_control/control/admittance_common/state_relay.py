@@ -42,6 +42,8 @@ _SLOT_DTYPE = np.dtype(
         ("force", "<f8", (6,)),
         ("rail_m", "<f8"),
         ("ok", "u1"),
+        # UDP joint_speed already on the snapshot — copy only, no extra SDK/FK.
+        ("qdot_deg_s", "<f8", (7,)),
     ],
     align=True,
 )
@@ -205,6 +207,15 @@ def _write_slot(
     slot["rail_m"] = float(rail_m)
     has_pose = pose is not None or snap.pose is not None
     slot["ok"] = np.uint8(1 if snap.ok and has_pose and snap.q_deg is not None else 0)
+    qd = snap.qdot_deg_s
+    if qd is not None:
+        arr = np.asarray(qd, dtype=float).reshape(-1)
+        if arr.size >= 7 and np.all(np.isfinite(arr[:7])):
+            slot["qdot_deg_s"][:] = arr[:7]
+        else:
+            slot["qdot_deg_s"][:] = np.nan
+    else:
+        slot["qdot_deg_s"][:] = np.nan
 
 
 def _read_slot(slot) -> tuple[int, AsyncStateSnapshot, float]:
@@ -214,9 +225,15 @@ def _read_slot(slot) -> tuple[int, AsyncStateSnapshot, float]:
     pose = np.asarray(slot["pose"], dtype=float).copy()
     force_raw = np.asarray(slot["force"], dtype=float).copy()
     rail_m = float(slot["rail_m"])
+    qdot = None
+    if "qdot_deg_s" in slot.dtype.names:
+        raw_qd = np.asarray(slot["qdot_deg_s"], dtype=float).copy()
+        if raw_qd.size >= 7 and np.all(np.isfinite(raw_qd[:7])):
+            qdot = raw_qd[:7]
     snap = AsyncStateSnapshot(
         pose=pose,
         q_deg=q_deg,
+        qdot_deg_s=qdot,
         force_raw=force_raw,
         t_s=float(slot["t_s"]),
         wall_time_ns=int(slot["wall_time_ns"]) if "wall_time_ns" in slot.dtype.names else 0,

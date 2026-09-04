@@ -13,6 +13,8 @@ CONFIG_FORCE = REPO / "configs" / "force_sensor.yaml"
 CONFIG_ID = CONFIG_DIR / "force_id.yaml"
 POSES_YAML = CONFIG_DIR / "poses.yaml"
 PHI_JSON = LOG_DIR / "force_id_phi.json"
+PHI_JSON_V2 = LOG_DIR / "force_id_phi_v2.json"
+CONFIG_ID_V2 = CONFIG_DIR / "force_id_v2.yaml"
 
 POSE_SLOTS = ("a", "b", "c", "d")
 

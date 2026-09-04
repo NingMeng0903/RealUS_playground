@@ -331,6 +331,10 @@ force:
   causal_history: 5
   # Inertia compensation off on the joint stream (re-enable only with telemetry).
   use_inertia: false
+  use_dynamic_kinematics: false
+  use_rotational_inertia: false
+  # Quoted: YAML 1.1 would parse bare `off` as bool False and kill the observer.
+  dynamic_kinematics_mode: "off"
 
 # Outer-loop Cartesian P for CARTESIAN_TRACK / GOTO.  CLI --move-kp
 # overrides k_task_lin only.  Rotation stays here.

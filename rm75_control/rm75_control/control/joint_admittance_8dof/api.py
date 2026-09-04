@@ -55,9 +55,9 @@ class ArmAngleSpec:
 
 @dataclass
 class SecondaryPolicy:
-    """Nullspace / secondary-task preset: off | move | track | hold."""
+    """Nullspace / secondary-task preset: off | move | track | hold | payload_id."""
 
-    preset: Literal["off", "move", "track", "hold"] = "track"
+    preset: Literal["off", "move", "track", "hold", "payload_id"] = "track"
     arm_angle: ArmAngleSpec | None = None
     qdot_ff: Literal["off", "plan", "plan_joint"] = "off"
 
@@ -116,6 +116,14 @@ class SecondaryPolicy:
             inner.set_centering_suppressed(True)
             inner.set_manipulability_active(False)
             inner.set_rail_extension_active(False)
+        elif self.preset == "payload_id":
+            # Zero soft nullspace: lock rail, keep collision/limits/TCP task.
+            inner.set_plan_drives_rail(False)
+            inner.set_locked(LockedStyle.HOLD, q_ref_m=float(inner.q_cmd[0]))
+            inner.set_rail_extension_active(False)
+            inner.set_centering_suppressed(True)
+            inner.set_arm_task_suppressed(True)
+            inner.set_manipulability_active(False)
         else:
             raise ValueError(f"unknown SecondaryPolicy preset {self.preset!r}")
 
@@ -244,15 +252,26 @@ def attach_joint_move_rail(
 
     ``on_enter`` reseeds the interpolator from live ``q_cmd`` and the last sent
     8-vector ``q̇`` so a PTP that starts mid-hold does not rest-to-rest slam.
+    If the inner is already ``LOCKED HOLD``, the interpolator rail is frozen
+    (``dq[0]=0``) and ``plan_drives_rail`` stays off.
     """
     prev_on_enter = phase.on_enter
     prev_on_exit = phase.on_exit
 
     def _enter() -> None:
         q_live = np.asarray(inner.q_cmd, dtype=float).copy()
-        qdot_live = _live_qdot_for_reseed(inner)
+        qdot_live = np.asarray(_live_qdot_for_reseed(inner), dtype=float).copy()
         if prev_on_enter is not None:
             prev_on_enter()
+        # Decide after this phase's policy. MOVEJ applies ``move`` (coupled
+        # 8-DoF) even if the previous mode had the rail locked.
+        freeze_rail = bool(inner.is_locked_hold)
+        rail_ref = None
+        if freeze_rail:
+            q_ref = getattr(getattr(inner, "rail_task", None), "q_ref", None)
+            rail_ref = float(q_ref) if q_ref is not None else float(q_live[0])
+            q_live[0] = rail_ref
+            qdot_live[0] = 0.0
         ref = move_ref
         if ref is None:
             ref = getattr(getattr(phase, "outer", None), "reference", None)
@@ -262,7 +281,20 @@ def attach_joint_move_rail(
             ref.q_start = q_live.copy()
             if hasattr(ref, "qdot0"):
                 ref.qdot0 = qdot_live.copy()
-        inner.set_plan_drives_rail(True)
+        if freeze_rail and ref is not None and rail_ref is not None:
+            if hasattr(ref, "q_start"):
+                q_start = np.asarray(ref.q_start, dtype=float).copy()
+                q_start[0] = rail_ref
+                ref.q_start = q_start
+            if hasattr(ref, "q_target"):
+                q_tgt = np.asarray(ref.q_target, dtype=float).copy()
+                q_tgt[0] = rail_ref
+                ref.q_target = q_tgt
+            if hasattr(ref, "qdot0"):
+                qdot0 = np.asarray(ref.qdot0, dtype=float).copy()
+                qdot0[0] = 0.0
+                ref.qdot0 = qdot0
+        inner.set_plan_drives_rail(not freeze_rail)
         inner.set_direct_joint_ptp(True)
 
     def _exit() -> None:
@@ -501,11 +533,18 @@ def phase_cartesian_goto(
     gov_joint_max_deg: float = 25.0,
     require_arrival: bool = True,
     force_observer: Any = None,
+    secondary_preset: str = "move",
 ) -> JointPhaseSpec:
     if max_duration_s is None:
         max_duration_s = 2.5 * float(move_ref.duration_s) + 15.0
+    # payload_id PTP must lock before attach_joint_move_rail decides freeze.
+    # "move" first unlocks the rail, so the interpolator plans a rail stroke
+    # the send pin then ignores — arm joints follow that wrong plan (TCP slide).
+    preset = str(secondary_preset or "move")
+    if preset != "payload_id":
+        preset = "move"
     sec = SecondaryPolicy(
-        preset="move",
+        preset=preset,
         qdot_ff="plan_joint",
     )
     gov = (
@@ -737,7 +776,7 @@ def compile_phase(spec: JointPhaseSpec, ctx: CompileContext) -> CompiledPhase:
             governor_release_above=gov.release_above,
             soft_start_ramp_s=(
                 0.3
-                if spec.secondary.preset == "move"
+                if spec.secondary.preset in ("move", "payload_id")
                 else (0.5 if spec.mode == TaskMode.HYBRID_TRACK else 0.0)
             ),
             qdot_ff_provider=qdot_ff,

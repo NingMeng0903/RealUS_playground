@@ -103,6 +103,10 @@ def _polyline_ref(payload: dict, euler_order: str) -> WorldPolylineReference:
     )
 
 
+def _secondary_preset(payload: dict) -> str:
+    return str(payload.get("secondary") or "track")
+
+
 def apply_qp_aux(inner, payload: dict | None) -> None:
     """Apply optional QP auxiliary overrides carried on a mode payload."""
 
@@ -153,7 +157,9 @@ def compile_request(
             label=str(payload.get("label") or "servo_twist"),
             duration_s=payload.get("duration_s"),
         )
-        phase.on_enter = lambda: SecondaryPolicy(preset="track").apply(ctx.inner)
+        phase.on_enter = lambda p=_secondary_preset(payload): SecondaryPolicy(preset=p).apply(
+            ctx.inner
+        )
         return _finish_phase(ctx, payload, phase)
     if req.mode == Mode.SERVO_TWIST_HOLD:
         outer = ServoTwistHoldOuter(
@@ -168,7 +174,9 @@ def compile_request(
             label=str(payload.get("label") or "servo_twist_hold"),
             duration_s=payload.get("duration_s"),
         )
-        phase.on_enter = lambda: SecondaryPolicy(preset="track").apply(ctx.inner)
+        phase.on_enter = lambda p=_secondary_preset(payload): SecondaryPolicy(preset=p).apply(
+            ctx.inner
+        )
         return _finish_phase(ctx, payload, phase)
     if req.mode == Mode.TRACK_CARTESIAN:
         kind = str(payload.get("reference", "ellipse"))
@@ -253,7 +261,16 @@ def compile_request(
                 build_goto_joints_phase(ctx, q, q_start=q_start, duration_s=dur, v=v),
             )
         return _finish_phase(
-            ctx, payload, build_movej_phase(ctx, q, q_start=q_start, duration_s=dur, v=v)
+            ctx,
+            payload,
+            build_movej_phase(
+                ctx,
+                q,
+                q_start=q_start,
+                duration_s=dur,
+                v=v,
+                secondary=payload.get("secondary"),
+            ),
         )
     if req.mode == Mode.CARTESIAN_PTP:
         return _finish_phase(ctx, payload, build_cartesian_ptp_phase(ctx, payload, dt=dt))
@@ -262,17 +279,48 @@ def compile_request(
     raise ValueError(f"unknown mode {req.mode}")
 
 
+def _truthy(value) -> bool:
+    return value is True or value in (1, "1", "true", "True", "yes")
+
+
+def _attach_joint_hold(phase: Phase, inner) -> None:
+    """Freeze q after a payload-ID PTP. QPIK/CBF must not shove the TCP."""
+
+    prev_on_enter = phase.on_enter
+    prev_on_exit = phase.on_exit
+
+    def _enter() -> None:
+        if prev_on_enter is not None:
+            prev_on_enter()
+        inner.set_direct_joint_ptp(True)
+        inner.set_plan_drives_rail(False)
+
+    def _exit() -> None:
+        inner.set_direct_joint_ptp(False)
+        if prev_on_exit is not None:
+            prev_on_exit()
+
+    phase.on_enter = _enter
+    phase.on_exit = _exit
+    phase.qdot_ff_provider = lambda _t: np.zeros(8, dtype=float)
+
+
 def _finish_phase(ctx: CompileContext, payload: dict, phase: Phase) -> Phase:
     apply_qp_aux(ctx.inner, payload)
-    if payload.get("qp_aux"):
+    preset = payload.get("secondary")
+    if preset or payload.get("qp_aux") or payload.get("collision_avoidance") is not None:
         prev = phase.on_enter
 
         def _enter() -> None:
             if prev is not None:
                 prev()
+            if preset is not None:
+                SecondaryPolicy(preset=str(preset)).apply(ctx.inner)
             apply_qp_aux(ctx.inner, payload)
 
         phase.on_enter = _enter
+    if _truthy(payload.get("joint_hold") or payload.get("freeze_joints")):
+        _attach_joint_hold(phase, ctx.inner)
     return phase
 
 

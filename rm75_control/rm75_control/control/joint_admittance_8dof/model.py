@@ -7,6 +7,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
@@ -35,6 +36,16 @@ RAIL_INDEX = 0
 ARM_Q_INDICES = slice(1, 8)
 N_ARM = 7
 EXPECTED_NQ = 8
+
+
+@dataclass
+class FrameClassicalMotion:
+    """LOCAL-frame classical motion of a named URDF frame (no gravity)."""
+
+    linear_velocity: np.ndarray
+    angular_velocity: np.ndarray
+    linear_acceleration: np.ndarray
+    angular_acceleration: np.ndarray
 
 
 def deg2rad(q_deg: np.ndarray) -> np.ndarray:
@@ -303,18 +314,70 @@ class RobotKinematics:
             r = np.asarray(R7.T @ pt, dtype=float)
         return R, r
 
+    @property
+    def r_LT_L(self) -> np.ndarray:
+        """Vector from link_7 origin to TCP origin, expressed in link_7."""
+        return np.asarray(self._r_link7_tcp, dtype=float).copy()
+
+    @property
+    def R_LT(self) -> np.ndarray:
+        """Rotation ``R_LT`` such that ``v_T = R_LT.T @ v_L`` for free vectors."""
+        return np.asarray(self._R_link7_tcp, dtype=float).copy()
+
     def wrench_link7_to_tcp(self, wrench: np.ndarray) -> np.ndarray:
-        """Express a link_7/sensor wrench at the tcp origin, in tcp tool coordinates."""
-        w = np.asarray(wrench, dtype=float).reshape(6).copy()
+        """Map a link_7-origin wrench to the TCP origin, then into TCP axes.
+
+        ``r_LT_L`` is from link_7 to TCP, expressed in link_7:
+
+        ``τ_T^L = τ_L − r_LT_L × f_L``, then ``f^T = R_LT^T f_L``.
+        """
+        w = np.asarray(wrench, dtype=float).reshape(6)
         R = self._R_link7_tcp
-        r = self._r_link7_tcp
-        f_s = w[:3]
-        m_s = w[3:6]
-        # Transport moment to tcp origin (same frame), then rotate into tcp axes.
-        m_at_tcp = m_s + np.cross(r, f_s)
-        f_tcp = R.T @ f_s
-        m_tcp = R.T @ m_at_tcp
-        return np.concatenate([f_tcp, m_tcp])
+        r_LT_L = self._r_link7_tcp
+        f_L = w[:3]
+        m_L = w[3:6]
+        m_T_L = m_L - np.cross(r_LT_L, f_L)
+        return np.concatenate([R.T @ f_L, R.T @ m_T_L])
+
+    def twist_link7_to_tcp(self, twist_L: np.ndarray) -> np.ndarray:
+        """Rigid twist map from link_7 origin to TCP, both then in TCP axes."""
+        tw = np.asarray(twist_L, dtype=float).reshape(6)
+        v_L, w_L = tw[:3], tw[3:6]
+        v_T_L = v_L + np.cross(w_L, self._r_link7_tcp)
+        R = self._R_link7_tcp
+        return np.concatenate([R.T @ v_T_L, R.T @ w_L])
+
+    def frame_classical_motion(
+        self,
+        q_rad: np.ndarray,
+        qd: np.ndarray,
+        qdd: np.ndarray,
+        frame_name: str = "link_7",
+    ) -> FrameClassicalMotion:
+        """LOCAL classical velocity/acceleration; gravity is not included."""
+        if not self.model.existFrame(frame_name):
+            raise ValueError(f"frame {frame_name!r} not in URDF {self.urdf_path}")
+        fid = self.model.getFrameId(frame_name)
+        q = np.asarray(q_rad, dtype=float)
+        v = np.asarray(qd, dtype=float)
+        a = np.asarray(qdd, dtype=float)
+        pin.forwardKinematics(self.model, self.data, q, v, a)
+        pin.updateFramePlacements(self.model, self.data)
+        vel = pin.getFrameVelocity(self.model, self.data, fid, pin.ReferenceFrame.LOCAL)
+        acc = pin.getFrameClassicalAcceleration(
+            self.model, self.data, fid, pin.ReferenceFrame.LOCAL
+        )
+        return FrameClassicalMotion(
+            linear_velocity=np.asarray(vel.linear, dtype=float).reshape(3),
+            angular_velocity=np.asarray(vel.angular, dtype=float).reshape(3),
+            linear_acceleration=np.asarray(acc.linear, dtype=float).reshape(3),
+            angular_acceleration=np.asarray(acc.angular, dtype=float).reshape(3),
+        )
+
+    def gravity_link7(self, q_rad: np.ndarray, gravity_base: np.ndarray) -> np.ndarray:
+        """``g_L = R_BL^T g_B`` at link_7 (does not use classical acceleration)."""
+        M = self.frame_placement(q_rad, "link_7")
+        return np.asarray(M.rotation.T @ np.asarray(gravity_base, dtype=float), dtype=float)
 
     def frame_placement(self, q_rad: np.ndarray, frame_name: str) -> pin.SE3:
         """SE3 of an arbitrary frame (e.g. 'link_7' flange) in the base frame."""

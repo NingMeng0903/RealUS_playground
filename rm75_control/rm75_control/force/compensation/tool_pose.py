@@ -65,14 +65,15 @@ def _apply_tcp_offset(
     message: str,
     *,
     euler_order: str | None = None,
+    announce: bool = False,
 ) -> None:
     global _LAST_TCP_OFFSET_PRINTED
     offset = np.asarray(offset, dtype=float).reshape(6)
     apply_kin_tcp_offset(kin, offset, euler_order=euler_order)
-    if _LAST_TCP_OFFSET_PRINTED is not None and _offsets_equal(offset, _LAST_TCP_OFFSET_PRINTED):
-        return
+    same = _LAST_TCP_OFFSET_PRINTED is not None and _offsets_equal(offset, _LAST_TCP_OFFSET_PRINTED)
     _LAST_TCP_OFFSET_PRINTED = offset.copy()
-    del message
+    if announce and not same:
+        print(message, flush=True)
     _warn_if_tcp_differs_from_urdf(kin, euler_order=euler_order)
 
 
@@ -325,6 +326,7 @@ def sync_kin_tcp_from_robot(
             f"rpy(deg)={np.round(np.degrees(offset[3:6]), 1).tolist()}"
         ),
         euler_order=euler_order,
+        announce=True,
     )
     try:
         write_tool_offset_cache(name, offset)

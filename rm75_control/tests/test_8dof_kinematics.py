@@ -90,3 +90,26 @@ def test_wrench_link7_to_tcp_transports_moment(kin: RobotKinematics):
     f_link7 = np.array([0.0, 5.0, 0.0, 0.0, -1.1, 0.0])
     f_tool = kin.wrench_link7_to_tcp(f_link7)
     assert abs(f_tool[2]) < 0.5
+
+
+def test_link7_centripetal_acceleration_constant_spin(kin: RobotKinematics):
+    q = np.zeros(8)
+    qd = np.zeros(8)
+    qd[7] = 2.0
+    mot = kin.frame_classical_motion(q, qd, np.zeros(8), "link_7")
+    np.testing.assert_allclose(mot.angular_velocity[2], 2.0, atol=0.05)
+    # local linear acceleration is centripetal (ω × (ω × 0) = 0 at the origin)
+    np.testing.assert_allclose(mot.linear_acceleration, 0.0, atol=1e-6)
+
+
+def test_wrench_link7_to_tcp_point_force_zero_tcp_moment(kin: RobotKinematics):
+    """Force through the TCP origin must produce zero TCP moment after the shift."""
+    kin.apply_link7_to_tcp_offset([0.1, 0.0, 0.0, 0.0, 0.0, 0.0])
+    F = np.array([0.0, 0.0, 10.0])
+    r = kin.r_LT_L
+    tau_L = np.cross(r, F)
+    w_L = np.concatenate([F, tau_L])
+    w_T = kin.wrench_link7_to_tcp(w_L)
+    np.testing.assert_allclose(tau_L, [0.0, -1.0, 0.0], atol=1e-9)
+    np.testing.assert_allclose(w_T[3:6], 0.0, atol=1e-9)
+    np.testing.assert_allclose(w_T[:3], F, atol=1e-9)

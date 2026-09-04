@@ -23,7 +23,7 @@ from rm75_control.control.joint_admittance_8dof.tasks.rail_allocator import (
 from rm75_control.control.joint_admittance_8dof.tasks.rail_command import (
     RailCommandMixer,
 )
-from rm75_control.control.joint_admittance_8dof.tasks.rail_mode import RailMode
+from rm75_control.control.joint_admittance_8dof.tasks.rail_mode import LockedStyle, RailMode
 
 
 _CFG = Path(__file__).resolve().parents[1] / "configs" / "joint_admittance_8dof.yaml"
@@ -40,6 +40,24 @@ def _python_inner() -> JointIkController:
     inner = JointIkController(RobotKinematics(), cfg)
     inner.reset(_SEED_Q.copy())
     return inner
+
+
+def test_direct_ptp_locked_hold_pins_rail() -> None:
+    inner = _python_inner()
+    ref = float(inner.q_cmd[0])
+    inner.set_locked(LockedStyle.HOLD, q_ref_m=ref)
+    inner.set_direct_joint_ptp(True)
+    inner.set_plan_drives_rail(True)
+    q = inner.q_cmd.copy()
+    qdot = np.zeros(8)
+    qdot[0] = 0.04
+    step = inner.update(np.zeros(6), q_meas=q, qdot_ff=qdot)
+    assert step.controller_mode == "direct_joint_ptp"
+    assert float(step.q_send[0]) == pytest.approx(ref, abs=1e-12)
+    assert float(step.qdot[0]) == pytest.approx(0.0, abs=1e-12)
+    assert float(inner.q_cmd[0]) == pytest.approx(ref, abs=1e-12)
+    assert float(step.rail_qdot_ff) == pytest.approx(0.0, abs=1e-12)
+    assert step.plan_drives_rail is False
 
 
 def test_direct_ptp_skips_rail_rebase_and_integrates_qdot_ff() -> None:
@@ -404,6 +422,127 @@ def test_ptp_on_enter_reseeds_hold_end_q_and_qdot() -> None:
         prev_v = float(vi[0])
     assert inner._direct_joint_ptp is True
     assert inner._plan_drives_rail is True
+
+
+def test_ptp_on_enter_freezes_rail_when_locked_hold() -> None:
+    from rm75_control.control.joint_admittance_8dof.api import attach_joint_move_rail
+    from rm75_control.control.joint_admittance_8dof.reference import (
+        JointSmoothMoveReference,
+    )
+
+    inner = _python_inner()
+    rail_ref = float(inner.q_cmd[0])
+    inner.set_locked(LockedStyle.HOLD, q_ref_m=rail_ref)
+    applied = np.zeros(8)
+    applied[0] = -0.008
+    inner.last_applied_qdot = applied.copy()
+    q_live = inner.q_cmd.copy()
+    qt = q_live.copy()
+    qt[0] -= 0.10
+    qt[4] += np.deg2rad(4.0)
+    ref = JointSmoothMoveReference(inner.kin, q_live, qt, 2.2)
+    phase = SimpleNamespace(on_enter=None, on_exit=None, outer=SimpleNamespace(reference=ref))
+    attach_joint_move_rail(phase, inner, move_ref=ref)
+    phase.on_enter()
+    q0, v0 = ref.sample_q(0.0)
+    qe, ve = ref.sample_q(2.2)
+    assert float(q0[0]) == pytest.approx(rail_ref, abs=1e-12)
+    assert float(qe[0]) == pytest.approx(rail_ref, abs=1e-12)
+    assert float(v0[0]) == pytest.approx(0.0, abs=1e-12)
+    assert float(ve[0]) == pytest.approx(0.0, abs=1e-12)
+    assert float(ref.q_target[0]) == pytest.approx(rail_ref, abs=1e-12)
+    assert inner._direct_joint_ptp is True
+    assert inner._plan_drives_rail is False
+
+
+def test_build_movej_payload_id_freezes_rail_interpolator() -> None:
+    from peirastic.realman8dof.modes.joint import build_movej_phase
+    from rm75_control.control.joint_admittance_8dof.api import (
+        CompileContext,
+        SecondaryPolicy,
+    )
+
+    inner = _python_inner()
+    rail0 = float(inner.q_cmd[0])
+    SecondaryPolicy(preset="payload_id").apply(inner)
+    ctx = CompileContext(
+        kin=inner.kin,
+        inner=inner,
+        euler_order="xyz",
+        control_frame="tool",
+        v_scale=0.8,
+    )
+    qt = inner.q_cmd.copy()
+    qt[0] = rail0 + 0.08
+    qt[4] += np.deg2rad(4.0)
+    phase = build_movej_phase(
+        ctx, qt, v=0.25, secondary="payload_id", label="payload_id_WX+15"
+    )
+    phase.on_enter()
+    ref = phase.outer.reference
+    assert inner.is_locked_hold
+    assert inner._plan_drives_rail is False
+    assert float(ref.q_target[0]) == pytest.approx(rail0, abs=1e-12)
+    qe, ve = ref.sample_q(float(ref.duration_s))
+    assert float(qe[0]) == pytest.approx(rail0, abs=1e-12)
+    assert float(ve[0]) == pytest.approx(0.0, abs=1e-12)
+
+
+def test_build_movej_default_unlocks_leftover_lock() -> None:
+    from peirastic.realman8dof.modes.joint import build_movej_phase
+    from rm75_control.control.joint_admittance_8dof.api import (
+        CompileContext,
+        SecondaryPolicy,
+    )
+
+    inner = _python_inner()
+    rail0 = float(inner.q_cmd[0])
+    SecondaryPolicy(preset="payload_id").apply(inner)
+    ctx = CompileContext(
+        kin=inner.kin,
+        inner=inner,
+        euler_order="xyz",
+        control_frame="tool",
+        v_scale=0.8,
+    )
+    qt = inner.q_cmd.copy()
+    qt[0] = rail0 + 0.08
+    phase = build_movej_phase(ctx, qt, v=0.4, label="payload_id_movej_mid")
+    phase.on_enter()
+    ref = phase.outer.reference
+    assert not inner.is_locked_hold
+    assert inner._plan_drives_rail is True
+    assert float(ref.q_target[0]) == pytest.approx(qt[0], abs=1e-12)
+
+
+def test_ptp_on_enter_move_policy_unlocks_rail_for_8dof() -> None:
+    from rm75_control.control.joint_admittance_8dof.api import (
+        SecondaryPolicy,
+        attach_joint_move_rail,
+    )
+    from rm75_control.control.joint_admittance_8dof.reference import (
+        JointSmoothMoveReference,
+    )
+
+    inner = _python_inner()
+    rail0 = float(inner.q_cmd[0])
+    inner.set_locked(LockedStyle.HOLD, q_ref_m=rail0)
+    q_live = inner.q_cmd.copy()
+    qt = q_live.copy()
+    qt[0] = rail0 + 0.08
+    ref = JointSmoothMoveReference(inner.kin, q_live, qt, 2.2)
+    phase = SimpleNamespace(
+        on_enter=lambda: SecondaryPolicy(preset="move").apply(inner),
+        on_exit=None,
+        outer=SimpleNamespace(reference=ref),
+    )
+    attach_joint_move_rail(phase, inner, move_ref=ref)
+    phase.on_enter()
+    assert not inner.is_locked_hold
+    assert inner._plan_drives_rail is True
+    assert float(ref.q_target[0]) == pytest.approx(qt[0], abs=1e-12)
+    qe, _ = ref.sample_q(2.2)
+    assert float(qe[0]) == pytest.approx(qt[0], abs=1e-9)
 
 
 def test_ptp_on_enter_reseeds_full_applied_qdot() -> None:

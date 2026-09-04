@@ -287,6 +287,78 @@ def test_movej_v_scales_plan_duration() -> None:
     assert float(cart_slow.arrival_plan_duration_s) > float(cart_fast.arrival_plan_duration_s) * 2.5
 
 
+def test_servo_joint_hold_freezes_direct_ptp() -> None:
+    raw, ctx = _ctx()
+    phase = compile_request(
+        ctx,
+        ModeRequest(
+            ModeE.SERVO_TWIST,
+            {
+                "secondary": "payload_id",
+                "joint_hold": True,
+                "label": "payload_id_hold_WX-45",
+                "filter": False,
+            },
+        ),
+        raw=raw,
+    )
+    assert phase.qdot_ff_provider is not None
+    np.testing.assert_allclose(phase.qdot_ff_provider(0.0), np.zeros(8))
+    phase.on_enter()
+    assert ctx.inner._direct_joint_ptp is True
+    assert ctx.inner._plan_drives_rail is False
+    assert ctx.inner.is_locked_hold
+    if phase.on_exit is not None:
+        phase.on_exit()
+    assert ctx.inner._direct_joint_ptp is False
+
+
+def test_servo_payload_id_without_joint_hold_stays_qpik() -> None:
+    raw, ctx = _ctx()
+    phase = compile_request(
+        ctx,
+        ModeRequest(
+            ModeE.SERVO_TWIST,
+            {"secondary": "payload_id", "label": "payload_id_dt_x", "filter": False},
+        ),
+        raw=raw,
+    )
+    phase.on_enter()
+    assert ctx.inner._direct_joint_ptp is False
+    assert ctx.inner.is_locked_hold
+
+
+def test_cartesian_ptp_payload_id_keeps_rail_locked() -> None:
+    from rm75_control.control.joint_admittance_8dof.api import SecondaryPolicy
+
+    raw, ctx = _ctx()
+    rail0 = float(ctx.inner.q_cmd[0])
+    SecondaryPolicy(preset="payload_id").apply(ctx.inner)
+    qt = ctx.inner.q_cmd.copy()
+    qt[0] = rail0 + 0.08
+    qt[4] += 0.05
+    pose = ctx.kin.fk_pose(qt).tolist()
+    phase = compile_request(
+        ctx,
+        ModeRequest(
+            ModeE.CARTESIAN_PTP,
+            {
+                "pose": pose,
+                "q_target": qt.tolist(),
+                "v": 0.25,
+                "secondary": "payload_id",
+                "rail_m": rail0,
+            },
+        ),
+        raw=raw,
+    )
+    phase.on_enter()
+    assert ctx.inner.is_locked_hold
+    assert ctx.inner._plan_drives_rail is False
+    ref = phase.outer.reference
+    assert float(ref.q_target[0]) == pytest.approx(rail0, abs=1e-12)
+
+
 def test_goto_and_movej_enable_direct_ptp() -> None:
     raw, ctx = _ctx()
     q_t = _SEED.copy()

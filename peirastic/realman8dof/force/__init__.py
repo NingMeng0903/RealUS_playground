@@ -4,12 +4,14 @@ from peirastic.realman8dof.force.config import (
     desired_z_n,
     load_force_raw,
 )
+from peirastic.realman8dof.force.fce import FceAdmittanceLaw
 from peirastic.realman8dof.force.legacy import LegacyForceLaw
 from peirastic.realman8dof.force.protocol import ForceLaw, ForceOutput
 from peirastic.realman8dof.force.tff import SELECTION_TOOL_Z_FORCE, compose_tff
 
 __all__ = [
     "DEFAULT_FORCE_YAML",
+    "FceAdmittanceLaw",
     "ForceLaw",
     "ForceOutput",
     "LegacyForceLaw",

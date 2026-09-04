@@ -22,11 +22,13 @@ class TestRobotStateDtype(unittest.TestCase):
             [
                 ("seq", "<u8"),
                 ("t_s", "<f8"),
+                ("wall_time_ns", "<u8"),
                 ("q_deg", "<f8", (7,)),
                 ("pose", "<f8", (6,)),
                 ("force", "<f8", (6,)),
                 ("rail_m", "<f8"),
                 ("ok", "u1"),
+                ("qdot_deg_s", "<f8", (7,)),
             ],
             align=True,
         )

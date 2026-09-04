@@ -142,6 +142,9 @@ def test_hfpc_compiles_to_pose_tff() -> None:
     assert req.payload["use_tff_split"] is True
     phase = compile_request(ctx, req, raw=raw)
     assert isinstance(phase.outer, HybridTffOuter)
+    from peirastic.realman8dof.force.legacy import LegacyForceLaw
+
+    assert isinstance(phase.outer.force_law, LegacyForceLaw)
     assert not isinstance(phase.outer.position, ServoTwistOuter)
 
 
@@ -160,6 +163,56 @@ def test_hfvc_compiles_to_twist_tff() -> None:
         phase.outer.position.filter_axes,
         [True, True, False, True, True, True],
     )
+
+
+def test_hover_all_force_axes_fce_yields() -> None:
+    from peirastic.realman8dof.force.fce import FceAdmittanceLaw
+    from peirastic.realman8dof.force.legacy import LegacyForceLaw
+    from rm75_control.control.joint_admittance_8dof.reference import HoldReference
+
+    raw, ctx = _ctx()
+    pose = ctx.kin.fk_pose(_SEED)
+    arm = _arm(ctx=ctx)
+    assert (
+        arm.hfpc(
+            reference="hold",
+            law="fce",
+            force=[0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            force_axes=[1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+            duration_s=None,
+            block=0,
+            label="hover",
+        )
+        == OK
+    )
+    req = arm.last_request
+    assert req is not None
+    assert req.payload.get("reference") == "hold"
+    assert req.payload.get("law") == "fce"
+    assert "duration_s" not in req.payload
+    assert np.allclose(req.payload["desired_force"], np.zeros(6))
+    phase = compile_request(ctx, arm.last_request, raw=raw)
+    assert isinstance(phase.outer, HybridTffOuter)
+    assert isinstance(phase.outer.force_law, FceAdmittanceLaw)
+    assert not isinstance(phase.outer.force_law, LegacyForceLaw)
+    assert isinstance(phase.outer.position.reference, HoldReference)
+    assert phase.duration_s is None
+    assert np.allclose(phase.outer.selection, np.zeros(6))
+    assert np.allclose(phase.outer.desired_force, np.zeros(6))
+    phase.outer.set_origin(pose)
+    still = np.asarray(phase.outer.sample(0.0, pose, np.zeros(6)), dtype=float)
+    assert np.linalg.norm(still[:3]) < 0.01
+    assert np.linalg.norm(still[3:6]) < 0.02
+    pushed = np.asarray(
+        phase.outer.sample(0.005, pose, np.array([0.0, 0.0, 3.0, 0.0, 0.0, 0.0])),
+        dtype=float,
+    )
+    assert pushed[2] < -1e-3
+    side = np.asarray(
+        phase.outer.sample(0.010, pose, np.array([3.0, 0.0, 0.0, 0.0, 0.0, 0.0])),
+        dtype=float,
+    )
+    assert side[0] < -1e-3
 
 
 def test_selection_passthrough_default_and_force_x() -> None:
@@ -468,7 +521,11 @@ def test_window_a_ready_and_handoff_are_quiet() -> None:
     assert ready_state_msg(rail_m=0.6204, tcp="gripper2") == (
         "ready  rail=620.4 mm  tcp=gripper2"
     )
+    assert ready_state_msg(rail_m=0.6204, tcp="gripper2", force_obs=True) == (
+        "ready  rail=620.4 mm  tcp=gripper2  force=on"
+    )
     assert ready_state_msg(rail_m=None, tcp=None) == "ready"
+    assert ready_state_msg(rail_m=None, tcp=None, force_obs=False) == "ready  force=off"
     assert is_handoff_stop("external_stop_before_send", pending_commanded=True)
     assert not is_handoff_stop("external_stop_before_send", pending_commanded=False)
     assert not is_handoff_stop("feedback_stale: age=1", pending_commanded=True)

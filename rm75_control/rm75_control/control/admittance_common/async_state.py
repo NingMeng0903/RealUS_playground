@@ -260,6 +260,7 @@ class RealtimeStateObserver:
             if data.errCode != 0:
                 return
             t_s = time.monotonic()
+            wall_ns = time.time_ns()
             status = data.joint_status
             q_deg = np.asarray(
                 [status.joint_position[i] for i in range(7)],
@@ -278,6 +279,7 @@ class RealtimeStateObserver:
                     qdot_deg_s=qdot_deg_s,
                     force_raw=force_raw,
                     t_s=t_s,
+                    wall_time_ns=wall_ns,
                     ok=True,
                     seq=0,
                 )

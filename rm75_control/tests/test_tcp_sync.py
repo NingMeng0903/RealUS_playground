@@ -52,3 +52,57 @@ def test_matching_tcp_apply_is_silent(capsys):
         "tcp sync: cached tool='gripper2' should stay quiet",
     )
     assert capsys.readouterr().out == ""
+
+
+def test_live_robot_overrides_stale_gripper2_cache(tmp_path, monkeypatch):
+    import json
+
+    from rm75_control.force.compensation.tool_pose import (
+        maybe_sync_kin_tcp_from_config,
+        write_tool_offset_cache,
+    )
+
+    cache = tmp_path / "rm75_tool_offset.json"
+    monkeypatch.setattr(
+        "rm75_control.force.compensation.tool_pose.tool_offset_cache_path",
+        lambda: cache,
+    )
+    write_tool_offset_cache("gripper2", np.array([0.0, -0.015, 0.121, 0.0, 0.87, -1.55]))
+
+    class _Bot:
+        def rm_get_current_tool_frame(self):
+            return 0, {"name": "probe45", "pose": [0.0, 0.0, 0.220, 0.0, 1.5707963, 0.0]}
+
+    kin = RobotKinematics()
+    name = maybe_sync_kin_tcp_from_config(
+        kin,
+        {"inner": {"sync_tcp_from_robot": True, "euler_order": "xyz"}},
+        robot=_Bot(),
+    )
+    assert name == "probe45"
+    np.testing.assert_allclose(kin.tcp_offset_pose[2], 0.220, atol=1e-9)
+    stored = json.loads(cache.read_text())
+    assert stored["name"] == "probe45"
+
+
+def test_attach_mode_keeps_cache_when_no_robot(tmp_path, monkeypatch):
+    from rm75_control.force.compensation.tool_pose import (
+        maybe_sync_kin_tcp_from_config,
+        write_tool_offset_cache,
+    )
+
+    cache = tmp_path / "rm75_tool_offset.json"
+    monkeypatch.setattr(
+        "rm75_control.force.compensation.tool_pose.tool_offset_cache_path",
+        lambda: cache,
+    )
+    stale = np.array([0.0, -0.015, 0.121, 0.0, 0.87, -1.55])
+    write_tool_offset_cache("gripper2", stale)
+    kin = RobotKinematics()
+    name = maybe_sync_kin_tcp_from_config(
+        kin,
+        {"inner": {"sync_tcp_from_robot": True, "euler_order": "xyz"}},
+        attach_mode=True,
+    )
+    assert name == "gripper2"
+    np.testing.assert_allclose(kin.tcp_offset_pose, stale, atol=1e-6)

@@ -26,9 +26,16 @@ def bind_controller(
     *,
     backend: str | None = None,
     shm_prefix: str | None = None,
-) -> tuple[RobotKinematics, JointIkController, CompileContext]:
+    robot=None,
+) -> tuple[RobotKinematics, JointIkController, CompileContext, str | None]:
     kin = shared_robot_kinematics()
-    maybe_sync_kin_tcp_from_config(kin, raw, attach_mode=True)
+    # Live robot first so native wbc_rt inherits the web TCP, not a stale cache.
+    tcp_name = maybe_sync_kin_tcp_from_config(
+        kin,
+        raw,
+        robot=robot,
+        attach_mode=(robot is None),
+    )
     cfg = build_joint_ik_config(raw)
     if backend is not None:
         cfg.backend = str(backend)
@@ -42,4 +49,4 @@ def bind_controller(
         control_frame=cfg.control_frame,
         v_scale=cfg.v_scale,
     )
-    return kin, inner, ctx
+    return kin, inner, ctx, tcp_name

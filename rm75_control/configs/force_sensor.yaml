@@ -3,12 +3,22 @@
 
 # Verified force_sign / euler — used by rm75_control.force.compensation.regressor
 
-force_sign: [-1, -1, -1, 1, 1, 1]
+# environment_on_tool is an adjoint: F and M must share the same sign.
+# Mixed [-1,-1,-1,+1,+1,+1] made h = −m r in link_7 and reversed hover τ.
+force_sign: [-1, -1, -1, -1, -1, -1]
+moment_sign: [-1, -1, -1]
 euler_order: xyz
 sensor_offset_euler_xyz_rad: [0.0, 0.0, 0.0]
 # Sensor origin position in link7 frame (m). Default 0 = co-located with link7 origin.
+# r_LS_L := p_S^L - p_L^L (from link_7 origin toward the sensor origin, in L).
 sensor_origin_in_link7_m: [0.0, 0.0, 0.0]
 gravity_base: [0.0, 0.0, -9.80665]
+gravity_base_m_s2: [0.0, 0.0, -9.80665]
+canonical_payload_frame: link_7
+raw_wrench_frame: force_sensor
+command_tcp_frame: gripper2
+publish_wrench_frame: gripper2
+wrench_semantics: environment_on_tool
 
 filtfilt_cutoff_hz: 2.5
 identify_mass_bias_only: true
@@ -16,4 +26,4 @@ identify_mass_bias_only: true
 # Verified on multi-pose force_id logs + live static:
 #   m_fit = +0.997 kg,  live m = +1.10 kg,  Fz_raw ≈ +10.5 N
 #   hold-out compensation RMS: force 0.219 N, moment 0.015 Nm
-# Equivalent combos (same RMS): flip all 6, or Rz180 offset — not needed if using above.
+# Moments follow the same flip as forces so h = m r in link_7 / armtip.

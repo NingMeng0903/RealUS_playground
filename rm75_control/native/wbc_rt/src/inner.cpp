@@ -1042,7 +1042,12 @@ TickOut InnerLoop::step(const TickIn& in) {
     Vec8 qdot = in.qdot_ff;
     for (int i = 0; i < kNv; ++i) qdot[i] = clip(qdot[i], -v_max_[i], v_max_[i]);
     if (rail_only) qdot.tail<7>().setZero();
+    if (locked_hold) qdot[0] = 0.0;
     q_cmd_ = q_prev + qdot * dt;
+    if (locked_hold && cfg_.lock_hard_pin && has_rail_ref_) {
+      q_cmd_[0] = rail_q_ref_;
+      qdot[0] = 0.0;
+    }
     qdot_prev_ = qdot;
     if (cfg_.psi_enabled && rail_mode_ == kRailCoupled) {
       const Vec6 pose = kin_.fk_pose_at(q_cmd_);

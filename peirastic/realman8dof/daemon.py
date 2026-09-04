@@ -73,12 +73,19 @@ def is_handoff_stop(reason: str | None, *, pending_commanded: bool) -> bool:
     return bool(reason) and str(reason) in HANDOFF_STOP_REASONS and bool(pending_commanded)
 
 
-def ready_state_msg(*, rail_m: float | None, tcp: str | None) -> str:
+def ready_state_msg(
+    *,
+    rail_m: float | None,
+    tcp: str | None,
+    force_obs: bool | None = None,
+) -> str:
     parts = ["ready"]
     if rail_m is not None and math.isfinite(float(rail_m)):
         parts.append(f"rail={float(rail_m) * 1000.0:.1f} mm")
     if tcp:
         parts.append(f"tcp={tcp}")
+    if force_obs is not None:
+        parts.append("force=on" if force_obs else "force=off")
     return "  ".join(parts)
 
 
@@ -101,6 +108,50 @@ _PHASE_COPY = (
 )
 
 
+def idle_mode_payload(*, secondary: str | None = None) -> dict:
+    """Payload for post-finite idle (optional campaign secondary)."""
+    payload: dict = {}
+    if secondary:
+        payload["secondary"] = str(secondary)
+    return payload
+
+
+def command_secondary(payload: dict | None) -> str | None:
+    if not payload:
+        return None
+    sec = payload.get("secondary")
+    if sec is None:
+        return None
+    text = str(sec).strip()
+    return text or None
+
+
+def idle_after_command(
+    *,
+    last_secondary: str | None,
+    pad_source: bool = False,
+) -> ModeRequest:
+    """Idle after a finite move.
+
+    ``payload_id`` stays on SERVO_TWIST (no HOLD latch, no track nullspace).
+    HOLD+track after a 7-DoF PTP yanks TCP sideways while the rail stays put.
+    """
+    if last_secondary == "payload_id":
+        return ModeRequest(
+            Mode.SERVO_TWIST,
+            {
+                "secondary": "payload_id",
+                "label": "payload_id_idle",
+                "filter": False,
+                "joint_hold": True,
+            },
+        )
+    return ModeRequest(
+        idle_after_finite(pad_source=pad_source),
+        idle_mode_payload(),
+    )
+
+
 class ControllerService:
     def __init__(
         self,
@@ -110,6 +161,7 @@ class ControllerService:
         shm_prefix: str = "",
         log_csv: str | None = None,
         panel: bool = True,
+        robot=None,
     ) -> None:
         self.raw = raw
         self.config_path = Path(config_path)
@@ -118,7 +170,12 @@ class ControllerService:
         self.panel = Panel(enabled=panel)
         self.hub = CommandHub(prefix=shm_prefix)
         self.twist = TwistBus(prefix=shm_prefix, create=True)
-        self.kin, self.inner, self.ctx = bind_controller(raw)
+        self.kin, self.inner, self.ctx, tcp_name = bind_controller(raw, robot=robot)
+        if tcp_name:
+            self.tcp_name = str(tcp_name)
+        else:
+            cached = read_tool_offset_cache()
+            self.tcp_name = str(cached[0] or "") if cached is not None else None
         self.mode = Mode.SERVO_TWIST_HOLD
         self.ticks = 0
         self._stop = False
@@ -128,6 +185,14 @@ class ControllerService:
         self._finite_duration: float | None = None
         self._cmd_seq = 0
         self._pending_commanded = False
+        self._idle_secondary: str | None = None
+        self.force_observer = None
+        self.force_observer_error = ""
+        try:
+            self.force_observer = CompensatedForceObserver.from_yaml(self.raw)
+        except Exception as exc:
+            self.force_observer_error = str(exc)
+            self.panel.event("WARN", f"force observer off: {exc}")
 
     def close(self) -> None:
         self.hub.close()
@@ -145,7 +210,10 @@ class ControllerService:
         )
 
     def _idle_request(self) -> ModeRequest:
-        return ModeRequest(idle_after_finite(pad_source=self._pad_source_present()), {})
+        return idle_after_command(
+            last_secondary=self._idle_secondary,
+            pad_source=self._pad_source_present(),
+        )
 
     def _pad_twist(self) -> np.ndarray:
         row = self._pad_row()
@@ -206,11 +274,7 @@ class ControllerService:
     def run(self, sess, bus, rail) -> None:
         self._on_signal(rail)
         dt = float(self.raw.get("timing", {}).get("dt_ms", 5.0)) / 1000.0
-        obs = None
-        try:
-            obs = CompensatedForceObserver.from_yaml(self.raw)
-        except Exception:
-            obs = None
+        obs = self.force_observer
         if rail is not None and getattr(rail, "enabled", False):
             try:
                 rail.halt_if_moving()
@@ -258,6 +322,9 @@ class ControllerService:
                 if cmd == Cmd.SET_MODE and parsed is not None:
                     req = parsed
                     commanded = True
+
+            if commanded:
+                self._idle_secondary = command_secondary(getattr(req, "payload", None))
 
             try:
                 compiled = compile_request(
@@ -343,6 +410,7 @@ class ControllerService:
                     self._pending_commanded = True
                     self.hub.request_stop()
                     return
+                self._idle_secondary = command_secondary(parsed_req.payload)
                 new = compile_request(
                     self.ctx,
                     parsed_req,
@@ -540,12 +608,10 @@ def run_service(
         bind_controller(raw, backend="python")
         print("[STATE] dry-run bind ok", flush=True)
         return 0
-    svc = ControllerService(
-        raw, config_path=config_path, shm_prefix=shm_prefix, log_csv=log_csv, panel=panel
-    )
     robot_cfg = raw.get("robot", {})
     rail = RailServoBridge(parse_rail_servo_config(raw))
     relay_cfg = parse_state_relay_config(raw)
+    svc = None
     try:
         if rail.enabled:
             try:
@@ -559,6 +625,16 @@ def run_service(
             config=str(config_path),
             quiet=True,
         ) as sess:
+            # Bind after the SDK session exists so planning + force-Z use the
+            # pendant/web tool, not outputs/rm75_tool_offset.json (often gripper2).
+            svc = ControllerService(
+                raw,
+                config_path=config_path,
+                shm_prefix=shm_prefix,
+                log_csv=log_csv,
+                panel=panel,
+                robot=sess.robot,
+            )
             bus = RobotStateBus(sess.robot, raw, robot_ip=sess.ip)
             bus.start()
             relay = None
@@ -587,16 +663,13 @@ def run_service(
                     "Genesis twin will stay at URDF default (no hardware DW)",
                     flush=True,
                 )
-            tcp = None
-            cached = read_tool_offset_cache()
-            if cached is not None:
-                tcp = str(cached[0] or "") or None
             enc = float(rail.measured_m) if rail.enabled else float("nan")
             svc.panel.event(
                 "STATE",
                 ready_state_msg(
                     rail_m=enc if math.isfinite(enc) else None,
-                    tcp=tcp,
+                    tcp=svc.tcp_name or None,
+                    force_obs=svc.force_observer is not None,
                 ),
             )
             try:
@@ -606,5 +679,6 @@ def run_service(
                     relay.stop()
     finally:
         rail.stop()
-        svc.close()
+        if svc is not None:
+            svc.close()
     return 0

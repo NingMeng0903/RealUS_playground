@@ -19,6 +19,7 @@ from rm75_control.control.joint_admittance_8dof.loop import (
     Phase,
 )
 from peirastic.realman8dof.force.config import build_force_controller
+from peirastic.realman8dof.force.fce import FceAdmittanceLaw, use_fce_law
 from peirastic.realman8dof.force.legacy import LegacyForceLaw
 from peirastic.realman8dof.force.tff import SELECTION_TOOL_Z_FORCE, compose_tff
 from peirastic.realman8dof.modes.servo import ServoTwistOuter, slew_kwargs
@@ -166,8 +167,7 @@ def build_track_cartesian_phase(
     return compile_phase(spec, ctx).phase
 
 
-def _hybrid_controller(dt: float, payload: dict | None = None):
-    controller, _raw, desired_z = build_force_controller(dt, payload=payload)
+def _desired_force(payload: dict | None, desired_z: float) -> np.ndarray:
     f_des = np.zeros(6, dtype=float)
     f_des[2] = float(desired_z)
     pay = dict(payload or {})
@@ -179,7 +179,22 @@ def _hybrid_controller(dt: float, payload: dict | None = None):
             f_des = df[:6].astype(float)
         elif df.size >= 3:
             f_des[2] = float(df[2])
-    return controller, f_des
+    return f_des
+
+
+def _hybrid_controller(dt: float, payload: dict | None = None):
+    controller, _raw, desired_z = build_force_controller(dt, payload=payload)
+    return controller, _desired_force(payload, desired_z)
+
+
+def _hybrid_force_law(dt: float, payload: dict | None = None):
+    if use_fce_law(payload):
+        from peirastic.realman8dof.force.config import desired_z_n
+
+        law = FceAdmittanceLaw.from_payload(dt, payload)
+        return law, _desired_force(payload, desired_z_n(payload=payload))
+    controller, f_des = _hybrid_controller(dt, payload)
+    return LegacyForceLaw(controller), f_des
 
 
 def selection_from_payload(payload: dict | None) -> np.ndarray | None:
@@ -214,7 +229,7 @@ def build_pad_hybrid_phase(
 ) -> Phase:
     if twist_read is None:
         raise ValueError("pad hybrid needs a live twist source")
-    controller, f_des = _hybrid_controller(dt, payload)
+    force_law, f_des = _hybrid_force_law(dt, payload)
     selection = selection_from_payload(payload)
     pos = ServoTwistOuter(
         twist_read,
@@ -226,7 +241,7 @@ def build_pad_hybrid_phase(
     )
     outer = HybridTffOuter(
         pos,
-        LegacyForceLaw(controller),
+        force_law,
         desired_force=f_des,
         selection=selection,
         dt=dt,
@@ -247,8 +262,8 @@ def build_track_hybrid_phase(
     use_tff_split: bool = False,
     payload: dict | None = None,
 ) -> Phase:
-    controller, f_des = _hybrid_controller(dt, payload)
     if not use_tff_split:
+        controller, f_des = _hybrid_controller(dt, payload)
         spec = phase_hybrid_track(
             reference,
             controller,
@@ -257,13 +272,14 @@ def build_track_hybrid_phase(
             duration_s=duration_s,
         )
         return compile_phase(spec, ctx).phase
+    force_law, f_des = _hybrid_force_law(dt, payload)
     cart = compile_phase(
         phase_cartesian_track(reference, label=label, duration_s=duration_s),
         ctx,
     )
     outer = HybridTffOuter(
         cart.outer,
-        LegacyForceLaw(controller),
+        force_law,
         desired_force=f_des,
         selection=selection_from_payload(payload),
         dt=dt,

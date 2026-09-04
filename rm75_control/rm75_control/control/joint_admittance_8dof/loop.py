@@ -1810,8 +1810,18 @@ class JointIkController:
             qdot_cmd = np.asarray(qdot_ff, dtype=float).copy()
             if rail_only:
                 qdot_cmd[1:] = 0.0
+            rail_ref = None
+            if locked_hold:
+                # 7-DoF PTP: rail is not in the plan or the send.
+                qdot_cmd[0] = 0.0
+                q_ref = getattr(self.rail_task, "q_ref", None)
+                if q_ref is not None and np.isfinite(float(q_ref)):
+                    rail_ref = float(q_ref)
             q_next = q_prev + qdot_cmd * dt
-            q_next[0] = float(q_prev[0]) + float(qdot_cmd[0]) * float(dt_rail)
+            if locked_hold:
+                q_next[0] = float(q_prev[0] if rail_ref is None else rail_ref)
+            else:
+                q_next[0] = float(q_prev[0]) + float(qdot_cmd[0]) * float(dt_rail)
             self.q_cmd = q_next
             if dt > 1e-9:
                 applied = (self.q_cmd - q_prev) / dt
@@ -1821,6 +1831,9 @@ class JointIkController:
                     ) / float(dt_rail)
             else:
                 applied = qdot_cmd
+            if locked_hold:
+                applied = np.asarray(applied, dtype=float).copy()
+                applied[0] = 0.0
             self.core.sync_applied(applied)
             if (
                 self.posture_retarget is not None
@@ -1839,12 +1852,19 @@ class JointIkController:
                 np.asarray(self.q_cmd, dtype=float) - q_prev
             ) / max(float(dt), 1.0e-12)
             applied, acc_clamped = self._commit_command_step(q_prev, dt, dt_nom)
+            if locked_hold:
+                pin = float(q_prev[0] if rail_ref is None else rail_ref)
+                self.q_cmd[0] = pin
+                applied = np.asarray(applied, dtype=float).copy()
+                applied[0] = 0.0
+                self.core.qdot_prev[0] = 0.0
             self._shadow_rail_authority(
                 self.q_cmd, float(applied[0]), float(dt_rail)
             )
             self.last_sigma_min = sigma_pre
             J = J_pre
             sigma = sigma_values_pre
+            rail_ff = 0.0 if locked_hold else float(qdot_ff[0])
             return self._apply_mix_telemetry(
                 self._attach_post_qp_ab(
                     self._make_step(
@@ -1856,9 +1876,9 @@ class JointIkController:
                         n_cbf_active=0,
                         follow_err=follow_err,
                         qdot_ff_norm=float(np.linalg.norm(qdot_ff)),
-                        rail_vel_pin=float(qdot_ff[0]),
-                        rail_qdot_ff=float(qdot_ff[0]),
-                        plan_drives_rail=True,
+                        rail_vel_pin=rail_ff,
+                        rail_qdot_ff=rail_ff,
+                        plan_drives_rail=not locked_hold,
                         acc_clamped=acc_clamped,
                         mode="direct_joint_ptp",
                     ),
@@ -5699,7 +5719,22 @@ def run_joint_admittance_phases(
                         f_ext_raw = None
                         if obs is not None:
                             pose_l7 = inner.kin.frame_pose(q_meas, "link_7")
-                            _signed, f_ext = obs.update(now - total_t0, pose_l7, snap.force_raw)
+                            snap_t_obs = float(getattr(snap, "t_s", now - total_t0))
+                            rail_locked_now = bool(
+                                getattr(inner, "rail_locked", False)
+                            ) or (
+                                str(getattr(getattr(inner, "rail_mode", None), "value", ""))
+                                == "locked"
+                            )
+                            _signed, f_ext = obs.update(
+                                snap_t_obs,
+                                pose_l7,
+                                snap.force_raw,
+                                q_meas=q_meas,
+                                qdot_sdk=qdot_meas,
+                                rail_locked=rail_locked_now,
+                                sensor_age_s=sensor_age_s,
+                            )
                             f_ext_raw = getattr(obs, "f_ext_raw_last", None)
                             f_ext = inner.kin.wrench_link7_to_tcp(f_ext)
                             if f_ext_raw is not None:
