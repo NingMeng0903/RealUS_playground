@@ -23,6 +23,10 @@ from peirastic.realman8dof.force.tff import SELECTION_TOOL_Z_FORCE
 # freeze — not a fat deadzone. Leak uses a larger ball so a slow gravity
 # change after a hand rotate can be eaten once v is still. D_rot stays
 # light: 0.1 Nm → ~0.45 rad/s.
+#
+# Force-moment split: a point force at any lever is M ⊥ F. That component
+# is stripped before rotational admittance so a lateral push does not
+# command ω (the “yank”). Only the couple along F remains as rotation.
 _HOVER_F_DEAD_N = 0.12
 _HOVER_F_WIDTH_N = 0.08
 _HOVER_T_DEAD_NM = 0.020
@@ -30,6 +34,8 @@ _HOVER_T_WIDTH_NM = 0.015
 _HOVER_LEAK_F_N = 0.75
 _HOVER_LEAK_T_NM = 0.10
 _HOVER_SETTLE_S = 0.25
+_HOVER_DECOUPLE_F_MIN = 0.25
+_HOVER_DECOUPLE_F_FULL = 0.80
 _HOVER_M_LIN = 1.0
 _HOVER_M_ROT = 0.04
 _HOVER_D_LIN = 18.0
@@ -57,6 +63,29 @@ def _smooth_deadband(f_err: float, deadband: float, width: float) -> float:
     t = (af - deadband) / width
     gain = t * t * (3.0 - 2.0 * t)
     return math.copysign(gain * (af - deadband), f_err)
+
+
+def _moment_not_from_force(
+    force: np.ndarray,
+    moment: np.ndarray,
+    *,
+    f_min: float,
+    f_full: float,
+) -> np.ndarray:
+    """Keep the couple along F; drop M that a point force can explain (M ⊥ F)."""
+
+    f = np.asarray(force, dtype=float).reshape(3)
+    m = np.asarray(moment, dtype=float).reshape(3)
+    fn = float(np.linalg.norm(f))
+    if fn <= float(f_min) or fn < 1e-9:
+        return m
+    u = f / fn
+    m_couple = u * float(np.dot(m, u))
+    if fn >= float(f_full):
+        return m_couple
+    t = (fn - float(f_min)) / max(float(f_full) - float(f_min), 1e-9)
+    gain = t * t * (3.0 - 2.0 * t)
+    return (1.0 - gain) * m + gain * m_couple
 
 
 def _radial_c1(vec: np.ndarray, radius: float, width: float) -> np.ndarray:
@@ -93,6 +122,8 @@ class FceAdmittanceLaw:
         leak_force_n: float = 0.0,
         leak_torque_nm: float = 0.0,
         settle_s: float = 0.0,
+        decouple_f_min: float = 0.0,
+        decouple_f_full: float = 0.0,
     ) -> None:
         self.dt = float(dt)
         self.force_axes = np.clip(np.asarray(force_axes, dtype=float).reshape(6), 0.0, 1.0)
@@ -113,6 +144,8 @@ class FceAdmittanceLaw:
         self.leak_force_n = max(float(leak_force_n), self.force_dead_n)
         self.leak_torque_nm = max(float(leak_torque_nm), self.torque_dead_nm)
         self.settle_s = max(float(settle_s), 0.0)
+        self.decouple_f_min = max(float(decouple_f_min), 0.0)
+        self.decouple_f_full = max(float(decouple_f_full), self.decouple_f_min)
         self._v = np.zeros(6, dtype=float)
         self._bias = np.zeros(6, dtype=float)
         self._bias_acc = np.zeros(6, dtype=float)
@@ -161,6 +194,8 @@ class FceAdmittanceLaw:
                 leak_force_n=_HOVER_LEAK_F_N,
                 leak_torque_nm=_HOVER_LEAK_T_NM,
                 settle_s=_HOVER_SETTLE_S,
+                decouple_f_min=_HOVER_DECOUPLE_F_MIN,
+                decouple_f_full=_HOVER_DECOUPLE_F_FULL,
             )
         mass_z = float(hm.get("admittance_mass_z", 1.0))
         damp_z = float(hm.get("admittance_damping_z", 25.0))
@@ -271,6 +306,9 @@ class FceAdmittanceLaw:
             dt_eff = self.dt
         f_ext = np.asarray(f_ext, dtype=float).reshape(6)
         f_des = np.asarray(f_des, dtype=float).reshape(6)
+        if not np.isfinite(f_ext).all() or not np.isfinite(f_des).all():
+            self._v[:] = 0.0
+            return self._held_output(f_des if np.isfinite(f_des).all() else np.zeros(6))
         held = self._try_settle(f_ext - f_des, f_des, dt_eff)
         if held is not None:
             return held
@@ -278,6 +316,13 @@ class FceAdmittanceLaw:
         drive = np.zeros(6, dtype=float)
         if self.force_dead_n > 0.0 or self.torque_dead_nm > 0.0:
             wrench_err = f_comp - f_des
+            if self.decouple_f_full > 1e-9:
+                wrench_err[3:6] = _moment_not_from_force(
+                    wrench_err[:3],
+                    wrench_err[3:6],
+                    f_min=self.decouple_f_min,
+                    f_full=self.decouple_f_full,
+                )
             f_hat = _radial_c1(wrench_err[:3], self.force_dead_n, self.force_width_n)
             t_hat = _radial_c1(wrench_err[3:6], self.torque_dead_nm, self.torque_width_nm)
             clutched = float(np.linalg.norm(f_hat)) <= 1e-12 and float(

@@ -5,7 +5,11 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from peirastic.realman8dof.force.fce import FceAdmittanceLaw, use_fce_law
+from peirastic.realman8dof.force.fce import (
+    FceAdmittanceLaw,
+    _moment_not_from_force,
+    use_fce_law,
+)
 
 
 def _law() -> FceAdmittanceLaw:
@@ -126,6 +130,57 @@ def test_hover_hand_push_still_yields() -> None:
     assert plus.v_force[2] < -1e-3
     assert minus.v_force[2] > 1e-3
     assert plus.v_force[2] == pytest.approx(-minus.v_force[2], rel=0.05)
+
+
+def test_moment_perp_force_is_dropped() -> None:
+    f = np.array([2.0, 0.0, 0.0])
+    r = np.array([0.0, 0.0, 0.12])
+    m_lever = np.cross(r, f)
+    dropped = _moment_not_from_force(f, m_lever, f_min=0.25, f_full=0.80)
+    np.testing.assert_allclose(dropped, 0.0, atol=1e-12)
+    couple = np.array([0.15, 0.0, 0.0])
+    kept = _moment_not_from_force(f, m_lever + couple, f_min=0.25, f_full=0.80)
+    np.testing.assert_allclose(kept, couple, atol=1e-12)
+
+
+def test_hover_lateral_force_does_not_spin() -> None:
+    law = _hover_law()
+    law.reset(pose=np.zeros(6), f_ext=np.zeros(6))
+    for _ in range(60):
+        _step(law, np.zeros(6))
+    # Point force 12 cm off TCP along z: M = r × F is ⊥ F.
+    wrench = np.array([2.0, 0.0, 0.0, 0.0, 0.24, 0.0])
+    out = None
+    for _ in range(25):
+        out = _step(law, wrench)
+    assert out is not None
+    assert out.v_force[0] < -1e-3
+    assert abs(out.v_force[3]) < 0.02
+    assert abs(out.v_force[4]) < 0.02
+    assert abs(out.v_force[5]) < 0.02
+
+
+def test_hover_couple_along_force_still_rotates() -> None:
+    law = _hover_law()
+    law.reset(pose=np.zeros(6), f_ext=np.zeros(6))
+    for _ in range(60):
+        _step(law, np.zeros(6))
+    wrench = np.array([2.0, 0.0, 0.0, 0.15, 0.0, 0.0])
+    out = None
+    for _ in range(20):
+        out = _step(law, wrench)
+    assert out is not None
+    assert out.v_force[0] < -1e-3
+    assert out.v_force[3] < -0.10
+    assert abs(out.v_force[4]) < 0.02
+    assert abs(out.v_force[5]) < 0.02
+
+
+def test_hover_nan_wrench_holds() -> None:
+    law = _hover_law()
+    law.reset(pose=np.zeros(6), f_ext=np.zeros(6))
+    out = _step(law, np.array([np.nan, 0.0, 0.0, 0.0, 0.0, 0.0]))
+    assert np.linalg.norm(out.v_force) < 1e-9
 
 
 def test_hover_rotation_is_light() -> None:

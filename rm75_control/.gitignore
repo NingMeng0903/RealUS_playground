@@ -25,10 +25,9 @@ env/
 # Local Taichi libcuda.so shim (genesis/.cuda_shim/)
 **/.cuda_shim/
 
-# Force compensation: regenerated locally (collection / identification)
-data/force_compensation/logs/*.npz
+# Force compensation: keep live φ and campaign captures; ignore other junk
 data/force_compensation/logs/*.log
-data/force_compensation/logs/force_id_phi.json
+data/force_compensation/logs/force_id_phi.bad_*.json
 
 # Scan / rail debug CSV (opt-in via --log-csv)
 apps/logs/

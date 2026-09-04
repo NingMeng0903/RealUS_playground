@@ -60,7 +60,8 @@ def main() -> int:
     print(f"[STATE] mid   {_fmt_q(q_mid)}", flush=True)
     print(
         "[MODE] HOVER  hold  force_axes=111111  F*=0  M*=0  "
-        "law=fce787a9  deadzone 0.12N/0.02Nm  D_rot=0.22  settle 0.25s  no timeout",
+        "law=fce787a9  deadzone 0.12N/0.02Nm  D_rot=0.22  "
+        "decouple M⊥F  settle 0.25s  no timeout",
         flush=True,
     )
 

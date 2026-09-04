@@ -19,6 +19,7 @@
 *.safetensors
 *.onnx
 *.npz
+!rm75_control/data/force_compensation/logs/force_id_pose_*.npz
 *.pkl
 *.pickle
 
@@ -32,7 +33,12 @@ smplx_outputs/*
 outputs/anatomy_retarget/
 **/.genesis_urdf_cache/
 **/.cuda_shim/
-rm75_control/data/force_compensation/logs/
+rm75_control/data/force_compensation/logs/*
+!rm75_control/data/force_compensation/logs/.gitkeep
+!rm75_control/data/force_compensation/logs/force_id_phi.json
+!rm75_control/data/force_compensation/logs/force_id_phi_v2.json
+!rm75_control/data/force_compensation/logs/payload_id_v2.csv
+!rm75_control/data/force_compensation/logs/force_id_pose_*.npz
 rm75_control/data/velocity_admittance/logs/
 rm75_control/apps/logs/
 peirastic/**/logs/
