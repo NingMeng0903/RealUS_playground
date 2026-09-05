@@ -103,8 +103,85 @@ def _polyline_ref(payload: dict, euler_order: str) -> WorldPolylineReference:
     )
 
 
+_SERVO_SECONDARY = frozenset({"track", "hold", "payload_id"})
+_RAIL_STILL_M_S = 0.002
+_RAIL_STALE_S = 0.050
+
+
 def _secondary_preset(payload: dict) -> str:
-    return str(payload.get("secondary") or "track")
+    """SERVO_TWIST / HOLD require an explicit rail/nullspace policy."""
+
+    value = payload.get("secondary")
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError(
+            "SERVO_TWIST / SERVO_TWIST_HOLD requires explicit secondary: "
+            "'track', 'hold', or 'payload_id'"
+        )
+    preset = value.strip()
+    if preset not in _SERVO_SECONDARY:
+        raise ValueError(
+            f"Unsupported servo secondary={preset!r}. "
+            "'off' only disables soft tasks; it does not lock the rail. "
+            "Use 'payload_id' for rail-locked identification."
+        )
+    return preset
+
+
+def _rail_speed_m_s(inner) -> float:
+    speeds: list[float] = []
+    core = getattr(inner, "core", None)
+    qdot = getattr(core, "qdot_prev", None)
+    if qdot is not None and np.size(qdot) > 0:
+        vel = float(np.asarray(qdot, dtype=float).reshape(-1)[0])
+        if np.isfinite(vel):
+            speeds.append(vel)
+    for key in ("last_v_r_ref", "last_rail_exec_velocity_m_s"):
+        raw = getattr(inner, key, None)
+        if raw is None:
+            continue
+        try:
+            vel = float(raw)
+        except (TypeError, ValueError):
+            continue
+        if np.isfinite(vel):
+            speeds.append(vel)
+    if not speeds:
+        return 0.0
+    return float(max(abs(vel) for vel in speeds))
+
+
+def _rail_feedback_age_s(inner) -> float:
+    core = getattr(inner, "core", None)
+    for obj in (inner, core):
+        if obj is None:
+            continue
+        raw = getattr(obj, "last_rail_feedback_age_s", None)
+        if raw is None:
+            raw = getattr(obj, "rail_feedback_age_s", None)
+        if raw is None:
+            continue
+        try:
+            age = float(raw)
+        except (TypeError, ValueError):
+            continue
+        if np.isfinite(age):
+            return age
+    return float("nan")
+
+
+def _require_still_rail_for_payload_id(inner) -> None:
+    """Refuse to lock a moving or stale rail into payload_id."""
+
+    if _rail_speed_m_s(inner) > _RAIL_STILL_M_S:
+        raise ValueError(
+            "payload_id requires a still rail "
+            f"(|v_r|≤{1e3 * _RAIL_STILL_M_S:.0f} mm/s). Stop first."
+        )
+    age = _rail_feedback_age_s(inner)
+    if np.isfinite(age) and age > _RAIL_STALE_S:
+        raise ValueError(
+            f"payload_id refused: rail feedback stale ({1e3 * age:.0f} ms)"
+        )
 
 
 def apply_qp_aux(inner, payload: dict | None) -> None:
@@ -145,6 +222,10 @@ def compile_request(
 ) -> Phase:
     payload = dict(req.payload)
     raw = raw or {}
+    if req.mode in (Mode.SERVO_TWIST, Mode.SERVO_TWIST_HOLD):
+        payload["secondary"] = _secondary_preset(payload)
+        if payload["secondary"] == "payload_id":
+            _require_still_rail_for_payload_id(ctx.inner)
     if req.mode == Mode.SERVO_TWIST:
         outer = ServoTwistOuter(
             _twist_source(payload, twist_read),
@@ -156,9 +237,6 @@ def compile_request(
             outer=outer,
             label=str(payload.get("label") or "servo_twist"),
             duration_s=payload.get("duration_s"),
-        )
-        phase.on_enter = lambda p=_secondary_preset(payload): SecondaryPolicy(preset=p).apply(
-            ctx.inner
         )
         return _finish_phase(ctx, payload, phase)
     if req.mode == Mode.SERVO_TWIST_HOLD:
@@ -173,9 +251,6 @@ def compile_request(
             outer=outer,
             label=str(payload.get("label") or "servo_twist_hold"),
             duration_s=payload.get("duration_s"),
-        )
-        phase.on_enter = lambda p=_secondary_preset(payload): SecondaryPolicy(preset=p).apply(
-            ctx.inner
         )
         return _finish_phase(ctx, payload, phase)
     if req.mode == Mode.TRACK_CARTESIAN:
@@ -306,7 +381,6 @@ def _attach_joint_hold(phase: Phase, inner) -> None:
 
 
 def _finish_phase(ctx: CompileContext, payload: dict, phase: Phase) -> Phase:
-    apply_qp_aux(ctx.inner, payload)
     preset = payload.get("secondary")
     if preset or payload.get("qp_aux") or payload.get("collision_avoidance") is not None:
         prev = phase.on_enter

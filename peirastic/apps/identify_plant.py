@@ -92,7 +92,9 @@ def run_sequence(
 ) -> int:
     client = CommandClient(prefix=prefix)
     bus = TwistBus(prefix=prefix, create=False)
-    client.set_mode(ModeRequest(Mode.SERVO_TWIST, {"filter": False}))
+    client.set_mode(
+        ModeRequest(Mode.SERVO_TWIST, {"filter": False, "secondary": "payload_id"})
+    )
     print("[MODE] SERVO_TWIST identify_plant  filter OFF", flush=True)
     dt = 1.0 / max(hz, 1.0)
     try:
@@ -218,7 +220,9 @@ def run_stop_reverse_sequence(
     """
     client = CommandClient(prefix=prefix)
     bus = TwistBus(prefix=prefix, create=False)
-    client.set_mode(ModeRequest(Mode.SERVO_TWIST, {"filter": False}))
+    client.set_mode(
+        ModeRequest(Mode.SERVO_TWIST, {"filter": False, "secondary": "payload_id"})
+    )
     print("[MODE] SERVO_TWIST identify_plant --stop-reverse  filter OFF", flush=True)
     try:
         if not _hold_cmd(bus, client, 0.0, rest_s, hz):
@@ -309,7 +313,9 @@ def run_backup_replay_sequence(
             flush=True,
         )
         return 2
-    client.set_mode(ModeRequest(Mode.SERVO_TWIST, {"filter": False}))
+    client.set_mode(
+        ModeRequest(Mode.SERVO_TWIST, {"filter": False, "secondary": "payload_id"})
+    )
     print(
         "[MODE] SERVO_TWIST identify_plant --backup-replay  filter OFF  "
         f"a_max={sh.cfg.a_max_m_s2} j_max={sh.cfg.j_max_m_s3} "

@@ -154,7 +154,7 @@ def main() -> int:
                 time.sleep(0.05)
                 tel0 = client.snapshot()
         if pad_may_drive(int(tel0.get("mode") or 0), label=str(tel0.get("msg") or "")):
-            client.set_mode(ModeRequest(vel_mode, {}))
+            client.set_mode(ModeRequest(vel_mode, {"secondary": "track", "filter": False}))
         elif not quiet:
             print(
                 "[PAD] connected — command mode has priority "
@@ -266,7 +266,7 @@ def main() -> int:
                     client.set_mode(ModeRequest(Mode.TRACK_HYBRID, hybrid_payload))
                     print(f"[MODE] TRACK_HYBRID pad+force Z={fz:.2f}N", flush=True)
                 else:
-                    client.set_mode(ModeRequest(vel_mode, {}))
+                    client.set_mode(ModeRequest(vel_mode, {"secondary": "track", "filter": False}))
                     print("[MODE] " + vel_mode.name, flush=True)
             if not quiet and (now - last_log_s) >= 0.20:
                 last_log_s = now

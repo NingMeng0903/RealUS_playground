@@ -3448,6 +3448,7 @@ class _TickLogger:
         + [f"twist_achieved_{a}" for a in ("vx", "vy", "vz", "wx", "wy", "wz")]
         + ["track_err_mm", "follow_err_deg", "slack_norm", "n_cbf",
            "vel_clamped", "acc_clamped", "pos_clamped", "fx", "fy", "fz",
+           "tx", "ty", "tz",
            "P_ext_trans",
            "instability_idx", "instability_idx_raw", "instability_idx_active",
            "damping_z_eff",
@@ -3471,6 +3472,7 @@ class _TickLogger:
            "dt_actual_s", "deadline_slack_s", "sensor_age_s", "feedback_age_s",
            "feedback_fresh_tick",
            "fx_raw_comp", "fy_raw_comp", "fz_raw_comp",
+           "tx_raw_comp", "ty_raw_comp", "tz_raw_comp",
            "vz_achieved_tool", "contact_present",
            "force_pred_z", "force_dot_z", "cap_press_z", "cap_retract_z",
            "ke_update_gated", "ke_dx_m", "ke_df_n", "ke_update_count",
@@ -4092,6 +4094,12 @@ class _TickLogger:
         pose = np.asarray(pose, dtype=float).copy()
         f_ext = np.asarray(f_ext, dtype=float).copy()
         raw_comp = np.asarray(raw_comp, dtype=float).copy()
+        if f_ext.size < 6:
+            f_ext = np.pad(f_ext, (0, 6 - int(f_ext.size)), constant_values=np.nan)
+        if raw_comp.size < 6:
+            raw_comp = np.pad(
+                raw_comp, (0, 6 - int(raw_comp.size)), constant_values=np.nan
+            )
         twist_achieved = np.asarray(twist_achieved, dtype=float).copy()
         # Translational power only (f·v).  Not full P_ext, not P_leak.
         p_ext_trans = float("nan")
@@ -4154,6 +4162,7 @@ class _TickLogger:
                f"{step.slack_norm:.5f}", step.n_cbf_active,
                int(step.vel_clamped), int(step.acc_clamped), int(step.pos_clamped),
                f"{f_ext[0]:.3f}", f"{f_ext[1]:.3f}", f"{f_ext[2]:.3f}",
+               f"{f_ext[3]:.4f}", f"{f_ext[4]:.4f}", f"{f_ext[5]:.4f}",
                f"{p_ext_trans:.6f}" if np.isfinite(p_ext_trans) else "",
                f"{is_idx:.4f}", f"{is_idx_raw:.4f}", f"{is_idx:.4f}",
                f"{d_eff:.2f}",
@@ -4189,6 +4198,7 @@ class _TickLogger:
                f"{sensor_age_s:.6f}",
                f"{feedback_age_s:.6f}", int(bool(feedback_fresh_tick)),
                f"{raw_comp[0]:.3f}", f"{raw_comp[1]:.3f}", f"{raw_comp[2]:.3f}",
+               f"{raw_comp[3]:.4f}", f"{raw_comp[4]:.4f}", f"{raw_comp[5]:.4f}",
                f"{v_tcp_z_actual:.6f}", int(bool(contact_present)),
                f"{force_pred_z:.4f}", f"{force_dot_z:.4f}",
                f"{cap_press_z:.6f}", f"{cap_retract_z:.6f}",

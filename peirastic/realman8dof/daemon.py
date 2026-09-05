@@ -109,10 +109,9 @@ _PHASE_COPY = (
 
 
 def idle_mode_payload(*, secondary: str | None = None) -> dict:
-    """Payload for post-finite idle (optional campaign secondary)."""
-    payload: dict = {}
-    if secondary:
-        payload["secondary"] = str(secondary)
+    """Payload for post-finite idle.  Always names a servo secondary."""
+    payload: dict = {"filter": False}
+    payload["secondary"] = str(secondary) if secondary else "hold"
     return payload
 
 
@@ -146,9 +145,14 @@ def idle_after_command(
                 "joint_hold": True,
             },
         )
+    if last_secondary == "track":
+        return ModeRequest(
+            idle_after_finite(pad_source=pad_source),
+            idle_mode_payload(secondary="track"),
+        )
     return ModeRequest(
         idle_after_finite(pad_source=pad_source),
-        idle_mode_payload(),
+        idle_mode_payload(secondary="hold"),
     )
 
 
@@ -323,9 +327,6 @@ class ControllerService:
                     req = parsed
                     commanded = True
 
-            if commanded:
-                self._idle_secondary = command_secondary(getattr(req, "payload", None))
-
             try:
                 compiled = compile_request(
                     self.ctx,
@@ -340,7 +341,7 @@ class ControllerService:
                     status=Status.ERROR,
                     mode=req.mode,
                     msg=str(exc)[:90],
-                    done_seq=self._cmd_seq,
+                    done_seq=self._cmd_seq if commanded else 0,
                     err_code=1,
                 )
                 time.sleep(0.05)
@@ -360,6 +361,7 @@ class ControllerService:
             self._finite_duration = compiled.duration_s if velocity_loop else None
             self.hub.clear_stop()
             if commanded:
+                self._idle_secondary = command_secondary(getattr(req, "payload", None))
                 self.panel.event("MODE", MODE_LABEL[self.mode])
             self.hub.publish(status=Status.RUNNING, mode=self.mode, msg=phase.label)
 
@@ -402,6 +404,8 @@ class ControllerService:
                     done_seq=done_seq,
                     err_code=err_code,
                 )
+                if err_code in (None, 0):
+                    self._idle_secondary = command_secondary(parsed_req.payload)
 
             def _apply(parsed_req: ModeRequest, pose, t_ref: float = 0.0) -> None:
                 # Joint PTP runner is not a velocity proxy: any new mode rebuilds.
@@ -410,7 +414,6 @@ class ControllerService:
                     self._pending_commanded = True
                     self.hub.request_stop()
                     return
-                self._idle_secondary = command_secondary(parsed_req.payload)
                 new = compile_request(
                     self.ctx,
                     parsed_req,
@@ -445,6 +448,13 @@ class ControllerService:
                             _apply(parsed, pose, t_ref)
                         except Exception as exc:
                             self.panel.event("WARN", str(exc))
+                            self.hub.publish(
+                                status=Status.ERROR,
+                                mode=parsed.mode,
+                                msg=str(exc)[:90],
+                                done_seq=self._cmd_seq,
+                                err_code=1,
+                            )
                 if (
                     velocity_loop
                     and self._finite_duration is not None

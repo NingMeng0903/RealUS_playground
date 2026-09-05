@@ -135,7 +135,13 @@ def test_gamepad_source_is_not_a_mode() -> None:
 
 def test_compile_servo_and_ellipse() -> None:
     raw, ctx = _ctx()
-    phase = compile_request(ctx, ModeRequest(ModeE.SERVO_TWIST, {"v_cmd": [0.01, 0, 0, 0, 0, 0]}))
+    phase = compile_request(
+        ctx,
+        ModeRequest(
+            ModeE.SERVO_TWIST,
+            {"v_cmd": [0.01, 0, 0, 0, 0, 0], "secondary": "track"},
+        ),
+    )
     pose = ctx.kin.fk_pose(_SEED)
     v = phase.outer.sample(0.0, pose, np.zeros(6))
     assert v[0] == pytest.approx(0.01)
@@ -258,7 +264,12 @@ def test_velocity_modes_swap_in_place_joint_rebuilds() -> None:
 def test_mode_engine_offline_sample() -> None:
     raw, ctx = _ctx()
     eng = ModeEngine(ctx, raw=raw)
-    eng.set_mode(ModeRequest(ModeE.SERVO_TWIST, {"v_cmd": [0.0, 0.02, 0, 0, 0, 0]}))
+    eng.set_mode(
+        ModeRequest(
+            ModeE.SERVO_TWIST,
+            {"v_cmd": [0.0, 0.02, 0, 0, 0, 0], "secondary": "track"},
+        )
+    )
     pose = ctx.kin.fk_pose(_SEED)
     v = eng.sample(0.0, pose, np.zeros(6), q_meas=_SEED)
     assert v[1] == pytest.approx(0.02)
@@ -325,6 +336,55 @@ def test_servo_payload_id_without_joint_hold_stays_qpik() -> None:
     )
     phase.on_enter()
     assert ctx.inner._direct_joint_ptp is False
+    assert ctx.inner.is_locked_hold
+
+
+def test_servo_requires_explicit_secondary() -> None:
+    raw, ctx = _ctx()
+    with pytest.raises(ValueError, match="explicit secondary"):
+        compile_request(
+            ctx, ModeRequest(ModeE.SERVO_TWIST, {"filter": False}), raw=raw
+        )
+
+
+def test_servo_payload_id_refuses_moving_rail() -> None:
+    raw, ctx = _ctx()
+    ctx.inner.core.qdot_prev = np.zeros(ctx.inner.kin.nv, dtype=float)
+    ctx.inner.core.qdot_prev[0] = 0.01
+    with pytest.raises(ValueError, match="still rail"):
+        compile_request(
+            ctx,
+            ModeRequest(
+                ModeE.SERVO_TWIST,
+                {"secondary": "payload_id", "filter": False},
+            ),
+            raw=raw,
+        )
+
+
+def test_servo_policy_applies_once_on_enter_not_compile() -> None:
+    raw, ctx = _ctx()
+    n_lock = {"n": 0}
+    real_lock = ctx.inner.set_locked
+
+    def _count_lock(*args, **kwargs):
+        n_lock["n"] += 1
+        return real_lock(*args, **kwargs)
+
+    ctx.inner.set_locked = _count_lock
+    before = bool(ctx.inner.is_locked_hold)
+    phase = compile_request(
+        ctx,
+        ModeRequest(
+            ModeE.SERVO_TWIST,
+            {"secondary": "payload_id", "filter": False},
+        ),
+        raw=raw,
+    )
+    assert n_lock["n"] == 0
+    assert bool(ctx.inner.is_locked_hold) == before
+    phase.on_enter()
+    assert n_lock["n"] == 1
     assert ctx.inner.is_locked_hold
 
 

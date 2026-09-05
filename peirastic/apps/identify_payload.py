@@ -40,15 +40,15 @@ def campaign_phases(cfg: dict) -> list[dict]:
     phases = [
         {"id": "movej_mid", "mode": "MOVEJ", "rail_m": float((cfg.get("rail") or {}).get("target_m", 0.4))},
         {"id": "rail_lock", "mode": "SERVO_TWIST", "secondary": "payload_id", "twist": [0.0] * 6},
-        {"id": "static_holds", "mode": "SERVO_TWIST_HOLD", "n_train": int(st.get("n_train", 14)), "n_holdout": int(st.get("n_holdout", 4))},
-        {"id": "dt_x", "mode": "SERVO_TWIST", "axis": 0, "rotational": False},
-        {"id": "dt_y", "mode": "SERVO_TWIST", "axis": 1, "rotational": False},
-        {"id": "dt_z", "mode": "SERVO_TWIST", "axis": 2, "rotational": False},
-        {"id": "dr_x", "mode": "SERVO_TWIST", "axis": 3, "rotational": True},
-        {"id": "dr_y", "mode": "SERVO_TWIST", "axis": 4, "rotational": True},
-        {"id": "dr_z", "mode": "SERVO_TWIST", "axis": 5, "rotational": True},
-        {"id": "dm_holdout", "mode": "SERVO_TWIST", "holdout": True},
-        {"id": "inertia", "mode": "SERVO_TWIST", "high_alpha": True, "enabled": bool((cfg.get("inertia") or {}).get("enabled", False))},
+        {"id": "static_holds", "mode": "SERVO_TWIST_HOLD", "n_train": int(st.get("n_train", 14)), "n_holdout": int(st.get("n_holdout", 4)), "secondary": "payload_id"},
+        {"id": "dt_x", "mode": "SERVO_TWIST", "axis": 0, "rotational": False, "secondary": "payload_id"},
+        {"id": "dt_y", "mode": "SERVO_TWIST", "axis": 1, "rotational": False, "secondary": "payload_id"},
+        {"id": "dt_z", "mode": "SERVO_TWIST", "axis": 2, "rotational": False, "secondary": "payload_id"},
+        {"id": "dr_x", "mode": "SERVO_TWIST", "axis": 3, "rotational": True, "secondary": "payload_id"},
+        {"id": "dr_y", "mode": "SERVO_TWIST", "axis": 4, "rotational": True, "secondary": "payload_id"},
+        {"id": "dr_z", "mode": "SERVO_TWIST", "axis": 5, "rotational": True, "secondary": "payload_id"},
+        {"id": "dm_holdout", "mode": "SERVO_TWIST", "holdout": True, "secondary": "payload_id"},
+        {"id": "inertia", "mode": "SERVO_TWIST", "high_alpha": True, "enabled": bool((cfg.get("inertia") or {}).get("enabled", False)), "secondary": "payload_id"},
     ]
     _ = dyn
     return phases

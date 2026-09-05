@@ -241,8 +241,8 @@ def test_mode_engine_samples_all_modes() -> None:
     pose = ctx.kin.fk_pose(_SEED)
     f_ext = np.zeros(6)
     cases = [
-        (Mode.SERVO_TWIST, {"v_cmd": [0.01, 0, 0, 0, 0, 0]}),
-        (Mode.SERVO_TWIST_HOLD, {"v_cmd": [0.0] * 6}),
+        (Mode.SERVO_TWIST, {"v_cmd": [0.01, 0, 0, 0, 0, 0], "secondary": "track"}),
+        (Mode.SERVO_TWIST_HOLD, {"v_cmd": [0.0] * 6, "secondary": "hold"}),
         (Mode.TRACK_CARTESIAN, {"reference": "hold"}),
         (
             Mode.TRACK_HYBRID,

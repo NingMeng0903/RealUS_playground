@@ -737,10 +737,16 @@ def test_finish_phase_applies_payload_secondary_after_move_preset():
 
 
 def test_session_secondary_preset():
+    import pytest
     from peirastic.realman8dof.session import _secondary_preset
 
-    assert _secondary_preset({}) == "track"
+    with pytest.raises(ValueError, match="explicit secondary"):
+        _secondary_preset({})
+    with pytest.raises(ValueError, match="does not lock the rail"):
+        _secondary_preset({"secondary": "off"})
     assert _secondary_preset({"secondary": "payload_id"}) == "payload_id"
+    assert _secondary_preset({"secondary": "track"}) == "track"
+    assert _secondary_preset({"secondary": "hold"}) == "hold"
 
 
 def test_idle_after_payload_id_is_servo_not_hold():
@@ -753,10 +759,12 @@ def test_idle_after_payload_id_is_servo_not_hold():
     assert req.payload.get("joint_hold") is True
     default = idle_after_command(last_secondary=None)
     assert default.mode == Mode.SERVO_TWIST_HOLD
-    assert not (default.payload or {}).get("secondary")
+    assert default.payload.get("secondary") == "hold"
     pad = idle_after_command(last_secondary=None, pad_source=True)
     assert pad.mode == Mode.SERVO_TWIST
-    assert not (pad.payload or {}).get("secondary")
+    assert pad.payload.get("secondary") == "hold"
+    track = idle_after_command(last_secondary="track")
+    assert track.payload.get("secondary") == "track"
 
 
 def test_observer_update_stays_gravity_only_when_off(tmp_path):

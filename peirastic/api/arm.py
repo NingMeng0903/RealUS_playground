@@ -546,8 +546,7 @@ class _VelocityMixin(_ClientMixin):
             filter=filter,
             follow=follow,
         ).to_json()
-        if secondary:
-            payload["secondary"] = str(secondary)
+        payload["secondary"] = str(secondary) if secondary else "track"
         if extra:
             payload.update(extra)
         mode = Mode.SERVO_TWIST_HOLD if hold else Mode.SERVO_TWIST
