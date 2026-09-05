@@ -135,7 +135,7 @@ def _rail_speed_m_s(inner) -> float:
         vel = float(np.asarray(qdot, dtype=float).reshape(-1)[0])
         if np.isfinite(vel):
             speeds.append(vel)
-    for key in ("last_v_r_ref", "last_rail_exec_velocity_m_s"):
+    for key in ("last_rail_exec_velocity_m_s",):
         raw = getattr(inner, key, None)
         if raw is None:
             continue
