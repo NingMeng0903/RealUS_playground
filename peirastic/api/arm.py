@@ -27,16 +27,26 @@ from peirastic.api.payloads import (
 )
 from peirastic.core.ipc import CommandClient, Status, TwistBus
 from peirastic.core.modes import Mode, ModeRequest
+from peirastic.core.session import valid_dof_snapshot
+from rm75_control.control.joint_admittance_8dof.api import (
+    controller_dof,
+    set_controller_dof,
+    validate_dof,
+)
 
 ACK_TIMEOUT_S = 2.0
 DEFAULT_BLOCK_S = 60.0
 CONTACT_POLL_S = 0.02
 
 
-def _as_q(q) -> list[float]:
+def _as_q(q, *, rail_m: float | None = None) -> list[float]:
     arr = np.asarray(q, dtype=float).reshape(-1)
+    if arr.size == 7:
+        if rail_m is None or not np.isfinite(float(rail_m)):
+            raise ValueError("7-arm target needs a finite live rail position")
+        return [float(rail_m), *arr.tolist()]
     if arr.size != 8:
-        raise ValueError(f"q must be 8-vec (rail + 7 arm rad), got {arr.size}")
+        raise ValueError(f"q must be 7-arm or 8-vec (rail + 7 arm rad), got {arr.size}")
     return arr.tolist()
 
 
@@ -137,8 +147,115 @@ class _ClientMixin:
             return ERR_UNIMPLEMENTED
         return None
 
+    def _current_rail_m(self) -> float:
+        state = getattr(self, "state", None)
+        if state is not None:
+            raw = getattr(state, "last_rail_m", float("nan"))
+            try:
+                if np.isfinite(float(raw)):
+                    return float(raw)
+            except (TypeError, ValueError):
+                pass
+            try:
+                q = state.q_meas_8dof()
+                if q is not None and np.size(q) >= 8 and np.isfinite(float(q[0])):
+                    return float(np.asarray(q, dtype=float).reshape(-1)[0])
+            except Exception:
+                pass
+        inner = getattr(self, "inner", None)
+        q_cmd = getattr(inner, "q_cmd", None)
+        if q_cmd is not None:
+            q = np.asarray(q_cmd, dtype=float).reshape(-1)
+            if q.size >= 8 and np.isfinite(float(q[0])):
+                return float(q[0])
+        return float("nan")
+
+    def _active_dof(self) -> int:
+        if self.client is not None:
+            ret, value = self._remote_dof()
+            if ret != OK:
+                raise RuntimeError("controller DOF telemetry is unavailable or unsafe")
+            return value
+        ctx = getattr(self, "ctx", None)
+        if ctx is not None:
+            return validate_dof(getattr(ctx, "dof"))
+        inner = getattr(self, "inner", None)
+        if inner is not None:
+            return controller_dof(inner)
+        raise RuntimeError("controller DOF is unavailable")
+
+    def _remote_dof(self) -> tuple[int, int]:
+        """Return a DOF only from a fresh, self-consistent remote snapshot."""
+
+        snap = self._snapshot()
+        if not snap:
+            return ERR_CONTROLLER, 0
+        try:
+            status = int(snap["status"])
+            if bool(snap.get("estop")) or status in (
+                int(Status.ESTOP),
+                int(Status.STOPPED),
+            ):
+                return ERR_STOPPED, 0
+            if not valid_dof_snapshot(snap):
+                return ERR_CONTROLLER, 0
+            if status == int(Status.ERROR):
+                return ERR_CONTROLLER, 0
+            dof_status = int(snap.get("dof_status", int(Status.IDLE)))
+            if dof_status in (
+                int(Status.ERROR),
+                int(Status.ESTOP),
+                int(Status.STOPPED),
+            ):
+                return ERR_CONTROLLER, 0
+            current = int(snap["dof"])
+            effective = int(snap["dof_effective"])
+            pending = int(snap.get("dof_pending", -1))
+            if current not in (7, 8) or effective not in (7, 8):
+                return ERR_CONTROLLER, 0
+            if current != effective or pending not in (-1, 7, 8):
+                return ERR_CONTROLLER, 0
+            return OK, current
+        except (KeyError, TypeError, ValueError, OverflowError):
+            return ERR_CONTROLLER, 0
+
+    def _q_target(self, q) -> list[float]:
+        raw = np.asarray(q, dtype=float).reshape(-1)
+        # Keep an arm-only target arm-only on the wire.  Window A may receive
+        # this command while an 8→7 request is pending; it must prepend the
+        # rail position sampled at the commit boundary, rather than the old
+        # rail value observed by Window C when the request was queued.
+        if raw.size == 7:
+            if not np.all(np.isfinite(raw)):
+                raise ValueError("q target must contain finite values")
+            return raw.tolist()
+        rail = self._current_rail_m()
+        out = np.asarray(_as_q(raw, rail_m=rail), dtype=float)
+        if self._active_dof() == 7:
+            if not np.isfinite(rail):
+                raise ValueError("7-DOF MOVEJ needs a finite live rail position")
+            if abs(float(out[0]) - float(rail)) > 1.0e-6:
+                raise ValueError("7-DOF session rejects a rail-moving MOVEJ target")
+            out[0] = float(rail)
+        return out.tolist()
+
+    @staticmethod
+    def _reject_legacy_kwargs(legacy: dict[str, Any]) -> None:
+        if "secondary" in legacy:
+            raise ValueError(
+                "secondary was removed from the PEIRASTIC API; "
+                "use set_dof(7 or 8)"
+            )
+        if legacy:
+            key = next(iter(legacy))
+            raise TypeError(f"unexpected keyword argument {key!r}")
+
     def _with_aux(self, payload: dict[str, Any], *, mode: Mode | None = None) -> dict[str, Any]:
         out = dict(payload)
+        if "secondary" in out:
+            raise ValueError(
+                "secondary was removed from the PEIRASTIC API; use set_dof(7 or 8)"
+            )
         if self._qp_aux:
             merged = dict(out.get("qp_aux") or {})
             merged.update(self._qp_aux)
@@ -177,14 +294,169 @@ class _ClientMixin:
         except FileNotFoundError:
             return ERR_SEND
         self.last_seq = int(seq)
+        install_timeout = ACK_TIMEOUT_S if not block else min(
+            ACK_TIMEOUT_S, max(float(block), 0.0)
+        )
+        install_ret = self._wait_installed(int(seq), mode, install_timeout)
+        if install_ret != OK:
+            return install_ret
         if not block:
             return OK
         return self._wait_done(int(seq), block)
+
+    def set_dof(
+        self,
+        dof: int,
+        *,
+        after_current: bool = True,
+        block: float | int = 1,
+    ) -> int:
+        """Request the persistent 7/8-DOF session structure.
+
+        Window A commits the request only after the active task has ended and
+        both arm and rail are stationary.  ``after_current`` is intentionally
+        the only supported boundary policy.  ``block=0`` is asynchronous;
+        ``block=1`` waits for the commit ``done_seq``.
+        """
+        value = validate_dof(dof)
+        if not isinstance(after_current, bool) or not after_current:
+            return ERR_CONTROLLER
+        if self.client is None:
+            if self.ctx is None or self.inner is None:
+                return ERR_CONTROLLER
+            try:
+                set_controller_dof(self.inner, value)
+                self.ctx.dof = value
+            except Exception:
+                return ERR_CONTROLLER
+            return OK
+        try:
+            snap = self._snapshot()
+            if not valid_dof_snapshot(snap):
+                return ERR_CONTROLLER
+            pending = int(snap.get("dof_pending", -1))
+            if pending in (7, 8):
+                if pending != value:
+                    return ERR_CONTROLLER
+                seq = int(snap.get("dof_request_seq", 0))
+                if seq <= 0:
+                    return ERR_CONTROLLER
+            else:
+                seq = self.client.set_dof(value, after_current=True)
+        except (ValueError, FileNotFoundError):
+            return ERR_SEND
+        self.last_seq = int(seq)
+        if not block:
+            return OK
+        return self._wait_dof_done(int(seq), block, expected_dof=value)
+
+    def get_dof(self) -> tuple[int, int]:
+        if self.client is not None:
+            return self._remote_dof()
+        ctx = getattr(self, "ctx", None)
+        if ctx is not None:
+            try:
+                return OK, validate_dof(getattr(ctx, "dof"))
+            except Exception:
+                return ERR_CONTROLLER, 0
+        inner = getattr(self, "inner", None)
+        if inner is not None:
+            try:
+                return OK, controller_dof(inner)
+            except Exception:
+                return ERR_CONTROLLER, 0
+        return ERR_CONTROLLER, 0
 
     def _snapshot(self) -> dict[str, Any]:
         if self.client is None:
             return {}
         return self.client.snapshot()
+
+    def _wait_dof_done(
+        self,
+        seq: int,
+        block: float | int,
+        *,
+        expected_dof: int,
+    ) -> int:
+        """Wait for the DOF-specific ACK; mode completions share cmd_seq."""
+        timeout = DEFAULT_BLOCK_S if float(block) == 1.0 else float(block)
+        if timeout <= 0.0:
+            return OK
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            try:
+                snap = self._snapshot()
+            except (TypeError, AttributeError, FileNotFoundError):
+                return ERR_SEND
+            if bool(snap.get("estop")) or int(snap.get("status", -1)) in (
+                int(Status.ESTOP),
+                int(Status.STOPPED),
+            ):
+                return ERR_STOPPED
+            if not valid_dof_snapshot(snap):
+                return ERR_CONTROLLER
+            done_seq = int(snap.get("dof_done_seq", 0))
+            if done_seq > int(seq):
+                return ERR_CONTROLLER
+            if done_seq == int(seq):
+                state = int(snap.get("dof_status", int(Status.ERROR)))
+                if state == int(Status.DONE):
+                    if (
+                        int(snap.get("dof_effective", -1)) == int(expected_dof)
+                        and int(snap.get("dof_pending", -1)) == -1
+                        and int(snap.get("dof_request_seq", 0)) == int(seq)
+                    ):
+                        return OK
+                    return ERR_CONTROLLER
+                if state in (int(Status.ESTOP), int(Status.STOPPED)):
+                    return ERR_STOPPED
+                return ERR_CONTROLLER
+            time.sleep(0.01)
+        return ERR_TIMEOUT
+
+    def _wait_installed(self, seq: int, mode: Mode, timeout: float) -> int:
+        """Wait until Window A has run the mode's on_enter hook.
+
+        ``ack_seq`` only means that the mailbox command was consumed.  A
+        separate install sequence prevents callers from treating that early
+        acknowledgement as proof that a velocity phase is already active.
+        """
+
+        if self.client is not None:
+            return self.client.wait_installed(seq, mode, timeout=timeout)
+
+        timeout = max(float(timeout), 0.0)
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            try:
+                snap = self._snapshot()
+            except (TypeError, AttributeError, FileNotFoundError):
+                return ERR_SEND
+            st = int(snap.get("status", -1))
+            if bool(snap.get("estop")) or st in (
+                int(Status.ESTOP),
+                int(Status.STOPPED),
+            ):
+                return ERR_STOPPED
+            if not valid_dof_snapshot(snap):
+                return ERR_CONTROLLER
+            installed = int(snap.get("install_seq", 0))
+            if installed == int(seq):
+                return OK if int(snap.get("mode", -1)) == int(mode) else ERR_CONTROLLER
+            if installed > int(seq):
+                return ERR_CONTROLLER
+            if st == int(Status.ERROR) and int(snap.get("ack_seq", 0)) >= int(seq):
+                err = int(snap.get("err_code", 0))
+                return ERR_CONTROLLER if err == 0 else err
+            time.sleep(0.01)
+        return ERR_NO_ACK
+
+    # Keep the short spelling for callers from the first handshake draft.
+    # New integrations should use ``_wait_installed`` so the distinction from
+    # the mailbox ``ack_seq`` is explicit.
+    def _wait_install(self, seq: int, mode: Mode, timeout: float) -> int:
+        return self._wait_installed(seq, mode, timeout)
 
     def _wait_done(
         self,
@@ -271,16 +543,15 @@ class _MovePlanMixin(_ClientMixin):
         connect: int = 0,
         block: int = 1,
         *,
-        secondary: str | None = None,
         label: str = "movej",
+        **legacy,
     ) -> int:
         bad = self._check_tail(r, connect)
         if bad is not None:
             return bad
+        self._reject_legacy_kwargs(legacy)
         v = _check_v(v)
-        payload = MoveJPayload(q_target=_as_q(q), v=v, label=label).to_json()
-        if secondary:
-            payload["secondary"] = str(secondary)
+        payload = MoveJPayload(q_target=self._q_target(q), v=v, label=label).to_json()
         return self._send(Mode.MOVEJ, payload, block=block)
 
     def movej_p(
@@ -297,6 +568,13 @@ class _MovePlanMixin(_ClientMixin):
         if bad is not None:
             return bad
         v = _check_v(v)
+        if self._active_dof() == 7:
+            current_rail = self._current_rail_m()
+            if not np.isfinite(current_rail):
+                raise ValueError("7-DOF MOVEJ pose target needs a finite live rail position")
+            if rail_m is not None and abs(float(rail_m) - current_rail) > 1.0e-6:
+                raise ValueError("7-DOF session rejects a rail-moving MOVEJ pose target")
+            rail_m = current_rail
         payload = MoveJPayload(
             pose=_as_pose(pose), v=v, rail_m=rail_m, label="movej_p"
         ).to_json()
@@ -312,26 +590,35 @@ class _MovePlanMixin(_ClientMixin):
         *,
         rail_m: float | None = None,
         q_target=None,
-        secondary: str | None = None,
         label: str = "cartesian",
+        task_policy: str | None = None,
+        **legacy,
     ) -> int:
         """Pose-to-pose: IK the goal, then joint-space smooth PTP (not a TCP line)."""
 
         bad = self._check_tail(r, connect)
         if bad is not None:
             return bad
+        self._reject_legacy_kwargs(legacy)
         v = _check_v(v)
+        if self._active_dof() == 7:
+            current_rail = self._current_rail_m()
+            if not np.isfinite(current_rail):
+                raise ValueError("7-DOF Cartesian target needs a finite live rail position")
+            if rail_m is not None and abs(float(rail_m) - current_rail) > 1.0e-6:
+                raise ValueError("7-DOF session rejects a rail-moving Cartesian target")
+            rail_m = current_rail
         payload = MoveLPayload(
             pose=_as_pose(pose),
-            q_target=None if q_target is None else _as_q(q_target),
+            q_target=None if q_target is None else self._q_target(q_target),
             v=v,
             max_lin_vel_m_s=float(self._max_line_speed) * v,
             label=label,
         ).to_json()
         if rail_m is not None:
             payload["rail_m"] = float(rail_m)
-        if secondary:
-            payload["secondary"] = str(secondary)
+        if task_policy is not None:
+            payload["task_policy"] = str(task_policy)
         return self._send(Mode.CARTESIAN_PTP, payload, block=block)
 
     def moves(self, poses, v: float = 0.4, r: float = 0, connect: int = 0, block: int = 1) -> int:
@@ -426,11 +713,12 @@ class _TrackMixin(_ClientMixin):
         block: int = 0,
         label: str = "track_hold",
         soft_start: bool = False,
-        secondary: str | None = None,
         speed_m_s: float | None = None,
         max_lin_vel_m_s: float | None = None,
+        **legacy,
     ) -> int:
         # Single-pose polyline so QPIK tracks the given TCP, not the live origin.
+        self._reject_legacy_kwargs(legacy)
         payload = TrackCartesianPayload(
             reference="polyline",
             poses=[_as_pose(pose)],
@@ -440,8 +728,6 @@ class _TrackMixin(_ClientMixin):
             max_lin_vel_m_s=max_lin_vel_m_s,
             label=label,
         ).to_json()
-        if secondary:
-            payload["secondary"] = str(secondary)
         return self._send(Mode.TRACK_CARTESIAN, payload, block=block)
 
     def track_polyline(
@@ -456,8 +742,9 @@ class _TrackMixin(_ClientMixin):
         label: str = "track_polyline",
         max_lin_vel_m_s: float | None = None,
         move_kp: float | None = None,
-        secondary: str | None = None,
+        **legacy,
     ) -> int:
+        self._reject_legacy_kwargs(legacy)
         payload = TrackCartesianPayload(
             reference="polyline",
             poses=_as_poses(poses),
@@ -469,8 +756,6 @@ class _TrackMixin(_ClientMixin):
             move_kp=move_kp,
             label=label,
         ).to_json()
-        if secondary:
-            payload["secondary"] = str(secondary)
         return self._send(Mode.TRACK_CARTESIAN, payload, block=block)
 
     def track_ellipse(
@@ -526,8 +811,8 @@ class _VelocityMixin(_ClientMixin):
         block: float | int = 0,
         filter: bool | list[float] | None = None,
         follow: bool | None = None,
-        secondary: str | None = None,
         extra: dict[str, Any] | None = None,
+        **legacy,
     ) -> int:
         """Cartesian velocity mode: ``v*`` → inner QPIK. Swappable on the 200 Hz runner.
 
@@ -539,6 +824,7 @@ class _VelocityMixin(_ClientMixin):
         Commanded SERVO_TWIST may sit at ``v*=0``; HOLD does not steal that mode.
         """
 
+        self._reject_legacy_kwargs(legacy)
         payload = ServoTwistPayload(
             v_cmd=None if twist is None else _as_twist(twist),
             duration_s=duration_s,
@@ -546,7 +832,6 @@ class _VelocityMixin(_ClientMixin):
             filter=filter,
             follow=follow,
         ).to_json()
-        payload["secondary"] = str(secondary) if secondary else "track"
         if extra:
             payload.update(extra)
         mode = Mode.SERVO_TWIST_HOLD if hold else Mode.SERVO_TWIST

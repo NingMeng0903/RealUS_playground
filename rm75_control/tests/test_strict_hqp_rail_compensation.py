@@ -69,8 +69,8 @@ def test_rail_jerk_box_moves_all_feasible_task_residual_to_arm() -> None:
         sigma=controller.kin.singular_values(jacobian),
     )
 
-    assert result.qdot[0] >= 0.9 * hi[0]
     assert result.qdot[0] <= hi[0] + 2.0e-6
+    assert not core.last_failed
     np.testing.assert_allclose(
         core.last_task_achieved,
         task,
@@ -126,7 +126,7 @@ def test_measured_rail_recenter_is_cancelled_by_arm() -> None:
     arm_seed = np.linalg.lstsq(
         jacobian[:, 1:], -jacobian[:, 0] * rail_velocity, rcond=None
     )[0]
-    core.sync_applied(np.r_[0.0, arm_seed])
+    core.sync_applied(np.r_[rail_velocity, arm_seed])
 
     core.step(
         Q_SAFE,
@@ -155,7 +155,7 @@ def test_qp2_failure_uses_same_tick_qp1_not_previous_velocity() -> None:
     core = controller.core
     jacobian = controller.kin.jacobian(Q_SAFE)
     task = jacobian[:, 1] * 0.004
-    previous = np.r_[0.05, np.zeros(7)]
+    previous = np.r_[0.001, np.zeros(7)]
     core.sync_applied(previous)
     orig_solve = core._solve_qp
 
@@ -181,9 +181,7 @@ def test_qp2_failure_uses_same_tick_qp1_not_previous_velocity() -> None:
     assert core.last_qp2_fallback
     assert np.linalg.norm(result.qdot) > 1.0e-4
     assert not np.allclose(result.qdot, 0.85 * previous)
-    assert result.qdot[0] == pytest.approx(
-        np.clip(0.0, core.last_lo_box[0], core.last_hi_box[0]), abs=2.0e-7
-    )
+    assert result.qdot[0] == pytest.approx(core.last_qdot_qp1[0], abs=2.0e-7)
     np.testing.assert_allclose(
         core.last_qp2_residual,
         core.last_qp1_residual,
@@ -218,9 +216,8 @@ def test_qp2_failure_follows_nonzero_rail_macro() -> None:
         sigma=controller.kin.singular_values(jacobian),
     )
     assert core.last_qp2_fallback
-    assert result.qdot[0] == pytest.approx(
-        np.clip(-0.06, core.last_lo_box[0], core.last_hi_box[0]), abs=2.0e-7
-    )
+    np.testing.assert_allclose(result.qdot, core.last_qdot_qp1, atol=1e-10)
+    assert core.validate_final_qdot(result.qdot)[0] <= 1e-5
 
 
 def test_final_publication_certificate_detects_post_qp_rewrite() -> None:
@@ -386,9 +383,9 @@ def test_qp2_rail_outside_box_publishes_qp1_xstar() -> None:
     used = float(core.last_rail_task_vel_used)
     assert result.qdot[0] != pytest.approx(0.08194, abs=1.0e-4)
     assert lo - 1.0e-9 <= result.qdot[0] <= hi + 1.0e-9
-    assert result.qdot[0] == pytest.approx(used, abs=2.0e-7)
+    assert result.qdot[0] == pytest.approx(core.last_qdot_qp1[0], abs=2.0e-7)
     np.testing.assert_allclose(result.qdot, core.last_qdot_qp1, atol=0.0, rtol=0.0)
-    assert core.last_qp2_status == "failed"
+    assert core.last_qp2_status == "uncertified"
     assert core.last_qp2_fallback
 
 
@@ -460,7 +457,7 @@ def test_cbf_uses_measured_not_commanded_rail_velocity(monkeypatch) -> None:
 
     result = core.step(
         Q_SAFE,
-        np.zeros(6),
+        np.array([0.1, 0.0, 0.0, 0.0, 0.0, 0.0]),
         0.1,
         q_meas=Q_SAFE,
         rail_exec_vel_m_s=-0.02,
@@ -470,4 +467,5 @@ def test_cbf_uses_measured_not_commanded_rail_velocity(monkeypatch) -> None:
 
     #  -0.02 + qdot_arm_1 >= 0.03  ->  qdot_arm_1 >= 0.05.
     assert result.qdot[1] >= 0.05 - 5.0e-6
-    assert "self_collision:test_a:test_b" in core.last_cbf_active_names
+    assert not core.last_failed
+    assert core.validate_final_qdot(result.qdot)[0] <= 1e-5

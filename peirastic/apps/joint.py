@@ -32,7 +32,13 @@ def main() -> int:
     payload = {"q_target": [float(x) for x in q]}
     if args.duration_s is not None:
         payload["duration_s"] = float(args.duration_s)
-    client.set_mode(ModeRequest(mode, payload))
+    req = ModeRequest(mode, payload)
+    seq = client.set_mode(req)
+    ret = client.wait_installed(seq, req.mode)
+    if ret != 0:
+        print(f"[WARN] {mode.name} install failed ({ret})", flush=True)
+        client.close()
+        return 1
     print(f"[MODE] {mode.name}", flush=True)
     try:
         while True:

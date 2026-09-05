@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import time
 from pathlib import Path
+from types import SimpleNamespace
 
 import numpy as np
 import pytest
@@ -406,7 +408,19 @@ def test_safety_raw_envelope_and_deadman():
     assert abs(v[0]) < 0.2
 
 
-def test_payload_id_policy_suppresses_nullspace():
+def test_id_extra_forces_payload_id_policy_on_8dof_session() -> None:
+    from peirastic.apps.identify_payload import load_v2_yaml
+    from rm75_control.force.compensation.v2.campaign import _id_extra
+
+    extra = _id_extra({})
+    assert extra["task_policy"] == "payload_id"
+    assert extra["filter"] is False
+    yaml_extra = _id_extra(load_v2_yaml())
+    assert yaml_extra["task_policy"] == "payload_id"
+    assert yaml_extra["qp_aux"].get("centering") is False
+
+
+def test_payload_id_policy_suppresses_nullspace_without_structure_switch():
     class Inner:
         def __init__(self):
             self.q_cmd = np.array([0.4] + [0.0] * 7)
@@ -438,7 +452,7 @@ def test_payload_id_policy_suppresses_nullspace():
     assert inner.flags["arm"] is True
     assert inner.flags["cent"] is True
     assert inner.flags["manip"] is False
-    assert inner.flags["locked"][1] == pytest.approx(0.4)
+    assert "locked" not in inner.flags
 
     hold = Inner()
     SecondaryPolicy(preset="hold").apply(hold)
@@ -510,9 +524,115 @@ def test_campaign_phases_split_static_and_fourier():
     assert "static_holds" in ids
     assert ids.count("dt_x") == 1 and "inertia" in ids
     assert ph[2]["mode"] == "SERVO_TWIST_HOLD"
+    assert all(p.get("dof") == 7 for p in ph[1:])
     assert all(p["mode"] == "SERVO_TWIST" for p in ph if p["id"].startswith("dt") or p["id"].startswith("dr"))
     default = campaign_phases({})
     assert next(p for p in default if p["id"] == "inertia")["enabled"] is False
+
+
+def test_payload_campaign_keeps_8dof_session_and_does_not_steal_structure():
+    from rm75_control.force.compensation.v2.campaign import PayloadIdCampaign
+
+    class Arm:
+        client = object()
+        twist = None
+
+        def __init__(self):
+            self.calls = []
+
+        def get_dof(self):
+            return 0, 8
+
+        def set_dof(self, value, *, block):
+            self.calls.append((int(value), int(block)))
+            return 0
+
+        def close(self):
+            self.calls.append(("close",))
+
+    class Recorder:
+        def stop(self):
+            pass
+
+    camp = object.__new__(PayloadIdCampaign)
+    camp.arm = Arm()
+    camp.OK = 0
+    camp.CODE_NAMES = {}
+    camp._dof_before = None
+    camp._dof_changed = False
+    camp._explicit_7 = False
+    camp.rec = Recorder()
+    camp._enter_calibration_dof()
+    assert camp._dof_before == 8
+    assert camp._dof_changed is False
+    assert camp._explicit_7 is False
+    assert camp.arm.calls == []
+    camp.close()
+    assert camp.arm.calls[-1:] == [("close",)]
+
+
+def test_payload_campaign_keyboard_interrupt_keeps_recoverable_restore(monkeypatch, tmp_path):
+    """A healthy Ctrl-C still runs the campaign close/restore path."""
+
+    import rm75_control.force.compensation.v2.campaign as campaign
+
+    events = []
+
+    class FakeCampaign:
+        def __init__(self, cfg, log_csv, *, out_json, opts):
+            del cfg, log_csv, out_json, opts
+            self.kin = object()
+            self.contract = object()
+            self._restore_blocked = False
+
+        def run(self):
+            raise KeyboardInterrupt
+
+        def _hard_fault_active(self, reason):
+            events.append(("classify", reason))
+            return False
+
+        def close(self, *, stop):
+            events.append(("close", bool(stop), bool(self._restore_blocked)))
+
+    monkeypatch.setattr(campaign, "PayloadIdCampaign", FakeCampaign)
+    monkeypatch.setattr(campaign, "fit_hardware_log", lambda *a, **k: events.append(("fit",)))
+
+    rc = campaign.run_hardware_campaign(
+        {},
+        tmp_path / "payload.csv",
+        out_json=tmp_path / "payload.json",
+        opts=campaign.CampaignOpts(skip_movej=True, p1_only=True),
+    )
+
+    assert rc == 130
+    assert ("classify", "keyboard_interrupt") in events
+    assert ("close", True, False) in events
+    assert ("fit",) in events
+
+
+def test_payload_campaign_fresh_estop_blocks_restore():
+    """A fresh controller ESTOP is a hard fault for calibration cleanup."""
+
+    from peirastic.core.ipc import Status
+    from rm75_control.force.compensation.v2.campaign import PayloadIdCampaign
+
+    now = time.monotonic()
+    camp = object.__new__(PayloadIdCampaign)
+    camp.arm = SimpleNamespace(
+        client=SimpleNamespace(
+            snapshot=lambda: {
+                "t_mono": now,
+                "status": int(Status.ESTOP),
+                "estop": True,
+            }
+        ),
+        state=SimpleNamespace(
+            read=lambda: SimpleNamespace(t_s=now, ok=True),
+        ),
+    )
+
+    assert camp._hard_fault_active("keyboard_interrupt") is True
 
 
 def test_inertia_ident_off_by_default():
@@ -707,7 +827,7 @@ def test_recorder_push_keeps_phase_and_cmd(tmp_path):
     assert "v_cmd_x" in text
 
 
-def test_finish_phase_applies_payload_secondary_after_move_preset():
+def test_finish_phase_applies_payload_policy_without_structure_switch():
     from peirastic.realman8dof.session import _finish_phase
     from rm75_control.control.joint_admittance_8dof.api import SecondaryPolicy
     from rm75_control.control.joint_admittance_8dof.loop import Phase
@@ -729,10 +849,10 @@ def test_finish_phase_applies_payload_secondary_after_move_preset():
     ctx = type("Ctx", (), {"inner": inner})()
     phase = Phase(outer=object(), label="move")
     phase.on_enter = lambda: order.append("move_preset")
-    _finish_phase(ctx, {"secondary": "payload_id"}, phase)
+    _finish_phase(ctx, {"task_policy": "payload_id"}, phase)
     phase.on_enter()
     assert order[0] == "move_preset"
-    assert "locked" in order
+    assert "locked" not in order
     assert "arm=True" in order or any("arm=" in x for x in order)
 
 
@@ -740,31 +860,28 @@ def test_session_secondary_preset():
     import pytest
     from peirastic.realman8dof.session import _secondary_preset
 
-    with pytest.raises(ValueError, match="explicit secondary"):
+    with pytest.raises(ValueError, match="secondary was removed"):
         _secondary_preset({})
-    with pytest.raises(ValueError, match="does not lock the rail"):
+    with pytest.raises(ValueError, match="secondary was removed"):
         _secondary_preset({"secondary": "off"})
-    assert _secondary_preset({"secondary": "payload_id"}) == "payload_id"
-    assert _secondary_preset({"secondary": "track"}) == "track"
-    assert _secondary_preset({"secondary": "hold"}) == "hold"
+    with pytest.raises(ValueError, match="secondary was removed"):
+        _secondary_preset({"secondary": "payload_id"})
 
 
 def test_idle_after_payload_id_is_servo_not_hold():
     from peirastic.core.modes import Mode
     from peirastic.realman8dof.daemon import idle_after_command
 
-    req = idle_after_command(last_secondary="payload_id")
+    req = idle_after_command(dof=7)
     assert req.mode == Mode.SERVO_TWIST
-    assert req.payload.get("secondary") == "payload_id"
+    assert req.payload.get("task_policy") == "payload_id"
     assert req.payload.get("joint_hold") is True
-    default = idle_after_command(last_secondary=None)
+    default = idle_after_command(dof=8)
     assert default.mode == Mode.SERVO_TWIST_HOLD
-    assert default.payload.get("secondary") == "hold"
-    pad = idle_after_command(last_secondary=None, pad_source=True)
+    assert default.payload.get("task_policy") == "track"
+    pad = idle_after_command(dof=8, pad_source=True)
     assert pad.mode == Mode.SERVO_TWIST
-    assert pad.payload.get("secondary") == "hold"
-    track = idle_after_command(last_secondary="track")
-    assert track.payload.get("secondary") == "track"
+    assert pad.payload.get("task_policy") == "track"
 
 
 def test_observer_update_stays_gravity_only_when_off(tmp_path):

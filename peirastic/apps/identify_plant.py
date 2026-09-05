@@ -38,10 +38,21 @@ import numpy as np
 
 from peirastic.core.ipc import CommandClient, MotionBus, Status, TwistBus
 from peirastic.core.modes import Mode, ModeRequest
+from peirastic.core.session import request_dof, stop_before_dof
 
 STEPS_MM_S = (2.0, 5.0, 10.0, 20.0, 40.0, 80.0)
 STOP_SPEEDS_MM_S = (10.0, 20.0, 40.0, 80.0)
 REVERSE_MM_S = -40.0
+
+
+def _install_servo_mode(client: CommandClient) -> None:
+    """Install SERVO_TWIST and wait for Window A's post-on_enter ACK."""
+
+    req = ModeRequest(Mode.SERVO_TWIST, {"filter": False})
+    seq = client.set_mode(req)
+    ret = client.wait_installed(seq, req.mode)
+    if ret != 0:
+        raise RuntimeError(f"SERVO_TWIST install failed ({ret})")
 
 
 def _parse_speeds_mm_s(raw: str) -> tuple[float, ...]:
@@ -92,9 +103,24 @@ def run_sequence(
 ) -> int:
     client = CommandClient(prefix=prefix)
     bus = TwistBus(prefix=prefix, create=False)
-    client.set_mode(
-        ModeRequest(Mode.SERVO_TWIST, {"filter": False, "secondary": "payload_id"})
-    )
+    # DOF changes are boundary requests; stop the idle/live SERVO phase
+    # explicitly so the daemon can commit the requested 8-DOF structure
+    # before the first plant-identification sample.  A zero twist alone is
+    # intentionally not a boundary.
+    previous_dof: int | None = None
+    try:
+        stop_before_dof(client)
+        previous_dof = request_dof(client, 8)
+        _install_servo_mode(client)
+    except BaseException:
+        try:
+            if previous_dof in (7, 8):
+                stop_before_dof(client)
+                request_dof(client, previous_dof)
+        finally:
+            bus.close()
+            client.close()
+        raise
     print("[MODE] SERVO_TWIST identify_plant  filter OFF", flush=True)
     dt = 1.0 / max(hz, 1.0)
     try:
@@ -156,6 +182,12 @@ def run_sequence(
         print("[STOP] interrupted", flush=True)
         return 0
     finally:
+        try:
+            stop_before_dof(client)
+            if previous_dof in (7, 8):
+                request_dof(client, previous_dof)
+        except Exception as exc:
+            print(f"[DOF] restore {previous_dof} failed: {exc}", flush=True)
         bus.close()
         client.close()
 
@@ -220,9 +252,20 @@ def run_stop_reverse_sequence(
     """
     client = CommandClient(prefix=prefix)
     bus = TwistBus(prefix=prefix, create=False)
-    client.set_mode(
-        ModeRequest(Mode.SERVO_TWIST, {"filter": False, "secondary": "payload_id"})
-    )
+    previous_dof: int | None = None
+    try:
+        stop_before_dof(client)
+        previous_dof = request_dof(client, 8)
+        _install_servo_mode(client)
+    except BaseException:
+        try:
+            if previous_dof in (7, 8):
+                stop_before_dof(client)
+                request_dof(client, previous_dof)
+        finally:
+            bus.close()
+            client.close()
+        raise
     print("[MODE] SERVO_TWIST identify_plant --stop-reverse  filter OFF", flush=True)
     try:
         if not _hold_cmd(bus, client, 0.0, rest_s, hz):
@@ -262,6 +305,12 @@ def run_stop_reverse_sequence(
         print("[STOP] interrupted", flush=True)
         return 0
     finally:
+        try:
+            stop_before_dof(client)
+            if previous_dof in (7, 8):
+                request_dof(client, previous_dof)
+        except Exception as exc:
+            print(f"[DOF] restore {previous_dof} failed: {exc}", flush=True)
         bus.close()
         client.close()
 
@@ -313,9 +362,21 @@ def run_backup_replay_sequence(
             flush=True,
         )
         return 2
-    client.set_mode(
-        ModeRequest(Mode.SERVO_TWIST, {"filter": False, "secondary": "payload_id"})
-    )
+    previous_dof: int | None = None
+    try:
+        stop_before_dof(client)
+        previous_dof = request_dof(client, 8)
+        _install_servo_mode(client)
+    except BaseException:
+        try:
+            if previous_dof in (7, 8):
+                stop_before_dof(client)
+                request_dof(client, previous_dof)
+        finally:
+            bus.close()
+            client.close()
+            motion.close()
+        raise
     print(
         "[MODE] SERVO_TWIST identify_plant --backup-replay  filter OFF  "
         f"a_max={sh.cfg.a_max_m_s2} j_max={sh.cfg.j_max_m_s3} "
@@ -467,6 +528,12 @@ def run_backup_replay_sequence(
         print("[STOP] interrupted", flush=True)
         return 0
     finally:
+        try:
+            stop_before_dof(client)
+            if previous_dof in (7, 8):
+                request_dof(client, previous_dof)
+        except Exception as exc:
+            print(f"[DOF] restore {previous_dof} failed: {exc}", flush=True)
         bus.close()
         client.close()
         motion.close()

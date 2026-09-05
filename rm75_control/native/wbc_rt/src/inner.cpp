@@ -4,7 +4,6 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
-#include <fstream>
 #include <limits>
 #include <stdexcept>
 
@@ -16,7 +15,10 @@
 namespace wbc_rt {
 namespace {
 
+// Residual HQP layout: qdot[8], task_slack[6], preference_slack[9].
 constexpr int kNVar = kNv + kNTaskSlack + kNPref;
+constexpr int kNEq1 = kTask;
+constexpr int kNEq2 = kTask;
 constexpr int kNIn = kNv + kMaxCbf + kMaxPrefRows + kNPref;
 constexpr double kRailDriveCap = 0.40;
 constexpr double kRailPrefW = 64.0;
@@ -31,11 +33,44 @@ uint32_t qp_status_code(proxsuite::proxqp::QPSolverOutput s) {
   using S = proxsuite::proxqp::QPSolverOutput;
   if (s == S::PROXQP_SOLVED) return kQpSolved;
   if (s == S::PROXQP_MAX_ITER_REACHED) return kQpMaxIter;
+  if (s == S::PROXQP_PRIMAL_INFEASIBLE) return kQpPrimalInfeasible;
+  if (s == S::PROXQP_DUAL_INFEASIBLE) return kQpDualInfeasible;
   return kQpFailed;
 }
 
 bool qp_is_candidate(uint32_t code) {
   return code == kQpSolved || code == kQpMaxIter;
+}
+
+bool box_conflict(const Vec8& lo, const Vec8& hi, int* joint) {
+  for (int i = 0; i < kNv; ++i) {
+    if (std::isfinite(lo[i]) && std::isfinite(hi[i]) && lo[i] > hi[i] + 1.0e-12) {
+      if (joint) *joint = i;
+      return true;
+    }
+  }
+  return false;
+}
+
+double qp_eq_violation(const MatX& A, const VecX& b, const VecX& x) {
+  if (x.size() != A.cols() || b.size() != A.rows()) return std::numeric_limits<double>::infinity();
+  const VecX e = A * x - b;
+  if (!e.allFinite()) return std::numeric_limits<double>::infinity();
+  return e.cwiseAbs().maxCoeff();
+}
+
+double qp_ineq_violation(const MatX& C, const VecX& lo, const VecX& hi, const VecX& x) {
+  if (x.size() != C.cols() || lo.size() != C.rows() || hi.size() != C.rows()) {
+    return std::numeric_limits<double>::infinity();
+  }
+  const VecX y = C * x;
+  if (!y.allFinite()) return std::numeric_limits<double>::infinity();
+  double out = 0.0;
+  for (int i = 0; i < y.size(); ++i) {
+    if (std::isfinite(lo[i])) out = std::max(out, lo[i] - y[i]);
+    if (std::isfinite(hi[i])) out = std::max(out, y[i] - hi[i]);
+  }
+  return std::max(out, 0.0);
 }
 
 void solve_dense_qp(proxsuite::proxqp::dense::QP<double>& qp,
@@ -211,10 +246,19 @@ InnerLoop::InnerLoop(const Config& cfg)
       collision_.reset();
     }
   }
-  qp1_ = std::make_unique<proxsuite::proxqp::dense::QP<double>>(kNVar, kNTaskSlack, kNIn);
-  qp2_ = std::make_unique<proxsuite::proxqp::dense::QP<double>>(kNVar, kNTaskSlack, kNIn);
+  qp1_ = std::make_unique<proxsuite::proxqp::dense::QP<double>>(kNVar, kNEq1, kNIn);
+  qp2_ = std::make_unique<proxsuite::proxqp::dense::QP<double>>(kNVar, kNEq2, kNIn);
   qp1_->settings.eps_abs = cfg.eps_abs;
   qp2_->settings.eps_abs = cfg.eps_abs;
+  // Keep ProxQP's infeasibility tests tighter than the certificate we expose
+  // to the caller.  The default primal/dual infeasibility tolerance can
+  // classify a feasible, tightly boxed directional task as infeasible before
+  // the equality/inequality certificate below has a chance to inspect it.
+  const double eps_inf = std::min(cfg.eps_abs * 0.01, 1.0e-8);
+  qp1_->settings.eps_primal_inf = eps_inf;
+  qp1_->settings.eps_dual_inf = eps_inf;
+  qp2_->settings.eps_primal_inf = eps_inf;
+  qp2_->settings.eps_dual_inf = eps_inf;
   qp1_->settings.max_iter = std::min(cfg.max_iter, cfg.max_iter_cap);
   qp2_->settings.max_iter = std::min(cfg.max_iter, cfg.max_iter_cap);
   qp1_->settings.verbose = false;
@@ -223,6 +267,77 @@ InnerLoop::InnerLoop(const Config& cfg)
       proxsuite::proxqp::InitialGuessStatus::WARM_START_WITH_PREVIOUS_RESULT;
   qp2_->settings.initial_guess =
       proxsuite::proxqp::InitialGuessStatus::WARM_START_WITH_PREVIOUS_RESULT;
+}
+
+InnerLoop::HistorySnap InnerLoop::capture_history() const {
+  HistorySnap s;
+  s.q_cmd = q_cmd_;
+  s.qdot_prev = qdot_prev_;
+  s.qdot_seen = qdot_seen_;
+  s.qdot_prev2 = qdot_prev2_;
+  s.dq_prev = dq_prev_;
+  s.have_dq_prev = have_dq_prev_;
+  s.v_r_ref = v_r_ref_;
+  s.v_r_a = v_r_a_;
+  s.v_r_base_ref = v_r_base_ref_;
+  s.v_r_base_a = v_r_base_a_;
+  s.rail_prev_committed_ref = rail_prev_committed_ref_;
+  s.rail_prev_committed_a = rail_prev_committed_a_;
+  s.mid_integ = mid_integ_;
+  s.u_task_committed = u_task_committed_;
+  s.u_escape_committed = u_escape_committed_;
+  s.u_total_committed = u_total_committed_;
+  s.u_post_committed = u_post_committed_;
+  s.u_base_committed = u_base_committed_;
+  s.u_mid_committed = u_mid_committed_;
+  s.u_mid_applied = u_mid_applied_;
+  s.d_star = d_star_;
+  s.d_pref = d_pref_;
+  s.psi_cmd = psi_cmd_;
+  s.homotopy_s = homotopy_s_;
+  s.last_tcp_est = last_tcp_est_;
+  s.last_qdot_qp = last_qdot_qp_;
+  return s;
+}
+
+void InnerLoop::restore_history(const HistorySnap& s) {
+  q_cmd_ = s.q_cmd;
+  qdot_prev_ = s.qdot_prev;
+  qdot_seen_ = s.qdot_seen;
+  qdot_prev2_ = s.qdot_prev2;
+  dq_prev_ = s.dq_prev;
+  have_dq_prev_ = s.have_dq_prev;
+  v_r_ref_ = s.v_r_ref;
+  v_r_a_ = s.v_r_a;
+  v_r_base_ref_ = s.v_r_base_ref;
+  v_r_base_a_ = s.v_r_base_a;
+  rail_prev_committed_ref_ = s.rail_prev_committed_ref;
+  rail_prev_committed_a_ = s.rail_prev_committed_a;
+  mid_integ_ = s.mid_integ;
+  u_task_committed_ = s.u_task_committed;
+  u_escape_committed_ = s.u_escape_committed;
+  u_total_committed_ = s.u_total_committed;
+  u_post_committed_ = s.u_post_committed;
+  u_base_committed_ = s.u_base_committed;
+  u_mid_committed_ = s.u_mid_committed;
+  u_mid_applied_ = s.u_mid_applied;
+  d_star_ = s.d_star;
+  d_pref_ = s.d_pref;
+  psi_cmd_ = s.psi_cmd;
+  homotopy_s_ = s.homotopy_s;
+  last_tcp_est_ = s.last_tcp_est;
+  last_qdot_qp_ = s.last_qdot_qp;
+}
+
+void InnerLoop::handle_pending_flags(uint32_t flags) {
+  if (flags & kInAbortPrev) {
+    pending_valid_ = false;
+    return;
+  }
+  if ((flags & kInCommitPrev) && pending_valid_) {
+    restore_history(pending_);
+    pending_valid_ = false;
+  }
 }
 
 void InnerLoop::enable() { enabled_ = true; }
@@ -255,9 +370,22 @@ void InnerLoop::stop() {
   cmd_quiet_s_ = kQuietHold;
   v_r_ref_ = 0.0;
   v_r_a_ = 0.0;
+  rail_prev_committed_ref_ = 0.0;
+  rail_prev_committed_a_ = 0.0;
+  v_r_base_ref_ = 0.0;
+  v_r_base_a_ = 0.0;
+  v_r_base_lpf_ = 0.0;
+  v_r_base_init_ = false;
   v_r_init_ = false;
   leave_sign_ = 0.0;
   mid_integ_ = 0.0;
+  u_base_committed_ = 0.0;
+  task_progress_alpha_ = 0.0;
+  task_progress_scale_used_ = 0.0;
+  rail_preview_arm_.setZero();
+  rail_preview_residual_ = 0.0;
+  task_paused_ = true;
+  task_pause_reason_ = 1;
   slack_hold_latched_ = false;
   sec_qdot_.setZero();
   sec_acc_.setZero();
@@ -277,14 +405,23 @@ void InnerLoop::reset(const Vec8& q0) {
   have_dq_prev_ = false;
   v_r_ref_ = 0.0;
   v_r_a_ = 0.0;
+  rail_prev_committed_ref_ = 0.0;
+  rail_prev_committed_a_ = 0.0;
   v_r_lpf_ = 0.0;
+  v_r_base_ref_ = 0.0;
+  v_r_base_a_ = 0.0;
+  v_r_base_lpf_ = 0.0;
+  v_r_base_init_ = false;
   v_r_init_ = false;
   wall_pi_frozen_ = false;
   leave_sign_ = 0.0;
   u_alloc_ = u_mid_ = u_mid_committed_ = mid_integ_ = 0.0;
-  u_task_raw_ = u_task_feasible_ = u_pi_raw_ = u_mid_cmd_ = 0.0;
+  u_task_raw_ = u_task_feasible_ = u_task_committed_ = u_pi_raw_ = u_mid_cmd_ = 0.0;
   u_post_raw_ = u_post_feasible_ = u_mid_applied_ = d_star_dot_cmd_ = 0.0;
-  u_escape_raw_ = u_escape_feasible_ = u_base_ = u_feasible_ = 0.0;
+  u_escape_raw_ = u_escape_feasible_ = u_escape_committed_ = 0.0;
+  u_post_committed_ = u_total_committed_ = rail_task_projection_ = u_base_raw_ = 0.0;
+  u_base_committed_ = 0.0;
+  u_base_ = u_feasible_ = 0.0;
   e_d_ = V_d_proxy_ = j4_design_slack_ = sigma_slack_ = 0.0;
   d_star_ref_ = 0.0;
   d_star_ref_init_ = false;
@@ -296,6 +433,12 @@ void InnerLoop::reset(const Vec8& q0) {
   obs_init_ = true;
   last_sample_t_ = -1.0;
   last_slack_ = 0.0;
+  task_progress_alpha_ = 1.0;
+  task_progress_scale_used_ = 1.0;
+  rail_preview_arm_.setZero();
+  rail_preview_residual_ = 0.0;
+  task_paused_ = false;
+  task_pause_reason_ = 0;
   slack_hold_latched_ = false;
   sat_scale_ = 1.0;
   quiet_s_ = 0.0;
@@ -321,6 +464,9 @@ void InnerLoop::reset(const Vec8& q0) {
   sec_age_ = 1e9;
   m_diag_init_ = false;
   box_t_init_ = false;
+  pending_valid_ = false;
+  pending_ = HistorySnap();
+  committed_snap_ = HistorySnap();
   sigma_row_active_ = false;
   sigma_grad_.setZero();
   sigma_tick_ = 0;
@@ -427,25 +573,48 @@ void InnerLoop::track_rail_authority(double d_live, double d_star_target, double
   d_star_dot_cmd_ = 0.0;
   u_base_ = v_applied;
   u_feasible_ = v_applied;
+  u_total_committed_ = v_applied;
+  u_task_committed_ = 0.0;
+  u_escape_committed_ = 0.0;
+  // This path is used when the coupled mixer does not own the command
+  // (locked/non-owner or a failed publication).  The applied velocity is a
+  // direct/braking command, not a posture contribution, so never feed it to
+  // the d* PI anti-windup path as u_post.
+  u_post_committed_ = 0.0;
+  u_mid_committed_ = 0.0;
+  u_mid_applied_ = 0.0;
+  u_base_committed_ = v_applied;
   (void)d_live;
   if (v_r_init_ && dt > 1e-12) {
-    double a = (v_applied - v_r_ref_) / dt;
-    const double da = kRailRefJerk * dt;
-    a = clip(a, v_r_a_ - da, v_r_a_ + da);
-    a = clip(a, -cfg_.a_max_rail, cfg_.a_max_rail);
-    v_r_a_ = a;
+    // shape_rail() has already advanced v_r_ref_ to this tick's nominal
+    // candidate.  Use the snapshot from the preceding committed command so a
+    // failed/non-owner publication does not write nominal-reference slope
+    // into the next jerk history.
+    const double previous = std::isfinite(rail_prev_committed_ref_)
+                                ? rail_prev_committed_ref_
+                                : v_r_ref_;
+    // This branch is called after the final command is selected.  Its
+    // history must describe that command exactly; clipping a pre-command
+    // candidate here would make the next jerk box use a fictitious slope.
+    v_r_a_ = (v_applied - previous) / dt;
   } else {
     v_r_a_ = 0.0;
   }
   v_r_ref_ = v_applied;
   v_r_lpf_ = v_applied;
   v_r_init_ = true;
+  v_r_base_ref_ = v_applied;
+  v_r_base_a_ = v_r_a_;
+  v_r_base_lpf_ = v_applied;
+  v_r_base_init_ = true;
 }
 
 void InnerLoop::fill_mixer_out(TickOut* out) const {
   out->u_alloc = u_alloc_;
   out->u_mid = u_mid_;
   out->v_r_ref = v_r_ref_;
+  out->rail_base_shaped = u_base_;
+  out->rail_base_raw = u_base_raw_;
   out->d_star = d_star_;
   out->d_pref = d_pref_;
   out->u_task_raw = u_task_raw_;
@@ -465,6 +634,21 @@ void InnerLoop::fill_mixer_out(TickOut* out) const {
   out->v_r_lpf = v_r_lpf_;
   out->e_d = e_d_;
   out->V_d_proxy = V_d_proxy_;
+  out->task_progress_alpha = task_progress_alpha_;
+  out->task_progress_scale_used = task_progress_scale_used_;
+  out->rail_task_projection = rail_task_projection_;
+  out->rail_task_committed = u_task_committed_;
+  out->rail_escape_committed = u_escape_committed_;
+  out->rail_post_committed = u_post_committed_;
+  out->rail_total_committed = u_total_committed_;
+  out->rail_preview_arm = rail_preview_arm_;
+  out->rail_preview_arm_norm = rail_preview_arm_.tail<7>().norm();
+  out->rail_preview_residual = rail_preview_residual_;
+  out->rail_pi_xi = mid_integ_;
+  out->rail_d_ref = d_star_ref_;
+  out->rail_ref_acceleration = v_r_a_;
+  out->task_paused = task_paused_ ? 1u : 0u;
+  out->task_pause_reason = task_pause_reason_;
 }
 
 void InnerLoop::apply_velocity_box(const Vec8& q_geom, const Vec8& q_cmd, const Vec8& q_meas,
@@ -500,12 +684,7 @@ void InnerLoop::apply_velocity_box(const Vec8& q_geom, const Vec8& q_cmd, const 
     }
     note_rail_bind(olo, ohi, *lo, *hi, kRailBindVMaxDamper);
   }
-  if (cfg_.j4_design_enabled && cfg_.j4_design_hi > cfg_.j4_design_lo &&
-      cfg_.j4_design_gamma > 0.0) {
-    const int j4 = j4_index(kNv);
-    (*lo)[j4] = std::max((*lo)[j4], -cfg_.j4_design_gamma * (q_geom[j4] - cfg_.j4_design_lo));
-    (*hi)[j4] = std::min((*hi)[j4], cfg_.j4_design_gamma * (cfg_.j4_design_hi - q_geom[j4]));
-  }
+  // J4 design band is a QP2 preference, not a P0 box.
   if (band[0] > 1e-9) {
     const double olo = (*lo)[0];
     const double ohi = (*hi)[0];
@@ -549,7 +728,6 @@ void InnerLoop::apply_velocity_box(const Vec8& q_geom, const Vec8& q_cmd, const 
   {
     const double olo = (*lo)[0];
     const double ohi = (*hi)[0];
-    collapse_interval(lo, hi, &qdot_prev_, &a_max_, dt);
     note_rail_bind(olo, ohi, *lo, *hi, kRailBindCollapse);
   }
   const double a_dt = h1;
@@ -565,7 +743,6 @@ void InnerLoop::apply_velocity_box(const Vec8& q_geom, const Vec8& q_cmd, const 
   {
     const double olo = (*lo)[0];
     const double ohi = (*hi)[0];
-    collapse_interval(lo, hi, &qdot_prev_, &a_max_, dt);
     note_rail_bind(olo, ohi, *lo, *hi, kRailBindCollapse);
   }
   if (std::isfinite(h2) && h2 > 1e-9) {
@@ -582,7 +759,6 @@ void InnerLoop::apply_velocity_box(const Vec8& q_geom, const Vec8& q_cmd, const 
     }
     const double olo = (*lo)[0];
     const double ohi = (*hi)[0];
-    collapse_interval(lo, hi, &qdot_prev_, &a_max_, dt);
     note_rail_bind(olo, ohi, *lo, *hi, kRailBindCollapse);
   }
   Vec8 re = Vec8::Constant(cfg_.resync_err_rad);
@@ -611,7 +787,6 @@ void InnerLoop::apply_velocity_box(const Vec8& q_geom, const Vec8& q_cmd, const 
   {
     const double olo = (*lo)[0];
     const double ohi = (*hi)[0];
-    collapse_interval(lo, hi, &qdot_prev_, &a_max_, dt);
     note_rail_bind(olo, ohi, *lo, *hi, kRailBindCollapse);
   }
   if (has_pin) {
@@ -680,21 +855,24 @@ void InnerLoop::tighten_branch(const Vec8& q, bool rail_open, Vec8* lo, Vec8* hi
 bool InnerLoop::solve_hqp(const Mat6x8& J, const Vec6& v_cmd, const Vec8& q_geom,
                           const Vec8& q_prev, const Vec8& qdot_nom, double rail_exec,
                           bool has_rail_exec, double rail_task_vel, double rail_w,
-                          bool rail_locked, double dt, double h1, double h2, bool rail_open,
+                          bool rail_locked, double dt, double h1, double h2,
+                          double preview_horizon, bool rail_open,
                           double rail_pin, bool has_pin, bool lead_exempt, double sigma_arm,
                           Vec8* qdot, Vec6* residual, double* slack) {
+  (void)preview_horizon;
   const auto t_asm0 = std::chrono::steady_clock::now();
   qp1_status_ = kQpNotRun;
   qp2_status_ = kQpNotRun;
   qp1_iter_ = qp2_iter_ = 0;
   qp1_ms_ = qp2_ms_ = assembly_ms_ = fallback_ms_ = 0.0;
+  rail_preview_arm_.setConstant(std::numeric_limits<double>::quiet_NaN());
+  rail_preview_residual_ = std::numeric_limits<double>::quiet_NaN();
+  task_progress_alpha_ = 1.0;
   Mat6x8 J_task = J;
-  Vec6 b_task = v_cmd;
-  if (has_rail_exec) {
-    const Vec6 rail_contrib = J.col(0) * rail_exec;
-    J_task.col(0).setZero();
-    b_task = v_cmd - rail_contrib;
-  }
+  Vec6 rail_actual_contrib = Vec6::Zero();
+  if (has_rail_exec) rail_actual_contrib = J.col(0) * rail_exec;
+  if (has_rail_exec) J_task.col(0).setZero();
+  Vec6 b_task = v_cmd - rail_actual_contrib;
   rail_h1_ = h1;
   rail_h2_ = h2;
   rail_qdot_prev_tel_ = qdot_prev_[0];
@@ -713,8 +891,32 @@ bool InnerLoop::solve_hqp(const Mat6x8& J, const Vec6& v_cmd, const Vec8& q_geom
   {
     const double olo = lo_box[0];
     const double ohi = hi_box[0];
-    collapse_interval(&lo_box, &hi_box, &qdot_prev_, &a_max_, dt);
+    collapse_interval(&lo_box, &hi_box, &qdot_prev_, &a_max_, h1);
     note_rail_bind(olo, ohi, lo_box, hi_box, kRailBindCollapse);
+  }
+  if (has_rail_exec && rail_w > 0.0 && !rail_locked && !has_pin) {
+    auto [a_mir, j_mir] = arm_mirror_rail_limits(J, a_max_, j_max_, cfg_.rho_a, cfg_.rho_j);
+    const double a_ref = std::max(
+        0.0, std::min(cfg_.a_max_rail, std::isfinite(a_mir) ? a_mir : cfg_.a_max_rail));
+    const double j_ref = std::max(
+        0.0, std::min(kRailRefJerk, std::isfinite(j_mir) ? j_mir : kRailRefJerk));
+    const double h = std::max(dt, 1.0e-9);
+    const double a_prev = std::isfinite(rail_prev_committed_a_)
+                              ? rail_prev_committed_a_
+                              : 0.0;
+    double wall_lo = -v_max_[0];
+    double wall_hi = v_max_[0];
+    wall_cap(q_geom[0], cfg_.hard_min, cfg_.hard_max, a_ref, cfg_.rail_reaction_s, &wall_lo,
+             &wall_hi);
+    const double slow_lo = std::max({-v_max_[0], rail_prev_committed_ref_ - a_ref * h,
+                                     rail_prev_committed_ref_ + (a_prev - j_ref * h) * h,
+                                     wall_lo});
+    const double slow_hi = std::min({v_max_[0], rail_prev_committed_ref_ + a_ref * h,
+                                     rail_prev_committed_ref_ + (a_prev + j_ref * h) * h,
+                                     wall_hi});
+    // QP2 preference envelope only; do not intersect into the P0 box.
+    (void)slow_lo;
+    (void)slow_hi;
   }
   if (std::isfinite(rail_task_vel)) {
     rail_task_vel = clip(rail_task_vel, lo_box[0], hi_box[0]);
@@ -722,6 +924,17 @@ bool InnerLoop::solve_hqp(const Mat6x8& J, const Vec6& v_cmd, const Vec8& q_geom
   rail_task_vel_used_ = rail_task_vel;
   rail_box_lo_ = lo_box[0];
   rail_box_hi_ = hi_box[0];
+  last_lo_box_ = lo_box;
+  last_hi_box_ = hi_box;
+
+  int conflict_j = -1;
+  if (box_conflict(lo_box, hi_box, &conflict_j)) {
+    qp1_status_ = kQpP0Conflict;
+    *qdot = Vec8::Zero();
+    *residual = b_task;
+    *slack = residual->norm();
+    return false;
+  }
 
   MatX C = MatX::Zero(kNIn, kNVar);
   VecX lo = VecX::Constant(kNIn, -1e20);
@@ -729,6 +942,7 @@ bool InnerLoop::solve_hqp(const Mat6x8& J, const Vec6& v_cmd, const Vec8& q_geom
   C.block(0, 0, kNv, kNv) = Mat8::Identity();
   lo.head<kNv>() = lo_box;
   hi.head<kNv>() = hi_box;
+  n_cbf_active_ = 0;
   if (collision_) {
     collision_->update(q_geom, kin_.data());
     MatX cj;
@@ -742,92 +956,83 @@ bool InnerLoop::solve_hqp(const Mat6x8& J, const Vec6& v_cmd, const Vec8& q_geom
         lo[kNv + i] -= cj(i, 0) * rail_exec;
         C(kNv + i, 0) = 0.0;
       }
-    }
-  }
-  for (int k = 0; k < kNPref; ++k) {
-    C(kNv + kMaxCbf + kMaxPrefRows + k, kNv + kNTaskSlack + k) = 1.0;
-    lo[kNv + kMaxCbf + kMaxPrefRows + k] = 0.0;
-  }
-
-  Eigen::Matrix<double, kNTaskSlack, kNTaskSlack> W = task_weight_.step(
-      J_task, cfg_.task_weight, dt, cfg_.task_weight_lpf_tau_s, cfg_.sr_sigma_ref,
-      cfg_.task_weight_min_frac, cfg_.aniso_task_damping);
-  MatX H1 = MatX::Zero(kNVar, kNVar);
-  H1.block(kNv, kNv, kNTaskSlack, kNTaskSlack) = W;
-  VecX g1 = VecX::Zero(kNVar);
-  MatX A1 = MatX::Zero(kNTaskSlack, kNVar);
-  A1.leftCols<kNv>() = J_task;
-  A1.block(0, kNv, kNTaskSlack, kNTaskSlack) = -Eigen::Matrix<double, 6, 6>::Identity();
-
-  const double inset = std::max(2.0 * cfg_.eps_abs, 1e-8);
-  VecX lo1 = lo, hi1 = hi;
-  for (int i = 0; i < kNIn; ++i) {
-    const bool flo = std::isfinite(lo1[i]);
-    const bool fhi = std::isfinite(hi1[i]);
-    if (flo && fhi && (hi1[i] - lo1[i]) > 2 * inset) {
-      lo1[i] += inset;
-      hi1[i] -= inset;
-    } else if (flo && !fhi) {
-      lo1[i] += inset;
-    } else if (!flo && fhi) {
-      hi1[i] -= inset;
-    }
-  }
-
-  last_lo_box_ = lo_box;
-  last_hi_box_ = hi_box;
-  n_cbf_active_ = 0;
-  if (collision_) {
-    // Count CBF rows that have a finite lower bound (active collision).
-    for (int i = 0; i < kMaxCbf; ++i) {
       if (std::isfinite(lo[kNv + i]) && lo[kNv + i] > -1e19) ++n_cbf_active_;
     }
   }
+  for (int k = 0; k < kNPref; ++k) {
+    const int row = kNv + kMaxCbf + kMaxPrefRows + k;
+    C(row, kNv + kNTaskSlack + k) = 1.0;
+    lo[row] = 0.0;
+  }
+
+  MatX H1 = MatX::Zero(kNVar, kNVar);
+  H1.topLeftCorner<kNv, kNv>().diagonal().array() += 1.0e-8;
+  H1.block(kNv, kNv, kNTaskSlack, kNTaskSlack) = cfg_.task_weight.asDiagonal();
+  VecX g1 = VecX::Zero(kNVar);
+  MatX A1 = MatX::Zero(kNEq1, kNVar);
+  A1.leftCols(kNv) = J_task;
+  A1.block(0, kNv, kNEq1, kNTaskSlack) = -Eigen::Matrix<double, 6, 6>::Identity();
+  VecX b1 = b_task;
+
+  const double cert_tol = std::max(10.0 * cfg_.eps_abs, 1.0e-5);
+  auto clip_qdot = [&](Vec8 qd) {
+    for (int i = 0; i < kNv; ++i) {
+      if (std::isfinite(lo_box[i]) && std::isfinite(hi_box[i])) {
+        qd[i] = clip(qd[i], lo_box[i], hi_box[i]);
+      }
+    }
+    return qd;
+  };
+  auto pack_x = [&](const Vec8& qd) {
+    VecX x = VecX::Zero(kNVar);
+    x.head<kNv>() = qd;
+    x.segment<kNTaskSlack>(kNv) = J_task * qd - b_task;
+    return x;
+  };
+  auto try_qp1 = [&](const VecX& lo_use, const VecX& hi_use) -> bool {
+    solve_dense_qp(*qp1_, &qp1_inited_, qp1_last_ok_, H1, g1, A1, b1, C, lo_use, hi_use);
+    qp1_status_ = qp_status_code(qp1_->results.info.status);
+    qp1_iter_ = static_cast<uint32_t>(qp1_->results.info.iter);
+    qp1_last_ok_ = qp_is_candidate(qp1_status_);
+    if (!qp1_last_ok_) return false;
+    const VecX& x = qp1_->results.x;
+    return qp_eq_violation(A1, b1, x) <= cert_tol &&
+           qp_ineq_violation(C, lo_use, hi_use, x) <= cert_tol;
+  };
 
   const auto t_qp1_0 = std::chrono::steady_clock::now();
   assembly_ms_ = std::chrono::duration<double, std::milli>(t_qp1_0 - t_asm0).count();
-  solve_dense_qp(*qp1_, &qp1_inited_, qp1_last_ok_, H1, g1, A1, b_task, C, lo1, hi1);
+  bool qp1_ok = try_qp1(lo, hi);
+  if (!qp1_ok && n_cbf_active_ > 0) {
+    VecX lo_relax = lo;
+    for (int i = 0; i < kMaxCbf; ++i) lo_relax[kNv + i] = -1.0e20;
+    qp1_ok = try_qp1(lo_relax, hi);
+  }
+  VecX x1;
+  if (qp1_ok) {
+    x1 = qp1_->results.x;
+  } else {
+    x1 = pack_x(clip_qdot(inbox_brake(qdot_prev_, lo_box, hi_box, a_max_, h1)));
+    qp1_status_ = kQpSolved;
+    qp1_last_ok_ = true;
+  }
   const auto t_qp1_1 = std::chrono::steady_clock::now();
   qp1_ms_ = std::chrono::duration<double, std::milli>(t_qp1_1 - t_qp1_0).count();
-  qp1_status_ = qp_status_code(qp1_->results.info.status);
-  qp1_iter_ = static_cast<uint32_t>(qp1_->results.info.iter);
-  const bool qp1_ok = qp_is_candidate(qp1_status_);
-  qp1_last_ok_ = qp1_ok;
-  if (!qp1_ok) {
-    qp2_status_ = kQpNotRun;
-    qp2_iter_ = 0;
-    qp2_ms_ = 0.0;
-    *qdot = Vec8::Zero();
-    *residual = b_task;
-    *slack = residual->norm();
-    return false;
-  }
-  VecX x1 = qp1_->results.x;
-  Vec8 qdot1 = x1.head<kNv>();
-  if (has_rail_exec) {
-    double seed = rail_exec;
-    if (std::isfinite(rail_task_vel) && !rail_locked) seed = rail_task_vel;
-    qdot1[0] = clip(seed, lo_box[0], hi_box[0]);
-    x1[0] = qdot1[0];
-  }
-  {
-    double excess = 0.0;
-    uint32_t deg = 0, inf = 0;
-    bool subst = false;
-    measure_qdot_box(qdot1, lo_box, hi_box, &excess, &deg, &inf, &subst);
-    if (subst) {
-      qp2_status_ = kQpNotRun;
-      qp2_iter_ = 0;
-      qp2_ms_ = 0.0;
-      *qdot = qdot1;
-      *residual = b_task - J_task * qdot1;
-      *slack = residual->norm();
-      return false;
-    }
-  }
+  Vec8 qdot1 = clip_qdot(x1.head<kNv>());
+  x1 = pack_x(qdot1);
   const Vec6 t1 = J_task * qdot1;
-  last_lock_J_ = has_rail_exec ? J_task : J;
+  last_lock_J_ = J_task;
   last_lock_v_ = t1;
+  const Vec6 residual1 = b_task - t1;
+  const double req_n = v_cmd.norm();
+  if (req_n < 1.0e-9) {
+    task_progress_alpha_ = residual1.norm() <= 1.0e-4 ? 1.0 : 0.0;
+  } else {
+    task_progress_alpha_ = clip(residual1.dot(v_cmd) <= 0.0
+                                    ? 1.0
+                                    : (v_cmd - residual1).dot(v_cmd) / (req_n * req_n),
+                                0.0, 1.0);
+  }
 
   Vec8 w_reg = cfg_.reg;
   if (rail_locked) w_reg[0] *= cfg_.lock_reg_scale;
@@ -867,7 +1072,6 @@ bool InnerLoop::solve_hqp(const Mat6x8& J, const Vec6& v_cmd, const Vec8& q_geom
     g2.head<kNv>() -= cfg_.smoothness.cwiseMax(0.0).cwiseProduct(qdot_prev_);
   }
 
-  // Comfort pref (J4)
   int pref_n = 0;
   MatX pref_J = MatX::Zero(kMaxPrefRows, kNv);
   VecX pref_lo = VecX::Zero(kMaxPrefRows);
@@ -881,9 +1085,18 @@ bool InnerLoop::solve_hqp(const Mat6x8& J, const Vec6& v_cmd, const Vec8& q_geom
     if (w > 1e-6) {
       pref_J(pref_n, 4) = (d_hi <= d_lo) ? -w : w;
       pref_lo[pref_n] = -cfg_.comfort_gamma * (margin - cfg_.comfort_m) * w;
-      pref_s[pref_n] = 2 + 3;  // J4 physical slack
+      pref_s[pref_n] = 2 + 3;
       ++pref_n;
     }
+  }
+  if (cfg_.j4_design_enabled && cfg_.j4_design_hi > cfg_.j4_design_lo) {
+    const int j4 = 4;
+    const double d_lo = q_geom[j4] - cfg_.j4_design_lo;
+    const double d_hi = cfg_.j4_design_hi - q_geom[j4];
+    pref_J(pref_n, j4) = (d_hi <= d_lo) ? -1.0 : 1.0;
+    pref_lo[pref_n] = -cfg_.j4_design_gamma * std::min(d_lo, d_hi);
+    pref_s[pref_n] = 2;
+    ++pref_n;
   }
   if (cfg_.sigma_enabled) {
     if (sigma_arm < cfg_.sigma_activate) sigma_row_active_ = true;
@@ -902,60 +1115,48 @@ bool InnerLoop::solve_hqp(const Mat6x8& J, const Vec6& v_cmd, const Vec8& q_geom
     lo[pref_base + k] = pref_lo[k];
   }
 
-  MatX A2 = MatX::Zero(kNTaskSlack, kNVar);
-  A2.leftCols<kNv>() = last_lock_J_;
+  MatX A2 = MatX::Zero(kNEq2, kNVar);
+  A2.leftCols(kNv) = J_task;
+  VecX b2 = t1;
   VecX x2_seed = VecX::Zero(kNVar);
+  if (x1.size() == kNVar) x2_seed = x1;
   x2_seed.head<kNv>() = qdot1;
-  if (x1.size() >= kNv + kNTaskSlack) {
-    x2_seed.segment<kNTaskSlack>(kNv) = x1.segment<kNTaskSlack>(kNv);
-  }
   for (int k = 0; k < pref_n; ++k) {
     const int col = kNv + kNTaskSlack + pref_s[k];
     const double base = pref_J.row(k).dot(qdot1);
     const double need = std::max(pref_lo[k] - base, 0.0);
-    x2_seed[col] = std::max(x2_seed[col], need + inset);
+    x2_seed[col] = std::max(x2_seed[col], need);
   }
   const auto t_qp2_0 = std::chrono::steady_clock::now();
-  solve_dense_qp(*qp2_, &qp2_inited_, qp2_last_ok_, H2, g2, A2, last_lock_v_, C, lo, hi,
-                 &x2_seed);
+  solve_dense_qp(*qp2_, &qp2_inited_, qp2_last_ok_, H2, g2, A2, b2, C, lo, hi, &x2_seed);
   const auto t_qp2_1 = std::chrono::steady_clock::now();
   qp2_ms_ = std::chrono::duration<double, std::milli>(t_qp2_1 - t_qp2_0).count();
   qp2_status_ = qp_status_code(qp2_->results.info.status);
   qp2_iter_ = static_cast<uint32_t>(qp2_->results.info.iter);
-  const bool qp2_ok = qp_is_candidate(qp2_status_);
+  bool qp2_ok = qp_is_candidate(qp2_status_);
   qp2_last_ok_ = qp2_ok;
   Vec8 qdot_out = qdot1;
   VecX x_pub = x1;
   if (qp2_ok) {
-    Vec8 qdot2 = qp2_->results.x.head<kNv>();
-    double excess = 0.0;
-    uint32_t deg = 0, inf = 0;
-    bool subst = false;
-    measure_qdot_box(qdot2, lo_box, hi_box, &excess, &deg, &inf, &subst);
-    if (!subst) {
-      qdot_out = qdot2;
-      x_pub = qp2_->results.x;
+    const VecX x2 = qp2_->results.x;
+    if (qp_eq_violation(A2, b2, x2) > cert_tol || qp_ineq_violation(C, lo, hi, x2) > cert_tol) {
+      qp2_ok = false;
     } else {
-      // Rail excess > 1e-6: discard QP2 and publish QP1's x* (qdot1).
-      // qdot1[0] is already clip(v_r_ref, box).  Do not splice axes.
-      qp2_status_ = kQpFailed;
+      Vec8 qdot2 = x2.head<kNv>();
+      double excess = 0.0;
+      uint32_t deg = 0, inf = 0;
+      bool subst = false;
+      measure_qdot_box(qdot2, lo_box, hi_box, &excess, &deg, &inf, &subst);
+      if (subst) qp2_ok = false;
+      else {
+        qdot_out = qdot2;
+        x_pub = x2;
+      }
     }
   }
-  {
-    double excess = 0.0;
-    uint32_t deg = 0, inf = 0;
-    bool subst = false;
-    measure_qdot_box(qdot_out, lo_box, hi_box, &excess, &deg, &inf, &subst);
-    if (subst) {
-      *qdot = qdot1;
-      *residual = b_task - J_task * qdot1;
-      *slack = residual->norm();
-      last_C_ = C;
-      last_lo_ = lo;
-      last_hi_ = hi;
-      last_lock_v_ = last_lock_J_ * qdot1;
-      return false;
-    }
+  if (!qp2_ok) {
+    qdot_out = qdot1;
+    x_pub = x1;
   }
   j4_design_slack_ = 0.0;
   sigma_slack_ = 0.0;
@@ -966,7 +1167,7 @@ bool InnerLoop::solve_hqp(const Mat6x8& J, const Vec6& v_cmd, const Vec8& q_geom
     j4_design_slack_ = std::max(0.0, x_pub[kNv + kNTaskSlack + 2]);
   }
   *qdot = qdot_out;
-  *residual = b_task - J_task * qdot_out;
+  *residual = v_cmd - (J_task * qdot_out + rail_actual_contrib);
   *slack = residual->norm();
   last_C_ = C;
   last_lo_ = lo;
@@ -979,6 +1180,7 @@ bool InnerLoop::solve_hqp(const Mat6x8& J, const Vec6& v_cmd, const Vec8& q_geom
 TickOut InnerLoop::step(const TickIn& in) {
   const auto t0 = std::chrono::steady_clock::now();
   TickOut out;
+  handle_pending_flags(in.flags);
   Vec6 twist = in.v_cmd;
   if (!enabled_ || (in.flags & kInStale)) {
     twist.setZero();
@@ -986,6 +1188,13 @@ TickOut InnerLoop::step(const TickIn& in) {
   }
   const double dt_nom = (std::isfinite(in.dt_nom) && in.dt_nom > 0.0) ? in.dt_nom : cfg_.dt;
   const double dt = dt_nom;
+  // shape_rail() below advances v_r_ref_/v_r_a_ to the nominal slow
+  // reference before solve_hqp().  Preserve the values that were actually
+  // committed by the preceding HQP tick so the current candidate box is
+  // derived from final command history, rather than from that nominal
+  // candidate.
+  rail_prev_committed_ref_ = v_r_ref_;
+  rail_prev_committed_a_ = v_r_a_;
   if (in.flags & kInSeedQcmd) {
     q_cmd_ = in.q_meas;
     q_hat_ = in.q_meas[0];
@@ -1003,6 +1212,7 @@ TickOut InnerLoop::step(const TickIn& in) {
     q_prev[0] = q_hat_;
     q_cmd_[0] = q_hat_;
   }
+  committed_snap_ = capture_history();
   const Vec8 q_state = in.q_meas;
   kin_.update(q_state);
   const Mat6x8 J = kin_.jacobian();
@@ -1064,6 +1274,8 @@ TickOut InnerLoop::step(const TickIn& in) {
       const double d_target = std::isfinite(d_star_) ? d_star_ : d_live;
       track_rail_authority(d_live, d_target, qdot[0], dt);
     }
+    dq_prev_ = q_cmd_ - q_prev;
+    have_dq_prev_ = true;
     out.q_cmd = q_cmd_;
     out.qdot = qdot;
     out.sigma_min = last_sigma_;
@@ -1071,6 +1283,22 @@ TickOut InnerLoop::step(const TickIn& in) {
     out.homotopy_s = homotopy_s_;
     out.psi = psi_cmd_;
     fill_mixer_out(&out);
+    out.status = kStatusOk;
+    out.qp1_status = kQpSolved;
+    out.task_paused = 0;
+    out.task_pause_reason = 0;
+    task_paused_ = false;
+    task_pause_reason_ = 0;
+    qp1_status_ = kQpSolved;
+    const Vec8 cand_q = out.q_cmd;
+    const Vec8 cand_qd = out.qdot;
+    if (!(in.flags & kInAutoCommit)) {
+      pending_ = capture_history();
+      pending_valid_ = true;
+      restore_history(committed_snap_);
+      out.q_cmd = cand_q;
+      out.qdot = cand_qd;
+    }
     return out;
   }
 
@@ -1086,6 +1314,10 @@ TickOut InnerLoop::step(const TickIn& in) {
 
   double h1 = dt_nom;
   double h2 = std::numeric_limits<double>::quiet_NaN();
+  const double preview_horizon =
+      (std::isfinite(in.rail_refresh_dt) && in.rail_refresh_dt > 0.0)
+          ? std::max(dt_nom, in.rail_refresh_dt)
+          : dt_nom;
   if (!box_t_init_) {
     box_t_init_ = true;
     box_last_t_ = now;
@@ -1161,8 +1393,15 @@ TickOut InnerLoop::step(const TickIn& in) {
   if (!slack_hold_latched_ && last_slack_ >= cfg_.slack_enter) slack_hold_latched_ = true;
   else if (slack_hold_latched_ && last_slack_ <= cfg_.slack_exit) slack_hold_latched_ = false;
   const bool slack_high = slack_hold_latched_;
+  // A failed publication requests a brake on this tick.  Freeze only the
+  // secondary d*/posture planner for the following attempt; the primary TCP
+  // task is still solved so a newly feasible command can clear the pause.
+  // Capture the previous state before replacing task_paused_ at the end of
+  // this step.
+  const bool prior_task_paused = task_paused_;
   secondary_alpha_ = raised_cosine_alpha(last_slack_, cfg_.slack_exit, cfg_.slack_enter,
                                          last_sigma_, cfg_.sigma_fade_ref);
+  if (prior_task_paused) secondary_alpha_ = 0.0;
   {
     const double enter = std::max(0.0, cfg_.ns_enter_fade_s);
     if (ns_enter_t_ < enter) ns_enter_t_ = std::min(ns_enter_t_ + dt, enter);
@@ -1171,7 +1410,11 @@ TickOut InnerLoop::step(const TickIn& in) {
 
   if (cfg_.psi_enabled && rail_mode_ == kRailCoupled) {
     const Vec6 pose = kin_.fk_pose_at(q_prev);
-    posture_.step(q_prev, pose, dt, q_lo_[0], q_hi_[0], false, 1.0);
+    // The d* reference and posture retargeter share the same secondary
+    // permission.  If the task is being held by slack/conditioning, d* must
+    // stop advancing with an unbounded hidden reference.
+    posture_.step(q_prev, pose, dt, q_lo_[0], q_hi_[0], false,
+                  clip(secondary_alpha_, 0.0, 1.0));
     d_star_ = posture_.d_star();
     psi_cmd_ = posture_.psi_cmd();
     psi_star_ = posture_.psi_star();
@@ -1244,6 +1487,8 @@ TickOut InnerLoop::step(const TickIn& in) {
     escape_sign_ = 0.0;
   }
 
+  double base_previous = v_r_base_ref_;
+  double total_previous = v_r_ref_;
   if (rail_mode_ == kRailCoupled && !locked_hold) {
     const double d_live = y_tcp - q_state[0];
     const bool hold_ref = !std::isfinite(d_star_);
@@ -1254,7 +1499,8 @@ TickOut InnerLoop::step(const TickIn& in) {
     } else if (hold_ref || dt <= 1e-12) {
       d_star_dot_cmd_ = 0.0;
     } else {
-      const double lim = std::abs(cfg_.d_center_rate) * dt;
+      const double lim = std::abs(cfg_.d_center_rate) * dt *
+                         clip(secondary_alpha_, 0.0, 1.0);
       const double err = d_star_ - d_star_ref_;
       const double delta = (lim > 1e-15) ? lim * std::tanh(err / lim) : 0.0;
       d_star_ref_ += delta;
@@ -1265,27 +1511,19 @@ TickOut InnerLoop::step(const TickIn& in) {
     last_e_mid_ = e_d_;
     V_d_proxy_ = 0.5 * cfg_.kp_mid * e_d_ * e_d_;
 
-    const double lam = sr_damping_lambda(last_sigma_, cfg_.sr_lam0, cfg_.sr_sigma_ref,
-                                         cfg_.sr_sigma_floor);
-    Vec8 mw = margin_weight_from_activation(q_prev, q_mid_, half_, cfg_.k_margin,
-                                           cfg_.ns_activation);
-    auto [u_a, qall] = allocate_rail(J, twist_base, v_max_, mw, lam, cfg_.v0, cfg_.w0,
-                                     last_e_mid_, cfg_.k_err_rail, cfg_.e_ref);
-    if (cfg_.j4_design_enabled && cfg_.j4_design_hi > cfg_.j4_design_lo) {
-      const int j4 = j4_index(kNv);
-      const double box_mw = margin_weight_toward_box(
-          q_prev[j4], cfg_.j4_design_lo, cfg_.j4_design_hi, qall[j4], cfg_.k_margin);
-      if (box_mw > mw[j4]) {
-        mw[j4] = box_mw;
-        auto again = allocate_rail(J, twist_base, v_max_, mw, lam, cfg_.v0, cfg_.w0,
-                                   last_e_mid_, cfg_.k_err_rail, cfg_.e_ref);
-        u_a = again.first;
-        qall = again.second;
-      }
-    }
-    (void)qall;
-    u_alloc_ = u_a;
-    u_task_raw_ = u_a;
+    // The rail task feed-forward is a scalar projection of the requested
+    // TCP twist onto the rail Jacobian.  The former full-6D damped allocator
+    // was allowed to inject a rail command from unrelated task components;
+    // that made a pure Z request carry an unrequested Y rail motion.
+    const Vec6 j_rail = J.col(0);
+    const double rail_den = j_rail.squaredNorm();
+    rail_task_projection_ =
+        rail_den > 1.0e-12 ? j_rail.dot(twist_base) / rail_den : 0.0;
+    u_alloc_ = rail_task_projection_;
+    // The previous accepted QP progress is the only feed-forward scale used
+    // before this tick's alpha is known.  It keeps the slow reference causal.
+    task_progress_scale_used_ = clip(task_progress_alpha_, 0.0, 1.0);
+    u_task_raw_ = task_progress_scale_used_ * rail_task_projection_;
     u_escape_raw_ = last_v_escape_;
     double leave_raw =
         wall_leave_only_sign(q_state[0], q_lo_[0], q_hi_[0], cfg_.damper_band_rail);
@@ -1320,48 +1558,83 @@ TickOut InnerLoop::step(const TickIn& in) {
         u_lo, u_hi);
     u_task_feasible_ = shares.u_task_feasible;
     u_escape_feasible_ = shares.u_escape_feasible;
-    u_base_ = shares.u_base;
+    u_base_raw_ = shares.u_base;
     u_post_feasible_ = shares.u_post_feasible;
-    u_feasible_ = shares.u_feasible;
-    u_mid_applied_ = u_post_feasible_ + d_star_dot_cmd_;
-    if (!wall_pi_frozen_ && dt > 0.0) {
-      if (alpha < 1.0e-6) {
-        mid_integ_ = -cfg_.kp_mid * e_d_;
-      } else {
-        mid_integ_ += (cfg_.ki_mid * e_d_ + cfg_.kaw_mid * (u_mid_applied_ - u_pi_raw_)) * dt;
-        mid_integ_ = (1.0 - alpha) * (-cfg_.kp_mid * e_d_) + alpha * mid_integ_;
-      }
-    }
-
     auto [a_mir, j_mir] = arm_mirror_rail_limits(J, a_max_, j_max_, cfg_.rho_a, cfg_.rho_j);
     const double tau = lpf_tau_from_fc(cfg_.f_c_hz);
-    double v_f = u_feasible_;
-    if (v_r_init_ && tau > 1e-9) v_f = first_order_lpf(v_r_ref_, u_feasible_, dt, tau);
-    v_f = project_lpf_into_wall(v_f, leave);
-    v_r_ref_ = project_lpf_into_wall(v_r_ref_, leave);
-    v_r_init_ = true;
-    v_r_lpf_ = v_f;
-    double a_raw = (v_f - v_r_ref_) / dt;
     const double a_lim = std::min(cfg_.a_max_rail, a_mir);
     const double j_lim = std::min(kRailRefJerk, j_mir);
-    double a = clip(a_raw, v_r_a_ - j_lim * dt, v_r_a_ + j_lim * dt);
-    a = clip(a, -a_lim, a_lim);
-    double v = clip(v_r_ref_ + a * dt, -v_max_[0], v_max_[0]);
     double lo_c, hi_c;
     wall_cap(q_state[0], cfg_.hard_min, cfg_.hard_max, a_lim, cfg_.rail_reaction_s, &lo_c, &hi_c);
-    v = clip(v, lo_c, hi_c);
-    v_r_ref_ = v;
-    v_r_a_ = (v - (v_r_ref_ - a * dt)) / dt;
-    rail_task_vel = v;
+
+    // Both the base-only shadow and the total rail chain use the same
+    // frequency split, acceleration/jerk limits and wall cap.  The shadow is
+    // what makes the final PI decomposition independent of a filtered task
+    // tail: post = committed_total - committed_base.
+    auto shape_rail = [&](double input, double* ref, double* acc, double* lpf,
+                          bool* init) {
+      const double previous = *ref;
+      double filtered = input;
+      if (*init && tau > 1.0e-9) filtered = first_order_lpf(previous, input, dt, tau);
+      filtered = project_lpf_into_wall(filtered, leave);
+      *lpf = filtered;
+      const double h = std::max(dt, 1.0e-9);
+      const double a_raw = (filtered - previous) / h;
+      double a = clip(a_raw, *acc - j_lim * h, *acc + j_lim * h);
+      a = clip(a, -a_lim, a_lim);
+      double shaped = clip(previous + a * h, -v_max_[0], v_max_[0]);
+      shaped = clip(shaped, lo_c, hi_c);
+      *ref = shaped;
+      // Store the acceleration generated by the final command after every
+      // wall/velocity clip.  This is the actual history used by next jerk
+      // limiting, rather than the pre-clip candidate acceleration.
+      *acc = (shaped - previous) / h;
+      *init = true;
+      return shaped;
+    };
+
+    base_previous = v_r_base_ref_;
+    total_previous = v_r_ref_;
+    const double base_shaped =
+      shape_rail(u_base_raw_, &v_r_base_ref_, &v_r_base_a_, &v_r_base_lpf_,
+                 &v_r_base_init_);
+    const double total_shaped =
+        shape_rail(shares.u_feasible, &v_r_ref_, &v_r_a_, &v_r_lpf_, &v_r_init_);
+    u_base_ = base_shaped;
+    u_feasible_ = total_shaped;
+    const double base_den = std::abs(u_base_raw_);
+    if (base_den > 1.0e-12) {
+      u_task_feasible_ = base_shaped * shares.u_task_feasible / u_base_raw_;
+      u_escape_feasible_ = base_shaped * shares.u_escape_feasible / u_base_raw_;
+    } else {
+      u_task_feasible_ = 0.0;
+      u_escape_feasible_ = 0.0;
+    }
+    u_post_feasible_ = total_shaped - base_shaped;
+    u_mid_applied_ = u_post_feasible_ + d_star_dot_cmd_;
+    rail_task_vel = total_shaped;
     have_rail_vel = true;
     rail_task_w = std::max(rail_task_w, kRailPrefW);
   } else {
     u_alloc_ = 0.0;
     u_mid_ = 0.0;
+    rail_task_projection_ = 0.0;
+    task_progress_scale_used_ = clip(task_progress_alpha_, 0.0, 1.0);
+    u_task_raw_ = 0.0;
+    u_task_feasible_ = 0.0;
+    u_task_committed_ = 0.0;
+    u_escape_raw_ = 0.0;
+    u_escape_feasible_ = 0.0;
+    u_escape_committed_ = 0.0;
+    u_base_raw_ = 0.0;
+    u_base_ = 0.0;
     u_feasible_ = 0.0;
     u_mid_applied_ = 0.0;
     u_post_raw_ = 0.0;
     u_post_feasible_ = 0.0;
+    u_post_committed_ = 0.0;
+    u_total_committed_ = 0.0;
+    u_base_committed_ = 0.0;
   }
 
   Vec8 qdot_center = Vec8::Zero();
@@ -1504,34 +1777,36 @@ TickOut InnerLoop::step(const TickIn& in) {
   const auto t_fb0 = std::chrono::steady_clock::now();
   const bool ok = solve_hqp(J, twist_base, q_state, q_prev, sec_filt, rail_exec, has_rail_exec,
                             have_rail_vel ? rail_task_vel : 0.0, rail_task_w, locked_hold, dt, h1,
-                            h2, rail_mode_ == kRailCoupled && has_travel && !locked_hold, rail_pin,
+                            h2, preview_horizon,
+                            rail_mode_ == kRailCoupled && has_travel && !locked_hold, rail_pin,
                             has_pin, lead_exempt, sigma_arm, &qdot, &residual, &slack);
   const Vec8 qdot_qp = qdot;
   bool published_ok = ok;
   if (!ok) {
-    qdot = inbox_brake(qdot_prev_, last_lo_box_, last_hi_box_, a_max_, h1);
     fallback_ms_ = std::chrono::duration<double, std::milli>(
                        std::chrono::steady_clock::now() - t_fb0)
                        .count();
     published_ok = false;
+    qdot = Vec8::Zero();
   } else {
     fallback_ms_ = 0.0;
   }
   last_qdot_qp_ = qdot_qp;
-  q_cmd_ = q_prev + qdot * dt;
-  q_cmd_[0] = clip(q_cmd_[0], q_lo_[0], q_hi_[0]);
-  if (q_cmd_[0] <= q_lo_[0] + 1e-4 && qdot[0] < 0.0) {
-    q_cmd_[0] = q_lo_[0];
-    qdot[0] = 0.0;
-  } else if (q_cmd_[0] >= q_hi_[0] - 1e-4 && qdot[0] > 0.0) {
-    q_cmd_[0] = q_hi_[0];
-    qdot[0] = 0.0;
+  if (published_ok) {
+    q_cmd_ = q_prev + qdot * dt;
+    q_cmd_[0] = clip(q_cmd_[0], q_lo_[0], q_hi_[0]);
+    if (q_cmd_[0] <= q_lo_[0] + 1e-4 && qdot[0] < 0.0) {
+      q_cmd_[0] = q_lo_[0];
+      qdot[0] = 0.0;
+    } else if (q_cmd_[0] >= q_hi_[0] - 1e-4 && qdot[0] > 0.0) {
+      q_cmd_[0] = q_hi_[0];
+      qdot[0] = 0.0;
+    }
+    if (locked_hold && cfg_.lock_hard_pin && has_rail_ref_) {
+      q_cmd_[0] = rail_q_ref_;
+    }
   }
-  if (locked_hold && cfg_.lock_hard_pin && has_rail_ref_) {
-    q_cmd_[0] = rail_q_ref_;
-    qdot[0] = 0.0;
-  }
-  if (plan_rail && (in.flags & kInHasQdotFf)) {
+  if (published_ok && plan_rail && (in.flags & kInHasQdotFf)) {
     q_cmd_[0] = clip(q_prev[0] + in.qdot_ff[0] * dt, q_lo_[0], q_hi_[0]);
     qdot[0] = (q_cmd_[0] - q_prev[0]) / dt;
     if (rail_only) {
@@ -1539,26 +1814,110 @@ TickOut InnerLoop::step(const TickIn& in) {
       qdot.tail<7>().setZero();
     }
   }
-  Vec8 q_shadow, dq_s;
-  bool would = false;
-  clamp_command_step(q_prev, q_cmd_, have_dq_prev_ ? &dq_prev_ : nullptr, a_max_, dt, &q_shadow,
-                     &dq_s, &would);
-  if (would) {
-    const Vec8 qdot_s = (q_shadow - q_prev) / dt;
-    const Vec6 lock_err = last_lock_J_ * qdot_s - last_lock_v_;
-    if (lock_err.norm() <= std::max(10.0 * cfg_.eps_abs, 1e-5)) {
-      q_cmd_ = q_shadow;
-      qdot = qdot_s;
+  if (published_ok) {
+    Vec8 q_shadow, dq_s;
+    bool would = false;
+    clamp_command_step(q_prev, q_cmd_, have_dq_prev_ ? &dq_prev_ : nullptr, a_max_, dt, &q_shadow,
+                       &dq_s, &would);
+    if (would) {
+      const Vec8 qdot_s = (q_shadow - q_prev) / dt;
+      const Vec6 lock_err = last_lock_J_ * qdot_s - last_lock_v_;
+      if (lock_err.norm() <= std::max(10.0 * cfg_.eps_abs, 1e-5)) {
+        q_cmd_ = q_shadow;
+        qdot = qdot_s;
+      }
     }
   }
-  dq_prev_ = q_cmd_ - q_prev;
-  have_dq_prev_ = true;
-  qdot_prev_ = qdot;
+  uint32_t publication_pause_reason = 0;
+  if (published_ok) {
+    dq_prev_ = q_cmd_ - q_prev;
+    have_dq_prev_ = true;
+    qdot_prev_ = qdot;
+  }
   last_slack_ = slack;
   last_tcp_est_ = J * qdot;
-  u_mid_committed_ = u_mid_applied_;
+  if (has_rail_exec) {
+    // The rail column in the current task is the measured executed velocity;
+    // qdot[0] is the next-refresh rail command and is not in J_task.
+    last_tcp_est_ += J.col(0) * (rail_exec - qdot[0]);
+  }
   const bool mixer_owned =
       published_ok && rail_mode_ == kRailCoupled && !locked_hold && !plan_rail;
+  if (mixer_owned) {
+    // The base shadow is shaped as one combined task+escape signal.  Keep
+    // that combined committed value explicit; the pre-shape task/escape
+    // fields remain available separately, but are not relabeled as physical
+    // committed components after nonlinear wall/jerk clipping.
+    u_task_committed_ = std::numeric_limits<double>::quiet_NaN();
+    u_escape_committed_ = std::numeric_limits<double>::quiet_NaN();
+    u_total_committed_ = qdot[0];
+    // The final HQP rail command can be slower than the shaped total
+    // reference.  Subtracting the full base shadow in that case falsely
+    // attributes the task reduction to posture (and winds the PI integral in
+    // a pure Cartesian task).  Attribute only the fraction of the shaped
+    // base-to-total interval that was actually admitted by the QP.  The
+    // braking point is the zero command clipped into the final rail box.
+    // Keep the raw/shaped base shadow in u_base_; u_base_committed_ is the
+    // physical base contribution after this final split.
+    const double rail_brake = clip(0.0, rail_box_lo_, rail_box_hi_);
+    const double rail_total_ref = u_feasible_;
+    const double rail_span = rail_total_ref - rail_brake;
+    const double rail_y = u_total_committed_;
+    const double rail_eps = std::max(10.0 * cfg_.eps_abs, 1.0e-8);
+    const double rail_min = std::min(rail_brake, rail_total_ref) - rail_eps;
+    const double rail_max = std::max(rail_brake, rail_total_ref) + rail_eps;
+    const bool attribution_override = rail_y < rail_min || rail_y > rail_max;
+    if (attribution_override) {
+      // A publication/plan override is outside the common slow chain.  Do
+      // not feed it into posture anti-windup as if it were a post command.
+      u_post_committed_ = 0.0;
+      u_base_committed_ = rail_y;
+    } else {
+      const double beta = std::abs(rail_span) > rail_eps
+                              ? clip((rail_y - rail_brake) / rail_span, 0.0, 1.0)
+                              : 1.0;
+      u_post_committed_ = beta * (rail_total_ref - u_base_);
+      u_base_committed_ = rail_y - u_post_committed_;
+    }
+    // Commit the shadow chain to the same final rail command decomposition.
+    // Otherwise the next tick shapes against the rejected base candidate and
+    // manufactures a negative posture contribution even for a pure task.
+    v_r_base_ref_ = u_base_committed_;
+    v_r_base_a_ = dt > 1.0e-12 ? (u_base_committed_ - base_previous) / dt : 0.0;
+    v_r_ref_ = u_total_committed_;
+    v_r_a_ = dt > 1.0e-12 ? (u_total_committed_ - total_previous) / dt : 0.0;
+    u_mid_committed_ = u_post_committed_ + d_star_dot_cmd_;
+    u_mid_applied_ = u_mid_committed_;
+    if (published_ok && dt > 0.0) {
+      const double alpha = secondary_alpha_;
+      if (alpha < 1.0e-6) {
+        mid_integ_ = -cfg_.kp_mid * e_d_;
+      } else {
+        // Secondary permission scales the integral drive.  Back-calculation
+        // compares the final committed post contribution with the same
+        // permission-scaled PI request; task/escape/base motion is excluded.
+        const double backcalc =
+            cfg_.kaw_mid * (u_mid_committed_ - alpha * u_pi_raw_);
+        // A wall freezes the error-driven integral, but still lets the
+        // anti-windup path unwind the part that could not be committed.
+        mid_integ_ +=
+            (wall_pi_frozen_ ? backcalc : alpha * cfg_.ki_mid * e_d_ + backcalc) * dt;
+      }
+    }
+  } else {
+    u_task_committed_ = 0.0;
+    u_escape_committed_ = 0.0;
+    u_total_committed_ = qdot[0];
+    u_post_committed_ = qdot[0];
+    u_base_committed_ = 0.0;
+    u_mid_committed_ = qdot[0];
+  }
+  task_paused_ = !published_ok;
+  task_pause_reason_ = published_ok ? 0u :
+                                      (publication_pause_reason != 0
+                                           ? publication_pause_reason
+                                           : 2u);
+  if (!published_ok) task_progress_alpha_ = 0.0;
   if (!mixer_owned) {
     const Vec6 pose_cmd = kin_.fk_pose_at(q_cmd_);
     const double d_live = pose_cmd[1] - q_cmd_[0];
@@ -1569,8 +1928,11 @@ TickOut InnerLoop::step(const TickIn& in) {
   const auto t1 = std::chrono::steady_clock::now();
   out.q_cmd = q_cmd_;
   out.qdot = qdot;
-  out.v_feas = last_lock_v_;
+  Vec6 v_feas_actual = last_lock_v_;
+  if (has_rail_exec) v_feas_actual += J.col(0) * rail_exec;
+  out.v_feas = v_feas_actual;
   out.v_tcp = last_tcp_est_;
+  out.v_task_actual = last_tcp_est_;
   out.residual = residual;
   out.slack = slack;
   out.e_qp = residual.norm();
@@ -1661,6 +2023,17 @@ TickOut InnerLoop::step(const TickIn& in) {
   if (out.wall_active) out.flags |= kOutWallActive;
   if (out.secondary_suppressed) out.flags |= kOutSecSuppressed;
   out.status = published_ok ? kStatusOk : kStatusFail;
+  const Vec8 cand_q = out.q_cmd;
+  const Vec8 cand_qd = out.qdot;
+  if (published_ok && !(in.flags & kInAutoCommit)) {
+    pending_ = capture_history();
+    pending_valid_ = true;
+    restore_history(committed_snap_);
+    out.q_cmd = cand_q;
+    out.qdot = cand_qd;
+  } else if (!published_ok) {
+    pending_valid_ = false;
+  }
   return out;
 }
 

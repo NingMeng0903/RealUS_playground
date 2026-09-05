@@ -22,9 +22,10 @@ from rm75_control.control.joint_admittance_8dof.solver.constraint_mgr import (
 
 @dataclass
 class RailAllocatorConfig:
-    """L1 rail allocation + VPC mid-ranging.  Always on in COUPLED mode."""
+    """Slow rail reference, mirror reserve and mid-ranging configuration."""
 
-    # Task-side scale: metres/s and rad/s so v and ω share one residual.
+    # Legacy weighted-allocation helper scales; the live controller uses
+    # the accepted TCP projection, not this full-six-dimensional allocation.
     v0_m_s: float = 0.05
     w0_rad_s: float = 0.30
     # Chan-Dubey: near-limit joints get larger margin_weight → smaller W^{-1}.
@@ -39,7 +40,7 @@ class RailAllocatorConfig:
     e_ref_m: float = 0.08
     # Reference-model cutoff.  τ = 1/(2π f_c).  4 Hz follows Y; stay below 5–10.
     f_c_hz: float = 4.0
-    # L1 jerk.  Hard QP box stays at qp.j_max_rail_m_s3 (320).
+    # Slow reference jerk; final QP commands inherit this and the mirror cap.
     j_max_ref_m_s3: float = 60.0
     # Lillo ε: leave stays on until this far inside the soft line (8 mm).
     leave_exit_eps_m: float = 0.008
@@ -144,28 +145,39 @@ class RailReferenceModel:
         self.state = RailReferenceState()
         self.last_wall_override = False
         self.last_v_lpf = 0.0
+        self._pending_v_prev: float | None = None
+        self.last_command_bounds = (-self.v_max, self.v_max)
 
     def reset(self, v0: float = 0.0) -> None:
         self.state = RailReferenceState(v=float(v0), a=0.0, initialized=False)
         self.last_wall_override = False
         self.last_v_lpf = float(v0)
+        self._pending_v_prev = None
+        self.last_command_bounds = (-self.v_max, self.v_max)
 
     def track(self, v_applied: float, dt_s: float = 0.0) -> float:
         """Shadow a rail velocity written by another authority."""
         v = float(v_applied)
         dt = float(dt_s)
-        if self.state.initialized and dt > 1.0e-12:
-            a_raw = (v - float(self.state.v)) / dt
-            da = float(self.j_max) * dt
-            a = float(np.clip(a_raw, float(self.state.a) - da, float(self.state.a) + da))
-            a = float(np.clip(a, -self.a_max, self.a_max))
-            self.state.a = a
-        else:
-            self.state.a = 0.0
+        self.state.a = (v - float(self.state.v)) / dt if dt > 1e-12 else 0.0
+        self._pending_v_prev = None
         self.state.v = v
         self.state.initialized = True
         self.last_v_lpf = v
         return v
+
+    def commit(self, v_final: float, dt_s: float) -> float:
+        """Record the final controller command, including downstream overrides.
+
+        A preview from step() is not another elapsed interval. Its original
+        velocity is retained so a clipped command has an honest difference.
+        """
+        previous = self.state.v if self._pending_v_prev is None else self._pending_v_prev
+        self.state.v = float(v_final)
+        self.state.a = (float(v_final) - previous) / dt_s if dt_s > 1e-12 else 0.0
+        self.state.initialized = True
+        self._pending_v_prev = None
+        return self.state.v
 
     def project_into_wall(self, leave_sign: float) -> None:
         from rm75_control.control.joint_admittance_8dof.tasks.rail_command import (
@@ -173,7 +185,7 @@ class RailReferenceModel:
         )
 
         self.last_v_lpf = project_lpf_into_wall(self.last_v_lpf, leave_sign)
-        self.state.v = project_lpf_into_wall(float(self.state.v), leave_sign)
+        # Keep committed velocity history; the next candidate may be projected.
 
     def step(
         self,
@@ -189,6 +201,7 @@ class RailReferenceModel:
         dt = float(dt_s)
         if dt <= 1.0e-9:
             return float(self.state.v)
+        self._pending_v_prev = float(self.state.v)
         a_lim = float(self.a_max if a_max is None else min(self.a_max, abs(float(a_max))))
         j_lim = float(self.j_max if j_max is None else min(self.j_max, abs(float(j_max))))
         tau = lpf_tau_from_fc(self.f_c_hz)
@@ -206,8 +219,12 @@ class RailReferenceModel:
 
         v_f = project_lpf_into_wall(v_f, leave_sign)
         self.last_v_lpf = float(v_f)
-        v_prev = project_lpf_into_wall(float(self.state.v), leave_sign)
+        v_prev = float(self.state.v)
         a_prev = float(self.state.a)
+        lo_command = max(-self.v_max, v_prev - a_lim * dt,
+                         v_prev + (a_prev - j_lim * dt) * dt)
+        hi_command = min(self.v_max, v_prev + a_lim * dt,
+                         v_prev + (a_prev + j_lim * dt) * dt)
         a_raw = (v_f - v_prev) / dt
         da_max = float(j_lim) * dt
         a = float(np.clip(a_raw, a_prev - da_max, a_prev + da_max))
@@ -224,12 +241,15 @@ class RailReferenceModel:
                 reaction_s=self.reaction_s,
             )
             v_clamped = float(np.clip(v, lo_cap, hi_cap))
+            lo_command = max(lo_command, lo_cap)
+            hi_command = min(hi_command, hi_cap)
             if abs(v_clamped - v) > 1.0e-9:
                 self.last_wall_override = True
             v = v_clamped
             a = (v - v_prev) / dt
         self.state.v = float(v)
-        self.state.a = float(a)
+        self.last_command_bounds = (float(lo_command), float(hi_command))
+        self.state.a = (float(v) - self._pending_v_prev) / dt
         return float(v)
 
 

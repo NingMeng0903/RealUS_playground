@@ -28,6 +28,7 @@ struct TickIn {
   double dt_nom = 0.005;
   double dt_wall = 0.005;
   double t_mono = 0.0;
+  double rail_refresh_dt = std::numeric_limits<double>::quiet_NaN();
   double rail_v = 0.0;
   double v_force_z = 0.0;
   double posture_d = std::numeric_limits<double>::quiet_NaN();
@@ -48,6 +49,8 @@ struct TickOut {
   double u_alloc = 0.0;
   double u_mid = 0.0;
   double v_r_ref = 0.0;
+  double rail_base_shaped = 0.0;
+  double rail_base_raw = 0.0;
   double psi = 0.0;
   double d_star = 0.0;
   double d_pref = 0.0;
@@ -121,6 +124,27 @@ struct TickOut {
   double qdot_qp_vs_sent_max = 0.0;
   double dual_cancel = 0.0;
   double secondary_alpha = 1.0;
+  // Native HQP v7 telemetry.  The slow rail reference uses the previous
+  // accepted task progress; the current QP reports its own alpha and the
+  // auxiliary arm preview used at the next rail refresh.
+  double task_progress_alpha = 1.0;
+  double task_progress_scale_used = 1.0;
+  double rail_task_projection = 0.0;
+  double rail_task_committed = 0.0;
+  double rail_escape_committed = 0.0;
+  double rail_post_committed = 0.0;
+  double rail_total_committed = 0.0;
+  double rail_preview_arm_norm = 0.0;
+  double rail_preview_residual = 0.0;
+  double rail_pi_xi = 0.0;
+  double rail_d_ref = 0.0;
+  double rail_ref_acceleration = 0.0;
+  uint32_t task_paused = 0;
+  uint32_t task_pause_reason = 0;
+  // Native command-side estimate J*qdot.  It is deliberately named as a
+  // separate telemetry field: no sensor feedback is silently substituted.
+  Vec6 v_task_actual = Vec6::Zero();
+  Vec8 rail_preview_arm = Vec8::Zero();
   Vec8 box_lo = Vec8::Constant(-1e20);
   Vec8 box_hi = Vec8::Constant(1e20);
   Vec8 qdot_prev_used = Vec8::Zero();
@@ -162,6 +186,37 @@ class InnerLoop {
   const Vec8& q_cmd() const { return q_cmd_; }
 
  private:
+  struct HistorySnap {
+    Vec8 q_cmd = Vec8::Zero();
+    Vec8 qdot_prev = Vec8::Zero();
+    Vec8 qdot_seen = Vec8::Zero();
+    Vec8 qdot_prev2 = Vec8::Zero();
+    Vec8 dq_prev = Vec8::Zero();
+    bool have_dq_prev = false;
+    double v_r_ref = 0.0;
+    double v_r_a = 0.0;
+    double v_r_base_ref = 0.0;
+    double v_r_base_a = 0.0;
+    double rail_prev_committed_ref = 0.0;
+    double rail_prev_committed_a = 0.0;
+    double mid_integ = 0.0;
+    double u_task_committed = 0.0;
+    double u_escape_committed = 0.0;
+    double u_total_committed = 0.0;
+    double u_post_committed = 0.0;
+    double u_base_committed = 0.0;
+    double u_mid_committed = 0.0;
+    double u_mid_applied = 0.0;
+    double d_star = 0.0;
+    double d_pref = 0.0;
+    double psi_cmd = 0.0;
+    double homotopy_s = 0.0;
+    Vec6 last_tcp_est = Vec6::Zero();
+    Vec8 last_qdot_qp = Vec8::Zero();
+  };
+  HistorySnap capture_history() const;
+  void restore_history(const HistorySnap& s);
+  void handle_pending_flags(uint32_t flags);
   void apply_velocity_box(const Vec8& q_geom, const Vec8& q_cmd, const Vec8& q_meas,
                           double dt, double h1, double h2, bool rail_locked,
                           double rail_pin, bool has_pin, bool lead_exempt,
@@ -174,6 +229,7 @@ class InnerLoop {
                  const Vec8& q_prev, const Vec8& qdot_nom, double rail_exec,
                  bool has_rail_exec, double rail_task_vel, double rail_w,
                  bool rail_locked, double dt, double h1, double h2,
+                 double preview_horizon,
                  bool rail_open, double rail_pin, bool has_pin, bool lead_exempt,
                  double sigma_arm, Vec8* qdot, Vec6* residual, double* slack);
   void track_rail_authority(double d_live, double d_star_target, double v_applied,
@@ -222,7 +278,18 @@ class InnerLoop {
 
   double v_r_ref_ = 0.0;
   double v_r_a_ = 0.0;
+  // Snapshot of the final rail command history from the preceding tick.
+  // The nominal shaper is evaluated before solve_hqp(), so v_r_ref_/v_r_a_
+  // are already the current nominal candidate by the time the QP is built.
+  // Keep the previous committed values separately for the slow-owner
+  // speed/acceleration/jerk box.
+  double rail_prev_committed_ref_ = 0.0;
+  double rail_prev_committed_a_ = 0.0;
   double v_r_lpf_ = 0.0;
+  double v_r_base_ref_ = 0.0;
+  double v_r_base_a_ = 0.0;
+  double v_r_base_lpf_ = 0.0;
+  bool v_r_base_init_ = false;
   bool v_r_init_ = false;
   bool wall_pi_frozen_ = false;
   double leave_sign_ = 0.0;
@@ -232,6 +299,7 @@ class InnerLoop {
   double mid_integ_ = 0.0;
   double u_task_raw_ = 0.0;
   double u_task_feasible_ = 0.0;
+  double u_task_committed_ = 0.0;
   double u_pi_raw_ = 0.0;
   double u_mid_cmd_ = 0.0;
   double u_post_raw_ = 0.0;
@@ -240,6 +308,16 @@ class InnerLoop {
   double d_star_dot_cmd_ = 0.0;
   double u_escape_raw_ = 0.0;
   double u_escape_feasible_ = 0.0;
+  double u_escape_committed_ = 0.0;
+  double u_post_committed_ = 0.0;
+  double u_total_committed_ = 0.0;
+  // Physical base contribution after the final HQP rail command is known.
+  // ``u_base_`` remains the shaped shadow reference for telemetry and for
+  // forming the common slow chain; this value is used only for the final
+  // task/posture attribution and anti-windup update.
+  double u_base_committed_ = 0.0;
+  double u_base_raw_ = 0.0;
+  double rail_task_projection_ = 0.0;
   double u_base_ = 0.0;
   double u_feasible_ = 0.0;
   double e_d_ = 0.0;
@@ -265,6 +343,12 @@ class InnerLoop {
   double last_slack_ = 0.0;
   bool slack_hold_latched_ = false;
   double secondary_alpha_ = 1.0;
+  double task_progress_alpha_ = 1.0;
+  double task_progress_scale_used_ = 1.0;
+  Vec8 rail_preview_arm_ = Vec8::Zero();
+  double rail_preview_residual_ = 0.0;
+  bool task_paused_ = false;
+  uint32_t task_pause_reason_ = 0;
   double sat_scale_ = 1.0;
   double last_sigma_ = 0.08;
   double quiet_s_ = 0.0;
@@ -342,6 +426,9 @@ class InnerLoop {
   double fallback_ms_ = 0.0;
   uint32_t n_cbf_active_ = 0;
   TaskWeightState task_weight_;
+  bool pending_valid_ = false;
+  HistorySnap pending_;
+  HistorySnap committed_snap_;
 };
 
 }  // namespace wbc_rt

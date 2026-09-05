@@ -19,18 +19,22 @@ def main() -> int:
     parser.add_argument("--duration-s", type=float, default=40.0)
     args = parser.parse_args()
     client = CommandClient(prefix=str(args.shm_prefix))
-    client.set_mode(
-        ModeRequest(
-            Mode.TRACK_CARTESIAN,
-            {
-                "reference": "ellipse",
-                "x_pp_cm": float(args.x_pp_cm),
-                "y_pp_cm": float(args.y_pp_cm),
-                "max_vel_cm_s": float(args.max_vel_cm_s),
-                "duration_s": float(args.duration_s),
-            },
-        )
+    req = ModeRequest(
+        Mode.TRACK_CARTESIAN,
+        {
+            "reference": "ellipse",
+            "x_pp_cm": float(args.x_pp_cm),
+            "y_pp_cm": float(args.y_pp_cm),
+            "max_vel_cm_s": float(args.max_vel_cm_s),
+            "duration_s": float(args.duration_s),
+        },
     )
+    seq = client.set_mode(req)
+    ret = client.wait_installed(seq, req.mode)
+    if ret != 0:
+        print(f"[WARN] TRACK_CARTESIAN install failed ({ret})", flush=True)
+        client.close()
+        return 1
     print("[MODE] TRACK_CARTESIAN ellipse", flush=True)
     try:
         while True:

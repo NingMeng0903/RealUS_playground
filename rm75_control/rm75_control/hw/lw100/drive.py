@@ -176,6 +176,8 @@ class LW100Drive:
         # True after start_velocity_session(); cleared on disable().
         self._velocity_session_active: bool = False
         self._last_rpm_cmd: int = 0
+        self.velocity_write_seq = 0
+        self.velocity_write_mono_ns = 0
         self._max_speed_rpm: int = 1200
 
     def connect(self) -> RegisterMap:
@@ -683,6 +685,10 @@ class LW100Drive:
             return last
         self.write_param(P_FA24_INT_SPEED1, wire & 0xFFFF)
         self._last_rpm_cmd = wire
+        # Increment only after a successful Modbus write. An unchanged command
+        # is processed without being a new write or a measurement of motion.
+        self.velocity_write_seq = int(getattr(self, "velocity_write_seq", 0)) + 1
+        self.velocity_write_mono_ns = time.monotonic_ns()
         return wire
 
     def emergency_zero_fa24(self) -> bool:
@@ -716,6 +722,8 @@ class LW100Drive:
             except Exception:
                 addr = 24
             side.write_register(addr, 0)
+            self.velocity_write_seq = int(getattr(self, "velocity_write_seq", 0)) + 1
+            self.velocity_write_mono_ns = time.monotonic_ns()
             ok = True
             self._last_rpm_cmd = 0
         except Exception:

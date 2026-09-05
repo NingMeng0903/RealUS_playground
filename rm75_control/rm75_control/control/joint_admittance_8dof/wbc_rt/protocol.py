@@ -8,7 +8,7 @@ from __future__ import annotations
 import numpy as np
 
 WBC_MAGIC = 0x57424331
-WBC_VERSION = 6
+WBC_VERSION = 7
 DEFAULT_IN_NAME = "rm75_wbc_in"
 DEFAULT_OUT_NAME = "rm75_wbc_out"
 
@@ -39,6 +39,9 @@ IN_HAS_FEEDBACK_TWIST = 1 << 8
 IN_SEED_QCMD = 1 << 9
 IN_HAS_POSTURE = 1 << 10
 IN_HAS_QSTAR = 1 << 11
+IN_COMMIT_PREV = 1 << 12
+IN_ABORT_PREV = 1 << 13
+IN_AUTO_COMMIT = 1 << 14
 
 FLAG_PLAN_DRIVES_RAIL = 1 << 0
 FLAG_DIRECT_PTP = 1 << 1
@@ -65,6 +68,10 @@ QP_NOT_RUN = 0
 QP_SOLVED = 1
 QP_MAX_ITER = 2
 QP_FAILED = 3
+QP_PRIMAL_INFEASIBLE = 4
+QP_DUAL_INFEASIBLE = 5
+QP_CLOSEST_PRIMAL = 6
+QP_P0_CONFLICT = 7
 
 RAIL_COUPLED = 0
 RAIL_LOCKED = 1
@@ -95,6 +102,7 @@ WBC_IN_DTYPE = np.dtype(
         ("feedback_twist", "<f8", (6,)),
         ("cmd_f", "<f8", (16,)),
         ("cmd_u", "<u4", (8,)),
+        ("rail_refresh_dt", "<f8"),
     ],
     align=False,
 )
@@ -192,6 +200,25 @@ WBC_OUT_DTYPE = np.dtype(
         ("box_hi", "<f8", (8,)),
         ("qdot_prev", "<f8", (8,)),
         ("qdot_prev2", "<f8", (8,)),
+        ("task_progress_alpha", "<f8"),
+        ("task_progress_scale_used", "<f8"),
+        ("rail_task_projection", "<f8"),
+        ("rail_task_committed", "<f8"),
+        ("rail_escape_committed", "<f8"),
+        ("rail_post_committed", "<f8"),
+        ("rail_total_committed", "<f8"),
+        ("rail_preview_arm_norm", "<f8"),
+        ("rail_preview_residual", "<f8"),
+        ("task_paused", "<u4"),
+        ("task_pause_reason", "<u4"),
+        ("v_task_actual", "<f8", (6,)),
+        ("rail_preview_arm", "<f8", (8,)),
+        ("rail_base_shaped", "<f8"),
+        ("rail_base_raw", "<f8"),
+        ("rail_pi_xi", "<f8"),
+        ("rail_d_ref", "<f8"),
+        ("rail_ref_acceleration", "<f8"),
+
     ],
     align=False,
 )
@@ -199,8 +226,8 @@ WBC_OUT_DTYPE = np.dtype(
 WBC_IN_SIZE = int(WBC_IN_DTYPE.itemsize)
 WBC_OUT_SIZE = int(WBC_OUT_DTYPE.itemsize)
 # Packed C++ layouts in native/wbc_rt/include/wbc_rt/protocol.hpp.
-assert WBC_IN_SIZE == 608, WBC_IN_SIZE
-assert WBC_OUT_SIZE == 1208, WBC_OUT_SIZE
+assert WBC_IN_SIZE == 616, WBC_IN_SIZE
+assert WBC_OUT_SIZE == 1440, WBC_OUT_SIZE
 
 
 def view_in(buf) -> np.ndarray:

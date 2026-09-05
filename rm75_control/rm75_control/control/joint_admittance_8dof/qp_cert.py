@@ -10,7 +10,20 @@ QP_STATUS_NOT_RUN = 0
 QP_STATUS_SOLVED = 1
 QP_STATUS_MAX_ITER = 2
 QP_STATUS_FAILED = 3
-QP_STATUS_NAMES = ("not_run", "solved", "max_iter", "failed")
+QP_STATUS_PRIMAL_INFEASIBLE = 4
+QP_STATUS_DUAL_INFEASIBLE = 5
+QP_STATUS_CLOSEST_PRIMAL = 6
+QP_STATUS_P0_CONFLICT = 7
+QP_STATUS_NAMES = (
+    "not_run",
+    "solved",
+    "max_iter",
+    "failed",
+    "primal_infeasible",
+    "dual_infeasible",
+    "closest_primal",
+    "p0_conflict",
+)
 
 
 def qp_status_name(code) -> str:
@@ -18,6 +31,14 @@ def qp_status_name(code) -> str:
         i = int(code)
     except (TypeError, ValueError):
         text = str(code).lower()
+        if "p0_conflict" in text:
+            return "p0_conflict"
+        if "primal_infeasible" in text or "primal-infeasible" in text:
+            return "primal_infeasible"
+        if "dual_infeasible" in text or "dual-infeasible" in text:
+            return "dual_infeasible"
+        if "closest" in text:
+            return "closest_primal"
         if "max_iter" in text:
             return "max_iter"
         if "solved" in text:
@@ -32,6 +53,15 @@ def qp_status_name(code) -> str:
 
 def qp_status_code_from_prox(status) -> int:
     text = str(status)
+    upper = text.upper()
+    if "CLOSEST_PRIMAL" in upper or "SOLVED_CLOSEST" in upper:
+        return QP_STATUS_CLOSEST_PRIMAL
+    if "PRIMAL_INFEASIBLE" in upper or "PRIMAL-INFEASIBLE" in upper:
+        return QP_STATUS_PRIMAL_INFEASIBLE
+    if "DUAL_INFEASIBLE" in upper or "DUAL-INFEASIBLE" in upper:
+        return QP_STATUS_DUAL_INFEASIBLE
+    if "P0_CONFLICT" in upper:
+        return QP_STATUS_P0_CONFLICT
     if "PROXQP_SOLVED" in text or text == "solved":
         return QP_STATUS_SOLVED
     if "MAX_ITER" in text or "max_iter" in text.lower():
@@ -39,6 +69,17 @@ def qp_status_code_from_prox(status) -> int:
     if text in ("not_run", ""):
         return QP_STATUS_NOT_RUN
     return QP_STATUS_FAILED
+
+
+def qp_status_publishable(name: str, *, certified: bool) -> bool:
+    """Only SOLVED, or certified MAX_ITER, may leave the solver."""
+
+    key = qp_status_name(name)
+    if key == "solved":
+        return True
+    if key == "max_iter":
+        return bool(certified)
+    return False
 
 
 def inbox_brake(qdot_prev, lo, hi, a_max, h1: float) -> np.ndarray:
@@ -53,9 +94,9 @@ def inbox_brake(qdot_prev, lo, hi, a_max, h1: float) -> np.ndarray:
         step = max(float(a_max[i]) * h, 0.0) if i < a_max.size else 0.0
         brake = float(prev[i])
         if prev[i] > 0.0:
-            brake = float(prev[i]) - step
+            brake = max(0.0, float(prev[i]) - step)
         elif prev[i] < 0.0:
-            brake = float(prev[i]) + step
+            brake = min(0.0, float(prev[i]) + step)
         loi = float(lo[i]) if i < lo.size else brake
         hii = float(hi[i]) if i < hi.size else brake
         if np.isfinite(loi) and np.isfinite(hii) and loi <= hii:

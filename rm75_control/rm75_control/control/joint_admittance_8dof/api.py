@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
+import math
 from typing import Any, Callable, Literal
 
 import numpy as np
@@ -72,32 +73,40 @@ class SecondaryPolicy:
         psi_set = float(psi_live + _wrap_pi(float(psi_rad) - psi_live))
         inner.arm_task.set_reference(psi_set)
 
-    def apply(self, inner: JointIkController, *, psi_rad: float | None = None) -> None:
+    def apply(
+        self,
+        inner: JointIkController,
+        *,
+        psi_rad: float | None = None,
+    ) -> None:
+        """Apply a soft task policy without changing the session DOF.
+
+        Rail availability is a session property.  A task policy only changes
+        nullspace preferences and rail extension behavior within that active
+        structure; DOF transitions go through the session controller.
+        """
         psi = psi_rad
         if self.arm_angle is not None and self.arm_angle.psi_rad is not None:
             psi = self.arm_angle.psi_rad
 
         if self.preset == "move":
-            inner.set_coupled()
             inner.set_arm_task_suppressed(True)
             inner.set_centering_suppressed(True)
             inner.set_manipulability_active(False)
             inner.set_rail_extension_mode("pose_attract")
-            inner.set_rail_extension_active(True)
+            inner.set_rail_extension_active(
+                bool(getattr(inner, "rail_mode", RailMode.COUPLED) == RailMode.COUPLED)
+            )
         elif self.preset == "track":
             inner.set_plan_drives_rail(False)
             inner.set_manipulability_active(False)
             inner.set_centering_suppressed(False)
             inner.set_arm_task_suppressed(False)
-            if inner.configured_rail_mode == RailMode.COUPLED:
-                inner.set_coupled()
+            if getattr(inner, "rail_mode", RailMode.COUPLED) == RailMode.COUPLED:
                 inner.set_rail_extension_mode("reach")
                 inner.capture_rail_extension_ref()
                 inner.set_rail_extension_active(True)
             else:
-                inner.set_locked(
-                    LockedStyle.HOLD, q_ref_m=float(inner.q_cmd[0])
-                )
                 inner.set_rail_extension_active(False)
             if psi is not None and inner.arm_task is not None:
                 self._set_arm_angle_reference(inner, psi)
@@ -106,7 +115,6 @@ class SecondaryPolicy:
             inner.set_manipulability_active(False)
             inner.set_centering_suppressed(True)
             inner.set_arm_task_suppressed(False)
-            inner.set_locked(LockedStyle.HOLD, q_ref_m=float(inner.q_cmd[0]))
             inner.set_rail_extension_active(False)
             if psi is not None and inner.arm_task is not None:
                 self._set_arm_angle_reference(inner, psi)
@@ -119,7 +127,6 @@ class SecondaryPolicy:
         elif self.preset == "payload_id":
             # Zero soft nullspace: lock rail, keep collision/limits/TCP task.
             inner.set_plan_drives_rail(False)
-            inner.set_locked(LockedStyle.HOLD, q_ref_m=float(inner.q_cmd[0]))
             inner.set_rail_extension_active(False)
             inner.set_centering_suppressed(True)
             inner.set_arm_task_suppressed(True)
@@ -195,6 +202,102 @@ class CompileContext:
     euler_order: str = "xyz"
     control_frame: str = "tool"
     v_scale: float = 0.5
+    # Session-level actuator structure.  The default is the normal 8-DOF
+    # coupled controller; calibration may request 7-DOF at a task boundary.
+    dof: int = 8
+
+
+def validate_dof(dof: int) -> int:
+    if isinstance(dof, (bool, str, bytes, bytearray)):
+        raise ValueError(f"dof must be exactly 7 or 8, got {dof!r}")
+    try:
+        value = float(dof)
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise ValueError(f"dof must be exactly 7 or 8, got {dof!r}") from exc
+    if not math.isfinite(value) or value not in (7.0, 8.0):
+        raise ValueError(f"dof must be exactly 7 or 8, got {dof!r}")
+    return int(value)
+
+
+def controller_dof(inner: JointIkController) -> int:
+    """Read the persistent session structure.  HOLD is a rail policy, not DOF."""
+    explicit = getattr(inner, "_peirastic_dof", None)
+    if explicit in (7, 8):
+        return int(explicit)
+    return 8
+
+
+def _enforce_session_dof(ctx: CompileContext) -> int:
+    """Make the explicit session structure authoritative for local compile.
+
+    A YAML ``rail.mode`` is only the construction default.  Offline/local
+    callers may create an inner controller directly, so compile must still
+    synchronize it with the session DOF before a phase's ``on_enter`` runs.
+    """
+
+    value = validate_dof(getattr(ctx, "dof", 8))
+    inner = ctx.inner
+    current = getattr(inner, "_peirastic_dof", None)
+    if current is None:
+        current = controller_dof(inner)
+    if int(current) != value:
+        set_controller_dof(inner, value)
+    return value
+
+
+def set_controller_dof(
+    inner: JointIkController,
+    dof: int,
+    *,
+    q_live: np.ndarray | None = None,
+) -> int:
+    """Apply a committed session DOF and clear cross-structure state.
+
+    ``q_live`` is the fresh measured eight-vector supplied by Window A at a
+    stationary task boundary.  On a 7↔8 transition, resetting from that seed
+    clears the rail mixer ``xi``, d* and base shapers, mid-ranging state,
+    posture references, and the native inner state before ownership changes.
+    Offline/local callers may omit it and use the current command seed.
+    """
+    value = validate_dof(dof)
+    previous = int(getattr(inner, "_peirastic_dof", controller_dof(inner)))
+    if previous != value:
+        seed = inner.q_cmd if q_live is None else np.asarray(q_live, dtype=float)
+        seed = np.asarray(seed, dtype=float).reshape(-1)
+        if seed.size != int(inner.kin.nv) or not np.all(np.isfinite(seed)):
+            raise ValueError("DOF transition requires a finite live 8-DOF seed")
+        if hasattr(inner, "reset"):
+            inner.reset(seed)
+    if value == 7:
+        inner.set_plan_drives_rail(False)
+        inner.set_locked(LockedStyle.HOLD, q_ref_m=float(inner.q_cmd[0]))
+        inner.set_rail_extension_active(False)
+    else:
+        inner.set_plan_drives_rail(False)
+        inner.set_coupled()
+        # Rebase all coupled references at the live command after a 7→8
+        # session switch.  A stale d*/ψ* from the previous coupled episode
+        # must not create a rail transient when the rail becomes available.
+        q_live = np.asarray(inner.q_cmd, dtype=float).copy()
+        retarget = getattr(inner, "posture_retarget", None)
+        if retarget is not None and hasattr(retarget, "reset"):
+            retarget.reset(q_live)
+            arm_task = getattr(inner, "arm_task", None)
+            psi_cmd = getattr(retarget, "_psi_cmd", None)
+            if (
+                arm_task is not None
+                and psi_cmd is not None
+                and hasattr(arm_task, "set_reference")
+            ):
+                arm_task.set_reference(float(psi_cmd))
+            rail_ext = getattr(inner, "rail_ext_task", None)
+            d_star = getattr(retarget, "d_star_m", float("nan"))
+            if rail_ext is not None and np.isfinite(float(d_star)):
+                rail_ext.set_d_pref(float(d_star))
+        elif hasattr(inner, "capture_rail_extension_ref"):
+            inner.capture_rail_extension_ref()
+    setattr(inner, "_peirastic_dof", value)
+    return value
 
 
 @dataclass
@@ -250,10 +353,10 @@ def attach_joint_move_rail(
 ) -> None:
     """Pin rail to the joint plan and enable direct joint PTP (no Cartesian QP).
 
-    ``on_enter`` reseeds the interpolator from live ``q_cmd`` and the last sent
-    8-vector ``q̇`` so a PTP that starts mid-hold does not rest-to-rest slam.
-    If the inner is already ``LOCKED HOLD``, the interpolator rail is frozen
-    (``dq[0]=0``) and ``plan_drives_rail`` stays off.
+    ``on_enter`` reseeds from live ``q_cmd`` like 13f1c27, so a mid-hold PTP
+    stays C1.  If native ``auto_commit=False`` left ``q_cmd`` far from the
+    last encoder sample, keep the runner's encoder seed instead of a ghost
+    start.  Only an explicit 7-DOF session freezes rail (``dq[0]=0``).
     """
     prev_on_enter = phase.on_enter
     prev_on_exit = phase.on_exit
@@ -263,24 +366,33 @@ def attach_joint_move_rail(
         qdot_live = np.asarray(_live_qdot_for_reseed(inner), dtype=float).copy()
         if prev_on_enter is not None:
             prev_on_enter()
-        # Decide after this phase's policy. MOVEJ applies ``move`` (coupled
-        # 8-DoF) even if the previous mode had the rail locked.
-        freeze_rail = bool(inner.is_locked_hold)
-        rail_ref = None
-        if freeze_rail:
-            q_ref = getattr(getattr(inner, "rail_task", None), "q_ref", None)
-            rail_ref = float(q_ref) if q_ref is not None else float(q_live[0])
-            q_live[0] = rail_ref
-            qdot_live[0] = 0.0
+        freeze_rail = int(getattr(inner, "_peirastic_dof", controller_dof(inner))) == 7
         ref = move_ref
         if ref is None:
             ref = getattr(getattr(phase, "outer", None), "reference", None)
-        if ref is not None and hasattr(ref, "reseed_start"):
+        meas = getattr(inner, "_last_q_meas", None)
+        use_cmd = True
+        if meas is not None:
+            meas = np.asarray(meas, dtype=float).reshape(-1)
+            if meas.size == q_live.size and np.isfinite(meas).all():
+                dq = np.abs(q_live - meas)
+                if float(dq[0]) > 0.015 or float(np.max(dq[1:])) > np.deg2rad(5.0):
+                    use_cmd = False
+        if use_cmd and ref is not None and hasattr(ref, "reseed_start"):
             ref.reseed_start(q_live, qdot0_rad_s=qdot_live)
-        elif ref is not None and hasattr(ref, "q_start"):
+        elif use_cmd and ref is not None and hasattr(ref, "q_start"):
             ref.q_start = q_live.copy()
             if hasattr(ref, "qdot0"):
                 ref.qdot0 = qdot_live.copy()
+        rail_ref = None
+        if freeze_rail:
+            q_ref = getattr(getattr(inner, "rail_task", None), "q_ref", None)
+            if q_ref is not None and np.isfinite(float(q_ref)):
+                rail_ref = float(q_ref)
+            elif ref is not None and hasattr(ref, "q_start"):
+                rail_ref = float(np.asarray(ref.q_start, dtype=float).reshape(-1)[0])
+            else:
+                rail_ref = float(q_live[0])
         if freeze_rail and ref is not None and rail_ref is not None:
             if hasattr(ref, "q_start"):
                 q_start = np.asarray(ref.q_start, dtype=float).copy()
@@ -537,9 +649,9 @@ def phase_cartesian_goto(
 ) -> JointPhaseSpec:
     if max_duration_s is None:
         max_duration_s = 2.5 * float(move_ref.duration_s) + 15.0
-    # payload_id PTP must lock before attach_joint_move_rail decides freeze.
-    # "move" first unlocks the rail, so the interpolator plans a rail stroke
-    # the send pin then ignores — arm joints follow that wrong plan (TCP slide).
+    # The session DOF owns rail locking.  The task policy only selects soft
+    # posture behavior; attach_joint_move_rail then follows the committed
+    # structure when deciding whether to freeze the rail interpolator.
     preset = str(secondary_preset or "move")
     if preset != "payload_id":
         preset = "move"
@@ -657,6 +769,7 @@ def _make_on_enter(spec: JointPhaseSpec, ctx: CompileContext) -> Callable[[], No
             spec.secondary.preset == "move"
             and spec.q_target_rad is not None
             and len(np.asarray(spec.q_target_rad).reshape(-1)) > 0
+            and not bool(getattr(ctx.inner, "is_locked_hold", False))
         ):
             y_tgt = float(np.asarray(spec.q_target_rad, dtype=float).reshape(-1)[0])
             ctx.inner.set_rail_pose_target(y_tgt)
@@ -720,6 +833,7 @@ def _make_on_exit(spec: JointPhaseSpec, ctx: CompileContext) -> Callable[[], Non
 
 def compile_phase(spec: JointPhaseSpec, ctx: CompileContext) -> CompiledPhase:
     """Build a runtime ``Phase`` from a ``JointPhaseSpec``."""
+    _enforce_session_dof(ctx)
     gov = spec.governor
     on_enter = _make_on_enter(spec, ctx)
     on_exit = _make_on_exit(spec, ctx)

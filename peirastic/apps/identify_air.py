@@ -24,6 +24,8 @@ from pathlib import Path
 
 import numpy as np
 
+from peirastic.core.session import request_dof, stop_before_dof
+
 AIR_STEPS_MM_S = (4.0, 6.0, 8.0, 10.0, 12.0, 15.0, 20.0, 25.0, 30.0, 40.0, 60.0, 80.0)
 AIR_CHIRP_AMPS_MM_S = (8.0, 15.0, 25.0)
 AIR_CHIRP_F0_HZ = 0.2
@@ -46,6 +48,16 @@ TDPA_MIN_WINDOW_S = 1.0
 TDPA_V_PRESS_M_S = 0.002
 TDPA_MIN_PRESS_TICKS = 40
 TDPA_MIN_OPEN_LOOP_TICKS = 20
+
+
+def _install_servo_mode(client: CommandClient) -> None:
+    """Install SERVO_TWIST and wait for Window A's post-on_enter ACK."""
+
+    req = ModeRequest(Mode.SERVO_TWIST, {"filter": False})
+    seq = client.set_mode(req)
+    ret = client.wait_installed(seq, req.mode)
+    if ret != 0:
+        raise RuntimeError(f"SERVO_TWIST install failed ({ret})")
 
 REQUIRED_PLOTS = (
     "01_delay_vs_accel.png",
@@ -1474,11 +1486,24 @@ def run_air_campaign(
             time.sleep(dt_nom)
         return True
 
-    client.set_mode(
-        ModeRequest(Mode.SERVO_TWIST, {"filter": False, "secondary": "payload_id"})
-    )
+    previous_dof: int | None = None
+    try:
+        stop_before_dof(client)
+        previous_dof = request_dof(client, 8)
+        _install_servo_mode(client)
+    except BaseException:
+        try:
+            if previous_dof in (7, 8):
+                stop_before_dof(client)
+                request_dof(client, previous_dof)
+        finally:
+            handle.close()
+            bus.close()
+            client.close()
+            motion.close()
+        raise
     print(
-        f"[MODE] SERVO_TWIST identify_air  filter OFF  secondary=payload_id  log={log_csv}  "
+        f"[MODE] SERVO_TWIST identify_air  filter OFF  session_dof=8  log={log_csv}  "
         "force loop stays off; Window A is servo only",
         flush=True,
     )
@@ -1542,6 +1567,12 @@ def run_air_campaign(
         print("[STOP] interrupted", flush=True)
         return 0
     finally:
+        try:
+            stop_before_dof(client)
+            if previous_dof in (7, 8):
+                request_dof(client, previous_dof)
+        except Exception as exc:
+            print(f"[DOF] restore {previous_dof} failed: {exc}", flush=True)
         handle.close()
         bus.close()
         client.close()
@@ -1666,11 +1697,24 @@ def run_tdpa_press_campaign(
         tw = np.zeros(6, dtype=float)
         bus.write(tw, hz=hz, connected=True)
 
-    client.set_mode(
-        ModeRequest(Mode.SERVO_TWIST, {"filter": False, "secondary": "payload_id"})
-    )
+    previous_dof: int | None = None
+    try:
+        stop_before_dof(client)
+        previous_dof = request_dof(client, 8)
+        _install_servo_mode(client)
+    except BaseException:
+        try:
+            if previous_dof in (7, 8):
+                stop_before_dof(client)
+                request_dof(client, previous_dof)
+        finally:
+            handle.close()
+            bus.close()
+            client.close()
+            motion.close()
+        raise
     print(
-        f"[MODE] SERVO_TWIST tdpa-press  filter OFF  secondary=payload_id  log={log_csv}  "
+        f"[MODE] SERVO_TWIST tdpa-press  filter OFF  session_dof=8  log={log_csv}  "
         "force loop OFF — do not start hybrid / F* tracking",
         flush=True,
     )
@@ -1734,6 +1778,12 @@ def run_tdpa_press_campaign(
         print("[STOP] interrupted", flush=True)
         return 0
     finally:
+        try:
+            stop_before_dof(client)
+            if previous_dof in (7, 8):
+                request_dof(client, previous_dof)
+        except Exception as exc:
+            print(f"[DOF] restore {previous_dof} failed: {exc}", flush=True)
         handle.close()
         bus.close()
         client.close()

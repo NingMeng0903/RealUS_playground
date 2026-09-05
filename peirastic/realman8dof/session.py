@@ -6,7 +6,12 @@ from collections.abc import Callable
 
 import numpy as np
 
-from rm75_control.control.joint_admittance_8dof.api import CompileContext, SecondaryPolicy
+from rm75_control.control.joint_admittance_8dof.api import (
+    CompileContext,
+    SecondaryPolicy,
+    _enforce_session_dof,
+    validate_dof,
+)
 from rm75_control.control.joint_admittance_8dof.loop import Phase
 from rm75_control.control.joint_admittance_8dof.reference import (
     EllipseToolXYReference,
@@ -103,28 +108,45 @@ def _polyline_ref(payload: dict, euler_order: str) -> WorldPolylineReference:
     )
 
 
-_SERVO_SECONDARY = frozenset({"track", "hold", "payload_id"})
+_TASK_POLICIES = frozenset({"off", "move", "track", "hold", "payload_id"})
 _RAIL_STILL_M_S = 0.002
 _RAIL_STALE_S = 0.050
 
 
-def _secondary_preset(payload: dict) -> str:
-    """SERVO_TWIST / HOLD require an explicit rail/nullspace policy."""
+def _reject_legacy_secondary(payload: dict) -> None:
+    if "secondary" in payload:
+        raise ValueError(
+            "secondary was removed from the PEIRASTIC API/IPC; "
+            "use arm.set_dof(7 or 8) and let the task choose soft policy"
+        )
 
-    value = payload.get("secondary")
+
+def _task_policy(
+    payload: dict,
+    *,
+    dof: int,
+    default: str,
+) -> str:
+    """Resolve an internal phase policy without changing session structure."""
+    _reject_legacy_secondary(payload)
+    value = payload.get("task_policy", default)
     if not isinstance(value, str) or not value.strip():
-        raise ValueError(
-            "SERVO_TWIST / SERVO_TWIST_HOLD requires explicit secondary: "
-            "'track', 'hold', or 'payload_id'"
-        )
-    preset = value.strip()
-    if preset not in _SERVO_SECONDARY:
-        raise ValueError(
-            f"Unsupported servo secondary={preset!r}. "
-            "'off' only disables soft tasks; it does not lock the rail. "
-            "Use 'payload_id' for rail-locked identification."
-        )
-    return preset
+        raise ValueError("task_policy must be a non-empty string")
+    policy = value.strip()
+    if policy not in _TASK_POLICIES:
+        raise ValueError(f"Unsupported task_policy={policy!r}")
+    if policy == "payload_id" and validate_dof(dof) not in (7, 8):
+        raise ValueError("payload_id task policy requires session DOF 7 or 8")
+    return policy
+
+
+def _secondary_preset(payload: dict) -> str:
+    """Compatibility guard for callers that still import the old helper."""
+    _reject_legacy_secondary(payload)
+    raise ValueError(
+        "secondary was removed from the PEIRASTIC API/IPC; "
+        "use arm.set_dof(7 or 8)"
+    )
 
 
 def _rail_speed_m_s(inner) -> float:
@@ -184,6 +206,22 @@ def _require_still_rail_for_payload_id(inner) -> None:
         )
 
 
+def _normalize_q_target(ctx: CompileContext, value, *, dof: int) -> np.ndarray:
+    q = np.asarray(value, dtype=float).reshape(-1)
+    rail = float(np.asarray(ctx.inner.q_cmd, dtype=float).reshape(-1)[0])
+    if dof == 8 and q.size == 7:
+        raise ValueError("8-DOF session rejects a 7-vector MOVEJ; pass explicit q8")
+    if q.size == 7:
+        q = np.concatenate([[rail], q])
+    if q.size != 8:
+        raise ValueError(f"q target must be 7-arm or 8-vec, got {q.size}")
+    if dof == 7 and abs(float(q[0]) - rail) > 5.0e-4:
+        raise ValueError("7-DOF session rejects a rail-moving MOVEJ target")
+    q = q.copy()
+    q[0] = rail if dof == 7 else q[0]
+    return q
+
+
 def apply_qp_aux(inner, payload: dict | None) -> None:
     """Apply optional QP auxiliary overrides carried on a mode payload."""
 
@@ -222,10 +260,29 @@ def compile_request(
 ) -> Phase:
     payload = dict(req.payload)
     raw = raw or {}
+    dof = _enforce_session_dof(ctx)
+    _reject_legacy_secondary(payload)
     if req.mode in (Mode.SERVO_TWIST, Mode.SERVO_TWIST_HOLD):
-        payload["secondary"] = _secondary_preset(payload)
-        if payload["secondary"] == "payload_id":
+        payload["task_policy"] = _task_policy(
+            payload, dof=dof, default="payload_id" if dof == 7 else "track"
+        )
+        if payload["task_policy"] == "payload_id":
             _require_still_rail_for_payload_id(ctx.inner)
+    if req.mode in (Mode.GOTO_JOINTS, Mode.MOVEJ, Mode.CARTESIAN_PTP):
+        if payload.get("q_target") is not None:
+            payload["q_target"] = _normalize_q_target(
+                ctx, payload["q_target"], dof=dof
+            ).tolist()
+        if payload.get("q_start") is not None:
+            payload["q_start"] = _normalize_q_target(
+                ctx, payload["q_start"], dof=dof
+            ).tolist()
+        if dof == 7:
+            rail = float(np.asarray(ctx.inner.q_cmd, dtype=float).reshape(-1)[0])
+            requested = payload.get("rail_m")
+            if requested is not None and abs(float(requested) - rail) > 5.0e-4:
+                raise ValueError("7-DOF session rejects a rail-moving target")
+            payload["rail_m"] = rail
     if req.mode == Mode.SERVO_TWIST:
         outer = ServoTwistOuter(
             _twist_source(payload, twist_read),
@@ -324,7 +381,7 @@ def compile_request(
                 require_path=False,
             )
         else:
-            q = np.asarray(payload["q_target"], dtype=float).reshape(-1)
+            q = _normalize_q_target(ctx, payload["q_target"], dof=dof)
         q0 = payload.get("q_start")
         q_start = None if q0 is None else np.asarray(q0, dtype=float)
         dur = payload.get("duration_s")
@@ -344,7 +401,7 @@ def compile_request(
                 q_start=q_start,
                 duration_s=dur,
                 v=v,
-                secondary=payload.get("secondary"),
+                secondary=_task_policy(payload, dof=dof, default="move"),
             ),
         )
     if req.mode == Mode.CARTESIAN_PTP:
@@ -381,7 +438,8 @@ def _attach_joint_hold(phase: Phase, inner) -> None:
 
 
 def _finish_phase(ctx: CompileContext, payload: dict, phase: Phase) -> Phase:
-    preset = payload.get("secondary")
+    _reject_legacy_secondary(payload)
+    preset = payload.get("task_policy")
     if preset or payload.get("qp_aux") or payload.get("collision_avoidance") is not None:
         prev = phase.on_enter
 

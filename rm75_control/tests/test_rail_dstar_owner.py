@@ -62,10 +62,10 @@ def _yaml_inner_at_rail(q_rail_m: float) -> JointIkController:
     return inner
 
 
-def test_protocol_v6_layout_is_1208() -> None:
-    assert P.WBC_VERSION == 6
-    assert P.WBC_OUT_SIZE == 1208
-    assert P.WBC_IN_SIZE == 608
+def test_protocol_v7_layout_is_1440() -> None:
+    assert P.WBC_VERSION == 7
+    assert P.WBC_OUT_SIZE == 1440
+    assert P.WBC_IN_SIZE == 616
     binary = find_wbc_rt_binary()
     if binary is None:
         pytest.skip("wbc_rt binary not built")
@@ -73,8 +73,8 @@ def test_protocol_v6_layout_is_1208() -> None:
 
     out = subprocess.check_output([str(binary), "--sizes"], text=True).strip()
     inn, outn = out.split()
-    assert int(inn) == 608
-    assert int(outn) == 1208
+    assert int(inn) == 616
+    assert int(outn) == 1440
 
 
 def test_allocate_identity_and_bidirectional_cancel() -> None:
@@ -203,7 +203,7 @@ def test_pi_plant_closes_e_d_with_rail_sign() -> None:
     assert abs(d_live - float(tel.d_star_ref)) < 0.020
 
 
-def test_wall_pi_frozen_does_not_integrate_or_backcalc() -> None:
+def test_wall_pi_freezes_error_integration_but_unwinds_uncommitted_output() -> None:
     mix = RailCommandMixer(kp=1.2, ki=0.8, u_mid_max=0.12, kaw=8.0)
     mix.d_star.init_from_live(0.0)
     mix.xi = 0.05
@@ -218,7 +218,8 @@ def test_wall_pi_frozen_does_not_integrate_or_backcalc() -> None:
             u_max=0.12,
             in_wall=True,
         )
-        assert mix.xi == pytest.approx(0.05, abs=1e-12)
+        assert mix.xi < 0.05
+    assert abs(mix.last.u_pi_raw) < 0.29
 
 
 def test_escape_dir_debounce() -> None:
@@ -456,6 +457,10 @@ def test_inner_j4_21deg_recovery_direction_or_slack() -> None:
     q[4] = np.deg2rad(21.0)
     inner.reset(q)
     last = inner.update(np.zeros(6), q_meas=q)
+    if last.task_paused:
+        assert last.task_pause_reason
+        assert last.task_progress == 0.0
+        return
     assert np.isfinite(last.j4_design_slack)
     assert float(last.qdot[4]) >= -1.0e-4 or float(last.j4_design_slack) > 0.0
 

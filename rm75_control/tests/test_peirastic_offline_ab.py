@@ -38,6 +38,7 @@ from peirastic.configs import DEFAULT_CONTROLLER_YAML
 
 _CFG = DEFAULT_CONTROLLER_YAML
 _SEED = np.array([0.375, 0.194, -0.503, -0.069, 1.979, -0.776, 0.547, -4.370])
+_DESIGN_SEED = np.r_[0.375, np.deg2rad([-89.5, -94.5, 65.2, 96.0, 89.3, 61.0, 94.6])]
 _OLD_STACK = (
     Path(__file__).resolve().parents[1]
     / "apps"
@@ -51,14 +52,14 @@ _OLD_STACK = (
 )
 
 
-def _ctx():
+def _ctx(seed=_SEED):
     raw = yaml.safe_load(_CFG.read_text())
     cfg = build_joint_ik_config(raw)
     cfg.backend = "python"
     cfg.native_shm_prefix = f"rm75_wbc_peir_ab_{os.getpid()}"
     kin = RobotKinematics()
     inner = JointIkController(kin, cfg)
-    inner.reset(_SEED)
+    inner.reset(seed)
     ctx = CompileContext(
         kin=kin,
         inner=inner,
@@ -106,8 +107,8 @@ def test_peirastic_ellipse_matches_old_program_outer() -> None:
         assert np.allclose(a, b, atol=1e-9), t
 
 
-def test_peirastic_ellipse_closed_loop_python_inner() -> None:
-    raw, ctx = _ctx()
+def _run_ellipse(seed):
+    raw, ctx = _ctx(seed)
     phase = compile_request(
         ctx,
         ModeRequest(
@@ -122,12 +123,13 @@ def test_peirastic_ellipse_closed_loop_python_inner() -> None:
         ),
         raw=raw,
     )
-    pose0 = ctx.kin.fk_pose(_SEED)
+    pose0 = ctx.kin.fk_pose(seed)
     phase.outer.set_origin(pose0, t_s=0.0)
     dt = 0.005
     errs = []
-    q = _SEED.copy()
+    q = seed.copy()
     qdot = np.zeros(8)
+    steps = []
     for i in range(400):
         t = i * dt
         pose = ctx.kin.fk_pose(q)
@@ -142,7 +144,27 @@ def test_peirastic_ellipse_closed_loop_python_inner() -> None:
         q = np.asarray(step.q_send, dtype=float).copy()
         qdot = np.asarray(step.qdot, dtype=float).copy()
         errs.append(float(phase.outer.last_err_mm))
+        steps.append(step)
     p95 = float(np.percentile(np.asarray(errs[40:], dtype=float), 95))
+    return p95, steps
+
+
+def test_peirastic_ellipse_closed_loop_python_inner() -> None:
+    # Exercise the configured design family away from the hard J4 comfort
+    # boundary. The legacy seed below reaches that boundary during this arc;
+    # its old tracking score relied on independent Cartesian slack.
+    p95, steps = _run_ellipse(_DESIGN_SEED)
     # Offline python inner, not the hardware 0.20 mm log. Keep this tight
     # enough that a broken compile cannot hide behind "just a sim".
     assert p95 < 2.0, f"offline ellipse p95 {p95:.3f} mm"
+    assert not any(s.task_paused for s in steps)
+    assert np.percentile([s.task_progress for s in steps[40:]], 5) > 0.95
+
+
+def test_ellipse_at_j4_boundary_reduces_progress_without_direction_slack() -> None:
+    _, steps = _run_ellipse(_SEED)
+    for s in steps:
+        assert not s.task_paused
+        np.testing.assert_allclose(s.v_tcp_estimated, s.v_cmd_feasible, atol=2e-5)
+        assert s.qpik_hard_residual_max < 1e-5
+        assert s.qp1_status in ("solved", "max_iter")

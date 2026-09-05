@@ -1176,14 +1176,19 @@ def test_plus_leave_band_does_not_freeze_rail() -> None:
     pose = kin.fk_pose(q)
     away = np.zeros(6)
     away[1] = -0.04
-    step = inner.update(
-        away,
-        dt=cfg.dt,
-        q_meas=q,
-        pose_d=pose,
-        vel_ff=away,
-        task_rotation_base=np.eye(3),
-    )
+    # A low-rate rail may retain zero on the first ARM tick. Advance the
+    # ideal feedback for the acceleration ramp before judging a freeze.
+    for _ in range(40):
+        step = inner.update(
+            away,
+            dt=cfg.dt,
+            q_meas=q,
+            pose_d=pose,
+            vel_ff=away,
+            task_rotation_base=np.eye(3),
+            rail_exec_vel_m_s=float(inner.core.qdot_prev[0]),
+        )
+        q = step.q_send.copy()
     assert inner.rail_ext_task is not None
     assert inner.rail_ext_task._in_plus_leave(0.75)
     assert not step.rail_sat

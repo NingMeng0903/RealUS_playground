@@ -6,6 +6,7 @@ from pathlib import Path
 
 import numpy as np
 import yaml
+import uuid
 
 from rm75_control.control.joint_admittance_8dof.config import build_joint_ik_config
 from rm75_control.control.joint_admittance_8dof.loop import JointIkController
@@ -25,14 +26,17 @@ def _meaningful_reversals(velocity: np.ndarray, threshold: float = 2.0e-3) -> in
     return int(np.count_nonzero(signs[1:] != signs[:-1]))
 
 
-def test_vertical_press_lift_reconfigures_without_rail_hunting() -> None:
+def test_vertical_press_lift_reconfigures_without_rail_hunting(request) -> None:
     cfg = build_joint_ik_config(yaml.safe_load(CONFIG.read_text()))
     cfg.collision.enabled = False
     cfg.qp.collision.enabled = False
     cfg.ird.enabled = False
     cfg.qp.joint_comfort.enabled = False
+    cfg.native_shm_prefix = f"press_lift_{uuid.uuid4().hex}"
     kin = RobotKinematics()
     inner = JointIkController(kin, cfg)
+    if inner._native is not None:
+        request.addfinalizer(inner._native.shutdown)
     q = RISK_POSE.copy()
     inner.reset(q)
     inner.begin_hybrid_episode(q, np.zeros(8))
@@ -51,15 +55,23 @@ def test_vertical_press_lift_reconfigures_without_rail_hunting() -> None:
                 contact_active=True,
                 path_twist=np.zeros(6),
                 feedback_twist=np.zeros(6),
+                rail_exec_vel_m_s=float(inner.core.qdot_prev[0]),
             )
             q = step.q_send.copy()
             phases[phase].append(step)
 
     press, lift = phases
-    for step in (*press, *lift):
-        assert step.qp_solver_call_count >= 1
-        assert step.fallback_level == "none"
-        assert not step.solver_fault_latched
+    for phase_index, steps in enumerate(phases):
+        for tick, step in enumerate(steps):
+            assert step.qp_solver_call_count >= 1
+            assert not step.task_paused, (phase_index, tick, step.task_pause_reason)
+            assert step.fallback_level == "none"
+            assert not step.solver_fault_latched
+            np.testing.assert_allclose(
+                step.v_tcp_estimated, step.v_cmd_feasible, atol=1.0e-5
+            )
+    assert min(s.task_progress for s in press[40:]) > 0.99
+    assert min(s.task_progress for s in lift[40:]) > 0.99
 
     press_rail = np.array([step.qdot[0] for step in press])
     lift_rail = np.array([step.qdot[0] for step in lift])

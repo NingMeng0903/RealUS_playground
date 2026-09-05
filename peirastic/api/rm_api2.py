@@ -22,14 +22,17 @@ def rm_speed_scale(v: float) -> float:
     return x
 
 
-def rm_joint_to_si(joint) -> list[float]:
+def rm_joint_to_si(joint, *, rail_m: float | None = None) -> list[float]:
     """``[rail_mm, j1..j7 °]`` or 7 arm degrees (rail 400 mm)."""
 
     j = np.asarray(joint, dtype=float).reshape(-1)
     if j.size == 8:
         return [float(j[0]) * 0.001, *np.deg2rad(j[1:]).tolist()]
     if j.size == 7:
-        return [0.4, *np.deg2rad(j).tolist()]
+        rail = 0.4 if rail_m is None else float(rail_m)
+        if not np.isfinite(rail):
+            raise ValueError("7-arm RM joint target needs a finite live rail position")
+        return [rail, *np.deg2rad(j).tolist()]
     raise ValueError(f"RM joint must be 7 or 8 numbers, got {j.size}")
 
 
@@ -46,7 +49,17 @@ class _RmApi2Mixin:
     _movev_session: bool
 
     def rm_movej(self, joint, v: int | float, r: int = 0, connect: int = 0, block: int = 1) -> int:
-        return self.movej(rm_joint_to_si(joint), v=rm_speed_scale(v), r=r, connect=connect, block=block)
+        arr = np.asarray(joint, dtype=float).reshape(-1)
+        rail = None
+        if arr.size == 7 and hasattr(self, "_current_rail_m"):
+            rail = self._current_rail_m()
+        return self.movej(
+            rm_joint_to_si(joint, rail_m=rail),
+            v=rm_speed_scale(v),
+            r=r,
+            connect=connect,
+            block=block,
+        )
 
     def rm_movej_p(self, pose, v: int | float, r: int = 0, connect: int = 0, block: int = 1) -> int:
         return self.movej_p(pose, v=rm_speed_scale(v), r=r, connect=connect, block=block)

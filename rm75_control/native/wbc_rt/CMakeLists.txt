@@ -36,6 +36,22 @@ add_library(proxsuite_headers INTERFACE)
 target_include_directories(proxsuite_headers INTERFACE "$ENV{CMEEL_PREFIX}/include")
 target_link_libraries(proxsuite_headers INTERFACE Eigen3::Eigen simde)
 
+set(WBC_BUILD_ID_HDR "${CMAKE_CURRENT_BINARY_DIR}/wbc_build_id.hpp")
+add_custom_command(
+  OUTPUT "${WBC_BUILD_ID_HDR}"
+  COMMAND python3 "${CMAKE_CURRENT_SOURCE_DIR}/gen_build_id.py" "${WBC_BUILD_ID_HDR}"
+  DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/gen_build_id.py"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../rm75_control/control/joint_admittance_8dof/wbc_rt/build_id.py"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/wbc_rt/protocol.hpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/wbc_rt/inner.hpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/wbc_rt/types.hpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/inner.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../rm75_control/control/joint_admittance_8dof/wbc_rt/protocol.py"
+  VERBATIM
+)
+
 add_executable(wbc_rt
   src/main.cpp
   src/config.cpp
@@ -43,8 +59,12 @@ add_executable(wbc_rt
   src/inner.cpp
   src/srs_ik.cpp
   src/posture.cpp
+  "${WBC_BUILD_ID_HDR}"
 )
-target_include_directories(wbc_rt PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_include_directories(wbc_rt PRIVATE
+  ${CMAKE_CURRENT_SOURCE_DIR}/include
+  ${CMAKE_CURRENT_BINARY_DIR}
+)
 target_link_libraries(wbc_rt PRIVATE
   Eigen3::Eigen
   pinocchio::pinocchio

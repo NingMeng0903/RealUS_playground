@@ -375,6 +375,21 @@ def _status(value: Any, default: str = "not_run") -> str:
     return text or default
 
 
+def _task_admission_fields(step) -> dict:
+    requested = _vec6(getattr(step, "v_cmd_received", None), float("nan"))
+    accepted = _vec6(getattr(step, "v_cmd_feasible", None), float("nan"))
+    model = _vec6(getattr(step, "v_tcp_estimated", None), float("nan"))
+    return {
+        "task_progress": float(getattr(step, "task_progress", float("nan"))),
+        "task_paused": int(bool(getattr(step, "task_paused", False))),
+        "task_pause_reason": str(getattr(step, "task_pause_reason", "")),
+        "task_requested_json": _json_value(requested),
+        "task_accepted_json": _json_value(accepted),
+        "task_model_json": _json_value(model),
+        "accepted_residual_inf": float(np.max(np.abs(accepted - model))),
+    }
+
+
 def _controller_row(
     *,
     source_row: int,
@@ -440,8 +455,8 @@ def _controller_row(
     wall_ms = (time.perf_counter_ns() - wall_start) / 1.0e6
 
     core = controller.core
-    measured_rail_contrib = _vec6(getattr(core, "last_rail_exec_contrib", None), 0.0)
-    arm_contrib = _vec6(getattr(core, "last_arm_contrib", None), 0.0)
+    measured_rail_contrib = _vec6(getattr(step, "rail_model_twist", None), float("nan"))
+    arm_contrib = _vec6(getattr(step, "arm_model_twist", None), float("nan"))
     residual = _vec6(getattr(step, "protected_residual", None), float("nan"))
     if not np.isfinite(residual).all():
         # Keep the report usable with an older controller snapshot that did
@@ -517,6 +532,7 @@ def _controller_row(
         row_out[f"q_meas_{index}"] = float(value)
     for axis, value in zip(AXES, twist):
         row_out[f"v_cmd_{axis}"] = float(value)
+    row_out.update(_task_admission_fields(step))
     row_out.update(_p0_acceptance_fields(controller, core))
     row_out.update(_rail_box_fields(controller, core, step))
     return row_out, float(rail_meas)
@@ -562,11 +578,12 @@ def _controller_row_free_running(
         q_meas=q_meas,
         path_twist=path_twist,
         feedback_twist=feedback_twist,
+        rail_exec_vel_m_s=float(rail_meas),
     )
     wall_ms = (time.perf_counter_ns() - wall_start) / 1.0e6
     core = controller.core
-    measured_rail_contrib = _vec6(getattr(core, "last_rail_exec_contrib", None), 0.0)
-    arm_contrib = _vec6(getattr(core, "last_arm_contrib", None), 0.0)
+    measured_rail_contrib = _vec6(getattr(step, "rail_model_twist", None), float("nan"))
+    arm_contrib = _vec6(getattr(step, "arm_model_twist", None), float("nan"))
     residual = _vec6(getattr(step, "protected_residual", None), float("nan"))
     if not np.isfinite(residual).all():
         residual = _vec6(getattr(core, "last_task_residual", None), float("nan"))
@@ -642,6 +659,7 @@ def _controller_row_free_running(
         row_out[f"q_meas_{index}"] = float(value)
     for axis, value in zip(AXES, twist):
         row_out[f"v_cmd_{axis}"] = float(value)
+    row_out.update(_task_admission_fields(step))
     row_out.update(_p0_acceptance_fields(controller, core))
     row_out.update(_rail_box_fields(controller, core, step))
     return row_out, float(np.asarray(step.qdot, dtype=float)[0])

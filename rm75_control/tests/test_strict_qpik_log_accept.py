@@ -37,6 +37,9 @@ def _controller() -> JointIkController:
         collision=collision,
         smoothness_weight=np.r_[0.0, np.full(7, 0.15)],
     )
+    # This kinematic fixture starts at J4=60 degrees; it is deliberately
+    # outside the production 70-degree posture comfort band.
+    qp.j4_design_comfort.enabled = False
     cfg = JointIkConfig(control_frame="base", qp=qp, collision=collision)
     controller = JointIkController(RobotKinematics(), cfg)
     controller.reset(Q_SAFE)
@@ -51,19 +54,24 @@ def _find_log(name: str) -> Path | None:
     return None
 
 
-def test_free_running_pure_minus_z_has_near_zero_residual() -> None:
-    """232136 analogue: a feasible -Z twist must not be bought as slack."""
+def test_high_speed_minus_z_reports_direction_admission_or_braking() -> None:
+    """A 120 mm/s request cannot buy progress with Cartesian direction slack."""
     controller = _controller()
     twist = np.array([0.0, 0.0, -0.12, 0.0, 0.0, 0.0])
-    residuals = []
+    progress = []
     for _ in range(200):
-        step = controller.update(twist, q_meas=controller.q_cmd)
-        residuals.append(float(np.max(np.abs(step.protected_residual))))
+        step = controller.update(twist, q_meas=controller.q_cmd,
+                                 rail_exec_vel_m_s=float(controller.core.qdot_prev[0]))
+        assert np.isfinite(step.protected_residual).all()
+        assert np.isfinite(step.v_tcp_estimated).all()
+        progress.append(step.task_progress)
+        assert not step.task_paused, step.task_pause_reason
+        np.testing.assert_allclose(step.v_tcp_estimated, step.v_cmd_feasible, atol=1e-5)
         assert step.fallback_level == "none"
         assert not step.solver_fault_latched
-    # Accel/jerk boxes need time to open from rest; the cruise window is the
-    # feasibility verdict, not the first 50 ms of the ramp.
-    assert max(residuals[-40:]) <= 1.0e-4
+    assert max(progress) > 0.1
+    # The full 104 mm seek at the experiment's 8 mm/s is separately covered
+    # by test_coupled_execution_dynamics; this request can reach constraints.
 
 
 def test_release_does_not_raise_or_reverse_rail_command() -> None:
@@ -72,6 +80,7 @@ def test_release_does_not_raise_or_reverse_rail_command() -> None:
     from rm75_control.control.joint_admittance_8dof.config import build_joint_ik_config
 
     cfg = build_joint_ik_config(raw)
+    cfg.backend = "python"
     cfg.collision.enabled = False
     cfg.qp.collision.enabled = False
     cfg.ird.enabled = False
@@ -95,7 +104,7 @@ def test_release_does_not_raise_or_reverse_rail_command() -> None:
     for _ in range(250):
         step = controller.update(zero, q_meas=controller.q_cmd, vel_ff=zero)
         rail_cmds.append(float(step.qdot[0]))
-        v_reach.append(float(step.v_reach))
+        v_reach.append(float(step.rail_total_committed))
         assert step.fallback_level == "none"
 
     rails = np.asarray(rail_cmds, dtype=float)

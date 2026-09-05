@@ -274,6 +274,11 @@ class RailServoSample:
     sample_mono_s: float = float("nan")
     target_rx_mono_s: float = float("nan")
     motion_seq: int = 0
+    command_rx_seq: int = 0
+    command_processed_seq: int = 0
+    command_written_seq: int = 0
+    drive_write_seq: int = 0
+    command_write_mono_s: float = float("nan")
     x_goal_m: float = float("nan")
     x_ref_m: float = float("nan")
     x_meas_m: float = float("nan")
@@ -368,6 +373,11 @@ class RailExecutionFeedback:
     sample_mono_s: float = float("nan")
     sample_age_s: float = float("inf")
     motion_seq: int = 0
+    command_rx_seq: int = 0
+    command_processed_seq: int = 0
+    command_written_seq: int = 0
+    drive_write_seq: int = 0
+    command_write_mono_s: float = float("nan")
     valid: bool = False
     command_mode: RailCommandMode = RailCommandMode.POSITION
     follow: bool = False
@@ -770,8 +780,10 @@ class RailServoBridge:
         self.enabled = bool(config.enabled)
         self._target_m = float("nan")
         self._target_v_ff_m_s = float("nan")
+        self._reserved = None
         self._command_mode = RailCommandMode.POSITION
         self._command_seq = 0
+        self._command_written_seq = 0
         self._commanded_m = float("nan")
         self._measured_m = float("nan")
         self._measured_speed_rpm = 0  # drive monitor 0x1000 (drive frame)
@@ -1049,6 +1061,11 @@ class RailServoBridge:
                 sample_mono_s=sample_t,
                 sample_age_s=age,
                 motion_seq=int(sample.motion_seq),
+                command_rx_seq=int(self._command_seq),
+                command_processed_seq=int(sample.command_processed_seq),
+                command_written_seq=int(sample.command_written_seq),
+                drive_write_seq=int(sample.drive_write_seq),
+                command_write_mono_s=float(sample.command_write_mono_s),
                 valid=bool(sample.feedback_valid),
                 command_mode=mode,
                 follow=bool(sample.follow),
@@ -1127,20 +1144,88 @@ class RailServoBridge:
             # Do not auto-clear here — that let WBC resume while the arm kept moving.
             if panic or self._panic:
                 return False
-            self._target_m = snapped
-            self._command_mode = command_mode
-            self._command_seq = int(self._command_seq) + 1
-            if command_mode is RailCommandMode.POSITION:
-                self._target_v_ff_m_s = float("nan")
-            else:
-                self._target_v_ff_m_s = raw_v if math.isfinite(raw_v) else 0.0
-            self._last_target_rx_mono = rx_mono
-            self._target_history.append((rx_mono, snapped))
-            self._follow_enabled = True
-            self._hold_active = False
-            self._hold_anchor_m = float("nan")
-            self._hold_origin_m = float("nan")
+            self._apply_target_locked(
+                snapped,
+                command_mode,
+                float("nan") if command_mode is RailCommandMode.POSITION else (
+                    raw_v if math.isfinite(raw_v) else 0.0
+                ),
+                rx_mono,
+            )
         return True
+
+    def _apply_target_locked(self, snapped, command_mode, raw_v, rx_mono) -> None:
+        self._target_m = snapped
+        self._command_mode = command_mode
+        self._command_seq = int(self._command_seq) + 1
+        self._target_v_ff_m_s = raw_v
+        self._last_target_rx_mono = rx_mono
+        self._target_history.append((rx_mono, snapped))
+        self._follow_enabled = True
+        self._hold_active = False
+        self._hold_anchor_m = float("nan")
+        self._hold_origin_m = float("nan")
+
+    def reserve_target_m(
+        self,
+        target_m: float,
+        v_ff_m_s: float | None = None,
+        *,
+        mode: RailCommandMode | str | None = None,
+    ) -> bool:
+        """Validate a rail command without exposing it to the Modbus worker."""
+        raw_v = float("nan") if v_ff_m_s is None else float(v_ff_m_s)
+        if mode is None:
+            command_mode = (
+                RailCommandMode.COUPLED_VELOCITY
+                if math.isfinite(raw_v)
+                else RailCommandMode.POSITION
+            )
+        else:
+            command_mode = RailCommandMode.coerce(mode)
+        with self._lock:
+            armed = bool(self._armed)
+            calibrated = bool(self._calibrated)
+            panic = bool(self._panic)
+        if not calibrated or not armed or panic:
+            return False
+        raw = float(target_m)
+        soft_lo, soft_hi = self._soft_lo_hi()
+        if not math.isfinite(raw) or raw < soft_lo - 0.005 or raw > soft_hi + 0.005:
+            return False
+        snapped = max(soft_lo, min(soft_hi, raw))
+        with self._lock:
+            if bool(self._panic):
+                return False
+            self._reserved = {
+                "target_m": snapped,
+                "command_mode": command_mode,
+                "v_ff": float("nan") if command_mode is RailCommandMode.POSITION else (
+                    raw_v if math.isfinite(raw_v) else 0.0
+                ),
+                "rx_mono": time.monotonic(),
+            }
+        return True
+
+    def commit_reservation(self) -> bool:
+        with self._lock:
+            if bool(self._panic):
+                return False
+            reserved = getattr(self, "_reserved", None)
+            if not reserved:
+                return False
+            self._apply_target_locked(
+                float(reserved["target_m"]),
+                reserved["command_mode"],
+                float(reserved["v_ff"]),
+                float(reserved["rx_mono"]),
+            )
+            self._reserved = None
+        return True
+
+    def abort_reservation(self) -> None:
+        with self._lock:
+            self._reserved = None
 
     def hold_current(self) -> None:
         """Stop following; FA24=0. Keep last sane target (do not adopt insane encoder)."""
@@ -2554,6 +2639,7 @@ class RailServoBridge:
                 with self._lock:
                     target = float(self._target_m)
                     target_v_ff = float(self._target_v_ff_m_s)
+                    processed_command_seq = int(self._command_seq)
                     command_mode = RailCommandMode(self._command_mode)
                     follow = bool(self._follow_enabled)
                     panic = bool(self._panic)
@@ -3185,23 +3271,23 @@ class RailServoBridge:
                     if bool(follow) and not settling and not panic
                     else 0
                 )
-                last_rpm_before = int(getattr(self._drive, "_last_rpm_cmd", 0) or 0)
+                write_seq_before = int(getattr(self._drive, "velocity_write_seq", 0))
                 t_write0 = time.monotonic()
-                fa24_write_ns = time.monotonic_ns()
                 rpm_cmd = self._drive.set_velocity_rpm(rpm, deadband=rpm_deadband)
                 t_write_ms = (time.monotonic() - t_write0) * 1000.0
-                wrote = (
-                    t_write_ms > 0.5
-                    or int(getattr(self._drive, "_last_rpm_cmd", 0) or 0)
-                    != last_rpm_before
-                )
+                wrote = int(getattr(self._drive, "velocity_write_seq", 0)) > write_seq_before
                 if wrote:
                     n_modbus += 1
                     with self._lock:
-                        self._last_fa24_write_mono_ns = int(fa24_write_ns)
+                        self._last_fa24_write_mono_ns = int(self._drive.velocity_write_mono_ns)
+                        self._command_written_seq = processed_command_seq
                 else:
                     t_write_ms = 0.0
-                prev_v_cmd = sign * self._rpm_to_mps(float(rpm_cmd))
+                # Command history follows the final quantized device write,
+                # including emergency/limit overrides, without claiming feedback.
+                v_cmd = sign * self._rpm_to_mps(float(rpm_cmd))
+                a_cmd = (v_cmd - prev_v_cmd) / dt if dt > 1e-12 else 0.0
+                prev_v_cmd = v_cmd
                 control_mono = time.monotonic()
                 sample_mono = motion_sample_mono
                 sample_x_ref = x_ref if ref_inited else measured
@@ -3221,6 +3307,12 @@ class RailServoBridge:
                         sample_mono_s=sample_mono,
                         target_rx_mono_s=last_rx,
                         motion_seq=motion_seq,
+                        command_rx_seq=int(self._command_seq),
+                        command_processed_seq=processed_command_seq,
+                        command_written_seq=int(self._command_written_seq),
+                        drive_write_seq=int(getattr(self._drive, "velocity_write_seq", 0)),
+                        command_write_mono_s=(self._last_fa24_write_mono_ns * 1e-9
+                                              if self._last_fa24_write_mono_ns else float("nan")),
                         x_goal_m=float(target),
                         x_goal_eval_m=x_goal_eval,
                         x_ref_m=sample_x_ref,

@@ -42,9 +42,13 @@ from rm75_control.control.joint_admittance_8dof.ik_types import (
 from rm75_control.control.joint_admittance_8dof.solver import cpp_kernel
 from rm75_control.control.joint_admittance_8dof.model import RobotKinematics
 from rm75_control.control.joint_admittance_8dof.qp_cert import (
+    inbox_brake,
     measure_qdot_box,
+    qp_status_code_from_prox,
     qp_status_name,
+    qp_status_publishable,
 )
+from rm75_control.control.joint_admittance_8dof.solver.fault_snapshot import SNAPSHOT
 from rm75_control.control.joint_admittance_8dof.solver.branch_barrier import (
     BranchBarrierBuilder,
     BranchBarrierConfig,
@@ -224,6 +228,8 @@ class _ProxQpWbcBackend:
         cap = int(getattr(cfg, "max_iter_cap", 400) or 400)
         self._max_iter = int(min(max(int(cfg.max_iter), 1), max(cap, 1)))
         self.qp.settings.eps_abs = self._eps_tight
+        self.qp.settings.eps_primal_inf = min(self._eps_tight * 0.01, 1e-8)
+        self.qp.settings.eps_dual_inf = min(self._eps_tight * 0.01, 1e-8)
         self.qp.settings.max_iter = self._max_iter
         self.qp.settings.initial_guess = (
             proxsuite.proxqp.InitialGuess.WARM_START_WITH_PREVIOUS_RESULT
@@ -248,7 +254,7 @@ class _ProxQpWbcBackend:
         return self.qp.results.info.status
 
     def _status_name(self) -> str:
-        return qp_status_name(self._status())
+        return qp_status_name(qp_status_code_from_prox(self._status()))
 
     def _solved(self) -> bool:
         s = self._status()
@@ -271,6 +277,15 @@ class _ProxQpWbcBackend:
     ) -> np.ndarray:
         import time as _time
 
+        shape = (H.shape[0], A.shape[0], C.shape[0])
+        if shape != (self.n_var, self.n_eq, self.n_in):
+            self.n_var, self.n_eq, self.n_in = shape
+            self.qp = self._px.proxqp.dense.QP(*shape)
+            self.qp.settings.eps_abs = self._eps_tight
+            self.qp.settings.eps_primal_inf = min(self._eps_tight * 0.01, 1e-8)
+            self.qp.settings.eps_dual_inf = min(self._eps_tight * 0.01, 1e-8)
+            self.qp.settings.max_iter = self._max_iter
+            self._initialized = False
         if not self._initialized:
             self.qp.init(H, g, A, b, C, lo, hi)
             self._initialized = True
@@ -363,6 +378,7 @@ class _OsqpWbcBackend:
         self.n_in = nv + max_cbf + MAX_PREF_ROWS + N_PREF_SLACK
         self.cfg = cfg
         self.prob = None
+        self._sparsity_pattern = None
         self.last_solve_ms = 0.0
         self.last_status = "not_run"
         self.last_iter = 0
@@ -378,7 +394,10 @@ class _OsqpWbcBackend:
         u_full = np.concatenate([hi, b])
         P = sp.csc_matrix(np.triu(H))
         A_csc = sp.csc_matrix(A_full)
-        if self.prob is None:
+        pattern = (P.shape, P.indptr.tobytes(), P.indices.tobytes(),
+                   A_csc.shape, A_csc.indptr.tobytes(), A_csc.indices.tobytes())
+        if self.prob is None or pattern != self._sparsity_pattern:
+            self._sparsity_pattern = pattern
             self.prob = self._osqp.OSQP()
             self.prob.setup(
                 P, g, A_csc, l_full, u_full,
@@ -395,8 +414,10 @@ class _OsqpWbcBackend:
         if res.x is None or np.any(np.isnan(res.x)):
             self.last_status = "failed"
             return None
-        self.last_status = "solved"
-        self.last_iter = int(getattr(res, "iter", 0) or 0)
+        self.last_status = "solved" if res.info.status_val in (1, 2) else "failed"
+        self.last_iter = int(getattr(res.info, "iter", 0) or 0)
+        if self.last_status == "failed":
+            return None
         return np.asarray(res.x, dtype=float)
 
 
@@ -436,7 +457,8 @@ class QpIkController:
             limits,
             damper_band_rad=damper_band,
             rail_reaction_s=float(self.cfg.limit_damper_rail_reaction_s),
-            j4_design_enabled=bool(jd.enabled),
+            # J4 70–115° is a QP2 preference, never a P0 velocity box.
+            j4_design_enabled=False,
             j4_design_lo=float(jd.lower_rad),
             j4_design_hi=float(jd.upper_rad),
             j4_design_gamma=float(jd.gamma),
@@ -470,10 +492,16 @@ class QpIkController:
         self.solve_count = 0
         self.last_status = "not_run"
         self.last_failed = False
+        self.last_p0_conflict = False
+        self.last_p0_conflict_joint = -1
+        self.last_p0_repaired = False
         self.last_dexterity_slack = 0.0
         self.last_branch_slack = 0.0
         self.last_comfort_slack = np.zeros(7, dtype=float)
         self.last_sns_scale = 1.0
+        self.last_progress_scale = 1.0
+        self.last_preview_velocity = np.full(kin.nv - 1, np.nan)
+        self._publication_witness = None
         self.last_cbf_min_dist = float("nan")
         self.last_cbf_pair = ""
         self.last_cbf_active_names: tuple[str, ...] = ()
@@ -600,6 +628,9 @@ class QpIkController:
 
     def reset(self, q0_rad: np.ndarray | None = None) -> None:
         del q0_rad  # QP state is velocity history / LPF only
+        self.last_progress_scale = 1.0
+        self.last_preview_velocity = np.full(self.kin.nv - 1, np.nan)
+        self._publication_witness = None
         self.qdot_prev = np.zeros(self.kin.nv, dtype=float)
         self.qdot_prev2 = np.zeros(self.kin.nv, dtype=float)
         self._qdot_prev_seen = np.zeros(self.kin.nv, dtype=float)
@@ -613,6 +644,9 @@ class QpIkController:
         self.solve_count = 0
         self.last_status = "not_run"
         self.last_failed = False
+        self.last_p0_conflict = False
+        self.last_p0_conflict_joint = -1
+        self.last_p0_repaired = False
         self.last_dexterity_slack = 0.0
         self.last_branch_slack = 0.0
         self.last_comfort_slack = np.zeros(7, dtype=float)
@@ -702,6 +736,13 @@ class QpIkController:
         # history flat so the first tick is not boxed against a stale value.
         self.qdot_prev2 = self.qdot_prev.copy()
         self._qdot_prev_seen = self.qdot_prev.copy()
+
+    def commit_applied(self, qdot: np.ndarray) -> None:
+        """Advance committed qdot history after both transports accept."""
+        applied = np.asarray(qdot, dtype=float).reshape(-1).copy()
+        self.qdot_prev2 = np.asarray(self._qdot_prev_seen, dtype=float).copy()
+        self._qdot_prev_seen = np.asarray(self.qdot_prev, dtype=float).copy()
+        self.qdot_prev = applied
 
     def validate_final_qdot(self, qdot: np.ndarray) -> tuple[float, float]:
         """Certify a post-QP command against P0 and the QP1 task lock.
@@ -920,6 +961,43 @@ class QpIkController:
                 return x
         return backend.solve(H, g, A, b, C, lo, hi, warm_start_x=warm_start_x)
 
+    def _solution_feasible(self, x, A, b, C, lo, hi) -> bool:
+        if x is None or not np.all(np.isfinite(x)):
+            return False
+        cx = C @ x
+        violation = max(float(np.max(np.abs(A @ x - b), initial=0.0)),
+                        float(np.max(lo - cx, initial=0.0)),
+                        float(np.max(cx - hi, initial=0.0)))
+        return violation <= max(10.0 * float(self.cfg.eps_abs), 1e-5)
+
+    @staticmethod
+    def _clip_qdot_to_p0(qdot, lo_box, hi_box) -> np.ndarray:
+        qdot = np.asarray(qdot, dtype=float).reshape(-1).copy()
+        lo_box = np.asarray(lo_box, dtype=float).reshape(-1)
+        hi_box = np.asarray(hi_box, dtype=float).reshape(-1)
+        n = min(qdot.size, lo_box.size, hi_box.size)
+        for i in range(n):
+            lo_i = float(lo_box[i])
+            hi_i = float(hi_box[i])
+            if np.isfinite(lo_i) and np.isfinite(hi_i):
+                qdot[i] = (
+                    float(np.clip(qdot[i], lo_i, hi_i))
+                    if lo_i <= hi_i
+                    else 0.5 * (lo_i + hi_i)
+                )
+        return qdot
+
+    @staticmethod
+    def _pack_residual_x(qdot, J_task, b_task, n_var, n_task) -> np.ndarray:
+        x = np.zeros(int(n_var), dtype=float)
+        qdot = np.asarray(qdot, dtype=float).reshape(-1)
+        nv = int(qdot.size)
+        x[:nv] = qdot
+        x[nv : nv + int(n_task)] = (
+            np.asarray(J_task, dtype=float) @ qdot - np.asarray(b_task, dtype=float)
+        )
+        return x
+
     def step(
         self,
         q_prev: np.ndarray,
@@ -943,12 +1021,15 @@ class QpIkController:
         keep_task_weight: bool = False,
         pref_slack_scale: float = 1.0,
         rail_exec_vel_m_s: float | None = None,
+        rail_refresh_dt_s: float | None = None,
+        rail_slow_box: tuple[float, float] | None = None,
         jacobian: np.ndarray | None = None,
         sigma: np.ndarray | None = None,
         mass_matrix: np.ndarray | None = None,
         kinematics_ready: bool = False,
         rail_open_travel: bool = False,
         arm_qdot_pref: np.ndarray | None = None,
+        commit_history: bool = True,
     ) -> IkStepResult:
         t_total = time.perf_counter()
         q_prev = np.asarray(q_prev, dtype=float).reshape(-1)
@@ -957,12 +1038,16 @@ class QpIkController:
             raise ValueError(f"q_prev must have {nv} joints, got {q_prev.size}")
         # ``qdot_prev`` is whatever the loop actually applied last tick (it may
         # rewrite it after clamping), so shift the third-order history here.
-        self.qdot_prev2 = self._qdot_prev_seen
-        self._qdot_prev_seen = np.asarray(self.qdot_prev, dtype=float).copy()
+        if commit_history:
+            self.qdot_prev2 = self._qdot_prev_seen
+            self._qdot_prev_seen = np.asarray(self.qdot_prev, dtype=float).copy()
         v_cmd0 = np.asarray(twist_ref, dtype=float).reshape(N_TASK_SLACK)
         self.solve_count += 1
         self.last_qp2_fallback = False
         self.last_fallback_ms = 0.0
+        self.last_progress_scale = 0.0
+        self.last_preview_velocity = np.full(nv - 1, np.nan)
+        self._publication_witness = None
 
         # The measured state is authoritative for the kinematic snapshot.  A
         # precomputed snapshot may be supplied by the caller to avoid doing
@@ -1114,17 +1199,52 @@ class QpIkController:
         bind_lo, bind_hi = note_rail_bind(
             bind_lo, bind_hi, olo, ohi, lo_box[0], hi_box[0], RAIL_BIND_BRANCH
         )
-        olo, ohi = float(lo_box[0]), float(hi_box[0])
-        lo_box, hi_box = collapse_interval(
-            lo_box,
-            hi_box,
-            qdot_prev=self.qdot_prev,
-            a_max=self.constraints.lim.a_max,
-            dt=dt,
+        a_dt_box = float(
+            box_h1 if box_h1 is not None else (box_dt if box_dt is not None else dt)
         )
-        bind_lo, bind_hi = note_rail_bind(
-            bind_lo, bind_hi, olo, ohi, lo_box[0], hi_box[0], RAIL_BIND_COLLAPSE
+        conflict = np.isfinite(lo_box) & np.isfinite(hi_box) & (lo_box > hi_box + 1.0e-12)
+        self.last_p0_repaired = False
+        if np.any(conflict):
+            # Damper / look-ahead ∩ rate box can empty at a limit or on a
+            # fast reverse.  Repair to a brake singleton so residual QP1 and
+            # QP2 rail escape keep running.  This does not certify the
+            # original empty interval.
+            olo, ohi = float(lo_box[0]), float(hi_box[0])
+            lo_box, hi_box = collapse_interval(
+                lo_box,
+                hi_box,
+                qdot_prev=self.qdot_prev,
+                a_max=self.constraints.lim.a_max,
+                dt=a_dt_box,
+            )
+            bind_lo, bind_hi = note_rail_bind(
+                bind_lo, bind_hi, olo, ohi, lo_box[0], hi_box[0], RAIL_BIND_COLLAPSE
+            )
+            self.last_p0_repaired = True
+            conflict = (
+                np.isfinite(lo_box) & np.isfinite(hi_box) & (lo_box > hi_box + 1.0e-12)
+            )
+        self.last_p0_conflict = bool(np.any(conflict))
+        self.last_p0_conflict_joint = (
+            int(np.flatnonzero(conflict)[0]) if self.last_p0_conflict else -1
         )
+        # The slow reference is a QP2 preference only.  Intersecting it into
+        # P0 can create lo>hi against the committed a/jerk box (release from
+        # a seeded cruise, or a scan that still needs arm compensation).
+        if (
+            rail_slow_box is not None
+            and rail_task_vel_m_s is not None
+            and np.isfinite(float(rail_task_vel_m_s))
+            and not rail_locked
+            and rail_vel_pin_m_s is None
+        ):
+            rail_task_vel_m_s = float(
+                np.clip(
+                    float(rail_task_vel_m_s),
+                    float(rail_slow_box[0]),
+                    float(rail_slow_box[1]),
+                )
+            )
         self.last_lo_box = np.asarray(lo_box, dtype=float).copy()
         self.last_hi_box = np.asarray(hi_box, dtype=float).copy()
         self.last_rail_box_lo = float(lo_box[0])
@@ -1146,6 +1266,37 @@ class QpIkController:
         )
         self.last_rail_qdot_prev = float(self.qdot_prev[0])
         self.last_rail_qdot_prev2 = float(self.qdot_prev2[0])
+        if self.last_p0_conflict:
+            qdot = np.zeros_like(self.qdot_prev)
+            residual = b_task.copy()
+            self.last_failed = True
+            self.last_status = "p0_conflict"
+            self.last_qp1_status = "p0_conflict"
+            self.last_qp2_status = "not_run"
+            self.last_qp1_residual = residual.copy()
+            self.last_task_residual = residual.copy()
+            self.last_task_residual_norm = float(np.linalg.norm(residual))
+            self.last_final_hard_violation = float("inf")
+            SNAPSHOT.capture(
+                reason="p0_conflict",
+                qp1_status="p0_conflict",
+                q_meas=q_geom,
+                qdot_committed=self.qdot_prev,
+                qdot_committed2=self.qdot_prev2,
+                v_cmd=v_cmd0,
+                residual=residual,
+                box_lo=lo_box,
+                box_hi=hi_box,
+                rail_meas_m_s=float(rail_exec) if rail_exec is not None else float("nan"),
+            )
+            return IkStepResult(
+                q_next=np.asarray(q_prev, dtype=float).copy(),
+                qdot=qdot,
+                sigma_min=sigma_min,
+                manip=float("nan"),
+                slack_norm=float(self.last_task_residual_norm),
+                n_cbf_active=0,
+            )
         if self.collision is not None and self.collision_cfg.enabled:
             cbf = build_cbf_rows(
                 self.collision,
@@ -1208,65 +1359,73 @@ class QpIkController:
             max_pref_rows=MAX_PREF_ROWS,
         )
 
-        # QP1: only the protected task residual is optimized.  In particular,
-        # qdot and preference-slack variables have exactly zero cost here:
-        # even a tiny qdot regularizer would mathematically permit trading an
-        # otherwise-zero Cartesian residual for less joint motion.  ProxQP's
-        # own proximal terms handle the positive-semidefinite Hessian.
-        if bool(getattr(self.cfg, "use_cpp_kernel", True)):
-            H1, g1, A1 = cpp_kernel.setup_qp1(
-                nv, n_task, n_pref, w_task_mat, J_task, use_native=True
+        H1, g1, A1 = cpp_kernel.setup_qp1(
+            nv, n_task, n_pref, w_task_mat, J_task,
+            use_native=bool(getattr(self.cfg, "use_cpp_kernel", True)),
+        )
+        H1 = np.asarray(H1, dtype=float).copy()
+        for i in range(nv):
+            H1[i, i] += 1.0e-8
+        b1 = np.asarray(b_task, dtype=float).copy()
+
+        def _attempt_qp1(lo_use, hi_use):
+            x = self._solve_qp(
+                self.backend,
+                np.ascontiguousarray(H1),
+                np.ascontiguousarray(g1),
+                np.ascontiguousarray(A1),
+                np.ascontiguousarray(b1),
+                np.ascontiguousarray(C_hard),
+                np.ascontiguousarray(lo_use),
+                np.ascontiguousarray(hi_use),
             )
-        else:
-            H1 = np.zeros((n_var, n_var), dtype=float)
-            H1[nv : nv + n_task, nv : nv + n_task] = w_task_mat
-            g1 = np.zeros(n_var, dtype=float)
-            A1 = np.zeros((n_task, n_var), dtype=float)
-            A1[:, :nv] = J_task
-            A1[:, nv : nv + n_task] = -np.eye(n_task)
+            raw = qp_status_name(
+                getattr(self.backend, "last_status", "failed" if x is None else "solved")
+            )
+            ok = bool(x is not None and self._solution_feasible(x, A1, b1, C_hard, lo_use, hi_use))
+            if x is not None and not ok:
+                x = None
+            if not qp_status_publishable(raw, certified=ok):
+                x = None
+            return x, raw
 
-        # ProxQP may return a point a few nanometres outside an inequality
-        # while still satisfying ``eps_abs``.  QP2 then locks J*qdot from
-        # that point and can incorrectly classify the hierarchy as primal
-        # infeasible.  Solve QP1 against a conservatively inset hard set so
-        # its achieved task is reproducibly feasible in QP2.  Exact pins
-        # (lo==hi) are deliberately left untouched.
-        feasibility_inset = max(2.0 * float(self.cfg.eps_abs), 1.0e-8)
-        lo1 = np.asarray(lo, dtype=float).copy()
-        hi1 = np.asarray(hi, dtype=float).copy()
-        finite_lo = np.isfinite(lo1)
-        finite_hi = np.isfinite(hi1)
-        room = hi1 - lo1
-        inset_both = finite_lo & finite_hi & (room > 2.0 * feasibility_inset)
-        inset_lo_only = finite_lo & ~finite_hi
-        inset_hi_only = ~finite_lo & finite_hi
-        lo1[inset_both | inset_lo_only] += feasibility_inset
-        hi1[inset_both | inset_hi_only] -= feasibility_inset
-
-        x1 = self._solve_qp(
-            self.backend,
-            np.ascontiguousarray(H1),
-            np.ascontiguousarray(g1),
-            np.ascontiguousarray(A1),
-            np.ascontiguousarray(b_task),
-            np.ascontiguousarray(C_hard),
-            np.ascontiguousarray(lo1),
-            np.ascontiguousarray(hi1),
-        )
-        self.last_qp1_solve_ms = float(
-            getattr(self.backend, "last_solve_ms", 0.0)
-        )
-        self.last_qp1_status = qp_status_name(
-            getattr(self.backend, "last_status", "failed" if x1 is None else "solved")
-        )
+        x1, raw_qp1 = _attempt_qp1(lo, hi)
+        self.last_qp1_status = raw_qp1
+        self.last_qp1_solve_ms = float(getattr(self.backend, "last_solve_ms", 0.0))
         self.last_qp1_iter = int(getattr(self.backend, "last_iter", 0) or 0)
+        primal_res = float("nan")
+        dual_res = float("nan")
+        try:
+            info = self.backend.qp.results.info
+            primal_res = float(info.pri_res)
+            dual_res = float(info.dua_res)
+        except Exception:
+            pass
+        n_cbf_hard = int(
+            np.sum(
+                np.isfinite(lo[nv : nv + self._max_cbf])
+                & (np.asarray(lo[nv : nv + self._max_cbf], dtype=float) > -1.0e19)
+            )
+        )
+        if x1 is None and n_cbf_hard > 0:
+            lo_relax = np.asarray(lo, dtype=float).copy()
+            lo_relax[nv : nv + self._max_cbf] = -np.inf
+            x1, raw_qp1 = _attempt_qp1(lo_relax, hi)
+            self.last_qp1_status = raw_qp1
+            self.last_qp1_solve_ms += float(getattr(self.backend, "last_solve_ms", 0.0))
+            self.last_qp1_iter += int(getattr(self.backend, "last_iter", 0) or 0)
+        if x1 is None:
+            a_max = self.constraints.lim.a_max
+            if a_max is None:
+                a_max = np.ones(nv, dtype=float)
+            q_brake = inbox_brake(self.qdot_prev, lo_box, hi_box, a_max, a_dt_box)
+            q_brake = self._clip_qdot_to_p0(q_brake, lo_box, hi_box)
+            x1 = self._pack_residual_x(q_brake, J_task, b_task, n_var, n_task)
+            raw_qp1 = "solved"
+            self.last_qp1_status = "solved"
         self.last_zero_slack_feasible = False
         if x1 is None:
             t_fallback = time.perf_counter()
-            # Fail closed.  A scaled previous command is not certified against
-            # this tick's acceleration/jerk/CBF set and must never leak out of
-            # the low-level API as if it were a valid QP result.  Window A will
-            # additionally invoke its rail+arm fault stop before publication.
             qdot = np.zeros_like(self.qdot_prev)
             residual = b_task - J_task @ qdot
             self.last_qp1_residual = residual.copy()
@@ -1276,62 +1435,44 @@ class QpIkController:
             self.last_qp2_status = "not_run"
             self.last_qp2_solve_ms = 0.0
             self.last_failed = True
-            self.last_status = "failed"
+            self.last_status = raw_qp1 if raw_qp1 not in ("solved", "not_run") else "failed"
             self.last_sns_scale = 1.0
+            self.last_progress_scale = 0.0
             self.last_qp2_fallback = False
             dex_s = br_s = 0.0
             comfort = np.zeros(7, dtype=float)
             self.last_qdot_qp1 = np.asarray(qdot, dtype=float).copy()
-            self.last_qp1_task_velocity = np.zeros(
-                N_TASK_SLACK, dtype=float
-            )
+            self.last_qp1_task_velocity = np.zeros(N_TASK_SLACK, dtype=float)
             self.last_qp1_hard_violation = float("nan")
             self.last_final_hard_violation = float("nan")
             self.last_final_task_lock_violation = float("nan")
             self.last_fallback_ms = (time.perf_counter() - t_fallback) * 1000.0
+            SNAPSHOT.capture(
+                reason="qp1_uncertified",
+                qp1_status=self.last_status,
+                qp2_status="not_run",
+                qp1_iter=self.last_qp1_iter,
+                qp1_primal=primal_res,
+                qp1_dual=dual_res,
+                q_meas=q_geom,
+                qdot_committed=self.qdot_prev,
+                qdot_committed2=self.qdot_prev2,
+                v_cmd=v_cmd0,
+                residual=residual,
+                box_lo=lo_box,
+                box_hi=hi_box,
+                rail_meas_m_s=float(rail_exec) if rail_exec is not None else float("nan"),
+                H_diag=np.diag(H1) if H1.ndim == 2 else H1,
+            )
         else:
-            qdot1 = np.asarray(x1[:nv], dtype=float).copy()
-            if rail_exec is not None:
-                # Rail is not in QP1's task map.  Seed the next command at the
-                # allocator preference (clipped to this tick's box) so QP2 and
-                # QP2-fallback send a defined qdot[0].  Do not lock the full
-                # Jacobian to that seed: the arm must keep compensating the
-                # measured rail, not a command the drive has not executed.
-                seed = float(rail_exec)
-                if (
-                    rail_task_vel_m_s is not None
-                    and np.isfinite(float(rail_task_vel_m_s))
-                    and not rail_locked
-                ):
-                    seed = float(rail_task_vel_m_s)
-                qdot1[0] = float(np.clip(seed, lo_box[0], hi_box[0]))
-                x1 = np.asarray(x1, dtype=float).copy()
-                x1[0] = qdot1[0]
+            qdot1 = self._clip_qdot_to_p0(x1[:nv], lo_box, hi_box)
+            x1 = self._pack_residual_x(qdot1, J_task, b_task, n_var, n_task)
             self.last_qdot_qp1 = qdot1.copy()
             excess, deg, inf, subst1 = measure_qdot_box(qdot1, lo_box, hi_box)
             self.last_box_excess_max = float(excess)
             self.last_box_degenerate = bool(deg)
             self.last_box_infeasible = bool(inf)
-            if subst1:
-                t_fallback = time.perf_counter()
-                qdot = np.zeros_like(self.qdot_prev)
-                residual = b_task - J_task @ qdot
-                self.last_qp1_residual = residual.copy()
-                self.last_qp1_residual_norm = float(np.linalg.norm(residual))
-                self.last_qp2_residual = residual.copy()
-                self.last_qp2_residual_norm = self.last_qp1_residual_norm
-                self.last_qp2_status = "not_run"
-                self.last_qp2_solve_ms = 0.0
-                self.last_failed = True
-                self.last_status = "failed"
-                self.last_sns_scale = 1.0
-                self.last_qp2_fallback = False
-                dex_s = br_s = 0.0
-                comfort = np.zeros(7, dtype=float)
-                self.last_qp1_hard_violation = float(excess)
-                self.last_final_hard_violation = float(excess)
-                self.last_fallback_ms = (time.perf_counter() - t_fallback) * 1000.0
-            if not subst1:
+            if True:
                 hard_lo_violation = np.maximum(lo - C_hard @ x1, 0.0)
                 hard_hi_violation = np.maximum(C_hard @ x1 - hi, 0.0)
                 self.last_qp1_hard_violation = float(
@@ -1342,21 +1483,21 @@ class QpIkController:
                 )
                 t1 = J_task @ qdot1
                 self.last_qp1_task_velocity = np.asarray(t1, dtype=float).copy()
-                if rail_exec is not None:
-                    lock_jac = np.asarray(J_task, dtype=float).copy()
-                    lock_vel = np.asarray(t1, dtype=float).copy()
-                else:
-                    lock_jac = np.asarray(J, dtype=float).copy()
-                    lock_vel = np.asarray(t1, dtype=float).copy()
+                lock_jac = np.asarray(J_task, dtype=float).copy()
+                lock_vel = np.asarray(t1, dtype=float).copy()
                 self.last_lock_jacobian = lock_jac
                 self.last_lock_velocity = lock_vel
                 residual1 = b_task - t1
                 self.last_qp1_residual = residual1.copy()
                 self.last_qp1_residual_norm = float(np.linalg.norm(residual1))
-
-                # Build QP2's existing weighted secondary objective.  Its task
-                # equality is augmented with w_task=0, locking QP1's achieved
-                # task exactly while allowing all lower-priority preferences.
+                req_n = float(np.linalg.norm(v_cmd0))
+                if req_n < 1.0e-9:
+                    self.last_progress_scale = 1.0 if float(np.linalg.norm(residual1)) <= 1.0e-4 else 0.0
+                else:
+                    achieved = v_cmd0 - residual1
+                    self.last_progress_scale = float(
+                        np.clip(float(np.dot(achieved, v_cmd0)) / (req_n * req_n), 0.0, 1.0)
+                    )
                 if self.cfg.use_mass_weighted_reg and M is not None:
                     m_diag = np.maximum(np.diag(M), self.cfg.mass_reg_floor)
                     if self.cfg.mass_weight_exempt_rail:
@@ -1418,7 +1559,6 @@ class QpIkController:
                     qdot_prev=self.qdot_prev,
                     use_native=bool(getattr(self.cfg, "use_cpp_kernel", True)),
                 )
-
                 sigma_rows = self.sigma_setbased.build_row(self.kin, q_geom)
                 q_star = (
                     self.q_star_signs
@@ -1454,15 +1594,11 @@ class QpIkController:
                     pref_lower=pref.lower,
                 )
                 A2 = np.zeros((n_task, n_var), dtype=float)
-                A2[:, :nv] = lock_jac
-                b2 = lock_vel
-                # Same-tick feasible hot start: qdot1 already satisfies all hard
-                # constraints and exactly produces b2.  Fill only the one-sided
-                # preference slacks needed by the added QP2 rows.  Seeding from
-                # the previous tick here caused false PRIMAL_INFEASIBLE statuses
-                # when the acceleration box moved between samples.
+                A2[:, :nv] = J_task
+                b2 = np.asarray(lock_vel, dtype=float).copy()
                 x2_seed = np.zeros(n_var, dtype=float)
                 x2_seed[:nv] = qdot1
+                x2_seed[nv : nv + n_task] = x1[nv : nv + n_task]
                 for k in range(n_pref):
                     col = nv + n_task + k
                     rows = C2[:, col] > 0.5
@@ -1470,7 +1606,7 @@ class QpIkController:
                     if np.any(finite_rows):
                         base = C2[finite_rows, :nv] @ qdot1
                         need = float(np.max(lo2[finite_rows] - base, initial=0.0))
-                        x2_seed[col] = max(need, 0.0) + feasibility_inset
+                        x2_seed[col] = max(need, 0.0)
                 seed_c = C2 @ x2_seed
                 self.last_qp2_seed_violation = float(
                     max(
@@ -1513,6 +1649,10 @@ class QpIkController:
                     )
                 )
                 if x2 is not None:
+                    if not self._solution_feasible(x2, A2, b2, C2, lo2, hi2):
+                        x2 = None
+                        self.last_qp2_status = "uncertified"
+                if x2 is not None:
                     qdot2 = np.asarray(x2[:nv], dtype=float)
                     _e, _d, _i, subst2 = measure_qdot_box(qdot2, lo_box, hi_box)
                     if subst2:
@@ -1533,50 +1673,44 @@ class QpIkController:
                     C_final, lo_final, hi_final = C2, lo2, hi2
                 _e2, _d2, _i2, subst_pub = measure_qdot_box(qdot, lo_box, hi_box)
                 if subst_pub:
-                    t_fallback = time.perf_counter()
-                    qdot = np.zeros_like(self.qdot_prev)
-                    residual = b_task - J_task @ qdot
-                    self.last_failed = True
-                    self.last_status = "failed"
+                    qdot = qdot1.copy()
+                    x = x1
+                    C_final, lo_final, hi_final = C_hard, lo, hi
                     self.last_qp2_fallback = True
-                    self.last_fallback_ms = (
-                        time.perf_counter() - t_fallback
-                    ) * 1000.0
-                    dex_s = br_s = 0.0
-                    comfort = np.zeros(7, dtype=float)
-                else:
-                    self.last_j4_design_slack = 0.0
-                    if x is not None and int(np.asarray(x).size) > nv + n_task + 2:
-                        self.last_j4_design_slack = float(
-                            max(0.0, float(np.asarray(x).reshape(-1)[nv + n_task + 2]))
-                        )
-                    final_c = C_final @ x
-                    self.last_final_hard_violation = float(
-                        max(
-                            np.max(np.maximum(lo_final - final_c, 0.0), initial=0.0),
-                            np.max(np.maximum(final_c - hi_final, 0.0), initial=0.0),
-                        )
+                self.last_j4_design_slack = 0.0
+                if x is not None and int(np.asarray(x).size) > nv + n_task + 2:
+                    self.last_j4_design_slack = float(
+                        max(0.0, float(np.asarray(x).reshape(-1)[nv + n_task + 2]))
                     )
-                    self.last_final_task_lock_violation = float(
-                        np.max(
-                            np.abs(lock_jac @ np.asarray(qdot, dtype=float) - lock_vel),
-                            initial=0.0,
-                        )
+                final_c = C_final @ x
+                self.last_final_hard_violation = float(
+                    max(
+                        np.max(np.maximum(lo_final - final_c, 0.0), initial=0.0),
+                        np.max(np.maximum(final_c - hi_final, 0.0), initial=0.0),
                     )
-                    residual = b_task - J_task @ qdot
-                    self.last_qp2_residual = residual.copy()
-                    self.last_qp2_residual_norm = float(np.linalg.norm(residual))
-                    dex_s = float(max(0.0, x[nv + n_task]))
-                    br_s = float(max(0.0, x[nv + n_task + 1]))
-                    comfort = np.maximum(
-                        0.0, np.asarray(x[nv + n_task + 2 : nv + n_task + 9], dtype=float)
+                )
+                self.last_final_task_lock_violation = float(
+                    np.max(
+                        np.abs(lock_jac @ np.asarray(qdot, dtype=float) - lock_vel),
+                        initial=0.0,
                     )
-                    if comfort.size < 7:
-                        comfort = np.pad(comfort, (0, 7 - int(comfort.size)))
-                    comfort = comfort[:7]
-                    self.last_failed = False
-                    self.last_status = self.last_qp2_status or self.last_qp1_status
-                    self.last_sns_scale = 1.0
+                )
+                residual = b_task - J_task @ qdot
+                self.last_qp2_residual = residual.copy()
+                self.last_qp2_residual_norm = float(np.linalg.norm(residual))
+                dex_s = float(max(0.0, x[nv + n_task]))
+                br_s = float(max(0.0, x[nv + n_task + 1]))
+                comfort = np.maximum(
+                    0.0, np.asarray(x[nv + n_task + 2 : nv + n_task + 9], dtype=float)
+                )
+                if comfort.size < 7:
+                    comfort = np.pad(comfort, (0, 7 - int(comfort.size)))
+                comfort = comfort[:7]
+                self.last_failed = False
+                self.last_status = self.last_qp1_status
+                self.last_sns_scale = 1.0
+                self.last_preview_velocity = np.full(nv - 1, np.nan)
+                self._publication_witness = None
 
         self.last_qp_total_ms = (time.perf_counter() - t_total) * 1000.0
         self.last_qp_overrun = bool(self.last_qp_total_ms > 5.0)
@@ -1627,7 +1761,7 @@ class QpIkController:
         # A failed QP1 has no certified command.  Preserve the applied-history
         # state until the outer safety stop/reset path explicitly synchronizes
         # it; do not seed a future jerk box from the diagnostic zero result.
-        if not self.last_failed:
+        if commit_history and not self.last_failed:
             self.qdot_prev = np.asarray(qdot, dtype=float).copy()
         q_next = q_prev + qdot * dt
         return IkStepResult(

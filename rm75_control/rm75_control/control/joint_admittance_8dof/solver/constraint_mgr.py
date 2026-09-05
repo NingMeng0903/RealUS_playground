@@ -325,14 +325,6 @@ class VelocityBoxConstraints:
         bind_lo, bind_hi = note_rail_bind(
             bind_lo, bind_hi, olo, ohi, lo[0], hi[0], RAIL_BIND_POS_BOUND
         )
-        olo, ohi = float(lo[0]), float(hi[0])
-        lo, hi = collapse_interval(
-            lo, hi, qdot_prev=qdot_prev, a_max=a_max, dt=dt
-        )
-        bind_lo, bind_hi = note_rail_bind(
-            bind_lo, bind_hi, olo, ohi, lo[0], hi[0], RAIL_BIND_COLLAPSE
-        )
-
         if a_max is not None and qdot_prev is not None:
             qdot_prev = np.asarray(qdot_prev, dtype=float)
             a = a_max * a_dt
@@ -341,13 +333,6 @@ class VelocityBoxConstraints:
             hi = np.minimum(hi, qdot_prev + a)
             bind_lo, bind_hi = note_rail_bind(
                 bind_lo, bind_hi, olo, ohi, lo[0], hi[0], RAIL_BIND_ACCEL
-            )
-            olo, ohi = float(lo[0]), float(hi[0])
-            lo, hi = collapse_interval(
-                lo, hi, qdot_prev=qdot_prev, a_max=a_max, dt=dt
-            )
-            bind_lo, bind_hi = note_rail_bind(
-                bind_lo, bind_hi, olo, ohi, lo[0], hi[0], RAIL_BIND_COLLAPSE
             )
 
         # Third order.  Velocity and acceleration boxes still permit the
@@ -374,13 +359,6 @@ class VelocityBoxConstraints:
             hi = np.minimum(hi, centre + span)
             bind_lo, bind_hi = note_rail_bind(
                 bind_lo, bind_hi, olo, ohi, lo[0], hi[0], RAIL_BIND_JERK
-            )
-            olo, ohi = float(lo[0]), float(hi[0])
-            lo, hi = collapse_interval(
-                lo, hi, qdot_prev=qdot_prev, a_max=a_max, dt=dt
-            )
-            bind_lo, bind_hi = note_rail_bind(
-                bind_lo, bind_hi, olo, ohi, lo[0], hi[0], RAIL_BIND_COLLAPSE
             )
 
         # Command lead is an anti-windup envelope, not a physical joint limit.
@@ -434,13 +412,6 @@ class VelocityBoxConstraints:
                 lo = np.where(active, candidate_lo, lo)
                 bind_lo, bind_hi = note_rail_bind(
                     bind_lo, bind_hi, olo, ohi, lo[0], hi[0], RAIL_BIND_LEAD
-                )
-                olo, ohi = float(lo[0]), float(hi[0])
-                lo, hi = collapse_interval(
-                    lo, hi, qdot_prev=qdot_prev, a_max=a_max, dt=dt
-                )
-                bind_lo, bind_hi = note_rail_bind(
-                    bind_lo, bind_hi, olo, ohi, lo[0], hi[0], RAIL_BIND_COLLAPSE
                 )
 
         if rail_vel_pin_m_s is not None:

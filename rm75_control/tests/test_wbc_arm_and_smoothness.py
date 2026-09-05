@@ -48,9 +48,10 @@ def test_inconsistent_state_collapses_to_feasible_brake():
     box = VelocityBoxConstraints(limits, damper_band_rad=0.0)
     q = np.zeros(kin.nv)
     # Huge previous velocity so accel band cannot intersect position-safe box.
+    # That is a named P0 conflict; the live path must not collapse it.
     qdot_prev = np.full(kin.nv, 50.0)
     lo, hi = box.bounds(q, dt=0.005, qdot_prev=qdot_prev)
-    assert np.all(lo <= hi)
+    assert np.any(lo > hi)
     assert np.all(np.isfinite(lo))
     assert np.all(np.isfinite(hi))
 

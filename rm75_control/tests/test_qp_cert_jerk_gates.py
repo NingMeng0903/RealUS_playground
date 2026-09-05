@@ -22,9 +22,9 @@ from rm75_control.control.joint_admittance_8dof.wbc_rt import protocol as P
 
 
 def test_protocol_v5_sizes() -> None:
-    assert P.WBC_VERSION == 6
-    assert P.WBC_IN_SIZE == 608
-    assert P.WBC_OUT_SIZE == 1208
+    assert P.WBC_VERSION == 7
+    assert P.WBC_IN_SIZE == 616
+    assert P.WBC_OUT_SIZE == 1440
 
 
 def test_inbox_brake_stays_inside_accel_box() -> None:
@@ -156,7 +156,8 @@ def test_csv_header_has_jerk_s0_columns() -> None:
         "secondary_alpha",
     ):
         assert name in header
-    assert header[-7:] == [
+    start = header.index("qpik_box_degenerate")
+    assert header[start:start + 7] == [
         "qpik_box_degenerate",
         "qpik_box_infeasible",
         "qpik_box_excess_max",

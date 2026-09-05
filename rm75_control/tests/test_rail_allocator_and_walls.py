@@ -512,8 +512,13 @@ def test_reference_model_projects_lpf_into_wall() -> None:
         model.step(0.08, 0.005, x_m=0.70)
     assert model.state.v > 0.02
     v = model.step(0.08, 0.005, x_m=0.756, leave_sign=1.0)
-    assert v <= 1.0e-9
     assert model.last_v_lpf <= 1.0e-9
+    # Soft-wall authority changes the target; it must preserve braking history.
+    for _ in range(100):
+        previous = model.state.v
+        v = model.step(0.08, 0.005, x_m=0.756, leave_sign=1.0)
+        assert model.state.a == pytest.approx((v - previous) / 0.005)
+    assert abs(v) <= 1.0e-9
 
 
 def test_midranging_projects_into_wall_and_does_not_windup() -> None:

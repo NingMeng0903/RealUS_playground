@@ -1,7 +1,8 @@
 """Hardware campaign for Payload ID V2 (Window B).
 
-Window A owns the 200 Hz servo. This module MOVEJs to the taught mid-stroke,
-locks the rail with ``secondary=payload_id``, records static holds, then
+Window A owns the 200 Hz servo. This module selects the session's 7-DOF
+calibration structure before the preparation MOVEJ, keeps the live rail fixed,
+records static holds, then
 streams Fourier twists planned in link_7 / armtip and projected to the live TCP.
 """
 
@@ -64,9 +65,11 @@ from rm75_control.force.compensation.v2.schema import (
     urdf_sha256,
     write_phi_v2,
 )
+from peirastic.core.ipc import Status
 
 HZ = 200.0
 DT = 1.0 / HZ
+CONTROLLER_STATUS_MAX_AGE_S = 0.5
 MAX_DQ_DEG = 55.0
 TCP_BOX_HALF_M = 0.16
 DEFAULT_TILT_DEGS = (15, 30, 45, 60, 75, 90)
@@ -552,7 +555,14 @@ def _inertia_spec(cfg: dict) -> FourierSpec:
 
 
 def _id_extra(cfg: dict) -> dict[str, Any]:
-    return {"qp_aux": dict(cfg.get("qp_aux") or {}), "filter": False}
+    # Stay on 8-DOF, but do not fall back to the session default ``track``
+    # policy.  That re-enables centering/homotopy after rail lock and looks
+    # like the old nullspace settle.
+    return {
+        "qp_aux": dict(cfg.get("qp_aux") or {}),
+        "filter": False,
+        "task_policy": "payload_id",
+    }
 
 
 class PayloadIdCampaign:
@@ -597,6 +607,83 @@ class PayloadIdCampaign:
         self._rail_t: list[float] = []
         self._abort = ""
         self._t_phase0 = time.monotonic()
+        self._dof_before: int | None = None
+        self._dof_changed = False
+        self._explicit_7 = False
+        self._restore_blocked = False
+
+    def _hard_fault_active(self, reason: str = "") -> bool:
+        """Classify restore safety from a fresh controller/arm snapshot.
+
+        A normal operator interruption is recoverable after the stop boundary.
+        Restore is blocked when the controller reports a fresh hard state, the
+        arm feedback is freshly invalid, or the abort itself names a safety
+        fault whose motion must not be resumed implicitly.
+        """
+
+        text = str(reason or "").strip().lower()
+        hard_tokens = (
+            "uncertified_brake",
+            "feedback_stale",
+            "rail_feedback_fault",
+            "qpik_fault",
+            "watchdog",
+            "unexpected_contact",
+            "raw_saturation",
+            "workspace",
+            "queue_overflow",
+            "collision",
+            "estop",
+        )
+        if any(text == token or text.startswith(token) for token in hard_tokens):
+            return True
+
+        client = getattr(self.arm, "client", None)
+        snapshot = getattr(client, "snapshot", None)
+        if callable(snapshot):
+            try:
+                status = dict(snapshot())
+                stamp = float(status.get("t_mono", float("nan")))
+                age = time.monotonic() - stamp
+                fresh = np.isfinite(stamp) and -0.05 <= age <= CONTROLLER_STATUS_MAX_AGE_S
+                state = int(status.get("status", -1))
+                if fresh and (
+                    bool(status.get("estop"))
+                    or state
+                    in (int(Status.ERROR), int(Status.STOPPED), int(Status.ESTOP))
+                ):
+                    return True
+            except Exception:
+                pass
+
+        state_bus = getattr(self.arm, "state", None)
+        read_state = getattr(state_bus, "read", None)
+        if callable(read_state):
+            try:
+                state = read_state()
+                stamp = float(getattr(state, "t_s", float("nan")))
+                age = time.monotonic() - stamp
+                if (
+                    np.isfinite(stamp)
+                    and -0.05 <= age <= CONTROLLER_STATUS_MAX_AGE_S
+                    and not bool(getattr(state, "ok", False))
+                ):
+                    return True
+            except Exception:
+                pass
+        return False
+
+    def _enter_calibration_dof(self) -> None:
+        """Keep the persistent session.  Default Payload ID is 8-DOF + rail HOLD."""
+
+        ret, current = self.arm.get_dof()
+        if ret != self.OK or int(current) not in (7, 8):
+            raise CampaignAbort(f"read session DOF {ret} ({current})")
+        self._dof_before = int(current)
+        self._explicit_7 = self._dof_before == 7
+        if self._dof_before == 8:
+            return
+        # An explicit 7-DOF caller session is left alone and pins live rail.
 
     def close(self, *, stop: bool = False) -> None:
         try:
@@ -604,7 +691,41 @@ class PayloadIdCampaign:
                 self.arm.twist.write(np.zeros(6), hz=float("nan"), connected=True)
         except Exception:
             pass
-        if stop:
+        # A zero SERVO command is intentionally continuous.  When calibration
+        # changed 8→7, make an explicit stop boundary before restoring the
+        # caller's session DOF; otherwise SET_DOF(after_current) would wait
+        # forever for a task that is still live.
+        stopped_for_restore = bool(self._dof_changed)
+        restore_allowed = not bool(getattr(self, "_restore_blocked", False))
+        stop_ret = self.OK
+        if stop or stopped_for_restore:
+            try:
+                stop_fn = getattr(self.arm, "set_arm_stop", None)
+                stop_ret = stop_fn() if callable(stop_fn) else self.OK
+            except Exception:
+                stop_ret = -1
+            if stop_ret != self.OK:
+                restore_allowed = False
+                print(
+                    f"[DOF] restore skipped: stop failed ({stop_ret})",
+                    flush=True,
+                )
+        if self._dof_changed and self._dof_before in (7, 8) and restore_allowed:
+            try:
+                ret = self.arm.set_dof(int(self._dof_before), block=1)
+                if ret != self.OK:
+                    print(
+                        f"[DOF] restore {self._dof_before} failed: {ret} "
+                        f"({self.CODE_NAMES.get(ret, ret)})",
+                        flush=True,
+                    )
+            except Exception as exc:
+                print(f"[DOF] restore {self._dof_before} failed: {exc}", flush=True)
+        elif self._dof_changed and self._dof_before in (7, 8):
+            print("[DOF] restore incomplete: calibration fault/stop failure", flush=True)
+        if stop and not stopped_for_restore:
+            # SET_DOF uses the same single-slot IPC command and clears its
+            # stop bit; keep the caller's stop request authoritative.
             try:
                 self.arm.set_arm_stop()
             except Exception:
@@ -706,7 +827,6 @@ class PayloadIdCampaign:
             hold=hold,
             label=label,
             filter=False,
-            secondary="payload_id",
             extra=extra,
         )
         if ret != self.OK:
@@ -736,6 +856,13 @@ class PayloadIdCampaign:
         from peirastic.DEMO.movej import _fmt_q, q_target_rad
 
         q_goal = np.asarray(q_target_rad(), dtype=float)
+        rail = self.arm._current_rail_m()
+        if bool(getattr(self, "_explicit_7", False)):
+            if np.isfinite(rail):
+                q_goal[0] = float(rail)
+                self.hold_ref_m = float(rail)
+        elif np.isfinite(float(q_goal[0])):
+            self.hold_ref_m = float(q_goal[0])
         print(f"[MOVEJ] mid  {_fmt_q(q_goal)}  v={self.opts.movej_v:.2f}", flush=True)
         self.phase = "movej_mid"
         ret = self.arm.movej(
@@ -799,7 +926,7 @@ class PayloadIdCampaign:
             )
             if not st.ok:
                 raise CampaignAbort(st.reason or "rail_lock")
-        # After lock: SERVO_TWIST + payload_id (no HOLD latch, no track reach).
+        # After lock: 8-DOF SERVO_TWIST with payload_id (no track/centering).
         self._enter_servo(hold=False, label="payload_id_lock_hold")
 
     def _ptp(self, target: StaticTarget) -> None:
@@ -814,8 +941,8 @@ class PayloadIdCampaign:
             block=0,
             rail_m=self.hold_ref_m,
             q_target=q_cmd,
-            secondary="payload_id",
             label=f"payload_id_{target.name}",
+            task_policy="payload_id",
         )
         if ret != self.OK:
             raise CampaignAbort(f"PTP send {target.name} {ret}")
@@ -856,6 +983,7 @@ class PayloadIdCampaign:
     def run_static(self, q_mid: np.ndarray) -> list[StaticTarget]:
         st = self.cfg.get("static") or {}
         tilt = st.get("tilt_degs")
+        print("[P1] planning static poses", flush=True)
         targets = static_targets_from_mid(
             self.kin,
             q_mid,
@@ -997,8 +1125,11 @@ class PayloadIdCampaign:
     def run(self) -> int:
         self.rec.start()
         print(f"[STATE] csv {self.rec.path}", flush=True)
+        # Calibration is an arm-only experiment.  Commit the structure before
+        # MOVEJ/settle preparation so no task policy can silently recouple the
+        # rail; close() restores the caller's session DOF afterwards.
+        self._enter_calibration_dof()
         if not self.opts.skip_movej:
-            # Mid approach is coupled 8-DoF. rail_lock_gate switches to 7-DoF.
             self.movej_mid()
         else:
             print("[MOVEJ] skipped", flush=True)
@@ -1020,7 +1151,10 @@ class PayloadIdCampaign:
                 self._return_to_mid(q_mid, why="P-I")
                 self.run_inertia()
         self.phase = "done"
-        self._enter_servo(hold=True, label="payload_id_done")
+        # Stay on commanded SERVO_TWIST at v*=0. HOLD would latch pose_d and
+        # let 8-DOF idle steal the session (track + P-hold). joint_hold still
+        # freezes q.
+        self._enter_servo(hold=False, label="payload_id_done")
         self._hold_seconds(0.2, record=False)
         if self.rec.invalid:
             print("[WARN] recorder marked invalid (overflow/gaps) — sidecar still written", flush=True)
@@ -1416,9 +1550,13 @@ def run_hardware_campaign(
         stop = rc != 0
     except KeyboardInterrupt:
         print("[STOP] interrupted — fitting whatever is in the log", flush=True)
+        # Ctrl-C is recoverable when the fresh controller/arm snapshot is
+        # healthy.  close() sends the stop boundary before restoring 8↔7.
+        camp._restore_blocked = camp._hard_fault_active("keyboard_interrupt")
         rc = 130
     except CampaignAbort as exc:
         print(f"[ABORT] {exc}", flush=True)
+        camp._restore_blocked = camp._hard_fault_active(str(exc))
         rc = 2
     finally:
         camp.close(stop=stop)

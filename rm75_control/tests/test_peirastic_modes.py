@@ -139,7 +139,7 @@ def test_compile_servo_and_ellipse() -> None:
         ctx,
         ModeRequest(
             ModeE.SERVO_TWIST,
-            {"v_cmd": [0.01, 0, 0, 0, 0, 0], "secondary": "track"},
+            {"v_cmd": [0.01, 0, 0, 0, 0, 0]},
         ),
     )
     pose = ctx.kin.fk_pose(_SEED)
@@ -267,7 +267,7 @@ def test_mode_engine_offline_sample() -> None:
     eng.set_mode(
         ModeRequest(
             ModeE.SERVO_TWIST,
-            {"v_cmd": [0.0, 0.02, 0, 0, 0, 0], "secondary": "track"},
+            {"v_cmd": [0.0, 0.02, 0, 0, 0, 0]},
         )
     )
     pose = ctx.kin.fk_pose(_SEED)
@@ -300,12 +300,14 @@ def test_movej_v_scales_plan_duration() -> None:
 
 def test_servo_joint_hold_freezes_direct_ptp() -> None:
     raw, ctx = _ctx()
+    from rm75_control.control.joint_admittance_8dof.api import set_controller_dof
+
+    ctx.dof = set_controller_dof(ctx.inner, 7)
     phase = compile_request(
         ctx,
         ModeRequest(
             ModeE.SERVO_TWIST,
             {
-                "secondary": "payload_id",
                 "joint_hold": True,
                 "label": "payload_id_hold_WX-45",
                 "filter": False,
@@ -326,11 +328,14 @@ def test_servo_joint_hold_freezes_direct_ptp() -> None:
 
 def test_servo_payload_id_without_joint_hold_stays_qpik() -> None:
     raw, ctx = _ctx()
+    from rm75_control.control.joint_admittance_8dof.api import set_controller_dof
+
+    ctx.dof = set_controller_dof(ctx.inner, 7)
     phase = compile_request(
         ctx,
         ModeRequest(
             ModeE.SERVO_TWIST,
-            {"secondary": "payload_id", "label": "payload_id_dt_x", "filter": False},
+            {"label": "payload_id_dt_x", "filter": False},
         ),
         raw=raw,
     )
@@ -339,16 +344,86 @@ def test_servo_payload_id_without_joint_hold_stays_qpik() -> None:
     assert ctx.inner.is_locked_hold
 
 
-def test_servo_requires_explicit_secondary() -> None:
+def test_servo_uses_session_dof_default() -> None:
     raw, ctx = _ctx()
-    with pytest.raises(ValueError, match="explicit secondary"):
-        compile_request(
-            ctx, ModeRequest(ModeE.SERVO_TWIST, {"filter": False}), raw=raw
-        )
+    phase = compile_request(ctx, ModeRequest(ModeE.SERVO_TWIST, {"filter": False}), raw=raw)
+    phase.on_enter()
+    assert not ctx.inner.is_locked_hold
+    assert ctx.inner._centering_suppressed is False
+    assert ctx.inner._rail_ext_active is True
+
+
+def test_payload_id_campaign_extra_keeps_nullspace_off_on_8dof() -> None:
+    from peirastic.apps.identify_payload import load_v2_yaml
+    from rm75_control.force.compensation.v2.campaign import _id_extra
+
+    raw, ctx = _ctx()
+    extra = _id_extra(load_v2_yaml())
+    assert extra["task_policy"] == "payload_id"
+    ctx.inner.set_centering_suppressed(False)
+    ctx.inner.set_rail_extension_active(True)
+    ctx.inner.set_arm_task_suppressed(False)
+    phase = compile_request(ctx, ModeRequest(ModeE.SERVO_TWIST, extra), raw=raw)
+    phase.on_enter()
+    assert ctx.inner._centering_suppressed is True
+    assert ctx.inner._rail_ext_active is False
+    assert ctx.inner._arm_task_suppressed is True
+    assert ctx.inner._manipulability_active is False
+
+
+def test_session_8dof_rebases_coupled_reference_at_live_q() -> None:
+    from rm75_control.control.joint_admittance_8dof.api import set_controller_dof
+
+    _raw, ctx = _ctx()
+    ctx.dof = set_controller_dof(ctx.inner, 7)
+    retarget = ctx.inner.posture_retarget
+    if retarget is None or ctx.inner.rail_ext_task is None:
+        pytest.skip("posture retarget disabled")
+    retarget.d_star_m = 0.99
+    ctx.inner.rail_ext_task.set_d_pref(0.99)
+    ctx.dof = set_controller_dof(ctx.inner, 8)
+    live = float(ctx.inner.kin.fk_placement(ctx.inner.q_cmd).translation[1]) - float(ctx.inner.q_cmd[0])
+    assert float(retarget.d_star_m) == pytest.approx(live)
+    assert float(ctx.inner.rail_ext_task.d_pref_m) == pytest.approx(live)
+
+
+def test_dof_switch_resets_rail_integrators_and_reference_models() -> None:
+    from rm75_control.control.joint_admittance_8dof.api import set_controller_dof
+
+    _raw, ctx = _ctx()
+    inner = ctx.inner
+    set_controller_dof(inner, 8)
+    inner.rail_mixer.xi = 0.071
+    inner.rail_mixer.d_star.ref = 0.91
+    inner.midranging.integ = -0.23
+    inner.rail_ref_model.state.v = 0.04
+    inner.rail_base_ref_model.state.v = -0.03
+    live = inner.q_cmd.copy()
+    live[0] += 0.012
+
+    set_controller_dof(inner, 7, q_live=live)
+    assert inner.rail_mixer.xi == pytest.approx(0.0)
+    assert inner.rail_mixer.d_star.ref is None
+    assert inner.midranging.integ == pytest.approx(0.0)
+    assert inner.rail_ref_model.state.v == pytest.approx(0.0)
+    assert inner.rail_base_ref_model.state.v == pytest.approx(0.0)
+    np.testing.assert_allclose(inner.q_cmd, live)
+
+    # A return to coupled mode starts with the same live seed and no old
+    # integral/reference state from the prior 8-DOF episode.
+    inner.rail_mixer.xi = 0.05
+    inner.rail_mixer.d_star.ref = 0.88
+    set_controller_dof(inner, 8, q_live=live)
+    assert inner.rail_mixer.xi == pytest.approx(0.0)
+    assert inner.rail_mixer.d_star.ref is None
+    np.testing.assert_allclose(inner.q_cmd, live)
 
 
 def test_servo_payload_id_refuses_moving_rail() -> None:
     raw, ctx = _ctx()
+    from rm75_control.control.joint_admittance_8dof.api import set_controller_dof
+
+    ctx.dof = set_controller_dof(ctx.inner, 7)
     ctx.inner.core.qdot_prev = np.zeros(ctx.inner.kin.nv, dtype=float)
     ctx.inner.core.qdot_prev[0] = 0.01
     with pytest.raises(ValueError, match="still rail"):
@@ -356,14 +431,17 @@ def test_servo_payload_id_refuses_moving_rail() -> None:
             ctx,
             ModeRequest(
                 ModeE.SERVO_TWIST,
-                {"secondary": "payload_id", "filter": False},
+                {"filter": False},
             ),
             raw=raw,
         )
 
 
-def test_servo_policy_applies_once_on_enter_not_compile() -> None:
+def test_servo_policy_does_not_change_session_structure() -> None:
     raw, ctx = _ctx()
+    from rm75_control.control.joint_admittance_8dof.api import set_controller_dof
+
+    ctx.dof = set_controller_dof(ctx.inner, 7)
     n_lock = {"n": 0}
     real_lock = ctx.inner.set_locked
 
@@ -377,14 +455,14 @@ def test_servo_policy_applies_once_on_enter_not_compile() -> None:
         ctx,
         ModeRequest(
             ModeE.SERVO_TWIST,
-            {"secondary": "payload_id", "filter": False},
+            {"filter": False},
         ),
         raw=raw,
     )
     assert n_lock["n"] == 0
     assert bool(ctx.inner.is_locked_hold) == before
     phase.on_enter()
-    assert n_lock["n"] == 1
+    assert n_lock["n"] == 0
     assert ctx.inner.is_locked_hold
 
 
@@ -393,9 +471,10 @@ def test_cartesian_ptp_payload_id_keeps_rail_locked() -> None:
 
     raw, ctx = _ctx()
     rail0 = float(ctx.inner.q_cmd[0])
-    SecondaryPolicy(preset="payload_id").apply(ctx.inner)
+    from rm75_control.control.joint_admittance_8dof.api import set_controller_dof
+
+    ctx.dof = set_controller_dof(ctx.inner, 7)
     qt = ctx.inner.q_cmd.copy()
-    qt[0] = rail0 + 0.08
     qt[4] += 0.05
     pose = ctx.kin.fk_pose(qt).tolist()
     phase = compile_request(
@@ -406,7 +485,6 @@ def test_cartesian_ptp_payload_id_keeps_rail_locked() -> None:
                 "pose": pose,
                 "q_target": qt.tolist(),
                 "v": 0.25,
-                "secondary": "payload_id",
                 "rail_m": rail0,
             },
         ),
@@ -999,7 +1077,9 @@ def test_compile_approach_is_coupled_qpik_not_movej() -> None:
     phase = compile_request(ctx, ModeRequest(ModeE.TRACK_CARTESIAN, payload), raw=raw)
     assert "approach" in str(phase.label)
     assert "q_target" not in payload
-    ctx.inner.set_locked()
+    from rm75_control.control.joint_admittance_8dof.api import set_controller_dof
+
+    ctx.dof = set_controller_dof(ctx.inner, 8)
     phase.on_enter()
     assert ctx.inner.rail_mode == RailMode.COUPLED
     assert not ctx.inner.is_locked_hold

@@ -21,6 +21,10 @@ from rm75_control.control.joint_admittance_8dof.loop import JointIkStep, Tracker
 from rm75_control.control.joint_admittance_8dof.tasks.rail_mode import LockedStyle, RailMode
 from rm75_control.control.joint_admittance_8dof.wbc_rt.config_dump import dump_wbc_config
 from rm75_control.control.joint_admittance_8dof.wbc_rt import protocol as P
+from rm75_control.control.joint_admittance_8dof.wbc_rt.build_id import (
+    assert_native_matches_tree,
+    combined_hash,
+)
 from rm75_control.control.joint_admittance_8dof.qp_cert import qp_status_name
 
 
@@ -51,7 +55,16 @@ def find_wbc_rt_binary(explicit: str | None = None) -> Path | None:
 class NativeWbcClient:
     """SHM client.  Owns the child process when it creates the segments."""
 
-    def __init__(self, controller, *, timeout_s: float = 0.100) -> None:
+    @staticmethod
+    def _rail_commit_authority(output, box_lo, box_hi) -> float:
+        from ..tasks.rail_command import committed_rail_contributions
+        brake = float(np.clip(0.0, box_lo[0], box_hi[0]))
+        return committed_rail_contributions(
+            float(output["u_feasible"]), float(output["rail_base_shaped"]),
+            float(output["rail_total_committed"]), brake,
+        )[2]
+
+    def __init__(self, controller, *, timeout_s: float = 0.020) -> None:
         self.ctrl = controller
         self.cfg = controller.cfg
         self.timeout_s = float(timeout_s)
@@ -66,6 +79,11 @@ class NativeWbcClient:
         self._cfg_path: Path | None = None
         self._seq = 0
         self._started = False
+        self._pending_commit_seq = 0
+        self._abort_next = False
+        self._fault_latched = False
+        self._published_q_cmd = None
+        self._published_qdot = None
 
     def start(self) -> None:
         binary = find_wbc_rt_binary(getattr(self.cfg, "native_bin", None))
@@ -73,6 +91,12 @@ class NativeWbcClient:
             raise FileNotFoundError(
                 "wbc_rt binary not found; build native/wbc_rt or set WBC_RT_BIN"
             )
+        try:
+            hashed = subprocess.check_output([str(binary), "--hash"], text=True).strip()
+        except Exception as exc:
+            raise RuntimeError(f"wbc_rt --hash failed: {exc}") from exc
+        assert_native_matches_tree(hashed)
+        _ = combined_hash()
         tmp = Path(tempfile.mkdtemp(prefix="wbc_rt_"))
         self._cfg_path = tmp / "wbc.cfg"
         dump_wbc_config(
@@ -153,6 +177,10 @@ class NativeWbcClient:
         self._shm_out = None
         self._started = False
 
+    def abort_pending(self) -> None:
+        self._abort_next = True
+        self._pending_commit_seq = 0
+
     def _wait_seq(self, seq: int, *, timeout_s: float | None = None) -> bool:
         limit = time.monotonic() + float(self.timeout_s if timeout_s is None else timeout_s)
         while time.monotonic() < limit:
@@ -160,6 +188,7 @@ class NativeWbcClient:
                 return True
             if self._proc is not None and self._proc.poll() is not None:
                 return False
+            time.sleep(0.0002)
         return False
 
     def _next_seq(self) -> int:
@@ -333,6 +362,8 @@ class NativeWbcClient:
         rec["dt_wall"] = float(dt_wall) if dt_wall is not None else float(rec["dt_nom"])
         rec["v_cmd"][:] = np.asarray(twist, dtype=float).reshape(6)
         rec["q_meas"][:] = np.asarray(q_meas, dtype=float).reshape(8)
+        rec["rail_refresh_dt"] = float(kwargs.get("rail_refresh_dt_s") or
+                                             self.cfg.rail_refresh_dt_s)
         rec["rail_q"] = float(np.asarray(q_meas, dtype=float).reshape(-1)[0])
         rec["cmd_f"][:] = 0.0
         flags = 0
@@ -369,23 +400,39 @@ class NativeWbcClient:
         if feedback_twist is not None:
             rec["feedback_twist"][:] = np.asarray(feedback_twist, dtype=float).reshape(6)
             flags |= P.IN_HAS_FEEDBACK_TWIST
+        auto_commit = bool(kwargs.get("auto_commit", True))
+        commit_prev = kwargs.get("commit_prev")
+        abort_prev = bool(kwargs.get("abort_prev", False)) or bool(self._abort_next)
+        self._abort_next = False
+        if auto_commit:
+            flags |= P.IN_AUTO_COMMIT
+        if abort_prev:
+            flags |= P.IN_ABORT_PREV
+            self._pending_commit_seq = 0
+        elif commit_prev is not False:
+            flags |= P.IN_COMMIT_PREV
+        rec["cmd_u"][0] = np.uint32(int(commit_prev or self._pending_commit_seq or 0))
         rec["flags"] = np.uint32(flags)
         seq = self._next_seq()
         rec["cmd_seq"] = np.uint64(seq)
         rec["seq"] = np.uint64(seq)
         ok = self._wait_seq(seq)
-        if not ok:
-            rec["v_cmd"][:] = 0.0
-            rec["flags"] = np.uint32(flags | P.IN_STALE)
-            seq = self._next_seq()
-            rec["cmd_seq"] = np.uint64(seq)
-            rec["seq"] = np.uint64(seq)
-            ok = self._wait_seq(seq)
         o = self._out[0]
-        self._sync_q()
         q_cmd = np.asarray(o["q_cmd"], dtype=float).copy()
         qdot = np.asarray(o["qdot"], dtype=float).copy()
-        self.ctrl._record_applied_qdot(qdot)
+        self._published_q_cmd = q_cmd.copy()
+        self._published_qdot = qdot.copy()
+        native_status_early = int(o["status"])
+        if not ok:
+            self._fault_latched = True
+            self._pending_commit_seq = 0
+        elif auto_commit:
+            self._sync_q()
+            if native_status_early == P.STATUS_OK:
+                self._pending_commit_seq = 0
+                self.ctrl._record_applied_qdot(qdot)
+        elif native_status_early == P.STATUS_OK:
+            self._pending_commit_seq = seq
         v_recv = np.asarray(o["v_cmd_received"], dtype=float).copy()
         v_feas = np.asarray(o["v_cmd_feasible"], dtype=float).copy()
         v_tcp = np.asarray(o["v_tcp_estimated"], dtype=float).copy()
@@ -422,6 +469,10 @@ class NativeWbcClient:
             qp_backend="native",
             qp_solver_status=solver_status,
             qp_solver_iterations=int(o["qp1_iter"]) + int(o["qp2_iter"]),
+            qp_solver_call_count=(
+                int(qp1_name != "not_run") + int(qp2_name != "not_run")
+                if ok else 0
+            ),
             qp_solver_solve_ms=float(o["solve_ms"]),
             qp_solver_overrun=bool(float(o["solve_ms"]) > 5.0),
             qp1_status=qp1_name,
@@ -456,6 +507,27 @@ class NativeWbcClient:
             d_pref_m=float(o["d_pref"]),
             psi_deg=float(np.degrees(o["psi"])) if np.isfinite(float(o["psi"])) else float("nan"),
             sigma_arm=float(o["sigma_arm"]),
+            task_progress=float(o["task_progress_alpha"]),
+            task_paused=bool(o["task_paused"]),
+            task_pause_reason={0: "", 1: "task_infeasible", 2: "publication_infeasible"}.get(int(o["task_pause_reason"]), "native_pause"),
+            fallback_level="stop" if not ok or native_status == P.STATUS_FAIL else "none",
+            fallback_reason=(
+                "native_timeout" if not ok else
+                {0: "", 1: "task_infeasible", 2: "publication_infeasible"}.get(
+                    int(o["task_pause_reason"]), "native_pause"
+                )
+            ),
+            solver_fault_latched=bool(not ok or native_status == P.STATUS_FAIL),
+            rail_base_shaped=float(o["rail_base_shaped"]),
+            rail_base_raw=float(o["rail_base_raw"]),
+            rail_base_committed=float(o["rail_total_committed"] - o["rail_post_committed"]),
+            rail_commit_authority=self._rail_commit_authority(o, box_lo, box_hi),
+            rail_post_committed=float(o["rail_post_committed"]),
+            rail_total_committed=float(o["rail_total_committed"]),
+            rail_pi_xi=float(o["rail_pi_xi"]),
+            rail_d_ref=float(o["rail_d_ref"]),
+            rail_ref_acceleration=float(o["rail_ref_acceleration"]),
+            rail_preview_residual=float(o["rail_preview_residual"]),
             v_cmd_received=v_recv,
             v_cmd_feasible=v_feas,
             v_tcp_estimated=v_tcp,
@@ -539,9 +611,32 @@ class NativeWbcClient:
             rail_qdot_prev=float(o["rail_qdot_prev"]),
             rail_qdot_prev2=float(o["rail_qdot_prev2"]),
         )
+        jac = self.ctrl.kin.jacobian(np.asarray(q_meas, dtype=float))
+        rail_model = jac[:, 0] * float(o["rail_exec"])
+        arm_model = np.asarray(o["v_task_actual"], dtype=float) - rail_model
+        step.rail_model_twist = rail_model.copy()
+        step.arm_model_twist = arm_model.copy()
+        step.rail_xy_contribution = rail_model[:2].copy()
+        step.arm_xy_contribution = arm_model[:2].copy()
+        step.protected_target = v_recv.copy()
+        step.protected_achieved = v_tcp.copy()
+        step.qpik_working_slack = resid.copy()
+        step.e_shape = v_recv - v_feas
+        step.e_qp = v_feas - v_tcp
+        step.e_exec = jac @ qdot - v_tcp
+        step.e_shape_norm = float(np.linalg.norm(step.e_shape))
+        step.e_qp_norm = float(np.linalg.norm(step.e_qp))
+        step.e_exec_norm = float(np.linalg.norm(step.e_exec))
         self.ctrl.last_secondary_norm = float(step.nullspace_norm)
         self.ctrl.last_sat_scale = float(step.sat_scale)
         if hasattr(self.ctrl, "core") and self.ctrl.core is not None:
+            self.ctrl.core.last_task_target = v_recv.copy()
+            self.ctrl.core.last_task_achieved = v_tcp.copy()
+            self.ctrl.core.last_task_residual = resid.copy()
+            self.ctrl.core.last_rail_exec_contrib = rail_model.copy()
+            self.ctrl.core.last_arm_contrib = arm_model.copy()
+            self.ctrl.core.last_progress_scale = float(o["task_progress_alpha"])
+            self.ctrl.core.last_preview_velocity = np.asarray(o["rail_preview_arm"], dtype=float)[1:].copy()
             self.ctrl.core.last_dexterity_slack = float(o["sigma_slack"])
             self.ctrl.core.last_rail_box_lo = float(o["rail_box_lo"])
             self.ctrl.core.last_rail_box_hi = float(o["rail_box_hi"])
@@ -552,9 +647,10 @@ class NativeWbcClient:
             self.ctrl.core.last_rail_h2 = float(o["rail_h2"])
             self.ctrl.core.last_rail_qdot_prev = float(o["rail_qdot_prev"])
             self.ctrl.core.last_rail_qdot_prev2 = float(o["rail_qdot_prev2"])
-            self.ctrl.core.qdot_prev = qdot.copy()
-            self.ctrl.core.qdot_prev2 = qdot_prev_used.copy()
-            self.ctrl.core._qdot_prev_seen = qdot_prev_used.copy()
+            if auto_commit:
+                self.ctrl.core.qdot_prev = qdot.copy()
+                self.ctrl.core.qdot_prev2 = qdot_prev_used.copy()
+                self.ctrl.core._qdot_prev_seen = qdot_prev_used.copy()
             self.ctrl.core.last_lo_box = box_lo
             self.ctrl.core.last_hi_box = box_hi
             self.ctrl.core.last_qp1_status = qp1_name

@@ -57,6 +57,15 @@ def _green(msg: str) -> str:
     return f"\033[32m{msg}\033[0m"
 
 
+def _install_mode(client: CommandClient, req: ModeRequest) -> None:
+    """Send a mode and wait for Window A's post-on_enter acknowledgement."""
+
+    seq = client.set_mode(req)
+    ret = client.wait_installed(seq, req.mode)
+    if ret != 0:
+        raise RuntimeError(f"{req.mode.name} install failed ({ret})")
+
+
 def pad_link_event(prev: bool | None, live: bool) -> str | None:
     """Announce Bluetooth only on connect, or after a live pad drops."""
 
@@ -154,7 +163,13 @@ def main() -> int:
                 time.sleep(0.05)
                 tel0 = client.snapshot()
         if pad_may_drive(int(tel0.get("mode") or 0), label=str(tel0.get("msg") or "")):
-            client.set_mode(ModeRequest(vel_mode, {"secondary": "track", "filter": False}))
+            try:
+                # The pad inherits the persistent session DOF.  It is a mode
+                # source, not a structure-selection command.
+                _install_mode(client, ModeRequest(vel_mode, {"filter": False}))
+            except Exception as exc:
+                print(f"[MODE] unable to install {vel_mode.name}: {exc}", flush=True)
+                return 2
         elif not quiet:
             print(
                 "[PAD] connected — command mode has priority "
@@ -263,10 +278,20 @@ def main() -> int:
                 last_l3_s = now
                 hybrid = not hybrid
                 if hybrid:
-                    client.set_mode(ModeRequest(Mode.TRACK_HYBRID, hybrid_payload))
+                    try:
+                        _install_mode(client, ModeRequest(Mode.TRACK_HYBRID, hybrid_payload))
+                    except Exception as exc:
+                        hybrid = False
+                        print(f"[MODE] TRACK_HYBRID install failed: {exc}", flush=True)
+                        continue
                     print(f"[MODE] TRACK_HYBRID pad+force Z={fz:.2f}N", flush=True)
                 else:
-                    client.set_mode(ModeRequest(vel_mode, {"secondary": "track", "filter": False}))
+                    try:
+                        _install_mode(client, ModeRequest(vel_mode, {"filter": False}))
+                    except Exception as exc:
+                        hybrid = True
+                        print(f"[MODE] {vel_mode.name} install failed: {exc}", flush=True)
+                        continue
                     print("[MODE] " + vel_mode.name, flush=True)
             if not quiet and (now - last_log_s) >= 0.20:
                 last_log_s = now

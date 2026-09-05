@@ -19,6 +19,7 @@
 #include "wbc_rt/shm.hpp"
 #include "wbc_rt/srs_ik.hpp"
 #include "wbc_rt/task_weight.hpp"
+#include "wbc_build_id.hpp"
 
 namespace {
 std::atomic<bool> g_stop{false};
@@ -505,6 +506,9 @@ int main(int argc, char** argv) {
                 << " in " << sizeof(wbc_rt::WbcIn)
                 << " out " << sizeof(wbc_rt::WbcOut) << "\n";
       return 0;
+    } else if (a == "--hash") {
+      std::cout << WBC_SRC_HASH << "\n";
+      return 0;
     }
   }
   if (want_srs) return run_srs_ik(argc, argv);
@@ -609,6 +613,7 @@ int main(int argc, char** argv) {
         tin.dt_nom = in->dt_nom;
         tin.dt_wall = in->dt_wall;
         tin.t_mono = in->t_mono;
+        tin.rail_refresh_dt = in->rail_refresh_dt;
         tin.rail_v = in->rail_v;
         tin.v_force_z = in->v_force_z;
         tin.flags = in->flags;
@@ -702,6 +707,28 @@ int main(int argc, char** argv) {
         out->qdot_qp_vs_sent_max = tout.qdot_qp_vs_sent_max;
         out->dual_cancel = tout.dual_cancel;
         out->secondary_alpha = tout.secondary_alpha;
+        out->task_progress_alpha = tout.task_progress_alpha;
+        out->task_progress_scale_used = tout.task_progress_scale_used;
+        out->rail_task_projection = tout.rail_task_projection;
+        out->rail_task_committed = tout.rail_task_committed;
+        out->rail_escape_committed = tout.rail_escape_committed;
+        out->rail_post_committed = tout.rail_post_committed;
+        out->rail_total_committed = tout.rail_total_committed;
+        out->rail_preview_arm_norm = tout.rail_preview_arm_norm;
+        out->rail_preview_residual = tout.rail_preview_residual;
+        out->task_paused = tout.task_paused;
+        out->task_pause_reason = tout.task_pause_reason;
+        for (int i = 0; i < wbc_rt::kTask; ++i) {
+          out->v_task_actual[i] = tout.v_task_actual[i];
+        }
+        for (int i = 0; i < wbc_rt::kNv; ++i) {
+          out->rail_preview_arm[i] = tout.rail_preview_arm[i];
+        }
+        out->rail_base_shaped = tout.rail_base_shaped;
+        out->rail_base_raw = tout.rail_base_raw;
+        out->rail_pi_xi = tout.rail_pi_xi;
+        out->rail_d_ref = tout.rail_d_ref;
+        out->rail_ref_acceleration = tout.rail_ref_acceleration;
         for (int i = 0; i < wbc_rt::kNv; ++i) {
           out->box_lo[i] = tout.box_lo[i];
           out->box_hi[i] = tout.box_hi[i];

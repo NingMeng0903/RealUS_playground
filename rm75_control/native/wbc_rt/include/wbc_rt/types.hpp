@@ -67,8 +67,11 @@ inline Vec8 inbox_brake(const Vec8& qdot_prev, const Vec8& lo, const Vec8& hi,
   for (int i = 0; i < kNv; ++i) {
     const double step = std::max(a_max[i] * h, 0.0);
     double brake = qdot_prev[i];
-    if (qdot_prev[i] > 0.0) brake = qdot_prev[i] - step;
-    else if (qdot_prev[i] < 0.0) brake = qdot_prev[i] + step;
+    // Do not cross zero in one fallback tick.  Overshooting through zero
+    // makes the next fallback brake in the opposite direction and can
+    // oscillate while a QP is unavailable.
+    if (qdot_prev[i] > 0.0) brake = std::max(0.0, qdot_prev[i] - step);
+    else if (qdot_prev[i] < 0.0) brake = std::min(0.0, qdot_prev[i] + step);
     if (std::isfinite(lo[i]) && std::isfinite(hi[i]) && lo[i] <= hi[i]) {
       out[i] = clip(brake, lo[i], hi[i]);
     } else if (std::isfinite(lo[i]) && std::isfinite(hi[i])) {

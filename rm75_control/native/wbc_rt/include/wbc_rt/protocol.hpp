@@ -6,7 +6,10 @@
 namespace wbc_rt {
 
 static constexpr uint32_t kMagic = 0x57424331u;  // 'WBC1'
-static constexpr uint32_t kVersion = 6;
+// v7 appends task-progress and next-rail-refresh preview telemetry.  Existing
+// fields keep their order so readers can migrate by version rather than by
+// heuristic size checks.
+static constexpr uint32_t kVersion = 7;
 
 enum Cmd : uint32_t {
   kCmdNone = 0,
@@ -38,6 +41,9 @@ enum InFlag : uint32_t {
   kInSeedQcmd = 1u << 9,
   kInHasPosture = 1u << 10,
   kInHasQStar = 1u << 11,
+  kInCommitPrev = 1u << 12,
+  kInAbortPrev = 1u << 13,
+  kInAutoCommit = 1u << 14,
 };
 
 enum CtrlFlag : uint32_t {
@@ -73,6 +79,10 @@ enum QpStatusU : uint32_t {
   kQpSolved = 1,
   kQpMaxIter = 2,
   kQpFailed = 3,
+  kQpPrimalInfeasible = 4,
+  kQpDualInfeasible = 5,
+  kQpClosestPrimal = 6,
+  kQpP0Conflict = 7,
 };
 
 enum RailModeU : uint32_t {
@@ -109,6 +119,9 @@ struct WbcIn {
   double feedback_twist[6];
   double cmd_f[16];
   uint32_t cmd_u[8];
+  // Effective interval until the next rail command refresh.  This may be
+  // slower than the ARM/WBC tick (for example 1/60 s versus 5 ms).
+  double rail_refresh_dt;
 };
 
 struct WbcOut {
@@ -203,11 +216,29 @@ struct WbcOut {
   double box_hi[8];
   double qdot_prev[8];
   double qdot_prev2[8];
+  double task_progress_alpha;
+  double task_progress_scale_used;
+  double rail_task_projection;
+  double rail_task_committed;
+  double rail_escape_committed;
+  double rail_post_committed;
+  double rail_total_committed;
+  double rail_preview_arm_norm;
+  double rail_preview_residual;
+  uint32_t task_paused;
+  uint32_t task_pause_reason;
+  double v_task_actual[6];
+  double rail_preview_arm[8];
+  double rail_base_shaped;
+  double rail_base_raw;
+  double rail_pi_xi;
+  double rail_d_ref;
+  double rail_ref_acceleration;
 };
 #pragma pack(pop)
 
-static_assert(sizeof(WbcIn) == 608, "WbcIn layout drift");
-static_assert(sizeof(WbcOut) == 1208, "WbcOut layout drift");
+static_assert(sizeof(WbcIn) == 616, "WbcIn layout drift");
+static_assert(sizeof(WbcOut) == 1440, "WbcOut layout drift");
 
 inline void clear_in(WbcIn* s) {
   std::memset(s, 0, sizeof(WbcIn));

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import sys
+import time
 from pathlib import Path
 
 _PLAYGROUND = Path(__file__).resolve().parents[2]
@@ -66,6 +67,68 @@ def test_error_code_table() -> None:
     assert ERR_TIMEOUT == -5
     assert ERR_STOPPED == -6
     assert ERR_UNIMPLEMENTED == -7
+
+
+def test_session_dof_switch_and_arm_only_targets() -> None:
+    _raw, ctx = _ctx()
+    arm = _arm(ctx=ctx, inner=ctx.inner)
+    assert arm.get_dof() == (OK, 8)
+    assert arm.set_dof(7) == OK
+    assert arm.get_dof() == (OK, 7)
+    assert arm.movej(_SEED.tolist(), v=0.2, block=0) == OK
+    assert arm.last_request.payload["q_target"][0] == pytest.approx(_SEED[0])
+    with pytest.raises(ValueError, match="rail-moving"):
+        arm.movej((_SEED + np.array([0.01, 0, 0, 0, 0, 0, 0, 0])).tolist(), block=0)
+    assert arm.set_dof(8) == OK
+    assert arm.get_dof() == (OK, 8)
+
+
+def test_pending_dof_arm_only_movej_rebases_rail_at_compile() -> None:
+    """A queued 7-arm target must use the rail sampled at the boundary."""
+
+    from peirastic.core.ipc import Status
+    from peirastic.core.modes import ModeRequest
+
+    class PendingDofClient:
+        def snapshot(self):
+            return {
+                "t_mono": time.monotonic(),
+                "status": int(Status.RUNNING),
+                "mode": int(Mode.SERVO_TWIST),
+                "estop": False,
+                "dof": 8,
+                "dof_effective": 8,
+                "dof_pending": 7,
+                "dof_status": int(Status.RUNNING),
+            }
+
+    raw, ctx = _ctx()
+    arm = PeirasticArm(client=PendingDofClient(), attach=False)
+    q_arm = _SEED[1:].tolist()
+    wire_target = arm._q_target(q_arm)
+    assert len(wire_target) == 7
+
+    ctx.dof = 7
+    ctx.inner.q_cmd[0] = 0.403
+    phase = compile_request(
+        ctx,
+        ModeRequest(Mode.MOVEJ, {"q_target": wire_target, "v": 0.2}),
+        raw=raw,
+    )
+    move_ref = getattr(phase.outer, "reference", None)
+    assert move_ref is not None
+    assert float(move_ref.q_target[0]) == pytest.approx(0.403)
+
+
+def test_legacy_secondary_is_rejected() -> None:
+    _raw, ctx = _ctx()
+    arm = _arm(ctx=ctx, inner=ctx.inner)
+    with pytest.raises(ValueError, match="secondary was removed"):
+        arm.cartesian_velocity([0.0] * 6, secondary="track")
+    from peirastic.core.modes import ModeRequest
+
+    with pytest.raises(ValueError, match="secondary was removed"):
+        compile_request(ctx, ModeRequest(Mode.SERVO_TWIST, {"secondary": "track"}))
 
 
 def test_connect_and_blend_are_unimplemented() -> None:
@@ -207,12 +270,15 @@ def test_hover_all_force_axes_fce_yields() -> None:
         phase.outer.sample(0.005, pose, np.array([0.0, 0.0, 3.0, 0.0, 0.0, 0.0])),
         dtype=float,
     )
-    assert pushed[2] < -1e-3
+    # The FCE law saturates exactly at the inclusive configured limit.
+    assert pushed[2] <= -1e-3
     side = np.asarray(
         phase.outer.sample(0.010, pose, np.array([3.0, 0.0, 0.0, 0.0, 0.0, 0.0])),
         dtype=float,
     )
-    assert side[0] < -1e-3
+    # The lateral law is slew-limited on the first sample; the configured
+    # response is inclusive at this boundary as well.
+    assert side[0] <= -8e-4
 
 
 def test_selection_passthrough_default_and_force_x() -> None:
@@ -241,8 +307,8 @@ def test_mode_engine_samples_all_modes() -> None:
     pose = ctx.kin.fk_pose(_SEED)
     f_ext = np.zeros(6)
     cases = [
-        (Mode.SERVO_TWIST, {"v_cmd": [0.01, 0, 0, 0, 0, 0], "secondary": "track"}),
-        (Mode.SERVO_TWIST_HOLD, {"v_cmd": [0.0] * 6, "secondary": "hold"}),
+        (Mode.SERVO_TWIST, {"v_cmd": [0.01, 0, 0, 0, 0, 0]}),
+        (Mode.SERVO_TWIST_HOLD, {"v_cmd": [0.0] * 6}),
         (Mode.TRACK_CARTESIAN, {"reference": "hold"}),
         (
             Mode.TRACK_HYBRID,

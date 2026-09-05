@@ -183,8 +183,9 @@ def test_broadphase_collision_update_fits_inner_budget() -> None:
     assert p95 <= 5.0
 
 
-def test_inner_tick_median_fits_200hz_budget() -> None:
+def test_inner_tick_median_fits_200hz_budget(request) -> None:
     import time
+    import uuid
 
     import yaml
 
@@ -193,16 +194,21 @@ def test_inner_tick_median_fits_200hz_budget() -> None:
 
     cfg_path = Path(__file__).resolve().parents[1] / "configs" / "joint_admittance_8dof.yaml"
     cfg = build_joint_ik_config(yaml.safe_load(cfg_path.read_text(encoding="utf-8")))
+    cfg.native_shm_prefix = f"collision_timing_{uuid.uuid4().hex}"
     inner = JointIkController(RobotKinematics(), cfg)
+    if inner._native is not None:
+        request.addfinalizer(inner._native.shutdown)
     q = np.array([0.40, 0.194, -0.503, -0.069, 1.979, -0.776, 0.547, -4.370])
     inner.reset(q)
     twist = np.array([0.0, 0.04, 0.0, 0.0, 0.0, 0.0])
     for _ in range(8):
-        inner.update(twist, q_meas=inner.q_cmd, vel_ff=twist)
+        inner.update(twist, q_meas=inner.q_cmd, vel_ff=twist,
+                     rail_exec_vel_m_s=float(inner.core.qdot_prev[0]))
     samples = []
     for _ in range(30):
         t0 = time.perf_counter()
-        inner.update(twist, q_meas=inner.q_cmd, vel_ff=twist)
+        inner.update(twist, q_meas=inner.q_cmd, vel_ff=twist,
+                     rail_exec_vel_m_s=float(inner.core.qdot_prev[0]))
         samples.append((time.perf_counter() - t0) * 1000.0)
     p50 = float(np.median(samples))
     p95 = float(np.percentile(samples, 95))

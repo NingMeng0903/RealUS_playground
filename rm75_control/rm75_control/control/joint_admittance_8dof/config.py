@@ -1070,7 +1070,7 @@ def build_joint_ik_config(raw: dict) -> JointIkConfig:
         inner,
         {
             "control_frame", "euler_order", "sync_tcp_from_robot",
-            "backend", "native_bin", "native_shm_prefix",
+            "backend", "native_bin", "native_shm_prefix", "execution_model_path",
             "v_scale", "a_max_arm", "a_max_arm_rad_s2", "a_max_rail_m_s2",
             "position_margin_deg", "position_margin_rail_mm",
             "resync_err_deg", "resync_err_rail_mm",
@@ -1234,6 +1234,7 @@ def build_joint_ik_config(raw: dict) -> JointIkConfig:
         ),
         saturation=_parse_saturation(inner.get("saturation")),
         backend=backend,
+        execution_model_path=(str(inner["execution_model_path"]) if inner.get("execution_model_path") else None),
         native_bin=(
             str(inner["native_bin"]) if inner.get("native_bin") is not None else None
         ),

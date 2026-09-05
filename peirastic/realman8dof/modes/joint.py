@@ -67,7 +67,16 @@ def build_movej_phase(
     label: str = "movej",
     secondary: str | None = None,
 ) -> Phase:
-    q0 = np.asarray(ctx.inner.q_cmd if q_start is None else q_start, dtype=float)
+    if q_start is not None:
+        q0 = np.asarray(q_start, dtype=float)
+    else:
+        # Native auto_commit=False can leave q_cmd at enable/mid while the
+        # arm is still at the last encoder sample.  Duration must use that
+        # sample or MOVEJ is planned as if it were already at the target.
+        meas = getattr(ctx.inner, "_last_q_meas", None)
+        q0 = np.asarray(
+            ctx.inner.q_cmd if meas is None else meas, dtype=float
+        )
     qt = np.asarray(q_target, dtype=float).reshape(-1)
     v_frac = speed_frac(v)
     T = _duration(ctx.kin, q0, qt, duration_s, v_scale=float(ctx.v_scale), v=v_frac)

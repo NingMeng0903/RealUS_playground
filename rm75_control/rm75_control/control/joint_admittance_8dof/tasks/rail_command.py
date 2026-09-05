@@ -122,6 +122,23 @@ def allocate_rail_shares(
     }
 
 
+def committed_rail_contributions(total_shaped: float, base_shaped: float,
+                                 final: float, brake: float) -> tuple[float, float, float]:
+    """Apply the final rail admission to both shaped contributions.
+
+    HQP reduces a slow reference toward its reachable brake. That same affine
+    authority acts on base and posture. In particular, reducing a pure task
+    command must not create a fictitious negative PI contribution.
+    """
+    delta = float(total_shaped) - float(brake)
+    if abs(delta) < 1e-12:
+        authority = 1.0 if abs(float(final) - float(brake)) < 1e-5 else 0.0
+    else:
+        authority = float(np.clip((float(final) - float(brake)) / delta, 0, 1))
+    post = authority * (float(total_shaped) - float(base_shaped))
+    return float(final) - post, post, authority
+
+
 @dataclass
 class RailMixTelemetry:
     u_task_raw: float = 0.0
@@ -142,6 +159,11 @@ class RailMixTelemetry:
     e_d: float = 0.0
     V_d_proxy: float = 0.0
     xi: float = 0.0
+    u_base_committed: float = float("nan")
+    commit_authority: float = float("nan")
+    u_base_shaped: float = float("nan")
+    u_post_committed: float = float("nan")
+    u_total_committed: float = float("nan")
 
 
 class DStarRef:
@@ -210,8 +232,8 @@ class RailCommandMixer:
 
     Unsaturated and unprojected: ``u_mid_applied == u_pi_raw``, so Kaw is
     strictly zero.  PI saturation / share projection / ordinary velocity
-    bounds still back-calculate.  ``wall_pi_frozen`` freezes ``ξ`` (no
-    integrate, no back-calc).  ``quiescent`` is telemetry only.
+    bounds still back-calculate. ``wall_pi_frozen`` disables error integration;
+    back-calculation still unwinds. ``quiescent`` is telemetry only.
     """
 
     def __init__(
@@ -233,6 +255,8 @@ class RailCommandMixer:
         self.d_star = DStarRef()
         self.last = RailMixTelemetry()
         self.wall_pi_frozen = False
+        self.pending_commit = False
+        self._commit_alpha = 1.0
 
     def reset(self, d_live: float | None = None) -> None:
         self.xi = 0.0
@@ -244,6 +268,8 @@ class RailCommandMixer:
             d_star_ref=float(self.d_star.ref) if self.d_star.ref is not None else 0.0
         )
         self.wall_pi_frozen = False
+        self.pending_commit = False
+        self._commit_alpha = 1.0
 
     def track_applied(
         self,
@@ -252,6 +278,7 @@ class RailCommandMixer:
         d_star_target: float,
         applied_rail_vel: float,
         dt: float,
+        hold_reference: bool = False,
     ) -> RailMixTelemetry:
         """Keep ``d*_ref`` on the live target while another path owns the rail.
 
@@ -259,10 +286,13 @@ class RailCommandMixer:
         not inherit a second state jump.  ``u_feasible`` records the
         velocity that was actually written.
         """
-        del dt
-        d_ref, d_dot = self.d_star.follow_target(
-            float(d_star_target), d_live=float(d_live)
-        )
+        if hold_reference:
+            d_ref, d_dot = self.d_star.step(
+                float(d_star_target), dt, rate_m_s=self.d_center_rate,
+                hold=True, d_live=float(d_live))
+        else:
+            d_ref, d_dot = self.d_star.follow_target(
+                float(d_star_target), d_live=float(d_live))
         e_d = float(d_live) - float(d_ref)
         prev = self.last
         tel = RailMixTelemetry(
@@ -282,6 +312,11 @@ class RailCommandMixer:
             u_escape_feasible=float(prev.u_escape_feasible),
             u_feasible=float(applied_rail_vel),
             u_base=float(applied_rail_vel),
+            u_base_shaped=float(applied_rail_vel),
+            u_base_committed=float(applied_rail_vel),
+            u_post_committed=0.0,
+            u_total_committed=float(applied_rail_vel),
+            commit_authority=0.0,
         )
         self.last = tel
         return tel
@@ -302,6 +337,7 @@ class RailCommandMixer:
         secondary_alpha: float = 1.0,
         posture_hold: bool = False,
         in_wall: bool = False,
+        defer_commit: bool = False,
     ) -> RailMixTelemetry:
         if float(leave_sign) * float(u_task_raw) > 1.0e-4:
             u_lo, u_hi = 0.0, 0.0
@@ -313,11 +349,12 @@ class RailCommandMixer:
             prev_dir=int(self.escape_dir),
         )
         guard_dir = int(self.escape_dir) if escape_explicit else 0
-        hold = bool(hold_d_star)
+        alpha = 0.0 if bool(posture_hold) else float(np.clip(secondary_alpha, 0.0, 1.0))
+        hold = bool(hold_d_star) or alpha <= 1e-6
         d_ref, d_dot = self.d_star.step(
             float(d_star_target),
             float(dt),
-            rate_m_s=self.d_center_rate,
+            rate_m_s=self.d_center_rate * alpha,
             hold=hold,
             d_live=float(d_live),
         )
@@ -348,7 +385,8 @@ class RailCommandMixer:
         del quiescent
         u_pi_raw = self.kp * e_d + self.xi
         u_mid_cmd = soft_saturate(u_pi_raw, self.u_mid_max)
-        u_post_raw = alpha * (u_mid_cmd - float(d_dot))
+        # d_dot already follows the same authority. Do not attenuate twice.
+        u_post_raw = alpha * u_mid_cmd - float(d_dot)
         tel.xi = float(self.xi)
         tel.u_pi_raw = float(u_pi_raw)
         tel.u_mid_cmd = float(u_mid_cmd)
@@ -364,16 +402,6 @@ class RailCommandMixer:
         )
         u_post_f = float(shares["u_post_feasible"])
         u_mid_applied = u_post_f + float(d_dot)
-        if (not self.wall_pi_frozen) and dt > 0.0:
-            if alpha < 1.0e-6:
-                self.xi = -self.kp * e_d
-            else:
-                self.xi += (
-                    self.ki * e_d + self.kaw * (u_mid_applied - u_pi_raw)
-                ) * float(dt)
-                self.xi = (1.0 - alpha) * (-self.kp * e_d) + alpha * self.xi
-            tel.xi = float(self.xi)
-
         tel.u_task_feasible = float(shares["u_task_feasible"])
         tel.u_escape_feasible = float(shares["u_escape_feasible"])
         tel.u_base = float(shares["u_base"])
@@ -381,6 +409,37 @@ class RailCommandMixer:
         tel.u_feasible = float(shares["u_feasible"])
         tel.u_mid_applied = float(u_mid_applied)
         self.last = tel
+        self.pending_commit = True
+        self._commit_alpha = alpha
+        if not defer_commit:
+            self.commit_final(tel.u_feasible, tel.u_base, float(dt))
+        return tel
+
+    def commit_final(self, total: float, base_shaped: float, dt: float, *, integrate: bool = True, total_shaped: float | None = None, brake: float = 0.0) -> RailMixTelemetry:
+        """Integrate once, using the same-chain base shadow and final output.
+
+        The residual is an attribution convention for the nonlinear shaper;
+        it is not a measurement of physical actuator execution.
+        """
+        tel = self.last
+        if not self.pending_commit:
+            return tel
+        self.pending_commit = False
+        tel.u_base_shaped = float(base_shaped)
+        tel.u_total_committed = float(total)
+        shaped = float(total) if total_shaped is None else float(total_shaped)
+        tel.u_base_committed, tel.u_post_committed, tel.commit_authority = committed_rail_contributions(
+            shaped, float(base_shaped), float(total), float(brake))
+        tel.u_mid_applied = tel.u_post_committed + tel.d_star_dot_cmd
+        alpha = self._commit_alpha
+        if integrate and dt > 0.0:
+            if alpha < 1e-6:
+                self.xi = -self.kp * tel.e_d
+            else:
+                drive = 0.0 if self.wall_pi_frozen else alpha * self.ki * tel.e_d
+                self.xi += dt * (drive + self.kaw *
+                                (tel.u_mid_applied - alpha * tel.u_pi_raw))
+        tel.xi = float(self.xi)
         return tel
 
 

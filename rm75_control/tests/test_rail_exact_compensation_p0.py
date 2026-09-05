@@ -177,7 +177,7 @@ def test_posture_hold_keeps_nonzero_task_when_interval_is_open() -> None:
     assert tel.u_post_feasible == pytest.approx(0.0, abs=1e-12)
 
 
-def test_slack_hold_latches_but_still_steps_planner() -> None:
+def test_slack_hold_freezes_planner_reference() -> None:
     ctrl = _controller()
     ctrl.set_rail_mode(RailMode.COUPLED)
     twist = np.array([0.0, 0.04, 0.0, 0.0, 0.0, 0.0])
@@ -189,7 +189,7 @@ def test_slack_hold_latches_but_still_steps_planner() -> None:
     ctrl.last_slack_norm = 0.20
     ctrl.update(twist, 0.005, q_meas=Q_SAFE, rail_exec_vel_m_s=0.0)
     assert ctrl._slack_hold_latched is True
-    assert ctrl.posture_retarget.homotopy_s != pytest.approx(seeded, abs=1e-12)
+    assert ctrl.posture_retarget.homotopy_s == pytest.approx(seeded, abs=1e-12)
     ctrl.last_slack_norm = 0.02
     ctrl.update(twist, 0.005, q_meas=Q_SAFE, rail_exec_vel_m_s=0.0)
     assert ctrl._slack_hold_latched is False

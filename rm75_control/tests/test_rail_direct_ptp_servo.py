@@ -263,7 +263,7 @@ def test_track_applied_does_not_rewrite_integrator() -> None:
 
 def test_publish_uses_explicit_tracked_position_mode() -> None:
     from rm75_control.control.joint_admittance_8dof.loop import (
-        _publish_rail_target_before_arm,
+        _reserve_rail_target,
     )
 
     seen: dict[str, object] = {}
@@ -280,7 +280,7 @@ def test_publish_uses_explicit_tracked_position_mode() -> None:
             seen["mode"] = mode
             return True
 
-    ok, reason = _publish_rail_target_before_arm(
+    ok, reason = _reserve_rail_target(
         _Bridge(),
         0.412,
         lambda _r: None,
@@ -384,7 +384,7 @@ def test_smooth_move_qdot0_matches_live_and_rests_at_end() -> None:
         prev_v = float(vi[0])
 
 
-def test_ptp_on_enter_reseeds_hold_end_q_and_qdot() -> None:
+def test_ptp_on_enter_keeps_encoder_seed_not_stale_q_cmd() -> None:
     from rm75_control.control.joint_admittance_8dof.api import attach_joint_move_rail
     from rm75_control.control.joint_admittance_8dof.reference import (
         JointSmoothMoveReference,
@@ -398,14 +398,15 @@ def test_ptp_on_enter_reseeds_hold_end_q_and_qdot() -> None:
     inner.last_v_r_ref = 0.0
     inner.core.qdot_prev = np.zeros(8)
     q_live = inner.q_cmd.copy()
-    q_stale = q_live.copy()
-    q_stale[0] += 0.012
-    q_stale[4] += np.deg2rad(3.2)
+    q_ghost = q_live.copy()
+    q_ghost[0] += 0.040
+    q_ghost[4] += np.deg2rad(8.0)
+    inner.q_cmd = q_ghost.copy()
+    inner._last_q_meas = q_live.copy()
     qt = q_live.copy()
     qt[0] -= 0.10
-    ref = JointSmoothMoveReference(inner.kin, q_stale, qt, 2.2)
-    q_before, _ = ref.sample_q(0.0)
-    assert np.linalg.norm(q_before - q_live) > 1.0e-3
+    ref = JointSmoothMoveReference(inner.kin, q_ghost, qt, 2.2)
+    ref.reseed_start(q_live, qdot0_rad_s=applied)
     phase = SimpleNamespace(on_enter=None, on_exit=None, outer=SimpleNamespace(reference=ref))
     attach_joint_move_rail(phase, inner, move_ref=ref)
     phase.on_enter()
@@ -431,6 +432,7 @@ def test_ptp_on_enter_freezes_rail_when_locked_hold() -> None:
     )
 
     inner = _python_inner()
+    inner._peirastic_dof = 7
     rail_ref = float(inner.q_cmd[0])
     inner.set_locked(LockedStyle.HOLD, q_ref_m=rail_ref)
     applied = np.zeros(8)
@@ -459,25 +461,26 @@ def test_build_movej_payload_id_freezes_rail_interpolator() -> None:
     from peirastic.realman8dof.modes.joint import build_movej_phase
     from rm75_control.control.joint_admittance_8dof.api import (
         CompileContext,
-        SecondaryPolicy,
+        set_controller_dof,
     )
 
     inner = _python_inner()
     rail0 = float(inner.q_cmd[0])
-    SecondaryPolicy(preset="payload_id").apply(inner)
+    set_controller_dof(inner, 7)
     ctx = CompileContext(
         kin=inner.kin,
         inner=inner,
         euler_order="xyz",
         control_frame="tool",
         v_scale=0.8,
+        dof=7,
     )
     qt = inner.q_cmd.copy()
-    qt[0] = rail0 + 0.08
+    # The session owns the 7-DOF structure; an arm-only MOVEJ keeps the live
+    # rail reference and no longer accepts a payload secondary override.
+    qt[0] = rail0
     qt[4] += np.deg2rad(4.0)
-    phase = build_movej_phase(
-        ctx, qt, v=0.25, secondary="payload_id", label="payload_id_WX+15"
-    )
+    phase = build_movej_phase(ctx, qt, v=0.25, label="payload_id_WX+15")
     phase.on_enter()
     ref = phase.outer.reference
     assert inner.is_locked_hold
@@ -515,10 +518,11 @@ def test_build_movej_default_unlocks_leftover_lock() -> None:
     assert float(ref.q_target[0]) == pytest.approx(qt[0], abs=1e-12)
 
 
-def test_ptp_on_enter_move_policy_unlocks_rail_for_8dof() -> None:
+def test_ptp_on_enter_move_policy_inherits_8dof_session() -> None:
     from rm75_control.control.joint_admittance_8dof.api import (
         SecondaryPolicy,
         attach_joint_move_rail,
+        set_controller_dof,
     )
     from rm75_control.control.joint_admittance_8dof.reference import (
         JointSmoothMoveReference,
@@ -526,7 +530,9 @@ def test_ptp_on_enter_move_policy_unlocks_rail_for_8dof() -> None:
 
     inner = _python_inner()
     rail0 = float(inner.q_cmd[0])
-    inner.set_locked(LockedStyle.HOLD, q_ref_m=rail0)
+    # A task policy cannot change the session structure.  Explicitly select
+    # 8-DOF, then the normal MOVEJ policy may use the rail target.
+    set_controller_dof(inner, 8)
     q_live = inner.q_cmd.copy()
     qt = q_live.copy()
     qt[0] = rail0 + 0.08
@@ -545,7 +551,7 @@ def test_ptp_on_enter_move_policy_unlocks_rail_for_8dof() -> None:
     assert float(qe[0]) == pytest.approx(qt[0], abs=1e-9)
 
 
-def test_ptp_on_enter_reseeds_full_applied_qdot() -> None:
+def test_ptp_on_enter_keeps_runner_applied_qdot() -> None:
     from rm75_control.control.joint_admittance_8dof.api import attach_joint_move_rail
     from rm75_control.control.joint_admittance_8dof.reference import (
         JointSmoothMoveReference,
@@ -562,6 +568,7 @@ def test_ptp_on_enter_reseeds_full_applied_qdot() -> None:
     qt[0] -= 0.10
     qt[4] += np.deg2rad(4.0)
     ref = JointSmoothMoveReference(inner.kin, q_live, qt, 2.2)
+    ref.reseed_start(q_live, qdot0_rad_s=applied)
     phase = SimpleNamespace(on_enter=None, on_exit=None, outer=SimpleNamespace(reference=ref))
     attach_joint_move_rail(phase, inner, move_ref=ref)
     phase.on_enter()
@@ -647,3 +654,108 @@ def test_native_observer_updates_during_direct_ptp() -> None:
     finally:
         if inner._native is not None:
             inner._native.shutdown()
+
+
+def test_build_movej_uses_last_meas_not_stale_q_cmd() -> None:
+    from peirastic.realman8dof.modes.joint import build_movej_phase
+    from rm75_control.control.joint_admittance_8dof.api import CompileContext
+
+    inner = _python_inner()
+    q_meas = inner.q_cmd.copy()
+    q_ghost = q_meas.copy()
+    q_ghost[0] = 0.400
+    q_ghost[2] += np.deg2rad(20.0)
+    q_ghost[4] += np.deg2rad(15.0)
+    inner.q_cmd = q_ghost
+    inner._last_q_meas = q_meas.copy()
+    qt = q_ghost.copy()
+    ctx = CompileContext(
+        kin=inner.kin,
+        inner=inner,
+        euler_order="xyz",
+        control_frame="tool",
+        v_scale=0.5,
+    )
+    phase = build_movej_phase(ctx, qt, v=0.60, label="movej")
+    ref = phase.outer.reference
+    np.testing.assert_allclose(ref.q_start, q_meas, atol=1e-12)
+    assert float(ref.duration_s) > 1.5
+
+
+def test_encoder_reseed_stretches_short_movej_duration() -> None:
+    from rm75_control.control.joint_admittance_8dof.loop import (
+        _stretch_joint_plan_to_live,
+    )
+    from rm75_control.control.joint_admittance_8dof.reference import (
+        JointSmoothMoveReference,
+    )
+
+    inner = _python_inner()
+    q_live = inner.q_cmd.copy()
+    qt = q_live.copy()
+    qt[0] -= 0.35
+    qt[4] += np.deg2rad(60.0)
+    ref = JointSmoothMoveReference(inner.kin, qt.copy(), qt, 0.86)
+    phase = SimpleNamespace(
+        duration_s=None,
+        arrival_plan_duration_s=0.86,
+        max_duration_s=2.5 * 0.86 + 15.0,
+    )
+    _stretch_joint_plan_to_live(phase, ref, inner, q_live)
+    assert float(ref.duration_s) > 1.2
+    assert float(phase.arrival_plan_duration_s) == pytest.approx(ref.duration_s)
+    assert float(phase.max_duration_s) == pytest.approx(2.5 * ref.duration_s + 15.0)
+
+
+def test_direct_ptp_gate_ignores_leftover_qp1_not_run() -> None:
+    from rm75_control.control.joint_admittance_8dof.loop import (
+        JointIkStep,
+        _guard_qpik_step_before_send,
+    )
+
+    step = JointIkStep(
+        q_send=np.zeros(8),
+        qdot=np.zeros(8),
+        twist_base=np.zeros(6),
+        sigma_min=0.1,
+        manip=0.1,
+        slack_norm=0.0,
+        n_cbf_active=0,
+        follow_err_rad=0.0,
+        controller_mode="direct_joint_ptp",
+        qp1_status="not_run",
+        fallback_level="none",
+        fallback_reason="",
+        solver_fault_latched=False,
+        task_paused=False,
+    )
+    events: list[str] = []
+    sendable, reason = _guard_qpik_step_before_send(step, events.append)
+    assert sendable
+    assert reason == ""
+    assert events == []
+
+
+def test_ptp_on_enter_reseeds_when_q_cmd_matches_meas() -> None:
+    from rm75_control.control.joint_admittance_8dof.api import attach_joint_move_rail
+    from rm75_control.control.joint_admittance_8dof.reference import (
+        JointSmoothMoveReference,
+    )
+
+    inner = _python_inner()
+    applied = np.zeros(8)
+    applied[0] = -0.008
+    inner.last_applied_qdot = applied.copy()
+    q_live = inner.q_cmd.copy()
+    inner._last_q_meas = q_live.copy()
+    q_stale = q_live.copy()
+    q_stale[0] += 0.012
+    qt = q_live.copy()
+    qt[0] -= 0.10
+    ref = JointSmoothMoveReference(inner.kin, q_stale, qt, 2.2)
+    phase = SimpleNamespace(on_enter=None, on_exit=None, outer=SimpleNamespace(reference=ref))
+    attach_joint_move_rail(phase, inner, move_ref=ref)
+    phase.on_enter()
+    q, qdot = ref.sample_q(0.0)
+    np.testing.assert_allclose(q, q_live, atol=1e-12)
+    assert qdot[0] == pytest.approx(-0.008, abs=1e-12)
