@@ -1,9 +1,14 @@
 #!/usr/bin/env python3
 """
-Live 6D force compensation monitor — drag arm manually, watch raw vs F_ext.
+Live 6D force compensation monitor — raw vs F_ext after φ.
+
+Window A running (recommended while scanning):
 
   source env.sh
   python apps/force_compensation/force_monitor.py
+
+That reads rm75_state (no second robot TCP). Without A, it opens RobotSession
+and you drag the arm in free space.
 
 Config: configs/force_compensation/force_id.yaml, data/force_compensation/logs/force_id_phi.json
 """
@@ -187,6 +192,12 @@ def main() -> int:
     parser.add_argument("--phi", type=Path, default=None)
     parser.add_argument("--phi-source", type=str, default=None)
     parser.add_argument("--10p-only", dest="only_10p", action="store_true")
+    parser.add_argument(
+        "--source",
+        choices=("auto", "shm", "robot"),
+        default="auto",
+        help="auto uses Window A SHM if live, else a second robot TCP",
+    )
     args = parser.parse_args()
 
     id_cfg = load_config(args.id_config)
@@ -209,59 +220,185 @@ def main() -> int:
     buf = SampleBuffer(max_len=max_buf)
     sign = np.array(frame.force_sign, dtype=float)
 
+    source = _resolve_source(str(args.source))
     print(f"φ ({src}) from {phi_path}  m={phi[0]:.3f} kg")
-    print(f"poll={mc.poll_ms}ms  window={mc.window_s}s  buffer≈{mc.buffer_s}s")
-    print("Drag arm in FREE SPACE. Close plot or Ctrl+C to stop.")
+    print(f"source={source}  poll={mc.poll_ms}ms  window={mc.window_s}s  buffer≈{mc.buffer_s}s")
+    if source == "shm":
+        print("Reading Window A rm75_state. Close plot or Ctrl+C to stop.")
+    else:
+        print("Drag arm in FREE SPACE (no Window A). Close plot or Ctrl+C to stop.")
 
-    from rm75_control import RobotSession
-
-    monitor = CompMonitor(window_s=mc.window_s, refresh_hz=mc.refresh_hz)
+    try:
+        monitor = CompMonitor(window_s=mc.window_s, refresh_hz=mc.refresh_hz)
+    except ModuleNotFoundError as exc:
+        if "matplotlib" in str(exc):
+            print(
+                "[ERR] matplotlib missing in this python. Install into rm75:\n"
+                "      PYTHONNOUSERSITE=1 python -m pip install matplotlib",
+                flush=True,
+            )
+            return 1
+        raise
     dt_s = mc.poll_ms / 1000.0
 
     try:
-        with RobotSession(config=CONFIG_ROBOT) as bot:
-            t0 = time.monotonic()
-            next_poll = t0
-            while True:
-                import matplotlib.pyplot as plt
-                if not plt.fignum_exists(monitor._fig.number):
-                    print("Plot closed — exiting.")
-                    break
-                now = time.monotonic()
-                if now < next_poll:
-                    time.sleep(min(0.02, next_poll - now))
-                    continue
-                next_poll += dt_s
-                t_s = now - t0
-
-                ret_s, st = bot.robot.rm_get_current_arm_state()
-                ret_f, fd = bot.robot.rm_get_force_data()
-                if ret_s != 0 or ret_f != 0:
-                    monitor.set_status(f"API err s={ret_s} f={ret_f}")
-                    monitor.refresh(now)
-                    continue
-
-                pose = np.asarray(st["pose"][:6], dtype=float)
-                force = np.asarray(fd["force_data"][:6], dtype=float)
-                buf.append(t_s, pose, force)
-
-                comp = compensate_latest(
-                    buf, phi, frame, fc,
-                    use_inertia=use_inertia, min_samples=mc.min_samples,
-                )
-                if comp is None:
-                    monitor.set_status(f"buffer {len(buf.t)}/{mc.min_samples}")
-                    monitor.append(t_s, force * sign, None)
-                else:
-                    raw_show, ext_show = comp
-                    monitor.set_status(f"OK n={len(buf.t)}")
-                    monitor.append(t_s, raw_show, ext_show)
-                monitor.refresh(now)
+        if source == "shm":
+            _run_from_shm(
+                monitor, buf, phi, frame, fc, sign,
+                use_inertia=use_inertia, min_samples=mc.min_samples, dt_s=dt_s,
+            )
+        else:
+            _run_from_robot(
+                monitor, buf, phi, frame, fc, sign,
+                use_inertia=use_inertia, min_samples=mc.min_samples, dt_s=dt_s,
+            )
     except KeyboardInterrupt:
         print("\nStopped.")
     finally:
         monitor.close()
     return 0
+
+
+def _resolve_source(wanted: str) -> str:
+    if wanted == "robot":
+        return "robot"
+    if wanted == "shm":
+        return "shm"
+    from rm75_control.control.admittance_common.state_relay import relay_shm_has_publisher
+
+    return "shm" if relay_shm_has_publisher() else "robot"
+
+
+def _push_sample(
+    monitor: CompMonitor,
+    buf: SampleBuffer,
+    t_s: float,
+    pose: np.ndarray,
+    force: np.ndarray,
+    phi: np.ndarray,
+    frame,
+    fc: float,
+    sign: np.ndarray,
+    *,
+    use_inertia: bool,
+    min_samples: int,
+    status: str,
+) -> None:
+    buf.append(t_s, pose, force)
+    comp = compensate_latest(
+        buf, phi, frame, fc, use_inertia=use_inertia, min_samples=min_samples,
+    )
+    if comp is None:
+        monitor.set_status(f"{status}  buffer {len(buf.t)}/{min_samples}")
+        monitor.append(t_s, force * sign, None)
+    else:
+        raw_show, ext_show = comp
+        monitor.set_status(f"{status}  n={len(buf.t)}")
+        monitor.append(t_s, raw_show, ext_show)
+
+
+def _poll_wait(monitor: CompMonitor, next_poll: float, dt_s: float) -> float | None:
+    import matplotlib.pyplot as plt
+
+    if not plt.fignum_exists(monitor._fig.number):
+        print("Plot closed — exiting.")
+        return None
+    now = time.monotonic()
+    if now < next_poll:
+        time.sleep(min(0.02, next_poll - now))
+        return next_poll
+    return next_poll + dt_s
+
+
+def _run_from_shm(
+    monitor: CompMonitor,
+    buf: SampleBuffer,
+    phi: np.ndarray,
+    frame,
+    fc: float,
+    sign: np.ndarray,
+    *,
+    use_inertia: bool,
+    min_samples: int,
+    dt_s: float,
+) -> None:
+    from rm75_control.control.admittance_common.state_relay import RelayStateBus
+
+    bus = RelayStateBus()
+    if not bus.ensure_attached():
+        raise SystemExit("no rm75_state — start Window A, or use --source robot")
+    t0 = time.monotonic()
+    next_poll = t0
+    last_seq = -1
+    try:
+        while True:
+            nxt = _poll_wait(monitor, next_poll, dt_s)
+            if nxt is None:
+                return
+            if nxt == next_poll:
+                continue
+            next_poll = nxt
+            now = time.monotonic()
+            if not bus.ensure_attached():
+                monitor.set_status("waiting rm75_state")
+                monitor.refresh(now)
+                continue
+            snap = bus.read()
+            if not snap.ok or snap.pose is None:
+                monitor.set_status("shm stale")
+                monitor.refresh(now)
+                continue
+            if int(snap.seq) == last_seq:
+                monitor.refresh(now)
+                continue
+            last_seq = int(snap.seq)
+            _push_sample(
+                monitor, buf, now - t0, snap.pose, snap.force_raw, phi, frame, fc, sign,
+                use_inertia=use_inertia, min_samples=min_samples, status="shm",
+            )
+            monitor.refresh(now)
+    finally:
+        bus.stop()
+
+
+def _run_from_robot(
+    monitor: CompMonitor,
+    buf: SampleBuffer,
+    phi: np.ndarray,
+    frame,
+    fc: float,
+    sign: np.ndarray,
+    *,
+    use_inertia: bool,
+    min_samples: int,
+    dt_s: float,
+) -> None:
+    from rm75_control import RobotSession
+
+    with RobotSession(config=CONFIG_ROBOT) as bot:
+        t0 = time.monotonic()
+        next_poll = t0
+        while True:
+            nxt = _poll_wait(monitor, next_poll, dt_s)
+            if nxt is None:
+                return
+            if nxt == next_poll:
+                continue
+            next_poll = nxt
+            now = time.monotonic()
+            ret_s, st = bot.robot.rm_get_current_arm_state()
+            ret_f, fd = bot.robot.rm_get_force_data()
+            if ret_s != 0 or ret_f != 0:
+                monitor.set_status(f"API err s={ret_s} f={ret_f}")
+                monitor.refresh(now)
+                continue
+            pose = np.asarray(st["pose"][:6], dtype=float)
+            force = np.asarray(fd["force_data"][:6], dtype=float)
+            _push_sample(
+                monitor, buf, now - t0, pose, force, phi, frame, fc, sign,
+                use_inertia=use_inertia, min_samples=min_samples, status="robot",
+            )
+            monitor.refresh(now)
 
 
 if __name__ == "__main__":

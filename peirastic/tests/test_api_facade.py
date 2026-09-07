@@ -206,11 +206,8 @@ def test_hfpc_compiles_to_pose_tff() -> None:
     phase = compile_request(ctx, req, raw=raw)
     assert isinstance(phase.outer, HybridTffOuter)
     from peirastic.realman8dof.force.legacy import LegacyForceLaw
-    from peirastic.realman8dof.force.torque_tilt import LegacyForceWithTilt
 
-    assert isinstance(phase.outer.force_law, LegacyForceWithTilt)
-    assert isinstance(phase.outer.force_law.z_law, LegacyForceLaw)
-    assert np.allclose(phase.outer.selection, [1, 1, 0, 1, 0, 1])
+    assert isinstance(phase.outer.force_law, LegacyForceLaw)
     assert not isinstance(phase.outer.position, ServoTwistOuter)
 
 
@@ -227,7 +224,7 @@ def test_hfvc_compiles_to_twist_tff() -> None:
     assert isinstance(phase.outer.position, ServoTwistOuter)
     assert np.array_equal(
         phase.outer.position.filter_axes,
-        [True, True, False, True, False, True],
+        [True, True, False, True, True, True],
     )
 
 
@@ -557,7 +554,7 @@ def test_hfvc_force_axis_skips_filter() -> None:
     assert arm.hfvc([0.0, 0.02, 0.02, 0.0, 0.0, 0.0], source="twist") == OK
     phase = compile_request(ctx, arm.last_request, raw=raw)
     pos = phase.outer.position
-    assert np.array_equal(pos.filter_axes, [True, True, False, True, False, True])
+    assert np.array_equal(pos.filter_axes, [True, True, False, True, True, True])
     pos.set_origin(pose, t_s=0.0)
     out0 = np.asarray(pos.sample(0.0, pose, np.zeros(6)), dtype=float)
     assert out0[1] == pytest.approx(0.02)

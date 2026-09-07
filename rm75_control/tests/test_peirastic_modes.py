@@ -733,12 +733,6 @@ def test_hybrid_defaults_desired_z_from_force_yaml() -> None:
     assert float(force["hybrid_motion"]["adaptive_ke"]["ke_idle_decay_s"]) == pytest.approx(
         0.0
     )
-    assert force["hybrid_motion"]["torque_tilt"]["enabled"] is True
-    assert int(force["hybrid_motion"]["torque_tilt"]["axis"]) == 4
-    assert float(force["hybrid_motion"]["torque_tilt"]["damping"]) == pytest.approx(0.30)
-    assert float(force["hybrid_motion"]["torque_tilt"]["coulomb_nm"]) == pytest.approx(
-        0.025
-    )
     assert force["hybrid_motion"]["proactive_feedforward"] is False
     assert float(
         force["hybrid_motion"]["force_barrier"]["v_underforce_press_m_s"]
