@@ -157,11 +157,20 @@ def test_first_fault_snapshot_is_first_writer_wins() -> None:
     assert "preview" in note["dropped"]
 
 
-def test_build_id_hashes_protocol_and_inner() -> None:
+def test_build_id_hashes_protocol_and_inner(tmp_path) -> None:
+    import subprocess
+    import sys
+    from pathlib import Path
+
     man = tree_manifest()
     assert any("protocol.hpp" in k for k in man)
     assert any("inner.cpp" in k for k in man)
+    assert any("notification.hpp" in k for k in man)
     assert len(combined_hash(man)) == 64
+    generator = Path(__file__).resolve().parents[1] / "native" / "wbc_rt" / "gen_build_id.py"
+    header = tmp_path / "wbc_build_id.hpp"
+    subprocess.run([sys.executable, str(generator), str(header)], check=True)
+    assert combined_hash(man) in header.read_text()
 
 
 def test_session_8_rejects_vague_q7_and_7_pins_rail() -> None:

@@ -223,6 +223,22 @@ def tcp_pose_from_link7_pose(
     return out
 
 
+def link7_pose_from_tcp_pose(
+    pose_T: np.ndarray, *, R_LT: np.ndarray, r_LT_L: np.ndarray, euler_order: str = "xyz"
+) -> np.ndarray:
+    """Undo the live TCP transform before projecting gravity into link_7.
+
+    Both SDK and rm75_state publish the active TCP pose, not the flange pose.
+    Using its orientation as R_BL gives a spurious gravity residual even at rest.
+    """
+    pose = _as6(pose_T)
+    R_BL = Rsc.from_euler(euler_order, pose[3:]).as_matrix() @ _as33(R_LT).T
+    return np.concatenate([
+        pose[:3] - R_BL @ _as3(r_LT_L),
+        Rsc.from_matrix(R_BL).as_euler(euler_order),
+    ])
+
+
 def gravity_in_link7(R_BL: np.ndarray, gravity_base: np.ndarray) -> np.ndarray:
     return _as33(R_BL).T @ _as3(gravity_base)
 

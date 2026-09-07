@@ -16,17 +16,19 @@ Config: configs/force_compensation/force_id.yaml, data/force_compensation/logs/f
 from __future__ import annotations
 
 import argparse
-import json
 import time
 from collections import deque
-from dataclasses import dataclass, field
 from pathlib import Path
 from threading import Lock
 
 import numpy as np
-import yaml
+from scipy.spatial.transform import Rotation as Rsc
 
-from rm75_control.force.compensation import regressor as fid
+from rm75_control.control.admittance_common.observer import CompensatedForceObserver, ForceObserverConfig
+from rm75_control.force.compensation.tool_pose import read_active_tool_offset, read_tool_offset_cache
+from rm75_control.force.compensation.v2.frames import (
+    link7_pose_from_tcp_pose, wrench_link7_to_sensor, wrench_link7_to_tcp, wrench_tcp_to_link7,
+)
 from rm75_control.force.compensation.id_config import load_config
 from rm75_control.force.compensation.paths import CONFIG_ID, CONFIG_ROBOT
 
@@ -35,55 +37,39 @@ FORCE_IDX = (0, 1, 2)
 MOM_IDX = (3, 4, 5)
 
 
-def load_phi(path: Path, source: str) -> tuple[np.ndarray, str]:
-    data = json.loads(path.read_text())
-    if source not in data:
-        raise SystemExit(f"Key '{source}' not in {path}. Keys: {list(data.keys())}")
-    phi = np.array([data[source][k] for k in fid.PHI_NAMES])
-    return phi, source
+class MonitorEstimator:
+    """One gravity-only observer, with an explicit pose and display frame."""
 
+    def __init__(self, observer, offset: np.ndarray, display_frame: str = "tcp") -> None:
+        self.observer = observer
+        self.offset = np.asarray(offset, dtype=float).reshape(6)
+        self.R_LT = Rsc.from_euler(observer.frame.euler_order, self.offset[3:]).as_matrix()
+        self.r_LT = self.offset[:3]
+        self.display_frame = display_frame
 
-@dataclass
-class SampleBuffer:
-    max_len: int
-    t: deque = field(default_factory=deque)
-    pose: deque = field(default_factory=deque)
-    force: deque = field(default_factory=deque)
+    def from_link7(self, wrench: np.ndarray) -> np.ndarray:
+        if self.display_frame == "link7":
+            return np.asarray(wrench, dtype=float).copy()
+        if self.display_frame == "sensor":
+            return wrench_link7_to_sensor(wrench, self.observer.contract)
+        return wrench_link7_to_tcp(wrench, R_LT=self.R_LT, r_LT_L=self.r_LT)
 
-    def __post_init__(self) -> None:
-        self.t = deque(maxlen=self.max_len)
-        self.pose = deque(maxlen=self.max_len)
-        self.force = deque(maxlen=self.max_len)
+    def from_tcp(self, wrench: np.ndarray) -> np.ndarray:
+        if self.display_frame == "tcp":
+            return np.asarray(wrench, dtype=float).copy()
+        return self.from_link7(wrench_tcp_to_link7(wrench, R_LT=self.R_LT, r_LT_L=self.r_LT))
 
-    def append(self, t_s: float, pose6: np.ndarray, force6: np.ndarray) -> None:
-        self.t.append(t_s)
-        self.pose.append(np.asarray(pose6, dtype=float))
-        self.force.append(np.asarray(force6, dtype=float))
-
-    def arrays(self) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-        return np.asarray(self.t), np.asarray(self.pose), np.asarray(self.force)
-
-
-def compensate_latest(
-    buf: SampleBuffer,
-    phi: np.ndarray,
-    cfg: fid.FrameConfig,
-    fc: float,
-    *,
-    use_inertia: bool,
-    min_samples: int,
-) -> tuple[np.ndarray, np.ndarray] | None:
-    if len(buf.t) < min_samples:
-        return None
-    t, pose, force = buf.arrays()
-    W, Y = fid.build_dataset(pose, force, t, cfg, fc=fc, use_inertia=use_inertia)
-    k = len(t) - 1
-    sl = slice(6 * k, 6 * k + 6)
-    return Y[sl].copy(), (Y[sl] - W[sl] @ phi).reshape(6)
+    def sample(self, t_s: float, pose_tcp: np.ndarray, force_raw: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        pose_link7 = link7_pose_from_tcp_pose(
+            pose_tcp, R_LT=self.R_LT, r_LT_L=self.r_LT,
+            euler_order=self.observer.frame.euler_order,
+        )
+        signed, ext = self.observer.update(t_s, pose_link7, force_raw)
+        return self.from_link7(signed), self.from_link7(ext)
 
 
 class CompMonitor:
-    def __init__(self, *, window_s: float, refresh_hz: float = 12.0) -> None:
+    def __init__(self, *, window_s: float, refresh_hz: float = 12.0, display_frame: str = "tcp") -> None:
         import matplotlib.pyplot as plt
 
         self.window_s = window_s
@@ -98,7 +84,7 @@ class CompMonitor:
 
         plt.ion()
         self._fig, axes = plt.subplots(2, 3, figsize=(12, 6), sharex=True)
-        self._fig.suptitle("6D force: raw (signed, filtered) vs compensated F_ext")
+        self._fig.suptitle(f"6D wrench at {display_frame} origin, in {display_frame} axes: raw vs compensated")
         self._axes = axes.ravel()
         self._line_raw: list = []
         self._line_ext: list = []
@@ -158,7 +144,7 @@ class CompMonitor:
             finite = vals[np.isfinite(vals)]
             if len(finite):
                 y0, y1 = float(np.min(finite)), float(np.max(finite))
-                pad = max(0.5, 0.15 * (y1 - y0 + 1e-6))
+                pad = max(0.5 if i < 3 else 0.005, 0.15 * (y1 - y0 + 1e-6))
                 self._axes[i].set_ylim(y0 - pad, y1 + pad)
             self._axes[i].set_xlim(t_start, max(t_end, t_start + 1.0))
 
@@ -187,71 +173,36 @@ class CompMonitor:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Live 6D compensated force plot")
+    parser = argparse.ArgumentParser(description="Live 6D wrench; default uses controller TCP compensation")
     parser.add_argument("--id-config", type=Path, default=CONFIG_ID)
-    parser.add_argument("--phi", type=Path, default=None)
-    parser.add_argument("--phi-source", type=str, default=None)
-    parser.add_argument("--10p-only", dest="only_10p", action="store_true")
-    parser.add_argument(
-        "--source",
-        choices=("auto", "shm", "robot"),
-        default="auto",
-        help="auto uses Window A SHM if live, else a second robot TCP",
-    )
+    parser.add_argument("--phi", type=Path, default=None, help="alternate model; implies --recompute")
+    parser.add_argument("--phi-source", type=str, default=None, help="alternate parameter block; implies --recompute")
+    parser.add_argument("--10p-only", dest="only_10p", action="store_true", help="compatibility flag; monitor replay is gravity-only")
+    parser.add_argument("--source", choices=("auto", "shm", "robot"), default="auto")
+    parser.add_argument("--frame", choices=("tcp", "link7", "sensor"), default="tcp", help="axes AND moment origin for all six plotted channels")
+    parser.add_argument("--recompute", action="store_true", help="SHM: show independent gravity-only replay instead of controller F_ext")
     args = parser.parse_args()
-
     id_cfg = load_config(args.id_config)
-    mc = id_cfg.monitor
-    fc_cfg = id_cfg.fit
-    phi_path = args.phi or fc_cfg.phi_output
-    phi_src = args.phi_source or mc.phi_source
-
-    phi, src = load_phi(phi_path, phi_src)
-    if args.only_10p:
-        phi = phi.copy()
-        phi[4:10] = 0.0
-        src = f"{src} (I=0)"
-
-    frame = fid.FrameConfig.from_yaml(fc_cfg.force_sensor)
-    fc = float(yaml.safe_load(fc_cfg.force_sensor.read_text()).get("filtfilt_cutoff_hz", 2.5))
-    use_inertia = mc.use_inertia and float(np.max(np.abs(phi[4:10]))) > 1e-9
-
-    max_buf = max(mc.min_samples + 10, int(mc.buffer_s * 1000 / mc.poll_ms) + 5)
-    buf = SampleBuffer(max_len=max_buf)
-    sign = np.array(frame.force_sign, dtype=float)
-
-    source = _resolve_source(str(args.source))
-    print(f"φ ({src}) from {phi_path}  m={phi[0]:.3f} kg")
-    print(f"source={source}  poll={mc.poll_ms}ms  window={mc.window_s}s  buffer≈{mc.buffer_s}s")
-    if source == "shm":
-        print("Reading Window A rm75_state. Close plot or Ctrl+C to stop.")
-    else:
-        print("Drag arm in FREE SPACE (no Window A). Close plot or Ctrl+C to stop.")
-
-    try:
-        monitor = CompMonitor(window_s=mc.window_s, refresh_hz=mc.refresh_hz)
-    except ModuleNotFoundError as exc:
-        if "matplotlib" in str(exc):
-            print(
-                "[ERR] matplotlib missing in this python. Install into rm75:\n"
-                "      PYTHONNOUSERSITE=1 python -m pip install matplotlib",
-                flush=True,
-            )
-            return 1
-        raise
-    dt_s = mc.poll_ms / 1000.0
-
+    mc, fc_cfg = id_cfg.monitor, id_cfg.fit
+    observer = CompensatedForceObserver(ForceObserverConfig(
+        phi_path=args.phi or fc_cfg.phi_output,
+        phi_source=args.phi_source or mc.phi_source,
+        force_sensor=fc_cfg.force_sensor,
+        poll_hz=1000.0 / mc.poll_ms,
+        use_dynamic_kinematics=False, use_rotational_inertia=False,
+        dynamic_kinematics_mode="off", min_samples=1,
+    ))
+    source = _resolve_source(args.source)
+    print(f"phi={observer.model_path} source={observer.cfg.phi_source} rev={observer.model_revision} m={observer.phi[0]:.4f}kg parameters=link_7")
+    print(f"source={source} display axes+origin={args.frame}; independent replay=gravity+bias only")
+    print("No automatic zeroing. Raw and compensated curves use the same axes and moment origin.")
+    monitor = CompMonitor(window_s=mc.window_s, refresh_hz=mc.refresh_hz, display_frame=args.frame)
     try:
         if source == "shm":
-            _run_from_shm(
-                monitor, buf, phi, frame, fc, sign,
-                use_inertia=use_inertia, min_samples=mc.min_samples, dt_s=dt_s,
-            )
+            replay_requested = args.recompute or args.phi is not None or args.phi_source is not None or args.only_10p
+            _run_from_shm(monitor, observer, display_frame=args.frame, recompute=replay_requested, dt_s=mc.poll_ms / 1000.0)
         else:
-            _run_from_robot(
-                monitor, buf, phi, frame, fc, sign,
-                use_inertia=use_inertia, min_samples=mc.min_samples, dt_s=dt_s,
-            )
+            _run_from_robot(monitor, observer, display_frame=args.frame, dt_s=mc.poll_ms / 1000.0)
     except KeyboardInterrupt:
         print("\nStopped.")
     finally:
@@ -260,76 +211,38 @@ def main() -> int:
 
 
 def _resolve_source(wanted: str) -> str:
-    if wanted == "robot":
-        return "robot"
-    if wanted == "shm":
-        return "shm"
+    if wanted != "auto":
+        return wanted
     from rm75_control.control.admittance_common.state_relay import relay_shm_has_publisher
-
     return "shm" if relay_shm_has_publisher() else "robot"
-
-
-def _push_sample(
-    monitor: CompMonitor,
-    buf: SampleBuffer,
-    t_s: float,
-    pose: np.ndarray,
-    force: np.ndarray,
-    phi: np.ndarray,
-    frame,
-    fc: float,
-    sign: np.ndarray,
-    *,
-    use_inertia: bool,
-    min_samples: int,
-    status: str,
-) -> None:
-    buf.append(t_s, pose, force)
-    comp = compensate_latest(
-        buf, phi, frame, fc, use_inertia=use_inertia, min_samples=min_samples,
-    )
-    if comp is None:
-        monitor.set_status(f"{status}  buffer {len(buf.t)}/{min_samples}")
-        monitor.append(t_s, force * sign, None)
-    else:
-        raw_show, ext_show = comp
-        monitor.set_status(f"{status}  n={len(buf.t)}")
-        monitor.append(t_s, raw_show, ext_show)
 
 
 def _poll_wait(monitor: CompMonitor, next_poll: float, dt_s: float) -> float | None:
     import matplotlib.pyplot as plt
-
     if not plt.fignum_exists(monitor._fig.number):
-        print("Plot closed — exiting.")
         return None
     now = time.monotonic()
     if now < next_poll:
         time.sleep(min(0.02, next_poll - now))
         return next_poll
-    return next_poll + dt_s
+    return max(next_poll + dt_s, now)
 
 
-def _run_from_shm(
-    monitor: CompMonitor,
-    buf: SampleBuffer,
-    phi: np.ndarray,
-    frame,
-    fc: float,
-    sign: np.ndarray,
-    *,
-    use_inertia: bool,
-    min_samples: int,
-    dt_s: float,
-) -> None:
-    from rm75_control.control.admittance_common.state_relay import RelayStateBus
-
-    bus = RelayStateBus()
-    if not bus.ensure_attached():
+def _run_from_shm(monitor, observer, *, display_frame: str, recompute: bool, dt_s: float) -> None:
+    from rm75_control.control.admittance_common.state_relay import ForceExtBus, RelayStateBus
+    cached = read_tool_offset_cache()
+    if cached is None:
+        raise SystemExit("No live tool transform cache; start Window A first. Cannot interpret TCP pose as link_7.")
+    tool_name, offset = cached
+    est = MonitorEstimator(observer, offset, display_frame)
+    print(f"tool={tool_name} tcp_offset={offset.tolist()}")
+    state, ext_bus = RelayStateBus(), ForceExtBus()
+    if not state.ensure_attached():
         raise SystemExit("no rm75_state — start Window A, or use --source robot")
-    t0 = time.monotonic()
-    next_poll = t0
-    last_seq = -1
+    t0 = next_poll = time.monotonic()
+    last_sample_t = None
+    ctrl_seq, ctrl_seen_t = -1, float("-inf")
+    next_model_check = t0
     try:
         while True:
             nxt = _poll_wait(monitor, next_poll, dt_s)
@@ -339,45 +252,55 @@ def _run_from_shm(
                 continue
             next_poll = nxt
             now = time.monotonic()
-            if not bus.ensure_attached():
-                monitor.set_status("waiting rm75_state")
+            snap = state.read()
+            if not snap.ok or snap.pose is None or float(snap.t_s) == last_sample_t:
+                monitor.set_status("state stale / waiting fresh sensor sample")
                 monitor.refresh(now)
                 continue
-            snap = bus.read()
-            if not snap.ok or snap.pose is None:
-                monitor.set_status("shm stale")
-                monitor.refresh(now)
-                continue
-            if int(snap.seq) == last_seq:
-                monitor.refresh(now)
-                continue
-            last_seq = int(snap.seq)
-            _push_sample(
-                monitor, buf, now - t0, snap.pose, snap.force_raw, phi, frame, fc, sign,
-                use_inertia=use_inertia, min_samples=min_samples, status="shm",
-            )
+            last_sample_t = float(snap.t_s)
+            # This process is a read-only monitor, so local replay can reload.
+            # Window A's observer is deliberately not changed from here.
+            if now >= next_model_check:
+                observer.reload_if_changed()
+                live_cache = read_tool_offset_cache()
+                if live_cache is not None and (
+                    live_cache[0] != tool_name or not np.allclose(live_cache[1], est.offset, atol=1e-10, rtol=0)
+                ):
+                    tool_name, offset = live_cache
+                    est = MonitorEstimator(observer, offset, display_frame)
+                next_model_check = now + 1.0
+            raw, replay = est.sample(float(snap.t_s), snap.pose, snap.force_raw)
+            ok, seq, _stamp, ctrl_tcp = ext_bus.read()
+            if ok and seq != ctrl_seq:
+                ctrl_seq, ctrl_seen_t = seq, now
+            ctrl_fresh = ok and now - ctrl_seen_t < 0.2 and np.isfinite(ctrl_tcp).all()
+            shown = replay if recompute else None
+            status = "independent gravity replay" if recompute else "waiting controller F_ext"
+            if ctrl_fresh:
+                controller = est.from_tcp(ctrl_tcp)
+                if not recompute:
+                    shown = controller
+                    status = "controller F_ext"
+                diff = controller - replay
+                status += f"; controller-replay |dF|={np.linalg.norm(diff[:3]):.3f}N |dM|={np.linalg.norm(diff[3:]):.4f}Nm"
+            status += f"; frame={display_frame}; replay m={observer.phi[0]:.4f}kg rev={observer.model_revision}"
+            if observer.reload_error:
+                status += "; phi reload failed: " + observer.reload_error
+            monitor.set_status(status)
+            monitor.append(now - t0, raw, shown)
             monitor.refresh(now)
     finally:
-        bus.stop()
+        state.stop()
+        ext_bus.stop()
 
 
-def _run_from_robot(
-    monitor: CompMonitor,
-    buf: SampleBuffer,
-    phi: np.ndarray,
-    frame,
-    fc: float,
-    sign: np.ndarray,
-    *,
-    use_inertia: bool,
-    min_samples: int,
-    dt_s: float,
-) -> None:
+def _run_from_robot(monitor, observer, *, display_frame: str, dt_s: float) -> None:
     from rm75_control import RobotSession
-
     with RobotSession(config=CONFIG_ROBOT) as bot:
-        t0 = time.monotonic()
-        next_poll = t0
+        name, offset = read_active_tool_offset(bot.robot)
+        print(f"tool={name} tcp_offset={offset.tolist()}")
+        est = MonitorEstimator(observer, offset, display_frame)
+        t0 = next_poll = time.monotonic()
         while True:
             nxt = _poll_wait(monitor, next_poll, dt_s)
             if nxt is None:
@@ -388,16 +311,13 @@ def _run_from_robot(
             now = time.monotonic()
             ret_s, st = bot.robot.rm_get_current_arm_state()
             ret_f, fd = bot.robot.rm_get_force_data()
-            if ret_s != 0 or ret_f != 0:
+            if ret_s or ret_f:
                 monitor.set_status(f"API err s={ret_s} f={ret_f}")
                 monitor.refresh(now)
                 continue
-            pose = np.asarray(st["pose"][:6], dtype=float)
-            force = np.asarray(fd["force_data"][:6], dtype=float)
-            _push_sample(
-                monitor, buf, now - t0, pose, force, phi, frame, fc, sign,
-                use_inertia=use_inertia, min_samples=min_samples, status="robot",
-            )
+            raw, ext = est.sample(now, np.asarray(st["pose"][:6]), np.asarray(fd["force_data"][:6]))
+            monitor.set_status(f"independent gravity+bias; frame={display_frame}; m={observer.phi[0]:.4f}kg")
+            monitor.append(now - t0, raw, ext)
             monitor.refresh(now)
 
 

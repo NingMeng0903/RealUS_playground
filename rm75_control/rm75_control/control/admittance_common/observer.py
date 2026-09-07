@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 from collections import deque
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 
 import numpy as np
@@ -13,6 +13,8 @@ from scipy.signal import butter, lfilter, lfilter_zi
 
 from rm75_control.force.compensation import regressor as fid
 from rm75_control.force.compensation.paths import CONFIG_FORCE, PHI_JSON
+from rm75_control.force.compensation.v2.frames import FrameContract, wrench_sensor_to_link7
+from rm75_control.force.compensation.v2.schema import runtime_phi_link7
 
 
 @dataclass
@@ -62,8 +64,17 @@ class CompensatedForceObserver:
     def __init__(self, cfg: ForceObserverConfig) -> None:
         self._fid = fid
         self.cfg = cfg
-        self.phi = self._load_phi(cfg.phi_path, cfg.phi_source)
         self.frame = fid.FrameConfig.from_yaml(cfg.force_sensor)
+        self.contract = FrameContract.from_yaml(cfg.force_sensor)
+        self.phi, self.model_document = runtime_phi_link7(cfg.phi_path, cfg.phi_source, self.contract)
+        self.model_frame = "link_7"
+        self.model_path = Path(cfg.phi_path).resolve()
+        self._phi_signature = self._file_signature()
+        self.model_revision = f"{self._phi_signature[0]:x}"
+        self.reload_error = ""
+        # update() receives a link_7 pose; the regressor must share the frame
+        # of the V2 parameters, independent of the physical sensor mounting.
+        self._link7_frame = replace(self.frame, offset_rad=(0.0, 0.0, 0.0), origin_in_link7_m=(0.0, 0.0, 0.0))
         max_len = max(cfg.min_samples + 5, int(cfg.buffer_s * cfg.poll_hz) + 5)
         self.buf = ForceSampleBuffer(max_len=max_len)
 
@@ -94,6 +105,32 @@ class CompensatedForceObserver:
             raise SystemExit(f"Key '{source}' not in {path}")
         return np.array([data[source][k] for k in fid.PHI_NAMES])
 
+    def _file_signature(self) -> tuple[int, int]:
+        st = Path(self.cfg.phi_path).stat()
+        return st.st_mtime_ns, st.st_size
+
+    def reload_if_changed(self) -> bool:
+        """Explicit maintenance operation; never called in update().
+
+        The caller must stop concurrent updates and force control first.
+        Invalid/partial files retain the last valid model and set reload_error.
+        No measured force is used to refresh the bias.
+        """
+        try:
+            signature = self._file_signature()
+            if signature == self._phi_signature:
+                return False
+            phi, document = runtime_phi_link7(self.cfg.phi_path, self.cfg.phi_source, self.contract)
+        except (OSError, ValueError, KeyError, TypeError) as exc:
+            self.reload_error = str(exc)
+            return False
+        self.phi, self.model_document = phi, document
+        self._phi_signature = signature
+        self.model_revision = f"{signature[0]:x}"
+        self._lpf_zi = None
+        self.reload_error = ""
+        return True
+
     def append(self, t_s: float, pose6: np.ndarray, force_raw: np.ndarray) -> None:
         self.buf.append(t_s, pose6, force_raw)
 
@@ -111,8 +148,10 @@ class CompensatedForceObserver:
         t = np.asarray(self.buf.t)
         pose = np.asarray(self.buf.pose)
         force = np.asarray(self.buf.force)
+        force_L = np.vstack([wrench_sensor_to_link7(w, self.contract) for w in force])
+        frame_L = replace(self._link7_frame, force_sign=(1,) * 6)
         W, Y = self._fid.build_dataset(
-            pose, force, t, self.frame, fc=self.cfg.fc_hz, use_inertia=self.cfg.use_inertia
+            pose, force_L, t, frame_L, fc=self.cfg.fc_hz, use_inertia=self.cfg.use_inertia
         )
         k = len(t) - 1
         sl = slice(6 * k, 6 * k + 6)
@@ -141,9 +180,7 @@ class CompensatedForceObserver:
         self._t_ring.append(float(t_s))
         self._n_updates += 1
 
-        signed = self._fid.apply_sign(
-            np.asarray(force_raw, dtype=float), self.frame.force_sign
-        )
+        signed = wrench_sensor_to_link7(force_raw, self.contract)
         use_dyn = bool(self.cfg.use_dynamic_kinematics)
         use_rot = bool(self.cfg.use_rotational_inertia)
         mode = str(self.cfg.dynamic_kinematics_mode)
@@ -179,7 +216,7 @@ class CompensatedForceObserver:
         poses = np.asarray(self._pose_ring, dtype=float)
         times = np.asarray(self._t_ring, dtype=float)
         W_legacy, g_s = self._fid.regressor_row_causal(
-            poses, times, self.frame, use_inertia=False
+            poses, times, self._link7_frame, use_inertia=False
         )
         W_grav = regressor_row_v2(
             np.zeros(3), g_s, np.zeros(3), np.zeros(3),
@@ -258,8 +295,9 @@ class CompensatedForceObserver:
         mode, use_dyn, use_rot = resolve_online_flags(f)
         return cls(
             ForceObserverConfig(
-                phi_path=PHI_JSON,
+                phi_path=Path(f.get("phi_path", PHI_JSON)),
                 phi_source=str(f.get("phi_source", "phi_recommended")),
+                force_sensor=Path(f.get("force_sensor", CONFIG_FORCE)),
                 fc_hz=fc_hz,
                 buffer_s=float(f.get("buffer_s", 4.0)),
                 min_samples=int(f.get("min_samples", 35)),

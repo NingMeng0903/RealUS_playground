@@ -206,8 +206,11 @@ def test_hfpc_compiles_to_pose_tff() -> None:
     phase = compile_request(ctx, req, raw=raw)
     assert isinstance(phase.outer, HybridTffOuter)
     from peirastic.realman8dof.force.legacy import LegacyForceLaw
+    from peirastic.realman8dof.force.torque_tilt import LegacyForceWithTilt
 
-    assert isinstance(phase.outer.force_law, LegacyForceLaw)
+    assert isinstance(phase.outer.force_law, LegacyForceWithTilt)
+    assert isinstance(phase.outer.force_law.z_law, LegacyForceLaw)
+    assert np.array_equal(phase.outer.selection, [1, 1, 0, 1, 0, 1])
     assert not isinstance(phase.outer.position, ServoTwistOuter)
 
 
@@ -224,8 +227,37 @@ def test_hfvc_compiles_to_twist_tff() -> None:
     assert isinstance(phase.outer.position, ServoTwistOuter)
     assert np.array_equal(
         phase.outer.position.filter_axes,
-        [True, True, False, True, True, True],
+        [True, True, False, True, False, True],
     )
+
+
+def test_default_hybrid_tilt_masks_conflicting_path_rotation() -> None:
+    raw, ctx = _ctx()
+    pose = ctx.kin.fk_pose(_SEED)
+    arm = _arm(ctx=ctx)
+    assert arm.hfpc(reference="hold", force=2.0, block=0) == OK
+    phase = compile_request(ctx, arm.last_request, raw=raw)
+    outer = phase.outer
+    outer.set_origin(pose)
+    position = outer.position
+
+    def rotating_path(_time, current, _force):
+        twist = np.array([0.0, 0.0, 0.0, 0.0, 0.3, 0.0])
+        position.last_path_twist = twist.copy()
+        position.last_feedback_twist = np.zeros(6)
+        position.last_vel_ff = twist.copy()
+        position.last_pose_d = np.asarray(current).copy()
+        return twist
+
+    position.sample = rotating_path
+    # Large normal-force error used to zero the torque gain completely.
+    wrench = np.array([0.0, 0.0, 6.0, 0.0, 0.06, 0.0])
+    for tick in range(80):
+        output = outer.sample(tick * 0.005, pose, wrench, contact=True)
+    assert output[4] < -0.05
+    assert outer.last_path_twist[4] == 0.0
+    assert outer.last_tau_y == pytest.approx(0.06)
+    assert outer.last_omega_y == pytest.approx(output[4])
 
 
 def test_hover_all_force_axes_fce_yields() -> None:
@@ -554,7 +586,7 @@ def test_hfvc_force_axis_skips_filter() -> None:
     assert arm.hfvc([0.0, 0.02, 0.02, 0.0, 0.0, 0.0], source="twist") == OK
     phase = compile_request(ctx, arm.last_request, raw=raw)
     pos = phase.outer.position
-    assert np.array_equal(pos.filter_axes, [True, True, False, True, True, True])
+    assert np.array_equal(pos.filter_axes, [True, True, False, True, False, True])
     pos.set_origin(pose, t_s=0.0)
     out0 = np.asarray(pos.sample(0.0, pose, np.zeros(6)), dtype=float)
     assert out0[1] == pytest.approx(0.02)

@@ -59,7 +59,7 @@ class FrameConfig:
         )
 
 
-def com_from_phi(phi: np.ndarray, cfg: FrameConfig) -> tuple[np.ndarray, np.ndarray]:
+def com_from_phi(phi: np.ndarray, cfg: FrameConfig, *, parameter_frame: str = "force_sensor") -> tuple[np.ndarray, np.ndarray]:
     """
     Center of mass position (m) from identified phi.
 
@@ -71,6 +71,13 @@ def com_from_phi(phi: np.ndarray, cfg: FrameConfig) -> tuple[np.ndarray, np.ndar
     if m <= 1e-9:
         z = np.zeros(3, dtype=float)
         return z, z
+    if parameter_frame == "link_7":
+        r_link7 = np.asarray(phi[1:4], dtype=float) / m
+        R_LS = Rsc.from_euler("xyz", cfg.offset_rad, degrees=False).as_matrix()
+        r_sensor = R_LS.T @ (r_link7 - np.asarray(cfg.origin_in_link7_m, dtype=float))
+        return r_sensor, r_link7
+    if parameter_frame != "force_sensor":
+        raise ValueError(f"Unknown parameter frame {parameter_frame!r}")
     r_sensor = np.asarray(phi[1:4], dtype=float) / m
     if cfg.offset_rad != (0.0, 0.0, 0.0):
         r_off = Rsc.from_euler("xyz", cfg.offset_rad, degrees=False).as_matrix()

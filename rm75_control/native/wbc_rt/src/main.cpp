@@ -13,6 +13,7 @@
 #include "wbc_rt/config.hpp"
 #include "wbc_rt/inner.hpp"
 #include "wbc_rt/kinematics.hpp"
+#include "wbc_rt/notification.hpp"
 #include "wbc_rt/posture.hpp"
 #include "wbc_rt/protocol.hpp"
 #include "wbc_rt/rail_command.hpp"
@@ -467,6 +468,7 @@ int main(int argc, char** argv) {
   std::string config_path;
   std::string in_name = "rm75_wbc_in";
   std::string out_name = "rm75_wbc_out";
+  int notify_fd = -1;
   bool want_srs = false;
   bool want_psi = false;
   bool want_fk = false;
@@ -479,6 +481,7 @@ int main(int argc, char** argv) {
     if (a == "--config" && i + 1 < argc) config_path = argv[++i];
     else if (a == "--in" && i + 1 < argc) in_name = argv[++i];
     else if (a == "--out" && i + 1 < argc) out_name = argv[++i];
+    else if (a == "--notify-fd" && i + 1 < argc) notify_fd = std::stoi(argv[++i]);
     else if (a == "--srs-ik") want_srs = true;
     else if (a == "--psi-from-q") want_psi = true;
     else if (a == "--fk-pose") want_fk = true;
@@ -487,7 +490,7 @@ int main(int argc, char** argv) {
     else if (a == "--policy-leave") want_leave = true;
     else if (a == "--task-weight") want_tw = true;
     else if (a == "--help") {
-      std::cout << "wbc_rt --config FILE --in NAME --out NAME\n"
+      std::cout << "wbc_rt --config FILE --in NAME --out NAME [--notify-fd FD]\n"
                 << "wbc_rt --srs-ik --pose 6 --psi P --branch B --y-shoulder Y [--R 9 --t 3]\n"
                 << "wbc_rt --psi-from-q --q 8\n"
                 << "wbc_rt --fk-pose --config FILE --q 8\n"
@@ -526,36 +529,53 @@ int main(int argc, char** argv) {
   std::signal(SIGTERM, on_sig);
 
   try {
+    wbc_rt::NotificationChannel notification(notify_fd);
     const auto cfg = wbc_rt::Config::load(config_path);
     wbc_rt::InnerLoop loop(cfg);
     wbc_rt::ShmMap in_map;
     wbc_rt::ShmMap out_map;
     in_map.open(in_name, sizeof(wbc_rt::WbcIn));
     out_map.open(out_name, sizeof(wbc_rt::WbcOut));
-    auto* in = reinterpret_cast<wbc_rt::WbcIn*>(in_map.ptr);
+    auto* shm_in = reinterpret_cast<wbc_rt::WbcIn*>(in_map.ptr);
     auto* out = reinterpret_cast<wbc_rt::WbcOut*>(out_map.ptr);
+    // seq is at offset 8 in both packed layouts, hence naturally aligned in
+    // the page-aligned SHM mapping. Publish it only after the reply body.
+    auto* in_seq = reinterpret_cast<std::uint64_t*>(
+        static_cast<char*>(in_map.ptr) + offsetof(wbc_rt::WbcIn, seq));
+    auto* out_seq = reinterpret_cast<std::uint64_t*>(
+        static_cast<char*>(out_map.ptr) + offsetof(wbc_rt::WbcOut, seq));
     wbc_rt::clear_out(out);
     out->status = wbc_rt::kStatusReady;
     out->flags = wbc_rt::kOutReady;
-    if (in->magic == wbc_rt::kMagic && in->version != 0 &&
-        in->version != wbc_rt::kVersion) {
-      std::cerr << "wbc_rt: protocol version mismatch (in=" << in->version
+    if (shm_in->magic == wbc_rt::kMagic && shm_in->version != 0 &&
+        shm_in->version != wbc_rt::kVersion) {
+      std::cerr << "wbc_rt: protocol version mismatch (in=" << shm_in->version
                 << " native=" << wbc_rt::kVersion << ")\n";
       return 3;
     }
+    if (!notification.notify()) return 0;
     std::uint64_t last_seq = 0;
     while (!g_stop) {
-      const std::uint64_t seq = in->seq;
-      if (seq == last_seq) {
-        std::this_thread::sleep_for(std::chrono::microseconds(50));
+      if (notification.enabled() && !notification.wait(g_stop)) break;
+      const std::uint64_t seq = __atomic_load_n(in_seq, __ATOMIC_ACQUIRE);
+      if (seq == 0 || seq == last_seq) {
+        if (!notification.enabled())
+          std::this_thread::sleep_for(std::chrono::microseconds(50));
         continue;
       }
+      // STOP/RESET after a timeout may replace the request slot while a solve
+      // is running. Never reread its cmd_seq or arguments mid-transaction.
+      const wbc_rt::WbcIn snapshot = *shm_in;
+      if (snapshot.seq != seq || __atomic_load_n(in_seq, __ATOMIC_ACQUIRE) != seq)
+        continue;
       last_seq = seq;
+      const auto* in = &snapshot;
       const std::uint32_t cmd = in->cmd;
       if (cmd == wbc_rt::kCmdShutdown) {
         out->status = wbc_rt::kStatusShutdown;
-        out->seq = seq;
         out->cmd_ack = in->cmd_seq;
+        __atomic_store_n(out_seq, seq, __ATOMIC_RELEASE);
+        notification.notify();
         break;
       }
       auto publish_q = [&]() {
@@ -744,7 +764,8 @@ int main(int argc, char** argv) {
       out->magic = wbc_rt::kMagic;
       out->version = wbc_rt::kVersion;
       out->cmd_ack = in->cmd_seq;
-      out->seq = seq;
+      __atomic_store_n(out_seq, seq, __ATOMIC_RELEASE);
+      if (!notification.notify()) break;
     }
   } catch (const std::exception& e) {
     std::cerr << "wbc_rt: " << e.what() << "\n";

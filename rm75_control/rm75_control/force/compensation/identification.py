@@ -167,8 +167,8 @@ def holdout_by_pose(
     return out
 
 
-def com_report(phi: np.ndarray, cfg: fid.FrameConfig) -> dict:
-    r_sensor, r_link7 = fid.com_from_phi(phi, cfg)
+def com_report(phi: np.ndarray, cfg: fid.FrameConfig, *, parameter_frame: str = "force_sensor") -> dict:
+    r_sensor, r_link7 = fid.com_from_phi(phi, cfg, parameter_frame=parameter_frame)
     return {
         "sensor_mm": fid.com_dict_mm(r_sensor),
         "link7_mm": fid.com_dict_mm(r_link7),
@@ -182,8 +182,9 @@ def print_summary(
     rms_all: float,
     per_pose: dict,
     out_json: Path,
+    parameter_frame: str = "force_sensor",
 ) -> None:
-    com = com_report(phi, cfg)
+    com = com_report(phi, cfg, parameter_frame=parameter_frame)
     c_s = com["sensor_mm"]
     c_l = com["link7_mm"]
     print("\nIdentify done")

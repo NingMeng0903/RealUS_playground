@@ -1362,7 +1362,8 @@ def fit_hardware_log(
     windows = windows_from_csv(path, kin, contract)
     if len(windows) < 4:
         raise RuntimeError(f"{path} has only {len(windows)} static windows")
-    samples = [w.samples for w in windows if w.samples is not None]
+    # Holdout data must not tune even the covariance/weights of the fit.
+    samples = [w.samples for w in windows if w.is_train and w.samples is not None]
     Sigma = pooled_shrinkage_cov(samples) if samples else np.diag([0.04, 0.04, 0.04, 0.008, 0.008, 0.008]) ** 2
     st = cfg.get("static") or {}
     fit = fit_static_windows(
@@ -1381,7 +1382,7 @@ def fit_hardware_log(
     residuals = static_residual_report(windows, fit)
     frame_cfg = FrameConfig.from_yaml(CONFIG_FORCE)
     phi_mhb = phi16(fit.mass_kg, fit.h_L, fit.bias0, None)
-    com = com_report(phi_mhb, frame_cfg)
+    com = com_report(phi_mhb, frame_cfg, parameter_frame="link_7")
     rms_all = float((residuals.get("all") or {}).get("rms_all", float("nan")))
     summary_poses = {k: residuals[k] for k in ("all", "train", "holdout") if k in residuals}
 
@@ -1465,6 +1466,10 @@ def fit_hardware_log(
     doc["tool_binding"]["active_tool_name"] = cache[0] if cache else "gripper2"
     doc["tool_binding"]["urdf_sha256"] = urdf_sha256(DEFAULT_URDF)
     doc["tool_binding"]["force_sign"] = list(contract.force_sign)
+    T_sensor = np.eye(4)
+    T_sensor[:3, :3] = contract.R_LS_mat()
+    T_sensor[:3, 3] = contract.r_LS_L_vec()
+    doc["tool_binding"]["T_link7_sensor"] = T_sensor.tolist()
     T = np.eye(4)
     T[:3, :3] = kin.R_LT
     T[:3, 3] = kin.r_LT_L
@@ -1506,6 +1511,7 @@ def fit_hardware_log(
         rms_all=rms_all,
         per_pose=summary_poses,
         out_json=PHI_JSON if live_on else out_json,
+        parameter_frame="link_7",
     )
     print(f"[OK] sidecar {out_json}", flush=True)
     if live_on:
@@ -1515,6 +1521,7 @@ def fit_hardware_log(
             com=com,
             rms_all=rms_all,
             per_pose=summary_poses,
+            tool_binding=doc["tool_binding"],
         )
         print(
             f"[OK] live {PHI_JSON}  m={fit.mass_kg:.3f} kg  I=0  "

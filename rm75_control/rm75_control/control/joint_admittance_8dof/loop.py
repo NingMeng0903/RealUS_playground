@@ -720,13 +720,27 @@ class JointIkController:
             self._native = NativeWbcClient(self)
             self._native.start()
 
-    def __del__(self) -> None:
+    def close(self) -> None:
+        """Release native worker and solver bindings before Python teardown."""
         native = getattr(self, "_native", None)
-        if native is not None:
-            try:
+        try:
+            if native is not None:
                 native.shutdown()
-            except Exception:
-                pass
+        finally:
+            self._native = None
+            core = getattr(self, "core", None)
+            cache = getattr(getattr(self, "kin", None), "_qp_backend_cache", {})
+            owned = (getattr(core, "backend", None), getattr(core, "_backend_qp2", None))
+            for key, backend in list(cache.items()):
+                if any(backend is item for item in owned):
+                    del cache[key]
+            self.core = None
+
+    def __del__(self) -> None:
+        try:
+            self.close()
+        except Exception:
+            pass
 
     @property
     def rail_mode(self) -> RailMode:
@@ -6281,6 +6295,10 @@ def run_joint_admittance_phases(
                                 f"[WARN] native_timeout wait={wait_s * 1000.0:.1f}ms "
                                 f"limit={limit_s * 1000.0:.1f}ms "
                                 f"solve_ms={float(step.qp_solver_solve_ms):.2f} "
+                                f"last_completed_solve_ms={float(getattr(native, '_last_completed_solve_ms', float('nan'))):.2f} "
+                                f"reply_seq={int(getattr(native, '_last_reply_seq', 0))}/"
+                                f"{int(getattr(native, '_seq', 0))} "
+                                f"cause={getattr(native, '_last_wait_reason', '')} "
                                 f"rail={rail_s}"
                             )
                         if not sendable:

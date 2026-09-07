@@ -38,9 +38,11 @@ def pooled_shrinkage_cov(windows: list[np.ndarray], *, lam: float = 0.2) -> np.n
     chunks = [np.asarray(w, dtype=float).reshape(-1, 6) for w in windows if len(w)]
     if not chunks:
         return np.eye(6)
-    X = np.vstack(chunks)
-    mu = robust_mean(X)
-    C = np.cov((X - mu).T)
+    # Each hold has a different deterministic gravity wrench. Pool only
+    # within-hold fluctuations; a global mean would mistake the excitation
+    # for sensor noise and distort the six-axis FGLS weighting.
+    X = np.vstack([w - robust_mean(w) for w in chunks])
+    C = np.cov(X.T)
     if C.ndim != 2:
         C = np.eye(6)
     C = 0.5 * (C + C.T)

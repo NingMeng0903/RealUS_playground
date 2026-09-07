@@ -3,10 +3,14 @@
 from __future__ import annotations
 
 import os
+import select
 import shutil
+import socket
 import subprocess
 import tempfile
+import threading
 import time
+import weakref
 from pathlib import Path
 
 import numpy as np
@@ -65,7 +69,9 @@ class NativeWbcClient:
         )[2]
 
     def __init__(self, controller, *, timeout_s: float = 0.020) -> None:
-        self.ctrl = controller
+        # The controller owns this client; a strong back-reference keeps both
+        # Python QP bindings alive until interpreter teardown.
+        self.ctrl = weakref.proxy(controller)
         self.cfg = controller.cfg
         self.timeout_s = float(timeout_s)
         prefix = str(getattr(self.cfg, "native_shm_prefix", "rm75_wbc"))
@@ -76,6 +82,8 @@ class NativeWbcClient:
         self._in = None
         self._out = None
         self._proc: subprocess.Popen | None = None
+        self._notify: socket.socket | None = None
+        self._transaction_lock = threading.RLock()
         self._cfg_path: Path | None = None
         self._seq = 0
         self._started = False
@@ -85,8 +93,18 @@ class NativeWbcClient:
         self._published_q_cmd = None
         self._published_qdot = None
         self._last_wait_s = float("nan")
+        self._last_reply_seq = 0
+        self._last_completed_solve_ms = float("nan")
+        self._last_wait_reason = ""
 
     def start(self) -> None:
+        try:
+            self._start()
+        except BaseException:
+            self.shutdown()
+            raise
+
+    def _start(self) -> None:
         binary = find_wbc_rt_binary(getattr(self.cfg, "native_bin", None))
         if binary is None:
             raise FileNotFoundError(
@@ -121,8 +139,10 @@ class NativeWbcClient:
         )
         lib = str(Path(cmeel) / "lib")
         env["LD_LIBRARY_PATH"] = lib + (":" + env["LD_LIBRARY_PATH"] if env.get("LD_LIBRARY_PATH") else "")
-        self._proc = subprocess.Popen(
-            [
+        self._notify, child_notify = socket.socketpair()
+        self._notify.setblocking(False)
+        try:
+            self._proc = subprocess.Popen([
                 str(binary),
                 "--config",
                 str(self._cfg_path),
@@ -130,11 +150,12 @@ class NativeWbcClient:
                 self.in_name,
                 "--out",
                 self.out_name,
-            ],
-            env=env,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
+                "--notify-fd",
+                str(child_notify.fileno()),
+            ], env=env, pass_fds=(child_notify.fileno(),),
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        finally:
+            child_notify.close()
         deadline = time.monotonic() + 5.0
         while time.monotonic() < deadline:
             if self._proc.poll() is not None:
@@ -169,7 +190,11 @@ class NativeWbcClient:
                 self._proc.wait(timeout=1.0)
             except Exception:
                 self._proc.kill()
+                self._proc.wait(timeout=1.0)
             self._proc = None
+        if self._notify is not None:
+            self._notify.close()
+            self._notify = None
         self._in = None
         self._out = None
         close_named_shm(self._shm_in)
@@ -177,6 +202,9 @@ class NativeWbcClient:
         self._shm_in = None
         self._shm_out = None
         self._started = False
+        if self._cfg_path is not None:
+            shutil.rmtree(self._cfg_path.parent, ignore_errors=True)
+            self._cfg_path = None
 
     def abort_pending(self) -> None:
         self._abort_next = True
@@ -187,28 +215,45 @@ class NativeWbcClient:
         budget = float(self.timeout_s if timeout_s is None else timeout_s)
         limit = t0 + budget
         target = int(seq)
-        spins = 0
-        # 20 ms RT waits cannot use time.sleep: CFS timer slack turns
-        # 200 µs into 20–30 ms (run_20260907_125413 wait=29.6, solve=3.1).
-        spin = budget <= 0.050
-        while time.monotonic() < limit:
+        self._last_wait_reason = "deadline"
+        while True:
             if int(self._out["seq"][0]) == target:
                 self._last_wait_s = time.monotonic() - t0
+                self._last_wait_reason = ""
+                self._last_reply_seq = target
                 return True
             if self._proc is not None and self._proc.poll() is not None:
                 self._last_wait_s = time.monotonic() - t0
+                self._last_wait_reason = "process_exit"
                 return False
-            if spin:
-                spins += 1
-                if spins & 63 == 0:
-                    os.sched_yield()
+            remaining = limit - time.monotonic()
+            if remaining <= 0.0:
+                break
+            notifier = getattr(self, "_notify", None)
+            if notifier is not None:
+                # Readiness wakes immediately; unlike sleep polling it does
+                # not wait for timer slack, and unlike spinning it releases
+                # the GIL and CPU while the native worker runs.
+                ready, _, _ = select.select([notifier], [], [], remaining)
+                if ready and not notifier.recv(4096):
+                    self._last_wait_s = time.monotonic() - t0
+                    self._last_wait_reason = "process_exit"
+                    return False
             else:
-                time.sleep(0.0002)
+                # SHM-only test/legacy peers. Production start always creates
+                # the notification channel.
+                time.sleep(min(0.0002, remaining))
         if int(self._out["seq"][0]) == target:
             self._last_wait_s = time.monotonic() - t0
+            self._last_wait_reason = ""
+            self._last_reply_seq = target
             return True
         self._last_wait_s = time.monotonic() - t0
         return False
+
+    def _notify_request(self) -> None:
+        if self._notify is not None:
+            self._notify.send(b"\x01")
 
     def _next_seq(self) -> int:
         self._seq += 1
@@ -224,7 +269,16 @@ class NativeWbcClient:
         wait: bool = True,
         timeout_s: float | None = None,
     ) -> bool:
+        # Setters can be called from the service/UI while an RT tick waits.
+        # The single-slot SHM protocol permits exactly one publisher at a time.
+        with self._transaction_lock:
+            return self._command_locked(cmd, cmd_f=cmd_f, cmd_u=cmd_u,
+                                        q_meas=q_meas, wait=wait, timeout_s=timeout_s)
+
+    def _command_locked(self, cmd, *, cmd_f=None, cmd_u=None, q_meas=None,
+                        wait=True, timeout_s=None) -> bool:
         rec = self._in[0]
+        rec["seq"] = np.uint64(0)
         rec["cmd"] = np.uint32(cmd)
         rec["magic"] = P.WBC_MAGIC
         rec["version"] = P.WBC_VERSION
@@ -243,9 +297,19 @@ class NativeWbcClient:
         seq = self._next_seq()
         rec["cmd_seq"] = np.uint64(seq)
         rec["seq"] = np.uint64(seq)
+        try:
+            self._notify_request()
+        except OSError:
+            self._last_wait_reason = "process_exit"
+            self._last_wait_s = 0.0
+            self._fault_latched = True
+            return False
         if not wait:
             return True
-        return self._wait_seq(seq, timeout_s=timeout_s if timeout_s is not None else 0.5)
+        ok = self._wait_seq(seq, timeout_s=timeout_s if timeout_s is not None else 0.5)
+        if not ok:
+            self._fault_latched = True
+        return ok
 
     def enable(self) -> None:
         self._command(P.CMD_ENABLE)
@@ -254,7 +318,11 @@ class NativeWbcClient:
         self._command(P.CMD_STOP)
 
     def reset(self, q0) -> None:
-        self._command(P.CMD_RESET, q_meas=q0, cmd_f=np.asarray(q0, dtype=float))
+        if not self._command(P.CMD_RESET, q_meas=q0, cmd_f=np.asarray(q0, dtype=float)):
+            raise TimeoutError("wbc_rt reset was not acknowledged")
+        self._fault_latched = False
+        self._pending_commit_seq = 0
+        self._abort_next = False
         self._sync_q()
 
     def begin_hybrid_episode(self, q_meas, qdot_applied=None) -> None:
@@ -340,6 +408,24 @@ class NativeWbcClient:
         self.ctrl.last_slack_norm = float(self._out["slack"][0])
         self.ctrl.last_sigma_min = float(self._out["sigma_min"][0])
 
+    def _timeout_step(self, twist) -> JointIkStep:
+        # A deadline miss leaves the shared reply either old or being written.
+        # Never present that memory as a certified command (or current timing).
+        self._fault_latched = True
+        self._pending_commit_seq = 0
+        self._published_q_cmd = None
+        self._published_qdot = None
+        return JointIkStep(
+            q_send=np.asarray(self.ctrl.q_cmd, dtype=float).copy(),
+            qdot=np.zeros(8), twist_base=np.asarray(twist, dtype=float).copy(),
+            sigma_min=float("nan"), manip=float("nan"), slack_norm=float("nan"),
+            n_cbf_active=0, follow_err_rad=float("nan"), qp_backend="native",
+            qp_solver_status="timeout", qp_solver_solve_ms=float("nan"),
+            fallback_level="stop", fallback_reason="native_timeout",
+            solver_fault_latched=True, command_stale=True,
+            v_cmd_received=np.asarray(twist, dtype=float).copy(),
+        )
+
     def step(self, v_cmd, stamp=None, *, q_meas=None, **kwargs) -> TrackerStatus:
         stale = False
         twist = np.asarray(v_cmd, dtype=float).reshape(-1).copy()
@@ -369,9 +455,17 @@ class NativeWbcClient:
         )
 
     def update(self, twist, dt=None, q_meas=None, qdot_ff=None, **kwargs) -> JointIkStep:
+        with self._transaction_lock:
+            return self._update_locked(twist, dt=dt, q_meas=q_meas,
+                                       qdot_ff=qdot_ff, **kwargs)
+
+    def _update_locked(self, twist, dt=None, q_meas=None, qdot_ff=None, **kwargs) -> JointIkStep:
         if q_meas is None:
             raise ValueError("q_meas is required for every Cartesian QPIK tick")
+        if self._fault_latched:
+            return self._timeout_step(twist)
         rec = self._in[0]
+        rec["seq"] = np.uint64(0)
         rec["magic"] = P.WBC_MAGIC
         rec["version"] = P.WBC_VERSION
         rec["cmd"] = P.CMD_STEP
@@ -435,8 +529,17 @@ class NativeWbcClient:
         seq = self._next_seq()
         rec["cmd_seq"] = np.uint64(seq)
         rec["seq"] = np.uint64(seq)
+        try:
+            self._notify_request()
+        except OSError:
+            self._last_wait_reason = "process_exit"
+            self._last_wait_s = 0.0
+            return self._timeout_step(twist)
         ok = self._wait_seq(seq)
-        o = self._out[0]
+        if not ok:
+            return self._timeout_step(twist)
+        o = self._out[0].copy()
+        self._last_completed_solve_ms = float(o["solve_ms"])
         q_cmd = np.asarray(o["q_cmd"], dtype=float).copy()
         qdot = np.asarray(o["qdot"], dtype=float).copy()
         self._published_q_cmd = q_cmd.copy()

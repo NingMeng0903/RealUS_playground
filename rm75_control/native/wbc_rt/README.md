@@ -2,9 +2,15 @@
 
 Separate-process C++ inner loop (Pinocchio + ProxQP + coal). Python keeps the
 `JointIkController.step / enable / stop` facade and talks over named SHM.
+The owning Python client also passes a socket with `--notify-fd`: requests
+and completed replies wake the other process directly, without sleep polling
+or a Python busy wait. Closing the owner socket stops the native worker.
 
-Default yaml is still `inner.backend: python`. Do not switch production to
-`native` until `tests/test_wbc_rt_offline_ab.py` passes on this machine.
+The default YAML selects `inner.backend: native`. The source hash includes
+the notification transport, so rebuild the binary after updating this code.
+The Python client retains its 20 ms response deadline. An expired request
+is not published, and a late reply cannot clear the fault; an acknowledged
+reset is required before further steps.
 
 ## Build
 

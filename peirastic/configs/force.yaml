@@ -406,6 +406,17 @@ hybrid_motion:
     t_soft_j: 0.25
     t_bar_j: 1.0
     t0_j: 0.50
+  # Tool-y torque balance at the TCP; no angle budget or normal-force-error gate.
+  # Zero moment uses the compensated TCP wrench. No online contact-bias learning.
+  torque_tilt:
+    enabled: true
+    axis: 4
+    mass: 0.04
+    damping: 0.30
+    coulomb_nm: 0.025
+    vmax_rad_s: 0.20
+    a_max: 5.0
+    contact_only: true
   # κ=0 on hard / unknown Ke.  Soft-tissue optional κ is tank-gated at 0.
   proactive_feedforward: false
   # Legacy parameters are retained for isolated non-CDYOB tests only.

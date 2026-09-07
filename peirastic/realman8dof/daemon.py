@@ -6,6 +6,7 @@ import math
 import os
 import signal
 import time
+from contextlib import ExitStack
 from pathlib import Path
 
 import numpy as np
@@ -239,19 +240,48 @@ class ControllerService:
         self._fault_sm = "RUNNING"
         self._fault_epoch = 0
         self.force_observer = None
+        self._state_relay = None
         self.force_observer_error = ""
         try:
             self.force_observer = CompensatedForceObserver.from_yaml(self.raw)
+            obs = self.force_observer
+            self.panel.event(
+                "STATE",
+                f"force model={obs.model_path} source={obs.cfg.phi_source} "
+                f"frame={obs.model_frame} mass={obs.phi[0]:.4f}kg rev={obs.model_revision}",
+            )
         except Exception as exc:
             self.force_observer_error = str(exc)
             self.panel.event("WARN", f"force observer off: {exc}")
 
     def close(self) -> None:
-        self.hub.close()
-        self.twist.close()
+        if getattr(self, "_closed", False):
+            return
+        self._closed = True
+        # Signal handlers otherwise retain this service (and its native QPs)
+        # until interpreter teardown. Do not overwrite a newer owner's handler.
+        for signum, previous in getattr(self, "_previous_signals", {}).items():
+            if signal.getsignal(signum) is getattr(self, "_signal_handler", None):
+                signal.signal(signum, previous)
+        self._previous_signals = {}
+        self._signal_handler = None
+        self._live = None
+        with ExitStack() as cleanup:
+            cleanup.callback(self.twist.close)
+            cleanup.callback(self.hub.close)
+            self.inner.close()
 
     def _pad_row(self) -> dict:
         return self.twist.read()
+
+    def _publish_force_sample(self, f_ext) -> None:
+        """Relay the actual compensated TCP sample from this control tick."""
+        relay = getattr(self, "_state_relay", None)
+        if relay is None or self.force_observer is None or f_ext is None:
+            return
+        wrench = np.asarray(f_ext, dtype=float).reshape(-1)
+        if wrench.size == 6 and np.isfinite(wrench).all():
+            relay.set_f_ext(wrench)
 
     def _pad_source_present(self) -> bool:
         row = self._pad_row()
@@ -528,8 +558,14 @@ class ControllerService:
                 except Exception:
                     pass
 
-        signal.signal(signal.SIGINT, _handler)
-        signal.signal(signal.SIGTERM, _handler)
+        if not hasattr(self, "_previous_signals"):
+            self._previous_signals = {
+                signum: signal.getsignal(signum)
+                for signum in (signal.SIGINT, signal.SIGTERM)
+            }
+        self._signal_handler = _handler
+        for signum in self._previous_signals:
+            signal.signal(signum, _handler)
 
     def _cancel_pending_transitions(
         self,
@@ -1011,6 +1047,7 @@ class ControllerService:
 
             def _on_step(label, t_phase, step, pose, f_ext, t_wall=float("nan")) -> None:
                 del label
+                self._publish_force_sample(f_ext)
                 t_ref = float(t_phase)
                 polled = self.hub.poll()
                 if polled is not None:
@@ -1108,6 +1145,8 @@ class ControllerService:
                 err = float(getattr(phase.outer, "last_err_mm", float("nan")))
                 slack = float(getattr(step, "slack_norm", float("nan")))
                 fz = float(f_ext[2]) if f_ext is not None and len(f_ext) > 2 else float("nan")
+                tau_y = float(getattr(phase.outer, "last_tau_y", float("nan")))
+                omega_y = float(getattr(phase.outer, "last_omega_y", float("nan")))
                 self.hub.publish(
                     status=Status.RUNNING,
                     mode=self.mode,
@@ -1135,6 +1174,8 @@ class ControllerService:
                     q=list(q.reshape(-1)[:8]),
                     pose=list(np.asarray(pose, dtype=float).reshape(-1)[:6]),
                     f_ext_z=fz,
+                    tau_y=tau_y,
+                    omega_y=omega_y,
                     track_err_mm=err,
                     slack=slack,
                     rail_m=float(q[0]) if q.size else float("nan"),
@@ -1272,7 +1313,8 @@ def run_service(
         print(f"[STATE] csv {log_csv}", flush=True)
     raw = load_yaml(config_path)
     if dry_run:
-        bind_controller(raw, backend="python")
+        _, inner, _, _ = bind_controller(raw, backend="python")
+        inner.close()
         print("[STATE] dry-run bind ok", flush=True)
         return 0
     robot_cfg = raw.get("robot", {})
@@ -1291,7 +1333,7 @@ def run_service(
             port=robot_cfg.get("port"),
             config=str(config_path),
             quiet=True,
-        ) as sess:
+        ) as sess, ExitStack() as cleanup:
             # Bind after the SDK session exists so planning + force-Z use the
             # pendant/web tool, not outputs/rm75_tool_offset.json (often gripper2).
             svc = ControllerService(
@@ -1302,7 +1344,9 @@ def run_service(
                 panel=panel,
                 robot=sess.robot,
             )
+            cleanup.callback(svc.close)
             bus = RobotStateBus(sess.robot, raw, robot_ip=sess.ip)
+            cleanup.callback(bus.stop)
             bus.start()
             relay = None
             if relay_cfg.enabled:
@@ -1323,6 +1367,8 @@ def run_service(
                     kin=svc.inner.kin,
                     rail_m_fn=_rail_m_fn,
                 )
+                cleanup.callback(relay.stop)
+                svc._state_relay = relay
                 relay.start()
             else:
                 print(
@@ -1339,13 +1385,11 @@ def run_service(
                     force_obs=svc.force_observer is not None,
                 ),
             )
-            try:
-                svc.run(sess, bus, rail)
-            finally:
-                if relay is not None:
-                    relay.stop()
+            svc.run(sess, bus, rail)
     finally:
-        rail.stop()
-        if svc is not None:
-            svc.close()
+        try:
+            rail.stop()
+        finally:
+            if svc is not None:
+                svc.close()
     return 0

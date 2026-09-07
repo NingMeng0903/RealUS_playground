@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Force-position hybrid: MOVEJ to mid-stroke, then TFF ellipse.
 
-XY (and rotation) track the same 10×30 cm tool ellipse as cartesian_track.
-Tool Z is the force axis. Default F*=0 so this is air-safe; the split and
-current force law still run. On a surface set FORCE_N to force.yaml (2 N).
+XY and tool omega_x/omega_z track the 10×30 cm ellipse in cartesian_track.
+Tool Z controls force and tool omega_y balances the compensated TCP moment.
+Tilt runs only in contact, without an angle budget or normal-force-error gate.
+Default F*=0 is for the air run; set FORCE_N to 2 N for the contact run.
 
     python -m peirastic.apps.run_controller
     python -m peirastic.DEMO.hfpc
@@ -39,7 +40,7 @@ from rm75_control.control.joint_admittance_8dof.reference import (
 
 # Air. Contact: 2.0 (peirastic/configs/force.yaml).
 FORCE_N = 0.0
-FORCE_AXES = [0.0, 0.0, 1.0, 0.0, 0.0, 0.0]
+FORCE_AXES = [0.0, 0.0, 1.0, 0.0, 1.0, 0.0]
 
 
 def main() -> int:
@@ -58,7 +59,7 @@ def main() -> int:
         print(f"[STATE] from  {_fmt_q(q_now)}", flush=True)
     print(f"[STATE] mid   {_fmt_q(q_mid)}", flush=True)
     print(
-        f"[MODE] HFPC ellipse  F*={FORCE_N:.1f}N  Z force  "
+        f"[MODE] HFPC ellipse  F*={FORCE_N:.1f}N  Z force + ωy balance  "
         f"pp=({2.0 * AX_M * 100.0:.0f} x {2.0 * AY_M * 100.0:.0f}) cm  "
         f"v≤{V_MAX_M_S * 100.0:.1f} cm/s  T={period_s:.1f}s  "
         f"scan={duration_s:.1f}s",

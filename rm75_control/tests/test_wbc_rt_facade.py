@@ -48,7 +48,7 @@ def test_native_seq_wait_stays_20ms() -> None:
     assert default == pytest.approx(0.020)
 
 
-def test_wait_seq_spin_and_final_look() -> None:
+def test_wait_seq_ready_and_final_look(monkeypatch) -> None:
     import time
 
     from rm75_control.control.joint_admittance_8dof.wbc_rt.client import NativeWbcClient
@@ -71,6 +71,21 @@ def test_wait_seq_spin_and_final_look() -> None:
     t0 = time.monotonic()
     assert NativeWbcClient._wait_seq(box, 99) is False
     assert time.monotonic() - t0 < 0.020
+    # Publish just as the clock check exhausts the budget. The final reply
+    # check must report success with the same diagnostics as an early reply.
+    ticks = iter([0.0, 0.021, 0.021])
+
+    def boundary_clock():
+        now = next(ticks)
+        if now > 0:
+            box._out["seq"][0] = 99
+        return now
+
+    box.timeout_s = 0.020
+    monkeypatch.setattr(time, "monotonic", boundary_clock)
+    assert NativeWbcClient._wait_seq(box, 99) is True
+    assert box._last_wait_reason == ""
+    assert box._last_reply_seq == 99
 
 
 def test_yaml_default_backend_is_native() -> None:
@@ -117,6 +132,7 @@ def test_native_smoke_step_and_setters() -> None:
     raw = yaml.safe_load(_CFG.read_text())
     cfg = build_joint_ik_config(raw)
     cfg.backend = "native"
+    cfg.native_bin = str(find_wbc_rt_binary())
     cfg.native_shm_prefix = f"rm75_wbc_smoke_{os.getpid()}"
     cfg.collision.enabled = False
     cfg.qp.collision.enabled = False

@@ -4,13 +4,16 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
+import os
+import tempfile
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 
 from rm75_control.force.compensation.regressor import PHI_NAMES
-from rm75_control.force.compensation.v2.frames import WRENCH_SEMANTICS
+from rm75_control.force.compensation.v2.frames import FrameContract, WRENCH_SEMANTICS
 
 SCHEMA_VERSION = 2
 
@@ -111,6 +114,7 @@ def promote_mhb_to_live(
     com: dict[str, Any] | None = None,
     rms_all: float | None = None,
     per_pose: dict[str, Any] | None = None,
+    tool_binding: dict[str, Any] | None = None,
 ) -> None:
     """Write identified m, h, b into live ``force_id_phi.json``. I stays 0."""
 
@@ -141,14 +145,90 @@ def promote_mhb_to_live(
     if per_pose is not None:
         doc["per_pose_residual"] = per_pose
     doc["recommended"] = "phi_recommended (payload_id_v2 m,h,b; I=0)"
-    live_path.parent.mkdir(parents=True, exist_ok=True)
-    live_path.write_text(json.dumps(doc, indent=2) + "\n")
+    # Legacy blocks retained above can still be in sensor coordinates.
+    frames = dict(doc.get("parameter_frames") or {})
+    frames.update(phi_recommended="link_7", phi_10="link_7")
+    doc["parameter_frames"] = frames
+    if tool_binding is not None:
+        doc["tool_binding"] = tool_binding
+    write_phi_v2(live_path, doc)
 
 
 def write_phi_v2(path: Path, doc: dict[str, Any]) -> None:
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(doc, indent=2, sort_keys=True) + "\n")
+    # A monitor/controller must never observe a truncated calibration file.
+    tmp = None
+    # An unidentifiable delay has CI=inf: that invalidates the dynamic
+    # diagnostic, not an otherwise valid static m/h/b calibration. Payload
+    # parameters themselves still go through allow_nan=False below.
+    serializable = dict(doc)
+    for key in ("delay", "validation", "static", "per_pose_residual"):
+        if key in serializable:
+            serializable[key] = _diagnostic_json(serializable[key])
+    try:
+        with tempfile.NamedTemporaryFile(mode="w", dir=path.parent, prefix=f".{path.name}.", delete=False) as f:
+            tmp = Path(f.name)
+            f.write(json.dumps(serializable, indent=2, sort_keys=True, allow_nan=False) + "\n")
+            f.flush()
+        os.replace(tmp, path)
+    finally:
+        if tmp is not None:
+            tmp.unlink(missing_ok=True)
+
+
+def _diagnostic_json(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {k: _diagnostic_json(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_diagnostic_json(v) for v in value]
+    if isinstance(value, float) and not math.isfinite(value):
+        return None
+    return value
+
+
+def runtime_phi_link7(path: Path, source: str, contract: FrameContract) -> tuple[np.ndarray, dict[str, Any]]:
+    """Load V2 link_7 parameters or move legacy sensor parameters to link_7.
+
+    All six biases are transformed as one wrench. The first moment and
+    inertia use the same rigid transform; changing TCP does not change them.
+    """
+    doc = load_phi_v2(path)
+    if source not in doc:
+        raise ValueError(f"Key {source!r} not in {path}")
+    phi = np.array([doc[source][key] for key in PHI_NAMES], dtype=float)
+    if not np.isfinite(phi).all() or phi[0] <= 0:
+        raise ValueError(f"Invalid/non-finite payload parameters in {path}:{source}")
+    binding = doc.get("tool_binding") or {}
+    sensor = np.eye(4)
+    sensor[:3, :3] = contract.R_LS_mat()
+    sensor[:3, 3] = contract.r_LS_L_vec()
+    if binding:
+        check_tool_binding(doc, {"force_sign": list(contract.force_sign), "T_link7_sensor": sensor,
+                                 "wrench_semantics": contract.wrench_semantics})
+    frame = (doc.get("parameter_frames") or {}).get(source)
+    if frame is None:
+        v2 = int(doc.get("schema_version", 0)) == 2 or (
+            "payload_id_v2" in str(doc.get("recommended", ""))
+            and source in {"phi_recommended", "phi_10"}
+        )
+        frame = "link_7" if v2 else "force_sensor"
+    if frame == "link_7":
+        return phi, doc
+    if frame != "force_sensor":
+        raise ValueError(f"Unknown payload parameter frame {frame!r}")
+    R, r = contract.R_LS_mat(), contract.r_LS_L_vec()
+    m = phi[0]
+    h = R @ phi[1:4]
+    xx, yy, zz, xy, xz, yz = phi[4:10]
+    I = R @ np.array([[xx, xy, xz], [xy, yy, yz], [xz, yz, zz]]) @ R.T
+    I += m * (np.dot(r, r) * np.eye(3) - np.outer(r, r))
+    I += 2 * np.dot(r, h) * np.eye(3) - np.outer(r, h) - np.outer(h, r)
+    phi[1:4] = h + m * r
+    phi[4:10] = [I[0, 0], I[1, 1], I[2, 2], I[0, 1], I[0, 2], I[1, 2]]
+    phi[10:13] = R @ phi[10:13]
+    phi[13:16] = R @ phi[13:16] + np.cross(r, phi[10:13])
+    return phi, doc
 
 
 def load_phi_v2(path: Path) -> dict[str, Any]:

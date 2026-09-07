@@ -110,6 +110,9 @@ def _service_for_boundary() -> daemon.ControllerService:
 
 def test_pending_dof_runs_transition_hold_then_installs_queued_mode(monkeypatch):
     svc = _service_for_boundary()
+    force_samples = []
+    svc.force_observer = object()
+    svc._state_relay = SimpleNamespace(set_f_ext=lambda f: force_samples.append(f.copy()))
     compiled_modes: list[Mode] = []
     entered: list[Mode] = []
 
@@ -137,7 +140,7 @@ def test_pending_dof_runs_transition_hold_then_installs_queued_mode(monkeypatch)
         if phase.on_enter is not None:
             phase.on_enter()
         step = SimpleNamespace(q_send=np.zeros(8), slack_norm=0.0)
-        kwargs["on_step"]("test", 0.0, step, np.zeros(6), np.zeros(3), 0.0)
+        kwargs["on_step"]("test", 0.0, step, np.zeros(6), np.arange(6.0), 0.0)
         if len(runner_calls) == 1:
             assert kwargs["stop_check"]()
         else:
@@ -151,6 +154,8 @@ def test_pending_dof_runs_transition_hold_then_installs_queued_mode(monkeypatch)
     svc.run(SimpleNamespace(robot=None), None, None)
 
     assert runner_calls == [False, True]
+    assert len(force_samples) == 2
+    np.testing.assert_array_equal(force_samples[0], np.arange(6.0))
     assert compiled_modes[0] == Mode.SERVO_TWIST_HOLD
     assert compiled_modes[-1] == Mode.TRACK_CARTESIAN
     assert entered[-1] == Mode.TRACK_CARTESIAN

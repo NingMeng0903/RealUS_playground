@@ -46,6 +46,7 @@ add_custom_command(
     "${CMAKE_CURRENT_SOURCE_DIR}/include/wbc_rt/protocol.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/wbc_rt/inner.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/wbc_rt/types.hpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/wbc_rt/notification.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/inner.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../rm75_control/control/joint_admittance_8dof/wbc_rt/protocol.py"

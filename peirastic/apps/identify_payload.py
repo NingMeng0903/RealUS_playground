@@ -179,7 +179,7 @@ def run_dry_fit(*, out_json: Path, cfg: dict) -> dict:
     residuals = static_residual_report(windows, fit)
     frame_cfg = FrameConfig.from_yaml(CONFIG_FORCE)
     phi_mhb = phi16(fit.mass_kg, fit.h_L, fit.bias0, None)
-    doc["com_recommended"] = com_report(phi_mhb, frame_cfg)
+    doc["com_recommended"] = com_report(phi_mhb, frame_cfg, parameter_frame="link_7")
     doc["static"]["rms_all"] = (residuals.get("all") or {}).get("rms_all")
     doc["static"]["rms_force"] = (residuals.get("all") or {}).get("rms_force")
     doc["static"]["rms_moment"] = (residuals.get("all") or {}).get("rms_moment")
@@ -190,6 +190,7 @@ def run_dry_fit(*, out_json: Path, cfg: dict) -> dict:
         rms_all=float((residuals.get("all") or {}).get("rms_all", 0.0)),
         per_pose={k: residuals[k] for k in ("all", "train", "holdout") if k in residuals},
         out_json=out_json,
+        parameter_frame="link_7",
     )
     return doc
 
