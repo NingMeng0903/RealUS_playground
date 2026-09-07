@@ -20,8 +20,8 @@ import numpy as np
 
 @dataclass
 class ForceDobConfig:
-    # Default off so unit tests keep the passive admittance baseline; YAML
-    # enables this for hardware constant-force tracking.
+    # Default off.  Hardware yaml also leaves this off for the fixed
+    # admittance baseline; enable only for explicit DOB contrasts.
     enabled: bool = False
     ki: float = 6.0
     leak_s: float = 0.45
@@ -55,6 +55,7 @@ class ForceDisturbanceObserver:
         self.u_dob = 0.0
         self.frozen = False
         self._last_eff = 0.0
+        self._last_signed_eff = 0.0
 
     def update(
         self,
@@ -70,39 +71,45 @@ class ForceDisturbanceObserver:
             self.u_dob = 0.0
             self.frozen = False
             self._last_eff = float(eff)
+            if abs(float(eff)) > 1e-9:
+                self._last_signed_eff = float(eff)
             return 0.0
         if not in_contact or dt_eff <= 0.0:
             if not in_contact and cfg.leak_s > 1e-6 and dt_eff > 0.0:
                 self.u_dob -= (dt_eff / cfg.leak_s) * self.u_dob
             self.frozen = False
             self._last_eff = float(eff)
+            if abs(float(eff)) > 1e-9:
+                self._last_signed_eff = float(eff)
             return float(self.u_dob)
 
-        # Do not let a press-side disturbance estimate fight an over-force
-        # escape (or the reverse).
+        signed = float(eff)
+        in_deadband = abs(signed) <= 1e-9
+        # Polarity is the last nonzero error.  Deadband zeros must not
+        # erase it, or +e → 0 → −e skips the reversal reset.
         if (
             cfg.reset_on_reversal
-            and abs(float(eff)) > 1e-9
-            and self._last_eff * float(eff) < 0.0
+            and not in_deadband
+            and self._last_signed_eff * signed < 0.0
         ):
             self.u_dob = 0.0
 
         freeze = float(instability_index) >= float(cfg.freeze_is)
         self.frozen = freeze
-        if not freeze:
-            # Soften DOB integration on under-force when tangential speed is low
-            # (scan turnaround); keep full ki for over-force escape.
+        if not freeze and not in_deadband:
             ki_scale = (
                 1.0
-                if float(eff) < 0.0
+                if signed < 0.0
                 else float(np.clip(chase_scale, 0.0, 1.0))
             )
-            self.u_dob += dt_eff * float(cfg.ki) * ki_scale * float(eff)
+            self.u_dob += dt_eff * float(cfg.ki) * ki_scale * signed
         if cfg.leak_s > 1e-6:
             self.u_dob -= (dt_eff / cfg.leak_s) * self.u_dob
         if cfg.u_max_n > 0.0:
             self.u_dob = float(
                 np.clip(self.u_dob, -cfg.u_max_n, cfg.u_max_n)
             )
-        self._last_eff = float(eff)
+        self._last_eff = signed
+        if not in_deadband:
+            self._last_signed_eff = signed
         return float(self.u_dob)

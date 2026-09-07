@@ -68,7 +68,7 @@ def test_yaml_smooth_chase_defaults_load():
         Path("configs/joint_admittance_8dof.yaml").read_text(encoding="utf-8")
     )
     cfg = AdmittanceConfig.from_dict(raw)
-    assert cfg.force_dob.enabled is True
+    assert cfg.force_dob.enabled is False
     assert cfg.proactive_ff.enabled is False
     assert cfg.proactive_ff.retract_only is False
     assert cfg.force_barrier.enabled is False
@@ -79,7 +79,12 @@ def test_yaml_smooth_chase_defaults_load():
     assert cfg.var_damping_d_u == pytest.approx(0.0)
     assert cfg.var_damping_m_u == pytest.approx(0.0)
     assert cfg.ke_schedule.enabled is True
-    assert cfg.energy_tank.enabled is True
+    assert cfg.ke_schedule.d_min == pytest.approx(40.0)
+    assert cfg.ke_schedule.d_max == pytest.approx(40.0)
+    assert cfg.ke_schedule.m_min == pytest.approx(1.0)
+    assert cfg.ke_schedule.m_max == pytest.approx(1.0)
+    assert cfg.adaptive_ke.ke_idle_decay_s == pytest.approx(0.0)
+    assert cfg.energy_tank.enabled is False
     assert cfg.cdyob.mode == "off"
     assert cfg.cdyob.applies() is False
     assert cfg.cdyob.omega_q_hz == pytest.approx(0.75)
@@ -97,7 +102,7 @@ def test_yaml_smooth_chase_defaults_load():
     assert cfg.force_barrier.v_underforce_press_m_s == pytest.approx(0.010)
     assert cfg.cdyob.active_model_validated is False
     assert cfg.tdpa.enabled is True
-    assert cfg.tdpa.apply is True
+    assert cfg.tdpa.apply is False
     assert cfg.tdpa.alpha_max == pytest.approx(20.0)
     assert cfg.safety_shield.u_retract_m_s == pytest.approx(0.080)
     assert cfg.force_corridor.enabled is False
@@ -110,7 +115,7 @@ def test_yaml_smooth_chase_defaults_load():
     assert cfg.safety_shield.mode == "observe"
     assert cfg.safety_shield.k_ub_n_m == pytest.approx(8000.0)
     assert cfg.admittance_mass_z == pytest.approx(1.0)
-    assert cfg.admittance_damping_z == pytest.approx(25.0)
+    assert cfg.admittance_damping_z == pytest.approx(40.0)
     ctrl = AdmittanceController(DT, cfg)
     ctrl._first_contact_slow_latched = False
     ctrl._recontact_slow_latched = False
@@ -127,7 +132,7 @@ def test_yaml_smooth_chase_defaults_load():
         )
     assert ctrl.v_force_z > 0.0
     assert abs(ctrl.v_r_z) <= 1e-6
-    assert abs(ctrl.u_dob_z) > 1e-4
+    assert abs(ctrl.u_dob_z) <= 1e-12
 
 
 def test_hf_delta_d_releases_after_hold():

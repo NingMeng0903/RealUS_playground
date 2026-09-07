@@ -6206,6 +6206,40 @@ def run_joint_admittance_phases(
                         sendable, qpik_stop_reason = _guard_qpik_step_before_send(
                             step, _fault_stop
                         )
+                        if (
+                            not sendable
+                            and "native_timeout" in str(qpik_stop_reason)
+                        ):
+                            native = getattr(inner, "_native", None)
+                            wait_s = float(
+                                getattr(native, "_last_wait_s", float("nan"))
+                            )
+                            limit_s = float(
+                                getattr(native, "timeout_s", float("nan"))
+                            )
+                            drive = (
+                                getattr(rail_bridge, "_drive", None)
+                                if rail_bridge is not None
+                                else None
+                            )
+                            if rail_bridge is None or not getattr(
+                                rail_bridge, "enabled", False
+                            ):
+                                rail_s = "off"
+                            elif drive is None:
+                                rail_s = "disconnected"
+                            else:
+                                rail_s = (
+                                    "connected armed="
+                                    f"{int(bool(getattr(rail_bridge, 'armed', False)))}"
+                                )
+                            print(
+                                f"[WARN] native_timeout wait={wait_s * 1000.0:.1f}ms "
+                                f"limit={limit_s * 1000.0:.1f}ms "
+                                f"solve_ms={float(step.qp_solver_solve_ms):.2f} "
+                                f"rail={rail_s}",
+                                flush=True,
+                            )
                         if not sendable:
                             phase_stopped = True
                             stop_reason = qpik_stop_reason

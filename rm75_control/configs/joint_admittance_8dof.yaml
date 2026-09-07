@@ -402,7 +402,7 @@ hybrid_motion:
   - 2.0
   # e85 force law.  TDPA/corridor/shield do not change the command.
   admittance_mass_z: 1.0
-  admittance_damping_z: 25.0
+  admittance_damping_z: 40.0
   admittance_stiffness_z: 0.0
   xd_gain_m_s_per_n: 0.002
   xd_rate_max_m_s: 0.002
@@ -431,10 +431,9 @@ hybrid_motion:
   recontact_settle_hold_s: 0.050
   contact_episode_release_s: 0.80
   contact_episode_release_force_n: 0.75
-  # Slow DC chase.  Must stay well below CDYOB Q (0.75 Hz).  034244
-  # ki=8 / leak=0.4 s sat in the same band as Q and overshot on soft.
+  # Extra force-error integrator.  Off for the fixed-admittance baseline.
   force_dob:
-    enabled: true
+    enabled: false
     ki: 8.0
     leak_s: 0.4
     u_max_n: 1.5
@@ -489,7 +488,7 @@ hybrid_motion:
   tdpa:
     enabled: true
     # Apply uses D+α (drive = e_f − α v).  α_max stays below D_min=22.
-    apply: true
+    apply: false
     e_leak_pos_s: 2.0
     alpha_max: 20.0
     bias_lpf_s: 8.0
@@ -691,7 +690,7 @@ hybrid_motion:
     ke_cap_ub_n_m: 10000.0
     ke_forgetting: 0.995
     ke_forgetting_inc: 0.88
-    ke_idle_decay_s: 2.0
+    ke_idle_decay_s: 0.0
     ke_soft_floor: 120.0
     ke_detach_decay_s: 1.0
     displacement_source: admittance
@@ -710,15 +709,15 @@ hybrid_motion:
     ke_slew_max: 1200.0
   ke_schedule:
     enabled: true
-    d_min: 22.0
-    d_max: 400.0
+    d_min: 40.0
+    d_max: 40.0
     ke_div: 14.0
     m_min: 1.0
-    m_max: 8.0
+    m_max: 1.0
     slew_s: 0.30
     confirm_s: 0.15
   energy_tank:
-    enabled: true
+    enabled: false
     eps_j: 0.08
     t_soft_j: 0.25
     t_bar_j: 1.0

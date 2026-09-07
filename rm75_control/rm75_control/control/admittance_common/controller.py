@@ -75,19 +75,19 @@ from rm75_control.control.admittance_common.proactive_force_ff import (
 
 
 def smooth_deadband_eff(f_err: float, deadband_n: float, width_n: float) -> float:
-    """Apply a C1 deadband to the force error."""
+    """Monotone C1 deadband: 0 inside ``d``, then ``z²/2w``, then ``z-w/2``."""
     if width_n <= 0.0:
         if abs(f_err) <= deadband_n:
             return 0.0
         return f_err - math.copysign(deadband_n, f_err)
-    af = abs(f_err)
-    if af <= deadband_n:
+    z = max(abs(f_err) - deadband_n, 0.0)
+    if z <= 0.0:
         return 0.0
-    if af >= deadband_n + width_n:
-        return f_err - math.copysign(deadband_n + 0.5 * width_n, f_err)
-    t = (af - deadband_n) / width_n
-    gain = t * t * (3.0 - 2.0 * t)
-    return math.copysign(gain * (af - deadband_n), f_err)
+    if z < width_n:
+        mag = (z * z) / (2.0 * width_n)
+    else:
+        mag = z - 0.5 * width_n
+    return math.copysign(mag, f_err)
 
 
 @dataclass
@@ -1094,7 +1094,7 @@ class AdmittanceController:
         return max(cap, 0.0)
 
     def _slew_force_normal(self, u_target: float, dt_s: float) -> float:
-        """Slew the press-positive normal command.  Does not leave hybrid."""
+        """Slew the press-positive normal command.  History is the actual Δv/h."""
         cfg = self.cfg
         dt = max(float(dt_s), 0.0)
         prev = float(self._u_force_slewed)
@@ -1107,33 +1107,33 @@ class AdmittanceController:
             self._u_force_slewed = target
             self._u_force_slew_dot = 0.0
             return target
-        du = target - prev
         if prev * target < 0.0 and reverse_a > 0.0:
-            a_lim = reverse_a
-        elif du >= 0.0:
-            a_lim = press_a if press_a > 0.0 else reverse_a
+            a_lo, a_hi = -reverse_a, reverse_a
         else:
-            a_lim = retract_a if retract_a > 0.0 else reverse_a
-        if a_lim <= 0.0:
+            a_lo = -retract_a if retract_a > 0.0 else -reverse_a
+            a_hi = press_a if press_a > 0.0 else reverse_a
+        if a_hi <= 0.0 and a_lo >= 0.0:
             self._u_force_slewed = target
             self._u_force_slew_dot = 0.0
             return target
+        a_req = (target - prev) / dt
+        lo = a_lo
+        hi = a_hi
         if jerk > 0.0:
             max_da = jerk * dt
-            signed = math.copysign(a_lim, du if du != 0.0 else 1.0)
-            a_use = float(
-                np.clip(signed, self._u_force_slew_dot - max_da, self._u_force_slew_dot + max_da)
-            )
-            a_use = float(np.clip(a_use, -a_lim, a_lim))
+            lo = max(lo, float(self._u_force_slew_dot) - max_da)
+            hi = min(hi, float(self._u_force_slew_dot) + max_da)
+        if lo > hi:
+            a_use = float(np.clip(a_req, min(a_lo, a_hi), max(a_lo, a_hi)))
         else:
-            a_use = math.copysign(a_lim, du if du != 0.0 else 1.0)
+            a_use = float(np.clip(a_req, lo, hi))
         stepped = prev + a_use * dt
-        if du >= 0.0:
+        if target >= prev:
             stepped = min(stepped, target)
         else:
             stepped = max(stepped, target)
-        self._u_force_slew_dot = a_use
         self._u_force_slewed = float(stepped)
+        self._u_force_slew_dot = (float(stepped) - prev) / dt
         return float(stepped)
 
     def _pipeline_press_clear(self) -> bool:

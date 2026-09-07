@@ -39,6 +39,15 @@ def test_protocol_sizes_match_packed_cxx() -> None:
     assert "1440" in info
 
 
+def test_native_seq_wait_stays_20ms() -> None:
+    from inspect import signature
+
+    from rm75_control.control.joint_admittance_8dof.wbc_rt.client import NativeWbcClient
+
+    default = signature(NativeWbcClient.__init__).parameters["timeout_s"].default
+    assert default == pytest.approx(0.020)
+
+
 def test_yaml_default_backend_is_native() -> None:
     raw = yaml.safe_load(_CFG.read_text())
     cfg = build_joint_ik_config(raw)

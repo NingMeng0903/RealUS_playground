@@ -2,7 +2,7 @@
 
 已承诺能量 reserve：RM75 命令 28–40 ms 后才起作用，先用延迟队列 + T_n 算 ΔE_committed^UB（未来若干拍可能从端口取走的最大能量），只有 E_k − E_min ≥ ΔE_committed^UB 才允许继续压入；同理首触/过力用 F_future^UB = F_k + K_e·Δx_committed^UB（这是 10_tn、delay queue、stop_dx_ub 真正发挥价值的地方）。
 确认符号后在最终 QPIK 加线性硬约束 W_Pᵀ J_P q̇ ≥ (E_min−E_k+ΔE_committed^UB)/Δt + ‖W_P‖ē_v，以及接触不变集约束 F_min ≤ F ≤ F_max（由 P2 的 h_±/K̂e 置信区间转成速度界，F_max 无 slack）；E_max≈F_safe·Δx_safe；删除 D+α 与 post-QP clip；F* 由罐单独预算 F*·v（到达目标 v=0 后不耗能，建立接触与跟随移动组织时耗能），罐见底降级而不是"不让"。Secchi 的 v≈v_d 假设在本平台 1–3 Hz 不成立，因此账本用实际速度、约束带速度误差与延迟队列鲁棒项。
-QPIK 层级：硬安全 > 能量/接触不变集 > 法向力/hover 平移 （力也可以slack）> 接触点旋转 > 轨迹姿态 > nullspace/轨道回中（独立 slack）。我的想法是，之前按照ICRA_27的数据，说明在保持力去接触体表的话，稳定的kd最多只能527n/m不弹跳,所以力不能要求恒定，而是力在一个范围内稳定，而且力的修正幅度要能匹配硬件的能力，不行的话规划出来力的闭环也没有意义，所以应该吧力作为而约束放到QP,然后系统能量也是放大QP,可是在QP新建ENERGYTANK有意义吗。在QP里面产生加上ENERGYTANK的目的是什么？能证无源性吗，还是只是做一个调度的作用？能量/接触不变集 ，接触应该在外环直接作用到VCMD修正上比如结合图像的有显示区域知道接触面，然后结合力传感器数据只当往哪里动可以让图像全接触这个优化变量应该是探头tcp在垂直图像的旋转，这个是应该修正VCMD的（利用外环位置-速度闭环），然后VCMD传入QP传入，还是接触优化项直接传入？然后最重要的反而就是力进QP,现在的代码的修正建议，力本来就是进QP吗？怎么可以松弛力换取能追而而不是为了精确力超级大的反馈，反而带来滞后和不稳定？打死你力还是要证明通道有界限，比如目标是4N,那应该比如一定落到正负2n,开头撞一下不算，这个可有特殊方法优化。然还在这个范围里面qp可以松弛但有严格上下边界，还有类“力”jerk“的限制让可以松弛力换取能追而而不是为了精确力超级大的反馈。还有一个设计是我目前不是servoing,我不是时间系统，而是轨迹跟踪，也就是轨迹可以对时间归一化，成一个路径s 0-1,然后就而已定义一个联系到速度的扫描的速度缩放系数，这个系数也放到qp做松弛，也就是可以自动调速尽量保持稳定。还有一个想法是，前面通超声图像和接触力数据修正了图像内旋转，西安市tilting,就是沿着超声探头接触线倾斜的自由度，如果轨迹是“压”向皮肤内或者在路径上“朝向”图像外面的，会导致导纳力的方向也不准，要不要也类似“辨识出”压”向皮肤内或者在路径上“朝向”图像外面的的方向作为约束，这个不要求大修正，而是极端情况修一下，而且至少能保证头和皮肤在行进方锐角/略小与90,而不是大于90,你可以从大于90 的在有摩擦的弹性物体上容易弹跳的角度顺便证明这个好吗？我这不用精确修，而是就是略小与90,而不是大于90能辨识，最好还能粗略从扫描力数据看出夹角大致大小吗，而且最好知道角度变大/变小的特性，就是定性调节。还有最重要i的，我的cdyob/tdpa/popc这些论文都有给你，我应怎么设计力的qp.什么控制率能不弹跳，力又尽量柔顺，，手推追力快手感也好？还有就是hqp的任务层级怎么调度让总体的力控制最稳定，而且能跟上我识别出来的力特性，有一些叫conditonal filter或者设计l ya p lov函数让整个hqp稳定？仔细再找一波论文，结合
+QPIK 层级：硬安全 > 能量/接触不变集 > 法向力/hover 平移 （力也可以slack）> 接触点旋转 > 轨迹姿态 > nullspace/轨道回中（独立 slack）。我的想法是，之前按照ICRA_27的数据，说明在保持力去接触体表的话，稳定的kd最多只能527n/m不弹跳,所以力不能要求恒定，而是力在一个范围内稳定，而且力的修正幅度要能匹配硬件的能力，不行的话规划出来力的闭环也没有意义，所以应该吧力作为而约束放到QP,然后系统能量也是放大QP,可是在QP新建ENERGYTANK有意义吗。在QP里面产生加上ENERGYTANK的目的是什么？能证无源性吗，还是只是做一个调度的作用？能量/接触不变集 ，接触应该在外环直接作用到VCMD修正上比如结合图像的有显示区域知道接触面，然后结合力传感器数据只当往哪里动可以让图像全接触这个优化变量应该是探头tcp在垂直图像的旋转，这个是应该修正VCMD的（利用外环位置-速度闭环），然后VCMD传入QP传入，还是接触优化项直接传入？然后最重要的反而就是力进QP,现在的代码的修正建议，力本来就是进QP吗？怎么可以松弛力换取能追而而不是为了精确力超级大的反馈，反而带来滞后和不稳定？打死你力还是要证明通道有界限，比如目标是4N,那应该比如一定落到正负2n,开头撞一下不算，这个可有特殊方法优化。然还在这个范围里面qp可以松弛但有严格上下边界，还有类“力”jerk“的限制让可以松弛力换取能追而而不是为了精确力超级大的反馈。还有一个设计是我目前不是servoing,我不是时间系统，而是轨迹跟踪，也就是轨迹可以对时间归一化，成一个路径s 0-1,然后就而已定义一个联系到速度的扫描的速度缩放系数，这个系数也放到qp做松弛，也就是可以自动调速尽量保持稳定。还。还有最重要i的，我的cdyob/tdpa/popc这些论文都有给你，我应怎么设计力的qp.什么控制率能不弹跳，力又尽量柔顺，，手推追力快手感也好？还有就是hqp的任务层级怎么调度让总体的力控制最稳定，而且能跟上我识别出来的力特性，有一些叫conditonal filter或者设计l ya p lov函数让整个hqp稳定？仔细再找一波论文，结合
 NingMeng0903/RealUS_playgroundmain的最新版本代码，前面的修改意见也是基于这个版本的2d9848cae211fab46dc38cb0bca0418b5bfc8031，还有github
 NingMeng0903/ICRA_2027的辨识数据，仔细去在看一下论文和找需要的新的论文，分析我的修改意见是不是可行，我要一个icra 好论文 oral级别的idea和理论高度，甚至ijrr级别的，要鼓励多agent思考，看文章，左右讨论互相批评，然后要有审稿人agent时不时检查点评方向，最后收敛优化到可行，创新有意义的idea
 
@@ -3274,3 +3274,2188 @@ $$
 还必须保证它不会让**实际 execution contract**失效。
 
 而你这次“接触瞬间 Y 滑但没开力控制”的现象，恰好就是为什么这个区别必须写进论文。
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+面向未知接触环境的可执行接触可行性分层控制：用于黑盒速度接口机器人超声扫描
+Executable Contact-Viability Hierarchical Control for Robotic Ultrasound With Unknown Contact Dynamics and Black-Box Velocity Actuation
+
+Abstract— 机器人超声的低层控制通常被表述为“沿表面扫描，同时维持恒定法向力”。这一表述在静态、已知或高带宽力矩控制平台上是自然的，但对于仅开放速度接口、具有不可忽略输入延迟和有限闭环带宽的工业机械臂，它混淆了两个本质不同的问题：控制器“希望”产生什么接触修正，以及硬件“来得及”产生什么接触修正。更进一步，人体组织的刚度、黏弹性、迟滞、曲率和切向摩擦均随患者和扫描位置变化，因此依赖精确患者接触模型来预测未来力，会使安全证明建立在难以转移的辨识假设之上。
+
+本文提出一种以可执行接触可行性为核心的两层分层二次规划框架。控制器只保留两个交互自由度：Tool-Z 法向运动和绕经过探头 TCP、垂直超声图像平面的单一旋转自由度；其他方向沿参数化几何路径运动。外层力控制器不再承担“必须精确保持 (F^\star)”的安全职责，而只生成柔顺的名义 Tool-Z 速度；超声图像接触特征与腕部接触力矩联合生成名义旋转速度。第一层 QP 联合优化最终机器人速度命令、扫描速度缩放和任务松弛，并通过一个非参数化的集合值接触执行契约拒绝那些在机器人输入延迟和已发送命令队列下可能使未来接触力离开允许区间的命令。第二层 QP 严格锁定第一层已经实现的任务速度和扫描进度，同时优化轨道分配、关节构型、奇异性恢复和命令平滑，并重新施加相同的患者端口硬约束，从而保证低优先级构型优化不能破坏第一层接触证书。
+
+本文进一步分析一个可选的、基于实际患者端口机械功的能量预算。与组织刚度模型不同，该能量证书只依赖同步测得的实际 wrench–twist 和机器人自身的已承诺运动上界，因此可在未知组织环境中给出模型无关的净能量输出界。其作用与力走廊正交：力可行性限制瞬时接触风险，能量预算限制机器人向患者累计输出的机械能。核心理论结果包括：未来力区间的鲁棒前向不变性、递归执行可行性、第一层名义行为的条件透明性、第二层任务不劣化与患者端口安全继承，以及可选的实际端口耗散性。
+
+Index Terms— Robotic ultrasound, force control, hierarchical quadratic programming, contact viability, input delay, admittance control, passivity, energy tank, acoustic contact, path-speed regulation.
+
+研究问题、文献脉络与最终设计取舍
+从“恒定力控制”重新定义问题
+这篇论文最重要的第一句话不应该是“我们提出了一个新的力控制器”，而应该是：
+
+机器人超声真正需要保证的不是每一时刻都精确等于某个牛顿值，而是在有限执行能力下维持有效、不过载、可恢复的声学接触，同时尽可能实现临床期望的力、图像和扫描速度。
+
+设希望力为
+
+[ F^\star=4~\mathrm N, ]
+
+并假设某一具体实验任务定义允许接触范围
+
+[ F_{\mathrm L}\le F\le F_{\mathrm U}, \qquad F_{\mathrm L}=2~\mathrm N,\quad F_{\mathrm U}=6~\mathrm N. \tag{1} ]
+
+这里必须严格区分：
+
+[ \boxed{ F_{\mathrm L},F_{\mathrm U}
+\text{任务/安全规范} } ]
+
+与
+
+[ \boxed{ F^\star
+\text{区间内部的性能偏好}. } ]
+
+(2!-!6~\mathrm N) 不能在论文里被写成普适临床安全范围；它只是用于说明方法的任务规范。真正临床范围应由检查部位、探头尺寸、检查目的和伦理规范确定。
+
+为什么这种区别重要？
+
+考虑传统导纳：
+
+[ M_a\dot v_a+D_av_a=F^\star-F. \tag{2} ]
+
+冻结环境和速度内环后，一个典型法向闭环可近似为
+
+[ L(p)= \frac{ K_eK_v e^{-T_dp} }{ p(M_ap+D_a)(1+\tau_vp) }, \tag{3} ]
+
+其中 (p) 是拉普拉斯变量，(K_e) 是局部环境增量刚度，(K_v,\tau_v,T_d) 分别表示速度伺服增益、时间常数和延迟。
+
+注意，特征方程
+
+[ 1+L(p)=0 \tag{4} ]
+
+中没有 (F^\star)。
+
+因此：
+
+把 (4~\mathrm N) 换成 (3~\mathrm N)，或者仅仅说“不再恒定力”，本身并不能改变闭环稳定性。
+
+真正发生改变的是控制器的必须动作集合。
+
+在精确力跟踪中，只要
+
+[ F\neq F^\star, ]
+
+控制器就认为存在必须立即消除的误差。
+
+而在集合控制中：
+
+[ F\in[F_{\mathrm L},F_{\mathrm U}] ]
+
+时，精确中心误差只是一种偏好；如果为了把 (4.5~\mathrm N) 精确拉回 (4~\mathrm N) 所要求的运动已经超过硬件未来执行能力，QP 可以主动不执行全部修正。
+
+换言之：
+
+[ \boxed{ \text{松弛的是追 }F^\star\text{ 所要求的运动，} \quad \text{不是 }F_{\mathrm U}\text{ 本身。} } \tag{5} ]
+
+这恰好对应 Keemink 等关于 admittance 中“低表观惯量/阻尼—刚性接触稳定性”权衡的分析，以及 Dimeas 和 Aspragathos 通过在线振荡检测增加耗散来改善稳定性的动机。二者都说明，提高阻尼可以改善接触鲁棒性，但同时损害自由运动或人工推动时的轻盈感 [Keemink et al., 2018; Dimeas & Aspragathos, 2016]。
+
+为什么你的平台不能采用“命令速度约等于实际速度”的假设
+你在 ICRA_2027 中已有的数据给出了非常明确的平台证据。
+
+目前前面对仓库数据的核对得到：
+
+[ G_v^z(p) \approx e^{-0.028p} \frac{0.96}{0.014p+1} \tag{6} ]
+
+作为一次 Tool-Z 自由空间辨识的名义模型；另一组 multisine 数据给出的稳态增益约为 (0.882)，时间常数约为 (20~\mathrm{ms})，而纯延迟仍约 (28~\mathrm{ms})。在 (1!-!3~\mathrm{Hz}) 相关扫描频段，你已有记录中命令—实际速度误差 RMSE 约为 (5.58~\mathrm{mm/s})。10_tn 得到的约 (1.63~\mathrm{mm/s}) 是名义前向模型预测残差，而且其中 cdyob_applied=false，不能解释为 CDYOB 已经补偿后的误差。
+
+这些结果有两个意义。
+
+第一：
+
+[ V_{\mathrm cmd,k}\neq V_{\mathrm actual,k}. ]
+
+第二，更重要的是：
+
+[ u_k \not\rightarrow V_{m,k} ]
+
+而大致表现为：
+
+[ u_k \rightarrow V_{m,k+d}, \qquad d\approx T_d/h. \tag{7} ]
+
+也就是说，当传感器已经检测到过力而外层开始回撤时，机械臂可能仍在执行几十毫秒之前的压入命令。
+
+De Stefano 等对具有通信/执行延迟的机器人交互系统给出了非常直接的能量解释：即使虚拟系统本身具有被动性质，延迟后的真实机器人也可能在碰撞中出现额外能量并产生不断增强的反弹。Lee 等的 BEFM 从另一角度指出，代理速度 (V_a) 与真实速度 (V_m) 之间的失配项
+
+[ (V_a-V_m)^\top W_e \tag{8} ]
+
+没有固定符号，因此“虚拟导纳被动”不能直接推出“真实物理端口被动” [De Stefano et al., 2020; Lee et al., 2024]。
+
+Samuel 等针对黑盒工业机器人提出的 perturbation-robust/CDYOB 框架也正是从“期望导纳与真实内环响应不同”出发，通过名义闭环模型 (T_n)、实际速度和外力恢复期望 apparent admittance。它适合作为你的性能增强模块，但它解决的是
+
+[ \text{实际运动更接近期望运动} ]
+
+而不是
+
+[ \text{未来力绝不越界}. ]
+
+因此本文不把 CDYOB 放在核心理论中，而保留为可插拔的 nominal-controller baseline [Samuel et al., perturbation-robust admittance paper]。
+
+为什么也不能要求精确辨识人体黏弹性
+另一个极端是：
+
+[ F_{k+h}
+\mathcal M(K_e,B_e,\tau_e,\ldots) ]
+
+并试图精确辨识每个患者、每个位置的 (K_e,B_e,\tau_e)。
+
+这也不是一个理想的 IJRR 主线。
+
+人体接触的：
+
+局部刚度；
+黏弹性衰减；
+接触面积；
+预条件效应；
+摩擦；
+深层骨性结构；
+患者运动；
+都会变化。你较新的 contact 数据中，短接触记录与空气模型拟合已经出现明显差异；这更适合作为“患者参数辨识不稳定，因此应避免依赖精确患者模型”的证据，而不是拿某个 contact fit 的单一 (K_e) 当作定理参数。
+
+这里需要做一个理论上很重要的区分：
+
+[ \boxed{ \text{不需要精确环境模型} \neq \text{可以对任意未知环境做无条件保证}. } ]
+
+如果允许环境具有无限刚度、任意快自主运动，或者可以在下一采样周期无视机器人动作把力从 (4~\mathrm N) 跳到 (100~\mathrm N)，那么任何控制器都无法保证有限力区间。
+
+因此严格安全至少必须假设某种有限的输入—输出响应类。
+
+本文建议把这个最低要求从“组织参数辨识”改写为：
+
+[ \boxed{ \textbf{集合值接触执行契约} } ]
+
+即只需要知道：
+
+在当前实际速度、当前力变化趋势、已发送命令队列和候选新命令下，未来力可能落在哪个保守集合中。
+
+不要求这个集合来自 Kelvin–Voigt、Maxwell 或某个生物力学模型。
+
+这正是本文和传统 model-based force MPC 最本质的区别。
+
+最终只保留三个创新对象
+经过上述取舍，本文不应该堆叠十几个模块。
+
+真正值得保留的只有：
+
+[ \boxed{ \begin{aligned} &\text{执行延迟感知的接触可行性约束},\ &\text{力区间 + 扫描速度联合让步},\ &\text{两层 QP 中患者端口约束的严格继承}. \end{aligned}} \tag{9} ]
+
+图像—力矩旋转是临床意图输入；CDYOB 是性能模块；actual-port energy budget 是一个可选的第二证书，而不是论文标题中的主要创新。
+
+这比“energy tank + CBF + CLF + DOB + CDYOB + CTF + HQP”更接近一篇有中心思想的论文。
+
+最小模型：只辨识机器人，不辨识患者模型
+坐标、状态与控制变量
+设机器人与轨道合并后的广义位置为
+
+[ q\in\mathbb R^{n}, \qquad n=8 ]
+
+（一个 rail + 七个机械臂关节）。
+
+定义 QP 真正发送给底层速度接口的命令：
+
+[ u= \begin{bmatrix} u_r& u_1&\cdots&u_7 \end{bmatrix}^{!\top} \in\mathbb R^8. \tag{10} ]
+
+这里刻意写 (u)，而不是 (\dot q)，因为：
+
+[ \boxed{ u=\text{命令速度}, \qquad \dot q_m=\text{实际速度}. } ]
+
+这对于黑盒速度接口非常重要。
+
+探头 TCP twist 为：
+
+[ V_T= \begin{bmatrix} v_T\\omega_T \end{bmatrix}
+J(q)\dot q_m. \tag{11} ]
+
+在 QP 的运动学层，命令对应的理想任务速度写为：
+
+[ V_c=J(q)u. \tag{12} ]
+
+但是患者真正看到的是 (V_T)，而不是 (V_c)。
+
+本文只开放两个交互自由度。
+
+定义：
+
+[ c_z= \begin{bmatrix} z_T\0 \end{bmatrix}\in\mathbb R^6 \tag{13} ]
+
+为 Tool-Z 平移方向。
+
+定义：
+
+[ c_\theta= \begin{bmatrix} 0\a_\theta \end{bmatrix}\in\mathbb R^6 \tag{14} ]
+
+其中 (a_\theta) 是经过 TCP、垂直超声图像平面的旋转轴。
+
+于是：
+
+[ v_z=c_z^\top V_T, \qquad \omega_\theta=c_\theta^\top V_T. \tag{15} ]
+
+其他四个 task-space 自由度主要承担扫描路径保持。
+
+无时间路径与速度缩放
+将原来的时间轨迹
+
+[ X_d(t) ]
+
+改写为几何路径：
+
+[ X_d(s), \qquad s\in[0,1]. \tag{16} ]
+
+其中 (s) 是路径 phase，而不是时间。
+
+定义名义路径速率：
+
+[ \nu_{\rm ref}(s)>0. ]
+
+新增无量纲 QP 变量：
+
+[ \alpha\in[0,1] \tag{17} ]
+
+并令：
+
+[ \dot s
+\alpha\nu_{\rm ref}(s). \tag{18} ]
+
+因此：
+
+(\alpha=1)：按计划速度扫描；
+(0<\alpha<1)：自动减速；
+(\alpha=0)：保持当前位置，暂停路径推进。
+路径状态更新：
+
+[ s_{k+1}
+s_k+h\alpha_k\nu_{\rm ref}(s_k), \tag{19} ]
+
+其中 (h) 是 QP 控制周期。
+
+注意，真正应该缩放的是沿路径的 feedforward progress，而不是保持横向路径误差的反馈。
+
+设路径单位 phase 对应的 twist 为：
+
+[ \Xi_d(s)
+\frac{\partial X_d}{\partial s} \tag{20} ]
+
+在适当的 (SE(3)) 局部表示下转换成 task-space twist，则：
+
+[ V_{\rm path,ff}
+\Xi_d(s)\nu_{\rm ref}(s). \tag{21} ]
+
+最终路径请求写为：
+
+[ V_{\rm path}
+V_{\perp,\rm fb} + \alpha V_{\rm path,ff}, \tag{22} ]
+
+其中 (V_{\perp,\rm fb}) 只负责把探头拉回几何路径附近，而不恢复固定墙钟时间。
+
+这解决了一个传统 fixed-time trajectory 的结构问题：
+
+[ \text{接触已经困难} \quad\text{但}\quad t\text{ 还在继续走}. ]
+
+后者会产生越来越大的路径追赶误差，进一步与力控制争夺执行能力。
+
+名义 Tool-Z 力控制器只负责“想怎么动”
+保留一个简单、可解释的低阻尼导纳：
+
+[ M_a\dot v_a+D_av_a=F^\star-F. \tag{23} ]
+
+其中：
+
+(M_a>0)：虚拟质量；
+(D_a>0)：虚拟阻尼；
+(F)：当前补偿后的 Tool-Z 压缩力；
+(F^\star)：区间内期望力；
+(v_a)：名义 Tool-Z 速度。
+这条控制律不再承担硬安全证明。
+
+它只回答：
+
+如果不存在机器人延迟、安全约束和其他任务，我希望 Tool-Z 怎么动？
+
+用隐式欧拉实现：
+
+[ M_a \frac{v_{a,k+1}-v_{a,k}}{h} + D_av_{a,k+1}
+F^\star_k-F_k. \tag{24} ]
+
+可直接解得：
+
+[ \boxed{ v_{a,k+1}
+\frac{ M_av_{a,k} + h(F^\star_k-F_k) }{ M_a+hD_a }. } \tag{25} ]
+
+所谓“隐式”只是因为耗散项使用 (v_{a,k+1})，不是 (v_{a,k})。
+
+其一个优点是：
+
+[ \begin{aligned} & \frac12M_av_{a,k+1}^2
+\frac12M_av_{a,k}^2\ ={}& h(F^\star_k-F_k)v_{a,k+1} -hD_av_{a,k+1}^2\ &- \frac12M_a (v_{a,k+1}-v_{a,k})^2. \end{aligned} \tag{26} ]
+
+最后两项非正，所以这个虚拟导纳本身的离散实现不会由于显式积分方式凭空加入一项数值能量。
+
+但必须强调：
+
+[ v_a\neq v_m. ]
+
+因此式（26）不能证明真实患者端口被动，也不能证明不弹跳。
+
+黑盒速度执行模型只需要辨识机器人一次
+10_tn 的真正角色应该保留。
+
+对于某个任务方向，使用：
+
+[ G_v(p)
+e^{-T_dp} \frac{K_v}{1+\tau_vp}. \tag{27} ]
+
+它只描述机器人自身从命令到实际速度的响应，不描述人体。
+
+一阶部分在零阶保持下可精确离散：
+
+[ v_{m,k+1}
+a_vv_{m,k} + b_vu_{k-d} + w_{v,k}, \tag{28} ]
+
+其中：
+
+[ a_v=e^{-h/\tau_v}, \qquad b_v=K_v(1-a_v), \tag{29} ]
+
+(d) 是延迟拍数，(w_v) 是模型残差。
+
+更重要的是保存命令队列：
+
+[ Q_k
+{ u_{k-d},\ldots,u_{k-1} }. \tag{30} ]
+
+因为两个状态即使当前：
+
+[ F_k=4~\mathrm N, \qquad v_{m,k}=0 ]
+
+完全相同，只要一个 queue 里全是压入命令、另一个全是回撤命令，它们的未来风险完全不同。
+
+因此定义执行状态：
+
+[ \chi_k
+\left( F_k,\dot F_k,V_{m,k},Q_k,q_k,s_k \right). \tag{31} ]
+
+这就是论文里所谓 delay-augmented state。
+
+注意：
+
+(T_n) 是机器人/固件级辨识，一次辨识后可以复用。它不是患者级辨识。
+
+核心变化：不用 (K_e,B_e,\tau_e)，改成集合值接触执行契约
+这是我现在认为最值得做成论文核心的地方。
+
+不要要求：
+
+[ F_{k+i}
+f(K_e,B_e,\tau_e,\ldots). ]
+
+只要求存在一个经过验证的外包络：
+
+[ F_{k+i} \in \mathcal F_{i} ( \chi_k,\zeta_k ), \tag{32} ]
+
+其中：
+
+[ \zeta_k= \begin{bmatrix} u_k\\alpha_k \end{bmatrix}. \tag{33} ]
+
+(\mathcal F_i) 不需要是一个组织模型。它只需要是：
+
+[ \boxed{ \text{真实未来力的保守外集合}. } ]
+
+为了进入 QP，可以把上、下包络表示为分段仿射函数：
+
+[ \overline F_{i|k}(\zeta)
+\max_{r\in\mathcal R_i^+} \left[ a_{ir,k}^+ + b_{ir,k}^{+\top}\zeta \right], \tag{34} ]
+
+[ \underline F_{i|k}(\zeta)
+\min_{r\in\mathcal R_i^-} \left[ a_{ir,k}^- + b_{ir,k}^{-\top}\zeta \right]. \tag{35} ]
+
+其中：
+
+(i)：未来第 (i) 个采样时刻；
+(r)：某个包络面；
+(a_{ir,k}^\pm)：由当前实际力、力变化率、实际速度和旧 queue 决定的已知常数；
+(b_{ir,k}^\pm)：当前新命令和路径速度对最坏未来力的外包络方向。
+于是：
+
+[ \overline F_{i|k}\le F_{\mathrm U} ]
+
+等价于有限组线性行：
+
+[ a_{ir,k}^+ + b_{ir,k}^{+\top}\zeta \le F_{\mathrm U}, \quad\forall r. \tag{36} ]
+
+同理：
+
+[ a_{ir,k}^- + b_{ir,k}^{-\top}\zeta \ge F_{\mathrm L}, \quad\forall r. \tag{37} ]
+
+最终全部写成：
+
+[ \boxed{ A_{F,k} \begin{bmatrix} u\\alpha \end{bmatrix} \le b_{F,k}. } \tag{38} ]
+
+这就是新的 force viability rows。
+
+关键在于：
+
+[ \boxed{ \text{理论只依赖“包络覆盖真实系统”， 不依赖包络来自哪个生物力学模型。} } ]
+
+你可以有三种实现：
+
+第一种最保守，直接从大量接触实验建立：
+
+[ (\chi,u,\alpha) \rightarrow \Delta F_{\max/\min} ]
+
+的 outer table。
+
+第二种稍微结构化，用机器人 (T_n+Q_k) 预测真实剩余运动，再只使用一两个单边接触响应上界，而不是完整 (K_e,B_e,\tau_e)。
+
+第三种以后可以做在线 set-membership tightening：从一个通用保守 envelope 开始，只在新的数据能够确定性证明更紧时收缩包络。
+
+论文理论对三种实现完全一致。
+
+这比把组织刚度作为论文前提更可转移。
+
+为什么一点环境假设都没有是不可能的
+可以直接在论文给一个“不可能性命题”。
+
+命题： 若允许环境在下一采样周期产生任意大的正力增量，且该增量与机器人输入无关，则不存在任何控制器能够保证有限的 (F_{\mathrm U})。
+
+证明非常简单。对任意控制器 (\pi)，任意当前状态 (F_k<F_{\mathrm U})，选择一个允许的环境，使：
+
+[ F_{k+1}
+F_{\mathrm U}+1. ]
+
+则无论控制器输出什么，都违反上界。
+
+因此：
+
+[ \boxed{ \text{安全保证不可避免地需要一个有限环境响应类；} } ]
+
+创新不是消灭这个假设，而是把它降到最弱的、直接可验证的集合外包络，而不是精确患者参数。
+
+首触与稳定扫描必须分开
+对任意未知刚度表面，在非零接近速度和有限执行延迟下，不能证明首次接触峰值为零。
+
+因此理论应该明确从 capture condition 开始。
+
+定义：
+
+[ \mathcal C_{\rm cap}
+\left{ \chi: F_{\mathrm L} \le F\le F_{\mathrm U}, \quad \text{future envelope feasible} \right}. \tag{39} ]
+
+接近阶段只需：
+
+很低接近速度；
+明确首触 force limit；
+一旦触碰即停止路径推进；
+等 queue/实际速度进入可认证状态后切换到扫描 QP。
+论文中的“不弹跳”定理应该表述为：
+
+在已经捕获接触后，系统不发生整体接触丢失与再撞击。
+
+而不是宣称任何首次碰撞都完全无峰值。
+
+核心算法：两层 QP 从“任务追踪”升级为“可执行任务 + 最佳实现”
+名义任务如何组成
+首先定义路径反馈：
+
+[ V_{\perp,\rm fb}
+-K_\perp e_\perp. \tag{40} ]
+
+其中 (e_\perp) 是不包含 Tool-Z 力方向和被释放旋转方向的局部路径误差。
+
+名义 Tool-Z 速度是式（25）的：
+
+[ v_a. ]
+
+名义面内旋转速度稍后定义为：
+
+[ \omega_a. ]
+
+于是：
+
+[ V_0
+V_{\perp,\rm fb} + c_zv_a + c_\theta\omega_a. \tag{41} ]
+
+路径 feedforward 是：
+
+[ V_{\rm ff}
+V_{\rm path,ff}. ]
+
+最终名义任务：
+
+[ \boxed{ V_{\rm cmd}(\alpha)
+V_0+\alpha V_{\rm ff}. } \tag{42} ]
+
+注意这里没有再用一个不可解释的固定 TFF selection matrix 去硬拼“position/force axes”。
+
+Tool-Z 和 (\theta) 是软交互 intent；其余路径方向由几何反馈维持。
+
+第一层 QP 的变量到底是什么
+定义：
+
+[ \boxed{ x_1= \begin{bmatrix} u\ \alpha\ w \end{bmatrix}. } \tag{43} ]
+
+维度：
+
+[ u\in\mathbb R^8, \qquad \alpha\in\mathbb R, \qquad w\in\mathbb R^6. ]
+
+其中：
+
+(u)：最终候选 rail + joint velocity command；
+(\alpha)：路径速度缩放；
+(w)：六维 task-space velocity slack。
+当前代码中 (w) 已经存在。它不需要改成“force slack”。
+
+任务约束写为：
+
+[ J_{\rm task}u + V_{\rm aff}
+V_0
+\alpha V_{\rm ff}
+w. \tag{44} ]
+
+这里：
+
+(J_{\rm task})：现有第一层使用的 task Jacobian；
+(V_{\rm aff})：不属于本拍控制变量但已经实际发生的运动，例如当前 rail actual-velocity contribution；
+(V_0+\alpha V_{\rm ff})：希望的 TCP 任务；
+(w)：做不到多少。
+等价：
+
+[ J_{\rm task}u
+\alpha V_{\rm ff}
+w
+V_0-V_{\rm aff}. \tag{45} ]
+
+这和你目前代码：
+
+[ J_{\rm task}u-w=b_{\rm task} ]
+
+完全同构，只多了一个 (\alpha) 列。
+
+第一层优化什么
+定义任务归一化矩阵：
+
+[ S_w= \operatorname{diag} ( s_{v,1}^{-1},\ldots,s_{\omega,3}^{-1} ). \tag{46} ]
+
+这是必要的，因为：
+
+平移 residual 单位是 (\mathrm{m/s})；
+旋转 residual 单位是 (\mathrm{rad/s})。
+不要直接拿两个量数值相加。
+
+第一层目标：
+
+[ \boxed{ \min_{u,\alpha,w} \quad \frac12 w^\top S_w^\top Q_wS_ww + \frac{q_\alpha}{2}(1-\alpha)^2. } \tag{47} ]
+
+其中：
+
+[ Q_w
+\operatorname{diag} ( q_{p,1},\ldots, q_{F}, q_\theta ). ]
+
+建议的含义而不是固定数值是：
+
+[ q_{\rm path,\perp}
+
+q_F
+
+q_\theta. \tag{48} ]
+
+也就是说：
+
+横向几何偏离最不希望发生；
+精确力中心允许适度让步；
+图像/力矩旋转最柔软。
+但任何这些权重都不能放松硬安全约束。
+
+路径速度项：
+
+[ q_\alpha(1-\alpha)^2 ]
+
+让系统尽量保持全速扫描。
+
+因此：
+
+[ \alpha\downarrow ]
+
+不是外部规则触发，而是 QP 在接触和执行能力变紧时自然选择的结果。
+
+第一层硬约束
+首先保留你代码已有的：
+
+[ u_{\min,k}\le u\le u_{\max,k} \tag{49} ]
+
+其中已经可以合并：
+
+velocity；
+acceleration；
+jerk；
+joint wall；
+rail wall。
+加速度：
+
+[ -a_{\max}h \le u-u_{k-1} \le a_{\max}h. \tag{50} ]
+
+jerk：
+
+[ -j_{\max}h^2 \le u-2u_{k-1}+u_{k-2} \le j_{\max}h^2. \tag{51} ]
+
+碰撞 CBF：
+
+[ \nabla d_\ell(q)^\top u \ge -\gamma_\ell \left( d_\ell-d_{\ell,\min} \right). \tag{52} ]
+
+路径速度：
+
+[ 0\le\alpha\le1. \tag{53} ]
+
+最重要的是新加入：
+
+[ \boxed{ A_{F,k} \begin{bmatrix} u\\alpha \end{bmatrix} \le b_{F,k}. } \tag{54} ]
+
+它编码全部预测时刻：
+
+[ F_{\mathrm L} \le F_{k+i} \le F_{\mathrm U}. \tag{55} ]
+
+这个约束：
+
+[ \boxed{\text{绝对没有 slack}.} ]
+
+因此，如果名义导纳要求：
+
+[ v_a=-30~\mathrm{mm/s} ]
+
+但该动作根据实际 queue 和当前接触状态会导致未来：
+
+[ F<2~\mathrm N, ]
+
+QP 可以输出：
+
+[ v_z^{\rm cmd}=-12~\mathrm{mm/s}. ]
+
+那么：
+
+[ w_z=18~\mathrm{mm/s} ]
+
+正是：
+
+“为了不离开真实力走廊，我没有完全执行追 (4~\mathrm N) 的名义控制器。”
+
+这就是力松弛的数学定义。
+
+不是：
+
+[ F\le6+\delta_F. ]
+
+为什么这就是最干净的 Conditional Filter
+不再需要单独创造一套 conditional task filter。
+
+如果名义任务本身满足全部硬约束，并且存在：
+
+[ w=0,\qquad \alpha=1, ]
+
+那么式（47）目标值为：
+
+[ J_1=0. ]
+
+因为目标是非负的，所以这就是全局最优。
+
+因此：
+
+[ \boxed{ \text{名义行为可行} \Rightarrow w^\star=0,\quad \alpha^\star=1. } \tag{56} ]
+
+这意味着：
+
+QP 在经过认证的正常工作区内完全透明。
+
+一旦名义行为不可行，它才进行最小干预。
+
+这比一个手工设计的 gate/filter 状态机在理论上干净得多。
+
+为什么速度缩放真的有用
+假设扫描继续前进会增加接触困难。
+
+传统结构只有：
+
+[ \alpha=1 ]
+
+一种选择。
+
+于是为了维持力，Tool-Z 必须提供更大修正。
+
+现在 QP 可以比较两种代价：
+
+[ \text{更大 }|w_z| ]
+
+与
+
+[ 1-\alpha. ]
+
+例如可能选择：
+
+[ \alpha=0.4 ]
+
+而保留一个较温和的法向修正。
+
+物理上它在做：
+
+[ \boxed{ \text{把接触困难转换成时间，而不是转换成更高闭环增益。} } \tag{57} ]
+
+这非常适合机器人超声，因为临床扫描通常关心的是：
+
+[ \text{路径覆盖} ]
+
+而不是必须在精确的绝对时间戳通过每个路径点。
+
+不过应严谨说明：在完全平坦、切向运动与法向接触完全解耦的理想环境里，降低 (\alpha) 不一定改善一个独立的快速法向扰动。它主要帮助：
+
+曲率变化；
+组织空间异质性；
+摩擦耦合；
+机器人构型资源竞争；
+扫描自身引起的接触变化。
+因此不能宣传为万能“抗振荡参数”。
+
+第一层 QP 的最终形式
+[ \boxed{ \begin{aligned} \min_{u,\alpha,w}\quad& \frac12w^\top Q_w'w + \frac{q_\alpha}{2}(1-\alpha)^2 \ \text{s.t.}\quad& J_{\rm task}u -\alpha V_{\rm ff} -w
+V_0-V_{\rm aff}, \ & u_{\min,k}\le u\le u_{\max,k}, \ & A_{\rm col,k}u\le b_{\rm col,k}, \ & A_{F,k} \begin{bmatrix} u\\alpha \end{bmatrix} \le b_{F,k}, \ & 0\le\alpha\le1. \end{aligned} } \tag{58} ]
+
+其中：
+
+[ Q_w'=S_w^\top Q_wS_w. ]
+
+这就是论文的第一核心公式。
+
+第二层 QP 的变量
+第一层得到：
+
+[ u_1^\star,\qquad \alpha_1^\star,\qquad w_1^\star. ]
+
+第二层不再改变 (\alpha)。
+
+定义：
+
+[ \boxed{ x_2= \begin{bmatrix} u\ \epsilon \end{bmatrix}. } \tag{59} ]
+
+其中 (\epsilon) 是构型偏好的 slack，例如 singularity recovery slack。
+
+第二层首先锁什么
+严格锁定第一层 task：
+
+[ \boxed{ J_{\rm task}u
+J_{\rm task}u_1^\star. } \tag{60} ]
+
+而路径速度固定为：
+
+[ \alpha=\alpha_1^\star. \tag{61} ]
+
+由于第一层等式为：
+
+[ J_{\rm task}u_1^\star
+\alpha_1^\star V_{\rm ff} -w_1^\star
+V_0-V_{\rm aff}, ]
+
+第二层保持式（60）和式（61）后自然得到：
+
+[ w_2=w_1^\star. \tag{62} ]
+
+因此第二层不能用更好的 rail 姿态或 manipulability 去“购买”更多第一层任务误差。
+
+为什么还必须重复患者接触约束
+这是非常重要的一点。
+
+不能只写：
+
+[ J_{\rm task}u_2
+J_{\rm task}u_1. ]
+
+因为 arm 和 rail 的真实动态并不完全一样。
+
+一个简单反例：
+
+[ J= \begin{bmatrix} 1&1 \end{bmatrix}. ]
+
+取：
+
+[ \Delta u= \begin{bmatrix} a\-a \end{bmatrix}. ]
+
+那么：
+
+[ J\Delta u=0. ]
+
+运动学 TCP 命令不变。
+
+但若两个执行通道分别是：
+
+[ G_1(p),\qquad G_2(p), ]
+
+真实运动变化：
+
+[ \Delta V_m
+(G_1-G_2)a. \tag{63} ]
+
+一般不为零。
+
+因此：
+
+[ \boxed{ \text{运动学 nullspace} \neq \text{真实执行动态 nullspace}. } ]
+
+所以 QP2 必须再次施加：
+
+[ \boxed{ A_{F,k} \begin{bmatrix} u\\alpha_1^\star \end{bmatrix} \le b_{F,k}. } \tag{64} ]
+
+这就是第二层对患者安全证书的继承。
+
+QP2 优化什么
+定义：
+
+[ \begin{aligned} J_2={}& \frac12 (u-u_{\rm pref})^\top R (u-u_{\rm pref}) \ & +\frac12 (u-u_{k-1})^\top S (u-u_{k-1}) \ & +\frac{q_r}{2} (e_r^\top u-v_{r,\rm ref})^2 \ & +\frac12 \epsilon^\top Q_\epsilon\epsilon. \end{aligned} \tag{65} ]
+
+物理意义分别是：
+
+[ u_{\rm pref} : \text{关节中心、manipulability 等构型偏好}; ]
+
+[ R : \text{不同执行器的使用代价}; ]
+
+[ S : \text{命令连续性}; ]
+
+[ e_r^\top u : \text{rail 速度}; ]
+
+[ v_{r,\rm ref} : \text{mid-ranging rail preference}; ]
+
+[ \epsilon : \text{singularity / comfort 等软偏好 slack}. ]
+
+于是：
+
+[ \boxed{ \begin{aligned} \min_{u,\epsilon}\quad& J_2(u,\epsilon) \ \text{s.t.}\quad& J_{\rm task}u
+J_{\rm task}u_1^\star, \ & u_{\min,k}\le u\le u_{\max,k}, \ & A_{\rm col,k}u\le b_{\rm col,k}, \ & A_{F,k} \begin{bmatrix} u\\alpha_1^\star \end{bmatrix} \le b_{F,k}, \ & A_{\rm pref,k}u+B_\epsilon\epsilon \ge b_{\rm pref,k}, \ & \epsilon\ge0. \end{aligned}} \tag{66} ]
+
+这是第二核心公式。
+
+nullspace 到底在哪里
+理论上，式（60）的所有解都可以写成：
+
+[ u
+u_1^\star+N_Tz, \tag{67} ]
+
+其中 (N_T) 的列张成：
+
+[ \ker(J_{\rm task}). ]
+
+因此 QP2 本质是在第一层任务的仿射 nullspace 中找最好构型。
+
+但是代码不应该真的先投影再加速度。
+
+原因是：
+
+[ u_1^\star+N_Tz ]
+
+仍可能违反：
+
+joint box；
+acceleration；
+jerk；
+collision；
+force viability；
+energy。
+所以最干净的方法正是现有架构：
+
+在完整 (u) 空间里优化，用式（60）硬锁 task。
+
+damped nullspace 为什么不是严格保护
+如果代码构造：
+
+[ J_\lambda^#
+J^\top(JJ^\top+\lambda^2I)^{-1}, \tag{68} ]
+
+[ N_\lambda
+I-J_\lambda^#J, \tag{69} ]
+
+当：
+
+[ \lambda>0 ]
+
+时一般：
+
+[ JN_\lambda\neq0. ]
+
+因此 damped projection 只能用于构造：
+
+[ u_{\rm pref}, ]
+
+不能作为“低优先级绝不影响任务”的证明。
+
+真正的证明来自 QP2 的 hard equality（60）。
+
+singularity escape 应该只是 QP2 软偏好
+定义：
+
+[ \sigma(q)
+\sigma_{\min}(J_a(q)). ]
+
+一种 set-based 约束：
+
+[ \nabla_q\sigma^\top u + \epsilon_\sigma \ge \gamma_\sigma ( \sigma_{\rm safe}-\sigma ), \tag{70} ]
+
+其中：
+
+(\sigma_{\rm safe})：希望恢复的最低 dexterity；
+(\gamma_\sigma>0)：恢复速率；
+(\epsilon_\sigma\ge0)：做不到时的 slack。
+QP2 惩罚：
+
+[ q_\sigma\epsilon_\sigma^2. ]
+
+如果接触任务要求和 singularity escape 冲突：
+
+[ \epsilon_\sigma ]
+
+应增大。
+
+而不是破坏第一层。
+
+你当前代码此前核对过的 sigma_setbased, nullspace_task, manipulability_task, rail_allocator 正适合作为这一层的 building blocks；它们不是新的论文贡献。
+
+与当前 RealUS_playground 的映射
+本报告采用你最新指定版本对应的完整提交：
+
+03a871ae17420ef41e5ad538f9ae7ad400a36d5b
+
+你写的：
+
+e5ad538f9ae7ad400a36d5b
+
+是该 SHA 的后缀。
+
+核心变量建议直接对应：
+
+数学量	代码对象
+(u)	现有 qdot / rail+arm velocity decision
+(w)	现有 QP1 task slack
+(J_{\rm task})	现有 J_task
+(V_{\rm aff})	rail actual velocity contribution
+(\alpha)	新增 path_speed_scale
+(s)	新增/重构 path_phase
+(A_F,b_F)	新增 force_viability_rows
+(Q_k)	delay queue，已有 P4 shield 思想可复用
+(T_n)	ICRA_2027 10_tn robot model
+(u_{\rm pref})	现有 nullspace/manipulability/posture preference
+(\epsilon_\sigma)	现有 singularity slack
+(E_k)	可选 actual-port energy state
+
+最重要的代码原则是：
+
+[ \boxed{ \text{QP1 与 QP2 都调用同一个 } \texttt{force_viability_rows()}. } \tag{71} ]
+
+而不是 QP1 安全、QP2 再随便重分配。
+
+超声图像与接触力矩如何只用一个旋转自由度改善声学接触
+为什么总力不够
+超声探头是有限面积接触。
+
+设探头表面压强为：
+
+[ p(x,y). ]
+
+总法向力：
+
+[ F
+\int_{\mathcal A} p(x,y),dA. \tag{72} ]
+
+绕保留旋转轴的接触力矩：
+
+[ \tau_\theta
+\int_{\mathcal A} x,p(x,y),dA. \tag{73} ]
+
+所以两个接触都可能满足：
+
+[ F=4~\mathrm N, ]
+
+但一个左右均匀，另一个所有压力集中在探头一侧。
+
+因此：
+
+[ \boxed{ \text{恒定净力不等于良好有限面积接触。} } ]
+
+这也是机器人超声和很多点接触工业 force control 的重要区别。
+
+在理想平面压力模型中：
+
+[ x_{\rm CoP}
+\frac{\tau_\theta}{F}. \tag{74} ]
+
+它表示压力中心相对参考点的横向偏移。
+
+严格说，单个力和力矩不能恢复完整压力分布，但至少给出了“一侧加载更重”的机械信息。
+
+Piedra 等近期的 dynamic wrench control 工作同样强调了有限面积探头中 force 与 moment 联合调节的价值；Chatelain 等早期 confidence-driven ultrasound probe control 则说明 ultrasound confidence map 的空间矩可以用于自动调节探头姿态。这里本文的创新不应声称“首次使用图像或力矩”，而是：
+
+把图像/力矩只作为软接触意图，而由同一个执行可行性 QP 判断该姿态动作是否真的允许。
+
+先正确搬移 wrench
+假设 F/T 传感器或 TCP wrench 表达在 (T) 点，希望得到探头面参考点 (P)。
+
+设：
+
+[ r_{TP} ]
+
+为从 (T) 到 (P) 的位置向量。
+
+则：
+
+[ f_P=f_T, ]
+
+[ \tau_P
+\tau_T-r_{TP}\times f_T \tag{75} ]
+
+（具体符号取决于 (r) 的方向定义，代码必须通过静态载荷检查确定）。
+
+然后：
+
+[ \tau_\theta
+a_\theta^\top\tau_P. \tag{76} ]
+
+过去如果把“与法向力垂直的力矩”一律过滤掉，就恰好丢掉了这里需要的有限面积接触信息。
+
+图像给声学接触，力矩给机械接触
+从超声近场图像构造一个左右接触不均衡标量。
+
+例如置信图为：
+
+[ C(x,z)\in[0,1]. ]
+
+定义归一化第一矩：
+
+[ e_I
+\frac{ \int x C(x,z),dx,dz }{ r_I \int C(x,z),dx,dz+\varepsilon }. \tag{77} ]
+
+其中 (r_I) 是图像半宽，因此 (e_I) 近似无量纲。
+
+同样，把机械压力中心归一化：
+
+[ e_\tau
+\operatorname{sat} \left( \frac{\tau_\theta} { (F+\varepsilon_F)r_P } \right), \tag{78} ]
+
+其中 (r_P) 是探头接触面特征半宽。
+
+于是：
+
+(e_I)：声学上哪一边接触差；
+(e_\tau)：机械上压力中心偏向哪一边。
+这两个信号具有互补性。
+
+图像会受：
+
+声影；
+解剖结构；
+图像处理噪声；
+影响。
+
+力矩则会受：
+
+摩擦；
+TCP reference；
+工具补偿；
+影响。
+
+所以最好不要选其中一个为绝对真值。
+
+不要再辨识一个复杂的“角度—图像—组织”模型
+最简洁设计是只做一个符号校准。
+
+定义图像置信权重：
+
+[ 0\le c_I\le1. ]
+
+当图像可信时 (c_I\to1)，图像差时 (c_I\to0)。
+
+组合接触误差：
+
+[ e_c
+c_I e_I + (1-c_I)\lambda_\tau e_\tau. \tag{79} ]
+
+其中 (\lambda_\tau) 只是两个无量纲信号之间的相对尺度。
+
+名义旋转速度：
+
+[ \boxed{ \omega_a
+-k_\theta s_\theta e_c. } \tag{80} ]
+
+其中：
+
+(k_\theta>0)：最大响应尺度；
+(s_\theta\in{-1,+1})：一次几何/小动作标定得到的旋转符号。
+这没有患者刚度、黏弹性或角度响应模型。
+
+如果担心复杂表面上图像映射符号发生变化，可以让 (s_\theta) 用小窗口 secant 估计：
+
+[ \hat g_I
+\frac{\Delta e_I}{\Delta\theta}, \tag{81} ]
+
+只有当：
+
+[ |\Delta\theta|>\theta_{\rm excite} ]
+
+且图像置信度足够时才更新符号。
+
+这仍然是一个低维局部梯度方向，不是生物力学辨识。
+
+为什么不把图像直接做 QP 硬约束
+因为：
+
+[ e_I\neq0 ]
+
+不一定意味着机械接触一定不好。
+
+它可能来自组织纹理或声影。
+
+因此本文建议：
+
+[ \omega_a ]
+
+只进入：
+
+[ V_0 ]
+
+成为 QP1 的软任务。
+
+如果旋转会导致：
+
+[ F_{\rm future}>F_{\mathrm U}, ]
+
+QP通过：
+
+[ w_\theta ]
+
+自动减弱旋转。
+
+所以结构是：
+
+[ \boxed{ \text{image + moment} \rightarrow \omega_a \rightarrow V_{\rm cmd} \rightarrow \mathrm{QP1\ admission}. } \tag{82} ]
+
+而不是：
+
+[ \text{image controller} \rightarrow \text{直接改最终 }V_{\rm cmd} \rightarrow \text{QP 后再 clip}. ]
+
+可以严格保证什么
+不能仅凭一个 image feature 和一个 moment 严格证明：
+
+“整个探头足迹每一个位置都完全接触。”
+
+这在信息论上就不充分。
+
+能够比较严谨地写：
+
+在有限面积接触模型下，接触力矩提供压力中心偏移的机械观测；超声 confidence asymmetry 提供声学耦合不均衡观测。所提出的单轴接触调节器在两者符号一致时生成使两种不均衡同时减小的名义旋转方向，而患者端口 QP 保证该旋转不会牺牲已认证的法向力可行性。
+
+这已经足够强，而且不会过度宣称。
+
+(F^\star) 的识别放在哪里
+完全可以把：
+
+[ F^\star
+\mathcal G(I,\text{view},\text{anatomy}) \tag{83} ]
+
+作为独立高层模块。
+
+Zakeri 等已经展示过图像/视图条件下调整期望交互力的思路；其他超声工作也使用 confidence 或组织变形信息调整目标力。
+
+本文只定义接口：
+
+[ F_{\mathrm L}+\Delta_F \le F^\star \le F_{\mathrm U}-\Delta_F. \tag{84} ]
+
+高层模块无权修改：
+
+[ F_{\mathrm L}, F_{\mathrm U}. ]
+
+所以以后即使你有一个很好的“什么解剖视图需要多少力”的模型，也不用重写底层安全 QP。
+
+Energy tank 是否值得保留：只有一种设计我认为值得
+先给结论
+如果 energy tank 只是：
+
+(E) 低就增加 (D)；
+(E) 低就把 (V_{\rm cmd}) 乘一个系数；
+QP 后再 clip；
+或者还用命令速度计算患者功率；
+那么：
+
+[ \boxed{\text{建议删掉。}} ]
+
+它只会让论文更复杂。
+
+但是如果做成：
+
+[ \boxed{ \textbf{actual patient-port energy budget} + \textbf{delay committed-work reserve} } ]
+
+那么我认为值得保留，因为它能够给出一个和患者刚度模型无关的漂亮定理。
+
+这也是它和 force viability 的互补价值。
+
+为什么 Lee 不需要辨识组织模型
+Lee 等 BEFM 的关键不是预测一个 Kelvin–Voigt 环境。
+
+它通过：
+
+代理速度；
+实际机器人速度；
+实际外部 wrench；
+直接判断代理和真实系统之间是否存在不良能量流。
+
+因此它的核心思路本身就是 environment-model-independent。
+
+不过 Lee 的实际控制接口和动力学结构与 RM75 不同，尤其其控制器可以直接作用于机器人动力学/力矩层，所以你不能把其 passivity proof 原样移植。
+
+你可以继承的思想是：
+
+[ \boxed{ \text{稳定性监督应尽量基于实际端口功率， 而不是患者参数。} } ]
+
+患者实际端口
+选择探头面上的固定刚体点 (P)。
+
+定义环境作用于探头的 wrench：
+
+[ W_P
+\begin{bmatrix} f_P\ \tau_P \end{bmatrix}. \tag{85} ]
+
+定义同一物理时刻该点的实际 twist：
+
+[ V_{P,m}
+\begin{bmatrix} v_{P,m}\ \omega_{P,m} \end{bmatrix}. \tag{86} ]
+
+机械功率：
+
+[ \boxed{ P_P
+W_P^\top V_{P,m}. } \tag{87} ]
+
+如果 (W_P) 定义为 environment-on-probe：
+
+(P_P>0)：患者向机器人输入机械能；
+(P_P<0)：机器人向患者输出机械能。
+注意这里：
+
+[ F^\top v+\tau^\top\omega ]
+
+的每一项都是瓦特，所以完整六维空间功率天然量纲一致。
+
+这也是为什么即使你只主动调 Tool-Z 和一个旋转轴，如果要声称完整患者端口被动，功率仍然应使用六维实际 wrench–twist。
+
+扫描切向摩擦也是患者机械功的一部分。
+
+能量账本
+定义：
+
+[ E_k\in[E_{\min},E_{\max}] ]
+
+为当前允许的机械能预算。
+
+每拍使用实际端口工作：
+
+[ \mathcal W_{P,k}
+\int_{t_k}^{t_{k+1}} W_P(t)^\top V_{P,m}(t),dt. \tag{88} ]
+
+更新：
+
+[ \boxed{ E_{k+1}
+\min \left( E_{\max}, E_k+\underline{\mathcal W}_{P,k} \right). } \tag{89} ]
+
+其中：
+
+[ \underline{\mathcal W}{P,k} \le \mathcal W{P,k} ]
+
+是考虑同步、噪声和积分误差后的保守下界。
+
+非常重要：
+
+[ \boxed{ \text{不能在 }E_{\min}\text{ 处强行 clip。} } ]
+
+如果真实更新低于 (E_{\min})，证书已经失败，不能靠把软件变量写回 (E_{\min}) 修复物理事实。
+
+上限 clip 是可以的，因为它只是丢弃多余储能。
+
+为什么这里不再需要 (K_e)
+真正漂亮的地方在已承诺能量 reserve。
+
+假设控制器已经知道机器人旧命令在停止前最多还会产生多少绝对实际位移：
+
+[ d_{j,k}^{\rm old}, \qquad j=1,\ldots,6. ]
+
+其中前三个是米，后三个是弧度。
+
+这些量来自：
+
+robot-only (T_n)；
+delay queue；
+stop_dx_ub / stop-angle upper bound；
+而不是人体模型。
+
+再规定患者端口允许工作域中的 wrench hard envelope：
+
+[ |W_{P,j}| \le \bar W_j. \tag{90} ]
+
+这里 (\bar W_j) 是安全/操作规格，不是辨识组织刚度。
+
+那么旧 queue 最坏还可能输出的机械功：
+
+[ \boxed{ R_{E,k}^{\rm old}
+\sum_{j=1}^{6} \bar W_jd_{j,k}^{\rm old}. } \tag{91} ]
+
+因为：
+
+[ \left| \int W_j,dq_j \right| \le \bar W_j \int|dq_j|. ]
+
+这非常保守，但：
+
+[ \boxed{\text{完全不需要患者刚度或黏弹参数。}} ]
+
+这比：
+
+[ F_{\rm future}=F+K_e\Delta x ]
+
+更适合作为环境不确定时的能量 reserve。
+
+当前候选命令也要预算
+设当前候选：
+
+[ \zeta= \begin{bmatrix} u\\alpha \end{bmatrix}. ]
+
+通过 robot execution contract 可以得到候选动作在“下一次还能重新决策之前”造成的绝对端口运动上界。
+
+假设表示为：
+
+[ d_{\rm new} \le d_0+ |G_\zeta\zeta|. \tag{92} ]
+
+引入 epigraph 变量：
+
+[ \rho\ge0 ]
+
+满足：
+
+[ \rho \ge G_\zeta\zeta, ]
+
+[ \rho \ge -G_\zeta\zeta. \tag{93} ]
+
+则：
+
+[ |G_\zeta\zeta|\le\rho. ]
+
+候选最坏机械工作：
+
+[ R_E^{\rm new}
+\bar W^\top(d_0+\rho). \tag{94} ]
+
+因此 QP 只需增加：
+
+[ \boxed{ R_{E,k}^{\rm old} + \bar W^\top(d_0+\rho) \le E_k-E_{\min}. } \tag{95} ]
+
+以及式（93）。
+
+它全部是线性约束。
+
+这比：
+
+[ W^\top J u\ge b ]
+
+更加鲁棒，因为它没有假设：
+
+[ V_{\rm actual}=Ju. ]
+
+也没有假设下一拍 wrench 保持当前值。
+
+代价是更保守。
+
+Energy-QP 的变量
+如果启用 energy 模块，QP1 变量扩展为：
+
+[ \boxed{ x_1= \begin{bmatrix} u\ \alpha\ w\ \rho \end{bmatrix}. } \tag{96} ]
+
+(\rho) 没有独立控制意义，只是绝对值线性化的 auxiliary variable。
+
+QP2 也必须重复同样 energy row。
+
+它到底证明什么
+由式（89）：
+
+[ E_{k+1} \le E_k+ \mathcal W_{P,k}. ]
+
+累计：
+
+[ E_N-E_0 \le \sum_{k=0}^{N-1} \mathcal W_{P,k}. ]
+
+又因为：
+
+[ E_N\ge E_{\min}, ]
+
+所以：
+
+[ \boxed{ \sum_{k=0}^{N-1} \mathcal W_{P,k} \ge E_{\min}-E_0. } \tag{97} ]
+
+因此机器人从患者端口净输出的机械功满足：
+
+[ \boxed{ W_{\rm robot\rightarrow patient}^{\rm net} \le E_0-E_{\min}. } \tag{98} ]
+
+这就是一个明确、漂亮、与组织刚度无关的端口能量定理。
+
+Secchi/Ferraguti 和 Benzi/Secchi 已经证明 energy tank/passivity constraint 可以进入凸优化，因此“energy in QP”本身不是创新 [Secchi & Ferraguti, 2019; Benzi & Secchi, 2021]。
+
+你的区别应写成：
+
+现有优化式 passivity 方法通常在任务速度可被低层较好实现的假设下构造能量约束；本文对具有显著输入延迟的黑盒速度接口机器人直接使用实际患者端口功率，并把尚未执行的命令转化为 committed-work reserve，从而使端口能量证书作用于实际物理运动而非理想命令。
+
+它不能证明什么
+即使：
+
+[ E_k\ge E_{\min} ]
+
+始终成立，也不能推出：
+
+[ F\le F_{\mathrm U}. ]
+
+一个无限刚性的表面可以在极小位移下产生极大峰值力，但机械工作仍很小。
+
+所以：
+
+[ \boxed{ \text{force viability} \neq \text{passivity}. } ]
+
+前者保护峰值/接触：
+
+[ F_{\mathrm L}\le F\le F_{\mathrm U}. ]
+
+后者保护累计机械能：
+
+[ W_{\rm out}^{\rm net}\le E_{\rm budget}. ]
+
+也不能写：
+
+[ \text{passive}\Rightarrow\text{no bouncing}. ]
+
+一个欠阻尼但被动的系统仍然可以振荡。
+
+是否建议正文保留
+我的最终建议是：
+
+[ \boxed{ \textbf{主方法不依赖 energy； 正文保留一个 compact energy extension 和一个独立 theorem。} } ]
+
+如果实验发现它几乎不激活、没有额外价值，就把它移到 appendix。
+
+如果它在未知、黏弹或高刚度接触上能捕获 force corridor 没有直接观察到的危险能量行为，再把它升为主要贡献之一。
+
+这样不会为了“看起来理论很多”而强行增加一个 tank。
+
+理论结果：真正可以写进 IJRR 的几个定理
+不可能性结果：未知环境不能无假设保证
+命题 A： 若环境的未来接触力增量没有有限外包络，则任何因果控制器都无法保证有限双边力走廊。
+
+这不是弱点，而是用来解释为什么本文不辨识组织模型，却仍然需要一个最弱 set-valued contract。
+
+它帮助回答审稿人：
+
+“既然你说环境未知，为什么还能证明？”
+
+答案是：
+
+未知的是模型结构和参数，不是允许产生任意无限响应。我们只假设真实系统属于经过验证的响应外集合。
+
+条件透明性
+设第一层名义任务存在一个可行解：
+
+[ w=0,\qquad \alpha=1, ]
+
+并满足所有硬约束。
+
+因为式（47）的两项均非负，所以：
+
+[ J_1=0. ]
+
+不存在更小目标。
+
+因此：
+
+[ \boxed{ w_1^\star=0,\qquad \alpha_1^\star=1. } \tag{99} ]
+
+即：
+
+安全约束没有激活时，新方法完全不改变 nominal controller。
+
+这正是你想要的“柔顺手感平时不被安全器破坏”。
+
+Force corridor 前向不变性
+假设集合外包络满足：
+
+[ \underline F_{i|k}(\zeta_k) \le F_{k+i} \le \overline F_{i|k}(\zeta_k) \tag{100} ]
+
+对真实系统始终成立。
+
+QP1/QP2 强制：
+
+[ \underline F_{i|k} \ge F_{\mathrm L}, ]
+
+[ \overline F_{i|k} \le F_{\mathrm U}. ]
+
+则：
+
+[ F_{\mathrm L} \le F_{k+i} \le F_{\mathrm U} \tag{101} ]
+
+对所保护预测 horizon 成立。
+
+如果 horizon 末端状态进入一个经过验证的 backup invariant set：
+
+[ \chi_{k+N} \in\mathcal K_B, \tag{102} ]
+
+并且对任意：
+
+[ \chi\in\mathcal K_B ]
+
+存在 backup action 使：
+
+[ \chi^+\in\mathcal K_B, \tag{103} ]
+
+那么 receding-horizon 可行性递归成立。
+
+因此从：
+
+[ \chi_0\in\mathcal K ]
+
+出发：
+
+[ \boxed{ F_k\in[F_{\mathrm L},F_{\mathrm U}], \qquad\forall k. } \tag{104} ]
+
+这比仅使用：
+
+[ F_{k+1} ]
+
+的一拍 CBF 更适合你的输入 delay。
+
+正力下界与无整体再撞击
+对于无粘附单边接触：
+
+[ F\ge0,\qquad g\ge0,\qquad Fg=0, \tag{105} ]
+
+其中 (g) 是接触间隙。
+
+若：
+
+[ F_{\mathrm L}>0 ]
+
+且式（104）成立，则：
+
+[ F_k>0 ]
+
+所以：
+
+[ g_k=0. ]
+
+因此在模型有效域中：
+
+[ \boxed{ \text{捕获后不发生整体 separation， 因此没有 separation–reimpact 型弹跳。} } \tag{106} ]
+
+这里必须加“整体”。
+
+它不保证：
+
+某个探头边缘不瞬间卸载；
+压力分布完全均匀；
+力在走廊里一点都不振荡。
+这些正是 image + moment 任务要改善但不作为 hard theorem 的部分。
+
+QP2 对 QP1 不劣化
+QP1：
+
+[ J_{\rm task}u_1^\star -\alpha_1^\star V_{\rm ff} -w_1^\star
+b. \tag{107} ]
+
+QP2 强制：
+
+[ J_{\rm task}u_2^\star
+J_{\rm task}u_1^\star ]
+
+和：
+
+[ \alpha_2=\alpha_1^\star. ]
+
+因此：
+
+[ w_2=w_1^\star. ]
+
+于是第一层目标中关于 task residual 的部分严格不变。
+
+路径速度也不变。
+
+所以：
+
+[ \boxed{ J_1(u_2^\star,\alpha_1^\star)
+J_1^\star. } \tag{108} ]
+
+只要 QP2 重施所有患者硬约束，最终命令也仍满足：
+
+[ \boxed{ \mathcal C_{\rm patient}(u_2^\star,\alpha_1^\star)=\text{true}. } \tag{109} ]
+
+这就是：
+
+[ \boxed{ \text{task non-degradation} + \text{certificate inheritance}. } ]
+
+这是你两层 QP 最值得正式证明的结果。
+
+QP2 为什么存在可行解
+QP1 的：
+
+[ u_1^\star ]
+
+本身就满足：
+
+task lock；
+hardware；
+collision；
+force viability；
+energy（若开启）。
+因此 QP2 至少可以取：
+
+[ u=u_1^\star. ]
+
+对于 singularity 等 soft preference，只需要选择足够大的：
+
+[ \epsilon. ]
+
+所以 QP2 存在可行点。
+
+因此：
+
+[ \boxed{ \text{QP1 feasible} \Rightarrow \text{QP2 feasible} } \tag{110} ]
+
+只要所有新增 QP2-only 约束确实具有 slack 或只是 cost。
+
+这非常适合论文。
+
+实际患者端口耗散性
+如果启用上一节的 energy 约束，并且：
+
+actual wrench/twist 同步有效；
+energy increment lower bound 有效；
+committed-work reserve 有效；
+QP2 重复 energy constraint；
+QP 后没有再修改命令；
+则式（98）成立。
+
+这是一个与 force theorem 独立的定理。
+
+为什么没有必要再设计一个“大一统 Lyapunov 函数”
+不需要为了“理论高度”强行构造：
+
+[ V= V_F+V_I+V_\theta+V_q+V_s+E ]
+
+然后声称所有项共同下降。
+
+你的系统有：
+
+moving path；
+unknown environment；
+changing image；
+delayed actuator；
+hierarchical inequality constraints。
+要求这样一个标量函数每拍严格下降，既不自然，也可能逼出一堆没有物理意义的权重。
+
+真正漂亮的理论分解是：
+
+[ \boxed{ \begin{array}{ll} \text{force safety} & \rightarrow \text{robust viability/invariance}, \[1mm] \text{recursive execution ability} & \rightarrow \text{terminal recoverability}, \[1mm] \text{hierarchy} & \rightarrow \text{lexicographic non-degradation}, \[1mm] \text{patient energy} & \rightarrow \text{dissipativity/passivity}, \[1mm] \text{image/moment} & \rightarrow \text{soft contact-quality descent}. \end{array} } \tag{111} ]
+
+每个数学工具只证明它真正能证明的性质。
+
+这比“所有稳定性都塞进 Lyapunov”更像成熟的 IJRR 论文。
+
+实现、实验与附录级推导：把论文真正落到现有代码上
+最小执行架构
+最终软件结构应当非常简单：
+
+text
+复制
+F/T + robot state + ultrasound
+            │
+            ▼
+      synchronized state χk
+            │
+     ┌──────┴────────┐
+     │               │
+     ▼               ▼
+nominal intent   execution/contact
+ generation      certificate builder
+     │               │
+     │          AF, bF
+     │          [AE, bE optional]
+     │               │
+     └──────┬────────┘
+            ▼
+          QP1
+      x1=[u, α, w]
+            │
+     u1*, α1*, w1*
+            │
+            ▼
+          QP2
+      x2=[u, ε]
+   lock Jtask u
+   repeat patient rows
+            │
+            ▼
+        ufinal
+            │
+            ▼
+           RM75
+            │
+            └────► delay queue
+最关键的软件原则：
+
+任何会影响最终命令的限制，必须在最终 QP 内部。
+
+删除：
+
+QP 后 force clip；
+QP 后 TDPA 改速度；
+QP 后图像 controller 再补一项；
+QP 后独立 rail 修正。
+否则：
+
+[ u_{\rm sent} \neq u_{\rm certified}. ]
+
+前面所有证明作废。
+
+force_viability_rows() 应该输出什么
+建议接口：
+
+python
+复制
+rows = force_viability_rows(
+    execution_state=chi_k,
+    path_feedforward=V_path_ff,
+    force_bounds=(F_lower, F_upper),
+)
+返回：
+
+python
+复制
+A_force_u
+A_force_alpha
+b_force
+margin_upper
+margin_lower
+certificate_valid
+数学上：
+
+[ A_{F,u}u+A_{F,\alpha}\alpha \le b_F. \tag{112} ]
+
+这样 QP builder 完全不关心：
+
+包络来自 (T_n+K_e)；
+数据表；
+set-membership；
+backup rollout。
+这让理论与具体辨识实现解耦。
+
+如何获得这个 envelope 而不做患者级系统辨识
+建议的实验顺序不是“给每个患者辨识一个 (K_e)”。
+
+只做两类合同。
+
+机器人执行合同一次完成：
+
+[ u,Q_k \rightarrow V_{\rm actual}\text{ tube}, ]
+
+[ u,Q_k \rightarrow \Delta x_{\rm stop}^{UB}, ]
+
+[ u_\theta,Q_k \rightarrow \Delta\theta_{\rm stop}^{UB}. ]
+
+这里使用：
+
+03/09；
+10_tn；
+step stop tests；
+各典型姿态重复；
+即可。
+
+这是机器人/firmware 性质。
+
+接触恢复合同只要求直接回答：
+
+[ \text{如果现在停止推进并启动 backup， 力最多还会上升多少？} ]
+
+定义：
+
+[ R_F^+(\chi)
+\sup_{\rm allowed~contacts} \left( F_{\rm peak}^{\rm backup}-F_k \right). \tag{113} ]
+
+同理：
+
+[ R_F^-(\chi)
+\sup \left( F_k-F_{\min}^{\rm backup} \right). \tag{114} ]
+
+状态可以仅使用：
+
+[ \chi= ( F, \dot F, v_m, Q ). ]
+
+这比辨识：
+
+[ K_e,B_e,\tau_e ]
+
+简单得多。
+
+你甚至可以把它做成单调 LUT / convex envelope：
+
+[ R_F^+
+R_F^+ ( F,\dot F^+,|v_m|,E_Q ). \tag{115} ]
+
+这是一张“恢复能力图”，不是一个组织模型。
+
+要在新患者上作严格 deterministic guarantee，仍然必须假设该患者位于认证 contact class 内；任何论文都逃不掉这一点。可以通过：
+
+覆盖软、中、硬 phantom；
+骨性结构模拟物；
+多种预载；
+多种扫描速度；
+得到一个相当保守的 universal envelope。
+
+新患者在线数据只允许：
+
+[ \text{缩小保守性} ]
+
+不能在没有证明的情况下扩展安全域。
+
+为什么 K_e 可以从核心公式里删除
+旧思路：
+
+[ F_{\rm future}^{UB}
+F_k+ K_e \Delta x_{\rm committed}^{UB}. \tag{116} ]
+
+它隐含：
+
+线性弹性；
+没有 relaxation；
+没有 hysteresis；
+没有 tangential coupling；
+(K_e) 在该窗口内不变。
+新思路直接使用：
+
+[ \boxed{ F_{\rm future}^{UB}
+F_k+ R_F^+(\chi,u,\alpha). } \tag{117} ]
+
+这样：
+
+黏弹；
+滞后；
+摩擦；
+robot delay；
+queue；
+都只需要被外包络覆盖。
+
+这正是减少患者辨识工作的核心。
+
+但为什么 T_n 仍然值得留
+因为 T_n 不是环境模型。
+
+它让你知道：
+
+[ \boxed{ \text{这个命令什么时候会真正生效， 以及停止时还有多少运动没执行完。} } ]
+
+如果未来换患者：
+
+[ T_n ]
+
+基本不需要重新辨识。
+
+如果未来换更快 Tool-Z motor：
+
+[ T_n ]
+
+改变，其他论文框架不变。
+
+这也自然支持你说的未来高速小行程执行器。
+
+假设以后新增：
+
+[ u_f ]
+
+作为高速 Tool-Z actuator。
+
+QP 变量只需扩展：
+
+[ u
+\begin{bmatrix} u_{\rm RM75}\u_f \end{bmatrix}. \tag{118} ]
+
+该执行器有自己的快速 execution contract。
+
+于是 QP 可以自动选择：
+
+慢而大范围的 RM75；
+快而小行程的 Z actuator。
+而不是重新设计力控制理论。
+
+这正体现：
+
+[ \boxed{ \text{QP1 = certified achievable task}; \qquad \text{QP2 = best realization}. } ]
+
+实验应该围绕“为什么这个核心思想有意义”设计
+不要做二十个 controller combination。
+
+最有说服力的主消融只有四组：
+
+方法	延迟可执行约束	力走廊	路径自动调速	actual-port energy
+Baseline admittance	否	否	否	否
+Instantaneous corridor	否	是	否	否
+Proposed viability HQP	是	是	是	否
+Proposed + energy	是	是	是	是
+
+CDYOB 放额外消融：
+
+[ \text{Proposed nominal admittance} ]
+
+vs
+
+[ \text{Proposed + CDYOB nominal layer}. ]
+
+这样能够证明：
+
+提升究竟来自执行可行性，还是只是某个更好的 force controller。
+
+主指标应该包括：
+
+[ F_{\max}, \quad F_{\min}, \quad T_{\rm out\ of\ corridor}, ]
+
+[ N_{\rm separation}, \quad N_{\rm reimpact}, ]
+
+[ \operatorname{RMS}(F-F^\star), ]
+
+[ \operatorname{RMS}(e_{\rm path}), ]
+
+[ \operatorname{mean}(\alpha), ]
+
+[ \text{scan completion time}, ]
+
+[ \operatorname{RMS}(e_I), \quad \operatorname{RMS}(\tau_\theta), ]
+
+以及：
+
+[ \int P_{\rm out}^+dt ]
+
+和 energy minimum（若启用）。
+
+最重要的是同时报告：
+
+[ |w| ]
+
+因为它正是论文的新含义：
+
+硬件无法安全实现的 nominal interaction request 被主动放弃了多少。
+
+最值得展示的一张图
+我认为 IJRR 稿件最关键的一张实验图应该是同一段困难接触下的六条时间曲线：
+
+[ F(t), ]
+
+[ v_{z,\rm nominal}(t), ]
+
+[ v_{z,\rm QP}(t), ]
+
+[ v_{z,\rm actual}(t), ]
+
+[ \alpha(t), ]
+
+[ R_F^+(t). ]
+
+Baseline 中可以清楚看到：
+
+[ F\text{ error} \rightarrow v_{\rm nominal}\text{ 大修正} \rightarrow V_{\rm actual}\text{ 滞后} \rightarrow F\text{ 继续越过}. ]
+
+Proposed 中：
+
+[ R_F^+\uparrow \rightarrow \alpha\downarrow \rightarrow w_z\neq0 \rightarrow \text{拒绝不可执行修正} \rightarrow F\text{ 留在 corridor}. ]
+
+这比展示十张 Bode plot 更直接证明核心贡献。
+
+审稿人最可能的质疑与应该提前回答的方式
+“这是不是普通 predictive safety filter?”
+
+部分思想当然与 reference governor、predictive safety filter、robust invariant set 有关系。不能声称这些数学工具是新发明。
+
+你的贡献必须落在：
+
+[ \boxed{ \text{黑盒速度执行延迟} + \text{非参数患者接触外包络} + \text{force-corridor relaxation} + \text{time-free scanning} + \text{two-stage HQP certificate inheritance}. } ]
+
+特别是第二层真实安全继承问题，是许多纯运动学 HQP 不会处理的。
+
+“未知环境怎么能有 deterministic guarantee?”
+
+回答：
+
+不假设精确环境模型；假设的是经过验证的集合值接触响应包络。没有任何有限响应假设时，有限力界在理论上不可能保证。本文给出了该不可能性，并把所需环境信息降到直接可验证的 one-sided recovery envelope。
+
+“为什么不是把 force controller 增益调小?”
+
+因为固定低增益会在所有区域降低性能。
+
+本文满足：
+
+[ \text{nominal safe} \Rightarrow w=0,\alpha=1. ]
+
+只在实际可行域收缩时干预。
+
+“energy tank 是否只是装饰?”
+
+如果实验没有显示它捕获额外风险，放 appendix。
+
+如果使用 actual-port ledger + committed-work reserve，则有式（98）的明确耗散定理，不是装饰。
+
+“image + moment 是否真的保证声学接触?”
+
+不要过度声称。
+
+严格保证的是法向接触可行性。
+
+image/moment 提供有限面积声学接触的低优先级优化方向。
+
+附录应给出的矩阵形式
+第一层变量：
+
+[ x_1= \begin{bmatrix} u\\alpha\w \end{bmatrix}. ]
+
+标准 QP：
+
+[ \min_{x_1} \frac12x_1^\top H_1x_1 + g_1^\top x_1. \tag{119} ]
+
+Hessian：
+
+[ H_1= \begin{bmatrix} 0&0&0\ 0&q_\alpha&0\ 0&0&Q_w' \end{bmatrix}. \tag{120} ]
+
+线性项：
+
+[ g_1= \begin{bmatrix} 0\ -q_\alpha\ 0 \end{bmatrix}. \tag{121} ]
+
+常数 (q_\alpha/2) 可以省略。
+
+任务等式：
+
+[ A_{\rm eq,1}
+\begin{bmatrix} J_{\rm task}&-V_{\rm ff}&-I_6 \end{bmatrix}, \tag{122} ]
+
+[ b_{\rm eq,1}
+V_0-V_{\rm aff}. \tag{123} ]
+
+Force rows：
+
+[ A_{\rm force,1}
+\begin{bmatrix} A_{F,u}&A_{F,\alpha}&0 \end{bmatrix}. \tag{124} ]
+
+这最后一列必须为零：
+
+[ \boxed{ w\text{ 不能买掉 force safety}. } ]
+
+第二层的 task lock：
+
+[ A_{\rm eq,2}
+\begin{bmatrix} J_{\rm task}&0 \end{bmatrix}, \tag{125} ]
+
+[ b_{\rm eq,2}
+J_{\rm task}u_1^\star. \tag{126} ]
+
+Force rows：
+
+[ A_{\rm force,2}
+\begin{bmatrix} A_{F,u}&0 \end{bmatrix}, \tag{127} ]
+
+右端：
+
+[ b_{\rm force,2}
+b_F
+A_{F,\alpha}\alpha_1^\star. \tag{128} ]
+
+这几条足以让实现和理论完全一致。
+
+附录应明确列出的最小实验合同
+最终真正“必须补”的东西可以收缩到非常少。
+
+机器人级，一次完成：
+
+[ T_n^z, \quad T_n^\theta, ]
+
+[ T_d^{UB}, ]
+
+[ \Delta x_{\rm stop}^{UB}, \quad \Delta\theta_{\rm stop}^{UB}, ]
+
+[ \bar e_V. ]
+
+这些在换患者时不需要重做。
+
+接触类级，不辨识患者模型：
+
+[ R_F^+(\chi,u,\alpha), \qquad R_F^-(\chi,u,\alpha). ]
+
+只需要证明它们是 future force excursion 的外包络。
+
+能量扩展才需要：
+
+[ \bar W_j, \quad \underline{\mathcal W}_{P,k}, \quad \text{wrench–twist timestamp bound}. ]
+
+图像旋转：
+
+只需：
+
+图像接触指标定义；
+一个旋转符号标定；
+image latency；
+TCP 到 probe-face reference point 的几何标定。
+不需要辨识患者：
+
+[ K_e,B_e,\tau_e. ]
+
+核心参考文献脉络
+本文理论关系应主要定位在以下文献链上，而不是把所有文章都写成方法组件。
+
+Secchi 与 Ferraguti 的 energy-aware/passivity optimization 工作说明“最接近期望行为的被动实现”可以表述为凸优化；Benzi 与 Secchi 进一步说明 passivity 和 set-based/CBF 约束可以共存于优化控制中。它们支持 energy-QP 的数学形式，但其低层执行假设不能直接搬到 RM75。
+
+Lee 等 2024 的 BEFM 最有价值的启示是：
+
+[ V_a-V_m ]
+
+这一代理—真实运动失配本身会破坏理想能量性质，而稳定性监督可以依赖实际 wrench 和运动，而不依赖人体参数。
+
+De Stefano 等说明延迟必须进入机械能分析，因为虚拟系统的良好性质不能自动穿过通信和执行延迟。
+
+Samuel 等的 perturbation-robust/CDYOB 工作支持对工业机器人黑盒内运动环辨识 (T_n)，但其作用应定位为 nominal performance recovery，而非 force-envelope safety certificate。
+
+Keemink 等与 Dimeas–Aspragathos 解释了 admittance 中低阻尼良好手感与刚性接触鲁棒性之间的经典冲突，是本文“不再让 nominal force controller 独自负责所有安全”的直接动机。
+
+Escande 等的 HQP/task-priority 理论支持第二层通过等式保持第一层最优任务，而不是用“超大权重”近似优先级。
+
+Chatelain 等的 confidence-driven ultrasound probe control、Piedra 等的 force/moment probe orientation，以及 Zakeri 等 image-conditioned force target 工作说明图像、接触力矩和高层期望力都已有先例，因此本文不能把这些信号本身包装成创新；真正的贡献应是它们被如何安全地注入一个有执行延迟的 patient-port viability filter。
+
+最终论文应该怎样一句话概括
+我会把整个方法最终压缩成：
+
+[ \boxed{ \begin{array}{c} \text{柔顺力/图像/路径只提出“希望做什么”}\ \downarrow\ \text{QP1 判断硬件和未知接触环境下“现在安全地做得了多少”}\ \downarrow\ \text{QP2 在不改变这个结果的情况下选择最佳 robot/rail realization} \end{array}} ]
+
+更正式地：
+
+[ \boxed{ \textbf{Nominal intent} \rightarrow \textbf{execution-contact admissibility} \rightarrow \textbf{hierarchical realization}. } \tag{129} ]
+
+其中最核心的新理论对象不是 energy tank，也不是 CDYOB，而是：
+
+[ \boxed{ A_{F,k} \begin{bmatrix} u\\alpha \end{bmatrix} \le b_{F,k} } ]
+
+这个与具体患者模型解耦、但显式包含执行延迟和已发送命令历史的接触可行性契约。
+
+如果这个 contract 能够从你的 ICRA_2027 数据和少量新增接触恢复实验中做成可靠、低维、保守而不过度保守的 convex envelope，那么这条线确实具有比“再设计一个导纳参数调度器”高得多的理论和工程价值。
+
+它把你原本零散的几个好想法统一起来了：
+
+[ \boxed{ \begin{aligned} \text{不要精确恒力} &\rightarrow F^\star\text{ 是软 intent},\ \text{力一定有界} &\rightarrow F\text{ corridor 是硬 viability constraint},\ \text{硬件跟不上} &\rightarrow w\text{ 吸收不可执行 task},\ \text{扫描可以慢} &\rightarrow \alpha\text{ 自动下降},\ \text{图像/力矩改善接触} &\rightarrow \omega_a\text{ 是低优先级 intent},\ \text{构型还要优化} &\rightarrow \mathrm{QP2}\text{ 锁任务并重复患者约束},\ \text{未知组织} &\rightarrow \text{只要求 set-valued response envelope},\ \text{还想有能量理论} &\rightarrow \text{actual-port energy + committed-work reserve}. \end{aligned}} \tag{130} ]
+
+这比前面“给每个风险单独再加一个控制器”的版本更接近一篇真正有主张、有边界、有证明对象的 IJRR 论文。

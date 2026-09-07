@@ -84,6 +84,7 @@ class NativeWbcClient:
         self._fault_latched = False
         self._published_q_cmd = None
         self._published_qdot = None
+        self._last_wait_s = float("nan")
 
     def start(self) -> None:
         binary = find_wbc_rt_binary(getattr(self.cfg, "native_bin", None))
@@ -182,13 +183,17 @@ class NativeWbcClient:
         self._pending_commit_seq = 0
 
     def _wait_seq(self, seq: int, *, timeout_s: float | None = None) -> bool:
-        limit = time.monotonic() + float(self.timeout_s if timeout_s is None else timeout_s)
+        t0 = time.monotonic()
+        limit = t0 + float(self.timeout_s if timeout_s is None else timeout_s)
         while time.monotonic() < limit:
             if int(self._out["seq"][0]) == int(seq):
+                self._last_wait_s = time.monotonic() - t0
                 return True
             if self._proc is not None and self._proc.poll() is not None:
+                self._last_wait_s = time.monotonic() - t0
                 return False
             time.sleep(0.0002)
+        self._last_wait_s = time.monotonic() - t0
         return False
 
     def _next_seq(self) -> int:
