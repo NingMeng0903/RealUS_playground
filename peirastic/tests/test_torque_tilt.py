@@ -4,9 +4,11 @@ from __future__ import annotations
 
 from dataclasses import replace
 import math
+from pathlib import Path
 import unittest
 
 import numpy as np
+import yaml
 
 from peirastic.realman8dof.force.protocol import ForceOutput
 from peirastic.realman8dof.force.torque_tilt import (
@@ -26,7 +28,7 @@ CAP20 = replace(TorqueTiltConfig(), theta_max_rad=math.radians(20.0), cop_stall_
 
 
 def law(**kwargs) -> TorqueTilt:
-    return TorqueTilt(replace(TorqueTiltConfig(), cop_stall_s=0.0, **kwargs))
+    return TorqueTilt(replace(TorqueTiltConfig(), **kwargs))
 
 
 def step(tilt, tau, *, fz=2.0, contact=True, desired=DESIRED, dt=DT, **kwargs):
@@ -153,7 +155,8 @@ class TestTorqueTilt(unittest.TestCase):
         tilt = law()
         for _ in range(40):
             step(tilt, 0.12)
-        self.assertGreater(abs(tilt.omega_y), 0.30)
+        self.assertGreater(abs(tilt.omega_y), 0.15)
+        self.assertLessEqual(abs(tilt.omega_y), tilt.cfg.vmax_rad_s + 1e-12)
 
     def test_contact_loss_stops_and_air_guidance_can_be_explicitly_enabled(self):
         tilt = law()
@@ -234,17 +237,69 @@ class TestTorqueTilt(unittest.TestCase):
         _, _, _, empty = estimate_contact_cop(np.zeros(6), f_min=0.8)
         self.assertFalse(empty)
 
-    def test_cop_on_tube_is_reported_and_leftover_stalls(self):
-        tilt = TorqueTilt()
+    def test_explicit_legacy_cop_stall_is_reported(self):
+        tilt = TorqueTilt(TorqueTiltConfig(cop_stall_s=0.35))
         # 4 N × 12.5 mm leftover My sits on the 20 mm tube and does not shrink.
-        for _ in range(int(0.40 / DT)):
+        for _ in range(int(0.60 / DT)):
             step(tilt, -0.05, fz=4.0)
         self.assertTrue(tilt.cop_valid)
         self.assertTrue(tilt.on_tube)
         self.assertGreater(tilt.cop_r, 0.010)
         self.assertTrue(tilt.tilt_stalled)
+        self.assertEqual(tilt.telemetry()["tilt_stop_reason"], "cop_stall")
         held = [step(tilt, -0.05, fz=4.0) for _ in range(80)]
         self.assertLess(abs(held[-1]), 0.02)
+        # Even the opt-in legacy latch must not trap the opposite correction.
+        self.assertLess(step(tilt, 0.05, fz=4.0), 0.0)
+        self.assertFalse(tilt.tilt_stalled)
+
+    def test_defaults_and_live_yaml_do_not_latch_slow_cop_motion(self):
+        self.assertEqual(TorqueTiltConfig().cop_stall_s, 0.0)
+        self.assertEqual(TorqueTiltConfig.from_dict({}).cop_stall_s, 0.0)
+        for filename in ("force.yaml", "controller.yaml"):
+            path = Path(__file__).resolve().parents[1] / "configs" / filename
+            cfg = TorqueTiltConfig.from_dict(yaml.safe_load(path.read_text()))
+            self.assertEqual(cfg.cop_stall_s, 0.0, filename)
+
+    def test_soft_surface_continues_past_previous_1_degree_latch(self):
+        for direction in (-1.0, 1.0):
+            tilt = TorqueTilt()
+            theta = 0.0
+            for _ in range(1200):
+                tau = 0.12 * (theta - direction * 0.5)
+                theta += DT * step(tilt, tau, fz=8.0)
+                self.assertFalse(tilt.tilt_stalled)
+                self.assertTrue(tilt.on_tube)
+            # Old 350-ms latch stopped at 1.46 degrees despite residual torque.
+            self.assertGreater(direction * theta, math.radians(14.0))
+            self.assertFalse(tilt.tilt_frozen)
+            self.assertFalse(tilt.tilt_capped)
+
+    def test_moving_surface_can_keep_nonzero_cop_while_continuing_to_turn(self):
+        tilt = TorqueTilt()
+        theta = 0.0
+        for i in range(1200):
+            surface = 0.4 + 0.1 * i * DT
+            theta += DT * step(tilt, 0.12 * (theta - surface), fz=8.0)
+            self.assertFalse(tilt.tilt_stalled)
+        self.assertGreater(theta, 0.5)
+        self.assertGreater(tilt.omega_y, 0.08)
+        self.assertGreater(abs(tilt.cop_x), tilt.cfg.cop_stall_m)
+        self.assertEqual(tilt.telemetry()["tilt_stop_reason"], "")
+
+    def test_stop_telemetry_distinguishes_deadband_contact_slack_and_angle(self):
+        tilt = TorqueTilt()
+        step(tilt, 0.01)
+        self.assertEqual(tilt.tilt_stop_reason, "torque_deadband")
+        self.assertEqual(tilt.telemetry()["tilt_deadband_nm"], 0.025)
+        step(tilt, 0.12, contact=False)
+        self.assertEqual(tilt.tilt_stop_reason, "no_contact")
+        step(tilt, 0.12, slack_norm=0.12)
+        self.assertEqual(tilt.tilt_stop_reason, "qp_slack")
+        tilt = TorqueTilt(CAP20)
+        for _ in range(400):
+            step(tilt, 0.12)
+        self.assertEqual(tilt.tilt_stop_reason, "angle_limit")
 
     def test_cop_near_tcp_line_does_not_stall_a_real_wrap(self):
         tilt = TorqueTilt()

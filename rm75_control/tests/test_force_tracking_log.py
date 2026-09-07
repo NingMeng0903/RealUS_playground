@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import csv
+import os
 import queue
+import time
 
 import numpy as np
 
@@ -320,3 +322,180 @@ def test_tick_logger_drops_when_queue_is_full(tmp_path):
     logger.write(0.0, "scan", 0.0, step, np.zeros(8), np.zeros(6), np.zeros(6), outer=outer)
     assert logger.dropped >= 1
     logger.close()
+
+
+def test_tick_logger_queues_raw_request_without_callable_or_deepcopy(tmp_path):
+    path = tmp_path / "raw.csv"
+    logger = _TickLogger(str(path))
+    # Stop the child before enqueueing so the request can be inspected without
+    # racing its formatter.  Keep admission enabled to exercise the producer.
+    logger._worker.terminate()
+    logger._worker.join(timeout=2.0)
+    logger._worker_alive = lambda: True
+    step = JointIkStep(
+        q_send=np.zeros(8),
+        qdot=np.zeros(8),
+        twist_base=np.zeros(6),
+        sigma_min=0.2,
+        manip=0.1,
+        slack_norm=0.0,
+        n_cbf_active=0,
+        follow_err_rad=0.0,
+    )
+    logger.write(0.0, "scan", 0.0, step, np.zeros(8), np.zeros(6), np.zeros(6))
+    step.fallback_reason = "mutated_after_enqueue"
+    step.q_send[:] = 7.0
+    request = logger._q.get(timeout=2.0)
+    assert isinstance(request, tuple)
+    assert not callable(request)
+    assert request[0] == logger._REQUEST_TAG
+    assert request[1][3].fallback_reason == ""
+    np.testing.assert_array_equal(request[1][3].q_send, np.zeros(8))
+    logger.close()
+
+
+def test_tick_logger_live_blocked_sink_cannot_block_producer(tmp_path):
+    # A FIFO without a reader blocks the live child in open(), exactly where
+    # a stalled filesystem must be isolated from the controller.
+    path = tmp_path / "blocked.csv"
+    os.mkfifo(path)
+    logger = _TickLogger(str(path))
+    step = JointIkStep(
+        q_send=np.zeros(8), qdot=np.zeros(8), twist_base=np.zeros(6),
+        sigma_min=.2, manip=.1, slack_norm=0., n_cbf_active=0,
+        follow_err_rad=0., fallback_reason="native_timeout_coast",
+    )
+    try:
+        started = time.monotonic()
+        for _ in range(logger._QUEUE_MAX + 20):
+            logger.write(0., "scan", 0., step, np.zeros(8), np.zeros(6), np.zeros(6))
+        elapsed = time.monotonic() - started
+        assert logger._worker.is_alive()
+        assert logger._q.full()
+        assert logger.dropped == 20
+        assert elapsed < .5  # 100 requests must not wait on the blocked sink.
+    finally:
+        logger.close()
+    assert not logger._worker.is_alive()
+
+
+def test_tick_logger_writer_failure_only_drops_telemetry(tmp_path):
+    path = tmp_path / "directory.csv"
+    path.mkdir()
+    logger = _TickLogger(str(path))
+    logger._worker.join(timeout=2.0)
+    assert logger._failed.is_set()
+    step = JointIkStep(
+        q_send=np.zeros(8),
+        qdot=np.zeros(8),
+        twist_base=np.zeros(6),
+        sigma_min=0.2,
+        manip=0.1,
+        slack_norm=0.0,
+        n_cbf_active=0,
+        follow_err_rad=0.0,
+    )
+    logger.write(0.0, "scan", 0.0, step, np.zeros(8), np.zeros(6), np.zeros(6))
+    assert logger.dropped >= 1
+    logger.close()
+
+
+def test_tick_logger_writes_qpik_stage_timing_columns(tmp_path):
+    path = tmp_path / "timing.csv"
+    logger = _TickLogger(str(path))
+    step = JointIkStep(
+        q_send=np.zeros(8),
+        qdot=np.zeros(8),
+        twist_base=np.zeros(6),
+        sigma_min=0.2,
+        manip=0.1,
+        slack_norm=0.0,
+        n_cbf_active=0,
+        follow_err_rad=0.0,
+    )
+    for name, value in (
+        ("qp_kinematics_ms", 1.25),
+        ("qp_collision_ms", 2.5),
+        ("qp_solve_phase_ms", 3.75),
+        ("native_dispatch_ms", 4.0),
+        ("native_roundtrip_ms", 5.0),
+        ("native_transport_ms", 6.0),
+    ):
+        setattr(step, name, value)
+    logger.write(0.0, "scan", 0.0, step, np.zeros(8), np.zeros(6), np.zeros(6))
+    logger.close()
+    with path.open(newline="") as stream:
+        row = next(csv.DictReader(stream))
+    assert row["qpik_kinematics_ms"] == "1.250000"
+    assert row["qpik_collision_ms"] == "2.500000"
+    assert row["qpik_solve_phase_ms"] == "3.750000"
+    assert row["qpik_native_dispatch_ms"] == "4.000000"
+    assert row["qpik_native_roundtrip_ms"] == "5.000000"
+    assert row["qpik_native_transport_ms"] == "6.000000"
+
+
+def test_tick_logger_snapshots_tilt_telemetry_and_records_stop_flags(tmp_path):
+    path = tmp_path / "tilt.csv"
+    logger = _TickLogger(str(path))
+    step = JointIkStep(
+        q_send=np.zeros(8),
+        qdot=np.zeros(8),
+        twist_base=np.zeros(6),
+        sigma_min=0.2,
+        manip=0.1,
+        slack_norm=0.0,
+        n_cbf_active=0,
+        follow_err_rad=0.0,
+    )
+
+    class Outer:
+        pass
+
+    outer = Outer()
+    outer.last_tau_y = 0.125
+    outer.last_tau_error_y = -0.375
+    outer.last_omega_y = 0.5
+    outer.last_theta_tilt = -0.0625
+    outer.last_tilt_engaged = False
+    outer.last_tilt_frozen = False
+    outer.last_tilt_capped = False
+    outer.last_tilt_stalled = True
+    outer.last_tilt_stop_reason = "cop_stall"
+    outer.last_cop_x = 0.0065
+    outer.last_cop_r = 0.0085
+    outer.last_on_tube = False
+    outer.last_tilt_deadband_nm = 0.025
+
+    logger.write(
+        0.0,
+        "scan",
+        0.0,
+        step,
+        np.zeros(8),
+        np.zeros(6),
+        np.zeros(6),
+        outer=outer,
+    )
+    # The request must contain a value snapshot, rather than the mutable
+    # HybridTffOuter instance that produced it.
+    outer.last_tau_y = 9.0
+    outer.last_tilt_stalled = False
+    outer.last_tilt_stop_reason = "mutated_after_enqueue"
+    outer.last_cop_x = 9.0
+    logger.close()
+
+    with path.open(newline="") as stream:
+        row = next(csv.DictReader(stream))
+    assert row["tilt_tau_y_nm"] == "0.125000"
+    assert row["tilt_tau_error_y_nm"] == "-0.375000"
+    assert row["tilt_omega_y_rad_s"] == "0.500000"
+    assert row["tilt_theta_rad"] == "-0.062500"
+    assert row["tilt_engaged"] == "0"
+    assert row["tilt_frozen"] == "0"
+    assert row["tilt_capped"] == "0"
+    assert row["tilt_stalled"] == "1"
+    assert row["tilt_stop_reason"] == "cop_stall"
+    assert row["tilt_cop_x_m"] == "0.006500000"
+    assert row["tilt_cop_r_m"] == "0.008500000"
+    assert row["tilt_on_tube"] == "0"
+    assert row["tilt_deadband_nm"] == "0.025000"

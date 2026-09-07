@@ -21,7 +21,11 @@ from rm75_control.control.admittance_common.shm_util import (
     close_named_shm,
     create_named_shm,
 )
-from rm75_control.control.joint_admittance_8dof.loop import JointIkStep, TrackerStatus
+from rm75_control.control.joint_admittance_8dof.loop import (
+    JointIkStep,
+    TrackerStatus,
+    isolate_native_process,
+)
 from rm75_control.control.joint_admittance_8dof.tasks.rail_mode import LockedStyle, RailMode
 from rm75_control.control.joint_admittance_8dof.wbc_rt.config_dump import dump_wbc_config
 from rm75_control.control.joint_admittance_8dof.wbc_rt import protocol as P
@@ -101,10 +105,13 @@ class NativeWbcClient:
         self._last_completed_n_cbf = 0
         self._last_wait_reason = ""
         self._timeout_streak = 0
-        self._coast_limit = 2
         self._inflight_seq = 0
         self._inflight_t0 = 0.0
+        # One missed 20-ms wakeup can hold. Bound the age of that request,
+        # not the number of subsequent 5-ms polls of the same SHM slot.
         self._inflight_limit_s = 0.050
+        self._soft_miss_seq = 0
+        self._coast_warn_age_s = -1.0
 
     def start(self) -> None:
         try:
@@ -165,6 +172,12 @@ class NativeWbcClient:
                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         finally:
             child_notify.close()
+        if self._proc is not None and self._proc.pid:
+            isolate_native_process(
+                self._proc.pid,
+                cpu=getattr(self.cfg, "native_cpu", None),
+                control_cpu=getattr(self.cfg, "control_cpu", None),
+            )
         deadline = time.monotonic() + 5.0
         while time.monotonic() < deadline:
             if self._proc.poll() is not None:
@@ -262,7 +275,11 @@ class NativeWbcClient:
 
     def _notify_request(self) -> None:
         if self._notify is not None:
-            self._notify.send(b"\x01")
+            try:
+                self._notify.send(b"\x01")
+            except BlockingIOError:
+                # A full socket already contains a wakeup; SHM is authoritative.
+                pass
 
     def _next_seq(self) -> int:
         self._seq += 1
@@ -346,6 +363,8 @@ class NativeWbcClient:
         self._abort_next = False
         self._inflight_seq = 0
         self._inflight_t0 = 0.0
+        self._soft_miss_seq = 0
+        self._coast_warn_age_s = -1.0
         self._sync_q()
 
     def begin_hybrid_episode(self, q_meas, qdot_applied=None) -> None:
@@ -442,6 +461,7 @@ class NativeWbcClient:
             fallback_level=fallback_level, fallback_reason=fallback_reason,
             solver_fault_latched=latched, command_stale=True,
             v_cmd_received=np.asarray(twist, dtype=float).copy(),
+            native_roundtrip_ms=self._last_wait_s * 1000.0,
         )
 
     def _timeout_step(self, twist) -> JointIkStep:
@@ -459,9 +479,9 @@ class NativeWbcClient:
         )
 
     def _coast_step(self, twist) -> JointIkStep:
-        # One or two 20 ms handshake misses hold pose. The wait bound itself
-        # stays 20 ms; a 19.6 ms solve plus 0.1 ms jitter must not ESTOP.
         self._pending_commit_seq = 0
+        self._published_q_cmd = None
+        self._published_qdot = None
         return self._hold_step(
             twist,
             fallback_level="none",
@@ -472,8 +492,26 @@ class NativeWbcClient:
     def _deadline_miss_step(self, twist) -> JointIkStep:
         if self._last_wait_reason == "process_exit":
             return self._timeout_step(twist)
-        self._timeout_streak += 1
-        if self._timeout_streak > int(self._coast_limit):
+        if self._proc is not None and self._proc.poll() is not None:
+            self._last_wait_reason = "process_exit"
+            return self._timeout_step(twist)
+        age = (
+            time.monotonic() - self._inflight_t0
+            if self._inflight_seq
+            else float(self._last_wait_s)
+        )
+        self._last_wait_s = age
+        if age >= self._inflight_limit_s:
+            self._last_wait_reason = "request_age"
+            return self._timeout_step(twist)
+        seq = int(self._inflight_seq)
+        if seq and seq != int(self._soft_miss_seq):
+            self._soft_miss_seq = seq
+            self._timeout_streak = 1
+        try:
+            self._notify_request()
+        except OSError:
+            self._last_wait_reason = "process_exit"
             return self._timeout_step(twist)
         return self._coast_step(twist)
 
@@ -517,6 +555,11 @@ class NativeWbcClient:
             return self._timeout_step(twist)
         if self._inflight_seq:
             seq = int(self._inflight_seq)
+            age = time.monotonic() - self._inflight_t0
+            if age >= self._inflight_limit_s:
+                self._last_wait_s = age
+                self._last_wait_reason = "request_age"
+                return self._timeout_step(twist)
             if int(self._out["seq"][0]) == seq:
                 self._last_wait_s = time.monotonic() - self._inflight_t0
                 self._last_wait_reason = ""
@@ -524,11 +567,8 @@ class NativeWbcClient:
                 return self._accept_ok_step(
                     twist, seq, q_meas=q_meas, qdot_ff=qdot_ff, **kwargs
                 )
-            age = time.monotonic() - self._inflight_t0
-            self._last_wait_s = age
+            self._last_wait_s = time.monotonic() - self._inflight_t0
             self._last_wait_reason = "deadline"
-            if age > float(self._inflight_limit_s):
-                return self._timeout_step(twist)
             return self._deadline_miss_step(twist)
         rec = self._in[0]
         rec["seq"] = np.uint64(0)
@@ -604,6 +644,10 @@ class NativeWbcClient:
         self._inflight_seq = seq
         self._inflight_t0 = time.monotonic()
         ok = self._wait_seq(seq)
+        if time.monotonic() - self._inflight_t0 >= self._inflight_limit_s:
+            self._last_wait_s = time.monotonic() - self._inflight_t0
+            self._last_wait_reason = "request_age"
+            return self._timeout_step(twist)
         if not ok:
             return self._deadline_miss_step(twist)
         return self._accept_ok_step(
@@ -613,6 +657,8 @@ class NativeWbcClient:
     def _accept_ok_step(self, twist, seq, *, q_meas, qdot_ff=None, **kwargs) -> JointIkStep:
         self._timeout_streak = 0
         self._inflight_seq = 0
+        self._soft_miss_seq = 0
+        self._coast_warn_age_s = -1.0
         o = self._out[0].copy()
         self._last_completed_solve_ms = float(o["solve_ms"])
         self._last_completed_qp1_ms = float(o["qp1_solve_ms"])
@@ -678,6 +724,12 @@ class NativeWbcClient:
             qp1_solve_ms=float(o["qp1_solve_ms"]),
             qp2_solve_ms=float(o["qp2_solve_ms"]),
             qp_assembly_ms=float(o["assembly_ms"]),
+            qp_kinematics_ms=float(o["kinematics_ms"]),
+            qp_collision_ms=float(o["collision_ms"]),
+            qp_solve_phase_ms=float(o["qp_total_ms"]),
+            native_dispatch_ms=float(o["ipc_wait_ms"]),
+            native_roundtrip_ms=self._last_wait_s * 1000.0,
+            native_transport_ms=max(0.0, self._last_wait_s * 1000.0 - float(o["solve_ms"])),
             qp_fallback_ms=float(o["fallback_ms"]),
             qpik_total_ms=float(o["solve_ms"]),
             qpik_hard_residual_max=float(o["hard_residual_max"]),

@@ -97,21 +97,68 @@ def test_timeout_never_returns_unacknowledged_data_and_requires_reset(client):
     assert int(client._seq) == first_seq  # Do not pile another STEP on the slot.
     assert not second.solver_fault_latched
     assert second.fallback_reason == "native_timeout_coast"
-    step = client.update(np.ones(6), q_meas=client.ctrl.q_cmd, auto_commit=False)
-    assert step.solver_fault_latched and step.fallback_reason == "native_timeout"
-    assert np.isnan(step.qp_solver_solve_ms)
-    np.testing.assert_array_equal(step.q_send, client.ctrl.q_cmd)
-    np.testing.assert_array_equal(step.qdot, np.zeros(8))
-    assert client._published_q_cmd is None
-    failed_seq = client._seq
+    third = client.update(np.ones(6), q_meas=client.ctrl.q_cmd, auto_commit=False)
+    assert int(client._seq) == first_seq
+    assert not third.solver_fault_latched
+    assert third.fallback_reason == "native_timeout_coast"
+    assert int(client._timeout_streak) == 1
+    assert int(client._soft_miss_seq) == first_seq
+    client._inflight_t0 = time.monotonic() - (float(client._inflight_limit_s) + 0.01)
+    aged = client.update(np.ones(6), q_meas=client.ctrl.q_cmd, auto_commit=False)
+    assert int(client._seq) == first_seq
+    assert aged.solver_fault_latched
+    assert aged.fallback_reason == "native_timeout"
     os.kill(client._proc.pid, signal.SIGCONT)
-    assert client._wait_seq(failed_seq, timeout_s=0.5)  # Late reply arrives.
-    assert client.update(np.zeros(6), q_meas=client.ctrl.q_cmd).solver_fault_latched
-    assert client._seq == failed_seq  # No automatic retry/commit of stale work.
+    assert client._wait_seq(first_seq, timeout_s=0.5)
+    recovered = client.update(np.zeros(6), q_meas=client.ctrl.q_cmd, auto_commit=False)
+    assert recovered.solver_fault_latched
+    assert recovered.fallback_reason == "native_timeout"
     client.reset(client.ctrl.q_cmd)
     assert not client._fault_latched
+    assert int(client._inflight_seq) == 0
+
+
+def test_reply_past_request_age_is_never_accepted(client):
+    os.kill(client._proc.pid, signal.SIGSTOP)
+    os.waitpid(client._proc.pid, os.WUNTRACED)
+    first = client.update(np.ones(6), q_meas=client.ctrl.q_cmd, auto_commit=False)
+    assert first.fallback_reason == "native_timeout_coast"
+    os.kill(client._proc.pid, signal.SIGCONT)
+    assert client._wait_seq(client._seq, timeout_s=0.5)
+    client._inflight_t0 = time.monotonic() - client._inflight_limit_s - 0.001
+    late = client.update(np.zeros(6), q_meas=client.ctrl.q_cmd, auto_commit=False)
+    assert late.solver_fault_latched
+    np.testing.assert_array_equal(late.q_send, client.ctrl.q_cmd)
+    assert client._pending_commit_seq == 0
+
+
+def test_hold_commit_does_not_read_inflight_shm():
+    controller = JointIkController.__new__(JointIkController)
+    controller.q_cmd = np.arange(8, dtype=float)
+    original = controller.q_cmd.copy()
+    controller._native = SimpleNamespace(
+        _inflight_seq=12, _published_q_cmd=np.full(8, 999.0),
+        _sync_q=lambda: pytest.fail("cannot read an unacknowledged reply"),
+    )
+    controller.commit_publication(np.zeros(8))
+    np.testing.assert_array_equal(controller.q_cmd, original)
+    np.testing.assert_array_equal(controller.last_applied_qdot, np.zeros(8))
+
+
+def test_late_inflight_reply_clears_soft_miss_without_latch(client):
+    os.kill(client._proc.pid, signal.SIGSTOP)
+    os.waitpid(client._proc.pid, os.WUNTRACED)
+    first = client.update(np.ones(6), q_meas=client.ctrl.q_cmd, auto_commit=False)
+    assert first.fallback_reason == "native_timeout_coast"
+    assert not first.solver_fault_latched
+    inflight = int(client._seq)
+    os.kill(client._proc.pid, signal.SIGCONT)
+    assert client._wait_seq(inflight, timeout_s=0.5)
     recovered = client.update(np.zeros(6), q_meas=client.ctrl.q_cmd, auto_commit=False)
     assert not recovered.solver_fault_latched
+    assert recovered.fallback_reason != "native_timeout"
+    assert int(client._inflight_seq) == 0
+    assert int(client._soft_miss_seq) == 0
 
 
 def test_peer_death_wakes_waiter(client):

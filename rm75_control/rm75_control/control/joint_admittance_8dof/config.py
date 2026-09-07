@@ -1035,7 +1035,8 @@ def build_joint_ik_config(raw: dict) -> JointIkConfig:
         timing,
         {
             "dt_ms", "feedback_timeout_ms", "feedback_coast_ms",
-            "rt_disable_gc", "verbose_json", "control_cpu", "disable_cstates",
+            "rt_disable_gc", "verbose_json", "control_cpu", "native_cpu",
+            "disable_cstates",
         },
         name="timing",
     )
@@ -1180,7 +1181,12 @@ def build_joint_ik_config(raw: dict) -> JointIkConfig:
             if timing.get("control_cpu") is not None
             else None
         ),
-        disable_cstates=bool(timing.get("disable_cstates", True)),
+        native_cpu=(
+            int(timing["native_cpu"])
+            if timing.get("native_cpu") is not None
+            else None
+        ),
+        disable_cstates=bool(timing.get("disable_cstates", False)),
         control_frame=str(inner.get("control_frame", "tool")),
         euler_order=euler_order,
         qp=qp,

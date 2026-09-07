@@ -6,10 +6,10 @@
 namespace wbc_rt {
 
 static constexpr uint32_t kMagic = 0x57424331u;  // 'WBC1'
-// v7 appends task-progress and next-rail-refresh preview telemetry.  Existing
-// fields keep their order so readers can migrate by version rather than by
-// heuristic size checks.
-static constexpr uint32_t kVersion = 7;
+// v8 appends real-time stage timing telemetry. Existing fields keep their
+// order so readers can migrate by version rather than by heuristic size
+// checks.
+static constexpr uint32_t kVersion = 8;
 
 enum Cmd : uint32_t {
   kCmdNone = 0,
@@ -234,11 +234,17 @@ struct WbcOut {
   double rail_pi_xi;
   double rail_d_ref;
   double rail_ref_acceleration;
+  // v8 timing telemetry. These fields are appended to keep all earlier
+  // offsets stable for readers that explicitly support v7.
+  double kinematics_ms;
+  double collision_ms;
+  double qp_total_ms;
+  double ipc_wait_ms;
 };
 #pragma pack(pop)
 
 static_assert(sizeof(WbcIn) == 616, "WbcIn layout drift");
-static_assert(sizeof(WbcOut) == 1440, "WbcOut layout drift");
+static_assert(sizeof(WbcOut) == 1472, "WbcOut layout drift");
 
 inline void clear_in(WbcIn* s) {
   std::memset(s, 0, sizeof(WbcIn));

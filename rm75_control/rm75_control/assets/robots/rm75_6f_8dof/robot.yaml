@@ -1,6 +1,6 @@
 model_id: rm75_6f_8dof
 urdf_kinematics: RM75-6F-8dof.urdf
-urdf_collision: RM75-6F-8dof.collision.capsule.urdf
+urdf_collision: RM75-6F-8dof.collision.urdf
 urdf_genesis: RM75-6F-8dof.genesis.urdf
 mesh_root: meshes
 

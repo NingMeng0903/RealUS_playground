@@ -62,9 +62,9 @@ def _yaml_inner_at_rail(q_rail_m: float) -> JointIkController:
     return inner
 
 
-def test_protocol_v7_layout_is_1440() -> None:
-    assert P.WBC_VERSION == 7
-    assert P.WBC_OUT_SIZE == 1440
+def test_protocol_v8_layout_is_1472() -> None:
+    assert P.WBC_VERSION == 8
+    assert P.WBC_OUT_SIZE == 1472
     assert P.WBC_IN_SIZE == 616
     binary = find_wbc_rt_binary()
     if binary is None:
@@ -74,7 +74,7 @@ def test_protocol_v7_layout_is_1440() -> None:
     out = subprocess.check_output([str(binary), "--sizes"], text=True).strip()
     inn, outn = out.split()
     assert int(inn) == 616
-    assert int(outn) == 1440
+    assert int(outn) == 1472
 
 
 def test_allocate_identity_and_bidirectional_cancel() -> None:

@@ -25,6 +25,20 @@ def test_final_limit_and_publication_history_use_original_velocity():
     assert model.state.a == pytest.approx(-20.2)
 
 
+def test_external_velocity_step_cannot_make_next_rail_box_infeasible():
+    """Returning from a direct rail command must keep the jerk box ordered."""
+    model = RailReferenceModel(f_c_hz=0, a_max=.4, j_max=14, v_max=.102)
+    model.reset(.04)
+    model.track(.032, .005)  # downstream stop: actual a=-1.6 m/s²
+
+    v = model.step(.04, .005, x_m=.4, apply_wall=False)
+    lo, hi = model.last_command_bounds
+
+    assert lo <= hi + 1.0e-12
+    assert lo - 1.0e-12 <= v <= hi + 1.0e-12
+    assert v > 0.0  # no artificial reversal on COUPLED ownership return
+
+
 def test_filtered_feedforward_reversal_is_not_integrated_as_posture():
     mix = RailCommandMixer()
     total, base = RailReferenceModel(), RailReferenceModel()

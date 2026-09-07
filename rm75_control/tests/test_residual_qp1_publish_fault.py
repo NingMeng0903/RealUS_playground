@@ -34,7 +34,9 @@ Q_SAFE = full_q_from_arm(np.deg2rad([5.0, -30.0, 10.0, 90.0, -5.0, 45.0, 0.0]), 
 def _core():
     qp = QpConfig(backend="proxqp", collision=CollisionConfig(enabled=False))
     qp.j4_design_comfort.enabled = False
-    cfg = JointIkConfig(control_frame="base", qp=qp)
+    # The controller owns collision policy and overwrites qp.collision.
+    # These algebra/transport fixtures intentionally use no collision model.
+    cfg = JointIkConfig(control_frame="base", qp=qp, collision=CollisionConfig(enabled=False))
     ctrl = JointIkController(RobotKinematics(), cfg)
     ctrl.reset(Q_SAFE)
     return ctrl.core, ctrl
@@ -207,7 +209,7 @@ def test_j4_outside_design_band_is_still_p0_feasible() -> None:
     q = Q_SAFE.copy()
     q[4] = np.deg2rad(69.0)
     qp = QpConfig(backend="proxqp", collision=CollisionConfig(enabled=False))
-    cfg = JointIkConfig(control_frame="base", qp=qp)
+    cfg = JointIkConfig(control_frame="base", qp=qp, collision=CollisionConfig(enabled=False))
     ctrl = JointIkController(RobotKinematics(), cfg)
     ctrl.reset(q)
     J = ctrl.kin.jacobian(q)

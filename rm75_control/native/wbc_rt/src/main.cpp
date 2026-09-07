@@ -4,6 +4,7 @@
 #include <csignal>
 #include <cstdlib>
 #include <cstring>
+#include <cmath>
 #include <iomanip>
 #include <iostream>
 #include <string>
@@ -555,12 +556,15 @@ int main(int argc, char** argv) {
     }
     if (!notification.notify()) return 0;
     std::uint64_t last_seq = 0;
+    double ipc_wait_ms = 0.0;
     while (!g_stop) {
-      if (notification.enabled() && !notification.wait(g_stop)) break;
       const std::uint64_t seq = __atomic_load_n(in_seq, __ATOMIC_ACQUIRE);
       if (seq == 0 || seq == last_seq) {
-        if (!notification.enabled())
+        if (notification.enabled()) {
+          if (!notification.wait(g_stop, 1)) break;
+        } else {
           std::this_thread::sleep_for(std::chrono::microseconds(50));
+        }
         continue;
       }
       // STOP/RESET after a timeout may replace the request slot while a solve
@@ -568,6 +572,12 @@ int main(int argc, char** argv) {
       const wbc_rt::WbcIn snapshot = *shm_in;
       if (snapshot.seq != seq || __atomic_load_n(in_seq, __ATOMIC_ACQUIRE) != seq)
         continue;
+      const auto dispatch_t = std::chrono::steady_clock::now();
+      const double dispatch_mono =
+          std::chrono::duration<double>(dispatch_t.time_since_epoch()).count();
+      ipc_wait_ms = (std::isfinite(snapshot.t_mono) && snapshot.t_mono > 0.0)
+                        ? std::max(0.0, (dispatch_mono - snapshot.t_mono) * 1000.0)
+                        : 0.0;
       last_seq = seq;
       const auto* in = &snapshot;
       const std::uint32_t cmd = in->cmd;
@@ -719,6 +729,10 @@ int main(int argc, char** argv) {
         out->qp2_solve_ms = tout.qp2_solve_ms;
         out->assembly_ms = tout.assembly_ms;
         out->fallback_ms = tout.fallback_ms;
+        out->kinematics_ms = tout.kinematics_ms;
+        out->collision_ms = tout.collision_ms;
+        out->qp_total_ms = tout.qp_total_ms;
+        out->ipc_wait_ms = ipc_wait_ms;
         out->hard_residual_max = tout.hard_residual_max;
         out->equality_residual_max = tout.equality_residual_max;
         out->rail_exec = tout.rail_exec;

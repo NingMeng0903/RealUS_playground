@@ -23,6 +23,10 @@ import sys
 import time
 from pathlib import Path
 
+if __name__ == "__main__":
+    from rm75_control.control.admittance_common.observer_runtime import prepare_observer_process
+    prepare_observer_process()
+
 import numpy as np
 
 from rm75_control.control.admittance_common.state_relay import RelayStateBus, relay_shm_has_publisher

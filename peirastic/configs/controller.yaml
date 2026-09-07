@@ -20,9 +20,11 @@ timing:
   # Consecutive rejected/stale feedback before abort.  One hitch coasts.
   feedback_coast_ms: 300.0
   rt_disable_gc: true
-  verbose_json: true
-  # Best-effort RT: pin the control thread; hold /dev/cpu_dma_latency at 0.
+  verbose_json: false
+  # Pin the Python tick away from wbc_rt. These apply even when SCHED_FIFO
+  # is unavailable; do not put CSV/matplotlib on the solver core.
   control_cpu: 2
+  native_cpu: 3
   disable_cstates: true
 
 # UDP arm-state push (rm_set_realtime_push). Requires robot.thread_mode: 2.
@@ -724,16 +726,17 @@ hybrid_motion:
     t_soft_j: 0.25
     t_bar_j: 1.0
     t0_j: 0.50
-  # Tool-y torque balance at the TCP. Wrap uses the TCP-line contact tube.
+  # Tool-y torque balance at the TCP. CoP geometry is telemetry; curved
+  # contact must not latch off just because CoP shrinks slowly.
   # Live values live in force.yaml; keep this block aligned.
   torque_tilt:
     enabled: true
     axis: 4
-    mass: 0.04
-    damping: 0.16
+    mass: 0.065
+    damping: 0.28
     coulomb_nm: 0.025
-    vmax_rad_s: 0.45
-    a_max: 8.0
+    vmax_rad_s: 0.22
+    a_max: 4.5
     contact_only: true
     theta_max_deg: 150.0
     twist_align_deg: 0.0
@@ -741,7 +744,7 @@ hybrid_motion:
     r_face_m: 0.012
     r_margin_m: 0.008
     cop_stall_m: 0.006
-    cop_stall_s: 0.35
+    cop_stall_s: 0.0  # legacy monotonic-CoP stall heuristic disabled
   # κ=0 on hard / unknown Ke.  Soft-tissue optional κ is tank-gated at 0.
   proactive_feedforward: false
   # Legacy parameters are retained for isolated non-CDYOB tests only.

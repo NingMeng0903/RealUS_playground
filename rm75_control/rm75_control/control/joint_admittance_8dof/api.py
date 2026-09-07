@@ -242,9 +242,9 @@ def _enforce_session_dof(ctx: CompileContext) -> int:
     value = validate_dof(getattr(ctx, "dof", 8))
     inner = ctx.inner
     current = getattr(inner, "_peirastic_dof", None)
-    if current is None:
-        current = controller_dof(inner)
-    if int(current) != value:
+    # An inferred 8 is not an applied session: a previous local payload
+    # policy or YAML construction can still have the rail in HOLD.
+    if current is None or int(current) != value:
         set_controller_dof(inner, value)
     return value
 

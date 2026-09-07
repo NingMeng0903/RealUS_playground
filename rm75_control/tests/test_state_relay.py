@@ -84,6 +84,46 @@ def test_parse_state_relay_config():
     assert cfg.hz == 60.0
 
 
+def test_slow_relay_fk_does_not_block_feedback_callback(relay_name):
+    entered, release, received = threading.Event(), threading.Event(), threading.Event()
+
+    class SlowKin:
+        def fk_pose(self, q):
+            entered.set()
+            release.wait(2.0)
+            return np.zeros(6)
+
+    obs = _FakeObserver()
+    pub = StateRelayPublisher(RobotStateBus(None, observer=obs),
+                              name=relay_name, kin=SlowKin())
+    pub.start()
+    reader = threading.Thread(target=lambda: (obs.read(), received.set()))
+    try:
+        assert entered.wait(1.0)
+        reader.start()
+        assert received.wait(0.2), "relay computation blocked incoming feedback"
+        assert not release.is_set()
+    finally:
+        release.set()
+        reader.join(timeout=1.0)
+        pub.stop()
+
+
+def test_relay_fk_has_private_pinocchio_scratch():
+    from rm75_control.control.joint_admittance_8dof.model import RobotKinematics
+
+    kin = RobotKinematics()
+    q_control = np.array([0.3, 0.0, 0.2, 0.1, 0.5, -0.1, 0.3, 0.0])
+    kin.fk_pose(q_control)
+    before = kin.data.oMf[kin.tcp_id].homogeneous.copy()
+    pub = StateRelayPublisher(RobotStateBus(None, observer=_FakeObserver()), kin=kin)
+    assert pub._kin.data is not kin.data
+    assert pub._kin.model is not kin.model
+    pub._pose_from_kin(_FakeObserver().read(), 0.7)
+    np.testing.assert_array_equal(kin.data.oMf[kin.tcp_id].homogeneous, before)
+    np.testing.assert_allclose(pub._kin.fk_pose(q_control), kin.fk_pose(q_control))
+
+
 def test_relay_pub_sub_roundtrip(relay_name):
     obs = _FakeObserver()
     bus = RobotStateBus(None, observer=obs)
@@ -329,4 +369,3 @@ def test_pose_from_kin_applies_offsets_before_fk():
     assert np.degrees(q8[1]) == pytest.approx(11.0)
     assert np.degrees(q8[6]) == pytest.approx(17.0)
     assert np.degrees(q8[7]) == pytest.approx(0.0)
-

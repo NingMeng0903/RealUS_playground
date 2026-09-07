@@ -19,10 +19,12 @@ timing:
   # Consecutive rejected/stale feedback before abort.  One hitch coasts.
   feedback_coast_ms: 300.0
   rt_disable_gc: true
-  verbose_json: true
-  # Best-effort RT: pin the control thread; hold /dev/cpu_dma_latency at 0.
-  control_cpu: 2
-  disable_cstates: true
+  verbose_json: false
+  # Let the scheduler use the available CPUs. Affinity is opt-in for a
+  # machine whose isolated cores have actually been configured and measured.
+  control_cpu: null
+  native_cpu: null
+  disable_cstates: false
 
 # UDP arm-state push (rm_set_realtime_push). Requires robot.thread_mode: 2.
 realtime_push:
@@ -94,8 +96,8 @@ inner:
     eps_abs: 1.0e-6
     max_iter: 400
     max_iter_cap: 400
-    # Native wall-clock cap on InnerLoop::step.  After QP1, QP2 is skipped
-    # if remaining budget is under 1 ms.  0 disables the cap.
+    # Soft tick budget: finish bounded QP1 certification first, then skip
+    # optional QP2 if less than 1 ms remains. 0 disables that QP2 budget.
     max_solve_ms: 5.0
     fail_qdot_decay: 0.85
     twist_sigma_floor: 0.02

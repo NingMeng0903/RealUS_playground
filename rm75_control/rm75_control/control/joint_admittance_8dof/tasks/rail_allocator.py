@@ -220,7 +220,14 @@ class RailReferenceModel:
         v_f = project_lpf_into_wall(v_f, leave_sign)
         self.last_v_lpf = float(v_f)
         v_prev = float(self.state.v)
-        a_prev = float(self.state.a)
+        # ``track``/``commit`` retain the actual downstream velocity
+        # difference for telemetry, even when an arm/drive override makes it
+        # exceed this model's acceleration limit.  Do not feed that transient
+        # straight into the next jerk box: it can make ``lo_command >
+        # hi_command`` and force a false rail reversal when ownership returns
+        # to COUPLED.  The committed state below remains the honest measured
+        # difference; only the box's warm-start history is bounded.
+        a_prev = float(np.clip(float(self.state.a), -a_lim, a_lim))
         lo_command = max(-self.v_max, v_prev - a_lim * dt,
                          v_prev + (a_prev - j_lim * dt) * dt)
         hi_command = min(self.v_max, v_prev + a_lim * dt,

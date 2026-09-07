@@ -30,6 +30,11 @@ constexpr double kQuietLinExit = 0.008;
 constexpr double kQuietRotExit = 0.08;
 constexpr double kQuietTcp = 0.010;
 constexpr double kQuietHold = 0.15;
+// ProxQP has a separate inner Newton loop whose default (1500) is not
+// covered by settings.max_iter. Bound it explicitly on every solve so the
+// controller's wall-clock iteration budget cannot expand into an unbounded
+// solver path.
+constexpr int kMaxQpInnerIter = 32;
 
 uint32_t qp_status_code(proxsuite::proxqp::QPSolverOutput s) {
   using S = proxsuite::proxqp::QPSolverOutput;
@@ -71,6 +76,19 @@ GeomSphere make_local_sphere(const pinocchio::GeometryObject& go) {
   if (const auto* sph = dynamic_cast<const coal::Sphere*>(g)) {
     s.r = static_cast<double>(sph->radius);
     return s;
+  }
+  // The mesh collision model also needs a finite conservative broadphase
+  // bound. Previously every mesh got radius=infinity, so all pairs paid
+  // for narrow-phase queries each tick. Coal's local AABB encloses the
+  // actual loaded geometry; never guess how non-unit mesh scales were baked.
+  if (go.meshScale.isApprox(Eigen::Vector3d::Ones(), 1.0e-12)) {
+    go.geometry->computeLocalAABB();
+    const auto& bounds = go.geometry->aabb_local;
+    if (bounds.min_.allFinite() && bounds.max_.allFinite() &&
+        (bounds.max_.array() >= bounds.min_.array()).all()) {
+      s.c = 0.5 * (bounds.min_ + bounds.max_);
+      s.r = 0.5 * (bounds.max_ - bounds.min_).norm() + 1.0e-9;
+    }
   }
   return s;
 }
@@ -128,11 +146,23 @@ void solve_dense_qp(proxsuite::proxqp::dense::QP<double>& qp,
   } else {
     qp.settings.initial_guess =
         last_ok ? IG::WARM_START_WITH_PREVIOUS_RESULT : IG::NO_INITIAL_GUESS;
-    qp.update(H, g, A, b, C, lo, hi, false);
+    qp.update(H, g, A, b, C, lo, hi, true);
   }
   if (seed != nullptr && seed->size() == H.rows()) {
     qp.settings.initial_guess = IG::WARM_START;
     qp.results.x = *seed;
+    if (!last_ok) {
+      // A failed/cold solve must not inherit its previous dual variables.
+      // WARM_START uses x/y/z together; carrying stale y/z can repeatedly
+      // drive the next solve into the same max-iteration path.
+      qp.results.y.setZero();
+      qp.results.z.setZero();
+      qp.results.se.setZero();
+      qp.results.si.setZero();
+    }
+  }
+  if (qp.settings.max_iter_in > kMaxQpInnerIter) {
+    qp.settings.max_iter_in = kMaxQpInnerIter;
   }
   qp.solve();
 }
@@ -941,6 +971,7 @@ bool InnerLoop::solve_hqp(const Mat6x8& J, const Vec6& v_cmd, const Vec8& q_geom
   qp2_status_ = kQpNotRun;
   qp1_iter_ = qp2_iter_ = 0;
   qp1_ms_ = qp2_ms_ = assembly_ms_ = fallback_ms_ = 0.0;
+  collision_ms_ = qp_total_ms_ = 0.0;
   rail_preview_arm_.setConstant(std::numeric_limits<double>::quiet_NaN());
   rail_preview_residual_ = std::numeric_limits<double>::quiet_NaN();
   task_progress_alpha_ = 1.0;
@@ -1020,11 +1051,14 @@ bool InnerLoop::solve_hqp(const Mat6x8& J, const Vec6& v_cmd, const Vec8& q_geom
   hi.head<kNv>() = hi_box;
   n_cbf_active_ = 0;
   if (collision_) {
+    const auto t_collision0 = std::chrono::steady_clock::now();
     collision_->update(q_geom, kin_.data());
     MatX cj;
     VecX cl;
     std::vector<int> slots;
     const int n = collision_->build_rows(kin_.data(), &cj, &cl, &slots);
+    const auto t_collision1 = std::chrono::steady_clock::now();
+    collision_ms_ = std::chrono::duration<double, std::milli>(t_collision1 - t_collision0).count();
     for (int i = 0; i < n; ++i) {
       C.block(kNv + i, 0, 1, kNv) = cj.row(i);
       lo[kNv + i] = cl[i];
@@ -1072,62 +1106,46 @@ bool InnerLoop::solve_hqp(const Mat6x8& J, const Vec6& v_cmd, const Vec8& q_geom
     qp1_last_ok_ = qp_is_candidate(qp1_status_);
     if (!qp1_last_ok_) return false;
     const VecX& x = qp1_->results.x;
-    return qp_eq_violation(A1, b1, x) <= cert_tol &&
-           qp_ineq_violation(C, lo_use, hi_use, x) <= cert_tol;
+    // Always certify against the original hard rows. A caller may use a
+    // different numerical bound for diagnostics, but no relaxed CBF result
+    // can become a publishable QP1 candidate.
+    const bool certified = qp_eq_violation(A1, b1, x) <= cert_tol &&
+                           qp_ineq_violation(C, lo, hi, x) <= cert_tol;
+    qp1_last_ok_ = certified;
+    return certified;
   };
 
   const auto t_qp1_0 = std::chrono::steady_clock::now();
   assembly_ms_ = std::chrono::duration<double, std::milli>(t_qp1_0 - t_asm0).count();
   const int iter_nom = std::max(1, std::min(cfg_.max_iter, cfg_.max_iter_cap));
-  auto apply_time_iters = [&](proxsuite::proxqp::dense::QP<double>& qp,
-                              double reserve_ms) {
-    int iters = iter_nom;
-    if (cfg_.max_solve_ms > 0.0) {
-      const double remain = cfg_.max_solve_ms - elapsed_ms(step_t0_);
-      const double budget = remain - reserve_ms;
-      const int by_time =
-          budget <= 0.0 ? 1 : std::max(8, static_cast<int>(budget / 0.04));
-      iters = std::min(iters, by_time);
-    }
-    qp.settings.max_iter = iters;
-  };
-  if (cfg_.max_solve_ms > 0.0 && elapsed_ms(step_t0_) + 0.8 >= cfg_.max_solve_ms) {
-    VecX x1 = pack_x(clip_qdot(inbox_brake(qdot_prev_, lo_box, hi_box, a_max_, h1)));
-    qp1_status_ = kQpNotRun;
-    qp1_last_ok_ = false;
-    qp1_ms_ = 0.0;
-    const Vec8 qdot1 = clip_qdot(x1.head<kNv>());
-    x1 = pack_x(qdot1);
-    last_lock_J_ = J_task;
-    last_lock_v_ = J_task * qdot1;
-    qp2_status_ = kQpNotRun;
-    qp2_ms_ = 0.0;
-    qp2_iter_ = 0;
-    *qdot = qdot1;
-    *residual = v_cmd - (J_task * qdot1 + rail_actual_contrib);
-    *slack = residual->norm();
-    last_C_ = C;
-    last_lo_ = lo;
-    last_hi_ = hi;
-    last_qdot_qp_ = qdot1;
-    return true;
-  }
-  apply_time_iters(*qp1_, 1.2);
+  // QP1 must establish a certified command even after a scheduling hitch.
+  // Reducing it to one iteration when assembly used the wall-time budget
+  // turned ordinary preemption into a deterministic uncertified-QP stop.
+  // Bound both solver loops; spend the optional QP2 budget only afterwards.
+  qp1_->settings.max_iter = iter_nom;
   bool qp1_ok = try_qp1(lo, hi);
-  if (!qp1_ok && n_cbf_active_ > 0 &&
-      (cfg_.max_solve_ms <= 0.0 || elapsed_ms(step_t0_) + 1.5 < cfg_.max_solve_ms)) {
-    VecX lo_relax = lo;
-    for (int i = 0; i < kMaxCbf; ++i) lo_relax[kNv + i] = -1.0e20;
-    apply_time_iters(*qp1_, 1.2);
-    qp1_ok = try_qp1(lo_relax, hi);
-  }
+  // Do not retry with CBF lower bounds removed. That path could publish a
+  // result that only satisfied joint boxes while reporting QP1 as solved.
   VecX x1;
   if (qp1_ok) {
     x1 = qp1_->results.x;
   } else {
-    x1 = pack_x(clip_qdot(inbox_brake(qdot_prev_, lo_box, hi_box, a_max_, h1)));
-    qp1_status_ = kQpSolved;
-    qp1_last_ok_ = true;
+    const auto t_qp1_1 = std::chrono::steady_clock::now();
+    qp1_ms_ = std::chrono::duration<double, std::milli>(t_qp1_1 - t_qp1_0).count();
+    qp_total_ms_ = qp1_ms_;
+    qp2_status_ = kQpNotRun;
+    qp2_ms_ = 0.0;
+    qp2_iter_ = 0;
+    *qdot = Vec8::Zero();
+    *residual = b_task;
+    *slack = residual->norm();
+    last_C_ = C;
+    last_lo_ = lo;
+    last_hi_ = hi;
+    last_lock_J_ = J_task;
+    last_lock_v_.setZero();
+    last_qdot_qp_.setZero();
+    return false;
   }
   const auto t_qp1_1 = std::chrono::steady_clock::now();
   qp1_ms_ = std::chrono::duration<double, std::milli>(t_qp1_1 - t_qp1_0).count();
@@ -1161,6 +1179,7 @@ bool InnerLoop::solve_hqp(const Mat6x8& J, const Vec6& v_cmd, const Vec8& q_geom
     *qdot = qdot1;
     *residual = v_cmd - (J_task * qdot1 + rail_actual_contrib);
     *slack = residual->norm();
+    qp_total_ms_ = elapsed_ms(t_qp1_0);
     last_C_ = C;
     last_lo_ = lo;
     last_hi_ = hi;
@@ -1263,14 +1282,14 @@ bool InnerLoop::solve_hqp(const Mat6x8& J, const Vec6& v_cmd, const Vec8& q_geom
     x2_seed[col] = std::max(x2_seed[col], need);
   }
   const auto t_qp2_0 = std::chrono::steady_clock::now();
-  apply_time_iters(*qp2_, 0.3);
+  qp2_->settings.max_iter = iter_nom;
   solve_dense_qp(*qp2_, &qp2_inited_, qp2_last_ok_, H2, g2, A2, b2, C, lo, hi, &x2_seed);
   const auto t_qp2_1 = std::chrono::steady_clock::now();
   qp2_ms_ = std::chrono::duration<double, std::milli>(t_qp2_1 - t_qp2_0).count();
   qp2_status_ = qp_status_code(qp2_->results.info.status);
   qp2_iter_ = static_cast<uint32_t>(qp2_->results.info.iter);
   bool qp2_ok = qp_is_candidate(qp2_status_);
-  qp2_last_ok_ = qp2_ok;
+  qp2_last_ok_ = false;
   Vec8 qdot_out = qdot1;
   VecX x_pub = x1;
   if (qp2_ok) {
@@ -1290,6 +1309,8 @@ bool InnerLoop::solve_hqp(const Mat6x8& J, const Vec6& v_cmd, const Vec8& q_geom
       }
     }
   }
+  qp2_last_ok_ = qp2_ok;
+  qp_total_ms_ = std::chrono::duration<double, std::milli>(t_qp2_1 - t_qp1_0).count();
   if (!qp2_ok) {
     qdot_out = qdot1;
     x_pub = x1;
@@ -1351,7 +1372,9 @@ TickOut InnerLoop::step(const TickIn& in) {
   }
   committed_snap_ = capture_history();
   const Vec8 q_state = in.q_meas;
+  const auto t_kin0 = std::chrono::steady_clock::now();
   kin_.update(q_state);
+  kinematics_ms_ = elapsed_ms(t_kin0);
   const Mat6x8 J = kin_.jacobian();
   last_sigma_ = kin_.sigma_min();
   const double sigma_arm = kin_.sigma_arm();
@@ -1419,6 +1442,8 @@ TickOut InnerLoop::step(const TickIn& in) {
     out.sigma_arm = sigma_arm;
     out.homotopy_s = homotopy_s_;
     out.psi = psi_cmd_;
+    out.solve_ms = elapsed_ms(t0);
+    out.kinematics_ms = kinematics_ms_;
     fill_mixer_out(&out);
     out.status = kStatusOk;
     out.qp1_status = kQpSolved;
@@ -2114,6 +2139,9 @@ TickOut InnerLoop::step(const TickIn& in) {
   out.qp2_solve_ms = qp2_ms_;
   out.assembly_ms = assembly_ms_;
   out.fallback_ms = fallback_ms_;
+  out.kinematics_ms = kinematics_ms_;
+  out.collision_ms = collision_ms_;
+  out.qp_total_ms = qp_total_ms_;
   out.rail_exec = rail_exec;
   out.follow_err_rad = (q_cmd_.tail<7>() - q_state.tail<7>()).norm();
   out.qdot_qp_vs_sent_max = (last_qdot_qp_ - qdot).cwiseAbs().maxCoeff();

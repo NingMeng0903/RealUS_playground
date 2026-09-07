@@ -18,17 +18,21 @@ class NotificationChannel {
   ~NotificationChannel() { if (fd_ >= 0) ::close(fd_); }
   bool enabled() const { return fd_ >= 0; }
 
-  bool wait(const std::atomic<bool>& stop) const {
+  // timeout_ms < 0 waits forever. A timeout returns true so the caller can
+  // re-read SHM; the byte is only an optimization, not the request itself.
+  bool wait(const std::atomic<bool>& stop, int timeout_ms = -1) const {
     while (!stop) {
       pollfd pfd{fd_, POLLIN, 0};
-      const int ready = ::poll(&pfd, 1, -1);
+      const int ready = ::poll(&pfd, 1, timeout_ms);
       if (ready < 0 && errno == EINTR) continue;
       if (ready < 0) throw std::runtime_error("wbc_rt notification poll failed");
       if (pfd.revents & POLLNVAL) return false;
-      std::uint8_t byte;
-      const auto got = ::recv(fd_, &byte, sizeof(byte), 0);
+      if (ready == 0) return true;
+      std::uint8_t buf[16];
+      const auto got = ::recv(fd_, buf, sizeof(buf), 0);
       if (got < 0 && errno == EINTR) continue;
-      return got == sizeof(byte);
+      if (got < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) return true;
+      return got > 0;
     }
     return false;
   }
@@ -36,7 +40,8 @@ class NotificationChannel {
   bool notify() const {
     if (!enabled()) return true;
     const std::uint8_t byte = 1;
-    while (::send(fd_, &byte, sizeof(byte), MSG_NOSIGNAL) < 0) {
+    while (::send(fd_, &byte, sizeof(byte), MSG_NOSIGNAL | MSG_DONTWAIT) < 0) {
+      if (errno == EAGAIN || errno == EWOULDBLOCK) return true;
       if (errno != EINTR) return false;
     }
     return true;

@@ -1,4 +1,4 @@
-"""Offline checks for the native v7 HQP/rail contract.
+"""Offline checks for the native v8 HQP/rail contract.
 
 The dynamic checks use the named-SHM client with an offline kinematic input
 stream; they do not connect to hardware.  They cover the ABI and the
@@ -25,10 +25,10 @@ PROTO = (ROOT / "include/wbc_rt/protocol.hpp").read_text(encoding="utf-8")
 BIN = ROOT / "build/wbc_rt"
 
 
-def test_native_v7_protocol_sizes() -> None:
-    assert "kVersion = 7" in PROTO
+def test_native_v8_protocol_sizes() -> None:
+    assert "kVersion = 8" in PROTO
     assert "static_assert(sizeof(WbcIn) == 616" in PROTO
-    assert "static_assert(sizeof(WbcOut) == 1440" in PROTO
+    assert "static_assert(sizeof(WbcOut) == 1472" in PROTO
     for field in (
         "rail_refresh_dt",
         "task_progress_alpha",
@@ -37,14 +37,18 @@ def test_native_v7_protocol_sizes() -> None:
         "rail_pi_xi",
         "rail_d_ref",
         "rail_ref_acceleration",
+        "kinematics_ms",
+        "collision_ms",
+        "qp_total_ms",
+        "ipc_wait_ms",
     ):
         assert field in PROTO
     if not BIN.exists():
         pytest.skip("native binary not built")
     sizes = subprocess.check_output([str(BIN), "--sizes"], text=True).split()
-    assert sizes == ["616", "1440"]
+    assert sizes == ["616", "1472"]
     info = subprocess.check_output([str(BIN), "--protocol-info"], text=True)
-    assert "version 7 in 616 out 1440" in info
+    assert "version 8 in 616 out 1472" in info
 
 
 def test_residual_qp1_layout_contract() -> None:
@@ -60,7 +64,8 @@ def test_residual_qp1_layout_contract() -> None:
     assert "handle_pending_flags" in SRC
     assert "kInAutoCommit" in SRC
     assert "collapse_interval(&lo_box, &hi_box, &qdot_prev_, &a_max_, h1)" in SRC
-    assert "inbox_brake(qdot_prev_, lo_box, hi_box, a_max_, h1)" in SRC
+    solve = SRC[SRC.index("bool InnerLoop::solve_hqp") : SRC.index("TickOut InnerLoop::step")]
+    assert "inbox_brake(qdot_prev_, lo_box, hi_box, a_max_, h1)" not in solve
     ptp = SRC[SRC.index("if (direct_ptp_ && (in.flags & kInHasQdotFf))") :]
     ptp = ptp[: ptp.index("double rail_exec")]
     assert "pending_ = capture_history()" in ptp
@@ -108,9 +113,12 @@ def test_final_rail_acceleration_uses_preclip_history() -> None:
 
 def test_qp_status_alone_is_not_a_certificate() -> None:
     assert "qp_eq_violation(A1, b1, x)" in SRC
-    assert "qp_ineq_violation(C, lo_use, hi_use, x)" in SRC
+    assert "qp_ineq_violation(C, lo, hi, x)" in SRC
     assert "qp_eq_violation(A2, b2, x2)" in SRC
     assert "qp_ineq_violation(C, lo, hi, x2)" in SRC
+    assert "Do not retry with CBF lower bounds removed" in SRC
+    solve = SRC[SRC.index("bool InnerLoop::solve_hqp") : SRC.index("TickOut InnerLoop::step")]
+    assert "qp1_status_ = kQpSolved" not in solve
 
 
 def test_mixer_final_components_sum_exactly() -> None:

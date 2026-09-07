@@ -1,0 +1,238 @@
+{
+  "seed_csv": "rm75_control/apps/logs/peirastic/run_20260907_211243.csv",
+  "ideal_feedback": true,
+  "force_telemetry_snapshot": true,
+  "cases": {
+    "control": {
+      "ticks": 1800,
+      "statuses": {
+        "solved": 1800
+      },
+      "max_active_cbf": 2,
+      "log_dropped": 0,
+      "first_failure": null,
+      "timing": {
+        "qp_kinematics_ms": {
+          "p50_ms": 0.015031,
+          "p99_ms": 0.06884286999999999,
+          "max_ms": 0.136124,
+          "over_5ms": 0
+        },
+        "qp_collision_ms": {
+          "p50_ms": 1.4649425,
+          "p99_ms": 2.16410654,
+          "max_ms": 2.271371,
+          "over_5ms": 0
+        },
+        "qp_assembly_ms": {
+          "p50_ms": 1.470913,
+          "p99_ms": 2.17358229,
+          "max_ms": 2.282958,
+          "over_5ms": 0
+        },
+        "qp1_solve_ms": {
+          "p50_ms": 0.045562500000000006,
+          "p99_ms": 0.08653535,
+          "max_ms": 0.154443,
+          "over_5ms": 0
+        },
+        "qp2_solve_ms": {
+          "p50_ms": 0.031993,
+          "p99_ms": 0.05745967,
+          "max_ms": 0.106021,
+          "over_5ms": 0
+        },
+        "qpik_total_ms": {
+          "p50_ms": 1.6142634999999999,
+          "p99_ms": 2.4033075299999997,
+          "max_ms": 2.57726,
+          "over_5ms": 0
+        },
+        "native_dispatch_ms": {
+          "p50_ms": 0.07043947698548436,
+          "p99_ms": 0.16985160764306784,
+          "max_ms": 0.2391489688307047,
+          "over_5ms": 0
+        },
+        "native_roundtrip_ms": {
+          "p50_ms": 1.7599320271983743,
+          "p99_ms": 2.5394990853965282,
+          "max_ms": 2.672162954695523,
+          "over_5ms": 0
+        },
+        "native_transport_ms": {
+          "p50_ms": 0.14253452400973454,
+          "p99_ms": 0.31310000540436517,
+          "max_ms": 0.42286593915838,
+          "over_5ms": 0
+        },
+        "log_enqueue_ms": {
+          "p50_ms": 0.00020302832126617432,
+          "p99_ms": 0.0004239846020936966,
+          "max_ms": 0.006209011189639568,
+          "over_5ms": 0
+        },
+        "tick_work_ms": {
+          "p50_ms": 2.025751513428986,
+          "p99_ms": 3.010609238408506,
+          "max_ms": 3.3587130019441247,
+          "over_5ms": 0
+        }
+      }
+    },
+    "csv": {
+      "ticks": 1800,
+      "statuses": {
+        "solved": 1800
+      },
+      "max_active_cbf": 2,
+      "log_dropped": 0,
+      "first_failure": null,
+      "timing": {
+        "qp_kinematics_ms": {
+          "p50_ms": 0.01595,
+          "p99_ms": 0.06539365,
+          "max_ms": 0.095714,
+          "over_5ms": 0
+        },
+        "qp_collision_ms": {
+          "p50_ms": 1.4724125,
+          "p99_ms": 2.18298645,
+          "max_ms": 2.385566,
+          "over_5ms": 0
+        },
+        "qp_assembly_ms": {
+          "p50_ms": 1.4784074999999999,
+          "p99_ms": 2.19241596,
+          "max_ms": 2.39622,
+          "over_5ms": 0
+        },
+        "qp1_solve_ms": {
+          "p50_ms": 0.046938,
+          "p99_ms": 0.09224618999999999,
+          "max_ms": 0.133075,
+          "over_5ms": 0
+        },
+        "qp2_solve_ms": {
+          "p50_ms": 0.0324495,
+          "p99_ms": 0.06374056,
+          "max_ms": 0.165919,
+          "over_5ms": 0
+        },
+        "qpik_total_ms": {
+          "p50_ms": 1.622619,
+          "p99_ms": 2.4363415,
+          "max_ms": 2.661159,
+          "over_5ms": 0
+        },
+        "native_dispatch_ms": {
+          "p50_ms": 0.06549101090058684,
+          "p99_ms": 0.17601431347429752,
+          "max_ms": 0.24277693592011929,
+          "over_5ms": 0
+        },
+        "native_roundtrip_ms": {
+          "p50_ms": 1.7678249860182405,
+          "p99_ms": 2.5750036432873458,
+          "max_ms": 2.8407640056684613,
+          "over_5ms": 0
+        },
+        "native_transport_ms": {
+          "p50_ms": 0.14005653748759628,
+          "p99_ms": 0.30063900287474743,
+          "max_ms": 0.3551920302497744,
+          "over_5ms": 0
+        },
+        "log_enqueue_ms": {
+          "p50_ms": 0.1976484782062471,
+          "p99_ms": 0.38841343484818935,
+          "max_ms": 0.6178480107337236,
+          "over_5ms": 0
+        },
+        "tick_work_ms": {
+          "p50_ms": 2.2376819979399443,
+          "p99_ms": 3.340547119732946,
+          "max_ms": 3.860244993120432,
+          "over_5ms": 0
+        }
+      }
+    },
+    "csv_and_plot": {
+      "ticks": 1800,
+      "statuses": {
+        "solved": 1800
+      },
+      "max_active_cbf": 2,
+      "log_dropped": 0,
+      "first_failure": null,
+      "timing": {
+        "qp_kinematics_ms": {
+          "p50_ms": 0.017324,
+          "p99_ms": 0.06359884,
+          "max_ms": 0.08351,
+          "over_5ms": 0
+        },
+        "qp_collision_ms": {
+          "p50_ms": 1.490277,
+          "p99_ms": 2.21273984,
+          "max_ms": 2.308353,
+          "over_5ms": 0
+        },
+        "qp_assembly_ms": {
+          "p50_ms": 1.4966035,
+          "p99_ms": 2.2223631999999998,
+          "max_ms": 2.318678,
+          "over_5ms": 0
+        },
+        "qp1_solve_ms": {
+          "p50_ms": 0.0500105,
+          "p99_ms": 0.11245055999999999,
+          "max_ms": 0.134841,
+          "over_5ms": 0
+        },
+        "qp2_solve_ms": {
+          "p50_ms": 0.03338,
+          "p99_ms": 0.06585852,
+          "max_ms": 0.1833,
+          "over_5ms": 0
+        },
+        "qpik_total_ms": {
+          "p50_ms": 1.6518315000000001,
+          "p99_ms": 2.49513977,
+          "max_ms": 2.694359,
+          "over_5ms": 0
+        },
+        "native_dispatch_ms": {
+          "p50_ms": 0.051583454478532076,
+          "p99_ms": 0.1740902685560286,
+          "max_ms": 0.36512501537799835,
+          "over_5ms": 0
+        },
+        "native_roundtrip_ms": {
+          "p50_ms": 1.77903997246176,
+          "p99_ms": 2.5914054189343005,
+          "max_ms": 2.842435031197965,
+          "over_5ms": 0
+        },
+        "native_transport_ms": {
+          "p50_ms": 0.11768548592984673,
+          "p99_ms": 0.28871676945980435,
+          "max_ms": 0.5491280757930874,
+          "over_5ms": 0
+        },
+        "log_enqueue_ms": {
+          "p50_ms": 0.20969647448509932,
+          "p99_ms": 0.3978247626218944,
+          "max_ms": 0.6791730411350727,
+          "over_5ms": 0
+        },
+        "tick_work_ms": {
+          "p50_ms": 2.2703969734720886,
+          "p99_ms": 3.4220041008666158,
+          "max_ms": 3.879547002725303,
+          "over_5ms": 0
+        }
+      }
+    }
+  }
+}

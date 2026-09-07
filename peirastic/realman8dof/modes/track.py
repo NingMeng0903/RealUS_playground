@@ -63,7 +63,15 @@ class HybridTffOuter:
         self.last_path_twist = np.zeros(6, dtype=float)
         self.last_feedback_twist = np.zeros(6, dtype=float)
         self.last_tau_y = float("nan")
+        self.last_tau_error_y = float("nan")
         self.last_omega_y = float("nan")
+        self.last_theta_tilt = float("nan")
+        self.last_tilt_engaged = False
+        self.last_tilt_frozen = False
+        self.last_tilt_capped = False
+        self.last_tilt_stalled = False
+        self.last_tilt_stop_reason = ""
+        self.last_tilt_deadband_nm = float("nan")
         self.last_cop_x = float("nan")
         self.last_cop_y = float("nan")
         self.last_cop_r = float("nan")
@@ -135,7 +143,15 @@ class HybridTffOuter:
         v_star = compose_tff(v_pos, fout.v_force, self.selection)
         telemetry = dict(getattr(fout, "telemetry", None) or {})
         self.last_tau_y = float(telemetry.get("tau_y", float("nan")))
+        self.last_tau_error_y = float(telemetry.get("tau_error_y", float("nan")))
         self.last_omega_y = float(telemetry.get("omega_y", float("nan")))
+        self.last_theta_tilt = float(telemetry.get("theta_tilt", float("nan")))
+        self.last_tilt_engaged = bool(telemetry.get("tilt_engaged", False))
+        self.last_tilt_frozen = bool(telemetry.get("tilt_frozen", False))
+        self.last_tilt_capped = bool(telemetry.get("tilt_capped", False))
+        self.last_tilt_stalled = bool(telemetry.get("tilt_stalled", False))
+        self.last_tilt_stop_reason = str(telemetry.get("tilt_stop_reason", ""))
+        self.last_tilt_deadband_nm = float(telemetry.get("tilt_deadband_nm", float("nan")))
         self.last_cop_x = float(telemetry.get("cop_x", float("nan")))
         self.last_cop_y = float(telemetry.get("cop_y", float("nan")))
         self.last_cop_r = float(telemetry.get("cop_r", float("nan")))

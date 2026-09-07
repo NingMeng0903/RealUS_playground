@@ -1,0 +1,32 @@
+{
+  "model": "ideal rotational spring; no hardware",
+  "dt_s": 0.005,
+  "force_z_n": 4.0,
+  "stiffness_nm_per_rad": 0.12,
+  "target_rad": 0.5,
+  "cases": {
+    "previous_cop_latch": {
+      "first_stall": {
+        "time_s": 0.39,
+        "angle_deg": 1.4377862510348238
+      },
+      "final_angle_deg": 1.463017887327004,
+      "final_torque_nm": -0.05693586250206868,
+      "final_omega_rad_s": 0.0,
+      "stop_reason": "cop_stall",
+      "tilt_frozen": false,
+      "tilt_capped": false,
+      "tilt_stalled": true
+    },
+    "fixed_default": {
+      "first_stall": null,
+      "final_angle_deg": 16.559021762378755,
+      "final_torque_nm": -0.025319637554179406,
+      "final_omega_rad_s": 0.0012860562130097561,
+      "stop_reason": "",
+      "tilt_frozen": false,
+      "tilt_capped": false,
+      "tilt_stalled": false
+    }
+  }
+}

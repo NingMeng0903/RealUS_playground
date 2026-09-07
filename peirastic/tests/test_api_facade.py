@@ -251,14 +251,20 @@ def test_default_hybrid_tilt_masks_conflicting_path_rotation() -> None:
 
     position.sample = rotating_path
     # Large normal-force error used to zero the torque gain completely.
-    # Keep CoP inside the 6 mm stall deadband so leftover-stall does not fire.
-    wrench = np.array([0.0, 0.0, 12.0, 0.0, 0.06, 0.0])
-    for tick in range(80):
+    # CoP remains at 7.5 mm, beyond the old 6 mm stall threshold; valid
+    # torque correction must continue after the old 350-ms latch deadline.
+    wrench = np.array([0.0, 0.0, 8.0, 0.0, 0.06, 0.0])
+    for tick in range(240):
         output = outer.sample(tick * 0.005, pose, wrench, contact=True)
     assert output[4] < -0.05
     assert outer.last_path_twist[4] == 0.0
     assert outer.last_tau_y == pytest.approx(0.06)
     assert outer.last_omega_y == pytest.approx(output[4])
+    assert outer.last_tau_error_y == pytest.approx(-0.06)
+    assert outer.last_tilt_engaged
+    assert not outer.last_tilt_stalled
+    assert outer.last_tilt_stop_reason == ""
+    assert outer.last_tilt_deadband_nm == pytest.approx(0.025)
 
 
 def test_hover_all_force_axes_fce_yields() -> None:

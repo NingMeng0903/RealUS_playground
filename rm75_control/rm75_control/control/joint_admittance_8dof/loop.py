@@ -192,7 +192,8 @@ class JointIkConfig:
     position_margin_rad: float = 0.017
     position_margin_rail_m: float = 0.0
     control_cpu: int | None = None
-    disable_cstates: bool = True
+    native_cpu: int | None = None
+    disable_cstates: bool = False
     resync_err_rad: float = 0.10
     resync_err_rail_m: float = 0.020
     feedback_timeout_s: float = 0.050
@@ -315,6 +316,12 @@ class JointIkStep:
     tick_inner_ms: float = float("nan")
     tick_send_ms: float = float("nan")
     tick_log_ms: float = float("nan")
+    qp_kinematics_ms: float = float("nan")
+    qp_collision_ms: float = float("nan")
+    qp_solve_phase_ms: float = float("nan")
+    native_dispatch_ms: float = float("nan")
+    native_roundtrip_ms: float = float("nan")
+    native_transport_ms: float = float("nan")
     qpik_alpha: float = 1.0
     qpik_beta: float = 1.0
     qpik_authority: float = 1.0
@@ -1264,6 +1271,12 @@ class JointIkController:
         """Advance committed history after both transports accept."""
         pending = getattr(self, "_pending_pub", None)
         if self._native is not None:
+            if getattr(self._native, "_inflight_seq", 0):
+                # A timeout hold has no acknowledged candidate. Reading SHM
+                # here races the solver and can commit an unpublished pose.
+                if qdot is not None:
+                    self._record_applied_qdot(qdot)
+                return
             # 13f1c27 synced q_cmd on every native tick.  Prepare/commit
             # defers that until both transports accept, but MOVEJ still
             # compiles from q_cmd, so the published candidate must land here.
@@ -3457,6 +3470,21 @@ def _pin_control_cpu(cpu: int | None) -> bool:
         return False
 
 
+def isolate_native_process(
+    pid: int,
+    *,
+    cpu: int | None,
+    control_cpu: int | None = None,
+) -> None:
+    """Apply only explicitly requested native affinity; never elevate policy."""
+    del control_cpu  # No inferred adjacent core: topology/cpusets vary by host.
+    if cpu is not None and int(pid) > 0:
+        try:
+            os.sched_setaffinity(int(pid), {int(cpu)})
+        except (PermissionError, OSError, AttributeError, ValueError):
+            pass
+
+
 class _CStateGuard:
     """Hold ``/dev/cpu_dma_latency`` at 0 so the CPU stays out of deep C-states."""
 
@@ -3645,7 +3673,7 @@ def _rt_print(msg: str) -> None:
 class _TickLogger:
     """Async per-tick CSV telemetry (background writer; no sync flush in the RT loop)."""
 
-    _QUEUE_MAX = 400
+    _QUEUE_MAX = 80
     _FLUSH_S = 5.0
     _FILE_BUFFER = 1 << 20
 
@@ -3941,8 +3969,19 @@ class _TickLogger:
             "execution_predicted_vx", "execution_predicted_vy", "execution_predicted_vz",
             "execution_predicted_wx", "execution_predicted_wy", "execution_predicted_wz",
             "phi_source", "phi_sha8",
-        ]
-    )
+            # Per-stage QPIK/native timing (append-only telemetry fields).
+            "qpik_kinematics_ms", "qpik_collision_ms", "qpik_solve_phase_ms",
+               "qpik_native_dispatch_ms", "qpik_native_roundtrip_ms",
+               "qpik_native_transport_ms",
+               # Hybrid TFF probe/tilt telemetry.  Keep these append-only so
+               # existing CSV readers retain their original column indices.
+               "tilt_tau_y_nm", "tilt_tau_error_y_nm",
+               "tilt_omega_y_rad_s", "tilt_theta_rad",
+               "tilt_engaged", "tilt_frozen", "tilt_capped", "tilt_stalled",
+               "tilt_stop_reason", "tilt_cop_x_m", "tilt_cop_r_m",
+               "tilt_on_tube", "tilt_deadband_nm",
+           ]
+       )
 
     def __init__(
         self,
@@ -3952,21 +3991,76 @@ class _TickLogger:
         phi_source: str = "",
         phi_sha8: str = "",
     ) -> None:
-        self._q: queue.Queue = queue.Queue(maxsize=int(self._QUEUE_MAX))
-        self._stop = threading.Event()
+        import multiprocessing as mp
+
+        from rm75_control.control.joint_admittance_8dof.tick_logger_worker import (
+            _RawFlag,
+        )
+
+        # ``spawn`` keeps the formatter and csv.writer out of this interpreter
+        # and therefore out of the control thread's GIL schedule.  The queue
+        # semaphore provides the hard bound; put_nowait is the only producer
+        # operation used below.
+        ctx = mp.get_context("spawn")
+        self._q = ctx.Queue(maxsize=int(self._QUEUE_MAX))
+        self._stop = _RawFlag(ctx.RawValue("b", 0))
+        self._closed = threading.Event()
+        self._failed = _RawFlag(ctx.RawValue("b", 0))
         self._verbose_json = bool(verbose_json)
         self._phi_source = str(phi_source or "")
         self._phi_sha8 = str(phi_sha8 or "")
         self._prev_arm_send_ns = 0
         self._prev_q_send_arm: np.ndarray | None = None
+        # Only the child writes this raw counter; the parent owns its local
+        # drop count.  Avoid a cross-process mutex on the control path.
+        self._dropped_shared = ctx.RawValue("L", 0)
+        self._dropped_local = 0
+        self._is_child = False
         self.dropped = 0
-        self._worker = threading.Thread(
-            target=self._run,
-            args=(path,),
-            name="joint-admittance-csv",
-            daemon=True,
-        )
-        self._worker.start()
+        self._worker = None
+        try:
+            from rm75_control.control.joint_admittance_8dof.tick_logger_worker import (
+                run_tick_logger_process,
+            )
+
+            self._worker = ctx.Process(
+                target=run_tick_logger_process,
+                args=(
+                    path,
+                    self._q,
+                    self._stop,
+                    self._failed,
+                    self._dropped_shared,
+                    tuple(self._HEADER),
+                    float(self._FLUSH_S),
+                    int(self._FILE_BUFFER),
+                    self._verbose_json,
+                    self._phi_source,
+                    self._phi_sha8,
+                ),
+                name="joint-admittance-csv",
+                daemon=True,
+            )
+            self._worker.start()
+            try:
+                # Lower priority during spawn/import startup as well as writing.
+                os.setpriority(os.PRIO_PROCESS, self._worker.pid, 10)
+            except (AttributeError, OSError, TypeError):
+                pass
+        except Exception:
+            # A logger must never prevent a controller from running.  Keep the
+            # failed state visible so all subsequent writes are cheap drops.
+            self._failed.set()
+            self._worker = None
+
+    def _worker_alive(self) -> bool:
+        worker = self._worker
+        if worker is None:
+            return False
+        try:
+            return bool(worker.is_alive())
+        except Exception:
+            return False
 
     def _run(self, path: str) -> None:
         write_header = True
@@ -3974,28 +4068,109 @@ class _TickLogger:
             write_header = not (os.path.exists(path) and os.path.getsize(path) > 0)
         except OSError:
             write_header = True
-        with open(path, "a", newline="", buffering=int(self._FILE_BUFFER)) as f:
-            w = csv.writer(f)
-            if write_header:
-                w.writerow(self._HEADER)
-            last_flush = time.monotonic()
-            while True:
-                try:
-                    row = self._q.get(timeout=0.05)
-                except queue.Empty:
-                    if self._stop.is_set():
+        try:
+            with open(path, "a", newline="", buffering=int(self._FILE_BUFFER)) as f:
+                w = csv.writer(f)
+                if write_header:
+                    w.writerow(self._HEADER)
+                last_flush = time.monotonic()
+                while True:
+                    try:
+                        item = self._q.get(timeout=0.05)
+                    except queue.Empty:
+                        if self._stop.is_set():
+                            break
+                        continue
+                    if item is None:
                         break
-                    continue
-                if row is None:
-                    break
-                if callable(row):
-                    row = row()
-                w.writerow(row)
-                now = time.monotonic()
-                if now - last_flush >= float(self._FLUSH_S):
+                    # Requests are ordinary tuples, so they are inspectable and
+                    # picklable across this process boundary.  In particular,
+                    # never enqueue a lambda closure: it retains the controller
+                    # graph and cannot cross a process boundary.
+                    if (
+                        isinstance(item, tuple)
+                        and len(item) == 2
+                        and item[0] == self._REQUEST_TAG
+                    ):
+                        try:
+                            row = self._write_impl(*item[1])
+                        except Exception:
+                            # Telemetry must never take down the worker or the
+                            # control loop.  A malformed row is disposable.
+                            self._drop()
+                            continue
+                    else:
+                        # Keep compatibility with direct test injection of an
+                        # already-built row, while refusing arbitrary callables.
+                        if callable(item):
+                            self._drop()
+                            continue
+                        row = item
+                    try:
+                        w.writerow(row)
+                    except Exception:
+                        # Disk/full/permission failures are terminal for this
+                        # logger.  Producers observe _failed and drop cheaply.
+                        self._failed.set()
+                        self._drop()
+                        break
+                    now = time.monotonic()
+                    if now - last_flush >= float(self._FLUSH_S):
+                        try:
+                            f.flush()
+                        except Exception:
+                            self._failed.set()
+                            self._drop()
+                            break
+                        last_flush = now
+                try:
                     f.flush()
-                    last_flush = now
-            f.flush()
+                except Exception:
+                    self._failed.set()
+        except Exception:
+            # open()/header writes can fail before the loop starts.  Logging is
+            # best-effort; report the failure through state and return.
+            self._failed.set()
+        finally:
+            self._stop.set()
+
+    # A plain string survives queue pickling if this worker is split into a
+    # helper process later.  Identity-based sentinels do not.
+    _REQUEST_TAG = "tick"
+
+    def _drop(self) -> None:
+        if bool(getattr(self, "_is_child", False)):
+            shared = getattr(self, "_dropped_shared", None)
+            if shared is not None:
+                # The sidecar is the sole writer of this raw counter.
+                shared.value += 1
+                return
+        # The control process is the sole writer of its local counter.  Keeping
+        # it local avoids taking a synchronized multiprocessing lock per tick.
+        self._dropped_local = int(getattr(self, "_dropped_local", 0)) + 1
+
+    @property
+    def dropped(self) -> int:
+        shared = getattr(self, "_dropped_shared", None)
+        local = int(getattr(self, "_dropped_local", 0))
+        if shared is not None:
+            try:
+                return local + int(shared.value)
+            except Exception:
+                pass
+        return local
+
+    @dropped.setter
+    def dropped(self, value: int) -> None:
+        shared = getattr(self, "_dropped_shared", None)
+        if shared is not None:
+            try:
+                shared.value = 0
+                self._dropped_local = int(value)
+                return
+            except Exception:
+                pass
+        self._dropped_local = int(value)
 
     @staticmethod
     def _fmt_pad_fields(outer) -> list[str]:
@@ -4034,6 +4209,154 @@ class _TickLogger:
             + _fmt_n(getattr(outer, "last_twist_base", None), 6, 6)
         )
 
+    @staticmethod
+    def _portable_value(value):
+        """Return a small pickle-safe snapshot value for the IPC request."""
+
+        if isinstance(value, np.ndarray):
+            return np.array(value, copy=True)
+        if isinstance(value, np.generic):
+            return _TickLogger._portable_value(value.item())
+        if isinstance(value, dict):
+            return {
+                str(key): _TickLogger._portable_value(item)
+                for key, item in value.items()
+            }
+        if isinstance(value, tuple):
+            return tuple(_TickLogger._portable_value(item) for item in value)
+        if isinstance(value, list):
+            return [_TickLogger._portable_value(item) for item in value]
+        if isinstance(value, (str, int, float, bool)) or value is None:
+            return value
+        enum_value = getattr(value, "value", None)
+        if enum_value is not None and enum_value is not value:
+            return _TickLogger._portable_value(enum_value)
+        # The formatter only needs scalar diagnostics.  Stringifying an
+        # unexpected object preserves a useful value without attempting to
+        # pickle locks, sockets, native clients, or callbacks.
+        return str(value)
+
+    @classmethod
+    def _snapshot_namespace(cls, source, names: tuple[str, ...]):
+        from types import SimpleNamespace
+
+        if source is None:
+            return SimpleNamespace()
+        result = {}
+        for name in names:
+            try:
+                value = getattr(source, name)
+            except Exception:
+                continue
+            if callable(value):
+                continue
+            result[name] = cls._portable_value(value)
+        return SimpleNamespace(**result)
+
+    @classmethod
+    def _snapshot_outer(cls, outer):
+        """Snapshot only outer/controller fields consumed by ``_write_impl``.
+
+        Sending the live outer object through a multiprocessing queue would
+        retain the hardware/controller graph and usually fail to pickle.  This
+        explicit field list keeps each IPC request bounded and serializable.
+        """
+
+        from types import SimpleNamespace
+
+        if outer is None:
+            return None
+        outer_names = (
+            "last_pose_d", "last_vel_ff", "last_pad_axes", "last_pad_buttons",
+            "last_pad_connected", "last_v_world", "last_w_tool",
+            "last_twist_base",
+            # Hybrid TFF probe/tilt state is deliberately copied as scalars so
+            # the sidecar never receives the live outer/controller graph.
+            "last_tau_y", "last_tau_error_y", "last_omega_y", "last_theta_tilt",
+            "last_tilt_engaged", "last_tilt_frozen", "last_tilt_capped",
+            "last_tilt_stalled", "last_tilt_stop_reason", "last_cop_x",
+            "last_cop_r", "last_on_tube", "last_tilt_deadband_nm",
+        )
+        ctrl_names = (
+            "instability_index", "instability_index_raw", "damping_z_eff",
+            "damping_ke_z", "damping_dimeas_z", "v_force_z", "u_dob_z",
+            "v_force_cmd_z", "tdpa_e_obs_j", "tdpa_alpha", "tdpa_clamped",
+            "tdpa_passivity_holds", "corridor_applied", "corridor_infeasible",
+            "ke_cap_n_m", "cdyob_corr_m_s", "cdyob_mode", "cdyob_qtinv_vm",
+            "cdyob_q_vi", "cdyob_n1_force", "cdyob_n2_velocity",
+            "cdyob_pert_unclipped", "cdyob_pert_clipped", "cdyob_blend",
+            "cdyob_vi", "cdyob_candidate", "cdyob_residual",
+            "cdyob_saturated", "cdyob_constrained", "cdyob_apply_ready",
+            "cdyob_ready_s", "overforce_escape", "u_nom_raw_z", "u_nom_capped_z",
+            "u_shield_hyp_z", "u_sent_z", "lambda_obs", "shield_applied",
+            "shield_feasible", "shield_f_ub_n", "shield_e_lb_j", "shield_w_lb_j",
+            "shield_rho_v2_w", "shield_n_stop", "shield_tube_violation",
+            "shield_solver_us", "shield_infeasible_reason", "shield_f_constraint_margin_n",
+            "shield_energy_margin_j",
+            "shield_terminal_ok", "shield_aj_ok", "shield_domain_ok",
+            "shield_uncertified_brake", "shield_recovery_latched",
+            "recontact_slow_latched", "v_recontact_cap_m_s", "ke_est",
+            "f_des_z_eff", "v_r_z", "force_reference_scale_n",
+            "force_reference_drive", "force_reference_gate_scale",
+            "force_reference_accel_m_s2", "force_reference_reversal_reset",
+            "force_reference_fast_clear", "force_fast_z", "retract_guard_armed",
+            "retract_fast_hold", "retract_fast_stop_count", "retract_fast_rearm_count",
+            "force_task_latched", "physical_contact_state",
+            "physical_contact_acquire_event", "physical_contact_loss_event",
+            "physical_contact_reacquire_event", "physical_contact_low_timer_s",
+            "physical_contact_high_timer_s", "mass_z_eff",
+            "takeover_active", "contact_present", "cap_press_z", "cap_retract_z",
+            "force_pred_z", "force_dot_z", "force_barrier_contact_active",
+            "contact_phase", "v_air_cmd", "ke_hat", "dob_v", "barrier_cap_floor",
+            "contact_episode_rearm_event",
+            "surface_force_scale", "surface_force_alpha", "surface_xy_error_m",
+        )
+        flow_names = (
+            "xp", "vp", "v_aux", "xa", "va", "e", "edot", "fc", "v_track",
+            "Pe", "Pc", "alpha_raw", "alpha", "alpha_case",
+            "alpha_would_gate_m_s", "tank_energy", "psi", "Sn", "Sr_hat",
+            "P_phys", "P_mismatch", "energy_phys_j", "energy_mismatch_j",
+            "gamma_effective", "sign_fault", "feedback_stale", "blocked_reason",
+        )
+        ke_names = ("update_gated", "last_dx_m", "last_df_n", "update_count")
+        contact_names = ("low_timer_s", "high_timer_s")
+        outer_data = {}
+        try:
+            source_ctrl = getattr(outer, "controller", None)
+        except Exception:
+            source_ctrl = None
+        ctrl_snapshot = cls._snapshot_namespace(source_ctrl, ctrl_names)
+        try:
+            cfg = getattr(source_ctrl, "cfg", None)
+        except Exception:
+            cfg = None
+        ctrl_snapshot.cfg = cls._snapshot_namespace(cfg, ("euler_order", "track_axes"))
+        try:
+            flow = getattr(source_ctrl, "bidirectional_flow", None)
+        except Exception:
+            flow = None
+        ctrl_snapshot.bidirectional_flow = cls._snapshot_namespace(flow, flow_names)
+        try:
+            ke = getattr(source_ctrl, "_ke_estimator", None)
+        except Exception:
+            ke = None
+        ctrl_snapshot._ke_estimator = cls._snapshot_namespace(ke, ke_names)
+        try:
+            contact = getattr(source_ctrl, "_physical_contact", None)
+        except Exception:
+            contact = None
+        ctrl_snapshot._physical_contact = cls._snapshot_namespace(contact, contact_names)
+        outer_data["controller"] = ctrl_snapshot
+        for name in outer_names:
+            try:
+                value = getattr(outer, name)
+            except Exception:
+                continue
+            if callable(value):
+                continue
+            outer_data[name] = cls._portable_value(value)
+        return SimpleNamespace(**outer_data)
+
     def write(
         self,
         t_wall,
@@ -4060,6 +4383,100 @@ class _TickLogger:
         rail_target_sent_m: float | None = None,
         deadline_slack_s: float = float("nan"),
     ) -> None:
+        """Queue one telemetry request without formatting or disk I/O.
+
+        The control loop owns the producer side of this method.  It must never
+        wait for the CSV writer, so admission is a single ``put_nowait``.  A
+        step snapshot copies its arrays and the explicit outer snapshot keeps
+        only telemetry fields, so later controller updates cannot alter a row
+        waiting in the queue.
+        """
+
+        if (self._closed.is_set() or self._failed.is_set()
+                or not self._worker_alive() or self._q.full()):
+            self._drop()
+            return
+        try:
+            step_snapshot = copy.copy(step)
+            for name, value in vars(step).items():
+                if isinstance(value, np.ndarray):
+                    setattr(step_snapshot, name, value.copy())
+        except Exception:
+            # A logger failure is never a control failure.  Keep the original
+            # object as a last-resort request payload.
+            step_snapshot = step
+        try:
+            outer_snapshot = self._snapshot_outer(outer)
+        except Exception:
+            # Missing outer telemetry is preferable to sending an unpickleable
+            # controller object into the IPC feeder.
+            outer_snapshot = None
+
+        def _copy_arg(value):
+            if value is None:
+                return None
+            try:
+                return np.array(value, dtype=float, copy=True)
+            except Exception:
+                return value
+
+        request_args = (
+            t_wall,
+            label,
+            t_ref,
+            step_snapshot,
+            _copy_arg(q_meas),
+            _copy_arg(pose),
+            _copy_arg(f_ext),
+            outer_snapshot,
+            governor_scale,
+            governor_scale_raw,
+            _copy_arg(v_max),
+            rail_meas_m,
+            dt_actual_s,
+            sensor_age_s,
+            feedback_age_s,
+            feedback_fresh_tick,
+            _copy_arg(f_ext_raw),
+            _copy_arg(twist_achieved_base),
+            v_tcp_z_actual,
+            _copy_arg(qdot_meas),
+            rail_target_sent_m,
+            deadline_slack_s,
+        )
+        try:
+            self._q.put_nowait((self._REQUEST_TAG, request_args))
+        except queue.Full:
+            self._drop()
+        except Exception:
+            self._failed.set()
+            self._drop()
+
+    def _write_impl(
+        self,
+        t_wall,
+        label,
+        t_ref,
+        step: JointIkStep,
+        q_meas,
+        pose,
+        f_ext,
+        outer=None,
+        governor_scale: float = float("nan"),
+        governor_scale_raw: float = float("nan"),
+        v_max: np.ndarray | None = None,
+        rail_meas_m: float = float("nan"),
+        dt_actual_s: float = float("nan"),
+        sensor_age_s: float = float("nan"),
+        feedback_age_s: float = float("nan"),
+        feedback_fresh_tick: bool = False,
+        f_ext_raw: np.ndarray | None = None,
+        twist_achieved_base: np.ndarray | None = None,
+        v_tcp_z_actual: float = float("nan"),
+        qdot_meas: np.ndarray | None = None,
+        rail_target_sent_m: float | None = None,
+        deadline_slack_s: float = float("nan"),
+    ) -> list:
         qm = q_meas if q_meas is not None else np.full(8, np.nan)
         ctrl = getattr(outer, "controller", None)
         is_idx = getattr(ctrl, "instability_index", float("nan"))
@@ -4400,11 +4817,6 @@ class _TickLogger:
         if qdot_meas is not None:
             qdot_meas = np.asarray(qdot_meas, dtype=float).copy()
 
-        # Snapshot step so the writer thread cannot see the next tick mutate it.
-        step = copy.copy(step)
-        for _name, _val in vars(step).items():
-            if isinstance(_val, np.ndarray):
-                setattr(step, _name, np.array(_val, copy=True))
         arm_ns = int(getattr(step, "arm_send_mono_ns", 0) or 0)
         q_send_arr = np.asarray(step.q_send, dtype=float).reshape(-1)
         arm_qdot_wall = None
@@ -4422,10 +4834,32 @@ class _TickLogger:
         if arm_ns > 0 and q_send_arr.size >= 8:
             self._prev_arm_send_ns = arm_ns
             self._prev_q_send_arm = q_send_arr[1:8].copy()
-        # Format on the writer thread: f-strings of ~300 columns were ~0.4 ms
-        # on the control thread even after the disk write was already queued.
-        try:
-            self._q.put_nowait(lambda: self._checked_row(
+        # Hybrid TFF tilt telemetry is kept on the outer object.  These values
+        # have already been copied into the IPC snapshot, so formatting them
+        # here cannot observe later controller mutations.
+        def _fmt_outer_float(name: str, precision: int = 6) -> str:
+            try:
+                value = float(getattr(outer, name, float("nan")))
+            except (TypeError, ValueError, OverflowError):
+                return ""
+            return f"{value:.{precision}f}" if np.isfinite(value) else ""
+
+        tilt_tau_y = _fmt_outer_float("last_tau_y")
+        tilt_tau_error_y = _fmt_outer_float("last_tau_error_y")
+        tilt_omega_y = _fmt_outer_float("last_omega_y")
+        tilt_theta = _fmt_outer_float("last_theta_tilt")
+        tilt_engaged = int(bool(getattr(outer, "last_tilt_engaged", False)))
+        tilt_frozen = int(bool(getattr(outer, "last_tilt_frozen", False)))
+        tilt_capped = int(bool(getattr(outer, "last_tilt_capped", False)))
+        tilt_stalled = int(bool(getattr(outer, "last_tilt_stalled", False)))
+        tilt_stop_reason = str(getattr(outer, "last_tilt_stop_reason", "") or "")
+        tilt_cop_x = _fmt_outer_float("last_cop_x", precision=9)
+        tilt_cop_r = _fmt_outer_float("last_cop_r", precision=9)
+        tilt_on_tube = int(bool(getattr(outer, "last_on_tube", False)))
+        tilt_deadband = _fmt_outer_float("last_tilt_deadband_nm")
+        # Formatting is deliberately performed by the worker before its
+        # csv.writer call.  The producer only queues the raw request above.
+        return self._checked_row(
             [
                 f"{t_wall:.4f}",
                 label,
@@ -5072,22 +5506,65 @@ class _TickLogger:
                step.execution_model_hash, int(step.execution_observer_validated),
                *np.asarray(step.execution_predicted_twist, dtype=float).reshape(6).tolist(),
                self._phi_source, self._phi_sha8,
+               f"{float(getattr(step, 'qp_kinematics_ms', float('nan'))):.6f}"
+               if np.isfinite(getattr(step, "qp_kinematics_ms", float("nan")))
+               else "",
+               f"{float(getattr(step, 'qp_collision_ms', float('nan'))):.6f}"
+               if np.isfinite(getattr(step, "qp_collision_ms", float("nan")))
+               else "",
+               f"{float(getattr(step, 'qp_solve_phase_ms', float('nan'))):.6f}"
+               if np.isfinite(getattr(step, "qp_solve_phase_ms", float("nan")))
+               else "",
+               f"{float(getattr(step, 'native_dispatch_ms', float('nan'))):.6f}"
+               if np.isfinite(getattr(step, "native_dispatch_ms", float("nan")))
+               else "",
+               f"{float(getattr(step, 'native_roundtrip_ms', float('nan'))):.6f}"
+               if np.isfinite(getattr(step, "native_roundtrip_ms", float("nan")))
+               else "",
+               f"{float(getattr(step, 'native_transport_ms', float('nan'))):.6f}"
+               if np.isfinite(getattr(step, "native_transport_ms", float("nan")))
+               else "",
+               tilt_tau_y, tilt_tau_error_y, tilt_omega_y, tilt_theta,
+               tilt_engaged, tilt_frozen, tilt_capped, tilt_stalled,
+               tilt_stop_reason, tilt_cop_x, tilt_cop_r, tilt_on_tube,
+               tilt_deadband,
                ]
-        ))
-        except queue.Full:
-            self.dropped += 1
+        )
 
     def _checked_row(self, row: list) -> list:
         assert len(row) == len(self._HEADER), (len(row), len(self._HEADER))
         return row
 
     def close(self) -> None:
+        if self._closed.is_set():
+            return
+        self._closed.set()
         self._stop.set()
+        if self._worker_alive():
+            try:
+                self._q.put_nowait(None)
+            except queue.Full:
+                # The stop event is sufficient: _run exits once the bounded
+                # queue has drained, without ever blocking the caller here.
+                pass
+            except Exception:
+                pass
+        worker = self._worker
         try:
-            self._q.put_nowait(None)
-        except queue.Full:
+            if worker is not None:
+                worker.join(timeout=1.0)
+                if worker.is_alive():
+                    # A blocked filesystem can outlive the controller.  Do
+                    # not retain a daemon process or a feeder thread forever.
+                    worker.terminate()
+                    worker.join(timeout=1.0)
+        except Exception:
             pass
-        self._worker.join(timeout=8.0)
+        try:
+            self._q.cancel_join_thread()
+            self._q.close()
+        except Exception:
+            pass
 
 
 def _record_execution_observation(inner, step, rail_bridge, q_meas) -> None:
@@ -5635,27 +6112,25 @@ def _send_joint_canfd_cmd(robot, q_deg, follow: bool, canfd_proxy=None) -> None:
     send_joint_canfd(robot, list(q), follow=follow)
 
 
+def path_reference_should_freeze(step: JointIkStep) -> bool:
+    return str(getattr(step, "fallback_reason", "")) == "native_timeout_coast"
+
+
 def _guard_qpik_step_before_send(step: JointIkStep, fault_stop) -> tuple[bool, str]:
-    """Gate rail/CANFD publication.  A failed QP1 has no certified command."""
+    """Allow bounded timeout holds; reject uncertified solver commands."""
     if str(getattr(step, "controller_mode", "")) == "direct_joint_ptp":
         if bool(step.solver_fault_latched) and str(step.fallback_reason) == "native_timeout":
             reason = f"qpik_fault:{step.fallback_level}:{step.fallback_reason}"
             fault_stop(reason)
             return False, reason
         return True, ""
-    qp1 = qp_status_name(getattr(step, "qp1_status", ""))
     if bool(step.solver_fault_latched) or str(step.fallback_level) == "stop":
         reason = f"qpik_fault:{step.fallback_level}:{step.fallback_reason}"
         fault_stop(reason)
         return False, reason
-    if qp1 in (
-        "failed",
-        "primal_infeasible",
-        "dual_infeasible",
-        "closest_primal",
-        "p0_conflict",
-        "timeout",
-    ):
+    qp1 = qp_status_name(getattr(step, "qp1_status", ""))
+    if qp1 in ("failed", "primal_infeasible", "dual_infeasible",
+               "closest_primal", "p0_conflict", "timeout"):
         reason = f"qpik_fault:uncertified_qp1:{qp1}"
         fault_stop(reason)
         return False, reason
@@ -5741,7 +6216,7 @@ def run_joint_admittance_phases(
     )
     cstate = (
         _CStateGuard()
-        if realtime and bool(getattr(inner.cfg, "disable_cstates", True))
+        if realtime and bool(getattr(inner.cfg, "disable_cstates", False))
         else None
     )
     if cstate is not None:
@@ -5768,17 +6243,17 @@ def run_joint_admittance_phases(
             if not _set_realtime_priority():
                 if verbose:
                     print("  (SCHED_FIFO unavailable - running at normal priority)", flush=True)
-            if _pin_control_cpu(getattr(inner.cfg, "control_cpu", None)):
-                if verbose:
-                    print(
-                        f"  control thread pinned to CPU {inner.cfg.control_cpu}",
-                        flush=True,
-                    )
-            elif verbose and getattr(inner.cfg, "control_cpu", None) is not None:
-                print("  (CPU affinity unavailable)", flush=True)
+        if _pin_control_cpu(getattr(inner.cfg, "control_cpu", None)):
+            if verbose:
+                print(
+                    f"  control thread pinned to CPU {inner.cfg.control_cpu}",
+                    flush=True,
+                )
+        elif verbose and getattr(inner.cfg, "control_cpu", None) is not None:
+            print("  (CPU affinity unavailable)", flush=True)
 
         gc_frozen = False
-        if realtime and bool(getattr(inner.cfg, "rt_disable_gc", True)):
+        if bool(getattr(inner.cfg, "rt_disable_gc", True)):
             gc.collect()
             gc.freeze()
             gc.disable()
@@ -6348,23 +6823,28 @@ def run_joint_admittance_phases(
                             wait_s = float(
                                 getattr(native, "_last_wait_s", float("nan"))
                             )
-                            limit_s = float(
-                                getattr(native, "timeout_s", float("nan"))
+                            last_warn = float(
+                                getattr(native, "_coast_warn_age_s", -1.0)
                             )
-                            _rt_print(
-                                f"[WARN] native_timeout coast hold "
-                                f"wait={wait_s * 1000.0:.1f}ms "
-                                f"limit={limit_s * 1000.0:.1f}ms "
-                                f"streak={int(getattr(native, '_timeout_streak', 0))}/"
-                                f"{int(getattr(native, '_coast_limit', 2))+1} "
-                                f"inflight={int(getattr(native, '_inflight_seq', 0))}/"
-                                f"{int(getattr(native, '_seq', 0))} "
-                                f"last_completed_solve_ms={float(getattr(native, '_last_completed_solve_ms', float('nan'))):.2f} "
-                                f"qp1={float(getattr(native, '_last_completed_qp1_ms', float('nan'))):.2f} "
-                                f"qp2={float(getattr(native, '_last_completed_qp2_ms', float('nan'))):.2f} "
-                                f"asm={float(getattr(native, '_last_completed_assembly_ms', float('nan'))):.2f} "
-                                f"cbf={int(getattr(native, '_last_completed_n_cbf', 0))}"
-                            )
+                            if last_warn < 0.0 or wait_s - last_warn >= 0.050:
+                                native._coast_warn_age_s = wait_s
+                                limit_s = float(
+                                    getattr(native, "timeout_s", float("nan"))
+                                )
+                                _rt_print(
+                                    f"[WARN] native_timeout coast hold "
+                                    f"wait={wait_s * 1000.0:.1f}ms "
+                                    f"limit={limit_s * 1000.0:.1f}ms "
+                                    f"soft_miss={int(getattr(native, '_timeout_streak', 0))} "
+                                    f"age={wait_s * 1000.0:.1f}ms "
+                                    f"inflight={int(getattr(native, '_inflight_seq', 0))}/"
+                                    f"{int(getattr(native, '_seq', 0))} "
+                                    f"last_completed_solve_ms={float(getattr(native, '_last_completed_solve_ms', float('nan'))):.2f} "
+                                    f"qp1={float(getattr(native, '_last_completed_qp1_ms', float('nan'))):.2f} "
+                                    f"qp2={float(getattr(native, '_last_completed_qp2_ms', float('nan'))):.2f} "
+                                    f"asm={float(getattr(native, '_last_completed_assembly_ms', float('nan'))):.2f} "
+                                    f"cbf={int(getattr(native, '_last_completed_n_cbf', 0))}"
+                                )
                         if (
                             not sendable
                             and "native_timeout" in str(qpik_stop_reason)
@@ -6626,6 +7106,8 @@ def run_joint_admittance_phases(
                         ramp_s = float(getattr(phase, "soft_start_ramp_s", 0.0) or 0.0)
                         if ramp_s > 1e-6 and step.controller_mode != "direct_joint_ptp":
                             scale *= float(np.clip(t_wall / ramp_s, 0.0, 1.0))
+                        if path_reference_should_freeze(step):
+                            scale = 0.0
                         t_ref += reference_time_step(dt_wall_actual, scale)
                         step.accepted_reference_lag_s = max(0.0, t_wall - t_ref)
     

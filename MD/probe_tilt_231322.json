@@ -1,0 +1,421 @@
+{
+  "rows": 17187,
+  "time_range_s": [
+    0.051,
+    86.1179
+  ],
+  "contact_samples": 14174,
+  "directions": {
+    "-1": {
+      "samples": 5723,
+      "moving_time_s": 28.624767999999996,
+      "abs_omega_rad_s": {
+        "samples": 5723,
+        "mean": 0.061046521055390525,
+        "std": 0.029854873077171086,
+        "p01": 0.01133532,
+        "p50": 0.061708,
+        "p99": 0.13086348
+      },
+      "abs_drive_nm": {
+        "samples": 5723,
+        "mean": 0.04222232675170365,
+        "std": 0.016949969142798144,
+        "p01": 0.005337860000000001,
+        "p50": 0.041222,
+        "p99": 0.08715761999999999
+      },
+      "fitted_mass_damping_coulomb": [
+        0.06500005838799626,
+        0.2799990241994227,
+        0.025000054693609275
+      ],
+      "law_fit_residual_rms_nm": 5.414815393312744e-06,
+      "qp_tool_y_error_rad_s": {
+        "samples": 5723,
+        "mean": 1.733604315981571e-06,
+        "std": 2.652122104477499e-05,
+        "p01": 5.809136074119703e-09,
+        "p50": 2.612240252025666e-07,
+        "p99": 1.0676041895832332e-06
+      },
+      "measured_response": {
+        "delay_s": 0.035,
+        "gain": 0.9711303349917321,
+        "rms_rad_s": 0.00778828248090157,
+        "samples": 5234
+      },
+      "matched_steady_bins": [
+        {
+          "drive_range_nm": [
+            0.03,
+            0.04
+          ],
+          "omega_rad_s": {
+            "samples": 358,
+            "mean": 0.036029,
+            "std": 0.012383654556888994,
+            "p01": 0.01413381,
+            "p50": 0.0340795,
+            "p99": 0.06282039
+          },
+          "drive_nm": {
+            "samples": 358,
+            "mean": 0.034965290502793296,
+            "std": 0.00285953301838008,
+            "p01": 0.0301873,
+            "p50": 0.0346465,
+            "p99": 0.039914859999999996
+          }
+        },
+        {
+          "drive_range_nm": [
+            0.04,
+            0.05
+          ],
+          "omega_rad_s": {
+            "samples": 398,
+            "mean": 0.07088167587939698,
+            "std": 0.012071553159656098,
+            "p01": 0.04689068,
+            "p50": 0.069938,
+            "p99": 0.09576288
+          },
+          "drive_nm": {
+            "samples": 398,
+            "mean": 0.044801331658291456,
+            "std": 0.0028653365041409317,
+            "p01": 0.04007964,
+            "p50": 0.044692499999999996,
+            "p99": 0.049821689999999995
+          }
+        },
+        {
+          "drive_range_nm": [
+            0.05,
+            0.06
+          ],
+          "omega_rad_s": {
+            "samples": 145,
+            "mean": 0.09954080000000001,
+            "std": 0.011938527434521713,
+            "p01": 0.081037,
+            "p50": 0.098066,
+            "p99": 0.12941988000000001
+          },
+          "drive_nm": {
+            "samples": 145,
+            "mean": 0.05354742068965517,
+            "std": 0.0026525333412548255,
+            "p01": 0.05008344,
+            "p50": 0.053256,
+            "p99": 0.0593488
+          }
+        },
+        {
+          "drive_range_nm": [
+            0.06,
+            0.08
+          ],
+          "omega_rad_s": {
+            "samples": 24,
+            "mean": 0.12889475,
+            "std": 0.0071809013492388244,
+            "p01": 0.11636106,
+            "p50": 0.131025,
+            "p99": 0.13869582
+          },
+          "drive_nm": {
+            "samples": 24,
+            "mean": 0.061772208333333335,
+            "std": 0.001660325645246706,
+            "p01": 0.060106019999999996,
+            "p50": 0.0611195,
+            "p99": 0.06613493
+          }
+        }
+      ]
+    },
+    "1": {
+      "samples": 4967,
+      "moving_time_s": 24.822149,
+      "abs_omega_rad_s": {
+        "samples": 4967,
+        "mean": 0.07694153895711697,
+        "std": 0.04697899071397091,
+        "p01": 0.01087014,
+        "p50": 0.069294,
+        "p99": 0.18556480000000006
+      },
+      "abs_drive_nm": {
+        "samples": 4967,
+        "mean": 0.046858698610831494,
+        "std": 0.020737706773310022,
+        "p01": 0.00517788,
+        "p50": 0.044881,
+        "p99": 0.10111568
+      },
+      "fitted_mass_damping_coulomb": [
+        0.06500018006546165,
+        0.27999975963770785,
+        0.025000009035376303
+      ],
+      "law_fit_residual_rms_nm": 5.382989309659838e-06,
+      "qp_tool_y_error_rad_s": {
+        "samples": 4967,
+        "mean": 1.834279917275968e-06,
+        "std": 1.644910518450697e-05,
+        "p01": 4.531378024544286e-09,
+        "p50": 2.836880863277269e-07,
+        "p99": 4.7589263816281864e-05
+      },
+      "measured_response": {
+        "delay_s": 0.035,
+        "gain": 0.9677324090512328,
+        "rms_rad_s": 0.008280036054092098,
+        "samples": 4520
+      },
+      "matched_steady_bins": [
+        {
+          "drive_range_nm": [
+            0.03,
+            0.04
+          ],
+          "omega_rad_s": {
+            "samples": 294,
+            "mean": 0.033565425170068025,
+            "std": 0.0110249960726008,
+            "p01": 0.01150291,
+            "p50": 0.0340105,
+            "p99": 0.05854029
+          },
+          "drive_nm": {
+            "samples": 294,
+            "mean": 0.03448081972789115,
+            "std": 0.0026657048967869018,
+            "p01": 0.030150660000000003,
+            "p50": 0.0344105,
+            "p99": 0.039702709999999995
+          }
+        },
+        {
+          "drive_range_nm": [
+            0.04,
+            0.05
+          ],
+          "omega_rad_s": {
+            "samples": 180,
+            "mean": 0.06724198333333334,
+            "std": 0.012768437801632847,
+            "p01": 0.04391014,
+            "p50": 0.067165,
+            "p99": 0.09596804000000002
+          },
+          "drive_nm": {
+            "samples": 180,
+            "mean": 0.04416838888888889,
+            "std": 0.0028613005966380022,
+            "p01": 0.04007918,
+            "p50": 0.043829999999999994,
+            "p99": 0.049840590000000004
+          }
+        },
+        {
+          "drive_range_nm": [
+            0.05,
+            0.06
+          ],
+          "omega_rad_s": {
+            "samples": 143,
+            "mean": 0.10573737762237763,
+            "std": 0.011772960375252328,
+            "p01": 0.08535058000000001,
+            "p50": 0.103974,
+            "p99": 0.13076776
+          },
+          "drive_nm": {
+            "samples": 143,
+            "mean": 0.05444111188811188,
+            "std": 0.0029660879325880897,
+            "p01": 0.05009902,
+            "p50": 0.053784,
+            "p99": 0.05983084
+          }
+        },
+        {
+          "drive_range_nm": [
+            0.06,
+            0.08
+          ],
+          "omega_rad_s": {
+            "samples": 148,
+            "mean": 0.14782877027027028,
+            "std": 0.01730664144861758,
+            "p01": 0.11922278,
+            "p50": 0.146598,
+            "p99": 0.19007058
+          },
+          "drive_nm": {
+            "samples": 148,
+            "mean": 0.06652980405405405,
+            "std": 0.0046191414416048284,
+            "p01": 0.06016145,
+            "p50": 0.0658215,
+            "p99": 0.07838491
+          }
+        }
+      ]
+    }
+  },
+  "baseline_is_confirmed_unloaded": false,
+  "fit_selection": {
+    "min_speed_rad_s": 0.01,
+    "max_speed_rad_s": 0.215,
+    "max_accel_rad_s2": 4.4,
+    "max_adjacent_log_gap_s": 0.008
+  },
+  "notes": [
+    "Signs refer to tool omega_y; physical up/down is not identified by this CSV.",
+    "A loaded contact trace alone does not identify TCP or gravity calibration error.",
+    "The fit estimates the recorded command law, not closed-loop contact stiffness."
+  ],
+  "phase": {
+    "servo_twist": 2475,
+    "servo_twist_hold": 292,
+    "track_hybrid_pad": 14420
+  },
+  "tilt_stop_reason": {
+    "": 12936,
+    "no_contact": 246,
+    "torque_deadband": 4005
+  },
+  "tilt_frozen": {
+    "0.0": 17187
+  },
+  "tilt_capped": {
+    "0.0": 17187
+  },
+  "tilt_stalled": {
+    "0.0": 17187
+  },
+  "joint_limited": {
+    "0.0": 17187
+  },
+  "pos_clamped": {
+    "0.0": 17187
+  },
+  "qpik_solver_fault_latched": {
+    "0.0": 17187
+  },
+  "qpik_fallback_reason": {
+    "": 17187
+  },
+  "phi_source": {
+    "phi_recommended": 17187
+  },
+  "phi_sha8": {
+    "354c5708": 17187
+  },
+  "contact_deadband_fraction": 0.28255961619867365,
+  "longest_contact_deadband_stop": {
+    "range_s": [
+      33.4127,
+      34.1638
+    ],
+    "my_nm": {
+      "samples": 151,
+      "mean": -0.008677483443708608,
+      "std": 0.0064422567329034475,
+      "p01": -0.02015,
+      "p50": -0.0094,
+      "p99": 0.00655
+    },
+    "fz_n": {
+      "samples": 151,
+      "mean": 4.175026490066225,
+      "std": 0.36635767539133657,
+      "p01": 3.6485000000000003,
+      "p50": 4.002,
+      "p99": 4.9685
+    },
+    "command_omega_rad_s": {
+      "samples": 151,
+      "mean": 0.0,
+      "std": 0.0,
+      "p01": 0.0,
+      "p50": 0.0,
+      "p99": 0.0
+    }
+  },
+  "slack_norm": {
+    "samples": 17187,
+    "mean": 1.4920579507767498e-05,
+    "std": 0.00023227180838601545,
+    "p01": 0.0,
+    "p50": 0.0,
+    "p99": 0.00015
+  },
+  "candidate_quiet_window": {
+    "range_s": [
+      8.0,
+      11.3
+    ],
+    "my_nm": {
+      "samples": 660,
+      "mean": -0.015469090909090912,
+      "std": 0.004409010995839373,
+      "p01": -0.025282,
+      "p50": -0.0154,
+      "p99": -0.005395000000000016
+    },
+    "raw_comp_my_nm": {
+      "samples": 660,
+      "mean": -0.015468636363636361,
+      "std": 0.00642134234677106,
+      "p01": -0.029282,
+      "p50": -0.0153,
+      "p99": -0.0018180000000000062
+    },
+    "fz_n": {
+      "samples": 660,
+      "mean": 0.03453939393939394,
+      "std": 0.029233645408588967,
+      "p01": -0.03641,
+      "p50": 0.035,
+      "p99": 0.10481999999999993
+    },
+    "measured_omega_y_rad_s": {
+      "samples": 660,
+      "mean": -0.00034720778940176676,
+      "std": 0.0013181525033690465,
+      "p01": -0.004654876883896176,
+      "p50": 0.0,
+      "p99": 0.0038422665749135347
+    },
+    "phase": {
+      "servo_twist": 660
+    },
+    "tilt_engaged": {
+      "0.0": 660
+    },
+    "note": "Servo-only samples have no active hybrid contact classification; zero contact flag is not proof of no physical contact."
+  },
+  "csv": "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/apps/logs/peirastic/run_20260907_231322.csv",
+  "tcp_binding_check": {
+    "binding_file": "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/data/force_compensation/logs/force_id_phi_v2.json",
+    "active_tool_name": "gripper2",
+    "samples": 24,
+    "reconstructed_translation_m": [
+      2.1652792284165834e-07,
+      -0.015228938063858083,
+      0.12135000427010512
+    ],
+    "translation_delta_mm": [
+      0.00021652792284165834,
+      6.193614193045205e-05,
+      4.27010476977685e-06
+    ],
+    "max_rotation_delta_deg": 9.18715097977852e-05,
+    "interpretation": "Checks FK/software binding consistency; does not establish physical TCP calibration accuracy."
+  }
+}

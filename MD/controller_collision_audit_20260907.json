@@ -1,0 +1,1662 @@
+[
+  {
+    "csv": "rm75_control/apps/logs/peirastic/run_20260907_210959.csv",
+    "data_row": 1,
+    "q_meas": [
+      0.182348,
+      -0.582329,
+      -0.870867,
+      1.205656,
+      1.627659,
+      0.261363,
+      1.133958,
+      2.31942
+    ],
+    "active_at_50mm": {
+      "mesh": 1,
+      "capsule": 5
+    },
+    "extra_capsule_rows": [
+      {
+        "pair": "base_link_0/link_2_0",
+        "mesh_mm": 60.58398071104282,
+        "capsule_mm": 29.731542991711066
+      },
+      {
+        "pair": "link_2_0/link_4_0",
+        "mesh_mm": 67.09174867375357,
+        "capsule_mm": 36.941476298194324
+      },
+      {
+        "pair": "link_4_0/link_6_0",
+        "mesh_mm": 52.65610661253345,
+        "capsule_mm": 15.183710040701296
+      },
+      {
+        "pair": "link_5_0/link_7_0",
+        "mesh_mm": 83.79247640140383,
+        "capsule_mm": 21.99955076406897
+      }
+    ],
+    "nearest_pairs": {
+      "mesh": [
+        {
+          "pair": "link_6_0/link_8_0",
+          "distance_mm": 41.29789130200402
+        },
+        {
+          "pair": "link_4_0/link_6_0",
+          "distance_mm": 52.65610661253345
+        },
+        {
+          "pair": "base_link_0/link_2_0",
+          "distance_mm": 60.58398071104282
+        },
+        {
+          "pair": "link_2_0/link_4_0",
+          "distance_mm": 67.09174867375357
+        },
+        {
+          "pair": "link_6_0/wrist_camera_0",
+          "distance_mm": 74.60911445428414
+        },
+        {
+          "pair": "link_5_0/link_7_0",
+          "distance_mm": 83.79247640140383
+        },
+        {
+          "pair": "link_3_0/link_5_0",
+          "distance_mm": 90.79483673101163
+        },
+        {
+          "pair": "link_1_0/link_3_0",
+          "distance_mm": 111.17461064681913
+        }
+      ],
+      "capsule": [
+        {
+          "pair": "link_4_0/link_6_0",
+          "distance_mm": 15.183710040701296
+        },
+        {
+          "pair": "link_6_0/link_8_0",
+          "distance_mm": 15.359053162227656
+        },
+        {
+          "pair": "link_5_0/link_7_0",
+          "distance_mm": 21.99955076406897
+        },
+        {
+          "pair": "base_link_0/link_2_0",
+          "distance_mm": 29.731542991711066
+        },
+        {
+          "pair": "link_2_0/link_4_0",
+          "distance_mm": 36.941476298194324
+        },
+        {
+          "pair": "link_6_0/wrist_camera_0",
+          "distance_mm": 56.62149842992547
+        },
+        {
+          "pair": "link_3_0/link_5_0",
+          "distance_mm": 58.475502194455245
+        },
+        {
+          "pair": "link_1_0/link_3_0",
+          "distance_mm": 61.81863690582047
+        }
+      ]
+    }
+  },
+  {
+    "csv": "rm75_control/apps/logs/peirastic/run_20260907_210959.csv",
+    "data_row": 1668,
+    "q_meas": [
+      0.239506,
+      -1.433736,
+      -1.462377,
+      0.940418,
+      1.838251,
+      1.544128,
+      1.30055,
+      1.252588
+    ],
+    "active_at_50mm": {
+      "mesh": 1,
+      "capsule": 6
+    },
+    "extra_capsule_rows": [
+      {
+        "pair": "base_link_0/link_2_0",
+        "mesh_mm": 54.999710994262365,
+        "capsule_mm": 46.394658155709536
+      },
+      {
+        "pair": "link_2_0/link_4_0",
+        "mesh_mm": 62.941277370629145,
+        "capsule_mm": 25.99233524113438
+      },
+      {
+        "pair": "link_3_0/link_5_0",
+        "mesh_mm": 84.93319491876781,
+        "capsule_mm": 42.07161632180656
+      },
+      {
+        "pair": "link_4_0/link_6_0",
+        "mesh_mm": 50.886367942429736,
+        "capsule_mm": 28.836785550803977
+      },
+      {
+        "pair": "link_5_0/link_7_0",
+        "mesh_mm": 82.50562604256471,
+        "capsule_mm": 24.013181245431575
+      }
+    ],
+    "nearest_pairs": {
+      "mesh": [
+        {
+          "pair": "link_6_0/link_8_0",
+          "distance_mm": 40.00832902762578
+        },
+        {
+          "pair": "link_4_0/link_6_0",
+          "distance_mm": 50.886367942429736
+        },
+        {
+          "pair": "base_link_0/link_2_0",
+          "distance_mm": 54.999710994262365
+        },
+        {
+          "pair": "link_2_0/link_4_0",
+          "distance_mm": 62.941277370629145
+        },
+        {
+          "pair": "link_6_0/wrist_camera_0",
+          "distance_mm": 74.23181235543527
+        },
+        {
+          "pair": "link_5_0/link_7_0",
+          "distance_mm": 82.50562604256471
+        },
+        {
+          "pair": "link_3_0/link_5_0",
+          "distance_mm": 84.93319491876781
+        },
+        {
+          "pair": "link_2_0/link_5_0",
+          "distance_mm": 92.59363947002133
+        }
+      ],
+      "capsule": [
+        {
+          "pair": "link_6_0/link_8_0",
+          "distance_mm": 8.206287216256413
+        },
+        {
+          "pair": "link_5_0/link_7_0",
+          "distance_mm": 24.013181245431575
+        },
+        {
+          "pair": "link_2_0/link_4_0",
+          "distance_mm": 25.99233524113438
+        },
+        {
+          "pair": "link_4_0/link_6_0",
+          "distance_mm": 28.836785550803977
+        },
+        {
+          "pair": "link_3_0/link_5_0",
+          "distance_mm": 42.07161632180656
+        },
+        {
+          "pair": "base_link_0/link_2_0",
+          "distance_mm": 46.394658155709536
+        },
+        {
+          "pair": "link_6_0/wrist_camera_0",
+          "distance_mm": 54.558376379838606
+        },
+        {
+          "pair": "link_2_0/link_5_0",
+          "distance_mm": 58.7423998082882
+        }
+      ]
+    }
+  },
+  {
+    "csv": "rm75_control/apps/logs/peirastic/run_20260907_210959.csv",
+    "data_row": 1680,
+    "q_meas": [
+      0.239506,
+      -1.444574,
+      -1.483931,
+      0.925723,
+      1.843644,
+      1.563832,
+      1.322331,
+      1.25072
+    ],
+    "active_at_50mm": {
+      "mesh": 1,
+      "capsule": 6
+    },
+    "extra_capsule_rows": [
+      {
+        "pair": "base_link_0/link_2_0",
+        "mesh_mm": 55.08838199607309,
+        "capsule_mm": 45.38168824319793
+      },
+      {
+        "pair": "link_2_0/link_4_0",
+        "mesh_mm": 62.510191624776624,
+        "capsule_mm": 25.701365170615
+      },
+      {
+        "pair": "link_3_0/link_5_0",
+        "mesh_mm": 84.44403255173884,
+        "capsule_mm": 41.63225837885358
+      },
+      {
+        "pair": "link_4_0/link_6_0",
+        "mesh_mm": 50.71686078638243,
+        "capsule_mm": 29.587589005667375
+      },
+      {
+        "pair": "link_5_0/link_7_0",
+        "mesh_mm": 82.40340333929227,
+        "capsule_mm": 24.45930268136293
+      }
+    ],
+    "nearest_pairs": {
+      "mesh": [
+        {
+          "pair": "link_6_0/link_8_0",
+          "distance_mm": 40.02440158821577
+        },
+        {
+          "pair": "link_4_0/link_6_0",
+          "distance_mm": 50.71686078638243
+        },
+        {
+          "pair": "base_link_0/link_2_0",
+          "distance_mm": 55.08838199607309
+        },
+        {
+          "pair": "link_2_0/link_4_0",
+          "distance_mm": 62.510191624776624
+        },
+        {
+          "pair": "link_6_0/wrist_camera_0",
+          "distance_mm": 74.23370369078393
+        },
+        {
+          "pair": "link_5_0/link_7_0",
+          "distance_mm": 82.40340333929227
+        },
+        {
+          "pair": "link_3_0/link_5_0",
+          "distance_mm": 84.44403255173884
+        },
+        {
+          "pair": "link_2_0/link_5_0",
+          "distance_mm": 92.03043041642248
+        }
+      ],
+      "capsule": [
+        {
+          "pair": "link_6_0/link_8_0",
+          "distance_mm": 8.198976684819828
+        },
+        {
+          "pair": "link_5_0/link_7_0",
+          "distance_mm": 24.45930268136293
+        },
+        {
+          "pair": "link_2_0/link_4_0",
+          "distance_mm": 25.701365170615
+        },
+        {
+          "pair": "link_4_0/link_6_0",
+          "distance_mm": 29.587589005667375
+        },
+        {
+          "pair": "link_3_0/link_5_0",
+          "distance_mm": 41.63225837885358
+        },
+        {
+          "pair": "base_link_0/link_2_0",
+          "distance_mm": 45.38168824319793
+        },
+        {
+          "pair": "link_6_0/wrist_camera_0",
+          "distance_mm": 54.559777040014104
+        },
+        {
+          "pair": "link_2_0/link_5_0",
+          "distance_mm": 58.19788747396956
+        }
+      ]
+    }
+  },
+  {
+    "csv": "rm75_control/apps/logs/peirastic/run_20260907_210959.csv",
+    "data_row": 2856,
+    "q_meas": [
+      0.239507,
+      -1.462219,
+      -1.096678,
+      1.534267,
+      1.825928,
+      1.44131,
+      0.602156,
+      1.128477
+    ],
+    "active_at_50mm": {
+      "mesh": 1,
+      "capsule": 6
+    },
+    "extra_capsule_rows": [
+      {
+        "pair": "base_link_0/link_2_0",
+        "mesh_mm": 58.826212681786565,
+        "capsule_mm": 35.14672023054554
+      },
+      {
+        "pair": "link_2_0/link_4_0",
+        "mesh_mm": 62.63019742517324,
+        "capsule_mm": 26.024871358343656
+      },
+      {
+        "pair": "link_3_0/link_5_0",
+        "mesh_mm": 86.14108707359,
+        "capsule_mm": 43.08273678695281
+      },
+      {
+        "pair": "link_4_0/link_6_0",
+        "mesh_mm": 50.49938733824839,
+        "capsule_mm": 20.25330575726991
+      },
+      {
+        "pair": "link_5_0/link_7_0",
+        "mesh_mm": 85.79136872500666,
+        "capsule_mm": 26.157204970625898
+      }
+    ],
+    "nearest_pairs": {
+      "mesh": [
+        {
+          "pair": "link_6_0/link_8_0",
+          "distance_mm": 41.29215984739246
+        },
+        {
+          "pair": "link_4_0/link_6_0",
+          "distance_mm": 50.49938733824839
+        },
+        {
+          "pair": "base_link_0/link_2_0",
+          "distance_mm": 58.826212681786565
+        },
+        {
+          "pair": "link_2_0/link_4_0",
+          "distance_mm": 62.63019742517324
+        },
+        {
+          "pair": "link_6_0/wrist_camera_0",
+          "distance_mm": 74.52435015528589
+        },
+        {
+          "pair": "link_5_0/link_7_0",
+          "distance_mm": 85.79136872500666
+        },
+        {
+          "pair": "link_3_0/link_5_0",
+          "distance_mm": 86.14108707359
+        },
+        {
+          "pair": "link_2_0/link_5_0",
+          "distance_mm": 89.5756392048985
+        }
+      ],
+      "capsule": [
+        {
+          "pair": "link_6_0/link_8_0",
+          "distance_mm": 7.733135519410396
+        },
+        {
+          "pair": "link_4_0/link_6_0",
+          "distance_mm": 20.25330575726991
+        },
+        {
+          "pair": "link_2_0/link_4_0",
+          "distance_mm": 26.024871358343656
+        },
+        {
+          "pair": "link_5_0/link_7_0",
+          "distance_mm": 26.157204970625898
+        },
+        {
+          "pair": "base_link_0/link_2_0",
+          "distance_mm": 35.14672023054554
+        },
+        {
+          "pair": "link_3_0/link_5_0",
+          "distance_mm": 43.08273678695281
+        },
+        {
+          "pair": "link_6_0/wrist_camera_0",
+          "distance_mm": 54.71167209204431
+        },
+        {
+          "pair": "link_2_0/link_5_0",
+          "distance_mm": 58.80012321681159
+        }
+      ]
+    }
+  },
+  {
+    "csv": "rm75_control/apps/logs/peirastic/run_20260907_210959.csv",
+    "data_row": 5710,
+    "q_meas": [
+      0.361916,
+      -1.995505,
+      -1.305192,
+      1.228345,
+      1.020424,
+      1.549992,
+      1.308526,
+      1.488295
+    ],
+    "active_at_50mm": {
+      "mesh": 1,
+      "capsule": 6
+    },
+    "extra_capsule_rows": [
+      {
+        "pair": "base_link_0/link_2_0",
+        "mesh_mm": 56.14840692691039,
+        "capsule_mm": 37.99544560844936
+      },
+      {
+        "pair": "link_2_0/link_4_0",
+        "mesh_mm": 69.9753571013163,
+        "capsule_mm": 35.98963143567912
+      },
+      {
+        "pair": "link_3_0/link_5_0",
+        "mesh_mm": 91.85159998716455,
+        "capsule_mm": 49.76805867461081
+      },
+      {
+        "pair": "link_4_0/link_6_0",
+        "mesh_mm": 50.822606371151906,
+        "capsule_mm": 29.098795045043595
+      },
+      {
+        "pair": "link_5_0/link_7_0",
+        "mesh_mm": 82.46640175125403,
+        "capsule_mm": 24.46821904991089
+      }
+    ],
+    "nearest_pairs": {
+      "mesh": [
+        {
+          "pair": "link_6_0/link_8_0",
+          "distance_mm": 39.10348404724706
+        },
+        {
+          "pair": "link_4_0/link_6_0",
+          "distance_mm": 50.822606371151906
+        },
+        {
+          "pair": "base_link_0/link_2_0",
+          "distance_mm": 56.14840692691039
+        },
+        {
+          "pair": "link_2_0/link_4_0",
+          "distance_mm": 69.9753571013163
+        },
+        {
+          "pair": "link_6_0/wrist_camera_0",
+          "distance_mm": 74.6115304767088
+        },
+        {
+          "pair": "link_5_0/link_7_0",
+          "distance_mm": 82.46640175125403
+        },
+        {
+          "pair": "link_3_0/link_5_0",
+          "distance_mm": 91.85159998716455
+        },
+        {
+          "pair": "link_1_0/link_3_0",
+          "distance_mm": 106.42126130732754
+        }
+      ],
+      "capsule": [
+        {
+          "pair": "link_6_0/link_8_0",
+          "distance_mm": 9.309266520791855
+        },
+        {
+          "pair": "link_5_0/link_7_0",
+          "distance_mm": 24.46821904991089
+        },
+        {
+          "pair": "link_4_0/link_6_0",
+          "distance_mm": 29.098795045043595
+        },
+        {
+          "pair": "link_2_0/link_4_0",
+          "distance_mm": 35.98963143567912
+        },
+        {
+          "pair": "base_link_0/link_2_0",
+          "distance_mm": 37.99544560844936
+        },
+        {
+          "pair": "link_3_0/link_5_0",
+          "distance_mm": 49.76805867461081
+        },
+        {
+          "pair": "link_6_0/wrist_camera_0",
+          "distance_mm": 54.45770025036856
+        },
+        {
+          "pair": "link_1_0/link_3_0",
+          "distance_mm": 63.38166375392304
+        }
+      ]
+    }
+  },
+  {
+    "csv": "rm75_control/apps/logs/peirastic/run_20260907_211243.csv",
+    "data_row": 1,
+    "q_meas": [
+      0.361917,
+      -1.999938,
+      -1.305384,
+      1.22742,
+      1.014403,
+      1.551702,
+      1.309224,
+      1.49107
+    ],
+    "active_at_50mm": {
+      "mesh": 1,
+      "capsule": 6
+    },
+    "extra_capsule_rows": [
+      {
+        "pair": "base_link_0/link_2_0",
+        "mesh_mm": 56.15822491409386,
+        "capsule_mm": 37.973303668666176
+      },
+      {
+        "pair": "link_2_0/link_4_0",
+        "mesh_mm": 69.93111608427289,
+        "capsule_mm": 35.88295263368342
+      },
+      {
+        "pair": "link_3_0/link_5_0",
+        "mesh_mm": 91.84244770659396,
+        "capsule_mm": 49.7243460470203
+      },
+      {
+        "pair": "link_4_0/link_6_0",
+        "mesh_mm": 50.81711913667233,
+        "capsule_mm": 29.13176893987115
+      },
+      {
+        "pair": "link_5_0/link_7_0",
+        "mesh_mm": 82.46306756035081,
+        "capsule_mm": 24.489020726665483
+      }
+    ],
+    "nearest_pairs": {
+      "mesh": [
+        {
+          "pair": "link_6_0/link_8_0",
+          "distance_mm": 39.106520643855845
+        },
+        {
+          "pair": "link_4_0/link_6_0",
+          "distance_mm": 50.81711913667233
+        },
+        {
+          "pair": "base_link_0/link_2_0",
+          "distance_mm": 56.15822491409386
+        },
+        {
+          "pair": "link_2_0/link_4_0",
+          "distance_mm": 69.93111608427289
+        },
+        {
+          "pair": "link_6_0/wrist_camera_0",
+          "distance_mm": 74.62322804965616
+        },
+        {
+          "pair": "link_5_0/link_7_0",
+          "distance_mm": 82.46306756035081
+        },
+        {
+          "pair": "link_3_0/link_5_0",
+          "distance_mm": 91.84244770659396
+        },
+        {
+          "pair": "link_1_0/link_3_0",
+          "distance_mm": 106.41936886059807
+        }
+      ],
+      "capsule": [
+        {
+          "pair": "link_6_0/link_8_0",
+          "distance_mm": 9.323858700635974
+        },
+        {
+          "pair": "link_5_0/link_7_0",
+          "distance_mm": 24.489020726665483
+        },
+        {
+          "pair": "link_4_0/link_6_0",
+          "distance_mm": 29.13176893987115
+        },
+        {
+          "pair": "link_2_0/link_4_0",
+          "distance_mm": 35.88295263368342
+        },
+        {
+          "pair": "base_link_0/link_2_0",
+          "distance_mm": 37.973303668666176
+        },
+        {
+          "pair": "link_3_0/link_5_0",
+          "distance_mm": 49.7243460470203
+        },
+        {
+          "pair": "link_6_0/wrist_camera_0",
+          "distance_mm": 54.458402647285226
+        },
+        {
+          "pair": "link_1_0/link_3_0",
+          "distance_mm": 63.385419193777174
+        }
+      ]
+    }
+  },
+  {
+    "csv": "rm75_control/apps/logs/peirastic/run_20260907_211243.csv",
+    "data_row": 182,
+    "q_meas": [
+      0.361917,
+      -2.107101,
+      -1.474908,
+      0.823027,
+      0.994349,
+      1.939899,
+      1.548945,
+      1.5461
+    ],
+    "active_at_50mm": {
+      "mesh": 2,
+      "capsule": 6
+    },
+    "extra_capsule_rows": [
+      {
+        "pair": "base_link_0/link_2_0",
+        "mesh_mm": 55.00306758633624,
+        "capsule_mm": 42.510226310406544
+      },
+      {
+        "pair": "link_2_0/link_4_0",
+        "mesh_mm": 69.76434295765235,
+        "capsule_mm": 32.237576997053054
+      },
+      {
+        "pair": "link_3_0/link_5_0",
+        "mesh_mm": 91.68913512477995,
+        "capsule_mm": 49.843299018216655
+      },
+      {
+        "pair": "link_5_0/link_7_0",
+        "mesh_mm": 82.26202580777519,
+        "capsule_mm": 30.661234183164076
+      }
+    ],
+    "nearest_pairs": {
+      "mesh": [
+        {
+          "pair": "link_6_0/link_8_0",
+          "distance_mm": 39.22050722069557
+        },
+        {
+          "pair": "link_4_0/link_6_0",
+          "distance_mm": 49.830542280238674
+        },
+        {
+          "pair": "base_link_0/link_2_0",
+          "distance_mm": 55.00306758633624
+        },
+        {
+          "pair": "link_2_0/link_4_0",
+          "distance_mm": 69.76434295765235
+        },
+        {
+          "pair": "link_6_0/wrist_camera_0",
+          "distance_mm": 74.60271815371985
+        },
+        {
+          "pair": "link_5_0/link_7_0",
+          "distance_mm": 82.26202580777519
+        },
+        {
+          "pair": "link_3_0/link_5_0",
+          "distance_mm": 91.68913512477995
+        },
+        {
+          "pair": "link_4_0/link_7_0",
+          "distance_mm": 103.23568015359982
+        }
+      ],
+      "capsule": [
+        {
+          "pair": "link_6_0/link_8_0",
+          "distance_mm": 9.621357080136704
+        },
+        {
+          "pair": "link_4_0/link_6_0",
+          "distance_mm": 26.06288698442375
+        },
+        {
+          "pair": "link_5_0/link_7_0",
+          "distance_mm": 30.661234183164076
+        },
+        {
+          "pair": "link_2_0/link_4_0",
+          "distance_mm": 32.237576997053054
+        },
+        {
+          "pair": "base_link_0/link_2_0",
+          "distance_mm": 42.510226310406544
+        },
+        {
+          "pair": "link_3_0/link_5_0",
+          "distance_mm": 49.843299018216655
+        },
+        {
+          "pair": "link_6_0/wrist_camera_0",
+          "distance_mm": 54.47428698431988
+        },
+        {
+          "pair": "link_4_0/link_7_0",
+          "distance_mm": 57.458006764171486
+        }
+      ]
+    }
+  },
+  {
+    "csv": "rm75_control/apps/logs/peirastic/run_20260907_211243.csv",
+    "data_row": 2130,
+    "q_meas": [
+      0.361917,
+      -2.13925,
+      -1.510722,
+      0.729635,
+      1.01154,
+      2.036729,
+      1.601898,
+      1.560551
+    ],
+    "active_at_50mm": {
+      "mesh": 2,
+      "capsule": 6
+    },
+    "extra_capsule_rows": [
+      {
+        "pair": "base_link_0/link_2_0",
+        "mesh_mm": 54.82395046999705,
+        "capsule_mm": 43.541862669559606
+      },
+      {
+        "pair": "link_2_0/link_4_0",
+        "mesh_mm": 69.89517780016172,
+        "capsule_mm": 31.742657338402037
+      },
+      {
+        "pair": "link_3_0/link_5_0",
+        "mesh_mm": 91.66054619084049,
+        "capsule_mm": 49.98966069410084
+      },
+      {
+        "pair": "link_5_0/link_7_0",
+        "mesh_mm": 82.47178910315847,
+        "capsule_mm": 30.89038244411029
+      }
+    ],
+    "nearest_pairs": {
+      "mesh": [
+        {
+          "pair": "link_6_0/link_8_0",
+          "distance_mm": 39.26045131611486
+        },
+        {
+          "pair": "link_4_0/link_6_0",
+          "distance_mm": 49.85688420139508
+        },
+        {
+          "pair": "base_link_0/link_2_0",
+          "distance_mm": 54.82395046999705
+        },
+        {
+          "pair": "link_2_0/link_4_0",
+          "distance_mm": 69.89517780016172
+        },
+        {
+          "pair": "link_6_0/wrist_camera_0",
+          "distance_mm": 74.59336950327265
+        },
+        {
+          "pair": "link_5_0/link_7_0",
+          "distance_mm": 82.47178910315847
+        },
+        {
+          "pair": "link_3_0/link_5_0",
+          "distance_mm": 91.66054619084049
+        },
+        {
+          "pair": "link_4_0/link_7_0",
+          "distance_mm": 99.06686109526545
+        }
+      ],
+      "capsule": [
+        {
+          "pair": "link_6_0/link_8_0",
+          "distance_mm": 9.702055852988893
+        },
+        {
+          "pair": "link_4_0/link_6_0",
+          "distance_mm": 24.41812605973194
+        },
+        {
+          "pair": "link_5_0/link_7_0",
+          "distance_mm": 30.89038244411029
+        },
+        {
+          "pair": "link_2_0/link_4_0",
+          "distance_mm": 31.742657338402037
+        },
+        {
+          "pair": "base_link_0/link_2_0",
+          "distance_mm": 43.541862669559606
+        },
+        {
+          "pair": "link_3_0/link_5_0",
+          "distance_mm": 49.98966069410084
+        },
+        {
+          "pair": "link_4_0/link_7_0",
+          "distance_mm": 53.44097816550455
+        },
+        {
+          "pair": "link_6_0/wrist_camera_0",
+          "distance_mm": 54.48113890431005
+        }
+      ]
+    }
+  },
+  {
+    "csv": "rm75_control/apps/logs/peirastic/run_20260907_211243.csv",
+    "data_row": 3387,
+    "q_meas": [
+      0.361917,
+      -2.140611,
+      -1.512502,
+      0.724818,
+      1.012134,
+      2.040866,
+      1.60483,
+      1.561825
+    ],
+    "active_at_50mm": {
+      "mesh": 2,
+      "capsule": 6
+    },
+    "extra_capsule_rows": [
+      {
+        "pair": "base_link_0/link_2_0",
+        "mesh_mm": 54.81766616730393,
+        "capsule_mm": 43.59634703805508
+      },
+      {
+        "pair": "link_2_0/link_4_0",
+        "mesh_mm": 69.90019405921403,
+        "capsule_mm": 31.714989256855716
+      },
+      {
+        "pair": "link_3_0/link_5_0",
+        "mesh_mm": 91.65963473154234,
+        "capsule_mm": 49.99497539567564
+      },
+      {
+        "pair": "link_5_0/link_7_0",
+        "mesh_mm": 82.48607462940592,
+        "capsule_mm": 30.885511313449
+      }
+    ],
+    "nearest_pairs": {
+      "mesh": [
+        {
+          "pair": "link_6_0/link_8_0",
+          "distance_mm": 39.264132206843975
+        },
+        {
+          "pair": "link_4_0/link_6_0",
+          "distance_mm": 49.860936557544086
+        },
+        {
+          "pair": "base_link_0/link_2_0",
+          "distance_mm": 54.81766616730393
+        },
+        {
+          "pair": "link_2_0/link_4_0",
+          "distance_mm": 69.90019405921403
+        },
+        {
+          "pair": "link_6_0/wrist_camera_0",
+          "distance_mm": 74.59275790838441
+        },
+        {
+          "pair": "link_5_0/link_7_0",
+          "distance_mm": 82.48607462940592
+        },
+        {
+          "pair": "link_3_0/link_5_0",
+          "distance_mm": 91.65963473154234
+        },
+        {
+          "pair": "link_4_0/link_7_0",
+          "distance_mm": 98.81524469305897
+        }
+      ],
+      "capsule": [
+        {
+          "pair": "link_6_0/link_8_0",
+          "distance_mm": 9.7091821784311
+        },
+        {
+          "pair": "link_4_0/link_6_0",
+          "distance_mm": 24.314703904940572
+        },
+        {
+          "pair": "link_5_0/link_7_0",
+          "distance_mm": 30.885511313449
+        },
+        {
+          "pair": "link_2_0/link_4_0",
+          "distance_mm": 31.714989256855716
+        },
+        {
+          "pair": "base_link_0/link_2_0",
+          "distance_mm": 43.59634703805508
+        },
+        {
+          "pair": "link_3_0/link_5_0",
+          "distance_mm": 49.99497539567564
+        },
+        {
+          "pair": "link_4_0/link_7_0",
+          "distance_mm": 53.225779200047825
+        },
+        {
+          "pair": "link_6_0/wrist_camera_0",
+          "distance_mm": 54.48201705212135
+        }
+      ]
+    }
+  },
+  {
+    "csv": "rm75_control/apps/logs/peirastic/run_20260907_211243.csv",
+    "data_row": 4259,
+    "q_meas": [
+      0.361917,
+      -2.140402,
+      -1.508924,
+      0.722758,
+      1.011104,
+      2.039295,
+      1.607675,
+      1.56179
+    ],
+    "active_at_50mm": {
+      "mesh": 2,
+      "capsule": 6
+    },
+    "extra_capsule_rows": [
+      {
+        "pair": "base_link_0/link_2_0",
+        "mesh_mm": 54.82826026760651,
+        "capsule_mm": 43.4657572025219
+      },
+      {
+        "pair": "link_2_0/link_4_0",
+        "mesh_mm": 69.89303565055592,
+        "capsule_mm": 31.686735435531315
+      },
+      {
+        "pair": "link_3_0/link_5_0",
+        "mesh_mm": 91.6604703717859,
+        "capsule_mm": 49.987715307979485
+      },
+      {
+        "pair": "link_5_0/link_7_0",
+        "mesh_mm": 82.50020345961629,
+        "capsule_mm": 30.879181508424256
+      }
+    ],
+    "nearest_pairs": {
+      "mesh": [
+        {
+          "pair": "link_6_0/link_8_0",
+          "distance_mm": 39.26403074072609
+        },
+        {
+          "pair": "link_4_0/link_6_0",
+          "distance_mm": 49.86512910711988
+        },
+        {
+          "pair": "base_link_0/link_2_0",
+          "distance_mm": 54.82826026760651
+        },
+        {
+          "pair": "link_2_0/link_4_0",
+          "distance_mm": 69.89303565055592
+        },
+        {
+          "pair": "link_6_0/wrist_camera_0",
+          "distance_mm": 74.59277425016798
+        },
+        {
+          "pair": "link_5_0/link_7_0",
+          "distance_mm": 82.50020345961629
+        },
+        {
+          "pair": "link_3_0/link_5_0",
+          "distance_mm": 91.6604703717859
+        },
+        {
+          "pair": "link_4_0/link_7_0",
+          "distance_mm": 98.57309874036547
+        }
+      ],
+      "capsule": [
+        {
+          "pair": "link_6_0/link_8_0",
+          "distance_mm": 9.709076511023206
+        },
+        {
+          "pair": "link_4_0/link_6_0",
+          "distance_mm": 24.18433946603665
+        },
+        {
+          "pair": "link_5_0/link_7_0",
+          "distance_mm": 30.879181508424256
+        },
+        {
+          "pair": "link_2_0/link_4_0",
+          "distance_mm": 31.686735435531315
+        },
+        {
+          "pair": "base_link_0/link_2_0",
+          "distance_mm": 43.4657572025219
+        },
+        {
+          "pair": "link_3_0/link_5_0",
+          "distance_mm": 49.987715307979485
+        },
+        {
+          "pair": "link_4_0/link_7_0",
+          "distance_mm": 53.011937243097634
+        },
+        {
+          "pair": "link_6_0/wrist_camera_0",
+          "distance_mm": 54.482064098182875
+        }
+      ]
+    }
+  },
+  {
+    "csv": "rm75_control/apps/logs/peirastic/run_20260907_211315.csv",
+    "data_row": 1,
+    "q_meas": [
+      0.361917,
+      -2.140402,
+      -1.51053,
+      0.724399,
+      1.011558,
+      2.039278,
+      1.605965,
+      1.561581
+    ],
+    "active_at_50mm": {
+      "mesh": 2,
+      "capsule": 6
+    },
+    "extra_capsule_rows": [
+      {
+        "pair": "base_link_0/link_2_0",
+        "mesh_mm": 54.82349924677498,
+        "capsule_mm": 43.52501649816561
+      },
+      {
+        "pair": "link_2_0/link_4_0",
+        "mesh_mm": 69.89607458297354,
+        "capsule_mm": 31.704915638069306
+      },
+      {
+        "pair": "link_3_0/link_5_0",
+        "mesh_mm": 91.660192373075,
+        "capsule_mm": 49.99065194640517
+      },
+      {
+        "pair": "link_5_0/link_7_0",
+        "mesh_mm": 82.49167971645062,
+        "capsule_mm": 30.883199771561404
+      }
+    ],
+    "nearest_pairs": {
+      "mesh": [
+        {
+          "pair": "link_6_0/link_8_0",
+          "distance_mm": 39.26342524593174
+        },
+        {
+          "pair": "link_4_0/link_6_0",
+          "distance_mm": 49.86257852962211
+        },
+        {
+          "pair": "base_link_0/link_2_0",
+          "distance_mm": 54.82349924677498
+        },
+        {
+          "pair": "link_2_0/link_4_0",
+          "distance_mm": 69.89607458297354
+        },
+        {
+          "pair": "link_6_0/wrist_camera_0",
+          "distance_mm": 74.59287237523768
+        },
+        {
+          "pair": "link_5_0/link_7_0",
+          "distance_mm": 82.49167971645062
+        },
+        {
+          "pair": "link_3_0/link_5_0",
+          "distance_mm": 91.660192373075
+        },
+        {
+          "pair": "link_4_0/link_7_0",
+          "distance_mm": 98.71904267850803
+        }
+      ],
+      "capsule": [
+        {
+          "pair": "link_6_0/link_8_0",
+          "distance_mm": 9.708018977118016
+        },
+        {
+          "pair": "link_4_0/link_6_0",
+          "distance_mm": 24.25760359028657
+        },
+        {
+          "pair": "link_5_0/link_7_0",
+          "distance_mm": 30.883199771561404
+        },
+        {
+          "pair": "link_2_0/link_4_0",
+          "distance_mm": 31.704915638069306
+        },
+        {
+          "pair": "base_link_0/link_2_0",
+          "distance_mm": 43.52501649816561
+        },
+        {
+          "pair": "link_3_0/link_5_0",
+          "distance_mm": 49.99065194640517
+        },
+        {
+          "pair": "link_4_0/link_7_0",
+          "distance_mm": 53.139188554656585
+        },
+        {
+          "pair": "link_6_0/wrist_camera_0",
+          "distance_mm": 54.48161385084122
+        }
+      ]
+    }
+  },
+  {
+    "csv": "rm75_control/apps/logs/peirastic/run_20260907_211315.csv",
+    "data_row": 14,
+    "q_meas": [
+      0.361917,
+      -2.14014,
+      -1.51053,
+      0.72501,
+      1.011645,
+      2.0383,
+      1.605825,
+      1.561564
+    ],
+    "active_at_50mm": {
+      "mesh": 2,
+      "capsule": 6
+    },
+    "extra_capsule_rows": [
+      {
+        "pair": "base_link_0/link_2_0",
+        "mesh_mm": 54.823729242153256,
+        "capsule_mm": 43.52722853471776
+      },
+      {
+        "pair": "link_2_0/link_4_0",
+        "mesh_mm": 69.89661441486003,
+        "capsule_mm": 31.710200687182645
+      },
+      {
+        "pair": "link_3_0/link_5_0",
+        "mesh_mm": 91.66027076457203,
+        "capsule_mm": 49.99117479227652
+      },
+      {
+        "pair": "link_5_0/link_7_0",
+        "mesh_mm": 82.49098607563994,
+        "capsule_mm": 30.88348608151904
+      }
+    ],
+    "nearest_pairs": {
+      "mesh": [
+        {
+          "pair": "link_6_0/link_8_0",
+          "distance_mm": 39.263376025514965
+        },
+        {
+          "pair": "link_4_0/link_6_0",
+          "distance_mm": 49.8623738832088
+        },
+        {
+          "pair": "base_link_0/link_2_0",
+          "distance_mm": 54.823729242153256
+        },
+        {
+          "pair": "link_2_0/link_4_0",
+          "distance_mm": 69.89661441486003
+        },
+        {
+          "pair": "link_6_0/wrist_camera_0",
+          "distance_mm": 74.59288039748176
+        },
+        {
+          "pair": "link_5_0/link_7_0",
+          "distance_mm": 82.49098607563994
+        },
+        {
+          "pair": "link_3_0/link_5_0",
+          "distance_mm": 91.66027076457203
+        },
+        {
+          "pair": "link_4_0/link_7_0",
+          "distance_mm": 98.73074639806049
+        }
+      ],
+      "capsule": [
+        {
+          "pair": "link_6_0/link_8_0",
+          "distance_mm": 9.70749208624983
+        },
+        {
+          "pair": "link_4_0/link_6_0",
+          "distance_mm": 24.258566080364886
+        },
+        {
+          "pair": "link_5_0/link_7_0",
+          "distance_mm": 30.88348608151904
+        },
+        {
+          "pair": "link_2_0/link_4_0",
+          "distance_mm": 31.710200687182645
+        },
+        {
+          "pair": "base_link_0/link_2_0",
+          "distance_mm": 43.52722853471776
+        },
+        {
+          "pair": "link_3_0/link_5_0",
+          "distance_mm": 49.99117479227652
+        },
+        {
+          "pair": "link_4_0/link_7_0",
+          "distance_mm": 53.15173290759068
+        },
+        {
+          "pair": "link_6_0/wrist_camera_0",
+          "distance_mm": 54.48163346654094
+        }
+      ]
+    }
+  },
+  {
+    "csv": "rm75_control/apps/logs/peirastic/run_20260907_211315.csv",
+    "data_row": 471,
+    "q_meas": [
+      0.361917,
+      -2.13911,
+      -1.507877,
+      0.715515,
+      1.016323,
+      2.044217,
+      1.607012,
+      1.55919
+    ],
+    "active_at_50mm": {
+      "mesh": 2,
+      "capsule": 5
+    },
+    "extra_capsule_rows": [
+      {
+        "pair": "base_link_0/link_2_0",
+        "mesh_mm": 54.83260282696687,
+        "capsule_mm": 43.43788456352683
+      },
+      {
+        "pair": "link_2_0/link_4_0",
+        "mesh_mm": 69.93232597946239,
+        "capsule_mm": 31.69673589874867
+      },
+      {
+        "pair": "link_5_0/link_7_0",
+        "mesh_mm": 82.49688735440498,
+        "capsule_mm": 30.880953477528166
+      }
+    ],
+    "nearest_pairs": {
+      "mesh": [
+        {
+          "pair": "link_6_0/link_8_0",
+          "distance_mm": 39.25654743806615
+        },
+        {
+          "pair": "link_4_0/link_6_0",
+          "distance_mm": 49.86412883691374
+        },
+        {
+          "pair": "base_link_0/link_2_0",
+          "distance_mm": 54.83260282696687
+        },
+        {
+          "pair": "link_2_0/link_4_0",
+          "distance_mm": 69.93232597946239
+        },
+        {
+          "pair": "link_6_0/wrist_camera_0",
+          "distance_mm": 74.5940609259811
+        },
+        {
+          "pair": "link_5_0/link_7_0",
+          "distance_mm": 82.49688735440498
+        },
+        {
+          "pair": "link_3_0/link_5_0",
+          "distance_mm": 91.65701442701602
+        },
+        {
+          "pair": "link_4_0/link_7_0",
+          "distance_mm": 98.63848873588053
+        }
+      ],
+      "capsule": [
+        {
+          "pair": "link_6_0/link_8_0",
+          "distance_mm": 9.694659226297386
+        },
+        {
+          "pair": "link_4_0/link_6_0",
+          "distance_mm": 24.238633400068576
+        },
+        {
+          "pair": "link_5_0/link_7_0",
+          "distance_mm": 30.880953477528166
+        },
+        {
+          "pair": "link_2_0/link_4_0",
+          "distance_mm": 31.69673589874867
+        },
+        {
+          "pair": "base_link_0/link_2_0",
+          "distance_mm": 43.43788456352683
+        },
+        {
+          "pair": "link_3_0/link_5_0",
+          "distance_mm": 50.024055979838536
+        },
+        {
+          "pair": "link_4_0/link_7_0",
+          "distance_mm": 53.01936657411212
+        },
+        {
+          "pair": "link_6_0/wrist_camera_0",
+          "distance_mm": 54.48037538784697
+        }
+      ]
+    }
+  },
+  {
+    "csv": "rm75_control/apps/logs/peirastic/run_20260907_211315.csv",
+    "data_row": 772,
+    "q_meas": [
+      0.361917,
+      -2.139913,
+      -1.503392,
+      0.71192,
+      1.017422,
+      2.045404,
+      1.607204,
+      1.556118
+    ],
+    "active_at_50mm": {
+      "mesh": 2,
+      "capsule": 5
+    },
+    "extra_capsule_rows": [
+      {
+        "pair": "base_link_0/link_2_0",
+        "mesh_mm": 54.84619693650693,
+        "capsule_mm": 43.266219001909036
+      },
+      {
+        "pair": "link_2_0/link_4_0",
+        "mesh_mm": 69.94030181755332,
+        "capsule_mm": 31.68423086653558
+      },
+      {
+        "pair": "link_5_0/link_7_0",
+        "mesh_mm": 82.49784619874431,
+        "capsule_mm": 30.880667371475102
+      }
+    ],
+    "nearest_pairs": {
+      "mesh": [
+        {
+          "pair": "link_6_0/link_8_0",
+          "distance_mm": 39.24784376669146
+        },
+        {
+          "pair": "link_4_0/link_6_0",
+          "distance_mm": 49.8644168753336
+        },
+        {
+          "pair": "base_link_0/link_2_0",
+          "distance_mm": 54.84619693650693
+        },
+        {
+          "pair": "link_2_0/link_4_0",
+          "distance_mm": 69.94030181755332
+        },
+        {
+          "pair": "link_6_0/wrist_camera_0",
+          "distance_mm": 74.59576610517034
+        },
+        {
+          "pair": "link_5_0/link_7_0",
+          "distance_mm": 82.49784619874431
+        },
+        {
+          "pair": "link_3_0/link_5_0",
+          "distance_mm": 91.6563827514927
+        },
+        {
+          "pair": "link_4_0/link_7_0",
+          "distance_mm": 98.63117092797154
+        }
+      ],
+      "capsule": [
+        {
+          "pair": "link_6_0/link_8_0",
+          "distance_mm": 9.677459842641005
+        },
+        {
+          "pair": "link_4_0/link_6_0",
+          "distance_mm": 24.236796871128675
+        },
+        {
+          "pair": "link_5_0/link_7_0",
+          "distance_mm": 30.880667371475102
+        },
+        {
+          "pair": "link_2_0/link_4_0",
+          "distance_mm": 31.68423086653558
+        },
+        {
+          "pair": "base_link_0/link_2_0",
+          "distance_mm": 43.266219001909036
+        },
+        {
+          "pair": "link_3_0/link_5_0",
+          "distance_mm": 50.03181680471367
+        },
+        {
+          "pair": "link_4_0/link_7_0",
+          "distance_mm": 52.96384007262232
+        },
+        {
+          "pair": "link_6_0/wrist_camera_0",
+          "distance_mm": 54.47904059394721
+        }
+      ]
+    }
+  },
+  {
+    "csv": "rm75_control/apps/logs/peirastic/run_20260907_211315.csv",
+    "data_row": 941,
+    "q_meas": [
+      0.361917,
+      -2.141379,
+      -1.503985,
+      0.707452,
+      1.015782,
+      2.04961,
+      1.608199,
+      1.55809
+    ],
+    "active_at_50mm": {
+      "mesh": 2,
+      "capsule": 5
+    },
+    "extra_capsule_rows": [
+      {
+        "pair": "base_link_0/link_2_0",
+        "mesh_mm": 54.84288017934378,
+        "capsule_mm": 43.27569619720887
+      },
+      {
+        "pair": "link_2_0/link_4_0",
+        "mesh_mm": 69.92593258377566,
+        "capsule_mm": 31.631089674432506
+      },
+      {
+        "pair": "link_5_0/link_7_0",
+        "mesh_mm": 82.50283443125406,
+        "capsule_mm": 30.87801476074952
+      }
+    ],
+    "nearest_pairs": {
+      "mesh": [
+        {
+          "pair": "link_6_0/link_8_0",
+          "distance_mm": 39.25341366442722
+        },
+        {
+          "pair": "link_4_0/link_6_0",
+          "distance_mm": 49.865928407254316
+        },
+        {
+          "pair": "base_link_0/link_2_0",
+          "distance_mm": 54.84288017934378
+        },
+        {
+          "pair": "link_2_0/link_4_0",
+          "distance_mm": 69.92593258377566
+        },
+        {
+          "pair": "link_6_0/wrist_camera_0",
+          "distance_mm": 74.59464848440686
+        },
+        {
+          "pair": "link_5_0/link_7_0",
+          "distance_mm": 82.50283443125406
+        },
+        {
+          "pair": "link_3_0/link_5_0",
+          "distance_mm": 91.65651112845997
+        },
+        {
+          "pair": "link_4_0/link_7_0",
+          "distance_mm": 98.54339749666889
+        }
+      ],
+      "capsule": [
+        {
+          "pair": "link_6_0/link_8_0",
+          "distance_mm": 9.688202547811315
+        },
+        {
+          "pair": "link_4_0/link_6_0",
+          "distance_mm": 24.216119443278053
+        },
+        {
+          "pair": "link_5_0/link_7_0",
+          "distance_mm": 30.87801476074952
+        },
+        {
+          "pair": "link_2_0/link_4_0",
+          "distance_mm": 31.631089674432506
+        },
+        {
+          "pair": "base_link_0/link_2_0",
+          "distance_mm": 43.27569619720887
+        },
+        {
+          "pair": "link_3_0/link_5_0",
+          "distance_mm": 50.022475133986674
+        },
+        {
+          "pair": "link_4_0/link_7_0",
+          "distance_mm": 52.90467745577146
+        },
+        {
+          "pair": "link_6_0/wrist_camera_0",
+          "distance_mm": 54.48027450875279
+        }
+      ]
+    }
+  }
+]

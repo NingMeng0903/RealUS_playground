@@ -117,6 +117,9 @@ struct TickOut {
   double qp2_solve_ms = 0.0;
   double assembly_ms = 0.0;
   double fallback_ms = 0.0;
+  double kinematics_ms = 0.0;
+  double collision_ms = 0.0;
+  double qp_total_ms = 0.0;
   double hard_residual_max = 0.0;
   double equality_residual_max = 0.0;
   double rail_exec = 0.0;
@@ -433,6 +436,9 @@ class InnerLoop {
   double qp2_ms_ = 0.0;
   double assembly_ms_ = 0.0;
   double fallback_ms_ = 0.0;
+  double kinematics_ms_ = 0.0;
+  double collision_ms_ = 0.0;
+  double qp_total_ms_ = 0.0;
   uint32_t n_cbf_active_ = 0;
   TaskWeightState task_weight_;
   bool pending_valid_ = false;

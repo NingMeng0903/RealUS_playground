@@ -216,12 +216,12 @@ def test_inner_tick_median_fits_200hz_budget(request) -> None:
     assert p95 <= 6.5
 
 
-def test_default_collision_urdf_is_capsule_primitives() -> None:
+def test_default_collision_urdf_uses_exact_mesh_with_finite_bounds() -> None:
     from rm75_control.control.joint_admittance_8dof.collision_model import (
         DEFAULT_COLLISION_URDF,
     )
 
-    assert DEFAULT_COLLISION_URDF.name == "RM75-6F-8dof.collision.capsule.urdf"
+    assert DEFAULT_COLLISION_URDF.name == "RM75-6F-8dof.collision.urdf"
     assert DEFAULT_COLLISION_URDF.is_file()
     kin = RobotKinematics()
     collision = CollisionModel(kin.model)
@@ -232,4 +232,4 @@ def test_default_collision_urdf_is_capsule_primitives() -> None:
         str(getattr(go, "meshPath", "") or "").lower()
         for go in collision.geom_model.geometryObjects
     ]
-    assert not any(p.endswith(".stl") or p.endswith(".dae") for p in mesh_paths)
+    assert any(p.endswith(".stl") for p in mesh_paths)

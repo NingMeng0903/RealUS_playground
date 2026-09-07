@@ -21,10 +21,10 @@ from rm75_control.control.joint_admittance_8dof.tasks.rail_command import (
 from rm75_control.control.joint_admittance_8dof.wbc_rt import protocol as P
 
 
-def test_protocol_v5_sizes() -> None:
-    assert P.WBC_VERSION == 7
+def test_protocol_v8_sizes() -> None:
+    assert P.WBC_VERSION == 8
     assert P.WBC_IN_SIZE == 616
-    assert P.WBC_OUT_SIZE == 1440
+    assert P.WBC_OUT_SIZE == 1472
 
 
 def test_inbox_brake_stays_inside_accel_box() -> None:
@@ -167,6 +167,31 @@ def test_csv_header_has_jerk_s0_columns() -> None:
         "secondary_alpha",
     ]
     assert len(header) == len(set(header))
+
+
+def test_path_reference_freezes_on_coast() -> None:
+    from rm75_control.control.joint_admittance_8dof.loop import (
+        JointIkStep,
+        path_reference_should_freeze,
+    )
+
+    def _step(**kwargs) -> JointIkStep:
+        return JointIkStep(
+            q_send=np.zeros(8),
+            qdot=np.zeros(8),
+            twist_base=np.zeros(6),
+            sigma_min=0.2,
+            manip=0.1,
+            slack_norm=0.0,
+            n_cbf_active=0,
+            follow_err_rad=0.0,
+            **kwargs,
+        )
+
+    assert path_reference_should_freeze(
+        _step(fallback_reason="native_timeout_coast")
+    )
+    assert not path_reference_should_freeze(_step(qp1_status="solved"))
 
 
 def test_qp_status_name_and_dual_cancel() -> None:

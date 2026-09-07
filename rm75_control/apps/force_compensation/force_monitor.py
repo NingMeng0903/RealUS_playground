@@ -21,6 +21,10 @@ from collections import deque
 from pathlib import Path
 from threading import Lock
 
+if __name__ == "__main__":
+    from rm75_control.control.admittance_common.observer_runtime import prepare_observer_process
+    prepare_observer_process()
+
 import numpy as np
 from scipy.spatial.transform import Rotation as Rsc
 

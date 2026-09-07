@@ -18,7 +18,7 @@ from typing import Any
 import numpy as np
 import yaml
 
-from rm75_control.control.admittance_common.async_state import AsyncStateSnapshot, RealtimeStateObserver
+from rm75_control.control.admittance_common.async_state import AsyncStateSnapshot
 from rm75_control.control.admittance_common.shm_util import (
     attach_named_shm,
     close_attached_shm,
@@ -436,7 +436,7 @@ class StateRelayPublisher:
         self._rail_m_fn = rail_m_fn or (lambda: 0.0)
         # Optional Pinocchio kinematics: overwrite RealMan UDP pose (often
         # ArmTip/link_7) with gripper-TCP fk_pose(q, rail).
-        self._kin = kin
+        self._kin = self._observer_kinematics(kin)
         self._kin_lock = threading.Lock()
         self._joint_zero_offsets_deg = np.zeros(7, dtype=float)
         self._stop = threading.Event()
@@ -445,10 +445,8 @@ class StateRelayPublisher:
         self._view: _ShmView | None = None
         self._seq = 0
         self._session_id = 0
-        self._udp_listener = None
         self._last_pub_mono = 0.0
         self._last_good_snap: AsyncStateSnapshot | None = None
-        self._rail_thread: threading.Thread | None = None
         self._pub_lock = threading.Lock()
         # Publish-rate probe (measurement only).
         self._pub_n = 0
@@ -467,8 +465,21 @@ class StateRelayPublisher:
 
     def set_kin(self, kin: Any | None) -> None:
         """Hot-swap TCP kinematics used for SHM pose (e.g. after tool sync)."""
+        private = self._observer_kinematics(kin)
         with self._kin_lock:
-            self._kin = kin
+            self._kin = private
+
+    @staticmethod
+    def _observer_kinematics(kin):
+        # Pinocchio Data is mutable scratch space. Never share the control
+        # model's FK/Jacobian cache with the relay thread.
+        if kin is None or not hasattr(kin, "model") or not hasattr(kin, "data"):
+            return kin
+        import copy
+        private = copy.copy(kin)
+        private.model = kin.model.copy()
+        private.data = private.model.createData()
+        return private
 
     def set_joint_zero_offsets_deg(self, offsets_deg: np.ndarray | None) -> None:
         """7-vector applied only to published FK pose, not the control loop."""
@@ -582,44 +593,18 @@ class StateRelayPublisher:
         self._stop.clear()
         self._f_ext_shm.start_publisher()
 
-        def _on_udp(snap: AsyncStateSnapshot) -> None:
-            if self._stop.is_set() or self._view is None:
-                return
-            try:
-                self._publish_snap(snap, source="udp")
-            except Exception:
-                pass
-
-        self._udp_listener = _on_udp
-        self._bus.observer.add_listener(_on_udp)
-
-        # Real robot: UDP callback publishes arm frames; a light rail refresh
-        # thread keeps encoder rail_m at ~50 Hz so the twin does not look ~10 Hz.
+        # Read the latest cached feedback at the configured rate. FK, force
+        # compensation and SHM publication must never run in the SDK's UDP
+        # callback: a slow observer must not delay the next control sample.
         if self._thread is None or not self._thread.is_alive():
-            target = (
-                self._run_watchdog
-                if isinstance(self._bus.observer, RealtimeStateObserver)
-                else self._run
-            )
-            self._thread = threading.Thread(target=target, name="state-relay-pub", daemon=True)
+            self._thread = threading.Thread(target=self._run, name="state-relay-pub", daemon=True)
             self._thread.start()
-        if self._rail_thread is None or not self._rail_thread.is_alive():
-            self._rail_thread = threading.Thread(
-                target=self._run_rail_refresh, name="state-relay-rail", daemon=True
-            )
-            self._rail_thread.start()
 
     def stop(self) -> None:
         self._stop.set()
-        if self._udp_listener is not None:
-            self._bus.observer.remove_listener(self._udp_listener)
-            self._udp_listener = None
         if self._thread is not None:
             self._thread.join(timeout=2.0)
             self._thread = None
-        if self._rail_thread is not None:
-            self._rail_thread.join(timeout=1.0)
-            self._rail_thread = None
         if self._view is not None:
             try:
                 self._view.header["global_seq"] = np.uint64(0)
@@ -679,20 +664,6 @@ class StateRelayPublisher:
             snap, rail_m, source=source, pub_seq=int(self._seq)
         )
 
-    def _run_rail_refresh(self) -> None:
-        """Republish last arm snap with fresh encoder rail @ 50 Hz for twin smoothness."""
-        period = 0.02
-        while not self._stop.wait(period):
-            snap = self._last_good_snap
-            if snap is None or self._view is None:
-                continue
-            if time.monotonic() - self._last_pub_mono < 0.012:
-                continue
-            try:
-                self._publish_snap(snap, source="rail")
-            except Exception:
-                pass
-
     def _publish_once(self) -> None:
         obs = self._bus.observer
         snap = obs.read()
@@ -700,22 +671,7 @@ class StateRelayPublisher:
             if self._last_good_snap is not None:
                 self._publish_snap(self._last_good_snap, source="watchdog_hold")
             return
-        if isinstance(obs, RealtimeStateObserver):
-            self._publish_snap(snap, source="watchdog")
-            return
-        if self._udp_listener is not None:
-            return
         self._publish_snap(snap, source="thread")
-
-    def _run_watchdog(self) -> None:
-        """Republish only when UDP push stalls (RealtimeStateObserver)."""
-        while not self._stop.is_set():
-            try:
-                if time.monotonic() - self._last_pub_mono > 0.1:
-                    self._publish_once()
-            except Exception:
-                pass
-            self._stop.wait(0.05)
 
     def _run(self) -> None:
         try:

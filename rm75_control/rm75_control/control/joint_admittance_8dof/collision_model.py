@@ -14,7 +14,7 @@ DEFAULT_COLLISION_URDF = (
     / "assets"
     / "robots"
     / "rm75_6f_8dof"
-    / "RM75-6F-8dof.collision.capsule.urdf"
+    / "RM75-6F-8dof.collision.urdf"
 )
 DEFAULT_PAIR_CONFIG = (
     Path(__file__).resolve().parents[2]

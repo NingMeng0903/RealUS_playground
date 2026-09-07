@@ -8,7 +8,7 @@ from __future__ import annotations
 import numpy as np
 
 WBC_MAGIC = 0x57424331
-WBC_VERSION = 7
+WBC_VERSION = 8
 DEFAULT_IN_NAME = "rm75_wbc_in"
 DEFAULT_OUT_NAME = "rm75_wbc_out"
 
@@ -218,6 +218,10 @@ WBC_OUT_DTYPE = np.dtype(
         ("rail_pi_xi", "<f8"),
         ("rail_d_ref", "<f8"),
         ("rail_ref_acceleration", "<f8"),
+        ("kinematics_ms", "<f8"),
+        ("collision_ms", "<f8"),
+        ("qp_total_ms", "<f8"),
+        ("ipc_wait_ms", "<f8"),
 
     ],
     align=False,
@@ -227,7 +231,7 @@ WBC_IN_SIZE = int(WBC_IN_DTYPE.itemsize)
 WBC_OUT_SIZE = int(WBC_OUT_DTYPE.itemsize)
 # Packed C++ layouts in native/wbc_rt/include/wbc_rt/protocol.hpp.
 assert WBC_IN_SIZE == 616, WBC_IN_SIZE
-assert WBC_OUT_SIZE == 1440, WBC_OUT_SIZE
+assert WBC_OUT_SIZE == 1472, WBC_OUT_SIZE
 
 
 def view_in(buf) -> np.ndarray:

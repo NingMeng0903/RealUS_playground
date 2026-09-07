@@ -995,6 +995,9 @@ class RailServoBridge:
         from the previous Window-C task.
         """
         with self._lock:
+            # A reservation belongs to the arm-send transaction that created
+            # it.  Never carry it into a new controller session.
+            self._reserved = None
             meas = float(self._measured_m)
             if not (math.isfinite(meas) and self._encoder_sane(meas)):
                 meas = float(self._target_m) if math.isfinite(self._target_m) else 0.0
@@ -1142,8 +1145,18 @@ class RailServoBridge:
         with self._lock:
             # PANIC latches until explicit rearm (limit DI / encoder fault).
             # Do not auto-clear here — that let WBC resume while the arm kept moving.
-            if panic or self._panic:
+            if (
+                panic
+                or self._panic
+                or not self._armed
+                or not self._calibrated
+                or self._stop.is_set()
+                or self._abort.is_set()
+            ):
                 return False
+            # An immediate command supersedes a pending arm-send transaction
+            # from another producer.
+            self._reserved = None
             self._apply_target_locked(
                 snapped,
                 command_mode,
@@ -1195,7 +1208,13 @@ class RailServoBridge:
             return False
         snapped = max(soft_lo, min(soft_hi, raw))
         with self._lock:
-            if bool(self._panic):
+            if (
+                bool(self._panic)
+                or not bool(self._armed)
+                or not bool(self._calibrated)
+                or self._stop.is_set()
+                or self._abort.is_set()
+            ):
                 return False
             self._reserved = {
                 "target_m": snapped,
@@ -1209,7 +1228,15 @@ class RailServoBridge:
 
     def commit_reservation(self) -> bool:
         with self._lock:
-            if bool(self._panic):
+            # Recheck states that can change while the arm frame is in flight.
+            if (
+                bool(self._panic)
+                or not bool(self._armed)
+                or not bool(self._calibrated)
+                or self._stop.is_set()
+                or self._abort.is_set()
+            ):
+                self._reserved = None
                 return False
             reserved = getattr(self, "_reserved", None)
             if not reserved:
@@ -1230,6 +1257,9 @@ class RailServoBridge:
     def hold_current(self) -> None:
         """Stop following; FA24=0. Keep last sane target (do not adopt insane encoder)."""
         with self._lock:
+            # Holding changes rail ownership; an older reservation must not
+            # reopen follow after FA24 has been zeroed.
+            self._reserved = None
             meas = float(self._measured_m)
             if self._encoder_sane(meas):
                 self._target_m = meas
@@ -1380,6 +1410,7 @@ class RailServoBridge:
     def request_rearm(self) -> None:
         """Drop armed/panic/abort and ask the worker to re-prove Modbus health."""
         with self._lock:
+            self._reserved = None
             self._armed = False
             self._follow_enabled = False
             self._panic = False
@@ -1676,6 +1707,7 @@ class RailServoBridge:
         if not self.enabled or self._drive is None:
             return True
         with self._lock:
+            self._reserved = None
             self._follow_enabled = False
             self._hold_active = True
         ok = False
@@ -1715,6 +1747,7 @@ class RailServoBridge:
         try:
             got = bool(self._lock.acquire(blocking=False))
             if got:
+                self._reserved = None
                 self._follow_enabled = False
                 self._armed = False
         except Exception:
@@ -1743,6 +1776,7 @@ class RailServoBridge:
     def _trip_panic(self, measured: float, reason: str) -> None:
         with self._lock:
             already = self._panic
+            self._reserved = None
             self._panic = True
             self._panic_reason = str(reason)
             self._follow_enabled = False
@@ -1952,6 +1986,7 @@ class RailServoBridge:
             raw = -1
         with self._lock:
             self._commanded_m = measured
+            self._reserved = None
             self._target_m = measured
             self._target_history.clear()
             self._target_history.append((time.monotonic(), measured))
@@ -2111,6 +2146,7 @@ class RailServoBridge:
         self._abort.set()
         self._stop.set()
         with self._lock:
+            self._reserved = None
             self._follow_enabled = False
             self._armed = False
 
@@ -2531,6 +2567,7 @@ class RailServoBridge:
             if self._arm_req.is_set():
                 self._arm_req.clear()
                 with self._lock:
+                    self._reserved = None
                     self._armed = False
                     self._follow_enabled = False
                     self._target_history.clear()
@@ -2886,6 +2923,7 @@ class RailServoBridge:
                             )
                         elif t0 >= arm_settle_deadline:
                             with self._lock:
+                                self._reserved = None
                                 self._armed = True
                                 self._target_m = measured
                                 self._commanded_m = measured

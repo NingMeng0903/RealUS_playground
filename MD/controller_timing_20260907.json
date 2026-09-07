@@ -1,0 +1,334 @@
+[
+  {
+    "path": "rm75_control/apps/logs/peirastic/run_20260907_210959.csv",
+    "rows": 5710,
+    "period_ms": 5.0,
+    "negative_deadline_slack_rows": 692,
+    "fallback_reasons": {
+      "": 5692,
+      "native_timeout_coast": 17,
+      "native_timeout": 1
+    },
+    "qp1_status": {
+      "solved": 5685,
+      "max_iter": 7,
+      "not_run": 18
+    },
+    "qp2_status": {
+      "solved": 1710,
+      "primal_infeasible": 503,
+      "max_iter": 3477,
+      "not_run": 20
+    },
+    "max_active_cbf": 7,
+    "timing": {
+      "dt_actual_s": {
+        "p50_ms": 5.0,
+        "p95_ms": 5.845900000000004,
+        "p99_ms": 9.097299999999995,
+        "max_ms": 51.086,
+        "samples": 5710,
+        "over_period": 2588
+      },
+      "tick_inner_ms": {
+        "p50_ms": 1.5259,
+        "p95_ms": 3.731255000000003,
+        "p99_ms": 6.675845999999994,
+        "max_ms": 21.5852,
+        "samples": 5710,
+        "over_period": 143
+      },
+      "tick_send_ms": {
+        "p50_ms": 0.1127,
+        "p95_ms": 0.26655999999999996,
+        "p99_ms": 0.36878400000000006,
+        "max_ms": 1.0621,
+        "samples": 5709,
+        "over_period": 0
+      },
+      "tick_log_ms": {
+        "p50_ms": 0.1989,
+        "p95_ms": 0.33591999999999794,
+        "p99_ms": 0.40603200000000017,
+        "max_ms": 0.5781,
+        "samples": 5709,
+        "over_period": 0
+      },
+      "qpik_total_ms": {
+        "p50_ms": 1.2103145,
+        "p95_ms": 3.3123206000000023,
+        "p99_ms": 6.281078819999994,
+        "max_ms": 14.657529,
+        "samples": 5710,
+        "over_period": 113
+      },
+      "qpik_assembly_ms": {
+        "p50_ms": 0.018513500000000002,
+        "p95_ms": 0.029396750000000003,
+        "p99_ms": 0.03773233999999999,
+        "max_ms": 0.092019,
+        "samples": 5710,
+        "over_period": 0
+      },
+      "qpik_qp1_solve_ms": {
+        "p50_ms": 0.5477515,
+        "p95_ms": 0.78989615,
+        "p99_ms": 1.21934718,
+        "max_ms": 4.073109,
+        "samples": 5710,
+        "over_period": 0
+      },
+      "qpik_qp2_solve_ms": {
+        "p50_ms": 0.5088980000000001,
+        "p95_ms": 2.468279400000001,
+        "p99_ms": 5.43508750999999,
+        "max_ms": 13.936404,
+        "samples": 5710,
+        "over_period": 69
+      },
+      "feedback_age_s": {
+        "p50_ms": 3.1735,
+        "p95_ms": 6.279100000000001,
+        "p99_ms": 6.44582,
+        "max_ms": 7.042,
+        "samples": 5710,
+        "over_period": 605
+      },
+      "qpik_solver_solve_ms": {
+        "p50_ms": 1.2119825,
+        "p95_ms": 3.327629149999996,
+        "p99_ms": 6.286719570000003,
+        "max_ms": 14.657529,
+        "samples": 5692,
+        "over_period": 113
+      },
+      "qpik_fallback_ms": {
+        "p50_ms": 0.0,
+        "p95_ms": 0.0,
+        "p99_ms": 0.0,
+        "max_ms": 0.0,
+        "samples": 5710,
+        "over_period": 0
+      }
+    }
+  },
+  {
+    "path": "rm75_control/apps/logs/peirastic/run_20260907_211243.csv",
+    "rows": 4259,
+    "period_ms": 5.0,
+    "negative_deadline_slack_rows": 331,
+    "fallback_reasons": {
+      "": 408,
+      "native_timeout_coast": 3851
+    },
+    "qp1_status": {
+      "solved": 408,
+      "not_run": 3851
+    },
+    "qp2_status": {
+      "max_iter": 407,
+      "not_run": 3852
+    },
+    "max_active_cbf": 6,
+    "timing": {
+      "dt_actual_s": {
+        "p50_ms": 5.0,
+        "p95_ms": 6.3171,
+        "p99_ms": 21.64414,
+        "max_ms": 67.613,
+        "samples": 4259,
+        "over_period": 1980
+      },
+      "tick_inner_ms": {
+        "p50_ms": 0.0638,
+        "p95_ms": 4.649919999999999,
+        "p99_ms": 20.250036,
+        "max_ms": 20.7183,
+        "samples": 4259,
+        "over_period": 199
+      },
+      "tick_send_ms": {
+        "p50_ms": 0.1157,
+        "p95_ms": 0.2739499999999999,
+        "p99_ms": 0.4459600000000006,
+        "max_ms": 1.6164,
+        "samples": 4259,
+        "over_period": 0
+      },
+      "tick_log_ms": {
+        "p50_ms": 0.2059,
+        "p95_ms": 0.4005049999999997,
+        "p99_ms": 0.4628290000000001,
+        "max_ms": 0.8019,
+        "samples": 4258,
+        "over_period": 0
+      },
+      "qpik_total_ms": {
+        "p50_ms": 0.0,
+        "p95_ms": 4.191587699999999,
+        "p99_ms": 257.68220116000003,
+        "max_ms": 368.064722,
+        "samples": 4259,
+        "over_period": 181
+      },
+      "qpik_assembly_ms": {
+        "p50_ms": 0.0,
+        "p95_ms": 0.024630399999999993,
+        "p99_ms": 0.035070340000000026,
+        "max_ms": 0.098023,
+        "samples": 4259,
+        "over_period": 0
+      },
+      "qpik_qp1_solve_ms": {
+        "p50_ms": 0.0,
+        "p95_ms": 0.8056873,
+        "p99_ms": 1.3483236000000018,
+        "max_ms": 3.759783,
+        "samples": 4259,
+        "over_period": 0
+      },
+      "qpik_qp2_solve_ms": {
+        "p50_ms": 0.0,
+        "p95_ms": 3.1994844999999983,
+        "p99_ms": 256.79784322000006,
+        "max_ms": 367.159096,
+        "samples": 4259,
+        "over_period": 158
+      },
+      "feedback_age_s": {
+        "p50_ms": 3.065,
+        "p95_ms": 6.075099999999999,
+        "p99_ms": 6.569980000000002,
+        "max_ms": 37.708999999999996,
+        "samples": 4259,
+        "over_period": 252
+      },
+      "qpik_solver_solve_ms": {
+        "p50_ms": 4.3917245000000005,
+        "p95_ms": 266.67403555,
+        "p99_ms": 274.30729033,
+        "max_ms": 368.064722,
+        "samples": 408,
+        "over_period": 181
+      },
+      "qpik_fallback_ms": {
+        "p50_ms": 0.0,
+        "p95_ms": 0.0,
+        "p99_ms": 0.0,
+        "max_ms": 0.0,
+        "samples": 4259,
+        "over_period": 0
+      }
+    }
+  },
+  {
+    "path": "rm75_control/apps/logs/peirastic/run_20260907_211315.csv",
+    "rows": 941,
+    "period_ms": 5.0,
+    "negative_deadline_slack_rows": 803,
+    "fallback_reasons": {
+      "": 882,
+      "native_timeout_coast": 59
+    },
+    "qp1_status": {
+      "solved": 882,
+      "not_run": 59
+    },
+    "qp2_status": {
+      "max_iter": 718,
+      "primal_infeasible": 1,
+      "not_run": 222
+    },
+    "max_active_cbf": 6,
+    "timing": {
+      "dt_actual_s": {
+        "p50_ms": 5.583,
+        "p95_ms": 14.531,
+        "p99_ms": 22.8852,
+        "max_ms": 24.788,
+        "samples": 941,
+        "over_period": 737
+      },
+      "tick_inner_ms": {
+        "p50_ms": 4.3481,
+        "p95_ms": 12.3389,
+        "p99_ms": 21.31854,
+        "max_ms": 21.9532,
+        "samples": 941,
+        "over_period": 269
+      },
+      "tick_send_ms": {
+        "p50_ms": 0.1429,
+        "p95_ms": 0.3778,
+        "p99_ms": 0.5257000000000005,
+        "max_ms": 1.3382,
+        "samples": 941,
+        "over_period": 0
+      },
+      "tick_log_ms": {
+        "p50_ms": 0.2465,
+        "p95_ms": 0.48761999999999994,
+        "p99_ms": 0.536103,
+        "max_ms": 0.9365,
+        "samples": 940,
+        "over_period": 0
+      },
+      "qpik_total_ms": {
+        "p50_ms": 3.961149,
+        "p95_ms": 11.71304,
+        "p99_ms": 24.959487,
+        "max_ms": 58.011181,
+        "samples": 941,
+        "over_period": 206
+      },
+      "qpik_assembly_ms": {
+        "p50_ms": 0.024165,
+        "p95_ms": 0.045123,
+        "p99_ms": 0.050227600000000025,
+        "max_ms": 0.117856,
+        "samples": 941,
+        "over_period": 0
+      },
+      "qpik_qp1_solve_ms": {
+        "p50_ms": 1.765924,
+        "p95_ms": 11.444684,
+        "p99_ms": 24.815036400000004,
+        "max_ms": 57.828696,
+        "samples": 941,
+        "over_period": 121
+      },
+      "qpik_qp2_solve_ms": {
+        "p50_ms": 1.623946,
+        "p95_ms": 4.321104,
+        "p99_ms": 7.5344896000000015,
+        "max_ms": 13.144526,
+        "samples": 941,
+        "over_period": 35
+      },
+      "feedback_age_s": {
+        "p50_ms": 3.111,
+        "p95_ms": 5.346,
+        "p99_ms": 6.271000000000002,
+        "max_ms": 7.126,
+        "samples": 941,
+        "over_period": 74
+      },
+      "qpik_solver_solve_ms": {
+        "p50_ms": 4.032735000000001,
+        "p95_ms": 12.959826199999988,
+        "p99_ms": 25.083104489999968,
+        "max_ms": 58.011181,
+        "samples": 882,
+        "over_period": 206
+      },
+      "qpik_fallback_ms": {
+        "p50_ms": 0.0,
+        "p95_ms": 0.0,
+        "p99_ms": 0.0,
+        "max_ms": 0.0,
+        "samples": 941,
+        "over_period": 0
+      }
+    }
+  }
+]

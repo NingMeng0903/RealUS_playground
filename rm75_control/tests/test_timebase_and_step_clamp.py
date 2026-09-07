@@ -14,6 +14,7 @@ from rm75_control.control.joint_admittance_8dof.loop import (
     _CStateGuard,
     _pin_control_cpu,
     _set_realtime_priority,
+    isolate_native_process,
     reference_time_step,
 )
 from rm75_control.control.joint_admittance_8dof.model import RobotKinematics, full_q_from_arm
@@ -137,6 +138,17 @@ def test_rt_helpers_are_best_effort() -> None:
             pass
     with _CStateGuard() as guard:
         assert isinstance(guard.active, bool)
+    isolate_native_process(-1, cpu=99, control_cpu=0)
+
+
+def test_native_scheduling_is_explicit_and_does_not_infer_core(monkeypatch):
+    calls = []
+    monkeypatch.setattr(os, "sched_setaffinity", lambda *args: calls.append(args))
+    monkeypatch.setattr(os, "sched_setscheduler", lambda *args: pytest.fail("implicit FIFO"))
+    isolate_native_process(123, cpu=None, control_cpu=2)
+    assert calls == []
+    isolate_native_process(123, cpu=7, control_cpu=2)
+    assert calls == [(123, {7})]
 
 
 def test_yaml_dt_ms_is_5ms() -> None:

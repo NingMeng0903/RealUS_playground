@@ -5,11 +5,10 @@ the admittance drive is desired minus measured wrench. Keep the TCP contact
 moment, including the pressure-center moment; projecting it parallel to force
 would remove the very signal that this surface-conforming task needs.
 
-Wrap-around scan needs a large TCP angle. The live bound is the probe
-contact set — a tube around the tool-Z line through the TCP — not a
-world-pitch clamp and not a small contact-relative angle cap. Leftover
-moment that does not move the center of pressure is stalled; QPIK slack
-still freezes both signs.
+Wrap-around scan needs a large TCP angle. The contact tube provides contact
+geometry telemetry. A slowly changing center of pressure alone cannot tell
+surface curvature from residual torque, so its legacy stall latch is opt-in.
+Contact, QPIK feasibility and the configured angle/rate limits still apply.
 """
 
 from __future__ import annotations
@@ -56,11 +55,11 @@ def estimate_contact_cop(
 class TorqueTiltConfig:
     enabled: bool = True
     axis: int = 4
-    mass: float = 0.04
-    damping: float = 0.16
+    mass: float = 0.065
+    damping: float = 0.28
     coulomb_nm: float = 0.025
-    vmax_rad_s: float = 0.45
-    a_max: float = 8.0
+    vmax_rad_s: float = 0.22
+    a_max: float = 4.5
     contact_only: bool = True
     contact_n: float = 0.8
     theta_max_rad: float = _THETA_MAX_RAD
@@ -69,7 +68,9 @@ class TorqueTiltConfig:
     r_face_m: float = 0.012
     r_margin_m: float = 0.008
     cop_stall_m: float = 0.006
-    cop_stall_s: float = 0.35
+    # Disabled by default: curved/soft contact need not reduce CoP by 1 mm
+    # within 350 ms. Stopping rotation can prevent the latch from recovering.
+    cop_stall_s: float = 0.0
 
     def __post_init__(self) -> None:
         if self.axis != 4:
@@ -111,11 +112,11 @@ class TorqueTiltConfig:
         return cls(
             enabled=bool(block.get("enabled", True)),
             axis=int(block.get("axis", 4)),
-            mass=float(block.get("mass", 0.04)),
-            damping=float(block.get("damping", 0.16)),
+            mass=float(block.get("mass", 0.065)),
+            damping=float(block.get("damping", 0.28)),
             coulomb_nm=float(block.get("coulomb_nm", 0.025)),
-            vmax_rad_s=float(block.get("vmax_rad_s", 0.45)),
-            a_max=float(block.get("a_max", 8.0)),
+            vmax_rad_s=float(block.get("vmax_rad_s", 0.22)),
+            a_max=float(block.get("a_max", 4.5)),
             contact_only=bool(block.get("contact_only", True)),
             contact_n=float(block.get("contact_n", pc_enter(hm))),
             theta_max_rad=theta_max,
@@ -124,7 +125,7 @@ class TorqueTiltConfig:
             r_face_m=float(block.get("r_face_m", 0.012)),
             r_margin_m=float(block.get("r_margin_m", 0.008)),
             cop_stall_m=float(block.get("cop_stall_m", 0.006)),
-            cop_stall_s=float(block.get("cop_stall_s", 0.35)),
+            cop_stall_s=float(block.get("cop_stall_s", 0.0)),
         )
 
 
@@ -160,12 +161,12 @@ def tool_world_align(pose: np.ndarray, *, euler_order: str = "xyz") -> float:
 
 
 class TorqueTilt:
-    """Mass-damper/Coulomb admittance with a contact-tube bound.
+    """Mass-damper/Coulomb admittance with contact geometry telemetry.
 
     ``theta_tilt`` is the integral of commanded ωy since the last contact
-    rising edge. A large last-resort cap still exists so leftover cannot
-    walk forever; wrap-around is limited by CoP staying in the TCP tube
-    and by leftover stall, not by world pitch.
+    rising edge. A large last-resort cap bounds accumulated rotation. CoP
+    can remain off-center during valid surface following; it is not a
+    default reason to latch rotation off.
     """
 
     def __init__(self, cfg: TorqueTiltConfig | None = None) -> None:
@@ -184,6 +185,7 @@ class TorqueTilt:
         self.tilt_frozen = False
         self.tilt_capped = False
         self.tilt_stalled = False
+        self.tilt_stop_reason = "no_contact"
         self.align_z = 1.0
         self.n_world = np.array([0.0, 0.0, 1.0], dtype=float)
         self._have_normal = False
@@ -207,6 +209,8 @@ class TorqueTilt:
             "tilt_frozen": bool(self.tilt_frozen),
             "tilt_capped": bool(self.tilt_capped),
             "tilt_stalled": bool(self.tilt_stalled),
+            "tilt_stop_reason": str(self.tilt_stop_reason),
+            "tilt_deadband_nm": float(self.cfg.coulomb_nm),
             "align_z": float(self.align_z),
             "cop_x": float(self.cop_x),
             "cop_y": float(self.cop_y),
@@ -243,7 +247,8 @@ class TorqueTilt:
             abs(cop_x) <= float(cfg.cop_stall_m)
             or (
                 math.isfinite(self._cop_x_watch)
-                and abs(cop_x) < abs(float(self._cop_x_watch)) - 0.001
+                and (abs(cop_x) < abs(float(self._cop_x_watch)) - 0.001
+                     or cop_x * float(self._cop_x_watch) < 0.0)
             )
         )
         if self.tilt_stalled:
@@ -334,6 +339,17 @@ class TorqueTilt:
         self._update_stall(dt)
 
         target = 0.0
+        self.tilt_stop_reason = ""
+        if not cfg.enabled:
+            self.tilt_stop_reason = "disabled"
+        elif not self.engaged:
+            self.tilt_stop_reason = "no_contact"
+        elif attitude_freeze:
+            self.tilt_stop_reason = "attitude_limit"
+        elif slack_freeze:
+            self.tilt_stop_reason = "qp_slack"
+        elif self.tilt_stalled:
+            self.tilt_stop_reason = "cop_stall"
         if self.engaged and not self.tilt_frozen and not self.tilt_stalled:
             vel, _ = kikuuwe_step(
                 np.array([self._w]),
@@ -347,8 +363,12 @@ class TorqueTilt:
             target = float(vel[0])
             if at_pos and target > 0.0:
                 target = 0.0
+                self.tilt_stop_reason = "angle_limit"
             if at_neg and target < 0.0:
                 target = 0.0
+                self.tilt_stop_reason = "angle_limit"
+            if not self.tilt_stop_reason and abs(self.tau_error_y) <= cfg.coulomb_nm:
+                self.tilt_stop_reason = "torque_deadband"
         self._w += float(np.clip(target - self._w, -cfg.a_max * dt, cfg.a_max * dt))
         self._w = float(np.clip(self._w, -cfg.vmax_rad_s, cfg.vmax_rad_s))
         self.omega_y = self._w

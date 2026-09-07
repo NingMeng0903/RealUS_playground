@@ -234,6 +234,9 @@ class _ProxQpWbcBackend:
         self.qp.settings.eps_primal_inf = min(self._eps_tight * 0.01, 1e-8)
         self.qp.settings.eps_dual_inf = min(self._eps_tight * 0.01, 1e-8)
         self.qp.settings.max_iter = self._max_iter
+        # ProxQP checks max_iter between inner solves. Its default inner
+        # allowance (1500) can overrun a 5-ms tick before that check runs.
+        self.qp.settings.max_iter_in = 32
         self.qp.settings.initial_guess = (
             proxsuite.proxqp.InitialGuess.WARM_START_WITH_PREVIOUS_RESULT
         )
@@ -288,6 +291,7 @@ class _ProxQpWbcBackend:
             self.qp.settings.eps_primal_inf = min(self._eps_tight * 0.01, 1e-8)
             self.qp.settings.eps_dual_inf = min(self._eps_tight * 0.01, 1e-8)
             self.qp.settings.max_iter = self._max_iter
+            self.qp.settings.max_iter_in = 32
             self._initialized = False
         if not self._initialized:
             self.qp.init(H, g, A, b, C, lo, hi)
@@ -1407,28 +1411,6 @@ class QpIkController:
             dual_res = float(info.dua_res)
         except Exception:
             pass
-        n_cbf_hard = int(
-            np.sum(
-                np.isfinite(lo[nv : nv + self._max_cbf])
-                & (np.asarray(lo[nv : nv + self._max_cbf], dtype=float) > -1.0e19)
-            )
-        )
-        if x1 is None and n_cbf_hard > 0:
-            lo_relax = np.asarray(lo, dtype=float).copy()
-            lo_relax[nv : nv + self._max_cbf] = -np.inf
-            x1, raw_qp1 = _attempt_qp1(lo_relax, hi)
-            self.last_qp1_status = raw_qp1
-            self.last_qp1_solve_ms += float(getattr(self.backend, "last_solve_ms", 0.0))
-            self.last_qp1_iter += int(getattr(self.backend, "last_iter", 0) or 0)
-        if x1 is None:
-            a_max = self.constraints.lim.a_max
-            if a_max is None:
-                a_max = np.ones(nv, dtype=float)
-            q_brake = inbox_brake(self.qdot_prev, lo_box, hi_box, a_max, a_dt_box)
-            q_brake = self._clip_qdot_to_p0(q_brake, lo_box, hi_box)
-            x1 = self._pack_residual_x(q_brake, J_task, b_task, n_var, n_task)
-            raw_qp1 = "solved"
-            self.last_qp1_status = "solved"
         self.last_zero_slack_feasible = False
         if x1 is None:
             t_fallback = time.perf_counter()
