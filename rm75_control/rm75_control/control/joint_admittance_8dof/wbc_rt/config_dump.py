@@ -38,7 +38,6 @@ def dump_wbc_config(
 ) -> Path:
     """Write a line-oriented config that C++ ``Config::load`` understands."""
     from rm75_control.control.joint_admittance_8dof.collision_model import (
-        DEFAULT_COLLISION_URDF,
         DEFAULT_PAIR_CONFIG,
     )
 
@@ -54,7 +53,11 @@ def dump_wbc_config(
     sat = cfg.saturation
     ird = cfg.ird
     urdf = Path(urdf_path) if urdf_path is not None else DEFAULT_URDF
-    c_urdf = Path(collision_urdf) if collision_urdf is not None else DEFAULT_COLLISION_URDF
+    c_urdf = (
+        Path(collision_urdf)
+        if collision_urdf is not None
+        else Path(coll.collision_urdf)
+    )
     pairs = Path(pair_config) if pair_config is not None else DEFAULT_PAIR_CONFIG
     lines = [
         f"urdf {urdf}",
@@ -85,6 +88,7 @@ def dump_wbc_config(
         f"qp.eps_abs {_f(qp.eps_abs)}",
         f"qp.max_iter {int(qp.max_iter)}",
         f"qp.max_iter_cap {int(qp.max_iter_cap)}",
+        f"qp.max_solve_ms {_f(getattr(qp, 'max_solve_ms', 5.0))}",
         f"qp.twist_sigma_floor {_f(qp.twist_sigma_floor)}",
         f"qp.task_weight_min_frac {_f(qp.task_weight_min_frac)}",
         f"qp.task_weight_lpf_tau_s {_f(qp.task_weight_lpf_tau_s)}",

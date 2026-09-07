@@ -101,6 +101,7 @@ def _service_for_boundary() -> daemon.ControllerService:
     svc._dof_boundary_open = False
     svc._fault_sm = "RUNNING"
     svc._fault_epoch = 0
+    svc._compile_fault = None
     svc._rail_hist = []
     svc._rail_t = []
     svc.tcp_name = None
@@ -253,3 +254,21 @@ def test_panel_event_does_not_flush_on_caller() -> None:
     panel.event("STATE", "csv /tmp/example.csv")
     assert "[STATE]" in panel.last_frame
     panel._out_q.put_nowait(None)
+
+
+def test_compile_fault_stays_until_commanded_success() -> None:
+    svc = _service_for_boundary()
+    req = ModeRequest(Mode.SERVO_TWIST, {})
+    svc._cmd_seq = 9
+    svc._note_compile_fault(req, RuntimeError("bad compile"), commanded=True)
+    assert svc._compile_fault["seq"] == 9
+    assert svc._hold_compile_fault(False) is True
+    errs = [
+        event
+        for kind, event in svc.hub.events
+        if kind == "publish" and event.get("status") == Status.ERROR
+    ]
+    assert errs and errs[-1]["err_code"] == 1
+    assert svc._hold_compile_fault(True) is False
+    svc._clear_compile_fault()
+    assert svc._hold_compile_fault(False) is False

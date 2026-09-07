@@ -420,7 +420,7 @@ def test_id_extra_forces_payload_id_policy_on_8dof_session() -> None:
     assert yaml_extra["qp_aux"].get("centering") is False
 
 
-def test_payload_id_policy_suppresses_nullspace_without_structure_switch():
+def test_payload_id_policy_hard_locks_rail_without_dof_switch():
     class Inner:
         def __init__(self):
             self.q_cmd = np.array([0.4] + [0.0] * 7)
@@ -431,6 +431,11 @@ def test_payload_id_policy_suppresses_nullspace_without_structure_switch():
 
         def set_locked(self, style, q_ref_m=None):
             self.flags["locked"] = (str(style), q_ref_m)
+            self.flags["n_lock"] = int(self.flags.get("n_lock", 0)) + 1
+
+        @property
+        def is_locked_hold(self):
+            return "locked" in self.flags
 
         def set_rail_extension_active(self, v):
             self.flags["ext"] = v
@@ -452,7 +457,11 @@ def test_payload_id_policy_suppresses_nullspace_without_structure_switch():
     assert inner.flags["arm"] is True
     assert inner.flags["cent"] is True
     assert inner.flags["manip"] is False
-    assert "locked" not in inner.flags
+    assert inner.flags["locked"][0] in {"HOLD", "LockedStyle.HOLD", "hold"}
+    assert inner.flags["locked"][1] == pytest.approx(0.4)
+    assert inner.flags["n_lock"] == 1
+    SecondaryPolicy(preset="payload_id").apply(inner)
+    assert inner.flags["n_lock"] == 1
 
     hold = Inner()
     SecondaryPolicy(preset="hold").apply(hold)
@@ -852,7 +861,7 @@ def test_finish_phase_applies_payload_policy_without_structure_switch():
     _finish_phase(ctx, {"task_policy": "payload_id"}, phase)
     phase.on_enter()
     assert order[0] == "move_preset"
-    assert "locked" not in order
+    assert "locked" in order
     assert "arm=True" in order or any("arm=" in x for x in order)
 
 
@@ -936,3 +945,92 @@ def test_holdout_isolation_fit_does_not_use_hold_for_theta():
     )
     fit = fit_static_windows(windows, Sigma=np.eye(6) * 1e-4)
     assert abs(fit.mass_kg - mass) < 0.05
+
+
+def test_static_design_time_center_drops_condition():
+    from rm75_control.force.compensation.v2.regressor_v2 import static_design
+
+    poses = build_default_set(n_train=14, n_holdout=4)
+    t0 = 8.5e5
+    a_abs = np.vstack(
+        [static_design(g, include_drift=True, t_s=t0 + 0.6 * i) for i, g in enumerate(poses.train_g)]
+    )
+    a_rel = np.vstack(
+        [static_design(g, include_drift=True, t_s=0.6 * i) for i, g in enumerate(poses.train_g)]
+    )
+    assert np.linalg.cond(a_rel) < 200.0
+    assert np.linalg.cond(a_abs) / np.linalg.cond(a_rel) > 1e6
+
+
+def test_static_fit_records_t_ref_and_keeps_drift_off():
+    poses = build_default_set(n_train=14, n_holdout=4)
+    mass, h = 0.5, np.array([-0.004, -0.005, -0.02])
+    bias = np.zeros(6)
+    t0 = 8.5e5
+    windows = []
+    for i, g in enumerate(poses.train_g):
+        y = np.concatenate([gravity_force_link7(mass, g, bias[:3]), np.cross(g, h) + bias[3:]])
+        windows.append(StaticWindow(g, y, t_s=t0 + float(i), is_train=True, block_id=i // 4))
+    fit = fit_static_windows(windows, Sigma=np.eye(6) * 1e-4)
+    assert fit.t_ref_s == pytest.approx(t0)
+    assert not fit.drift_enabled
+    assert abs(fit.mass_kg - mass) < 0.05
+
+
+def test_observer_leftover_updates_in_air_and_freezes_on_contact(tmp_path):
+    import json
+
+    from rm75_control.control.admittance_common.observer import (
+        CompensatedForceObserver,
+        ForceObserverConfig,
+    )
+    from rm75_control.force.compensation.regressor import PHI_NAMES
+
+    rec = {k: 0.0 for k in PHI_NAMES}
+    rec["m"] = 0.5
+    path = tmp_path / "phi.json"
+    path.write_text(json.dumps({"phi_recommended": rec}))
+    obs = CompensatedForceObserver(ForceObserverConfig(phi_path=path))
+    air = np.array([0.0, 1.0, 0.0, 0.0, -0.05, 0.0])
+    obs.update_leftover(air, contact=False, still=True, dt_s=0.005)
+    np.testing.assert_allclose(obs.leftover_tcp, air)
+    assert obs.leftover_valid and not obs.leftover_frozen
+    contact = np.array([0.0, 2.0, 4.0, 0.0, 0.30, 0.0])
+    obs.update_leftover(contact, contact=True, still=True, dt_s=0.005)
+    assert obs.leftover_frozen
+    np.testing.assert_allclose(obs.leftover_tcp, air)
+    obs.update_leftover(contact, contact=True, still=True, dt_s=0.005)
+    np.testing.assert_allclose(obs.leftover_tcp, air)
+    assert obs.phi_sha8()
+
+
+def test_wait_still_timeout_raises_and_does_not_record():
+    from rm75_control.force.compensation.v2.campaign import CampaignAbort, PayloadIdCampaign
+
+    camp = object.__new__(PayloadIdCampaign)
+    camp._sleep_tick = lambda *a, **k: None
+    n = {"i": 0}
+
+    def live():
+        n["i"] += 1
+        q = np.zeros(8)
+        q[1] = 0.2 * n["i"]
+        return None, q, None
+
+    camp._live = live
+    with pytest.raises(CampaignAbort, match="settle_timeout"):
+        PayloadIdCampaign._wait_still(camp, 0.02, 0.03)
+
+
+def test_joint_observer_estimates_rail_when_unlocked():
+    from rm75_control.force.compensation.v2.joint_observer import ArmJointObserver
+
+    obs = ArmJointObserver(rail_locked=False)
+    last = None
+    for i in range(80):
+        t = i * 0.005
+        rail = 0.40 + 0.05 * t
+        last = obs.step(t, np.zeros(7), np.zeros(7), rail_q=rail)
+    q8, qd8, qdd8, _ = last
+    assert qd8[0] == pytest.approx(0.05, abs=0.02)
+    assert q8[0] == pytest.approx(0.40 + 0.05 * 79 * 0.005, abs=0.01)

@@ -1350,11 +1350,19 @@ class JointIkController:
     ) -> None:
         if isinstance(mode, str):
             mode = RailMode(mode)
-        self._rail_mode = mode
         if locked_style is not None:
             if isinstance(locked_style, str):
                 locked_style = LockedStyle(locked_style)
-            self._locked_style = locked_style
+        else:
+            locked_style = self._locked_style
+        same_ref = True
+        if q_ref_m is not None:
+            cur = getattr(self.rail_task, "q_ref", None)
+            same_ref = cur is not None and abs(float(q_ref_m) - float(cur)) <= 1e-9
+        if self._rail_mode == mode and self._locked_style == locked_style and same_ref:
+            return
+        self._rail_mode = mode
+        self._locked_style = locked_style
         if q_ref_m is not None:
             if (
                 mode == RailMode.LOCKED
@@ -3932,13 +3940,23 @@ class _TickLogger:
             "execution_model_hash", "execution_observer_validated",
             "execution_predicted_vx", "execution_predicted_vy", "execution_predicted_vz",
             "execution_predicted_wx", "execution_predicted_wy", "execution_predicted_wz",
+            "phi_source", "phi_sha8",
         ]
     )
 
-    def __init__(self, path: str, *, verbose_json: bool = False) -> None:
+    def __init__(
+        self,
+        path: str,
+        *,
+        verbose_json: bool = False,
+        phi_source: str = "",
+        phi_sha8: str = "",
+    ) -> None:
         self._q: queue.Queue = queue.Queue(maxsize=int(self._QUEUE_MAX))
         self._stop = threading.Event()
         self._verbose_json = bool(verbose_json)
+        self._phi_source = str(phi_source or "")
+        self._phi_sha8 = str(phi_sha8 or "")
         self._prev_arm_send_ns = 0
         self._prev_q_send_arm: np.ndarray | None = None
         self.dropped = 0
@@ -5053,6 +5071,7 @@ class _TickLogger:
                int(step.rail_drive_write_seq), float(step.rail_command_write_mono_s),
                step.execution_model_hash, int(step.execution_observer_validated),
                *np.asarray(step.execution_predicted_twist, dtype=float).reshape(6).tolist(),
+               self._phi_source, self._phi_sha8,
                ]
         ))
         except queue.Full:
@@ -5698,10 +5717,24 @@ def run_joint_admittance_phases(
     stutter_count = 0
     stalled = False
     total_t0 = time.perf_counter()
+    _phi_source = ""
+    _phi_sha8 = ""
+    if force_observer is not None:
+        _phi_source = str(getattr(getattr(force_observer, "cfg", None), "phi_source", "") or "")
+        sha_fn = getattr(force_observer, "phi_sha8", None)
+        if callable(sha_fn):
+            try:
+                _phi_sha8 = str(sha_fn() or "")
+            except (OSError, TypeError, ValueError):
+                _phi_sha8 = str(getattr(force_observer, "model_revision", "") or "")[:8]
+        else:
+            _phi_sha8 = str(getattr(force_observer, "model_revision", "") or "")[:8]
     logger = (
         _TickLogger(
             log_csv,
             verbose_json=bool(getattr(inner.cfg, "verbose_json", False)),
+            phi_source=_phi_source,
+            phi_sha8=_phi_sha8,
         )
         if log_csv
         else None
@@ -6122,7 +6155,13 @@ def run_joint_admittance_phases(
                                 f_ext_raw = inner.kin.wrench_link7_to_tcp(f_ext_raw)
     
                         q_prev = inner.q_cmd.copy()
-                        sample_params = inspect.signature(phase.outer.sample).parameters
+                        sample_params = getattr(phase.outer, "_sample_params", None)
+                        if sample_params is None:
+                            sample_params = inspect.signature(phase.outer.sample).parameters
+                            try:
+                                phase.outer._sample_params = sample_params
+                            except Exception:
+                                pass
                         sample_kwargs: dict = {}
                         if "q_meas" in sample_params:
                             sample_kwargs["q_meas"] = q_meas
@@ -6143,10 +6182,50 @@ def run_joint_admittance_phases(
                             sample_kwargs["feedback_velocity_valid"] = (
                                 feedback_velocity_valid
                             )
+                        if "slack_norm" in sample_params:
+                            sample_kwargs["slack_norm"] = float(
+                                getattr(inner, "last_slack_norm", 0.0) or 0.0
+                            )
                         twist = np.asarray(
                             phase.outer.sample(t_ref, pose_pin, f_ext, **sample_kwargs),
                             dtype=float,
                         )
+                        leftover_fn = (
+                            getattr(obs, "update_leftover", None)
+                            if obs is not None
+                            else None
+                        )
+                        if callable(leftover_fn):
+                            ctrl = getattr(phase.outer, "controller", None)
+                            if ctrl is None:
+                                ctrl = getattr(
+                                    getattr(phase.outer, "force_law", None),
+                                    "controller",
+                                    None,
+                                )
+                            contact_now = bool(
+                                getattr(ctrl, "contact_present", False)
+                            )
+                            qdot_now = (
+                                qdot_meas
+                                if qdot_meas is not None
+                                else getattr(
+                                    getattr(inner, "core", None), "qdot_prev", None
+                                )
+                            )
+                            still_now = True
+                            if qdot_now is not None:
+                                qv = np.asarray(qdot_now, dtype=float).reshape(-1)
+                                still_now = bool(
+                                    np.isfinite(qv).all()
+                                    and float(np.linalg.norm(qv)) < 0.03
+                                )
+                            leftover_fn(
+                                f_ext,
+                                contact=contact_now,
+                                still=still_now,
+                                dt_s=float(dt_wall_actual),
+                            )
                         tick_sendable, brake_reason = (
                             _guard_uncertified_brake_before_inner(
                                 phase.outer,
@@ -6264,6 +6343,28 @@ def run_joint_admittance_phases(
                         sendable, qpik_stop_reason = _guard_qpik_step_before_send(
                             step, _fault_stop
                         )
+                        if str(getattr(step, "fallback_reason", "")) == "native_timeout_coast":
+                            native = getattr(inner, "_native", None)
+                            wait_s = float(
+                                getattr(native, "_last_wait_s", float("nan"))
+                            )
+                            limit_s = float(
+                                getattr(native, "timeout_s", float("nan"))
+                            )
+                            _rt_print(
+                                f"[WARN] native_timeout coast hold "
+                                f"wait={wait_s * 1000.0:.1f}ms "
+                                f"limit={limit_s * 1000.0:.1f}ms "
+                                f"streak={int(getattr(native, '_timeout_streak', 0))}/"
+                                f"{int(getattr(native, '_coast_limit', 2))+1} "
+                                f"inflight={int(getattr(native, '_inflight_seq', 0))}/"
+                                f"{int(getattr(native, '_seq', 0))} "
+                                f"last_completed_solve_ms={float(getattr(native, '_last_completed_solve_ms', float('nan'))):.2f} "
+                                f"qp1={float(getattr(native, '_last_completed_qp1_ms', float('nan'))):.2f} "
+                                f"qp2={float(getattr(native, '_last_completed_qp2_ms', float('nan'))):.2f} "
+                                f"asm={float(getattr(native, '_last_completed_assembly_ms', float('nan'))):.2f} "
+                                f"cbf={int(getattr(native, '_last_completed_n_cbf', 0))}"
+                            )
                         if (
                             not sendable
                             and "native_timeout" in str(qpik_stop_reason)
@@ -6296,6 +6397,10 @@ def run_joint_admittance_phases(
                                 f"limit={limit_s * 1000.0:.1f}ms "
                                 f"solve_ms={float(step.qp_solver_solve_ms):.2f} "
                                 f"last_completed_solve_ms={float(getattr(native, '_last_completed_solve_ms', float('nan'))):.2f} "
+                                f"qp1={float(getattr(native, '_last_completed_qp1_ms', float('nan'))):.2f} "
+                                f"qp2={float(getattr(native, '_last_completed_qp2_ms', float('nan'))):.2f} "
+                                f"asm={float(getattr(native, '_last_completed_assembly_ms', float('nan'))):.2f} "
+                                f"cbf={int(getattr(native, '_last_completed_n_cbf', 0))} "
                                 f"reply_seq={int(getattr(native, '_last_reply_seq', 0))}/"
                                 f"{int(getattr(native, '_seq', 0))} "
                                 f"cause={getattr(native, '_last_wait_reason', '')} "

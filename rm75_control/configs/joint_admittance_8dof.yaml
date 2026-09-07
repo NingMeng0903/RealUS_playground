@@ -94,6 +94,8 @@ inner:
     eps_abs: 1.0e-6
     max_iter: 400
     max_iter_cap: 400
+    # Native wall-clock cap on InnerLoop::step.  After QP1, QP2 is skipped
+    # if remaining budget is under 1 ms.  0 disables the cap.
     max_solve_ms: 5.0
     fail_qdot_decay: 0.85
     twist_sigma_floor: 0.02
@@ -163,6 +165,7 @@ inner:
       slack_weight: 60.0
 
   collision:
+    # Live geometry is RM75-6F-8dof.collision.capsule.urdf (native + Python).
     enabled: true
     d_safe: 0.01
     d_activate: 0.04

@@ -95,7 +95,16 @@ class NativeWbcClient:
         self._last_wait_s = float("nan")
         self._last_reply_seq = 0
         self._last_completed_solve_ms = float("nan")
+        self._last_completed_qp1_ms = float("nan")
+        self._last_completed_qp2_ms = float("nan")
+        self._last_completed_assembly_ms = float("nan")
+        self._last_completed_n_cbf = 0
         self._last_wait_reason = ""
+        self._timeout_streak = 0
+        self._coast_limit = 2
+        self._inflight_seq = 0
+        self._inflight_t0 = 0.0
+        self._inflight_limit_s = 0.050
 
     def start(self) -> None:
         try:
@@ -277,6 +286,17 @@ class NativeWbcClient:
 
     def _command_locked(self, cmd, *, cmd_f=None, cmd_u=None, q_meas=None,
                         wait=True, timeout_s=None) -> bool:
+        if self._inflight_seq:
+            if int(self._out["seq"][0]) != int(self._inflight_seq):
+                # A setter must not overwrite the single STEP slot while native
+                # is still solving.  Wait out the in-flight reply, then proceed.
+                if not self._wait_seq(
+                    self._inflight_seq,
+                    timeout_s=0.5 if timeout_s is None else float(timeout_s),
+                ):
+                    self._fault_latched = True
+                    return False
+            self._inflight_seq = 0
         rec = self._in[0]
         rec["seq"] = np.uint64(0)
         rec["cmd"] = np.uint32(cmd)
@@ -321,8 +341,11 @@ class NativeWbcClient:
         if not self._command(P.CMD_RESET, q_meas=q0, cmd_f=np.asarray(q0, dtype=float)):
             raise TimeoutError("wbc_rt reset was not acknowledged")
         self._fault_latched = False
+        self._timeout_streak = 0
         self._pending_commit_seq = 0
         self._abort_next = False
+        self._inflight_seq = 0
+        self._inflight_t0 = 0.0
         self._sync_q()
 
     def begin_hybrid_episode(self, q_meas, qdot_applied=None) -> None:
@@ -408,6 +431,19 @@ class NativeWbcClient:
         self.ctrl.last_slack_norm = float(self._out["slack"][0])
         self.ctrl.last_sigma_min = float(self._out["sigma_min"][0])
 
+    def _hold_step(self, twist, *, fallback_level: str, fallback_reason: str,
+                   latched: bool) -> JointIkStep:
+        return JointIkStep(
+            q_send=np.asarray(self.ctrl.q_cmd, dtype=float).copy(),
+            qdot=np.zeros(8), twist_base=np.asarray(twist, dtype=float).copy(),
+            sigma_min=float("nan"), manip=float("nan"), slack_norm=float("nan"),
+            n_cbf_active=0, follow_err_rad=float("nan"), qp_backend="native",
+            qp_solver_status="timeout", qp_solver_solve_ms=float("nan"),
+            fallback_level=fallback_level, fallback_reason=fallback_reason,
+            solver_fault_latched=latched, command_stale=True,
+            v_cmd_received=np.asarray(twist, dtype=float).copy(),
+        )
+
     def _timeout_step(self, twist) -> JointIkStep:
         # A deadline miss leaves the shared reply either old or being written.
         # Never present that memory as a certified command (or current timing).
@@ -415,16 +451,31 @@ class NativeWbcClient:
         self._pending_commit_seq = 0
         self._published_q_cmd = None
         self._published_qdot = None
-        return JointIkStep(
-            q_send=np.asarray(self.ctrl.q_cmd, dtype=float).copy(),
-            qdot=np.zeros(8), twist_base=np.asarray(twist, dtype=float).copy(),
-            sigma_min=float("nan"), manip=float("nan"), slack_norm=float("nan"),
-            n_cbf_active=0, follow_err_rad=float("nan"), qp_backend="native",
-            qp_solver_status="timeout", qp_solver_solve_ms=float("nan"),
-            fallback_level="stop", fallback_reason="native_timeout",
-            solver_fault_latched=True, command_stale=True,
-            v_cmd_received=np.asarray(twist, dtype=float).copy(),
+        return self._hold_step(
+            twist,
+            fallback_level="stop",
+            fallback_reason="native_timeout",
+            latched=True,
         )
+
+    def _coast_step(self, twist) -> JointIkStep:
+        # One or two 20 ms handshake misses hold pose. The wait bound itself
+        # stays 20 ms; a 19.6 ms solve plus 0.1 ms jitter must not ESTOP.
+        self._pending_commit_seq = 0
+        return self._hold_step(
+            twist,
+            fallback_level="none",
+            fallback_reason="native_timeout_coast",
+            latched=False,
+        )
+
+    def _deadline_miss_step(self, twist) -> JointIkStep:
+        if self._last_wait_reason == "process_exit":
+            return self._timeout_step(twist)
+        self._timeout_streak += 1
+        if self._timeout_streak > int(self._coast_limit):
+            return self._timeout_step(twist)
+        return self._coast_step(twist)
 
     def step(self, v_cmd, stamp=None, *, q_meas=None, **kwargs) -> TrackerStatus:
         stale = False
@@ -464,6 +515,21 @@ class NativeWbcClient:
             raise ValueError("q_meas is required for every Cartesian QPIK tick")
         if self._fault_latched:
             return self._timeout_step(twist)
+        if self._inflight_seq:
+            seq = int(self._inflight_seq)
+            if int(self._out["seq"][0]) == seq:
+                self._last_wait_s = time.monotonic() - self._inflight_t0
+                self._last_wait_reason = ""
+                self._last_reply_seq = seq
+                return self._accept_ok_step(
+                    twist, seq, q_meas=q_meas, qdot_ff=qdot_ff, **kwargs
+                )
+            age = time.monotonic() - self._inflight_t0
+            self._last_wait_s = age
+            self._last_wait_reason = "deadline"
+            if age > float(self._inflight_limit_s):
+                return self._timeout_step(twist)
+            return self._deadline_miss_step(twist)
         rec = self._in[0]
         rec["seq"] = np.uint64(0)
         rec["magic"] = P.WBC_MAGIC
@@ -535,37 +601,48 @@ class NativeWbcClient:
             self._last_wait_reason = "process_exit"
             self._last_wait_s = 0.0
             return self._timeout_step(twist)
+        self._inflight_seq = seq
+        self._inflight_t0 = time.monotonic()
         ok = self._wait_seq(seq)
         if not ok:
-            return self._timeout_step(twist)
+            return self._deadline_miss_step(twist)
+        return self._accept_ok_step(
+            twist, seq, q_meas=q_meas, qdot_ff=qdot_ff, **kwargs
+        )
+
+    def _accept_ok_step(self, twist, seq, *, q_meas, qdot_ff=None, **kwargs) -> JointIkStep:
+        self._timeout_streak = 0
+        self._inflight_seq = 0
         o = self._out[0].copy()
         self._last_completed_solve_ms = float(o["solve_ms"])
+        self._last_completed_qp1_ms = float(o["qp1_solve_ms"])
+        self._last_completed_qp2_ms = float(o["qp2_solve_ms"])
+        self._last_completed_assembly_ms = float(o["assembly_ms"])
+        self._last_completed_n_cbf = int(o["n_cbf_active"])
+        auto_commit = bool(kwargs.get("auto_commit", True))
         q_cmd = np.asarray(o["q_cmd"], dtype=float).copy()
         qdot = np.asarray(o["qdot"], dtype=float).copy()
         self._published_q_cmd = q_cmd.copy()
         self._published_qdot = qdot.copy()
         native_status_early = int(o["status"])
-        if not ok:
-            self._fault_latched = True
-            self._pending_commit_seq = 0
-        elif auto_commit:
+        if auto_commit:
             self._sync_q()
             if native_status_early == P.STATUS_OK:
                 self._pending_commit_seq = 0
-                self.ctrl._record_applied_qdot(qdot)
+                record = getattr(self.ctrl, "_record_applied_qdot", None)
+                if callable(record):
+                    record(qdot)
         elif native_status_early == P.STATUS_OK:
             self._pending_commit_seq = seq
         v_recv = np.asarray(o["v_cmd_received"], dtype=float).copy()
         v_feas = np.asarray(o["v_cmd_feasible"], dtype=float).copy()
         v_tcp = np.asarray(o["v_tcp_estimated"], dtype=float).copy()
         resid = np.asarray(o["task_residual"], dtype=float).copy()
-        stale = (not ok) or bool(int(o["flags"]) & P.OUT_STALE) or bool(kwargs.get("command_stale"))
+        stale = bool(int(o["flags"]) & P.OUT_STALE) or bool(kwargs.get("command_stale"))
         native_status = int(o["status"])
         qp1_name = qp_status_name(o["qp1_status"])
         qp2_name = qp_status_name(o["qp2_status"])
-        if not ok:
-            solver_status = "timeout"
-        elif native_status == P.STATUS_FAIL:
+        if native_status == P.STATUS_FAIL:
             solver_status = "failed"
         elif qp2_name in ("solved", "max_iter"):
             solver_status = qp2_name
@@ -593,7 +670,6 @@ class NativeWbcClient:
             qp_solver_iterations=int(o["qp1_iter"]) + int(o["qp2_iter"]),
             qp_solver_call_count=(
                 int(qp1_name != "not_run") + int(qp2_name != "not_run")
-                if ok else 0
             ),
             qp_solver_solve_ms=float(o["solve_ms"]),
             qp_solver_overrun=bool(float(o["solve_ms"]) > 5.0),
@@ -632,14 +708,13 @@ class NativeWbcClient:
             task_progress=float(o["task_progress_alpha"]),
             task_paused=bool(o["task_paused"]),
             task_pause_reason={0: "", 1: "task_infeasible", 2: "publication_infeasible"}.get(int(o["task_pause_reason"]), "native_pause"),
-            fallback_level="stop" if not ok or native_status == P.STATUS_FAIL else "none",
+            fallback_level="stop" if native_status == P.STATUS_FAIL else "none",
             fallback_reason=(
-                "native_timeout" if not ok else
                 {0: "", 1: "task_infeasible", 2: "publication_infeasible"}.get(
                     int(o["task_pause_reason"]), "native_pause"
                 )
             ),
-            solver_fault_latched=bool(not ok or native_status == P.STATUS_FAIL),
+            solver_fault_latched=bool(native_status == P.STATUS_FAIL),
             rail_base_shaped=float(o["rail_base_shaped"]),
             rail_base_raw=float(o["rail_base_raw"]),
             rail_base_committed=float(o["rail_total_committed"] - o["rail_post_committed"]),

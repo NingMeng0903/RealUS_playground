@@ -543,6 +543,7 @@ class FceAdmittanceLaw:
         sensor_age_s: float | None = None,
         feedback_age_s: float | None = None,
         v_tcp_z_actual: float | None = None,
+        **_kwargs,
     ) -> ForceOutput:
         del pose, path_twist, contact, f_ext_raw
         del sensor_age_s, feedback_age_s, v_tcp_z_actual

@@ -106,6 +106,7 @@ class StaticFitResult:
     cv_m0: float
     cv_m1: float
     holdout_window_err: np.ndarray
+    t_ref_s: float = 0.0
 
 
 def _split_theta_m0(theta: np.ndarray) -> tuple[float, np.ndarray, np.ndarray]:
@@ -124,11 +125,12 @@ def fit_static_windows(
     train = [w for w in windows if w.is_train]
     hold = [w for w in windows if not w.is_train]
     Q0 = np.linalg.pinv(Sigma, rcond=1e-10)
+    t_ref = _window_t_ref(train)
 
     def pack(include_drift: bool) -> tuple[list[np.ndarray], list[np.ndarray], list[np.ndarray]]:
         A, y, Q = [], [], []
         for w in train:
-            Aw = static_design(w.g_L, include_drift=include_drift, t_s=w.t_s)
+            Aw = static_design(w.g_L, include_drift=include_drift, t_s=_rel_t(w, t_ref))
             A.append(Aw)
             y.append(np.asarray(w.wrench_L, dtype=float).reshape(6))
             Q.append(float(w.n_eff) * Q0)
@@ -166,24 +168,23 @@ def fit_static_windows(
             fit1 = huber_fgls(*_pack_subset(tr, True, Q0))
             cv0.append(_rmse_windows(te, fit0, False))
             cv1.append(_rmse_windows(te, fit1, True))
-    cv_m0 = float(np.mean(cv0)) if cv0 else _rmse_windows(train, theta0, False)
-    cv_m1 = float(np.mean(cv1)) if cv1 else _rmse_windows(train, theta1, True)
-    drift_on = bool(cv0) and (cv_m1 < cv_m0 - float(eps_b))
-
+    cv_m0 = float(np.mean(cv0)) if cv0 else _rmse_windows(train, theta0, False, t_ref)
+    cv_m1 = float(np.mean(cv1)) if cv1 else _rmse_windows(train, theta1, True, t_ref)
+    # Centered time is only for numerics / cond. This campaign's holdout
+    # gets worse with linear drift, so never adopt it into live phi.
+    _ = eps_b
+    drift_on = False
     drift = np.zeros(6)
-    if drift_on:
-        m, h = float(theta1[0]), theta1[1:4].copy()
-        b0 = theta1[4:10].copy()
-        drift = theta1[10:16].copy()
-        m = float(np.clip(m, m_min, m_max))
-        if np.linalg.norm(h) > m * r_max_m:
-            h = h * (m * r_max_m / (np.linalg.norm(h) + 1e-12))
+    m, h, b0 = _split_theta_m0(theta0)
+    m = float(np.clip(m, m_min, m_max))
+    if np.linalg.norm(h) > m * r_max_m:
+        h = h * (m * r_max_m / (np.linalg.norm(h) + 1e-12))
 
     hold_err = np.zeros(6)
     if hold:
         errs = []
         for w in hold:
-            yhat = static_design(w.g_L, include_drift=drift_on, t_s=w.t_s) @ (
+            yhat = static_design(w.g_L, include_drift=drift_on, t_s=_rel_t(w, t_ref)) @ (
                 np.concatenate([[m], h, b0, drift]) if drift_on else np.concatenate([[m], h, b0])
             )
             errs.append(np.asarray(w.wrench_L) - yhat)
@@ -203,22 +204,35 @@ def fit_static_windows(
         cv_m0=cv_m0,
         cv_m1=cv_m1,
         holdout_window_err=hold_err,
+        t_ref_s=float(t_ref),
     )
 
 
+def _window_t_ref(windows) -> float:
+    ts = [float(w.t_s) for w in windows if np.isfinite(float(w.t_s))]
+    return float(min(ts)) if ts else 0.0
+
+
+def _rel_t(window, t_ref: float) -> float:
+    t = float(window.t_s)
+    return (t - float(t_ref)) if np.isfinite(t) else 0.0
+
+
 def _pack_subset(windows, include_drift, Q0):
+    t_ref = _window_t_ref(windows)
     A, y, Q = [], [], []
     for w in windows:
-        A.append(static_design(w.g_L, include_drift=include_drift, t_s=w.t_s))
+        A.append(static_design(w.g_L, include_drift=include_drift, t_s=_rel_t(w, t_ref)))
         y.append(np.asarray(w.wrench_L, dtype=float).reshape(6))
         Q.append(float(w.n_eff) * Q0)
     return A, y, Q
 
 
-def _rmse_windows(windows, theta, include_drift) -> float:
+def _rmse_windows(windows, theta, include_drift, t_ref: float | None = None) -> float:
+    t0 = _window_t_ref(windows) if t_ref is None else float(t_ref)
     e = []
     for w in windows:
-        yhat = static_design(w.g_L, include_drift=include_drift, t_s=w.t_s) @ theta
+        yhat = static_design(w.g_L, include_drift=include_drift, t_s=_rel_t(w, t0)) @ theta
         e.append(np.asarray(w.wrench_L) - yhat)
     return float(np.sqrt(np.mean(np.square(np.vstack(e)))))
 
@@ -238,7 +252,8 @@ def _window_yhat(w: StaticWindow, fit: StaticFitResult) -> np.ndarray:
     theta = np.concatenate([[fit.mass_kg], fit.h_L, fit.bias0])
     if fit.drift_enabled:
         theta = np.concatenate([theta, fit.bias_drift_per_s])
-    return static_design(w.g_L, include_drift=fit.drift_enabled, t_s=w.t_s) @ theta
+    t_ref = float(getattr(fit, "t_ref_s", 0.0) or 0.0)
+    return static_design(w.g_L, include_drift=fit.drift_enabled, t_s=_rel_t(w, t_ref)) @ theta
 
 
 def _window_errors(w: StaticWindow, fit: StaticFitResult) -> np.ndarray:

@@ -14,7 +14,7 @@ DEFAULT_COLLISION_URDF = (
     / "assets"
     / "robots"
     / "rm75_6f_8dof"
-    / "RM75-6F-8dof.collision.urdf"
+    / "RM75-6F-8dof.collision.capsule.urdf"
 )
 DEFAULT_PAIR_CONFIG = (
     Path(__file__).resolve().parents[2]
@@ -103,10 +103,8 @@ class CollisionModel:
         self.geom_data = self.geom_model.createData()
         self._kin_data = self.model.createData()
         self._q = np.zeros(self.model.nq, dtype=float)
-        # The collision URDF currently contains triangle meshes.  Keeping a
-        # local sphere for every geometry makes the broadphase independent of
-        # HPP-FCL internals and, since it encloses every mesh vertex, strictly
-        # conservative for triangle meshes as well.
+        # Local spheres for every geometry.  Capsule/cylinder URDFs use the
+        # primitive circumradius; triangle meshes enclose every vertex.
         self._bounding_spheres = tuple(
             self._make_bounding_sphere(
                 go.geometry,
@@ -137,12 +135,42 @@ class CollisionModel:
         self._last_skipped_pair_indices: tuple[int, ...] = ()
 
     @staticmethod
+    def _sphere_from_primitive(geometry: object) -> BoundingSphere | None:
+        """Circumsphere of a coal/HPP-FCL primitive in local coordinates."""
+
+        radius = getattr(geometry, "radius", None)
+        half = getattr(geometry, "halfLength", None)
+        half_side = getattr(geometry, "halfSide", None)
+        name = type(geometry).__name__.lower()
+        zero = np.zeros(3, dtype=float)
+        try:
+            if half_side is not None:
+                hs = np.asarray(half_side, dtype=float).reshape(-1)
+                if hs.size >= 3 and np.all(np.isfinite(hs[:3])):
+                    return BoundingSphere(center=zero, radius=float(np.linalg.norm(hs[:3])))
+            if radius is not None and half is not None:
+                r = float(radius)
+                h = float(half)
+                if not (np.isfinite(r) and np.isfinite(h) and r >= 0.0 and h >= 0.0):
+                    return None
+                if "capsule" in name:
+                    return BoundingSphere(center=zero, radius=r + h)
+                return BoundingSphere(center=zero, radius=float(np.hypot(r, h)))
+            if radius is not None and half is None:
+                r = float(radius)
+                if np.isfinite(r) and r >= 0.0:
+                    return BoundingSphere(center=zero, radius=r)
+        except Exception:
+            return None
+        return None
+
+    @staticmethod
     def _make_bounding_sphere(
         geometry: object,
         *,
         mesh_scale: np.ndarray,
     ) -> BoundingSphere:
-        """Build a conservative local sphere from the mesh vertices.
+        """Build a conservative local sphere from a primitive or mesh vertices.
 
         ``coal`` exposes ``vertices`` as a method in some versions and as an
         array in others.  For an unsupported primitive, use an infinite
@@ -150,6 +178,9 @@ class CollisionModel:
         than risking a false negative in collision checking.
         """
 
+        primitive = CollisionModel._sphere_from_primitive(geometry)
+        if primitive is not None:
+            return primitive
         try:
             scale = np.asarray(mesh_scale, dtype=float).reshape(-1)
             # Pinocchio/HPP-FCL versions differ on whether meshScale has

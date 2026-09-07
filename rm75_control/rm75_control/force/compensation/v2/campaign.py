@@ -674,7 +674,7 @@ class PayloadIdCampaign:
         return False
 
     def _enter_calibration_dof(self) -> None:
-        """Keep the persistent session.  Default Payload ID is 8-DOF + rail HOLD."""
+        """Keep the persistent session.  8-DOF stays 8; payload_id hard-locks the rail."""
 
         ret, current = self.arm.get_dof()
         if ret != self.OK or int(current) not in (7, 8):
@@ -968,6 +968,7 @@ class PayloadIdCampaign:
                 else:
                     still_s = 0.0
             last_q = q
+        raise CampaignAbort("settle_timeout")
 
     def _static_hold(self, target: StaticTarget) -> None:
         st = self.cfg.get("static") or {}
@@ -1027,6 +1028,20 @@ class PayloadIdCampaign:
                     last_ray = "mid"
                 self._static_hold(tgt)
                 done.append(tgt)
+                if mid is not None and tgt.name in {"WX-90", "WY-75"}:
+                    self._ptp(mid)
+                    last_ray = "mid"
+                    revisit = StaticTarget(
+                        name=f"mid_revisit_{tgt.name.replace('+', 'p').replace('-', 'n')}",
+                        pose=mid.pose.copy(),
+                        q=mid.q.copy(),
+                        is_train=True,
+                        is_yaw=False,
+                        tilt_deg=0.0,
+                    )
+                    self._enter_servo(hold=False, label=f"payload_id_hold_{revisit.name}")
+                    self._static_hold(revisit)
+                    done.append(revisit)
             except CampaignAbort as exc:
                 msg = str(exc)
                 hard = (
@@ -1151,10 +1166,9 @@ class PayloadIdCampaign:
                 self._return_to_mid(q_mid, why="P-I")
                 self.run_inertia()
         self.phase = "done"
-        # Stay on commanded SERVO_TWIST at v*=0. HOLD would latch pose_d and
-        # let 8-DOF idle steal the session (track + P-hold). joint_hold still
-        # freezes q.
-        self._enter_servo(hold=False, label="payload_id_done")
+        # P2 already ends in a payload_id SERVO hold. Another SET_MODE here
+        # used to fire native SET_RAIL_MODE on the live 200 Hz runner and
+        # miss the 20 ms handshake (solve itself was ~6 ms).
         self._hold_seconds(0.2, record=False)
         if self.rec.invalid:
             print("[WARN] recorder marked invalid (overflow/gaps) — sidecar still written", flush=True)
@@ -1239,7 +1253,8 @@ def windows_from_csv(
         if len(wrenches) < 8:
             continue
         W = np.vstack(wrenches)
-        tilt = abs(_tilt_deg_from_name(name))
+        pose_name = name.removeprefix("static_")
+        tilt = 0.0 if pose_name.startswith("mid") else abs(_tilt_deg_from_name(name))
         out.append(
             StaticWindow(
                 g_L=robust_mean(np.vstack(gs)),
@@ -1278,7 +1293,20 @@ def _motion_from_csv(
             rows.append(row)
     if len(rows) < 64:
         return None
-    obs = ArmJointObserver(rail_locked=True)
+    rails = []
+    for row in rows:
+        rail = _fnum(row, "rail_pos_m")
+        if np.isfinite(rail):
+            rails.append(float(rail))
+    travel = (max(rails) - min(rails)) if rails else 0.0
+    if travel > 0.010:
+        print(
+            f"[FIT] {phase_prefix} rejected: rail traveled {1e3 * travel:.1f} mm "
+            f"(claimed lock)",
+            flush=True,
+        )
+        return None
+    obs = ArmJointObserver(rail_locked=travel <= 0.002)
     t, w_L, a_L, om_L, al_L, g_L = [], [], [], [], [], []
     g_base = contract.gravity_base()
     n_qdot_csv = 0
@@ -1380,6 +1408,17 @@ def fit_hardware_log(
         flush=True,
     )
     residuals = static_residual_report(windows, fit)
+    mid_wins = [
+        w for w in windows if str(w.name) == "mid" or str(w.name).startswith("mid_revisit")
+    ]
+    if len(mid_wins) >= 2:
+        mys = [float(np.asarray(w.wrench_L, dtype=float).reshape(6)[4]) for w in mid_wins]
+        print(
+            f"[FIT] mid revisit My_L {[round(v, 4) for v in mys]}  "
+            f"spread={max(mys) - min(mys):.4f} Nm  "
+            f"(same-pose history if spread is large)",
+            flush=True,
+        )
     frame_cfg = FrameConfig.from_yaml(CONFIG_FORCE)
     phi_mhb = phi16(fit.mass_kg, fit.h_L, fit.bias0, None)
     com = com_report(phi_mhb, frame_cfg, parameter_frame="link_7")
@@ -1461,8 +1500,9 @@ def fit_hardware_log(
     doc["payload"]["first_moment_kg_m"] = fit.h_L.tolist()
     doc["payload"]["inertia_kg_m2"] = iner.I_voigt.tolist() if iner is not None and iner.adopted else None
     doc["calibration_session"]["bias0"] = fit.bias0.tolist()
-    doc["calibration_session"]["bias_drift_per_s"] = fit.bias_drift_per_s.tolist()
-    doc["calibration_session"]["drift_enabled"] = fit.drift_enabled
+    doc["calibration_session"]["bias_drift_per_s"] = [0.0] * 6
+    doc["calibration_session"]["drift_enabled"] = False
+    doc["calibration_session"]["t_ref_s"] = float(fit.t_ref_s)
     doc["tool_binding"]["active_tool_name"] = cache[0] if cache else "gripper2"
     doc["tool_binding"]["urdf_sha256"] = urdf_sha256(DEFAULT_URDF)
     doc["tool_binding"]["force_sign"] = list(contract.force_sign)
@@ -1497,6 +1537,7 @@ def fit_hardware_log(
         "cond_m0": fit.cond_m0,
         "n_windows": len(windows),
         "source_log": str(path),
+        "t_ref_s": float(fit.t_ref_s),
         "rms_all": rms_all,
         "rms_force": (residuals.get("all") or {}).get("rms_force"),
         "rms_moment": (residuals.get("all") or {}).get("rms_moment"),

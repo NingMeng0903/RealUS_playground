@@ -28,6 +28,7 @@ def test_production_config_declares_slack_qp_and_canonical_soft_band():
     cfg = build_joint_ik_config(_raw())
     assert cfg.qp.backend.lower() == "proxqp"
     assert cfg.qp.max_iter == 400
+    assert cfg.qp.max_solve_ms == pytest.approx(5.0)
     assert cfg.qp.twist_sigma_floor == pytest.approx(0.02)
     assert cfg.qp.task_weight_min_frac == pytest.approx(0.05)
     assert cfg.qp.near_arm_margin_rad == pytest.approx(0.08)
@@ -135,3 +136,15 @@ def test_invalid_soft_bounds_still_fail_closed(key: str, value: float):
     raw["qpik"]["hard_limits"]["rail"][key] = value
     with pytest.raises(ValueError, match="soft|finite|rail limits"):
         build_joint_ik_config(raw)
+
+
+def test_native_dump_uses_capsule_urdf_and_solve_cap(tmp_path):
+    from rm75_control.control.joint_admittance_8dof.wbc_rt.config_dump import (
+        dump_wbc_config,
+    )
+
+    path = tmp_path / "wbc.cfg"
+    dump_wbc_config(build_joint_ik_config(_raw()), path)
+    text = path.read_text()
+    assert "RM75-6F-8dof.collision.capsule.urdf" in text
+    assert "qp.max_solve_ms 5" in text

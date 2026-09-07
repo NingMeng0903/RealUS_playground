@@ -22,7 +22,7 @@ URDF = (
 
 def _collision() -> tuple[RobotKinematics, CollisionModel]:
     kin = RobotKinematics(URDF)
-    return kin, CollisionModel(kin.model)
+    return kin, CollisionModel(kin.model, collision_urdf=URDF)
 
 
 def test_broadphase_contains_every_pair_inside_activation_band() -> None:
@@ -214,3 +214,22 @@ def test_inner_tick_median_fits_200hz_budget(request) -> None:
     p95 = float(np.percentile(samples, 95))
     assert p50 <= 5.2
     assert p95 <= 6.5
+
+
+def test_default_collision_urdf_is_capsule_primitives() -> None:
+    from rm75_control.control.joint_admittance_8dof.collision_model import (
+        DEFAULT_COLLISION_URDF,
+    )
+
+    assert DEFAULT_COLLISION_URDF.name == "RM75-6F-8dof.collision.capsule.urdf"
+    assert DEFAULT_COLLISION_URDF.is_file()
+    kin = RobotKinematics()
+    collision = CollisionModel(kin.model)
+    assert collision.collision_urdf == DEFAULT_COLLISION_URDF
+    assert collision.bounding_spheres
+    assert all(np.isfinite(s.radius) for s in collision.bounding_spheres)
+    mesh_paths = [
+        str(getattr(go, "meshPath", "") or "").lower()
+        for go in collision.geom_model.geometryObjects
+    ]
+    assert not any(p.endswith(".stl") or p.endswith(".dae") for p in mesh_paths)

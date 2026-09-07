@@ -64,6 +64,10 @@ class HybridTffOuter:
         self.last_feedback_twist = np.zeros(6, dtype=float)
         self.last_tau_y = float("nan")
         self.last_omega_y = float("nan")
+        self.last_cop_x = float("nan")
+        self.last_cop_y = float("nan")
+        self.last_cop_r = float("nan")
+        self.last_on_tube = False
         self.controller = getattr(force_law, "controller", None)
         cfg = getattr(self.position, "cfg", None)
         if cfg is not None and hasattr(cfg, "track_axes"):
@@ -97,6 +101,7 @@ class HybridTffOuter:
         feedback_fresh_tick: bool | None = None,
         feedback_velocity_valid: bool | None = None,
         v_tcp_z_actual: float | None = None,
+        slack_norm: float | None = None,
     ) -> np.ndarray:
         del feedback_fresh_tick
         velocity_valid = (
@@ -124,11 +129,17 @@ class HybridTffOuter:
             sensor_age_s=sensor_age_s,
             feedback_age_s=feedback_age_s,
             v_tcp_z_actual=v_actual,
+            slack_norm=slack_norm,
+            euler_order=self._euler_order(),
         )
         v_star = compose_tff(v_pos, fout.v_force, self.selection)
         telemetry = dict(getattr(fout, "telemetry", None) or {})
         self.last_tau_y = float(telemetry.get("tau_y", float("nan")))
         self.last_omega_y = float(telemetry.get("omega_y", float("nan")))
+        self.last_cop_x = float(telemetry.get("cop_x", float("nan")))
+        self.last_cop_y = float(telemetry.get("cop_y", float("nan")))
+        self.last_cop_r = float(telemetry.get("cop_r", float("nan")))
+        self.last_on_tube = bool(telemetry.get("on_tube", False))
         pose_d = getattr(self.position, "last_pose_d", None)
         if pose_d is not None:
             euler = self._euler_order()

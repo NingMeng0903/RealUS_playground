@@ -43,6 +43,7 @@ struct Config {
   double eps_abs = 1e-6;
   int max_iter = 400;
   int max_iter_cap = 400;
+  double max_solve_ms = 5.0;
   double twist_sigma_floor = 0.02;
   double task_weight_min_frac = 0.05;
   double task_weight_lpf_tau_s = 0.25;

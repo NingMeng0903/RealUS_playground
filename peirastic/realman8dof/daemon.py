@@ -239,6 +239,7 @@ class ControllerService:
         self._dof_boundary_open = False
         self._fault_sm = "RUNNING"
         self._fault_epoch = 0
+        self._compile_fault: dict | None = None
         self.force_observer = None
         self._state_relay = None
         self.force_observer_error = ""
@@ -688,6 +689,55 @@ class ControllerService:
                 return False
         return True
 
+    def _note_compile_fault(self, req, exc, *, commanded: bool) -> None:
+        msg = str(exc)[:90]
+        seq = int(self._cmd_seq) if commanded else 0
+        if commanded:
+            self._compile_fault = {"mode": req.mode, "msg": msg, "seq": seq}
+        self.panel.event("WARN", f"compile {exc}")
+        self.hub.publish(
+            status=Status.ERROR,
+            mode=req.mode,
+            msg=msg,
+            done_seq=seq,
+            err_code=1,
+        )
+
+    def _hold_compile_fault(self, commanded: bool) -> bool:
+        fault = getattr(self, "_compile_fault", None)
+        if fault is None or commanded:
+            return False
+        self.hub.publish(
+            status=Status.ERROR,
+            mode=fault["mode"],
+            msg=fault["msg"],
+            done_seq=fault["seq"],
+            err_code=1,
+        )
+        return True
+
+    def _clear_compile_fault(self) -> None:
+        self._compile_fault = None
+
+    def _publish_tick_status(self, **kwargs) -> None:
+        fault = getattr(self, "_compile_fault", None)
+        if fault is None:
+            self.hub.publish(status=Status.RUNNING, **kwargs)
+            return
+        self.hub.publish(
+            status=Status.ERROR,
+            mode=fault["mode"],
+            msg=fault["msg"],
+            done_seq=fault["seq"],
+            err_code=1,
+            ticks=kwargs.get("ticks", 0),
+            estop=kwargs.get("estop", False),
+            pad_hz=kwargs.get("pad_hz", float("nan")),
+            track_err_mm=kwargs.get("track_err_mm", float("nan")),
+            slack=kwargs.get("slack", float("nan")),
+            f_ext_z=kwargs.get("f_ext_z", float("nan")),
+        )
+
     def _trip_hardware(self, rail, reason: str, *, robot=None) -> None:
         self._fault_sm = "FAULT_LATCHED"
         self._fault_epoch += 1
@@ -855,6 +905,9 @@ class ControllerService:
                         commanded = True
                         install_seq = int(seq)
 
+            if self._hold_compile_fault(commanded):
+                time.sleep(0.05)
+                continue
             try:
                 compiled = compile_request(
                     self.ctx,
@@ -864,16 +917,11 @@ class ControllerService:
                     dt=dt,
                 )
             except Exception as exc:
-                self.panel.event("WARN", f"compile {exc}")
-                self.hub.publish(
-                    status=Status.ERROR,
-                    mode=req.mode,
-                    msg=str(exc)[:90],
-                    done_seq=self._cmd_seq if commanded else 0,
-                    err_code=1,
-                )
+                self._note_compile_fault(req, exc, commanded=commanded)
                 time.sleep(0.05)
                 continue
+            if commanded:
+                self._clear_compile_fault()
 
             velocity_loop = is_swappable(req.mode)
             proxy = ProxyOuter(compiled.outer)
@@ -1080,15 +1128,9 @@ class ControllerService:
                     elif cmd == Cmd.SET_MODE and parsed is not None:
                         try:
                             _apply(parsed, pose, t_ref, install_seq=int(seq))
+                            self._clear_compile_fault()
                         except Exception as exc:
-                            self.panel.event("WARN", str(exc))
-                            self.hub.publish(
-                                status=Status.ERROR,
-                                mode=parsed.mode,
-                                msg=str(exc)[:90],
-                                done_seq=self._cmd_seq,
-                                err_code=1,
-                            )
+                            self._note_compile_fault(parsed, exc, commanded=True)
                 if (
                     velocity_loop
                     and self._finite_duration is not None
@@ -1147,8 +1189,7 @@ class ControllerService:
                 fz = float(f_ext[2]) if f_ext is not None and len(f_ext) > 2 else float("nan")
                 tau_y = float(getattr(phase.outer, "last_tau_y", float("nan")))
                 omega_y = float(getattr(phase.outer, "last_omega_y", float("nan")))
-                self.hub.publish(
-                    status=Status.RUNNING,
+                self._publish_tick_status(
                     mode=self.mode,
                     ticks=self.ticks,
                     estop=self.estop.tripped,

@@ -251,7 +251,8 @@ def test_default_hybrid_tilt_masks_conflicting_path_rotation() -> None:
 
     position.sample = rotating_path
     # Large normal-force error used to zero the torque gain completely.
-    wrench = np.array([0.0, 0.0, 6.0, 0.0, 0.06, 0.0])
+    # Keep CoP inside the 6 mm stall deadband so leftover-stall does not fire.
+    wrench = np.array([0.0, 0.0, 12.0, 0.0, 0.06, 0.0])
     for tick in range(80):
         output = outer.sample(tick * 0.005, pose, wrench, contact=True)
     assert output[4] < -0.05

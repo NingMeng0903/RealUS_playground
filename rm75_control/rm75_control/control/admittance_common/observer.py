@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 from collections import deque
 from dataclasses import dataclass, field, replace
@@ -97,6 +98,11 @@ class CompensatedForceObserver:
         self._arm_obs = None
         self._delay_ring = None
         self._kin = None
+        self.leftover_tcp = np.zeros(6, dtype=float)
+        self.leftover_frozen = False
+        self.leftover_valid = False
+        self.leftover_tau_s = 2.0
+        self._leftover_contact = False
 
     @staticmethod
     def _load_phi(path: Path, source: str) -> np.ndarray:
@@ -108,6 +114,40 @@ class CompensatedForceObserver:
     def _file_signature(self) -> tuple[int, int]:
         st = Path(self.cfg.phi_path).stat()
         return st.st_mtime_ns, st.st_size
+
+    def phi_sha8(self) -> str:
+        try:
+            return hashlib.sha256(Path(self.cfg.phi_path).read_bytes()).hexdigest()[:8]
+        except OSError:
+            return str(self.model_revision or "")[:8]
+
+    def update_leftover(
+        self,
+        wrench_tcp: np.ndarray,
+        *,
+        contact: bool,
+        still: bool,
+        dt_s: float,
+    ) -> None:
+        """Slow air/still TCP leftover. Freeze on contact; never subtract here."""
+        wrench = np.asarray(wrench_tcp, dtype=float).reshape(6)
+        rising = bool(contact) and not self._leftover_contact
+        self._leftover_contact = bool(contact)
+        if rising:
+            self.leftover_frozen = True
+            return
+        if contact:
+            return
+        self.leftover_frozen = False
+        if not still or not np.isfinite(wrench).all():
+            return
+        dt = max(float(dt_s), 1e-4)
+        alpha = dt / (float(self.leftover_tau_s) + dt)
+        if not self.leftover_valid:
+            self.leftover_tcp = wrench.copy()
+            self.leftover_valid = True
+            return
+        self.leftover_tcp = (1.0 - alpha) * self.leftover_tcp + alpha * wrench
 
     def reload_if_changed(self) -> bool:
         """Explicit maintenance operation; never called in update().

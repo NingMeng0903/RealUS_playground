@@ -44,6 +44,7 @@ def empty_document() -> dict[str, Any]:
             "bias0": [0.0] * 6,
             "bias_drift_per_s": [0.0] * 6,
             "drift_enabled": False,
+            "t_ref_s": None,
         },
         "tool_binding": {
             "active_tool_name": "",

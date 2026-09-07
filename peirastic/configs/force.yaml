@@ -3,7 +3,7 @@
 # A reloads this file on each force-mode compile. --desired-z overrides the setpoint only.
 
 force:
-  desired_z_n: 2.0
+  desired_z_n: 4.0
 
 frames:
   euler_order: xyz
@@ -406,17 +406,26 @@ hybrid_motion:
     t_soft_j: 0.25
     t_bar_j: 1.0
     t0_j: 0.50
-  # Tool-y torque balance at the TCP; no angle budget or normal-force-error gate.
-  # Zero moment uses the compensated TCP wrench. No online contact-bias learning.
+  # Tool-y torque balance at the TCP. Wrap-around uses the probe contact
+  # tube around tool-Z through the TCP (face + rim), not a 20° angle cap
+  # or a world-vertical freeze. Leftover moment that does not move CoP is
+  # stalled. Slack still freezes both signs. No online leftover learning.
   torque_tilt:
     enabled: true
     axis: 4
     mass: 0.04
-    damping: 0.30
+    damping: 0.16
     coulomb_nm: 0.025
-    vmax_rad_s: 0.20
-    a_max: 5.0
+    vmax_rad_s: 0.45
+    a_max: 8.0
     contact_only: true
+    theta_max_deg: 150.0
+    twist_align_deg: 0.0
+    slack_freeze: 0.05
+    r_face_m: 0.012
+    r_margin_m: 0.008
+    cop_stall_m: 0.006
+    cop_stall_s: 0.35
   # κ=0 on hard / unknown Ke.  Soft-tissue optional κ is tank-gated at 0.
   proactive_feedforward: false
   # Legacy parameters are retained for isolated non-CDYOB tests only.

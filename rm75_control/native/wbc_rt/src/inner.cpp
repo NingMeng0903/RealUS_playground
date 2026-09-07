@@ -4,9 +4,11 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <fstream>
 #include <limits>
 #include <stdexcept>
 
+#include <coal/shape/geometric_shapes.h>
 #include <pinocchio/algorithm/frames.hpp>
 #include <pinocchio/algorithm/geometry.hpp>
 #include <pinocchio/collision/distance.hpp>
@@ -36,6 +38,41 @@ uint32_t qp_status_code(proxsuite::proxqp::QPSolverOutput s) {
   if (s == S::PROXQP_PRIMAL_INFEASIBLE) return kQpPrimalInfeasible;
   if (s == S::PROXQP_DUAL_INFEASIBLE) return kQpDualInfeasible;
   return kQpFailed;
+}
+
+double elapsed_ms(std::chrono::steady_clock::time_point t0) {
+  return std::chrono::duration<double, std::milli>(
+             std::chrono::steady_clock::now() - t0)
+      .count();
+}
+
+struct GeomSphere {
+  Eigen::Vector3d c = Eigen::Vector3d::Zero();
+  double r = std::numeric_limits<double>::infinity();
+};
+
+GeomSphere make_local_sphere(const pinocchio::GeometryObject& go) {
+  GeomSphere s;
+  if (!go.geometry) return s;
+  const coal::CollisionGeometry* g = go.geometry.get();
+  if (const auto* cyl = dynamic_cast<const coal::Cylinder*>(g)) {
+    s.r = std::hypot(static_cast<double>(cyl->radius),
+                     static_cast<double>(cyl->halfLength));
+    return s;
+  }
+  if (const auto* cap = dynamic_cast<const coal::Capsule*>(g)) {
+    s.r = static_cast<double>(cap->radius) + static_cast<double>(cap->halfLength);
+    return s;
+  }
+  if (const auto* box = dynamic_cast<const coal::Box*>(g)) {
+    s.r = box->halfSide.norm();
+    return s;
+  }
+  if (const auto* sph = dynamic_cast<const coal::Sphere*>(g)) {
+    s.r = static_cast<double>(sph->radius);
+    return s;
+  }
+  return s;
 }
 
 bool qp_is_candidate(uint32_t code) {
@@ -91,7 +128,7 @@ void solve_dense_qp(proxsuite::proxqp::dense::QP<double>& qp,
   } else {
     qp.settings.initial_guess =
         last_ok ? IG::WARM_START_WITH_PREVIOUS_RESULT : IG::NO_INITIAL_GUESS;
-    qp.update(H, g, A, b, C, lo, hi, true);
+    qp.update(H, g, A, b, C, lo, hi, false);
   }
   if (seed != nullptr && seed->size() == H.rows()) {
     qp.settings.initial_guess = IG::WARM_START;
@@ -150,12 +187,49 @@ Collision::Collision(pinocchio::Model& model, const Config& cfg)
   }
   geom_data_ = pinocchio::GeometryData(geom_model_);
   slots_.assign(static_cast<std::size_t>(cfg.max_pairs), -1);
+  local_spheres_.resize(geom_model_.geometryObjects.size());
+  for (std::size_t i = 0; i < geom_model_.geometryObjects.size(); ++i) {
+    const GeomSphere s = make_local_sphere(geom_model_.geometryObjects[i]);
+    local_spheres_[i].c = s.c;
+    local_spheres_[i].r = s.r;
+  }
 }
 
 void Collision::update(const Vec8& q, pinocchio::Data& data) {
+  queried_.clear();
   if (geom_model_.ngeoms == 0) return;
   pinocchio::updateGeometryPlacements(*model_, data, geom_model_, geom_data_, q);
-  pinocchio::computeDistances(geom_model_, geom_data_);
+  const double thresh = cfg_.d_activate + 0.01;
+  const std::size_t np = geom_model_.collisionPairs.size();
+  double best_lb = std::numeric_limits<double>::infinity();
+  int best_i = -1;
+  for (std::size_t i = 0; i < np; ++i) {
+    const auto& cp = geom_model_.collisionPairs[i];
+    const auto ga = static_cast<std::size_t>(cp.first);
+    const auto gb = static_cast<std::size_t>(cp.second);
+    const double ra = local_spheres_[ga].r;
+    const double rb = local_spheres_[gb].r;
+    double lb = -std::numeric_limits<double>::infinity();
+    if (std::isfinite(ra) && std::isfinite(rb)) {
+      const Eigen::Vector3d ca = geom_data_.oMg[ga].act(local_spheres_[ga].c);
+      const Eigen::Vector3d cb = geom_data_.oMg[gb].act(local_spheres_[gb].c);
+      lb = (ca - cb).norm() - ra - rb;
+    }
+    if (lb < best_lb) {
+      best_lb = lb;
+      best_i = static_cast<int>(i);
+    }
+    if (lb <= thresh) {
+      pinocchio::computeDistance(geom_model_, geom_data_,
+                                 static_cast<pinocchio::PairIndex>(i));
+      queried_.push_back(static_cast<int>(i));
+    }
+  }
+  if (queried_.empty() && best_i >= 0) {
+    pinocchio::computeDistance(geom_model_, geom_data_,
+                               static_cast<pinocchio::PairIndex>(best_i));
+    queried_.push_back(best_i);
+  }
 }
 
 int Collision::build_rows(pinocchio::Data& data, MatX* jac, VecX* lower, std::vector<int>* slots) {
@@ -174,7 +248,9 @@ int Collision::build_rows(pinocchio::Data& data, MatX* jac, VecX* lower, std::ve
     int ga, gb;
   };
   std::vector<Hit> hits;
-  for (std::size_t i = 0; i < geom_model_.collisionPairs.size(); ++i) {
+  for (int pair_i : queried_) {
+    const auto i = static_cast<std::size_t>(pair_i);
+    if (i >= geom_model_.collisionPairs.size()) continue;
     const auto& res = geom_data_.distanceResults[i];
     const double d = res.min_distance;
     if (d > cfg_.d_activate + 0.01) continue;
@@ -1002,10 +1078,47 @@ bool InnerLoop::solve_hqp(const Mat6x8& J, const Vec6& v_cmd, const Vec8& q_geom
 
   const auto t_qp1_0 = std::chrono::steady_clock::now();
   assembly_ms_ = std::chrono::duration<double, std::milli>(t_qp1_0 - t_asm0).count();
+  const int iter_nom = std::max(1, std::min(cfg_.max_iter, cfg_.max_iter_cap));
+  auto apply_time_iters = [&](proxsuite::proxqp::dense::QP<double>& qp,
+                              double reserve_ms) {
+    int iters = iter_nom;
+    if (cfg_.max_solve_ms > 0.0) {
+      const double remain = cfg_.max_solve_ms - elapsed_ms(step_t0_);
+      const double budget = remain - reserve_ms;
+      const int by_time =
+          budget <= 0.0 ? 1 : std::max(8, static_cast<int>(budget / 0.04));
+      iters = std::min(iters, by_time);
+    }
+    qp.settings.max_iter = iters;
+  };
+  if (cfg_.max_solve_ms > 0.0 && elapsed_ms(step_t0_) + 0.8 >= cfg_.max_solve_ms) {
+    VecX x1 = pack_x(clip_qdot(inbox_brake(qdot_prev_, lo_box, hi_box, a_max_, h1)));
+    qp1_status_ = kQpNotRun;
+    qp1_last_ok_ = false;
+    qp1_ms_ = 0.0;
+    const Vec8 qdot1 = clip_qdot(x1.head<kNv>());
+    x1 = pack_x(qdot1);
+    last_lock_J_ = J_task;
+    last_lock_v_ = J_task * qdot1;
+    qp2_status_ = kQpNotRun;
+    qp2_ms_ = 0.0;
+    qp2_iter_ = 0;
+    *qdot = qdot1;
+    *residual = v_cmd - (J_task * qdot1 + rail_actual_contrib);
+    *slack = residual->norm();
+    last_C_ = C;
+    last_lo_ = lo;
+    last_hi_ = hi;
+    last_qdot_qp_ = qdot1;
+    return true;
+  }
+  apply_time_iters(*qp1_, 1.2);
   bool qp1_ok = try_qp1(lo, hi);
-  if (!qp1_ok && n_cbf_active_ > 0) {
+  if (!qp1_ok && n_cbf_active_ > 0 &&
+      (cfg_.max_solve_ms <= 0.0 || elapsed_ms(step_t0_) + 1.5 < cfg_.max_solve_ms)) {
     VecX lo_relax = lo;
     for (int i = 0; i < kMaxCbf; ++i) lo_relax[kNv + i] = -1.0e20;
+    apply_time_iters(*qp1_, 1.2);
     qp1_ok = try_qp1(lo_relax, hi);
   }
   VecX x1;
@@ -1032,6 +1145,28 @@ bool InnerLoop::solve_hqp(const Mat6x8& J, const Vec6& v_cmd, const Vec8& q_geom
                                     ? 1.0
                                     : (v_cmd - residual1).dot(v_cmd) / (req_n * req_n),
                                 0.0, 1.0);
+  }
+  if (cfg_.max_solve_ms > 0.0 && elapsed_ms(step_t0_) + 1.0 >= cfg_.max_solve_ms) {
+    qp2_status_ = kQpNotRun;
+    qp2_ms_ = 0.0;
+    qp2_iter_ = 0;
+    j4_design_slack_ = 0.0;
+    sigma_slack_ = 0.0;
+    if (x1.size() > kNv + kNTaskSlack) {
+      sigma_slack_ = std::max(0.0, x1[kNv + kNTaskSlack + 0]);
+    }
+    if (x1.size() > kNv + kNTaskSlack + 2) {
+      j4_design_slack_ = std::max(0.0, x1[kNv + kNTaskSlack + 2]);
+    }
+    *qdot = qdot1;
+    *residual = v_cmd - (J_task * qdot1 + rail_actual_contrib);
+    *slack = residual->norm();
+    last_C_ = C;
+    last_lo_ = lo;
+    last_hi_ = hi;
+    last_lock_v_ = last_lock_J_ * qdot1;
+    last_qdot_qp_ = qdot1;
+    return true;
   }
 
   Vec8 w_reg = cfg_.reg;
@@ -1128,6 +1263,7 @@ bool InnerLoop::solve_hqp(const Mat6x8& J, const Vec6& v_cmd, const Vec8& q_geom
     x2_seed[col] = std::max(x2_seed[col], need);
   }
   const auto t_qp2_0 = std::chrono::steady_clock::now();
+  apply_time_iters(*qp2_, 0.3);
   solve_dense_qp(*qp2_, &qp2_inited_, qp2_last_ok_, H2, g2, A2, b2, C, lo, hi, &x2_seed);
   const auto t_qp2_1 = std::chrono::steady_clock::now();
   qp2_ms_ = std::chrono::duration<double, std::milli>(t_qp2_1 - t_qp2_0).count();
@@ -1179,6 +1315,7 @@ bool InnerLoop::solve_hqp(const Mat6x8& J, const Vec6& v_cmd, const Vec8& q_geom
 
 TickOut InnerLoop::step(const TickIn& in) {
   const auto t0 = std::chrono::steady_clock::now();
+  step_t0_ = t0;
   TickOut out;
   handle_pending_flags(in.flags);
   Vec6 twist = in.v_cmd;

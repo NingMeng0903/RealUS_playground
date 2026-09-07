@@ -130,6 +130,9 @@ class QpConfig:
     # Clamp applied in ProxQP backend so a yaml typo (e.g. 3000) cannot freeze
     # the 200 Hz loop for seconds near singularities / CBF.
     max_iter_cap: int = 400
+    # Native InnerLoop wall-clock budget (ms).  0 disables.  After QP1, QP2
+    # is skipped when the remaining budget is under 1 ms.
+    max_solve_ms: float = 5.0
     euler_order: str = "xyz"
     collision: CollisionConfig = field(default_factory=CollisionConfig)
     # Chiaverini 1997 SR damping for nullspace projection.
@@ -467,7 +470,10 @@ class QpIkController:
         self._max_cbf = max(1, int(self.collision_cfg.max_pairs))
         self.collision = collision
         if self.collision_cfg.enabled and self.collision is None:
-            self.collision = CollisionModel(kin.model)
+            self.collision = CollisionModel(
+                kin.model,
+                collision_urdf=self.collision_cfg.collision_urdf,
+            )
         self._cbf_slots = CbfSlotTracker(max_pairs=self._max_cbf)
         self.sigma_setbased = SigmaSetBasedTracker(self.cfg.sigma_setbased)
         self.branch_barrier = BranchBarrierBuilder(self.cfg.branch_barrier)

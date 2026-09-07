@@ -287,6 +287,9 @@ def _parse_qp(inner: dict, collision: CollisionConfig, euler_order: str) -> QpCo
         eps_abs=_finite_float(c.get("eps_abs", 1.0e-6), name="inner.qp.eps_abs"),
         max_iter=int(c.get("max_iter", 400)),
         max_iter_cap=int(c.get("max_iter_cap", 400)),
+        max_solve_ms=_finite_float(
+            c.get("max_solve_ms", 5.0), name="inner.qp.max_solve_ms"
+        ),
         euler_order=euler_order,
         collision=collision,
         sr_damping=SrDampingConfig(

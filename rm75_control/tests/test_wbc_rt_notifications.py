@@ -86,8 +86,18 @@ def test_timeout_never_returns_unacknowledged_data_and_requires_reset(client):
     client._out["qdot"] = 888.0
     client._out["solve_ms"] = 777.0
     cpu_start = time.thread_time()
-    step = client.update(np.ones(6), q_meas=client.ctrl.q_cmd, auto_commit=False)
+    first = client.update(np.ones(6), q_meas=client.ctrl.q_cmd, auto_commit=False)
     assert time.thread_time() - cpu_start < 0.005  # The waiter yields its CPU.
+    assert not first.solver_fault_latched
+    assert first.fallback_reason == "native_timeout_coast"
+    np.testing.assert_array_equal(first.q_send, client.ctrl.q_cmd)
+    np.testing.assert_array_equal(first.qdot, np.zeros(8))
+    first_seq = int(client._seq)
+    second = client.update(np.ones(6), q_meas=client.ctrl.q_cmd, auto_commit=False)
+    assert int(client._seq) == first_seq  # Do not pile another STEP on the slot.
+    assert not second.solver_fault_latched
+    assert second.fallback_reason == "native_timeout_coast"
+    step = client.update(np.ones(6), q_meas=client.ctrl.q_cmd, auto_commit=False)
     assert step.solver_fault_latched and step.fallback_reason == "native_timeout"
     assert np.isnan(step.qp_solver_solve_ms)
     np.testing.assert_array_equal(step.q_send, client.ctrl.q_cmd)

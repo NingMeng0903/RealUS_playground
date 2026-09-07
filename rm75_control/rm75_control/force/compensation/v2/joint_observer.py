@@ -44,6 +44,7 @@ class JointKF:
 class ArmJointObserver:
     n_arm: int = 7
     filters: list[JointKF] = field(default_factory=list)
+    rail_kf: JointKF = field(default_factory=JointKF)
     rail_locked: bool = True
     last_t: float | None = None
 
@@ -76,15 +77,18 @@ class ArmJointObserver:
             kf.update(float(q_arm[i]), vmeas)
             q[i], qd[i], qdd[i] = kf.x
             var[i] = float(kf.P[2, 2])
-        q8 = np.concatenate([[float(rail_q)], q])
+        self.rail_kf.predict(dt)
+        self.rail_kf.update(float(rail_q), None)
+        rail_q_f, rail_qd, rail_qdd = self.rail_kf.x
+        q8 = np.concatenate([[float(rail_q_f if np.isfinite(rail_q_f) else rail_q)], q])
         if self.rail_locked:
             qd8 = np.concatenate([[0.0], qd])
             qdd8 = np.concatenate([[0.0], qdd])
             var8 = np.concatenate([[0.0], var])
         else:
-            qd8 = np.concatenate([[np.nan], qd])
-            qdd8 = np.concatenate([[np.nan], qdd])
-            var8 = np.concatenate([[np.inf], var])
+            qd8 = np.concatenate([[float(rail_qd)], qd])
+            qdd8 = np.concatenate([[float(rail_qdd)], qdd])
+            var8 = np.concatenate([[float(self.rail_kf.P[2, 2])], var])
         return q8, qd8, qdd8, var8
 
 

@@ -369,6 +369,7 @@ def test_payload_id_campaign_extra_keeps_nullspace_off_on_8dof() -> None:
     assert ctx.inner._rail_ext_active is False
     assert ctx.inner._arm_task_suppressed is True
     assert ctx.inner._manipulability_active is False
+    assert ctx.inner.is_locked_hold
 
 
 def test_session_8dof_rebases_coupled_reference_at_live_q() -> None:
@@ -442,14 +443,14 @@ def test_servo_policy_does_not_change_session_structure() -> None:
     from rm75_control.control.joint_admittance_8dof.api import set_controller_dof
 
     ctx.dof = set_controller_dof(ctx.inner, 7)
-    n_lock = {"n": 0}
-    real_lock = ctx.inner.set_locked
+    n_coupled = {"n": 0}
+    real_coupled = ctx.inner.set_coupled
 
-    def _count_lock(*args, **kwargs):
-        n_lock["n"] += 1
-        return real_lock(*args, **kwargs)
+    def _count_coupled(*args, **kwargs):
+        n_coupled["n"] += 1
+        return real_coupled(*args, **kwargs)
 
-    ctx.inner.set_locked = _count_lock
+    ctx.inner.set_coupled = _count_coupled
     before = bool(ctx.inner.is_locked_hold)
     phase = compile_request(
         ctx,
@@ -459,11 +460,12 @@ def test_servo_policy_does_not_change_session_structure() -> None:
         ),
         raw=raw,
     )
-    assert n_lock["n"] == 0
+    assert n_coupled["n"] == 0
     assert bool(ctx.inner.is_locked_hold) == before
     phase.on_enter()
-    assert n_lock["n"] == 0
+    assert n_coupled["n"] == 0
     assert ctx.inner.is_locked_hold
+    assert int(ctx.dof) == 7
 
 
 def test_cartesian_ptp_payload_id_keeps_rail_locked() -> None:

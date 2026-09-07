@@ -39,6 +39,7 @@ class LegacyForceLaw:
         sensor_age_s: float | None = None,
         feedback_age_s: float | None = None,
         v_tcp_z_actual: float | None = None,
+        **_kwargs,
     ) -> ForceOutput:
         pose_d = np.asarray(pose, dtype=float).reshape(6).copy()
         dt_use = float(dt_actual) if dt_actual is not None else float(dt_s)

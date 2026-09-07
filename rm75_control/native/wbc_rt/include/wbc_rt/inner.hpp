@@ -1,5 +1,6 @@
 #pragma once
 
+#include <chrono>
 #include <limits>
 #include <memory>
 #include <string>
@@ -158,11 +159,18 @@ class Collision {
   int build_rows(pinocchio::Data& data, MatX* jac, VecX* lower, std::vector<int>* slots);
 
  private:
+  struct LocalSphere {
+    Eigen::Vector3d c = Eigen::Vector3d::Zero();
+    double r = std::numeric_limits<double>::infinity();
+  };
+
   pinocchio::Model* model_ = nullptr;
   pinocchio::GeometryModel geom_model_;
   pinocchio::GeometryData geom_data_;
   Config cfg_;
   std::vector<int> slots_;
+  std::vector<LocalSphere> local_spheres_;
+  std::vector<int> queried_;
 };
 
 class InnerLoop {
@@ -237,6 +245,7 @@ class InnerLoop {
   void fill_mixer_out(TickOut* out) const;
 
   Config cfg_;
+  std::chrono::steady_clock::time_point step_t0_{};
   Kinematics kin_;
   PostureRetarget posture_;
   std::unique_ptr<Collision> collision_;

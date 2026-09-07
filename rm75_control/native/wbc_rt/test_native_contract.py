@@ -214,7 +214,7 @@ def _run_pure_z(ctrl, *, mode_name: str, ticks: int = 100):
         )
         assert not step.task_paused, step.task_pause_reason
         assert step.qp1_status in ("solved", "max_iter"), step.qp1_status
-        assert step.qp2_status in ("solved", "max_iter", "failed"), step.qp2_status
+        assert step.qp2_status in ("solved", "max_iter", "failed", "not_run"), step.qp2_status
         assert np.isfinite(step.task_progress)
         assert abs(float(step.u_alloc)) < 1.0e-9
         np.testing.assert_allclose(step.v_tcp_estimated, step.v_cmd_feasible, atol=1.0e-5)

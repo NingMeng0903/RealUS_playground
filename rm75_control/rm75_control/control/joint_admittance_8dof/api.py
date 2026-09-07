@@ -125,12 +125,16 @@ class SecondaryPolicy:
             inner.set_manipulability_active(False)
             inner.set_rail_extension_active(False)
         elif self.preset == "payload_id":
-            # Zero soft nullspace: lock rail, keep collision/limits/TCP task.
+            # Hard-lock the rail in the current session DOF. Soft nullspace
+            # off is not enough: QPIK still allocated the rail for TCP.
             inner.set_plan_drives_rail(False)
             inner.set_rail_extension_active(False)
             inner.set_centering_suppressed(True)
             inner.set_arm_task_suppressed(True)
             inner.set_manipulability_active(False)
+            q_ref = float(np.asarray(inner.q_cmd, dtype=float).reshape(-1)[0])
+            if not bool(getattr(inner, "is_locked_hold", False)):
+                inner.set_locked(LockedStyle.HOLD, q_ref_m=q_ref)
         else:
             raise ValueError(f"unknown SecondaryPolicy preset {self.preset!r}")
 
