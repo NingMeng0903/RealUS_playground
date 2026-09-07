@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from collections import deque
 from dataclasses import dataclass, field
+import queue
 import sys
+import threading
 
 
 _RESET = "\033[0m"
@@ -33,6 +35,8 @@ class PanelState:
     q: list[float] = field(default_factory=lambda: [0.0] * 8)
     pose: list[float] = field(default_factory=lambda: [0.0] * 6)
     f_ext_z: float = float("nan")
+    tau_y: float = float("nan")
+    omega_y: float = float("nan")
     track_err_mm: float = float("nan")
     slack: float = float("nan")
     rail_m: float = float("nan")
@@ -48,6 +52,26 @@ class Panel:
         self.state = PanelState()
         self._events: deque[str] = deque(maxlen=max(int(event_rows), 1))
         self.last_frame = ""
+        self._out_q: queue.Queue[str | None] = queue.Queue(maxsize=64)
+        self._worker: threading.Thread | None = None
+        if self.enabled:
+            self._worker = threading.Thread(
+                target=self._emit,
+                name="peirastic-panel",
+                daemon=True,
+            )
+            self._worker.start()
+
+    def _emit(self) -> None:
+        while True:
+            line = self._out_q.get()
+            if line is None:
+                break
+            try:
+                sys.stdout.write(line + "\n")
+                sys.stdout.flush()
+            except Exception:
+                pass
 
     def event(self, tag: str, msg: str) -> None:
         tag_u = str(tag).upper().strip("[]")
@@ -55,9 +79,12 @@ class Panel:
         line = f"{color}{_BOLD}[{tag_u}]{_RESET} {msg}"
         self._events.append(line)
         self.last_frame = line
-        if self.enabled:
-            sys.stdout.write(line + "\n")
-            sys.stdout.flush()
+        if not self.enabled:
+            return
+        try:
+            self._out_q.put_nowait(line)
+        except queue.Full:
+            pass
 
     def update(self, **kwargs) -> None:
         for key, value in kwargs.items():

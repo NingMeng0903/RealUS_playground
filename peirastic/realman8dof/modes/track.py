@@ -22,6 +22,12 @@ from peirastic.realman8dof.force.config import build_force_controller
 from peirastic.realman8dof.force.fce import FceAdmittanceLaw, use_fce_law
 from peirastic.realman8dof.force.legacy import LegacyForceLaw
 from peirastic.realman8dof.force.tff import SELECTION_TOOL_Z_FORCE, compose_tff
+from peirastic.realman8dof.force.torque_tilt import (
+    LegacyForceWithTilt,
+    TorqueTilt,
+    TorqueTiltConfig,
+    apply_tilt_selection,
+)
 from peirastic.realman8dof.modes.servo import ServoTwistOuter, slew_kwargs
 
 
@@ -54,6 +60,8 @@ class HybridTffOuter:
         self.last_pose_d: np.ndarray | None = None
         self.last_path_twist = np.zeros(6, dtype=float)
         self.last_feedback_twist = np.zeros(6, dtype=float)
+        self.last_tau_y = float("nan")
+        self.last_omega_y = float("nan")
         self.controller = getattr(force_law, "controller", None)
         cfg = getattr(self.position, "cfg", None)
         if cfg is not None and hasattr(cfg, "track_axes"):
@@ -116,6 +124,9 @@ class HybridTffOuter:
             v_tcp_z_actual=v_actual,
         )
         v_star = compose_tff(v_pos, fout.v_force, self.selection)
+        tel = dict(getattr(fout, "telemetry", None) or {})
+        self.last_tau_y = float(tel.get("tau_y", float("nan")))
+        self.last_omega_y = float(tel.get("omega_y", float("nan")))
         pose_d = getattr(self.position, "last_pose_d", None)
         if pose_d is not None:
             euler = self._euler_order()
@@ -183,8 +194,8 @@ def _desired_force(payload: dict | None, desired_z: float) -> np.ndarray:
 
 
 def _hybrid_controller(dt: float, payload: dict | None = None):
-    controller, _raw, desired_z = build_force_controller(dt, payload=payload)
-    return controller, _desired_force(payload, desired_z)
+    controller, raw, desired_z = build_force_controller(dt, payload=payload)
+    return controller, _desired_force(payload, desired_z), raw
 
 
 def _hybrid_force_law(dt: float, payload: dict | None = None):
@@ -192,9 +203,14 @@ def _hybrid_force_law(dt: float, payload: dict | None = None):
         from peirastic.realman8dof.force.config import desired_z_n
 
         law = FceAdmittanceLaw.from_payload(dt, payload)
-        return law, _desired_force(payload, desired_z_n(payload=payload))
-    controller, f_des = _hybrid_controller(dt, payload)
-    return LegacyForceLaw(controller), f_des
+        f_des = _desired_force(payload, desired_z_n(payload=payload))
+        return law, f_des, TorqueTiltConfig(enabled=False)
+    controller, f_des, raw = _hybrid_controller(dt, payload)
+    law = LegacyForceLaw(controller)
+    tilt_cfg = TorqueTiltConfig.from_dict(raw)
+    if tilt_cfg.enabled:
+        law = LegacyForceWithTilt(law, TorqueTilt(tilt_cfg))
+    return law, f_des, tilt_cfg
 
 
 def selection_from_payload(payload: dict | None) -> np.ndarray | None:
@@ -229,14 +245,14 @@ def build_pad_hybrid_phase(
 ) -> Phase:
     if twist_read is None:
         raise ValueError("pad hybrid needs a live twist source")
-    force_law, f_des = _hybrid_force_law(dt, payload)
-    selection = selection_from_payload(payload)
+    force_law, f_des, tilt_cfg = _hybrid_force_law(dt, payload)
+    selection = apply_tilt_selection(selection_from_payload(payload), tilt_cfg)
     pos = ServoTwistOuter(
         twist_read,
         control_frame=ctx.control_frame,
         euler_order=ctx.euler_order,
         filter_default=True,
-        filter_mask=SELECTION_TOOL_Z_FORCE if selection is None else selection,
+        filter_mask=selection,
         **slew_kwargs(payload),
     )
     outer = HybridTffOuter(
@@ -263,7 +279,7 @@ def build_track_hybrid_phase(
     payload: dict | None = None,
 ) -> Phase:
     if not use_tff_split:
-        controller, f_des = _hybrid_controller(dt, payload)
+        controller, f_des, _raw = _hybrid_controller(dt, payload)
         spec = phase_hybrid_track(
             reference,
             controller,
@@ -272,7 +288,7 @@ def build_track_hybrid_phase(
             duration_s=duration_s,
         )
         return compile_phase(spec, ctx).phase
-    force_law, f_des = _hybrid_force_law(dt, payload)
+    force_law, f_des, tilt_cfg = _hybrid_force_law(dt, payload)
     cart = compile_phase(
         phase_cartesian_track(reference, label=label, duration_s=duration_s),
         ctx,
@@ -281,7 +297,7 @@ def build_track_hybrid_phase(
         cart.outer,
         force_law,
         desired_force=f_des,
-        selection=selection_from_payload(payload),
+        selection=apply_tilt_selection(selection_from_payload(payload), tilt_cfg),
         dt=dt,
         mask_force_from_path=_mask_force_from_path(payload, True),
     )

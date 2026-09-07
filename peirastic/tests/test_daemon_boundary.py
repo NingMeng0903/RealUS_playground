@@ -239,3 +239,12 @@ def test_prepublication_stop_uses_coordinated_brake_without_estop() -> None:
 
     daemon.ControllerService._coordinated_brake(_Rail(), robot=_Robot())
     assert events == ["rail_hold", "arm_slow_stop"]
+
+
+def test_panel_event_does_not_flush_on_caller() -> None:
+    from peirastic.core.panel import Panel
+
+    panel = Panel(enabled=True)
+    panel.event("STATE", "csv /tmp/example.csv")
+    assert "[STATE]" in panel.last_frame
+    panel._out_q.put_nowait(None)

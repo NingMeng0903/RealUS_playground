@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import csv
+import queue
 
 import numpy as np
 
@@ -287,3 +288,35 @@ def test_tick_logger_appends_on_restart(tmp_path):
     assert rows[1][0] != "t_wall_s"
     assert rows[2][0] != "t_wall_s"
     assert len(rows[0]) == len(rows[1]) == len(rows[2])
+
+
+def test_tick_logger_drops_when_queue_is_full(tmp_path):
+    path = tmp_path / "full.csv"
+    logger = _TickLogger(str(path))
+    logger._stop.set()
+    logger._worker.join(timeout=2.0)
+    while True:
+        try:
+            logger._q.put_nowait(None)
+        except queue.Full:
+            break
+    step = JointIkStep(
+        q_send=np.zeros(8),
+        qdot=np.zeros(8),
+        twist_base=np.zeros(6),
+        sigma_min=0.2,
+        manip=0.1,
+        slack_norm=0.0,
+        n_cbf_active=0,
+        follow_err_rad=0.0,
+    )
+    controller = AdmittanceController(0.005, AdmittanceConfig())
+
+    class Outer:
+        pass
+
+    outer = Outer()
+    outer.controller = controller
+    logger.write(0.0, "scan", 0.0, step, np.zeros(8), np.zeros(6), np.zeros(6), outer=outer)
+    assert logger.dropped >= 1
+    logger.close()

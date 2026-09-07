@@ -48,6 +48,31 @@ def test_native_seq_wait_stays_20ms() -> None:
     assert default == pytest.approx(0.020)
 
 
+def test_wait_seq_spin_and_final_look() -> None:
+    import time
+
+    from rm75_control.control.joint_admittance_8dof.wbc_rt.client import NativeWbcClient
+
+    class _Box:
+        def __init__(self) -> None:
+            self._out = {"seq": np.array([7], dtype=np.uint64)}
+            self._proc = None
+            self.timeout_s = 0.020
+            self._last_wait_s = float("nan")
+
+    box = _Box()
+    assert NativeWbcClient._wait_seq(box, 7) is True
+    assert box._last_wait_s < 0.005
+    box.timeout_s = 0.0
+    box._out["seq"][0] = 9
+    assert NativeWbcClient._wait_seq(box, 9) is True
+    box.timeout_s = 0.004
+    box._out["seq"][0] = 1
+    t0 = time.monotonic()
+    assert NativeWbcClient._wait_seq(box, 99) is False
+    assert time.monotonic() - t0 < 0.020
+
+
 def test_yaml_default_backend_is_native() -> None:
     raw = yaml.safe_load(_CFG.read_text())
     cfg = build_joint_ik_config(raw)

@@ -184,15 +184,29 @@ class NativeWbcClient:
 
     def _wait_seq(self, seq: int, *, timeout_s: float | None = None) -> bool:
         t0 = time.monotonic()
-        limit = t0 + float(self.timeout_s if timeout_s is None else timeout_s)
+        budget = float(self.timeout_s if timeout_s is None else timeout_s)
+        limit = t0 + budget
+        target = int(seq)
+        spins = 0
+        # 20 ms RT waits cannot use time.sleep: CFS timer slack turns
+        # 200 µs into 20–30 ms (run_20260907_125413 wait=29.6, solve=3.1).
+        spin = budget <= 0.050
         while time.monotonic() < limit:
-            if int(self._out["seq"][0]) == int(seq):
+            if int(self._out["seq"][0]) == target:
                 self._last_wait_s = time.monotonic() - t0
                 return True
             if self._proc is not None and self._proc.poll() is not None:
                 self._last_wait_s = time.monotonic() - t0
                 return False
-            time.sleep(0.0002)
+            if spin:
+                spins += 1
+                if spins & 63 == 0:
+                    os.sched_yield()
+            else:
+                time.sleep(0.0002)
+        if int(self._out["seq"][0]) == target:
+            self._last_wait_s = time.monotonic() - t0
+            return True
         self._last_wait_s = time.monotonic() - t0
         return False
 

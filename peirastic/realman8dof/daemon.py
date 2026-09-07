@@ -854,6 +854,14 @@ class ControllerService:
             self.hub.clear_stop()
             if commanded:
                 self.panel.event("MODE", MODE_LABEL[self.mode])
+            force_law = getattr(compiled.outer, "force_law", None)
+            tilt = getattr(force_law, "tilt", None)
+            if tilt is not None:
+                self.panel.event(
+                    "STATE",
+                    f"torque_tilt ωy  τ={float(getattr(tilt.cfg, 'coulomb_nm', 0.0)):.3f}Nm "
+                    f"D={float(getattr(tilt.cfg, 'damping', 0.0)):.2f}",
+                )
             self.hub.publish(status=Status.RUNNING, mode=self.mode, msg=phase.label)
 
             def _arm_install_ack(target: Phase, mode: Mode, seq: int | None) -> None:
@@ -1108,6 +1116,8 @@ class ControllerService:
                 err = float(getattr(phase.outer, "last_err_mm", float("nan")))
                 slack = float(getattr(step, "slack_norm", float("nan")))
                 fz = float(f_ext[2]) if f_ext is not None and len(f_ext) > 2 else float("nan")
+                tau_y = float(getattr(phase.outer, "last_tau_y", float("nan")))
+                omega_y = float(getattr(phase.outer, "last_omega_y", float("nan")))
                 self.hub.publish(
                     status=Status.RUNNING,
                     mode=self.mode,
@@ -1135,6 +1145,8 @@ class ControllerService:
                     q=list(q.reshape(-1)[:8]),
                     pose=list(np.asarray(pose, dtype=float).reshape(-1)[:6]),
                     f_ext_z=fz,
+                    tau_y=tau_y,
+                    omega_y=omega_y,
                     track_err_mm=err,
                     slack=slack,
                     rail_m=float(q[0]) if q.size else float("nan"),

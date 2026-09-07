@@ -3589,8 +3589,43 @@ class _ArrivalDwellGate:
         ))
 
 
+class _AsyncPrint:
+    """Stdout from a sidecar thread so RT ticks never block on flush."""
+
+    def __init__(self) -> None:
+        self._q: queue.Queue[str | None] = queue.Queue(maxsize=32)
+        self._worker = threading.Thread(
+            target=self._run, name="admittance-print", daemon=True
+        )
+        self._worker.start()
+
+    def write(self, msg: str) -> None:
+        try:
+            self._q.put_nowait(str(msg))
+        except queue.Full:
+            pass
+
+    def _run(self) -> None:
+        while True:
+            msg = self._q.get()
+            if msg is None:
+                break
+            print(msg, flush=True)
+
+
+_ASYNC_PRINT = _AsyncPrint()
+
+
+def _rt_print(msg: str) -> None:
+    _ASYNC_PRINT.write(msg)
+
+
 class _TickLogger:
     """Async per-tick CSV telemetry (background writer; no sync flush in the RT loop)."""
+
+    _QUEUE_MAX = 400
+    _FLUSH_S = 5.0
+    _FILE_BUFFER = 1 << 20
 
     @staticmethod
     def _json_compact(value) -> str:
@@ -3887,11 +3922,12 @@ class _TickLogger:
     )
 
     def __init__(self, path: str, *, verbose_json: bool = False) -> None:
-        self._q: queue.SimpleQueue = queue.SimpleQueue()
+        self._q: queue.Queue = queue.Queue(maxsize=int(self._QUEUE_MAX))
         self._stop = threading.Event()
         self._verbose_json = bool(verbose_json)
         self._prev_arm_send_ns = 0
         self._prev_q_send_arm: np.ndarray | None = None
+        self.dropped = 0
         self._worker = threading.Thread(
             target=self._run,
             args=(path,),
@@ -3906,26 +3942,28 @@ class _TickLogger:
             write_header = not (os.path.exists(path) and os.path.getsize(path) > 0)
         except OSError:
             write_header = True
-        with open(path, "a", newline="") as f:
+        with open(path, "a", newline="", buffering=int(self._FILE_BUFFER)) as f:
             w = csv.writer(f)
             if write_header:
                 w.writerow(self._HEADER)
-            n = 0
+            last_flush = time.monotonic()
             while True:
-                if self._stop.is_set() and self._q.empty():
-                    break
                 try:
                     row = self._q.get(timeout=0.05)
                 except queue.Empty:
+                    if self._stop.is_set():
+                        break
                     continue
                 if row is None:
                     break
                 if callable(row):
                     row = row()
                 w.writerow(row)
-                n += 1
-                if n % 200 == 0:
+                now = time.monotonic()
+                if now - last_flush >= float(self._FLUSH_S):
                     f.flush()
+                    last_flush = now
+            f.flush()
 
     @staticmethod
     def _fmt_pad_fields(outer) -> list[str]:
@@ -4354,7 +4392,8 @@ class _TickLogger:
             self._prev_q_send_arm = q_send_arr[1:8].copy()
         # Format on the writer thread: f-strings of ~300 columns were ~0.4 ms
         # on the control thread even after the disk write was already queued.
-        self._q.put(lambda: self._checked_row(
+        try:
+            self._q.put_nowait(lambda: self._checked_row(
             [
                 f"{t_wall:.4f}",
                 label,
@@ -5002,15 +5041,20 @@ class _TickLogger:
                *np.asarray(step.execution_predicted_twist, dtype=float).reshape(6).tolist(),
                ]
         ))
+        except queue.Full:
+            self.dropped += 1
 
     def _checked_row(self, row: list) -> list:
         assert len(row) == len(self._HEADER), (len(row), len(self._HEADER))
         return row
 
     def close(self) -> None:
-        self._q.put(None)
         self._stop.set()
-        self._worker.join(timeout=1.0)
+        try:
+            self._q.put_nowait(None)
+        except queue.Full:
+            pass
+        self._worker.join(timeout=8.0)
 
 
 def _record_execution_observation(inner, step, rail_bridge, q_meas) -> None:
@@ -6233,12 +6277,11 @@ def run_joint_admittance_phases(
                                     "connected armed="
                                     f"{int(bool(getattr(rail_bridge, 'armed', False)))}"
                                 )
-                            print(
+                            _rt_print(
                                 f"[WARN] native_timeout wait={wait_s * 1000.0:.1f}ms "
                                 f"limit={limit_s * 1000.0:.1f}ms "
                                 f"solve_ms={float(step.qp_solver_solve_ms):.2f} "
-                                f"rail={rail_s}",
-                                flush=True,
+                                f"rail={rail_s}"
                             )
                         if not sendable:
                             phase_stopped = True
@@ -6283,9 +6326,8 @@ def run_joint_admittance_phases(
                         )
                         if verbose and step.tcp_jump_mm > 8.0 and now - jump_warn_t >= 1.0:
                             jump_warn_t = now
-                            print(
-                                f"  warn: TCP jump {step.tcp_jump_mm:.1f}mm/tick",
-                                flush=True,
+                            _rt_print(
+                                f"  warn: TCP jump {step.tcp_jump_mm:.1f}mm/tick"
                             )
                         prev_pose_cmd = pose_cmd
                         publication_reason = ""
@@ -6471,10 +6513,9 @@ def run_joint_admittance_phases(
                         if verbose and now - jump_warn_t >= 1.0 and np.any(dq_deg > 1.5):
                             jump_warn_t = now
                             j = int(np.argmax(dq_deg)) + 1
-                            print(
+                            _rt_print(
                                 f"  warn: joint jump J{j} {dq_deg.max():.2f}deg/tick "
-                                f"(>{1.5:.1f} @ {dt*1000:.0f}ms)",
-                                flush=True,
+                                f"(>{1.5:.1f} @ {dt*1000:.0f}ms)"
                             )
     
                         if logger is not None:
