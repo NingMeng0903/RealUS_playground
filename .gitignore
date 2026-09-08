@@ -42,6 +42,9 @@ rm75_control/data/force_compensation/logs/*
 rm75_control/data/velocity_admittance/logs/
 rm75_control/apps/logs/
 peirastic/**/logs/
+!peirastic/logs/
+!peirastic/logs/phantom/
+!peirastic/logs/phantom/**
 
 # Controller / plant run CSVs (local only; GitHub rejects >100 MB)
 MD/todo_controller_logs/**/*.csv

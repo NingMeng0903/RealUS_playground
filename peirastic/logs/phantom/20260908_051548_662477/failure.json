@@ -1,0 +1,12 @@
+{
+  "stage": "surface_planning",
+  "error": "point-cloud support unavailable for uv=(-0.0573,+0.0026) m: sampling gap is too large for interpolation (triangle span=0.0119 m, typical spacing=0.0039 m, limit=0.0117 m)",
+  "frame": "controller_rail_base",
+  "replay_input": "/media/camp/EXT_DRIVE/RealUS_playground/peirastic/logs/phantom/20260908_051548_662477/capture.npz",
+  "top_points": 2256,
+  "reference_normal": [
+    0.03951746068074428,
+    -0.03781600779067898,
+    0.9985030394816636
+  ]
+}

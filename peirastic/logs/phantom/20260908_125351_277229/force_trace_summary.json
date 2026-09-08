@@ -1,0 +1,40 @@
+{
+  "active_samples": 3123,
+  "actual_sample_hz": 100.00054378900816,
+  "complete_wrench_samples": 3123,
+  "configured_sample_hz": 100.0,
+  "duplicate_force_samples": 0,
+  "duration_s": 31.21983022999484,
+  "empty": false,
+  "errors": [],
+  "fallback_fz_samples": 0,
+  "force_read_error": "",
+  "force_read_error_count": 0,
+  "force_seq_gap_count": 3079,
+  "force_source_counts": {
+    "force_bus_tool_compensated": 3123
+  },
+  "invalid_samples": 0,
+  "label": "phathom_s_scan",
+  "outcome": "completed",
+  "paths": {
+    "csv": "/media/camp/EXT_DRIVE/RealUS_playground/peirastic/logs/phantom/20260908_125351_277229/force_trace.csv",
+    "png": "/media/camp/EXT_DRIVE/RealUS_playground/peirastic/logs/phantom/20260908_125351_277229/force_trace.png",
+    "summary": "/media/camp/EXT_DRIVE/RealUS_playground/peirastic/logs/phantom/20260908_125351_277229/force_trace_summary.json"
+  },
+  "stage_counts": {
+    "approach": 367,
+    "tracking": 2756
+  },
+  "stale_samples": 0,
+  "units_frame": {
+    "desired_force": "N",
+    "force": "N",
+    "force_time": "UNIX seconds",
+    "moment": "N m",
+    "status_time": "monotonic seconds",
+    "vz_cmd": "mm/s",
+    "wrench_frame": "tool compensated"
+  },
+  "valid_samples": 3123
+}
