@@ -1,0 +1,11 @@
+{
+  "samples": 101,
+  "worst": {
+    "progress": 1.0,
+    "distance_m": 0.023697049044354344,
+    "pair": [
+      "link_2_0",
+      "link_4_0"
+    ]
+  }
+}

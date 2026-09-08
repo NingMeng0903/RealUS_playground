@@ -240,7 +240,6 @@ class InnerLoop {
                  const Vec8& q_prev, const Vec8& qdot_nom, double rail_exec,
                  bool has_rail_exec, double rail_task_vel, double rail_w,
                  bool rail_locked, double dt, double h1, double h2,
-                 double preview_horizon,
                  bool rail_open, double rail_pin, bool has_pin, bool lead_exempt,
                  double sigma_arm, Vec8* qdot, Vec6* residual, double* slack);
   void track_rail_authority(double d_live, double d_star_target, double v_applied,
@@ -422,9 +421,6 @@ class InnerLoop {
 
   Mat6x8 last_lock_J_ = Mat6x8::Zero();
   Vec6 last_lock_v_ = Vec6::Zero();
-  MatX last_C_;
-  VecX last_lo_;
-  VecX last_hi_;
   Vec8 last_lo_box_ = Vec8::Constant(-1e20);
   Vec8 last_hi_box_ = Vec8::Constant(1e20);
   Vec8 last_qdot_qp_ = Vec8::Zero();

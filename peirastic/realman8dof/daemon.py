@@ -1131,10 +1131,17 @@ class ControllerService:
                             self._clear_compile_fault()
                         except Exception as exc:
                             self._note_compile_fault(parsed, exc, commanded=True)
+                contact_gate = getattr(phase.outer, "contact_gate", None)
+                task_elapsed = (
+                    float(contact_gate.elapsed_s)
+                    if contact_gate is not None
+                    else t_ref - self._mode_t0
+                )
                 if (
                     velocity_loop
                     and self._finite_duration is not None
-                    and (t_ref - self._mode_t0) >= float(self._finite_duration)
+                    and (contact_gate is None or contact_gate.started)
+                    and task_elapsed >= float(self._finite_duration)
                 ):
                     self.panel.event("OK", f"{phase.label} done")
                     try:
@@ -1189,6 +1196,17 @@ class ControllerService:
                 fz = float(f_ext[2]) if f_ext is not None and len(f_ext) > 2 else float("nan")
                 tau_y = float(getattr(phase.outer, "last_tau_y", float("nan")))
                 omega_y = float(getattr(phase.outer, "last_omega_y", float("nan")))
+                # Reuse the existing status message; no shared-memory layout
+                # change. Report the very controller which gates this path.
+                msg = phase.label
+                contact_gate = getattr(phase.outer, "contact_gate", None)
+                if contact_gate is not None:
+                    controller = phase.outer.controller
+                    stage = "tracking" if contact_gate.started else "approach"
+                    contact = int(bool(controller.contact_present))
+                    vz_cmd = float(getattr(controller, "v_force_cmd_z", float("nan")))
+                    msg = (f"{phase.label}:{stage} t={contact_gate.elapsed_s:.2f} "
+                           f"contact={contact} vz_cmd={vz_cmd * 1000:+.1f}")
                 self._publish_tick_status(
                     mode=self.mode,
                     ticks=self.ticks,
@@ -1197,7 +1215,7 @@ class ControllerService:
                     track_err_mm=err,
                     slack=slack,
                     f_ext_z=fz,
-                    msg=phase.label,
+                    msg=msg,
                 )
                 self.hub.motion.publish(
                     v_tcp_z=float(getattr(step, "v_tcp_z_actual", float("nan"))),
@@ -1353,6 +1371,10 @@ def run_service(
     if log_csv:
         print(f"[STATE] csv {log_csv}", flush=True)
     raw = load_yaml(config_path)
+    from rm75_control.control.admittance_common.cpu_resources import scheduling_note
+    timing = raw.get("timing", {})
+    print(f"[STATE] scheduling {scheduling_note(timing.get('control_cpu'), timing.get('native_cpu'))}",
+          flush=True)
     if dry_run:
         _, inner, _, _ = bind_controller(raw, backend="python")
         inner.close()

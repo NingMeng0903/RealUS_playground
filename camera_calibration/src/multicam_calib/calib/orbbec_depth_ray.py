@@ -79,7 +79,13 @@ def apply_depth_ray_scale(xyz: np.ndarray, coeff: np.ndarray | None) -> np.ndarr
     if c.size < 3:
         return pts
     pts3 = pts.reshape(-1, 3)
-    mult = (_features(pts3) @ c[:3]).astype(np.float32)
+    # Three scalar coefficients do not need a BLAS matrix-vector operation.
+    # This runs on every camera frame; a host-sized BLAS pool costs far more
+    # than the arithmetic and competes with the robot's control threads.
+    pts64 = pts3.astype(np.float64)
+    z = np.clip(pts64[:, 2], 1e-6, None)
+    mult = (c[0] + c[1] * (pts64[:, 0] / z)
+            + c[2] * (pts64[:, 1] / z)).astype(np.float32)
     return (pts3 * mult.reshape(-1, 1)).astype(np.float32, copy=False)
 
 

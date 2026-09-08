@@ -939,5 +939,8 @@ class WorldPolylineReference:
         pose[:3] = p
         pose[3:6] = rpy
         vel = np.zeros(6, dtype=float)
-        vel[:3] = tangent * (self.speed_m_s * float(tau_dot))
+        # Once the path is exhausted the endpoint is a hold. Continuing the
+        # last tangent fights position feedback (and overshoots short lifts).
+        if s_m < self._length:
+            vel[:3] = tangent * (self.speed_m_s * float(tau_dot))
         return MotionReference(pose_d=pose, vel_ff=vel, t_ref=float(t_s))

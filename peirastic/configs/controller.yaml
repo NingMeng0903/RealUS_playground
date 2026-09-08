@@ -21,10 +21,10 @@ timing:
   feedback_coast_ms: 300.0
   rt_disable_gc: true
   verbose_json: false
-  # Pin the Python tick away from wbc_rt. These apply even when SCHED_FIFO
-  # is unavailable; do not put CSV/matplotlib on the solver core.
+  # This host's CPU 2/3 are SMT siblings. Use distinct physical P-cores;
+  # observers exclude both cores and their siblings through cpu_resources.
   control_cpu: 2
-  native_cpu: 3
+  native_cpu: 4
   disable_cstates: true
 
 # UDP arm-state push (rm_set_realtime_push). Requires robot.thread_mode: 2.

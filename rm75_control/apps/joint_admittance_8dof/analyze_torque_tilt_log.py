@@ -158,6 +158,69 @@ def check_tcp_binding(d, path):
             "interpretation": "Checks FK/software binding consistency; does not establish physical TCP calibration accuracy."}
 
 
+def compare_deadbands(d):
+    """Replay recorded torque; this does not simulate changed contact forces."""
+    t, dt = d["t_wall_s"], d["dt_actual_s"]
+    drive, recorded = d["tilt_tau_error_y_nm"], d["tilt_omega_y_rad_s"]
+    eng = d["tilt_engaged"] == 1
+    indices = np.flatnonzero(np.isfinite(drive))
+    quiet = eng & (abs(recorded) < 1e-6) & (d["tilt_stop_reason"] == "torque_deadband")
+    edges = np.diff(np.r_[False, quiet, False].astype(int))
+    windows = [(i, j) for i, j in zip(np.flatnonzero(edges == 1), np.flatnonzero(edges == -1))
+               if t[j - 1] - t[i] >= .15]
+    result = {"mass": .065, "damping": .28, "vmax_rad_s": .22, "amax_rad_s2": 4.5,
+              "quiet_windows": len(windows), "quiet_total_s": float(sum(dt[i:j].sum() for i, j in windows)),
+              "major_reversal_definition": "Opposite speed exceeds 0.01 rad/s for at least 50 ms; pauses do not count as reversals.",
+              "interpretation": "Same measured torque and contact flags, with full velocity state carried through the trace. Changed pose/contact reaction is not simulated; this is not a closed-loop stability guarantee.",
+              "cases": []}
+    for fc in (.025, .0225, .020, .0175, .015):
+        w = np.full(len(t), np.nan)
+        previous = 0.
+        for i in indices:
+            target = 0.
+            if eng[i] and not (d["tilt_frozen"][i] or d["tilt_stalled"][i] or d["tilt_capped"][i]):
+                denominator = .065 / dt[i] + .28
+                free = (.065 / dt[i] * previous + drive[i]) / denominator
+                target = np.sign(free) * max(abs(free) - fc / denominator, 0.)
+                target = float(np.clip(target, -.22, .22))
+            previous += np.clip(target - previous, -4.5 * dt[i], 4.5 * dt[i])
+            w[i] = previous
+        last = candidate = reversals = 0
+        elapsed = 0.
+        for i in indices:
+            if not eng[i]:
+                last = candidate = 0
+                elapsed = 0.
+                continue
+            sign = 1 if w[i] > .01 else (-1 if w[i] < -.01 else 0)
+            if not sign:
+                candidate = 0
+                elapsed = 0.
+                continue
+            if sign != candidate:
+                candidate, elapsed = sign, 0.
+            elapsed += dt[i]
+            if elapsed >= .05 and last != sign:
+                reversals += int(last != 0)
+                last = sign
+        excursions = [float(np.max(abs(np.cumsum(w[i:j] * dt[i:j])))) for i, j in windows]
+        item = {"deadband_nm": fc, "contact_in_deadband_percent": float(100 * np.mean(abs(drive[eng]) <= fc)),
+                "moving_seconds_over_001_rad_s": float(dt[eng & (abs(w) > .01)].sum()),
+                "total_absolute_command_rotation_deg": float(np.rad2deg(np.sum(abs(w[eng]) * dt[eng]))),
+                "p99_speed_deg_s": float(np.rad2deg(np.percentile(abs(w[eng]), 99))),
+                "peak_speed_deg_s": float(np.rad2deg(np.max(abs(w[eng])))),
+                "speed_cap_seconds": float(dt[eng & (abs(w) >= .22 - 1e-9)].sum()),
+                "major_reversals": reversals,
+                "quiet_max_window_excursion_deg": float(np.rad2deg(max(excursions, default=0.))),
+                "quiet_total_absolute_rotation_deg": float(np.rad2deg(sum(np.sum(abs(w[i:j]) * dt[i:j]) for i, j in windows)))}
+        if fc == .025:
+            error = w[indices] - recorded[indices]
+            item["recorded_baseline_rms_error_rad_s"] = float(np.sqrt(np.mean(error ** 2)))
+            item["recorded_baseline_max_error_rad_s"] = float(np.max(abs(error)))
+        result["cases"].append(item)
+    return result
+
+
 def plot(d, prefix, baseline, report):
     import matplotlib
     matplotlib.use("Agg")
@@ -213,12 +276,15 @@ def main():
     parser.add_argument("--output-prefix", type=Path, required=True)
     parser.add_argument("--baseline", type=float, nargs=2, metavar=("START_S", "END_S"))
     parser.add_argument("--binding-json", type=Path)
+    parser.add_argument("--compare-deadbands", action="store_true")
     args = parser.parse_args()
     d = load_log(args.csv)
     report = analyze(d, args.baseline)
     report["csv"] = str(args.csv.resolve())
     if args.binding_json:
         report["tcp_binding_check"] = check_tcp_binding(d, args.binding_json)
+    if args.compare_deadbands:
+        report["deadband_replay"] = compare_deadbands(d)
     args.output_prefix.parent.mkdir(parents=True, exist_ok=True)
     Path(str(args.output_prefix) + ".json").write_text(json.dumps(report, indent=2, allow_nan=False) + "\n")
     plot(d, args.output_prefix, args.baseline, report)

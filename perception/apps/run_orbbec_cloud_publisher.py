@@ -17,12 +17,19 @@ import time
 from pathlib import Path
 from typing import Any
 
-import numpy as np
-
 _REPO = Path(os.environ.get("REALUS_PROJECT_ROOT") or Path(__file__).resolve().parents[2]).resolve()
 for _p in (_REPO / "rm75_control", _REPO / "camera_calibration" / "src"):
     if _p.is_dir() and str(_p) not in sys.path:
         sys.path.insert(0, str(_p))
+
+if __name__ == "__main__":
+    # This process is a standalone observer/publisher.  Apply numerical
+    # limits after path setup but before NumPy (and camera calibration) loads.
+    from rm75_control.control.admittance_common.observer_runtime import prepare_observer_process
+
+    prepare_observer_process()
+
+import numpy as np
 
 from rm75_control.control.joint_admittance_8dof.viewer.orbbec_cloud import (  # noqa: E402
     DEFAULT_CLOUD_STRIDE,

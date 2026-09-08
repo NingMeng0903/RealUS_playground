@@ -17,6 +17,7 @@ _SKIP_PAYLOAD = {
     "reference",
     "use_tff_split",
     "duration_s",
+    "wait_for_contact",
     "label",
     "v_cmd",
     "desired_z",

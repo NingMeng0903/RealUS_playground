@@ -6,6 +6,11 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+if __name__ == "__main__":
+    from rm75_control.control.admittance_common.observer_runtime import limit_numeric_threads
+    # Controller keeps its scheduling priority; only numerical pools are bounded.
+    limit_numeric_threads()
+
 from peirastic.configs import DEFAULT_CONTROLLER_YAML
 from peirastic.realman8dof.daemon import run_service
 

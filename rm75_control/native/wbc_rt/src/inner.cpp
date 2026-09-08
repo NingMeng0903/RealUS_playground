@@ -962,10 +962,9 @@ bool InnerLoop::solve_hqp(const Mat6x8& J, const Vec6& v_cmd, const Vec8& q_geom
                           const Vec8& q_prev, const Vec8& qdot_nom, double rail_exec,
                           bool has_rail_exec, double rail_task_vel, double rail_w,
                           bool rail_locked, double dt, double h1, double h2,
-                          double preview_horizon, bool rail_open,
+                          bool rail_open,
                           double rail_pin, bool has_pin, bool lead_exempt, double sigma_arm,
                           Vec8* qdot, Vec6* residual, double* slack) {
-  (void)preview_horizon;
   const auto t_asm0 = std::chrono::steady_clock::now();
   qp1_status_ = kQpNotRun;
   qp2_status_ = kQpNotRun;
@@ -1001,30 +1000,6 @@ bool InnerLoop::solve_hqp(const Mat6x8& J, const Vec6& v_cmd, const Vec8& q_geom
     collapse_interval(&lo_box, &hi_box, &qdot_prev_, &a_max_, h1);
     note_rail_bind(olo, ohi, lo_box, hi_box, kRailBindCollapse);
   }
-  if (has_rail_exec && rail_w > 0.0 && !rail_locked && !has_pin) {
-    auto [a_mir, j_mir] = arm_mirror_rail_limits(J, a_max_, j_max_, cfg_.rho_a, cfg_.rho_j);
-    const double a_ref = std::max(
-        0.0, std::min(cfg_.a_max_rail, std::isfinite(a_mir) ? a_mir : cfg_.a_max_rail));
-    const double j_ref = std::max(
-        0.0, std::min(kRailRefJerk, std::isfinite(j_mir) ? j_mir : kRailRefJerk));
-    const double h = std::max(dt, 1.0e-9);
-    const double a_prev = std::isfinite(rail_prev_committed_a_)
-                              ? rail_prev_committed_a_
-                              : 0.0;
-    double wall_lo = -v_max_[0];
-    double wall_hi = v_max_[0];
-    wall_cap(q_geom[0], cfg_.hard_min, cfg_.hard_max, a_ref, cfg_.rail_reaction_s, &wall_lo,
-             &wall_hi);
-    const double slow_lo = std::max({-v_max_[0], rail_prev_committed_ref_ - a_ref * h,
-                                     rail_prev_committed_ref_ + (a_prev - j_ref * h) * h,
-                                     wall_lo});
-    const double slow_hi = std::min({v_max_[0], rail_prev_committed_ref_ + a_ref * h,
-                                     rail_prev_committed_ref_ + (a_prev + j_ref * h) * h,
-                                     wall_hi});
-    // QP2 preference envelope only; do not intersect into the P0 box.
-    (void)slow_lo;
-    (void)slow_hi;
-  }
   if (std::isfinite(rail_task_vel)) {
     rail_task_vel = clip(rail_task_vel, lo_box[0], hi_box[0]);
   }
@@ -1034,8 +1009,7 @@ bool InnerLoop::solve_hqp(const Mat6x8& J, const Vec6& v_cmd, const Vec8& q_geom
   last_lo_box_ = lo_box;
   last_hi_box_ = hi_box;
 
-  int conflict_j = -1;
-  if (box_conflict(lo_box, hi_box, &conflict_j)) {
+  if (box_conflict(lo_box, hi_box, nullptr)) {
     qp1_status_ = kQpP0Conflict;
     *qdot = Vec8::Zero();
     *residual = b_task;
@@ -1139,9 +1113,6 @@ bool InnerLoop::solve_hqp(const Mat6x8& J, const Vec6& v_cmd, const Vec8& q_geom
     *qdot = Vec8::Zero();
     *residual = b_task;
     *slack = residual->norm();
-    last_C_ = C;
-    last_lo_ = lo;
-    last_hi_ = hi;
     last_lock_J_ = J_task;
     last_lock_v_.setZero();
     last_qdot_qp_.setZero();
@@ -1180,9 +1151,6 @@ bool InnerLoop::solve_hqp(const Mat6x8& J, const Vec6& v_cmd, const Vec8& q_geom
     *residual = v_cmd - (J_task * qdot1 + rail_actual_contrib);
     *slack = residual->norm();
     qp_total_ms_ = elapsed_ms(t_qp1_0);
-    last_C_ = C;
-    last_lo_ = lo;
-    last_hi_ = hi;
     last_lock_v_ = last_lock_J_ * qdot1;
     last_qdot_qp_ = qdot1;
     return true;
@@ -1326,9 +1294,6 @@ bool InnerLoop::solve_hqp(const Mat6x8& J, const Vec6& v_cmd, const Vec8& q_geom
   *qdot = qdot_out;
   *residual = v_cmd - (J_task * qdot_out + rail_actual_contrib);
   *slack = residual->norm();
-  last_C_ = C;
-  last_lo_ = lo;
-  last_hi_ = hi;
   last_lock_v_ = last_lock_J_ * qdot_out;
   last_qdot_qp_ = qdot_out;
   return true;
@@ -1476,10 +1441,6 @@ TickOut InnerLoop::step(const TickIn& in) {
 
   double h1 = dt_nom;
   double h2 = std::numeric_limits<double>::quiet_NaN();
-  const double preview_horizon =
-      (std::isfinite(in.rail_refresh_dt) && in.rail_refresh_dt > 0.0)
-          ? std::max(dt_nom, in.rail_refresh_dt)
-          : dt_nom;
   if (!box_t_init_) {
     box_t_init_ = true;
     box_last_t_ = now;
@@ -1939,7 +1900,7 @@ TickOut InnerLoop::step(const TickIn& in) {
   const auto t_fb0 = std::chrono::steady_clock::now();
   const bool ok = solve_hqp(J, twist_base, q_state, q_prev, sec_filt, rail_exec, has_rail_exec,
                             have_rail_vel ? rail_task_vel : 0.0, rail_task_w, locked_hold, dt, h1,
-                            h2, preview_horizon,
+                            h2,
                             rail_mode_ == kRailCoupled && has_travel && !locked_hold, rail_pin,
                             has_pin, lead_exempt, sigma_arm, &qdot, &residual, &slack);
   const Vec8 qdot_qp = qdot;

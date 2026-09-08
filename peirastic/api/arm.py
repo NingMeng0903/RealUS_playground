@@ -174,7 +174,7 @@ class _ClientMixin:
         if self.client is not None:
             ret, value = self._remote_dof()
             if ret != OK:
-                raise RuntimeError("controller DOF telemetry is unavailable or unsafe")
+                raise RuntimeError(self._dof_unsafe_message(ret))
             return value
         ctx = getattr(self, "ctx", None)
         if ctx is not None:
@@ -218,6 +218,42 @@ class _ClientMixin:
             return OK, current
         except (KeyError, TypeError, ValueError, OverflowError):
             return ERR_CONTROLLER, 0
+
+    def _dof_unsafe_message(self, ret: int) -> str:
+        """Name the control-SHM reason a MOVEJ/DOF gate failed."""
+
+        base = "controller DOF telemetry is unavailable or unsafe"
+        snap = self._snapshot()
+        if not snap:
+            return f"{base} (no control snapshot)"
+        try:
+            status = int(snap.get("status", -1))
+        except (TypeError, ValueError):
+            status = -1
+        try:
+            name = Status(status).name
+        except ValueError:
+            name = f"status={status}"
+        msg = str(snap.get("msg") or "").strip()
+        if bool(snap.get("estop")) or status in (
+            int(Status.ESTOP),
+            int(Status.STOPPED),
+        ):
+            detail = f"{name}: {msg}" if msg else name
+            return f"{base} ({detail})"
+        if ret == ERR_STOPPED:
+            return f"{base} ({name})"
+        if not valid_dof_snapshot(snap):
+            try:
+                age = time.monotonic() - float(snap.get("t_mono", float("nan")))
+            except (TypeError, ValueError):
+                age = float("nan")
+            if np.isfinite(age) and (age < -0.05 or age > 0.5):
+                return f"{base} (stale control snapshot age={age:.2f}s)"
+            return f"{base} (invalid DOF snapshot, {name})"
+        if msg:
+            return f"{base} ({name}: {msg})"
+        return f"{base} ({name})"
 
     def _q_target(self, q) -> list[float]:
         raw = np.asarray(q, dtype=float).reshape(-1)
@@ -991,7 +1027,14 @@ class _ForceMixin(_ClientMixin):
         label: str = "hfpc",
         soft_start: bool | None = None,
         ramp_s: float | None = None,
+        wait_for_contact: bool | None = None,
     ) -> int:
+        """Track a pose path with force axes.
+
+        With wait_for_contact, hold the path at its first point while the
+        existing force law approaches. Path time and duration start after
+        that controller confirms contact, without restarting the force law.
+        """
         bad = self._check_tail(r, connect)
         if bad is not None:
             return bad
@@ -1014,6 +1057,7 @@ class _ForceMixin(_ClientMixin):
             label=label,
             soft_start=soft_start,
             ramp_s=ramp_s,
+            wait_for_contact=wait_for_contact,
         ).to_json()
         return self._send(Mode.TRACK_HYBRID, payload, block=block)
 
@@ -1109,6 +1153,12 @@ class _ForceMixin(_ClientMixin):
                 want_label=want_label,
             )
         except RuntimeError:
+            snap = self._snapshot() or {}
+            if bool(snap.get("estop")) or int(snap.get("status", -1)) in (
+                int(Status.ESTOP),
+                int(Status.STOPPED),
+            ):
+                return ERR_STOPPED
             return ERR_CONTROLLER
         return OK if ok else ERR_TIMEOUT
 

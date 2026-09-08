@@ -1,4 +1,9 @@
-"""Subscribe the wrist Orbbec cloud and lift it into rail_base."""
+"""Wrist cloud in the controller's rail_base (not the Genesis rail_base).
+
+The slider viewer adds a pedestal to its URDF. Its identically named root is
+276 mm below the controller root in the current model. Motion targets must use
+the control URDF throughout; no viewer/world translation belongs in this chain.
+"""
 
 from __future__ import annotations
 
@@ -7,10 +12,7 @@ from pathlib import Path
 
 import numpy as np
 
-from rm75_control.control.joint_admittance_8dof.param_model.paths import (
-    DEFAULT_URDF,
-    GENERATED_URDF,
-)
+from rm75_control.control.joint_admittance_8dof.model import DEFAULT_URDF
 from rm75_control.control.joint_admittance_8dof.viewer.orbbec_cloud import (
     DEFAULT_ORBBEC_CLOUD_BIND,
     DEFAULT_ORBBEC_CLOUD_TOPIC,
@@ -28,9 +30,8 @@ def resolve_urdf(path: Path | str | None = None) -> Path:
         if p.is_file():
             return p
         raise FileNotFoundError(p)
-    for cand in (GENERATED_URDF, DEFAULT_URDF):
-        if Path(cand).is_file():
-            return Path(cand)
+    if Path(DEFAULT_URDF).is_file():
+        return Path(DEFAULT_URDF)
     raise FileNotFoundError("no 8-DOF URDF for rail_base→link_7 FK")
 
 

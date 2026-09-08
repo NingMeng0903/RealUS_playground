@@ -75,6 +75,45 @@ def _finite_or_none(value) -> float | None:
     return out if np.isfinite(out) else None
 
 
+def controller_position_bounds(ctx: CompileContext) -> tuple[np.ndarray, np.ndarray]:
+    """Position interval used by the online velocity box after PTP finishes.
+
+    SRS IK's physical joint limits alone admit endpoints inside the online
+    position margin. Switching those endpoints to a zero-twist HOLD then
+    demands an immediate retreat which conflicts with acceleration limits.
+    Read the runtime limits without mutating the shared kinematics model.
+    """
+    limits = getattr(ctx.inner, "limits", ctx.kin)
+    lo = np.asarray(limits.q_lower, dtype=float).copy()
+    hi = np.asarray(limits.q_upper, dtype=float).copy()
+    cfg = getattr(ctx.inner, "cfg", None)
+    margin = np.full(8, float(getattr(cfg, "position_margin_rad", 0.0)))
+    margin[0] = float(getattr(cfg, "position_margin_rail_m", 0.0))
+    margin = np.asarray(getattr(limits, "position_margin", margin), dtype=float)
+    if lo.shape != (8,) or hi.shape != (8,) or margin.shape != (8,) or not np.isfinite(margin).all() or np.any(margin < 0):
+        raise ValueError("invalid controller position limits or margins")
+    lo, hi = lo + margin, hi - margin
+    if not np.isfinite(lo).all() or not np.isfinite(hi).all() or np.any(lo >= hi):
+        raise ValueError("controller position margins leave no valid joint interval")
+    return lo, hi
+
+
+def _check_controller_target(ctx: CompileContext, q: np.ndarray) -> None:
+    lo, hi = controller_position_bounds(ctx)
+    q = np.asarray(q, dtype=float)
+    if q.shape != (8,) or not np.isfinite(q).all():
+        raise ValueError("Cartesian PTP q_target must be a finite 8-vector")
+    bad = np.flatnonzero((q < lo) | (q > hi))
+    if bad.size:
+        axis = int(bad[0])
+        raise ValueError(
+            f"Cartesian PTP target outside controller position margin: "
+            f"{'rail' if axis == 0 else f'J{axis}'}={q[axis]:.6f}, "
+            f"allowed=[{lo[axis]:.6f}, {hi[axis]:.6f}] "
+            f"{'m' if axis == 0 else 'rad'}"
+        )
+
+
 def ns_attractor(ctx: CompileContext) -> tuple[float, float]:
     """Live ``(ψ*, d*)`` if finite, else yaml ``psi_attr`` / ``d_attr``."""
 
@@ -142,6 +181,7 @@ def resolve_pose_q(
         raise ValueError(f"q_seed must be 8-vec, got {q0.size}")
     psi_home, d_star = ns_attractor(ctx)
     weights = PlannerGoalWeights()
+    q_lower, q_upper = controller_position_bounds(ctx)
     if rail_m is not None:
         rails = [float(rail_m)]
     else:
@@ -161,6 +201,8 @@ def resolve_pose_q(
     best: np.ndarray | None = None
     best_cost = float("inf")
     for rail in rails:
+        if not q_lower[0] <= rail <= q_upper[0]:
+            continue
         try:
             q, ok, _rep = resolve_pose_ik_srs(
                 ctx.kin,
@@ -171,6 +213,8 @@ def resolve_pose_q(
                 require_path=bool(require_path),
                 euler_order=ctx.euler_order,
                 planner_weights=weights,
+                q_lower=q_lower,
+                q_upper=q_upper,
             )
         except UnreachablePathError:
             continue
@@ -184,7 +228,7 @@ def resolve_pose_q(
             best = q
             best_cost = cost
     if best is None:
-        raise ValueError("pose unreachable: SRS IK found no path-valid solution")
+        raise ValueError("pose unreachable: SRS IK found no solution within controller position margins and requested path constraints")
     return best
 
 
@@ -217,6 +261,7 @@ def build_cartesian_ptp_phase(
     q_seed = np.asarray(ctx.inner.q_cmd if q_start is None else q_start, dtype=float)
     if payload.get("q_target") is not None:
         qt = np.asarray(payload["q_target"], dtype=float).reshape(-1)
+        _check_controller_target(ctx, qt)
     else:
         if not reachable_rails(ctx.kin, pose_a, euler_order=ctx.euler_order):
             raise ValueError("pose unreachable: no rail puts the wrist in the SRS annulus")

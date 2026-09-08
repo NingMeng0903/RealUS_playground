@@ -24,6 +24,7 @@ from peirastic.api import (
 from peirastic.api.codes import ERR_NO_ACK, ERR_SEND, ERR_STOPPED, ERR_TIMEOUT
 from peirastic.api.payloads import HfpcPayload, HfvcPayload, MoveJPayload
 from peirastic.api.vel_filter import pack_vel_filter, resolve_filter_axes
+from peirastic.core.ipc import Status
 from peirastic.core.modes import Mode
 from peirastic.realman8dof.modes.servo import ServoTwistOuter
 from peirastic.realman8dof.modes.track import HybridTffOuter
@@ -120,6 +121,46 @@ def test_pending_dof_arm_only_movej_rebases_rail_at_compile() -> None:
     assert float(move_ref.q_target[0]) == pytest.approx(0.403)
 
 
+def test_q_target_names_estop_reason() -> None:
+    class EstopClient:
+        def snapshot(self):
+            return {
+                "abi_magic": b"PEIRAST2",
+                "abi_version": 2,
+                "t_mono": time.monotonic(),
+                "status": int(Status.ESTOP),
+                "mode": int(Mode.SERVO_TWIST),
+                "estop": True,
+                "dof": 8,
+                "dof_effective": 8,
+                "dof_pending": -1,
+                "dof_requested": 8,
+                "dof_status": int(Status.IDLE),
+                "msg": "qpik_fault:stop:native_timeout",
+            }
+
+    arm = PeirasticArm(client=EstopClient(), attach=False)
+    with pytest.raises(RuntimeError, match="ESTOP: qpik_fault:stop:native_timeout"):
+        arm._q_target(_SEED.tolist())
+
+
+def test_wait_contact_returns_stopped_on_estop() -> None:
+    class EstopClient:
+        def snapshot(self):
+            return {
+                "status": int(Status.ESTOP),
+                "estop": True,
+                "mode": int(Mode.TRACK_HYBRID),
+                "msg": "qpik_fault:stop:publication_infeasible",
+                "f_ext_z": 0.1,
+            }
+
+    arm = PeirasticArm(client=EstopClient(), attach=False)
+    assert arm.wait_contact(
+        enter_n=0.8, confirm_s=0.02, timeout_s=0.2, want_label=None
+    ) == ERR_STOPPED
+
+
 def test_legacy_secondary_is_rejected() -> None:
     _raw, ctx = _ctx()
     arm = _arm(ctx=ctx, inner=ctx.inner)
@@ -212,6 +253,23 @@ def test_hfpc_compiles_to_pose_tff() -> None:
     assert isinstance(phase.outer.force_law.z_law, LegacyForceLaw)
     assert np.array_equal(phase.outer.selection, [1, 1, 0, 1, 0, 1])
     assert not isinstance(phase.outer.position, ServoTwistOuter)
+
+
+def test_hfpc_contact_gate_is_explicit_and_uses_existing_force_controller() -> None:
+    raw, ctx = _ctx()
+    arm = _arm(ctx=ctx)
+    pose = ctx.kin.fk_pose(_SEED)
+    assert arm.hfpc([pose], force=4.0, force_axes=[0, 0, 1, 0, 0, 0],
+                    wait_for_contact=True, duration_s=2.0, block=0) == OK
+    req = arm.last_request
+    assert req.payload["wait_for_contact"] is True
+    phase = compile_request(ctx, req, raw=raw)
+    assert isinstance(phase.outer, HybridTffOuter)
+    assert phase.outer.contact_gate.elapsed_s == 0.0
+    assert not phase.outer.controller.contact_present
+    # The option is omitted for existing callers.
+    assert arm.hfpc([pose], block=0) == OK
+    assert "wait_for_contact" not in arm.last_request.payload
 
 
 def test_hfvc_compiles_to_twist_tff() -> None:

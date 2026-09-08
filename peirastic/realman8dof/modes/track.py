@@ -30,6 +30,7 @@ from peirastic.realman8dof.force.torque_tilt import (
     TorqueTiltConfig,
     apply_tilt_selection,
 )
+from peirastic.realman8dof.modes.contact_reference import ContactGatedReference
 from peirastic.realman8dof.modes.servo import ServoTwistOuter, slew_kwargs
 
 
@@ -269,6 +270,49 @@ def _mask_force_from_path(payload: dict | None, default: bool) -> bool:
     return bool(pay["mask_force_from_path"])
 
 
+def _contact_gated_reference(
+    reference: MotionReferenceSource,
+    payload: dict | None,
+) -> tuple[MotionReferenceSource, ContactGatedReference | None]:
+    """Optionally defer trajectory time until the compiled force loop confirms contact."""
+
+    if not bool(dict(payload or {}).get("wait_for_contact", False)):
+        return reference, None
+    gate = ContactGatedReference(reference)
+    return gate, gate
+
+
+def _bind_contact_gate(
+    phase: Phase,
+    gate: ContactGatedReference,
+    *,
+    duration_s: float | None,
+) -> Phase:
+    """Bind a gate to the compiled controller and install its duration predicate."""
+
+    outer = phase.outer
+    controller = getattr(outer, "controller", None)
+    if controller is None or not hasattr(controller, "contact_present"):
+        raise ValueError(
+            "wait_for_contact requires a compiled hybrid controller exposing "
+            "outer.controller.contact_present"
+        )
+    gate.bind_contact_present(
+        lambda controller=controller: bool(controller.contact_present)
+    )
+    # Keep the gate discoverable by the runner/telemetry without changing the
+    # existing outer class hierarchy.
+    outer.contact_gate = gate
+    if duration_s is not None:
+        duration = float(duration_s)
+
+        def _arrived(_pose) -> bool:
+            return bool(gate.started and gate.elapsed_s >= duration)
+
+        phase.wait_until = _arrived
+    return phase
+
+
 def build_pad_hybrid_phase(
     ctx: CompileContext,
     *,
@@ -313,19 +357,23 @@ def build_track_hybrid_phase(
     use_tff_split: bool = False,
     payload: dict | None = None,
 ) -> Phase:
+    gated_reference, gate = _contact_gated_reference(reference, payload)
     if not use_tff_split:
         controller, f_des, _raw = _hybrid_controller(dt, payload)
         spec = phase_hybrid_track(
-            reference,
+            gated_reference,
             controller,
             desired_force=f_des,
             label=label,
             duration_s=duration_s,
         )
-        return compile_phase(spec, ctx).phase
+        phase = compile_phase(spec, ctx).phase
+        if gate is not None:
+            return _bind_contact_gate(phase, gate, duration_s=duration_s)
+        return phase
     force_law, f_des, tilt_cfg = _hybrid_force_law(dt, payload, control_frame=ctx.control_frame)
     cart = compile_phase(
-        phase_cartesian_track(reference, label=label, duration_s=duration_s),
+        phase_cartesian_track(gated_reference, label=label, duration_s=duration_s),
         ctx,
     )
     outer = HybridTffOuter(
@@ -339,6 +387,8 @@ def build_track_hybrid_phase(
     phase = cart.phase
     phase.outer = outer
     phase.label = label
+    if gate is not None:
+        _bind_contact_gate(phase, gate, duration_s=duration_s)
     return phase
 
 

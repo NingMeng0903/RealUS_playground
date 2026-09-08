@@ -56,6 +56,24 @@ def _controller() -> JointIkController:
     return controller
 
 
+def test_stopped_fault_snapshot_captures_real_controller_fields(monkeypatch, tmp_path):
+    import json
+    from rm75_control.control.joint_admittance_8dof import fault_diagnostics
+    from rm75_control.control.joint_admittance_8dof.loop import _save_stopped_qpik_fault
+
+    controller = _controller()
+    step = _ideal_update(controller, np.zeros(6), q_meas=Q_SAFE)
+    writer = fault_diagnostics.save_qpik_fault_snapshot
+    monkeypatch.setattr(
+        fault_diagnostics, "save_qpik_fault_snapshot",
+        lambda *args, **kwargs: writer(*args, **kwargs, directory=tmp_path),
+    )
+    _save_stopped_qpik_fault(controller, step, Q_SAFE, SimpleNamespace(label="payload_id_hold"), "test_fault")
+    saved = json.loads(next(tmp_path.glob("*.json")).read_text())
+    assert saved["metadata"]["control_frame"] == "base"
+    assert saved["metadata"]["joint_ik_config"]["dt"] == controller.cfg.dt
+
+
 def test_successful_final_send_is_exact_qp_velocity() -> None:
     controller = _controller()
     q_before = controller.q_cmd.copy()
@@ -105,6 +123,36 @@ def test_empty_velocity_box_does_not_latch_stop() -> None:
     assert reason == ""
     assert not step.solver_fault_latched
     assert events == []
+
+
+def test_fault_diagnostics_are_printed_only_after_stop_requests(monkeypatch):
+    step = SimpleNamespace(controller_mode="qpik", solver_fault_latched=True,
+                           fallback_level="stop", fallback_reason="publication_infeasible",
+                           qp1_status="primal_infeasible", qp2_status="not_run")
+    events = []
+    monkeypatch.setattr("builtins.print", lambda *args, **kwargs: events.append(("print", args)))
+    sendable, reason = _guard_qpik_step_before_send(step, lambda r: events.append(("stop", r)))
+    assert not sendable
+    assert events[0] == ("stop", reason)
+    assert events[1][0] == "print"
+    assert "qp1=primal_infeasible" in events[1][1][0]
+
+
+def test_fault_snapshot_runs_after_stop_and_cannot_resume_failed_command():
+    step = SimpleNamespace(controller_mode="qpik", solver_fault_latched=True,
+                           fallback_level="stop", fallback_reason="publication_infeasible")
+    events = []
+
+    def save(reason):
+        assert events == [("stop", reason)]
+        events.append(("snapshot", reason))
+        raise OSError("disk full")
+
+    sendable, reason = _guard_qpik_step_before_send(
+        step, lambda why: events.append(("stop", why)), fault_record=save,
+    )
+    assert not sendable
+    assert events == [("stop", reason), ("snapshot", reason)]
 
 
 def test_numerical_fallback_latches_and_rejects_publication() -> None:

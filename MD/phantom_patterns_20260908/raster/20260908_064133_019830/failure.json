@@ -1,0 +1,12 @@
+{
+  "stage": "surface_planning",
+  "error": "requested scan dimensions [0.14, 0.09] m are unavailable in the measured support; dimensions were not reduced or shifted",
+  "frame": "controller_rail_base",
+  "replay_input": "MD/phantom_patterns_20260908/raster/20260908_064133_019830/capture.npz",
+  "top_points": 2312,
+  "reference_normal": [
+    0.03434631751046853,
+    -0.03867338280816841,
+    0.9986614541142774
+  ]
+}

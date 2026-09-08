@@ -200,3 +200,38 @@ def test_controller_close_releases_only_owned_cached_solvers():
     assert calls == ["shutdown"]
     assert controller.core is None
     assert controller.kin._qp_backend_cache == {3: other}
+
+
+@pytest.mark.parametrize("error", [ConnectionResetError("peer reset"), ValueError("closed fd")])
+def test_notification_error_becomes_fault_result_not_exception(client, monkeypatch, error):
+    import rm75_control.control.joint_admittance_8dof.wbc_rt.client as module
+
+    with monkeypatch.context() as scoped:
+        scoped.setattr(module.select, "select", lambda *args: (_ for _ in ()).throw(error))
+        assert not client._wait_seq(999, timeout_s=0.02)
+    assert client._last_wait_reason == "process_exit"
+
+
+def test_request_clock_is_armed_before_the_worker_is_notified(client, monkeypatch):
+    notify = client._notify_request
+    seen = []
+
+    def checked_notify():
+        seen.append((client._inflight_seq, client._inflight_t0, float(client._in["t_mono"][0])))
+        notify()
+
+    with monkeypatch.context() as scoped:
+        scoped.setattr(client, "_notify_request", checked_notify)
+        client.update(np.zeros(6), q_meas=client.ctrl.q_cmd, auto_commit=False)
+    assert seen[0][0] > 0
+    assert seen[0][1] > 0
+    assert seen[0][1] == seen[0][2]
+
+
+def test_timeout_diagnostics_report_cpu_and_queue_deltas(client, monkeypatch):
+    client._request_schedstat = (1_000_000, 5_000_000)
+    monkeypatch.setattr(client, "_read_native_schedstat", lambda: (3_500_000, 47_000_000))
+    info = client.timeout_diagnostics()
+    assert "native_cpu_ms=2.50" in info
+    assert "native_runqueue_ms=42.00" in info
+    assert "observed_reply_seq=" in info

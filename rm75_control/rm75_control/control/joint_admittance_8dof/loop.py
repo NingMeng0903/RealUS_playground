@@ -4786,17 +4786,16 @@ class _TickLogger:
         comfort = comfort[:7]
         pad_fields = self._fmt_pad_fields(outer)
         controller_mode = str(getattr(step, "controller_mode", "") or "none")
-        qm = np.asarray(qm, dtype=float).copy()
-        pose = np.asarray(pose, dtype=float).copy()
-        f_ext = np.asarray(f_ext, dtype=float).copy()
-        raw_comp = np.asarray(raw_comp, dtype=float).copy()
+        # The formatter owns the IPC snapshots; these arrays are only read here.
+        qm = np.asarray(qm, dtype=float)
+        pose = np.asarray(pose, dtype=float)
+        f_ext = np.asarray(f_ext, dtype=float)
         if f_ext.size < 6:
             f_ext = np.pad(f_ext, (0, 6 - int(f_ext.size)), constant_values=np.nan)
         if raw_comp.size < 6:
             raw_comp = np.pad(
                 raw_comp, (0, 6 - int(raw_comp.size)), constant_values=np.nan
             )
-        twist_achieved = np.asarray(twist_achieved, dtype=float).copy()
         # Translational power only (f·v).  Not full P_ext, not P_leak.
         p_ext_trans = float("nan")
         if (
@@ -4814,9 +4813,6 @@ class _TickLogger:
             step.P_ext_trans = float(p_ext_trans)
         except Exception:
             pass
-        if qdot_meas is not None:
-            qdot_meas = np.asarray(qdot_meas, dtype=float).copy()
-
         arm_ns = int(getattr(step, "arm_send_mono_ns", 0) or 0)
         q_send_arr = np.asarray(step.q_send, dtype=float).reshape(-1)
         arm_qdot_wall = None
@@ -4857,6 +4853,7 @@ class _TickLogger:
         tilt_cop_r = _fmt_outer_float("last_cop_r", precision=9)
         tilt_on_tube = int(bool(getattr(outer, "last_on_tube", False)))
         tilt_deadband = _fmt_outer_float("last_tilt_deadband_nm")
+        twist_base_fields = [f"{v:.5f}" for v in step.twist_base]
         # Formatting is deliberately performed by the worker before its
         # csv.writer call.  The producer only queues the raw request above.
         return self._checked_row(
@@ -4869,8 +4866,8 @@ class _TickLogger:
             + [f"{v:.6f}" for v in step.q_send]
             + [f"{v:.6f}" for v in qm]
             + [f"{v:.6f}" for v in pose]
-            + [f"{v:.5f}" for v in step.twist_base]
-            + [f"{v:.5f}" for v in step.twist_base]
+            + twist_base_fields
+            + twist_base_fields
             + [f"{v:.5f}" for v in twist_achieved]
             + [f"{step.cart_err_mm:.3f}", f"{np.degrees(step.follow_err_rad):.4f}",
                f"{step.slack_norm:.5f}", step.n_cbf_active,
@@ -6116,30 +6113,71 @@ def path_reference_should_freeze(step: JointIkStep) -> bool:
     return str(getattr(step, "fallback_reason", "")) == "native_timeout_coast"
 
 
-def _guard_qpik_step_before_send(step: JointIkStep, fault_stop) -> tuple[bool, str]:
+def _save_stopped_qpik_fault(inner, step, q_meas, phase, reason) -> None:
+    """Persist the rejected tick after the arm/rail stop requests were issued."""
+    from rm75_control.control.joint_admittance_8dof.fault_diagnostics import (
+        save_qpik_fault_snapshot,
+    )
+
+    path = save_qpik_fault_snapshot(
+        step, reason=reason, phase=phase.label,
+        q_meas=q_meas, q_command=inner.q_cmd,
+        q_lower=inner.limits.q_lower, q_upper=inner.limits.q_upper,
+        position_margin=inner.limits.position_margin,
+        metadata={
+            "urdf": str(inner.kin.urdf_path),
+            "tcp_offset_pose": inner.kin.tcp_offset_pose,
+            "session_dof": getattr(inner, "_peirastic_dof", None),
+            "rail_mode": str(inner._rail_mode),
+            "rail_locked_style": str(inner._locked_style),
+            "control_frame": inner.cfg.control_frame,
+            "joint_ik_config": inner.cfg,
+        },
+    )
+    print(f"[WARN] QPIK snapshot: {path}", flush=True)
+
+
+def _guard_qpik_step_before_send(step: JointIkStep, fault_stop, *, fault_record=None) -> tuple[bool, str]:
     """Allow bounded timeout holds; reject uncertified solver commands."""
+    def reject(reason: str) -> tuple[bool, str]:
+        fault_stop(reason)
+        # Only format/print diagnostics after both stop requests have been
+        # issued; terminal or filesystem latency must not delay braking.
+        try:
+            from rm75_control.control.joint_admittance_8dof.fault_diagnostics import (
+                format_qpik_fault_details,
+            )
+            print(f"[WARN] QPIK {format_qpik_fault_details(step)}", flush=True)
+        except Exception:
+            pass  # Diagnostics cannot replace or interrupt a latched stop.
+        if fault_record is not None:
+            try:
+                fault_record(reason)
+            except Exception as exc:
+                try:
+                    print(f"[WARN] QPIK snapshot unavailable: {exc}", flush=True)
+                except Exception:
+                    pass
+        return False, reason
+
     if str(getattr(step, "controller_mode", "")) == "direct_joint_ptp":
         if bool(step.solver_fault_latched) and str(step.fallback_reason) == "native_timeout":
             reason = f"qpik_fault:{step.fallback_level}:{step.fallback_reason}"
-            fault_stop(reason)
-            return False, reason
+            return reject(reason)
         return True, ""
     if bool(step.solver_fault_latched) or str(step.fallback_level) == "stop":
         reason = f"qpik_fault:{step.fallback_level}:{step.fallback_reason}"
-        fault_stop(reason)
-        return False, reason
+        return reject(reason)
     qp1 = qp_status_name(getattr(step, "qp1_status", ""))
     if qp1 in ("failed", "primal_infeasible", "dual_infeasible",
                "closest_primal", "p0_conflict", "timeout"):
         reason = f"qpik_fault:uncertified_qp1:{qp1}"
-        fault_stop(reason)
-        return False, reason
+        return reject(reason)
     if bool(getattr(step, "task_paused", False)) and str(
         getattr(step, "task_pause_reason", "")
     ) not in ("", "qp2_fallback"):
         reason = f"qpik_fault:task_pause:{step.task_pause_reason}"
-        fault_stop(reason)
-        return False, reason
+        return reject(reason)
     return True, ""
 
 
@@ -6816,7 +6854,10 @@ def run_joint_admittance_phases(
                         # A hard-construction/final-validation fault is acted on before the
                         # rail target or CANFD joint command can be published.
                         sendable, qpik_stop_reason = _guard_qpik_step_before_send(
-                            step, _fault_stop
+                            step, _fault_stop,
+                            fault_record=lambda reason: _save_stopped_qpik_fault(
+                                inner, step, q_meas, phase, reason,
+                            ),
                         )
                         if str(getattr(step, "fallback_reason", "")) == "native_timeout_coast":
                             native = getattr(inner, "_native", None)
@@ -6843,7 +6884,8 @@ def run_joint_admittance_phases(
                                     f"qp1={float(getattr(native, '_last_completed_qp1_ms', float('nan'))):.2f} "
                                     f"qp2={float(getattr(native, '_last_completed_qp2_ms', float('nan'))):.2f} "
                                     f"asm={float(getattr(native, '_last_completed_assembly_ms', float('nan'))):.2f} "
-                                    f"cbf={int(getattr(native, '_last_completed_n_cbf', 0))}"
+                                    f"cbf={int(getattr(native, '_last_completed_n_cbf', 0))} "
+                                    f"{native.timeout_diagnostics()}"
                                 )
                         if (
                             not sendable
@@ -6884,7 +6926,7 @@ def run_joint_admittance_phases(
                                 f"reply_seq={int(getattr(native, '_last_reply_seq', 0))}/"
                                 f"{int(getattr(native, '_seq', 0))} "
                                 f"cause={getattr(native, '_last_wait_reason', '')} "
-                                f"rail={rail_s}"
+                                f"rail={rail_s} {native.timeout_diagnostics()}"
                             )
                         if not sendable:
                             phase_stopped = True

@@ -580,7 +580,7 @@ def test_payload_campaign_keeps_8dof_session_and_does_not_steal_structure():
     assert camp.arm.calls[-1:] == [("close",)]
 
 
-def test_payload_campaign_keyboard_interrupt_keeps_recoverable_restore(monkeypatch, tmp_path):
+def test_payload_campaign_keyboard_interrupt_keeps_recoverable_restore(monkeypatch, tmp_path, capsys):
     """A healthy Ctrl-C still runs the campaign close/restore path."""
 
     import rm75_control.force.compensation.v2.campaign as campaign
@@ -618,6 +618,22 @@ def test_payload_campaign_keyboard_interrupt_keeps_recoverable_restore(monkeypat
     assert ("classify", "keyboard_interrupt") in events
     assert ("close", True, False) in events
     assert ("fit",) in events
+    assert "collection incomplete (rc=130)" in capsys.readouterr().out
+
+
+def test_payload_servo_failure_identifies_requested_phase():
+    from rm75_control.force.compensation.v2.campaign import CampaignAbort, PayloadIdCampaign
+
+    camp = object.__new__(PayloadIdCampaign)
+    camp.cfg = {}
+    camp.OK = 0
+    camp.CODE_NAMES = {-6: "stopped"}
+    camp.arm = SimpleNamespace(
+        cartesian_velocity=lambda *args, **kwargs: -6,
+        _snapshot=lambda: {"msg": "qpik_fault:stop:publication_infeasible"},
+    )
+    with pytest.raises(CampaignAbort, match="servo enter payload_id_hold_dm_holdout -6.*publication_infeasible"):
+        camp._enter_servo(hold=False, label="payload_id_hold_dm_holdout")
 
 
 def test_payload_campaign_fresh_estop_blocks_restore():

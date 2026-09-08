@@ -53,9 +53,10 @@ def _fmt_xyz(p) -> str:
     return " ".join(f"{float(v) * 1000.0:+7.1f}" for v in p[:3])
 
 
-def _toward_mount(centroid) -> list[float]:
+def _toward_mount(centroid, *, rail_m: float = 0.4) -> list[float]:
     c = [float(v) for v in centroid[:3]]
-    toward = [-c[0], -c[1], 0.0]
+    # Arm mount translates with rail_y, whose fixed origin is y=-0.4 m.
+    toward = [-c[0], float(rail_m) - 0.4 - c[1], 0.0]
     if math.hypot(toward[0], toward[1]) < 1e-6:
         toward = [0.0, -1.0, 0.0]
     return toward
@@ -103,7 +104,7 @@ def main(argv: list[str] | None = None) -> int:
         yaw_axis = None
         if live0 is not None:
             yaw_axis = Rsc.from_euler("xyz", live0[3:6], degrees=False).as_matrix()[:, 0]
-        toward = _toward_mount(xyz.mean(axis=0))
+        toward = _toward_mount(xyz.mean(axis=0), rail_m=q8[0])
         hit = detect_phantom_top(
             xyz,
             rgb,
@@ -111,7 +112,7 @@ def main(argv: list[str] | None = None) -> int:
             standoff_m=float(args.standoff_m),
             yaw_axis=yaw_axis,
         )
-        toward = _toward_mount(hit.centroid)
+        toward = _toward_mount(hit.centroid, rail_m=q8[0])
         hit = detect_phantom_top(
             xyz,
             rgb,

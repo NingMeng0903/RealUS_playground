@@ -1,0 +1,178 @@
+from __future__ import annotations
+
+from pathlib import Path
+
+import numpy as np
+import pytest
+
+from projects.genesis_ue_sync.anatomy_retarget.material_attachment_v13 import (
+    MaterialAttachmentMapV13,
+    compile_material_attachment_map_v13,
+)
+
+
+def _surface_pair() -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """Two separated bone components with a shared authored point domain."""
+
+    source_vertices = np.asarray(
+        (
+            (0.0, 0.0, 0.0),
+            (1.0, 0.0, 0.0),
+            (0.0, 1.0, 0.0),
+            (1.0, 0.0, 0.0),
+            (2.0, 0.0, 0.0),
+            (1.0, 1.0, 0.0),
+        ),
+        dtype=np.float64,
+    )
+    source_faces = np.asarray(((0, 1, 2), (3, 4, 5)), dtype=np.int32)
+    # A distinct target rest mesh exercises target-frame offset reconstruction.
+    target_vertices = source_vertices + np.asarray((0.11, -0.07, 0.13))
+    target_faces = source_faces.copy()
+    return source_vertices, source_faces, target_vertices, target_faces
+
+
+def test_identity_is_exact_and_preserves_full_3d_offset() -> None:
+    source_v, source_f, target_v, target_f = _surface_pair()
+    points = np.asarray(((0.2, 0.3, 0.17), (1.7, 0.1, -0.09)), dtype=np.float64)
+    attachment = compile_material_attachment_map_v13(
+        source_v,
+        source_f,
+        target_v,
+        target_f,
+        points,
+        source_face_component_ids=np.asarray(("femur", "tibia")),
+        max_components=2,
+    )
+
+    output, audit = attachment.transport(points, source_v, target_v, return_audit=True)
+    # The residual is exactly zero at rest because both local frames retain
+    # all three offset components, including the normal component.
+    np.testing.assert_array_equal(output, points)
+    assert audit["identity_short_circuit"] is True
+    assert audit["rest_identity"] is True
+    assert attachment.report["containment_verified"] is False
+    assert attachment.report["containment_status"] == "not_evaluated"
+    assert np.max(np.abs(attachment.source_offset_local[..., 2])) > 0.0
+    assert np.max(np.abs(attachment.target_offset_local[..., 2])) > 0.0
+
+
+def test_shared_rigid_transform_preserves_soft_point_and_offset() -> None:
+    source_v, source_f, target_v, target_f = _surface_pair()
+    points = np.asarray(((0.2, 0.3, 0.17), (1.7, 0.1, -0.09)), dtype=np.float64)
+    attachment = compile_material_attachment_map_v13(
+        source_v,
+        source_f,
+        target_v,
+        target_f,
+        points,
+        source_face_component_ids=np.asarray((0, 1)),
+        max_components=1,
+    )
+    angle = 0.63
+    rotation = np.asarray(
+        (
+            (np.cos(angle), -np.sin(angle), 0.0),
+            (np.sin(angle), np.cos(angle), 0.0),
+            (0.0, 0.0, 1.0),
+        ),
+        dtype=np.float64,
+    )
+    translation = np.asarray((1.3, -0.4, 0.8), dtype=np.float64)
+    posed_source = source_v @ rotation.T + translation
+    posed_target = target_v @ rotation.T + translation
+    posed_points = points @ rotation.T + translation
+
+    output = attachment.transport(posed_points, posed_source, posed_target)
+    np.testing.assert_allclose(output, posed_points, rtol=0.0, atol=2.0e-12)
+
+
+def test_component_candidates_are_smooth_and_fixed_at_runtime() -> None:
+    source_v, source_f, target_v, target_f = _surface_pair()
+    points = np.asarray(((0.98, 0.10, 0.04),), dtype=np.float64)
+    attachment = compile_material_attachment_map_v13(
+        source_v,
+        source_f,
+        target_v,
+        target_f,
+        points,
+        source_face_component_ids=np.asarray((10, 20)),
+        max_components=2,
+        epsilon_m=0.01,
+    )
+    assert attachment.candidate_count == 2
+    assert np.all(attachment.component_weights > 0.0)
+    np.testing.assert_allclose(np.sum(attachment.component_weights, axis=1), 1.0)
+
+    # Move the source and target components differently.  Runtime transport
+    # only uses the fixed face IDs and fixed barycentrics; changing a rest
+    # point cannot change the selected triangles.
+    moved_source = source_v.copy()
+    moved_target = target_v.copy()
+    moved_source[:3] += np.asarray((0.2, 0.0, 0.0))
+    moved_target[3:] += np.asarray((0.0, 0.3, 0.0))
+    output = attachment.transport(points, moved_source, moved_target)
+    assert np.all(np.isfinite(output))
+    np.testing.assert_array_equal(attachment.source_face_indices, np.asarray(attachment.source_face_indices))
+    np.testing.assert_array_equal(attachment.target_face_indices, np.asarray(attachment.target_face_indices))
+
+
+def test_source_motion_is_removed_by_residual_transport() -> None:
+    source_v, source_f, target_v, target_f = _surface_pair()
+    points = np.asarray(((0.2, 0.3, 0.17),), dtype=np.float64)
+    attachment = compile_material_attachment_map_v13(source_v, source_f, target_v, target_f, points)
+    source_delta = np.asarray((0.14, -0.06, 0.21), dtype=np.float64)
+    posed_source = source_v + source_delta
+    posed_points = points + source_delta
+    output = attachment.transport(posed_points, posed_source, target_v)
+    # Target remains in its rest pose, so the source motion is cancelled by
+    # target_attached - source_attached and the point returns to authored rest.
+    np.testing.assert_allclose(output, points, rtol=0.0, atol=2.0e-12)
+
+
+def test_invalid_geometry_fails_closed_with_degeneracy_diagnostic() -> None:
+    vertices = np.asarray(((0.0, 0.0, 0.0), (1.0, 0.0, 0.0), (2.0, 0.0, 0.0)))
+    faces = np.asarray(((0, 1, 2),), dtype=np.int32)
+    with pytest.raises(ValueError, match="degenerate triangle"):
+        compile_material_attachment_map_v13(
+            vertices,
+            faces,
+            vertices,
+            faces,
+            np.asarray(((0.2, 0.0, 0.1),)),
+        )
+    with pytest.raises(ValueError, match="non-finite"):
+        compile_material_attachment_map_v13(
+            np.asarray(((0.0, 0.0, 0.0), (1.0, 0.0, 0.0), (0.0, 1.0, 0.0))),
+            np.asarray(((0, 1, 2),), dtype=np.int32),
+            np.asarray(((0.0, 0.0, 0.0), (1.0, 0.0, 0.0), (0.0, 1.0, 0.0))),
+            np.asarray(((0, 1, 2),), dtype=np.int32),
+            np.asarray(((np.nan, 0.0, 0.1),)),
+        )
+
+
+def test_npz_round_trip_is_pickle_free_and_digest_checked(tmp_path: Path) -> None:
+    source_v, source_f, target_v, target_f = _surface_pair()
+    points = np.asarray(((0.2, 0.3, 0.17), (1.7, 0.1, -0.09)), dtype=np.float64)
+    attachment = compile_material_attachment_map_v13(
+        source_v,
+        source_f,
+        target_v,
+        target_f,
+        points,
+        source_face_component_ids=np.asarray(("femur", "tibia")),
+        max_components=2,
+    )
+    path = attachment.save(tmp_path / "attachments.npz")
+    loaded = MaterialAttachmentMapV13.load(path)
+    np.testing.assert_array_equal(loaded.source_face_indices, attachment.source_face_indices)
+    np.testing.assert_array_equal(loaded.target_face_indices, attachment.target_face_indices)
+    np.testing.assert_allclose(loaded.source_offset_local, attachment.source_offset_local, atol=1.0e-7)
+    np.testing.assert_allclose(
+        loaded.transport(points, source_v, target_v), attachment.transport(points, source_v, target_v), atol=1.0e-7
+    )
+    assert loaded.report["schema"] == "material_attachment_v13"
+
+    with np.load(path, allow_pickle=False) as payload:
+        assert payload["component_ids"].dtype.kind == "U"
+        assert "source_points_digest" in payload.files

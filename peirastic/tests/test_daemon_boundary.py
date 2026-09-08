@@ -5,6 +5,7 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 import numpy as np
+import pytest
 
 from peirastic.core.ipc import Cmd, Status
 from peirastic.core.modes import Mode, ModeRequest
@@ -68,6 +69,53 @@ class _Outer:
 
     def set_origin(self, pose, **kwargs):
         del pose, kwargs
+
+
+class _ContactGate:
+    """Small deterministic stand-in for the hybrid contact progress gate."""
+
+    def __init__(self) -> None:
+        self.started = False
+        self.elapsed_s = 0.0
+
+
+class _GateController:
+    def __init__(self) -> None:
+        self.contact_present = False
+        self.v_force_cmd_z = 0.012
+
+
+class _GatedOuter(_Outer):
+    def __init__(self, gate: _ContactGate, controller: _GateController) -> None:
+        self.contact_gate = gate
+        self.controller = controller
+        self.begin_calls = 0
+        self.origin_times: list[float | None] = []
+
+    def set_origin(self, pose, *, t_s=None):
+        del pose
+        self.origin_times.append(None if t_s is None else float(t_s))
+
+    def begin_hybrid_episode(self, applied_twist, current_pose):
+        del applied_twist, current_pose
+        self.begin_calls += 1
+
+
+def _hot_swap_service() -> daemon.ControllerService:
+    """Make the daemon runner usable without constructing robot kinematics."""
+
+    svc = _service_for_boundary()
+    svc.inner.kin = SimpleNamespace(jacobian=lambda _q: np.zeros((6, 8)))
+    svc.inner.begin_hybrid_episode = lambda *_args: None
+    svc._pending = ModeRequest(Mode.SERVO_TWIST, {"label": "servo"})
+    svc._pending_commanded = True
+    svc._pending_install_seq = None
+    svc._pending_dof = None
+    return svc
+
+
+def _publish_events(svc):
+    return [event for kind, event in svc.hub.events if kind == "publish"]
 
 
 def _service_for_boundary() -> daemon.ControllerService:
@@ -272,3 +320,219 @@ def test_compile_fault_stays_until_commanded_success() -> None:
     assert svc._hold_compile_fault(True) is False
     svc._clear_compile_fault()
     assert svc._hold_compile_fault(False) is False
+
+
+def test_gated_hybrid_hot_install_uses_contact_elapsed_and_keeps_proxy(
+    monkeypatch,
+):
+    """A seek must not consume the scan clock or rebuild the hybrid phase."""
+
+    svc = _hot_swap_service()
+    old_wait = object()
+    new_wait = object()
+    compiled: list[tuple[Mode, dict]] = []
+    gated: list[_GatedOuter] = []
+
+    def fake_compile(ctx, req, *, raw, twist_read, dt):
+        del ctx, raw, twist_read, dt
+        compiled.append((req.mode, dict(req.payload)))
+        if req.mode == Mode.TRACK_HYBRID:
+            outer = _GatedOuter(_ContactGate(), _GateController())
+            gated.append(outer)
+            return Phase(
+                outer=outer,
+                label="hfpc",
+                duration_s=2.0,
+                # A replacement phase must not leave this callable on the
+                # already-running proxy; the gate owns completion instead.
+                wait_until=new_wait,
+            )
+        if req.mode == Mode.SERVO_TWIST:
+            return Phase(outer=_Outer(), label="servo", wait_until=old_wait)
+        return Phase(outer=_Outer(), label="servo_hold")
+
+    def fake_runner(_sess, phases, _inner, **kwargs):
+        phase = phases[0]
+        step = SimpleNamespace(q_send=np.zeros(8), slack_norm=0.0)
+        if phase.on_enter is not None:
+            phase.on_enter()
+
+        # The current phase is already a SERVO proxy. Install HFPC from a
+        # nonzero reference time while staying inside the same runner.
+        assert phase.wait_until is None
+        svc.hub.polls = [
+            (
+                Cmd.SET_MODE,
+                77,
+                ModeRequest(
+                    Mode.TRACK_HYBRID,
+                    {"label": "hfpc", "duration_s": 2.0},
+                ),
+            )
+        ]
+        kwargs["on_step"](
+            "servo",
+            1.25,
+            step,
+            np.zeros(6),
+            np.zeros(6),
+            1.25,
+        )
+        gate_outer = gated[0]
+        assert svc._mode_t0 == pytest.approx(1.25)
+        assert svc._finite_duration == pytest.approx(2.0)
+        assert gate_outer.origin_times == [pytest.approx(1.25)]
+        assert gate_outer.begin_calls == 1
+        # Neither the old proxy wait_until nor the new Phase wait_until is
+        # copied into the long-lived proxy wrapper.
+        assert phase.wait_until is None
+
+        def done_events():
+            return [
+                event
+                for event in _publish_events(svc)
+                if event.get("status") == Status.DONE
+            ]
+
+        # The seek has lasted longer than the two-second scan duration, but
+        # contact has not started, so elapsed_s is still zero and no DONE is
+        # allowed. This would fail if daemon used t_ref - mode_t0 here.
+        kwargs["on_step"](
+            "hfpc",
+            8.0,
+            step,
+            np.zeros(6),
+            np.zeros(6),
+            8.0,
+        )
+        assert done_events() == []
+        assert any(
+            event.get("msg", "").startswith("hfpc:approach")
+            for event in _publish_events(svc)
+        )
+
+        # Once contact starts, elapsed_s still has to reach the full scan
+        # duration; the wall/reference time remains irrelevant to completion.
+        gate_outer.contact_gate.started = True
+        gate_outer.contact_gate.elapsed_s = 1.5
+        gate_outer.controller.contact_present = True
+        gate_outer.controller.v_force_cmd_z = -0.004
+        kwargs["on_step"](
+            "hfpc",
+            12.0,
+            step,
+            np.zeros(6),
+            np.zeros(6),
+            12.0,
+        )
+        assert done_events() == []
+        assert any(
+            event.get("msg", "").startswith("hfpc:tracking")
+            and "contact=1" in event.get("msg", "")
+            and "vz_cmd=-4.0" in event.get("msg", "")
+            for event in _publish_events(svc)
+        )
+
+        gate_outer.contact_gate.elapsed_s = 2.0
+        kwargs["on_step"](
+            "hfpc",
+            20.0,
+            step,
+            np.zeros(6),
+            np.zeros(6),
+            20.0,
+        )
+        assert len(done_events()) == 1
+        assert gate_outer.begin_calls == 1
+        assert sum(mode == Mode.TRACK_HYBRID for mode, _ in compiled) == 1
+        svc._stop = True
+        return LoopResult(4, 0.02, 0.0, False)
+
+    monkeypatch.setattr(daemon, "compile_request", fake_compile)
+    monkeypatch.setattr(daemon, "run_joint_admittance_phases", fake_runner)
+
+    svc.run(SimpleNamespace(robot=None), None, None)
+
+    assert sum(mode == Mode.TRACK_HYBRID for mode, _ in compiled) == 1
+    assert gated[0].begin_calls == 1
+
+
+@pytest.mark.parametrize("task_mode", [Mode.TRACK_CARTESIAN, Mode.TRACK_HYBRID])
+def test_nongated_finite_hot_install_uses_mode_t0(monkeypatch, task_mode):
+    """Finite velocity tasks without a gate retain the mode-time fallback."""
+
+    svc = _hot_swap_service()
+    compiled: list[Mode] = []
+    install_t0: list[float] = []
+
+    def fake_compile(ctx, req, *, raw, twist_read, dt):
+        del ctx, raw, twist_read, dt
+        compiled.append(req.mode)
+        if req.mode == task_mode:
+            return Phase(outer=_Outer(), label="finite", duration_s=2.0)
+        if req.mode == Mode.SERVO_TWIST:
+            return Phase(outer=_Outer(), label="servo")
+        return Phase(outer=_Outer(), label="servo_hold")
+
+    def fake_runner(_sess, phases, _inner, **kwargs):
+        phase = phases[0]
+        step = SimpleNamespace(q_send=np.zeros(8), slack_norm=0.0)
+        if phase.on_enter is not None:
+            phase.on_enter()
+        svc.hub.polls = [
+            (
+                Cmd.SET_MODE,
+                88,
+                ModeRequest(task_mode, {"label": "finite", "duration_s": 2.0}),
+            )
+        ]
+        kwargs["on_step"](
+            "servo",
+            1.25,
+            step,
+            np.zeros(6),
+            np.zeros(6),
+            1.25,
+        )
+        install_t0.append(float(svc._mode_t0))
+        assert svc._finite_duration == pytest.approx(2.0)
+
+        def done_events():
+            return [
+                event
+                for event in _publish_events(svc)
+                if event.get("status") == Status.DONE
+            ]
+
+        # 1.75 seconds after installation: not complete yet.
+        kwargs["on_step"](
+            "finite",
+            3.0,
+            step,
+            np.zeros(6),
+            np.zeros(6),
+            3.0,
+        )
+        assert done_events() == []
+
+        # The reference clock, rather than wall time before installation,
+        # reaches the two-second finite duration here.
+        kwargs["on_step"](
+            "finite",
+            3.30,
+            step,
+            np.zeros(6),
+            np.zeros(6),
+            3.30,
+        )
+        assert len(done_events()) == 1
+        svc._stop = True
+        return LoopResult(3, 0.015, 0.0, False)
+
+    monkeypatch.setattr(daemon, "compile_request", fake_compile)
+    monkeypatch.setattr(daemon, "run_joint_admittance_phases", fake_runner)
+
+    svc.run(SimpleNamespace(robot=None), None, None)
+
+    assert install_t0 == [pytest.approx(1.25)]
+    assert compiled.count(task_mode) == 1

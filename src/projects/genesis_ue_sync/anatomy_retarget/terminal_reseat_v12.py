@@ -19,6 +19,7 @@ exactly the shape the Blender rig authored.
 
 from __future__ import annotations
 
+import hashlib
 import time
 from typing import Any, Mapping, Sequence
 
@@ -107,18 +108,24 @@ def _cluster_vertex_ids(asset: Any, controllers: Sequence[int]) -> np.ndarray:
 
 
 def _cluster_follower_ids(asset: Any, controllers: Sequence[int]) -> np.ndarray:
-    """Bone + vessel/nerve verts owned by the cluster (tubes follow the bone)."""
+    """Authored bone meshes plus soft vertices influenced by this cluster.
 
-    wanted = set(int(value) for value in controllers)
-    owners = np.asarray(asset.source_mesh_controller_bones, dtype=np.int64)
+    Whole-body Artery/Vein meshes are owned by Head_Bone even at the wrist.
+    Mesh ownership is therefore only meaningful for rigid bone pieces.
+    """
+
     ranges = np.asarray(asset.source_vertex_ranges, dtype=np.int64)
-    tissues = [str(label).strip().lower() for label in asset.source_tissues]
-    chunks = [
-        np.arange(int(start), int(stop), dtype=np.int64)
-        for owner, (start, stop), tissue in zip(owners.tolist(), ranges.tolist(), tissues)
-        if tissue in {"bone", "vessel", "nerve"} and int(owner) in wanted
-    ]
-    return np.concatenate(chunks) if chunks else np.empty(0, dtype=np.int64)
+    soft = np.zeros(len(asset.driver_indices), dtype=bool)
+    for tissue, (start, stop) in zip(asset.source_tissues, ranges):
+        if str(tissue).strip().lower() != "bone":
+            soft[int(start):int(stop)] = True
+    influence = np.any(
+        np.isin(asset.driver_indices, list(controllers))
+        & (np.asarray(asset.driver_weights) > 0.0), axis=1
+    )
+    return np.unique(np.concatenate([
+        _cluster_vertex_ids(asset, controllers), np.flatnonzero(soft & influence)
+    ]))
 
 
 def _is_mesh_only(root_name: str) -> bool:
@@ -462,7 +469,8 @@ def _fit_one_cluster(
         centre = np.asarray(matrices[names.index(root_name), :3, 3], dtype=np.float64)
     if parent_transform is not None:
         centre = _apply(parent_transform, centre[None, :])[0]
-    generator = np.random.default_rng(abs(hash(root_name)) % (2**32))
+    seed = int.from_bytes(hashlib.sha256(root_name.encode("utf-8")).digest()[:4], "little")
+    generator = np.random.default_rng(seed)
     pick = (
         generator.choice(len(cluster), size=samples, replace=False)
         if len(cluster) > samples
@@ -1009,10 +1017,26 @@ def apply_terminal_reseat_v12(
             matrices[int(controller)] = composed @ matrices[int(controller)]
 
     moved = _weighted_rest_correction(base, driver_indices, driver_weights, delta)
+    soft_delta = delta.copy()
+    soft_mask = np.zeros(len(base), dtype=bool)
+    for tissue, (start, stop) in zip(asset.source_tissues, asset.source_vertex_ranges):
+        if str(tissue).strip().lower() != "bone":
+            soft_mask[int(start):int(stop)] = True
     for root_name, transform in mesh_only_ts.items():
         active = np.asarray(reseat[root_name]["vertex_ids"], dtype=np.int64)
+        active = active[~soft_mask[active]]
         if len(active):
             moved[active] = _apply(transform, base[active])
+        for controller in reseat[root_name]["controllers"]:
+            soft_delta[int(controller)] = transform
+    # Evaluate the complete correction once with the original per-vertex
+    # Blender weights. Sequential rigid writes would tear mixed elbow/wrist
+    # vertices and can omit whole-body vessels with a different mesh owner.
+    if mesh_only_ts and np.any(soft_mask):
+        moved[soft_mask] = _weighted_rest_correction(
+            base[soft_mask], driver_indices[soft_mask],
+            driver_weights[soft_mask], soft_delta,
+        )
 
     for root_name, entry in reseat.items():
         active = np.asarray(entry["vertex_ids"], dtype=np.int64)

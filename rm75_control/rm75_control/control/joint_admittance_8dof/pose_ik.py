@@ -82,6 +82,36 @@ def _wrap_pi(a: float) -> float:
     return float((a + np.pi) % (2.0 * np.pi) - np.pi)
 
 
+def _validate_srs_candidate_bounds(
+    q_lower: np.ndarray | None,
+    q_upper: np.ndarray | None,
+) -> tuple[np.ndarray | None, np.ndarray | None]:
+    """Validate the optional full 8-axis SRS candidate position box.
+
+    The SRS solver has its own URDF arm limits, but the controller can expose
+    a narrower position envelope (for example, a cable-carrier or workspace
+    restriction).  Keep this opt-in and require the complete rail-plus-arm
+    vector so callers cannot accidentally apply a 7-axis arm box to the rail.
+    """
+    if (q_lower is None) != (q_upper is None):
+        raise ValueError("q_lower and q_upper must be provided together")
+    if q_lower is None:
+        return None, None
+
+    lower = np.asarray(q_lower, dtype=float)
+    upper = np.asarray(q_upper, dtype=float)
+    if lower.shape != (8,) or upper.shape != (8,):
+        raise ValueError(
+            "q_lower and q_upper must each have shape (8,) "
+            f"(got {lower.shape} and {upper.shape})"
+        )
+    if not np.isfinite(lower).all() or not np.isfinite(upper).all():
+        raise ValueError("q_lower and q_upper must contain only finite values")
+    if not np.all(lower < upper):
+        raise ValueError("q_lower must be strictly less than q_upper elementwise")
+    return lower.copy(), upper.copy()
+
+
 def _slerp_pose(p0: np.ndarray, p1: np.ndarray, s: float, euler_order: str = "xyz") -> np.ndarray:
     """Constant-speed SE(3) interpolation: position lerp + rotation SLERP.
 
@@ -190,6 +220,8 @@ def resolve_pose_ik_srs(
     top_k_for_path_check: int = 5,
     require_path: bool = True,
     euler_order: str = "xyz",
+    q_lower: np.ndarray | None = None,
+    q_upper: np.ndarray | None = None,
 ) -> tuple[np.ndarray, bool, PoseIkReport]:
     """SRS closed-form IK + 1-D ψ grid enumeration + path reachability check.
 
@@ -203,11 +235,13 @@ def resolve_pose_ik_srs(
        (if provided) and outside ``|wrap(ψ − ψ_seed)| ≤ max_psi_swing_rad``.
     2. Reject candidates whose srs_ik is None (branch unreachable / hits
        shoulder or wrist singularity / violates URDF joint limits).
-    3. Rank surviving candidates by :func:`goal_score` and take the top-K.
-    4. For each top-K candidate, verify the whole interpolation path
+    3. If ``q_lower``/``q_upper`` are provided, reject candidates outside
+       that complete 8-axis position box.
+    4. Rank surviving candidates by :func:`goal_score` and take the top-K.
+    5. For each top-K candidate, verify the whole interpolation path
        ``(pose_seed, ψ_seed) → (pose_target, ψ_candidate)`` is srs_ik-solvable
        at ``path_check_samples`` interior points.
-    5. Return the highest-scoring candidate whose path check passes.
+    6. Return the highest-scoring candidate whose path check passes.
 
     Raises
     ------
@@ -228,6 +262,7 @@ def resolve_pose_ik_srs(
     )
     if q_branch_src.size != 8:
         raise ValueError(f"q_branch_seed must be 8-vec, got size {q_branch_src.size}")
+    candidate_lower, candidate_upper = _validate_srs_candidate_bounds(q_lower, q_upper)
     y_rail_seed = float(q_seed[RAIL_INDEX])
     y_rail_target = float(q_seed[RAIL_INDEX] if y_rail_target is None else y_rail_target)
 
@@ -242,6 +277,8 @@ def resolve_pose_ik_srs(
     # still pick a ψ near 72° even when the taught slot branch differs.
     psi_grid = np.arange(-np.pi, np.pi, float(psi_grid_step_rad))
     scored: list[tuple[float, float, np.ndarray, float]] = []  # (score, psi, q_arm, sigma_min)
+    n_reachable = 0
+    n_bound_rejected = 0
     for psi in psi_grid:
         d_home = abs(_wrap_pi(float(psi) - psi_home))
         if d_home > float(max_psi_swing_rad):
@@ -262,12 +299,24 @@ def resolve_pose_ik_srs(
         if q_arm is None:
             continue
         q_full = full_q_from_arm(q_arm, rail_m=y_rail_target)
+        n_reachable += 1
+        if candidate_lower is not None and not (
+            np.all(q_full >= candidate_lower) and np.all(q_full <= candidate_upper)
+        ):
+            n_bound_rejected += 1
+            continue
         J = kin.jacobian(q_full)
         sigma_min = float(kin.singular_values(J).min())
         score = goal_score(q_arm, q_full, float(psi), psi_home, sigma_min, kin, weights)
         scored.append((score, float(psi), q_arm, sigma_min))
 
     if not scored:
+        if candidate_lower is not None and n_reachable > 0 and n_bound_rejected == n_reachable:
+            raise UnreachablePathError(
+                "SRS IK found reachable ψ candidates, but all "
+                f"{n_reachable} were rejected by the custom q_lower/q_upper "
+                "position bounds"
+            )
         raise UnreachablePathError(
             "SRS IK found no reachable ψ candidate for pose_target — "
             "check max_psi_swing_rad, psi_hard_*, or re-teach the target pose."
@@ -288,10 +337,16 @@ def resolve_pose_ik_srs(
         err = pose_error(pose_target, pose_ach, euler_order)
         pos_err_m = float(np.linalg.norm(err[:3]))
         rot_err_rad = float(np.linalg.norm(err[3:6]))
-        within = bool(
-            np.all(q_full[1:] >= Q_LOWER - 1e-6)
-            and np.all(q_full[1:] <= Q_UPPER + 1e-6)
-        )
+        if candidate_lower is None:
+            within = bool(
+                np.all(q_full[1:] >= Q_LOWER - 1e-6)
+                and np.all(q_full[1:] <= Q_UPPER + 1e-6)
+            )
+        else:
+            within = bool(
+                np.all(q_full >= candidate_lower - 1e-6)
+                and np.all(q_full <= candidate_upper + 1e-6)
+            )
         report = PoseIkReport(
             pos_err_mm=pos_err_m * 1000.0,
             rot_err_deg=float(np.degrees(rot_err_rad)),

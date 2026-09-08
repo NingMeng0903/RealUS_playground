@@ -1,0 +1,80 @@
+{
+  "scope": "synthetic 8000-point depth scale only; four-CPU affinity; not a live camera or Genesis benchmark",
+  "cases": [
+    {
+      "algorithm": "original",
+      "blas_threads": "32",
+      "affinity": [
+        6,
+        7,
+        8,
+        9
+      ],
+      "points": 8000,
+      "target_fps": 30,
+      "frames": 30,
+      "wall_s": 1.000174948014319,
+      "process_cpu_s": 3.0046722,
+      "average_cpu_cores": 3.004146630512269,
+      "frame_p50_ms": 0.156636000610888,
+      "frame_p99_ms": 0.53959334269166,
+      "frame_max_ms": 0.5655150162056088,
+      "pools": [
+        {
+          "api": "openblas",
+          "threads": 4
+        }
+      ]
+    },
+    {
+      "algorithm": "original",
+      "blas_threads": "1",
+      "affinity": [
+        6,
+        7,
+        8,
+        9
+      ],
+      "points": 8000,
+      "target_fps": 30,
+      "frames": 30,
+      "wall_s": 1.0003294110065326,
+      "process_cpu_s": 0.007116053999999997,
+      "average_cpu_cores": 0.007113710665409522,
+      "frame_p50_ms": 0.19055005395784974,
+      "frame_p99_ms": 0.25221402756869793,
+      "frame_max_ms": 0.2535239327698946,
+      "pools": [
+        {
+          "api": "openblas",
+          "threads": 1
+        }
+      ]
+    },
+    {
+      "algorithm": "elementwise",
+      "blas_threads": "1",
+      "affinity": [
+        6,
+        7,
+        8,
+        9
+      ],
+      "points": 8000,
+      "target_fps": 30,
+      "frames": 30,
+      "wall_s": 1.000282371067442,
+      "process_cpu_s": 0.005913333999999992,
+      "average_cpu_cores": 0.005911664716923516,
+      "frame_p50_ms": 0.15801592962816358,
+      "frame_p99_ms": 0.19301640568301084,
+      "frame_max_ms": 0.19936100579798222,
+      "pools": [
+        {
+          "api": "openblas",
+          "threads": 1
+        }
+      ]
+    }
+  ]
+}

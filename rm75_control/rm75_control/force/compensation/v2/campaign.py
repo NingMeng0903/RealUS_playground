@@ -830,7 +830,17 @@ class PayloadIdCampaign:
             extra=extra,
         )
         if ret != self.OK:
-            raise CampaignAbort(f"servo enter {ret} ({self.CODE_NAMES.get(ret, ret)})")
+            detail = ""
+            snapshot = getattr(self.arm, "_snapshot", None)
+            if callable(snapshot):
+                try:
+                    status = snapshot() or {}
+                    detail = f"; controller={status.get('msg', 'unknown')}"
+                except Exception:
+                    pass
+            raise CampaignAbort(
+                f"servo enter {label} {ret} ({self.CODE_NAMES.get(ret, ret)}){detail}"
+            )
         for _ in range(8):
             self._sleep_tick(np.zeros(6), record=False)
 
@@ -1608,6 +1618,8 @@ def run_hardware_campaign(
         rc = 2
     finally:
         camp.close(stop=stop)
+    if rc != 0:
+        print(f"[FIT] collection incomplete (rc={rc}); fitting the samples already recorded", flush=True)
     try:
         fit_hardware_log(log_csv, cfg, out_json=out_json, kin=camp.kin, contract=camp.contract)
     except Exception as exc:

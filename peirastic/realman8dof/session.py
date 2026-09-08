@@ -365,6 +365,7 @@ def compile_request(
                 ref,
                 duration_s=hybrid_dur,
                 dt=dt,
+                label=str(payload.get("label", "track_hybrid")),
                 use_tff_split=bool(payload.get("use_tff_split", False)),
                 payload=payload,
             ),

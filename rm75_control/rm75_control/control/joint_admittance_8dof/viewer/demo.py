@@ -14,6 +14,14 @@ import sys
 import time
 from pathlib import Path
 
+if __name__ == "__main__":
+    # Genesis/Torch and the scene's NumPy imports must see the observer
+    # resource limits.  Imports of this module by tests/controllers stay
+    # side-effect free.
+    from rm75_control.control.admittance_common.observer_runtime import prepare_observer_process
+
+    prepare_observer_process()
+
 import numpy as np
 
 from rm75_control.control.joint_admittance_8dof.param_model.paths import DEFAULT_SPEC_YAML

@@ -149,6 +149,36 @@ def test_identity_reseat_is_a_noop() -> None:
     assert matrices == pytest.approx(bind)
 
 
+def test_mesh_only_reseat_transports_whole_body_vessel_by_vertex_weights() -> None:
+    # A whole-body artery is owned by Head_Bone. Its elbow vertices still
+    # carry the authored forearm/wrist weights and must follow both changes.
+    asset = SimpleNamespace(
+        source_bone_names=["Head_Bone", "Forearm_Bone_L", "Wrist_Rotate_L"],
+        source_tissues=["bone", "vessel", "organ"],
+        source_mesh_controller_bones=np.array([1, 0, 0]),
+        source_vertex_ranges=np.array([[0, 1], [1, 4], [4, 5]]),
+        driver_indices=np.array([[1, 0], [1, 0], [1, 2], [0, 0], [1, 0]]),
+        driver_weights=np.array([[1., 0.], [1., 0.], [.25, .75], [1., 0.], [.5, .5]]),
+    )
+    rest = np.zeros((5, 3))
+    rest[:, 1] = np.arange(5) * .001
+    bind = np.tile(np.eye(4), (3, 1, 1))
+
+    def entry(controller, dx, active):
+        return dict(transform=_translation(dx), controllers=[controller],
+                    vertex_ids=np.array(active), translation_m=dx, rotation_deg=0.,
+                    root_origin_shift_m=0., max_outside_before_m=0.,
+                    max_outside_after_m=0., outside_count_before=0, outside_count_after=0)
+
+    reseat = {"Forearm_Bone_L": entry(1, .010, [0]),
+              "Wrist_Rotate_L": entry(2, .020, [2])}
+    moved, matrices, _ = apply_terminal_reseat_v12(rest, bind, asset=asset, reseat=reseat)
+    np.testing.assert_allclose(moved[:, 0], [.010, .010, .0175, 0., .005])
+    np.testing.assert_array_equal(moved[:, 1:], rest[:, 1:])
+    np.testing.assert_array_equal(matrices[1], bind[1])
+    np.testing.assert_array_equal(asset.driver_weights[2], [.25, .75])
+
+
 def _solver_asset() -> tuple[SimpleNamespace, np.ndarray, np.ndarray]:
     """One bone mesh per terminal root, all fully weighted to that root."""
 

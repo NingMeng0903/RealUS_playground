@@ -150,6 +150,7 @@ class HfpcPayload:
     label: str | None = None
     soft_start: bool | None = None
     ramp_s: float | None = None
+    wait_for_contact: bool | None = None
     amplitude_x_m: float | None = None
     amplitude_y_m: float | None = None
     period_s: float | None = None
@@ -178,6 +179,7 @@ class HfpcPayload:
                 "label": self.label,
                 "soft_start": self.soft_start,
                 "ramp_s": self.ramp_s,
+                "wait_for_contact": self.wait_for_contact,
                 "amplitude_x_m": self.amplitude_x_m,
                 "amplitude_y_m": self.amplitude_y_m,
                 "period_s": self.period_s,

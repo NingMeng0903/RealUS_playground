@@ -48,6 +48,20 @@ class TestApplyAndYaml(unittest.TestCase):
         np.testing.assert_allclose(c, fit.coeff)
         self.assertEqual(meta["serial"], "TEST")
 
+    def test_frame_scale_matches_calibrated_polynomial(self) -> None:
+        rng = np.random.default_rng(42)
+        xyz = rng.uniform([-0.3, -0.2, 0.01], [0.3, 0.2, 1.5], (8000, 3)).astype(np.float32)
+        # Preserve the original handling of very small/invalid depth values.
+        xyz[:3, 2] = [0.0, 1e-8, -1e-3]
+        coeff = np.array([1.007, -0.034, 0.003])
+        pts64 = xyz.astype(np.float64)
+        z = np.clip(pts64[:, 2], 1e-6, None)
+        features = np.column_stack([np.ones(len(xyz)), pts64[:, 0] / z, pts64[:, 1] / z])
+        expected = xyz * (features @ coeff).astype(np.float32)[:, None]
+        actual = apply_depth_ray_scale(xyz, coeff)
+        self.assertEqual(actual.dtype, np.float32)
+        np.testing.assert_allclose(actual, expected, rtol=2e-7, atol=0)
+
 
 class TestFitFromBoardViews(unittest.TestCase):
     def test_recovers_known_linear_scale(self) -> None:

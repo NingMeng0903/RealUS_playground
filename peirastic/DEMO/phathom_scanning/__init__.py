@@ -1,1 +1,1 @@
-"""Orbbec cloud → phantom top surface → PTP standoff → 4 N force press."""
+"""Orbbec cloud → phantom top: press (`run`) or 8DOF S-scan (`s_scan`)."""

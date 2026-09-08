@@ -169,6 +169,9 @@ def main() -> int:
     if rm75.is_dir():
         sys.path.insert(0, str(rm75))
 
+    from rm75_control.control.admittance_common.observer_runtime import prepare_observer_process
+    prepare_observer_process()
+
     log_level = logging.INFO if args.verbose else logging.WARNING
     logging.basicConfig(level=log_level, format="%(levelname)s %(message)s")
     for _name in (

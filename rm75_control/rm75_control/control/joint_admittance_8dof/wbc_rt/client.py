@@ -112,6 +112,9 @@ class NativeWbcClient:
         self._inflight_limit_s = 0.050
         self._soft_miss_seq = 0
         self._coast_warn_age_s = -1.0
+        self._schedstat_fd: int | None = None
+        self._request_schedstat: tuple[int, int] | None = None
+        self._request_thread_cpu_s = 0.0
 
     def start(self) -> None:
         try:
@@ -155,6 +158,9 @@ class NativeWbcClient:
         )
         lib = str(Path(cmeel) / "lib")
         env["LD_LIBRARY_PATH"] = lib + (":" + env["LD_LIBRARY_PATH"] if env.get("LD_LIBRARY_PATH") else "")
+        for name in ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS", "BLIS_NUM_THREADS"):
+            env[name] = "1"
+        env["OMP_WAIT_POLICY"] = "PASSIVE"
         self._notify, child_notify = socket.socketpair()
         self._notify.setblocking(False)
         try:
@@ -173,6 +179,10 @@ class NativeWbcClient:
         finally:
             child_notify.close()
         if self._proc is not None and self._proc.pid:
+            try:
+                self._schedstat_fd = os.open(f"/proc/{self._proc.pid}/schedstat", os.O_RDONLY | os.O_CLOEXEC)
+            except OSError:
+                pass
             isolate_native_process(
                 self._proc.pid,
                 cpu=getattr(self.cfg, "native_cpu", None),
@@ -207,6 +217,9 @@ class NativeWbcClient:
                 self._command(P.CMD_SHUTDOWN, wait=False)
         except Exception:
             pass
+        if self._schedstat_fd is not None:
+            os.close(self._schedstat_fd)
+            self._schedstat_fd = None
         if self._proc is not None:
             try:
                 self._proc.wait(timeout=1.0)
@@ -256,8 +269,14 @@ class NativeWbcClient:
                 # Readiness wakes immediately; unlike sleep polling it does
                 # not wait for timer slack, and unlike spinning it releases
                 # the GIL and CPU while the native worker runs.
-                ready, _, _ = select.select([notifier], [], [], remaining)
-                if ready and not notifier.recv(4096):
+                try:
+                    ready, _, _ = select.select([notifier], [], [], remaining)
+                    closed = bool(ready) and not notifier.recv(4096)
+                except (OSError, ValueError):
+                    # A reset/closed socket must enter the normal fault hold,
+                    # rather than throw out of the controller's service loop.
+                    closed = True
+                if closed:
                     self._last_wait_s = time.monotonic() - t0
                     self._last_wait_reason = "process_exit"
                     return False
@@ -272,6 +291,38 @@ class NativeWbcClient:
             return True
         self._last_wait_s = time.monotonic() - t0
         return False
+
+    def _read_native_schedstat(self) -> tuple[int, int] | None:
+        fd = getattr(self, "_schedstat_fd", None)
+        if fd is None:
+            return None
+        try:
+            values = os.pread(fd, 128, 0).split()
+            return int(values[0]), int(values[1])  # runtime ns, runnable-wait ns
+        except (OSError, ValueError, IndexError):
+            return None
+
+    def timeout_diagnostics(self) -> str:
+        """Diagnostic counters only; never accept an expired SHM candidate."""
+        now = self._read_native_schedstat()
+        previous = self._request_schedstat
+        cpu_ms = queue_ms = float("nan")
+        if now is not None and previous is not None:
+            cpu_ms = max(0, now[0] - previous[0]) / 1e6
+            queue_ms = max(0, now[1] - previous[1]) / 1e6
+        reply = int(self._out["seq"][0]) if self._out is not None else 0
+        state, wait = "unknown", "unknown"
+        pid = getattr(self._proc, "pid", None)
+        if pid is not None:
+            try:
+                state = Path(f"/proc/{pid}/stat").read_text().rsplit(")", 1)[1].split()[0]
+                wait = Path(f"/proc/{pid}/wchan").read_text().strip()[:48]
+            except (OSError, IndexError):
+                pass
+        return (f"observed_reply_seq={reply} native_state={state} "
+                f"native_cpu_ms={cpu_ms:.2f} native_runqueue_ms={queue_ms:.2f} "
+                f"client_cpu_ms={max(0.0, time.thread_time() - self._request_thread_cpu_s) * 1000:.2f} "
+                f"native_wchan={wait}")
 
     def _notify_request(self) -> None:
         if self._notify is not None:
@@ -634,6 +685,11 @@ class NativeWbcClient:
         rec["flags"] = np.uint32(flags)
         seq = self._next_seq()
         rec["cmd_seq"] = np.uint64(seq)
+        self._request_schedstat = self._read_native_schedstat()
+        self._request_thread_cpu_s = time.thread_time()
+        self._inflight_seq = seq
+        self._inflight_t0 = time.monotonic()
+        rec["t_mono"] = self._inflight_t0
         rec["seq"] = np.uint64(seq)
         try:
             self._notify_request()
@@ -641,8 +697,6 @@ class NativeWbcClient:
             self._last_wait_reason = "process_exit"
             self._last_wait_s = 0.0
             return self._timeout_step(twist)
-        self._inflight_seq = seq
-        self._inflight_t0 = time.monotonic()
         ok = self._wait_seq(seq)
         if time.monotonic() - self._inflight_t0 >= self._inflight_limit_s:
             self._last_wait_s = time.monotonic() - self._inflight_t0
@@ -670,22 +724,21 @@ class NativeWbcClient:
         qdot = np.asarray(o["qdot"], dtype=float).copy()
         self._published_q_cmd = q_cmd.copy()
         self._published_qdot = qdot.copy()
-        native_status_early = int(o["status"])
+        native_status = int(o["status"])
         if auto_commit:
             self._sync_q()
-            if native_status_early == P.STATUS_OK:
+            if native_status == P.STATUS_OK:
                 self._pending_commit_seq = 0
                 record = getattr(self.ctrl, "_record_applied_qdot", None)
                 if callable(record):
                     record(qdot)
-        elif native_status_early == P.STATUS_OK:
+        elif native_status == P.STATUS_OK:
             self._pending_commit_seq = seq
         v_recv = np.asarray(o["v_cmd_received"], dtype=float).copy()
         v_feas = np.asarray(o["v_cmd_feasible"], dtype=float).copy()
         v_tcp = np.asarray(o["v_tcp_estimated"], dtype=float).copy()
         resid = np.asarray(o["task_residual"], dtype=float).copy()
         stale = bool(int(o["flags"]) & P.OUT_STALE) or bool(kwargs.get("command_stale"))
-        native_status = int(o["status"])
         qp1_name = qp_status_name(o["qp1_status"])
         qp2_name = qp_status_name(o["qp2_status"])
         if native_status == P.STATUS_FAIL:

@@ -417,5 +417,79 @@
     ],
     "max_rotation_delta_deg": 9.18715097977852e-05,
     "interpretation": "Checks FK/software binding consistency; does not establish physical TCP calibration accuracy."
+  },
+  "deadband_replay": {
+    "mass": 0.065,
+    "damping": 0.28,
+    "vmax_rad_s": 0.22,
+    "amax_rad_s2": 4.5,
+    "quiet_windows": 13,
+    "quiet_total_s": 3.8210880000000005,
+    "major_reversal_definition": "Opposite speed exceeds 0.01 rad/s for at least 50 ms; pauses do not count as reversals.",
+    "interpretation": "Same measured torque and contact flags, with full velocity state carried through the trace. Changed pose/contact reaction is not simulated; this is not a closed-loop stability guarantee.",
+    "cases": [
+      {
+        "deadband_nm": 0.025,
+        "contact_in_deadband_percent": 28.263016791308026,
+        "moving_seconds_over_001_rad_s": 53.472345000000004,
+        "total_absolute_command_rotation_deg": 211.32672584270324,
+        "p99_speed_deg_s": 9.74136423890764,
+        "peak_speed_deg_s": 11.308428221863332,
+        "speed_cap_seconds": 0.0,
+        "major_reversals": 17,
+        "quiet_max_window_excursion_deg": 0.0,
+        "quiet_total_absolute_rotation_deg": 0.0,
+        "recorded_baseline_rms_error_rad_s": 3.932977538318319e-07,
+        "recorded_baseline_max_error_rad_s": 1.886680537108859e-06
+      },
+      {
+        "deadband_nm": 0.0225,
+        "contact_in_deadband_percent": 23.479610554536475,
+        "moving_seconds_over_001_rad_s": 56.278242,
+        "total_absolute_command_rotation_deg": 239.30652288899014,
+        "p99_speed_deg_s": 10.234363454254924,
+        "peak_speed_deg_s": 11.812938401940636,
+        "speed_cap_seconds": 0.0,
+        "major_reversals": 17,
+        "quiet_max_window_excursion_deg": 0.012185190882508056,
+        "quiet_total_absolute_rotation_deg": 0.05921776804875675
+      },
+      {
+        "deadband_nm": 0.02,
+        "contact_in_deadband_percent": 19.42288697615352,
+        "moving_seconds_over_001_rad_s": 60.10943900000001,
+        "total_absolute_command_rotation_deg": 268.7714574253102,
+        "p99_speed_deg_s": 10.742806224946781,
+        "peak_speed_deg_s": 12.317448582017922,
+        "speed_cap_seconds": 0.0,
+        "major_reversals": 17,
+        "quiet_max_window_excursion_deg": 0.04402697867719947,
+        "quiet_total_absolute_rotation_deg": 0.2225588155010844
+      },
+      {
+        "deadband_nm": 0.0175,
+        "contact_in_deadband_percent": 15.852970227176522,
+        "moving_seconds_over_001_rad_s": 61.73478400000001,
+        "total_absolute_command_rotation_deg": 299.1548182150416,
+        "p99_speed_deg_s": 11.248888289404986,
+        "peak_speed_deg_s": 12.60507149287811,
+        "speed_cap_seconds": 0.009999999999999998,
+        "major_reversals": 17,
+        "quiet_max_window_excursion_deg": 0.10402938374753368,
+        "quiet_total_absolute_rotation_deg": 0.5097653265870778
+      },
+      {
+        "deadband_nm": 0.015,
+        "contact_in_deadband_percent": 12.727529278961477,
+        "moving_seconds_over_001_rad_s": 63.566272000000005,
+        "total_absolute_command_rotation_deg": 330.1373939204764,
+        "p99_speed_deg_s": 11.733181771003657,
+        "peak_speed_deg_s": 12.60507149287811,
+        "speed_cap_seconds": 0.055009999999999996,
+        "major_reversals": 17,
+        "quiet_max_window_excursion_deg": 0.18207704967910077,
+        "quiet_total_absolute_rotation_deg": 0.9135864405468387
+      }
+    ]
   }
 }

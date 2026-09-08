@@ -1,0 +1,34 @@
+{
+  "last_seq": "46029",
+  "phase": "dm_holdout",
+  "q8": [
+    0.4000003051757813,
+    -0.8336390628573072,
+    -1.5811636134444116,
+    0.651479044032969,
+    2.084150054837715,
+    0.7912450004126628,
+    1.2648401302255794,
+    1.5179826465853172
+  ],
+  "arm_margin_deg": [
+    129.89669122866883,
+    39.10439236721294,
+    140.33369150332703,
+    15.275854518661788,
+    132.32569208316102,
+    55.22877021152277,
+    272.5434963187195
+  ],
+  "min_axis": 4,
+  "min_margin_deg": 15.275854518661788,
+  "note": "Last recorded pose, not fault-tick snapshot; current URDF and configured 0.3-degree margin.",
+  "offline_pairs_within_40mm": [
+    {
+      "a": "link_6_0",
+      "b": "link_8_0",
+      "distance_mm": 39.1524965439215
+    }
+  ],
+  "collision_note": "Current offline model at last CSV pose only; not native fault tick or active CBF rows."
+}
