@@ -925,7 +925,7 @@ def run_joint_admittance_phases(
     total_t0 = time.perf_counter()
     logger = _TickLogger(log_csv) if log_csv else None
     try:
-        _pose0_rm = async_obs.wait_first_pose(timeout_s=5.0)
+        async_obs.wait_first_pose(timeout_s=5.0)
         snap0 = async_obs.read()
         if snap0.q_deg is None:
             raise RuntimeError("no joint feedback from robot")
@@ -960,7 +960,6 @@ def run_joint_admittance_phases(
         wd = Watchdog(watchdog_timeout_s, _hold)
         wd.start()
         try:
-            pose_rm = _pose0_rm
             q_meas = q0_rad
             pose_pin = pose0
             jump_warn_t = 0.0
@@ -1002,8 +1001,6 @@ def run_joint_admittance_phases(
                             break
     
                         snap = async_obs.read()
-                        if snap.pose is not None:
-                            pose_rm = snap.pose
                         if snap.q_deg is not None:
                             q_meas = deg2rad(snap.q_deg)
                             pose_pin = inner.kin.fk_pose(q_meas)
@@ -1011,7 +1008,7 @@ def run_joint_admittance_phases(
                         f_ext_raw = None
                         if obs is not None:
                             pose_l7 = inner.kin.frame_pose(q_meas, "link_7")
-                            _signed, f_ext = obs.update(now - total_t0, pose_l7, snap.force_raw)
+                            _, f_ext = obs.update(now - total_t0, pose_l7, snap.force_raw)
                             f_ext_raw = getattr(obs, "f_ext_raw_last", None)
     
                         q_prev = inner.q_cmd.copy()

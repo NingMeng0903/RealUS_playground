@@ -14,7 +14,7 @@ see whether the host can observe DI3/DI4 over Modbus for ``zero_mode`` / home.
 
 Panel check first (if Modbus shows nothing):
   keypad → dF- → d-In → press switch → digits must change.
-  If panel does not change, fix wiring (E24V→黑COM, 红NC→DI3/19 & DI4/3, E0V↔COM16).
+  If panel does not change, fix wiring (E24V→black COM, red NC→DI3/19 & DI4/3, E0V↔COM16).
 """
 
 from __future__ import annotations

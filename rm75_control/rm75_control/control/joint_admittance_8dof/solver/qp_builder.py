@@ -42,7 +42,6 @@ from rm75_control.control.joint_admittance_8dof.ik_types import (
 from rm75_control.control.joint_admittance_8dof.solver import cpp_kernel
 from rm75_control.control.joint_admittance_8dof.model import RobotKinematics
 from rm75_control.control.joint_admittance_8dof.qp_cert import (
-    inbox_brake,
     measure_qdot_box,
     qp_status_code_from_prox,
     qp_status_name,

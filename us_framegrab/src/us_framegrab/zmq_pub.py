@@ -5,11 +5,13 @@ from __future__ import annotations
 import json
 import logging
 import time
+import uuid
 from typing import Any
 
 import numpy as np
 
 from us_framegrab.config import FrameGrabConfig
+from realus_clock import get_clock
 
 log = logging.getLogger("us_framegrab.zmq")
 
@@ -59,6 +61,15 @@ def camera_frame_meta(
     height: int,
     source_time_ns: int,
     wall_time_ns: int,
+    capture_monotonic_ns: int | None = None,
+    capture_wall_time_ns: int | None = None,
+    time_offset_ns: int = 0,
+    timestamp_source: str = "host_frame_read_complete",
+    clock_domain: str = "host_monotonic",
+    publisher_instance_id: str = "",
+    crop_box: list[int] | tuple[int, int, int, int] | None = None,
+    hflip: bool | None = None,
+    color: bool | None = None,
 ) -> dict[str, Any]:
     return {
         "schema_version": 1,
@@ -70,6 +81,19 @@ def camera_frame_meta(
         "source_time_ns": int(source_time_ns),
         "sim_time_ns": int(source_time_ns),
         "wall_time_ns": int(wall_time_ns),
+        "capture_monotonic_ns": (
+            None if capture_monotonic_ns is None else int(capture_monotonic_ns)
+        ),
+        "capture_wall_time_ns": (
+            None if capture_wall_time_ns is None else int(capture_wall_time_ns)
+        ),
+        "time_offset_ns": int(time_offset_ns),
+        "timestamp_source": str(timestamp_source),
+        "clock_domain": str(clock_domain),
+        "publisher_instance_id": str(publisher_instance_id),
+        "crop_box": None if crop_box is None else [int(v) for v in crop_box],
+        "hflip": None if hflip is None else bool(hflip),
+        "color": None if color is None else bool(color),
         "encoding": "jpeg",
         "width": int(width),
         "height": int(height),
@@ -80,9 +104,18 @@ class UsImagePublisher:
     """PUB bind + optional preview topic. Drops on HWM (NOBLOCK)."""
 
     def __init__(self, cfg: FrameGrabConfig) -> None:
+        self.clock = get_clock()
         self._cfg = cfg
         self._sock: Any = None
         self._ctx: Any = None
+        # Stable for this publisher process and new after every restart. This
+        # lets a recorder distinguish a restarted source from a frame-index
+        # reset without changing the multipart/topic contract.
+        self._publisher_instance_id = uuid.uuid4().hex
+
+    @property
+    def publisher_instance_id(self) -> str:
+        return self._publisher_instance_id
 
     def bind(self) -> None:
         import zmq
@@ -111,14 +144,32 @@ class UsImagePublisher:
         except Exception:
             pass
 
-    def send(self, image: np.ndarray, frame_index: int) -> None:
+    def send(
+        self,
+        image: np.ndarray,
+        frame_index: int,
+        *,
+        capture_monotonic_ns: int | None = None,
+        capture_wall_time_ns: int | None = None,
+        crop_box: list[int] | tuple[int, int, int, int] | None = None,
+        hflip: bool | None = None,
+        color: bool | None = None,
+    ) -> None:
         if self._sock is None:
             return
         import zmq
 
+        # ``wall_time_ns`` keeps its historical meaning: the publisher-side
+        # wall-clock timestamp taken immediately before JPEG encoding. The
+        # source timestamp is instead tied to the successful frame read, which
+        # is supplied by FrameGrabSession before crop/encode work begins.
         now = time.time_ns()
+        if capture_wall_time_ns is None:
+            capture_wall_time_ns = now
+        if capture_monotonic_ns is None:
+            capture_monotonic_ns = time.monotonic_ns()
         offset_ns = int(round(float(self._cfg.time_offset) * 1e9))
-        source_ns = now + offset_ns
+        source_ns = int(capture_wall_time_ns) + offset_ns
         height, width = image.shape[:2]
         meta = camera_frame_meta(
             cfg=self._cfg,
@@ -127,7 +178,20 @@ class UsImagePublisher:
             height=height,
             source_time_ns=source_ns,
             wall_time_ns=now,
+            capture_monotonic_ns=capture_monotonic_ns,
+            capture_wall_time_ns=capture_wall_time_ns,
+            time_offset_ns=offset_ns,
+            timestamp_source="host_frame_read_complete",
+            clock_domain="host_monotonic",
+            publisher_instance_id=self._publisher_instance_id,
+            crop_box=crop_box,
+            hflip=hflip,
+            color=color,
         )
+        meta.update(self.clock.metadata(
+            str(self._cfg.frame_id),
+            timestamp_ns=self.clock.from_monotonic_ns(capture_monotonic_ns) + offset_ns,
+        ))
         parts = pack_jpeg_parts(
             self._cfg.capture_topic,
             meta,

@@ -16,8 +16,6 @@ from pathlib import Path
 import numpy as np
 
 from rm75_control.control.admittance_common.shm_util import (
-    attach_named_shm,
-    close_attached_shm,
     close_named_shm,
     create_named_shm,
 )
@@ -26,7 +24,7 @@ from rm75_control.control.joint_admittance_8dof.loop import (
     TrackerStatus,
     isolate_native_process,
 )
-from rm75_control.control.joint_admittance_8dof.tasks.rail_mode import LockedStyle, RailMode
+from rm75_control.control.joint_admittance_8dof.tasks.rail_mode import RailMode
 from rm75_control.control.joint_admittance_8dof.wbc_rt.config_dump import dump_wbc_config
 from rm75_control.control.joint_admittance_8dof.wbc_rt import protocol as P
 from rm75_control.control.joint_admittance_8dof.wbc_rt.build_id import (

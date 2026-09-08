@@ -53,7 +53,6 @@ class LoopConfig:
     accel_ms: int = 100
     decel_ms: int = 100
     scurve_ms: int = 20
-    max_speed_rpm: int = 1200
     max_speed_rpm: int = 600  # FA23: 0.10 m/s @ 10 mm/rev
     travel_limit_m: float = 0.080  # software hard stop for this demo only
     freeze_s: float = 0.40

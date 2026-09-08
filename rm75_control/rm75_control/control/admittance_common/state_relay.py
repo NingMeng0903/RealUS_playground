@@ -17,6 +17,7 @@ from typing import Any
 
 import numpy as np
 import yaml
+from realus_clock import HeaderPublisher, get_clock
 
 from rm75_control.control.admittance_common.async_state import AsyncStateSnapshot
 from rm75_control.control.admittance_common.shm_util import (
@@ -197,7 +198,10 @@ def _write_slot(
 ) -> None:
     slot["seq"] = np.uint64(seq)
     slot["t_s"] = float(snap.t_s)
-    slot["wall_time_ns"] = np.uint64(int(time.time_ns()))
+    source_wall_ns = int(getattr(snap, "wall_time_ns", 0) or 0)
+    slot["wall_time_ns"] = np.uint64(
+        source_wall_ns if source_wall_ns > 0 else int(time.time_ns())
+    )
     if snap.q_deg is not None:
         slot["q_deg"][:] = np.asarray(snap.q_deg, dtype=float)[:7]
     pose = pose_override if pose_override is not None else snap.pose
@@ -247,6 +251,8 @@ class _ForceExtShm:
     """Tiny publisher/subscriber for controller tool wrench on ``rm75_f_ext``."""
 
     def __init__(self, name: str = DEFAULT_F_EXT_NAME) -> None:
+        self.clock = get_clock()
+        self._stamp_pub = None
         self._name = normalize_relay_name(name)
         self._shm: shared_memory.SharedMemory | None = None
         self._arr: np.ndarray | None = None
@@ -259,6 +265,7 @@ class _ForceExtShm:
             if self._arr is not None:
                 return
             self._shm = create_named_shm(self._name, F_EXT_SHM_SIZE)
+            self._stamp_pub = HeaderPublisher(self._name, "tcp", self.clock)
             self._arr = np.ndarray((), dtype=_F_EXT_DTYPE, buffer=self._shm.buf)
             self._session_id = int(time.time_ns() & ((1 << 64) - 1)) or 1
             self._arr["session_id"] = np.uint64(self._session_id)
@@ -282,20 +289,49 @@ class _ForceExtShm:
             self._shm = None
             self._session_id = 0
 
-    def publish(self, f_ext: np.ndarray, *, t_s: float | None = None) -> None:
+            if self._stamp_pub is not None:
+                self._stamp_pub.close()
+                self._stamp_pub = None
+
+    def publish(
+        self,
+        f_ext: np.ndarray,
+        *,
+        t_s: float | None = None,
+        wall_time_ns: int | None = None,
+    ) -> None:
+        """Publish one wrench sample.
+
+        ``t_s`` is always in the host monotonic clock domain.  The separate
+        ``wall_time_ns`` field is a Unix wall-clock capture stamp.  ``ok`` is
+        the commit flag: clear it before touching the body and set it only
+        after the sequence and payload have been written so readers in another
+        process never accept a torn record.
+        """
         with self._lock:
             if self._arr is None:
                 return
             arr = np.asarray(f_ext, dtype=float).reshape(-1)
-            self._seq += 1
-            self._arr["seq"] = np.uint64(self._seq)
-            self._arr["t_s"] = float(time.time() if t_s is None else t_s)
-            self._arr["wall_time_ns"] = np.uint64(int(time.time_ns()))
+            next_seq = self._seq + 1
+            source_t_s = time.monotonic() if t_s is None else float(t_s)
+            source_wall_ns = (
+                int(time.time_ns())
+                if wall_time_ns is None
+                else int(wall_time_ns)
+            )
+            self._arr["ok"] = np.uint8(0)
+            self._arr["t_s"] = float(source_t_s)
+            self._arr["wall_time_ns"] = np.uint64(max(source_wall_ns, 0))
             self._arr["f_ext"][:] = np.nan
             n = min(6, arr.size)
             self._arr["f_ext"][:n] = arr[:n]
+            # Commit sequence last; readers validate it again after copying.
+            self._seq = next_seq
+            self._arr["seq"] = np.uint64(next_seq)
             self._arr["ok"] = np.uint8(1)
             self._arr["session_id"] = np.uint64(self._session_id)
+
+            self._stamp_pub.publish(round(source_t_s * 1e9), next_seq)
 
     def attach_reader(self) -> bool:
         with self._lock:
@@ -334,22 +370,41 @@ class _ForceExtShm:
             close_attached_shm(self._shm)
             self._shm = None
 
-    def read(self) -> tuple[bool, int, float, np.ndarray]:
-        """Return (ok, seq, t_s, f_ext)."""
+    def read_full(self) -> tuple[bool, int, float, int, np.ndarray]:
+        """Return ``(ok, seq, t_s, wall_time_ns, f_ext)`` consistently."""
         with self._lock:
             if self._arr is None:
-                return False, 0, float("nan"), np.full(6, np.nan)
-            try:
-                sid = int(self._arr["session_id"])
-                ok_flag = bool(self._arr["ok"])
-                seq = int(self._arr["seq"])
-                t_s = float(self._arr["t_s"])
-                f_ext = np.asarray(self._arr["f_ext"], dtype=float).copy()
-            except (OSError, ValueError):
-                return False, 0, float("nan"), np.full(6, np.nan)
-            if sid == 0 or not ok_flag:
-                return False, seq, t_s, np.full(6, np.nan)
-            return True, seq, t_s, f_ext
+                return False, 0, float("nan"), 0, np.full(6, np.nan)
+            # The publisher is a separate process, so the Python lock cannot
+            # protect this reader.  Validate immutable identity and commit
+            # markers on both sides of the body copy.
+            for _ in range(8):
+                try:
+                    sid_before = int(self._arr["session_id"])
+                    ok_before = bool(self._arr["ok"])
+                    seq_before = int(self._arr["seq"])
+                    t_s = float(self._arr["t_s"])
+                    wall_time_ns = int(self._arr["wall_time_ns"])
+                    f_ext = np.asarray(self._arr["f_ext"], dtype=float).copy()
+                    seq_after = int(self._arr["seq"])
+                    sid_after = int(self._arr["session_id"])
+                    ok_after = bool(self._arr["ok"])
+                except (OSError, ValueError):
+                    return False, 0, float("nan"), 0, np.full(6, np.nan)
+                if (
+                    sid_before != 0
+                    and sid_before == sid_after
+                    and ok_before
+                    and ok_after
+                    and seq_before == seq_after
+                ):
+                    return True, seq_after, t_s, wall_time_ns, f_ext
+            return False, seq_after, t_s, wall_time_ns, np.full(6, np.nan)
+
+    def read(self) -> tuple[bool, int, float, np.ndarray]:
+        """Return the legacy-compatible ``(ok, seq, t_s, f_ext)`` tuple."""
+        ok, seq, t_s, _wall_time_ns, f_ext = self.read_full()
+        return ok, seq, t_s, f_ext
 
 
 def f_ext_shm_has_publisher(name: str = DEFAULT_F_EXT_NAME) -> bool:
@@ -376,6 +431,7 @@ class ForceExtBus:
         self._last_seq = 0
         self._last_f_ext = np.full(6, np.nan, dtype=float)
         self._last_t_s = float("nan")
+        self._last_wall_time_ns = 0
         self._last_ok = False
 
     @property
@@ -394,6 +450,10 @@ class ForceExtBus:
     def last_t_s(self) -> float:
         return float(self._last_t_s)
 
+    @property
+    def last_wall_time_ns(self) -> int:
+        return int(self._last_wall_time_ns)
+
     def ensure_attached(self, *, force: bool = False) -> bool:
         if force:
             self._shm.detach_reader()
@@ -403,19 +463,32 @@ class ForceExtBus:
         self._shm.detach_reader()
 
     def read(self) -> tuple[bool, int, float, np.ndarray]:
+        ok, seq, t_s, _wall_time_ns, f_ext = self.read_with_wall()
+        return ok, seq, t_s, f_ext
+
+    def read_with_wall(self) -> tuple[bool, int, float, int, np.ndarray]:
+        """Return force data with both monotonic and wall-clock timestamps."""
         if not self.ensure_attached():
             self._last_ok = False
-            return False, 0, float("nan"), np.full(6, np.nan)
-        ok, seq, t_s, f_ext = self._shm.read()
+            self._last_wall_time_ns = 0
+            return False, 0, float("nan"), 0, np.full(6, np.nan)
+        ok, seq, t_s, wall_time_ns, f_ext = self._shm.read_full()
         # A restarted under the same name: session went to 0 or mapping died.
         if not ok:
             self.ensure_attached(force=True)
-            ok, seq, t_s, f_ext = self._shm.read()
+            ok, seq, t_s, wall_time_ns, f_ext = self._shm.read_full()
         self._last_ok = bool(ok)
         self._last_seq = int(seq)
         self._last_t_s = float(t_s)
+        self._last_wall_time_ns = int(wall_time_ns)
         self._last_f_ext = np.asarray(f_ext, dtype=float).copy()
-        return self._last_ok, self._last_seq, self._last_t_s, self._last_f_ext
+        return (
+            self._last_ok,
+            self._last_seq,
+            self._last_t_s,
+            self._last_wall_time_ns,
+            self._last_f_ext,
+        )
 
 
 class StateRelayPublisher:
@@ -431,6 +504,8 @@ class StateRelayPublisher:
         kin: Any | None = None,
     ) -> None:
         self._bus = bus
+        self.clock = get_clock()
+        self._stamp_pub = None
         self._name = normalize_relay_name(name)
         self._hz = max(float(hz), 1.0)
         self._rail_m_fn = rail_m_fn or (lambda: 0.0)
@@ -499,12 +574,18 @@ class StateRelayPublisher:
         self._force_t0 = None
         self._last_idle_force_seq = -1
 
-    def set_f_ext(self, f_ext: np.ndarray | None) -> None:
+    def set_f_ext(
+        self,
+        f_ext: np.ndarray | None,
+        *,
+        t_s: float | None = None,
+        wall_time_ns: int | None = None,
+    ) -> None:
         """Publish controller-compensated tool wrench on ``rm75_f_ext``."""
         if f_ext is None:
             return
         self._task_f_ext_mono = time.monotonic()
-        self._f_ext_shm.publish(f_ext)
+        self._f_ext_shm.publish(f_ext, t_s=t_s, wall_time_ns=wall_time_ns)
 
     def _idle_publish_f_ext(
         self,
@@ -539,17 +620,34 @@ class StateRelayPublisher:
                 if hasattr(kin, "frame_pose")
                 else np.asarray(snap.pose, dtype=float).reshape(6)
             )
-            if self._force_t0 is None:
-                self._force_t0 = time.monotonic()
-            t_obs = time.monotonic() - float(self._force_t0)
-            _signed, f_ext = obs.update(t_obs, pose_l7, snap.force_raw)
+            try:
+                t_obs = float(snap.t_s)
+            except (TypeError, ValueError, OverflowError):
+                return
+            if not np.isfinite(t_obs) or t_obs <= 0.0:
+                return
+            try:
+                _, f_ext = obs.update(
+                    t_obs,
+                    pose_l7,
+                    snap.force_raw,
+                    wall_time_ns=getattr(snap, "wall_time_ns", 0),
+                )
+            except TypeError:
+                # Keep compatibility with injected legacy observers that only
+                # implement the original three positional arguments.
+                _, f_ext = obs.update(t_obs, pose_l7, snap.force_raw)
             if hasattr(kin, "wrench_link7_to_tcp"):
                 f_ext = kin.wrench_link7_to_tcp(f_ext)
             fr = np.asarray(f_ext, dtype=float).reshape(-1)
             if fr.size < 3 or not np.all(np.isfinite(fr[:3])):
                 return
             self._last_idle_force_seq = key
-            self._f_ext_shm.publish(fr, t_s=float(snap.t_s))
+            self._f_ext_shm.publish(
+                fr,
+                t_s=float(snap.t_s),
+                wall_time_ns=int(getattr(snap, "wall_time_ns", 0) or 0) or None,
+            )
         except Exception:
             pass
 
@@ -584,6 +682,7 @@ class StateRelayPublisher:
         if self._view is not None:
             return
         self._shm = create_named_shm(self._name, SHM_SIZE)
+        self._stamp_pub = HeaderPublisher(self._name, "world", self.clock)
         self._view = _ShmView(self._shm)
         self._view.header["active"] = np.uint64(0)
         self._view.header["global_seq"] = np.uint64(0)
@@ -616,6 +715,9 @@ class StateRelayPublisher:
         self._shm = None
         self._session_id = 0
         self._f_ext_shm.stop_publisher()
+        if self._stamp_pub is not None:
+            self._stamp_pub.close()
+            self._stamp_pub = None
 
     def _publish_snap(self, snap: AsyncStateSnapshot, *, source: str = "thread") -> None:
         assert self._view is not None
@@ -642,6 +744,7 @@ class StateRelayPublisher:
             )
             self._view.header["active"] = np.uint64(inactive)
             self._view.header["global_seq"] = np.uint64(self._seq)
+            self._stamp_pub.publish(round(float(snap.t_s) * 1e9), self._seq)
             self._last_pub_mono = time.monotonic()
             # Rate probe
             now = self._last_pub_mono
@@ -696,6 +799,7 @@ class RelayStateBus:
     """Read-only subscriber with the same surface as ``RobotStateBus``."""
 
     def __init__(self, name: str = DEFAULT_RELAY_NAME) -> None:
+        self.clock = get_clock()
         self._name = normalize_relay_name(name)
         self._shm: shared_memory.SharedMemory | None = None
         self._view: _ShmView | None = None

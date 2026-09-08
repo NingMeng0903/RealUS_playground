@@ -934,30 +934,6 @@ class PostureRetarget:
             self._psi_star = float(attr)
             self.psi_star_rad = float(attr)
 
-    def _psi_infeasible_at(
-        self,
-        q_rad: np.ndarray,
-        psi: float,
-        *,
-        rail_lo: float,
-        rail_hi: float,
-    ) -> bool:
-        q = np.asarray(q_rad, dtype=float)
-        pose = np.asarray(self.kin.fk_pose(q), dtype=float).reshape(6)
-        d_c = (
-            float(self._d_star)
-            if self._d_star is not None
-            else d_from_q(self.kin, q)
-        )
-        y_rail = float(pose[1]) - d_c
-        margin = max(float(self.cfg.rail_margin_m), 0.0)
-        if y_rail < float(rail_lo) + margin or y_rail > float(rail_hi) - margin:
-            return True
-        pack = self._eval.evaluate(
-            pose, float(psi), int(branch_from_q(q)), y_rail
-        )
-        return pack is None
-
     def search_psi_at_pose(
         self,
         q_rad: np.ndarray,

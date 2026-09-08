@@ -174,20 +174,6 @@ class RobotKinematics:
         pose[3:6] = Rsc.from_matrix(M.rotation).as_euler(self.euler_order, degrees=False)
         return pose
 
-    def frame_pose(self, q_rad: np.ndarray, frame_name: str) -> np.ndarray:
-        """Pose of any URDF frame (e.g. link_7 flange) in the base frame."""
-        if not self.model.existFrame(frame_name):
-            raise ValueError(f"frame {frame_name!r} not in URDF {self.urdf_path}")
-        fid = self.model.getFrameId(frame_name)
-        q = np.asarray(q_rad, dtype=float)
-        pin.forwardKinematics(self.model, self.data, q)
-        pin.updateFramePlacement(self.model, self.data, fid)
-        M = self.data.oMf[fid]
-        pose = np.zeros(6, dtype=float)
-        pose[:3] = M.translation
-        pose[3:6] = Rsc.from_matrix(M.rotation).as_euler(self.euler_order, degrees=False)
-        return pose
-
     def fk_position_quat(self, q_rad: np.ndarray) -> np.ndarray:
         """TCP pose as [x, y, z, qx, qy, qz, qw] (handy for logging / comparisons)."""
         M = self.fk_placement(q_rad)

@@ -46,6 +46,14 @@ def _digest_array(value: np.ndarray) -> str:
     return digest.hexdigest()
 
 
+def _attachment_payload_digest(values: Mapping[str, np.ndarray]) -> str:
+    digest = hashlib.sha256()
+    for name in sorted(values):
+        digest.update(name.encode("utf-8"))
+        digest.update(_digest_array(np.asarray(values[name])).encode("ascii"))
+    return digest.hexdigest()
+
+
 def _as_vertices(value: Any, *, name: str) -> np.ndarray:
     array = np.asarray(value, dtype=np.float64)
     if array.ndim != 2 or array.shape[1] != 3:
@@ -71,6 +79,35 @@ def _as_faces(value: Any, *, name: str) -> np.ndarray:
     if len(array) == 0:
         raise ValueError(f"{name} must contain at least one triangle")
     return np.ascontiguousarray(array)
+
+
+_INDEX_ARRAY_NAMES = frozenset(
+    {
+        "source_faces",
+        "target_faces",
+        "source_face_indices",
+        "target_face_indices",
+    }
+)
+
+
+def _canonical_integer_array(value: Any, *, name: str) -> np.ndarray:
+    """Accept only integer index arrays and store them as int64.
+
+    ``np.asarray(..., dtype=np.int64)`` would silently truncate a floating
+    face index.  Attachment maps are persisted artifacts, so reject that
+    ambiguity before canonicalising the dtype used by the payload digest.
+    """
+
+    raw = np.asarray(value)
+    if raw.dtype.kind not in "iu":
+        raise ValueError(f"{name} must contain integer indices")
+    if raw.size:
+        info = np.iinfo(np.int64)
+        minimum, maximum = int(raw.min()), int(raw.max())
+        if minimum < info.min or maximum > info.max:
+            raise ValueError(f"{name} contains an index outside int64 range")
+    return np.ascontiguousarray(raw, dtype=np.int64)
 
 
 def _check_face_indices(faces: np.ndarray, vertex_count: int, *, name: str) -> None:
@@ -192,7 +229,10 @@ def _barycentric_from_points(points: np.ndarray, triangles: np.ndarray) -> np.nd
     d20 = np.einsum("ij,ij->i", v2, v0)
     d21 = np.einsum("ij,ij->i", v2, v1)
     denominator = d00 * d11 - d01 * d01
-    if np.any(denominator <= _AREA_TOLERANCE):
+    # denominator is squared cross-product norm (units m^4), whereas the
+    # face-area tolerance is in m^2. Comparing the two sent valid small bone
+    # triangles through the quadratic Python fallback.
+    if np.any(denominator <= 4.0 * _AREA_TOLERANCE ** 2):
         raise ValueError("cannot compute barycentrics on a degenerate triangle")
     v = (d11 * d20 - d01 * d21) / denominator
     w = (d00 * d21 - d01 * d20) / denominator
@@ -300,7 +340,7 @@ def _closest_points_exact(
             raise ValueError("libigl returned an invalid point-mesh distance result")
         barycentric = _barycentric_from_points(closest, vertices[faces[face_local]])
         return squared, face_local, closest, barycentric
-    except Exception:
+    except ImportError:
         return _closest_points_fallback(points, vertices, faces)
 
 
@@ -333,6 +373,91 @@ def _closest_by_component(
     return squared, face_indices, closest, barycentric
 
 
+def _closest_candidates_by_surface(
+    points: np.ndarray,
+    vertices: np.ndarray,
+    faces: np.ndarray,
+    groups: Mapping[str, np.ndarray],
+    candidate_count: int,
+    guides: tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray] | None = None,
+    epsilon_m: float = DEFAULT_EPSILON_M,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """Choose nearest components by exact surface distance.
+
+    Component centroid distance is a useful coarse index, but it can rank a
+    long bone incorrectly when the centroid is far from a nearby endpoint.
+    Compilation is deliberately the expensive phase, so evaluate the exact
+    point-to-triangle distance for every component, then retain the nearest
+    fixed set.  The returned arrays already contain each selected component's
+    exact triangle, avoiding a second search.
+    """
+
+    names = sorted(groups)
+    count = len(points)
+    width = int(candidate_count)
+    selected_squared = np.full((count, width), np.inf)
+    selected_score = np.full((count, width), np.inf)
+    selected_affinity = np.ones((count, width))
+    selected_faces = np.zeros((count, width), dtype=np.int64)
+    selected_closest = np.zeros((count, width, 3))
+    selected_barycentric = np.zeros((count, width, 3))
+    selected_labels = np.zeros((count, width), dtype=np.int64)
+    for column, label in enumerate(names):
+        component_faces = np.asarray(groups[label], dtype=np.int64)
+        vertex_ids, remapped = np.unique(faces[component_faces], return_inverse=True)
+        compact_vertices = vertices[vertex_ids]
+        affinity = np.ones(count)
+        if guides is not None:
+            point_indices, point_weights, surface_indices, surface_weights = guides
+            controller_count = 1 + max(int(point_indices.max()), int(surface_indices.max()))
+            guide = np.bincount(surface_indices[vertex_ids].ravel(),
+                                weights=surface_weights[vertex_ids].ravel(),
+                                minlength=controller_count) / len(vertex_ids)
+            # Continuous guide compatibility; the authored weights themselves
+            # remain unchanged. A small floor keeps unguided tissues defined.
+            affinity = np.maximum(np.sum(point_weights * guide[point_indices], axis=1), .001)
+        # An AABB distance is a conservative lower bound on surface distance.
+        # Reject only components that provably cannot enter the nearest K;
+        # this retains exact surface candidates with O(points*K) memory.
+        gap = np.maximum(np.maximum(compact_vertices.min(axis=0) - points,
+                                    points - compact_vertices.max(axis=0)), 0.)
+        lower_squared = np.einsum("ij,ij->i", gap, gap)
+        lower_score = ((lower_squared + epsilon_m ** 2) / affinity
+                       if guides is not None else lower_squared)
+        rows = np.flatnonzero(lower_score <= selected_score[:, -1])
+        if not len(rows):
+            continue
+        squared, local_faces, closest, barycentric = _closest_points_exact(
+            points[rows], compact_vertices, remapped.reshape(-1, 3)
+        )
+        score = ((squared + epsilon_m ** 2) / affinity[rows]
+                 if guides is not None else squared)
+        scores = np.column_stack((selected_score[rows], score))
+        order = np.argsort(scores, axis=1, kind="stable")[:, :width]
+        selected_score[rows] = np.take_along_axis(scores, order, axis=1)
+        selected_affinity[rows] = np.take_along_axis(
+            np.column_stack((selected_affinity[rows], affinity[rows])), order, axis=1)
+        d2 = np.column_stack((selected_squared[rows], squared))
+        selected_squared[rows] = np.take_along_axis(d2, order, axis=1)
+        selected_faces[rows] = np.take_along_axis(
+            np.column_stack((selected_faces[rows], component_faces[local_faces])), order, axis=1)
+        selected_labels[rows] = np.take_along_axis(
+            np.column_stack((selected_labels[rows], np.full(len(rows), column))), order, axis=1)
+        selected_closest[rows] = np.take_along_axis(
+            np.concatenate((selected_closest[rows], closest[:, None]), axis=1), order[:, :, None], axis=1)
+        selected_barycentric[rows] = np.take_along_axis(
+            np.concatenate((selected_barycentric[rows], barycentric[:, None]), axis=1), order[:, :, None], axis=1)
+    candidate_labels = np.asarray(names)[selected_labels]
+    return (
+        candidate_labels,
+        selected_squared,
+        selected_faces,
+        selected_closest,
+        selected_barycentric,
+        selected_affinity,
+    )
+
+
 def _triangle_frames(triangles: np.ndarray, *, name: str) -> np.ndarray:
     """Build [e1, e2, normal] as frame columns for each triangle."""
 
@@ -362,7 +487,7 @@ class MaterialAttachmentMapV13:
     """Compiled fixed-triangle material attachment map.
 
     Arrays use shape ``[point, candidate, ...]``.  ``candidate`` is at most
-    four and is selected once from rest-pose component centroids.  Runtime
+    four and is selected once by exact rest-pose component surface distance.  Runtime
     evaluation only indexes ``source_faces``/``target_faces`` and evaluates
     the stored barycentrics and local offsets.
     """
@@ -384,6 +509,7 @@ class MaterialAttachmentMapV13:
     source_points_digest: str
     epsilon_m: float
     report: Mapping[str, Any]
+    payload_digest: str = ""
 
     def __post_init__(self) -> None:
         arrays = (
@@ -401,11 +527,30 @@ class MaterialAttachmentMapV13:
             "source_points_rest",
         )
         for name in arrays:
-            value = np.asarray(getattr(self, name))
+            if name in _INDEX_ARRAY_NAMES:
+                value = _canonical_integer_array(getattr(self, name), name=name)
+            elif name == "component_ids":
+                # Keep component labels string-like and deterministic across
+                # direct construction and NPZ round trips.
+                value = np.asarray(getattr(self, name), dtype=str)
+            else:
+                # Payload coefficients are persisted as float64.  Canonicalise
+                # here too, so a direct float32 map has the same digest after
+                # save/load as a map produced by the compiler.
+                value = np.asarray(getattr(self, name), dtype=np.float64)
             if name != "component_ids" and not np.all(np.isfinite(value)):
                 raise ValueError(f"{name} contains non-finite values")
             object.__setattr__(self, name, _readonly(value))
         object.__setattr__(self, "report", dict(self.report))
+        payload = {
+            name: np.asarray(getattr(self, name))
+            for name in arrays
+            if name != "component_ids" or np.asarray(getattr(self, name)).dtype.kind in "OUS"
+        }
+        expected_digest = _attachment_payload_digest(payload)
+        if self.payload_digest and str(self.payload_digest) != expected_digest:
+            raise ValueError("attachment map payload digest mismatch")
+        object.__setattr__(self, "payload_digest", expected_digest)
         self._validate_internal()
 
     @property
@@ -448,6 +593,8 @@ class MaterialAttachmentMapV13:
             value = getattr(self, name)
             if value.shape != (count, self.candidate_count, 3):
                 raise ValueError(f"{name} must have shape [P, K, 3]")
+        if np.any(self.source_faces < 0) or np.any(self.target_faces < 0):
+            raise ValueError("source/target faces must contain non-negative vertex indices")
         if np.any(self.source_face_indices < 0) or np.any(self.source_face_indices >= len(self.source_faces)):
             raise ValueError("source face attachment index out of range")
         if np.any(self.target_face_indices < 0) or np.any(self.target_face_indices >= len(self.target_faces)):
@@ -468,10 +615,7 @@ class MaterialAttachmentMapV13:
     ) -> tuple[np.ndarray, np.ndarray]:
         source_vertices = _as_vertices(source_surface_vertices_posed, name="source_surface_vertices_posed")
         target_vertices = _as_vertices(target_surface_vertices_posed, name="target_surface_vertices_posed")
-        if np.max(self.source_faces, initial=-1) >= len(source_vertices):
-            raise ValueError("source posed surface has fewer vertices than its compiled topology")
-        if np.max(self.target_faces, initial=-1) >= len(target_vertices):
-            raise ValueError("target posed surface has fewer vertices than its compiled topology")
+        self._validate_runtime_surface_topology(source_vertices, target_vertices)
         source_triangles = source_vertices[self.source_faces[self.source_face_indices]]
         target_triangles = target_vertices[self.target_faces[self.target_face_indices]]
         source_frames = _triangle_frames(source_triangles.reshape(-1, 3, 3), name="source")
@@ -494,6 +638,27 @@ class MaterialAttachmentMapV13:
             raise ValueError("runtime attachment reconstruction produced non-finite coordinates")
         return source_attached, target_attached
 
+    def _validate_runtime_surface_topology(
+        self,
+        source_vertices: np.ndarray,
+        target_vertices: np.ndarray,
+    ) -> None:
+        """Check compiled face vertex IDs before any runtime shortcut.
+
+        The identity path does not evaluate triangles, so it must still run
+        these bounds checks or a malformed map could silently bypass topology
+        validation whenever source and target posed surfaces happen to match.
+        """
+
+        if self.source_faces.size and int(np.min(self.source_faces)) < 0:
+            raise ValueError("source attachment topology contains a negative vertex index")
+        if self.target_faces.size and int(np.min(self.target_faces)) < 0:
+            raise ValueError("target attachment topology contains a negative vertex index")
+        if np.max(self.source_faces, initial=-1) >= len(source_vertices):
+            raise ValueError("source posed surface has fewer vertices than its compiled topology")
+        if np.max(self.target_faces, initial=-1) >= len(target_vertices):
+            raise ValueError("target posed surface has fewer vertices than its compiled topology")
+
     def transport(
         self,
         source_points_posed: np.ndarray,
@@ -514,6 +679,9 @@ class MaterialAttachmentMapV13:
         # point subtraction for the common source==target identity check.
         source_surface = _as_vertices(source_surface_vertices_posed, name="source_surface_vertices_posed")
         target_surface = _as_vertices(target_surface_vertices_posed, name="target_surface_vertices_posed")
+        # Validate face bounds even when the surfaces are identical and the
+        # displacement can be returned through the exact identity shortcut.
+        self._validate_runtime_surface_topology(source_surface, target_surface)
         identity = bool(
             source_surface.shape == target_surface.shape
             and np.array_equal(source_surface, target_surface)
@@ -552,8 +720,11 @@ class MaterialAttachmentMapV13:
             "containment_status": "not_evaluated",
             "containment_verified": False,
             "candidate_count": self.candidate_count,
-            "max_source_attachment_motion_m": float(np.max(np.linalg.norm(source_attached, axis=2))),
-            "max_target_attachment_motion_m": float(np.max(np.linalg.norm(target_attached, axis=2))),
+            # These are norms of absolute posed coordinates, not motion from
+            # rest.  Keep the names explicit so callers do not treat them as
+            # displacement metrics.
+            "max_source_attached_norm_m": float(np.max(np.linalg.norm(source_attached, axis=2))),
+            "max_target_attached_norm_m": float(np.max(np.linalg.norm(target_attached, axis=2))),
             "max_transport_displacement_m": float(np.max(np.linalg.norm(result - points, axis=1))) if len(result) else 0.0,
         }
         return (result, audit) if return_audit else result
@@ -572,17 +743,17 @@ class MaterialAttachmentMapV13:
         np.savez_compressed(
             out,
             schema_version=np.asarray([SCHEMA_VERSION]),
-            source_faces=self.source_faces.astype(np.int32),
-            target_faces=self.target_faces.astype(np.int32),
-            source_face_indices=self.source_face_indices.astype(np.int32),
-            target_face_indices=self.target_face_indices.astype(np.int32),
-            source_barycentric=self.source_barycentric.astype(np.float32),
-            target_barycentric=self.target_barycentric.astype(np.float32),
-            source_offset_local=self.source_offset_local.astype(np.float32),
-            target_offset_local=self.target_offset_local.astype(np.float32),
-            component_weights=self.component_weights.astype(np.float32),
+            source_faces=self.source_faces.astype(np.int64),
+            target_faces=self.target_faces.astype(np.int64),
+            source_face_indices=self.source_face_indices.astype(np.int64),
+            target_face_indices=self.target_face_indices.astype(np.int64),
+            source_barycentric=self.source_barycentric.astype(np.float64),
+            target_barycentric=self.target_barycentric.astype(np.float64),
+            source_offset_local=self.source_offset_local.astype(np.float64),
+            target_offset_local=self.target_offset_local.astype(np.float64),
+            component_weights=self.component_weights.astype(np.float64),
             component_ids=np.asarray(self.component_ids, dtype=str),
-            source_distances_m=self.source_distances_m.astype(np.float32),
+            source_distances_m=self.source_distances_m.astype(np.float64),
             # Keep authored rest points in float64 so their content digest
             # remains valid after a round trip.  Other runtime coefficients
             # are compact float32 payloads and are checked by shape/invariants
@@ -593,6 +764,7 @@ class MaterialAttachmentMapV13:
             source_points_digest=np.asarray([self.source_points_digest]),
             epsilon_m=np.asarray([self.epsilon_m], dtype=np.float64),
             report_json=np.asarray([report_json]),
+            payload_digest=np.asarray([self.payload_digest]),
         )
         return out
 
@@ -622,6 +794,7 @@ class MaterialAttachmentMapV13:
                 "source_points_digest",
                 "epsilon_m",
                 "report_json",
+                "payload_digest",
             }
             missing = sorted(required - set(data.files))
             if missing:
@@ -633,11 +806,17 @@ class MaterialAttachmentMapV13:
                 report = json.loads(str(np.asarray(data["report_json"]).reshape(-1)[0]))
             except (TypeError, ValueError, json.JSONDecodeError) as exc:
                 raise ValueError("attachment map report_json is invalid") from exc
+
+            def integer_field(name: str) -> np.ndarray:
+                # Do not cast before checking the dtype: an on-disk 1.5 face
+                # index must fail rather than becoming vertex 1.
+                return _canonical_integer_array(data[name], name=name)
+
             result = cls(
-                source_faces=np.asarray(data["source_faces"], dtype=np.int64),
-                target_faces=np.asarray(data["target_faces"], dtype=np.int64),
-                source_face_indices=np.asarray(data["source_face_indices"], dtype=np.int64),
-                target_face_indices=np.asarray(data["target_face_indices"], dtype=np.int64),
+                source_faces=integer_field("source_faces"),
+                target_faces=integer_field("target_faces"),
+                source_face_indices=integer_field("source_face_indices"),
+                target_face_indices=integer_field("target_face_indices"),
                 source_barycentric=np.asarray(data["source_barycentric"], dtype=np.float64),
                 target_barycentric=np.asarray(data["target_barycentric"], dtype=np.float64),
                 source_offset_local=np.asarray(data["source_offset_local"], dtype=np.float64),
@@ -651,9 +830,14 @@ class MaterialAttachmentMapV13:
                 source_points_digest=str(np.asarray(data["source_points_digest"]).reshape(-1)[0]),
                 epsilon_m=float(np.asarray(data["epsilon_m"]).reshape(-1)[0]),
                 report=report,
+                payload_digest=str(np.asarray(data["payload_digest"]).reshape(-1)[0]),
             )
         if result.source_points_digest != _digest_array(result.source_points_rest):
             raise ValueError("attachment map source_points_rest digest mismatch")
+        if result.report.get("source_topology_digest") != _digest_array(result.source_faces):
+            raise ValueError("attachment map source topology digest mismatch")
+        if result.report.get("target_topology_digest") != _digest_array(result.target_faces):
+            raise ValueError("attachment map target topology digest mismatch")
         return result
 
     load_npz = load
@@ -672,22 +856,50 @@ def compile_material_attachment_map_v13(
     max_components: int = MAX_COMPONENTS,
     epsilon_m: float = DEFAULT_EPSILON_M,
     return_report: bool = False,
+    point_driver_indices: np.ndarray | None = None,
+    point_driver_weights: np.ndarray | None = None,
+    surface_driver_indices: np.ndarray | None = None,
+    surface_driver_weights: np.ndarray | None = None,
 ) -> MaterialAttachmentMapV13 | tuple[MaterialAttachmentMapV13, dict[str, Any]]:
     """Compile fixed triangle attachments for soft/vessel rest points.
 
     ``source_face_component_ids`` labels bone-mesh components.  Up to four
-    nearest components by centroid are retained per point; each retained
-    component then receives an exact nearest triangle.  Target labels are
-    matched by value unless ``component_map`` provides an explicit mapping.
-    When target labels are omitted, target faces are treated as one component
-    (or inherit source labels when face topologies have equal length).
+    nearest components by exact surface distance are retained per point; each
+    retained component receives its exact nearest triangle.  Target labels
+    must match source labels because target attachments reuse fixed topology.
+    Source and target surfaces share the same face topology.  The target
+    surface can have corrected vertex positions; its fixed face uses the
+    source barycentric coordinates and source triangle-local offset so the
+    corrected rest shape is intentionally transferred to the material.
     """
 
     source_vertices = _as_vertices(source_surface_vertices, name="source_surface_vertices")
     target_vertices = _as_vertices(target_surface_vertices, name="target_surface_vertices")
     source_faces_array = _as_faces(source_surface_faces, name="source_surface_faces")
     target_faces_array = _as_faces(target_surface_faces, name="target_surface_faces")
+    if source_faces_array.shape != target_faces_array.shape or not np.array_equal(
+        source_faces_array, target_faces_array
+    ):
+        raise ValueError(
+            "material_attachment_v13 requires source and target surfaces to share "
+            "the same face topology"
+        )
     source_points = _as_vertices(source_points_rest, name="source_points_rest")
+    guide_values = (point_driver_indices, point_driver_weights,
+                    surface_driver_indices, surface_driver_weights)
+    guides = None
+    if any(value is not None for value in guide_values):
+        if any(value is None for value in guide_values):
+            raise ValueError("all four guide driver arrays must be supplied together")
+        guides = tuple(np.asarray(value, dtype=np.int64 if i % 2 == 0 else np.float64)
+                       for i, value in enumerate(guide_values))
+        for indices, weights, count in ((guides[0], guides[1], len(source_points)),
+                                        (guides[2], guides[3], len(source_vertices))):
+            if (indices.ndim != 2 or weights.shape != indices.shape or len(indices) != count
+                    or np.any(indices < 0) or np.any(weights < 0)
+                    or not np.all(np.isfinite(weights))
+                    or not np.allclose(weights.sum(axis=1), 1., atol=2.e-6)):
+                raise ValueError("invalid sparse guide weights")
     source_report = _validate_triangles(source_vertices, source_faces_array, name="source_surface_faces")
     target_report = _validate_triangles(target_vertices, target_faces_array, name="target_surface_faces")
     if not np.isfinite(float(epsilon_m)) or float(epsilon_m) <= 0.0:
@@ -700,74 +912,43 @@ def compile_material_attachment_map_v13(
         len(source_faces_array),
         name="source_face_component_ids",
     )
-    if target_face_component_ids is None:
-        if source_face_component_ids is not None and len(target_faces_array) == len(source_faces_array):
-            target_labels = _normalise_component_ids(
-                source_labels,
-                len(target_faces_array),
-                name="target_face_component_ids",
-            )
-        else:
-            target_labels = _normalise_component_ids(
-                None,
-                len(target_faces_array),
-                name="target_face_component_ids",
-            )
-    else:
-        target_labels = _normalise_component_ids(
-            target_face_component_ids,
-            len(target_faces_array),
-            name="target_face_component_ids",
-        )
+    target_labels = _normalise_component_ids(
+        source_labels if target_face_component_ids is None else target_face_component_ids,
+        len(target_faces_array),
+        name="target_face_component_ids",
+    )
+    if not np.array_equal(source_labels, target_labels):
+        raise ValueError("source and target face component IDs must match for fixed topology attachments")
     source_component_names, source_groups = _component_groups(source_labels)
     target_component_names, target_groups = _component_groups(target_labels)
-    if component_map is None:
-        mapping = {}
-        if target_face_component_ids is None and len(target_component_names) == 1:
-            mapping = {label: target_component_names[0] for label in source_component_names}
-        else:
-            for label in source_component_names:
-                if label not in target_groups:
-                    raise ValueError(
-                        f"target surface has no component {label!r}; provide component_map"
-                    )
-                mapping[label] = label
-    else:
-        mapping = {str(key.item() if isinstance(key, np.generic) else key): str(value.item() if isinstance(value, np.generic) else value) for key, value in component_map.items()}
-        missing = [label for label in source_component_names if label not in mapping]
-        if missing:
-            raise ValueError(f"component_map is missing source components: {missing}")
-        unknown = sorted({mapping[label] for label in source_component_names} - set(target_groups))
-        if unknown:
-            raise ValueError(f"component_map targets unknown target components: {unknown}")
-    centroids = _component_centroids(source_vertices, source_faces_array, source_groups)
+    if component_map:
+        raise ValueError(
+            "component_map is not used by material_attachment_v13; source and target "
+            "components must share fixed face topology and IDs"
+        )
     candidate_count = min(MAX_COMPONENTS, requested_k, len(source_component_names))
-    candidate_ids, _centroid_distance_sq = _component_candidates(
-        source_points, source_component_names, centroids, candidate_count
-    )
-    source_d2, source_face_indices, source_closest, source_bary = _closest_by_component(
+    (
+        candidate_ids,
+        source_d2,
+        source_face_indices,
+        source_closest,
+        source_bary,
+        guide_affinity,
+    ) = _closest_candidates_by_surface(
         source_points,
         source_vertices,
         source_faces_array,
         source_groups,
-        candidate_ids,
+        candidate_count,
+        guides=guides,
+        epsilon_m=float(epsilon_m),
     )
-    target_candidate_ids = np.asarray(
-        [[mapping[str(label)] for label in row] for row in candidate_ids], dtype=str
-    )
-    target_d2, target_face_indices, target_closest, target_bary = _closest_by_component(
-        source_closest.reshape(-1, 3),
-        target_vertices,
-        target_faces_array,
-        target_groups,
-        target_candidate_ids.reshape(-1, 1),
-    )
-    target_d2 = target_d2.reshape(len(source_points), candidate_count)
-    target_face_indices = target_face_indices.reshape(len(source_points), candidate_count)
-    target_closest = target_closest.reshape(len(source_points), candidate_count, 3)
-    target_bary = target_bary.reshape(len(source_points), candidate_count, 3)
-    # ``_closest_by_component`` above receives one query per candidate, so
-    # source_closest is flattened in row-major [point, candidate] order.
+    # Target attachments intentionally reuse the fixed source triangle, bary,
+    # and source-frame offset.  Corrected target vertices therefore move the
+    # attached point at rest; re-projecting the authored point on the target
+    # surface here would erase the very shape correction this map transports.
+    target_face_indices = source_face_indices.copy()
+    target_bary = source_bary.copy()
     source_triangles = source_vertices[source_faces_array[source_face_indices]]
     target_triangles = target_vertices[target_faces_array[target_face_indices]]
     source_frames = _triangle_frames(source_triangles.reshape(-1, 3, 3), name="source rest")
@@ -775,20 +956,20 @@ def compile_material_attachment_map_v13(
     source_frames = source_frames.reshape(len(source_points), candidate_count, 3, 3)
     target_frames = target_frames.reshape(len(source_points), candidate_count, 3, 3)
     source_offset = source_points[:, None, :] - source_closest
-    target_offset = source_points[:, None, :] - target_closest
     source_offset_local = np.einsum("pkji,pkj->pki", source_frames, source_offset)
-    target_offset_local = np.einsum("pkji,pkj->pki", target_frames, target_offset)
+    target_offset_local = source_offset_local.copy()
     # The source distance controls blend locality.  It remains finite on the
     # surface because epsilon is explicit rather than an accidental divide by
     # zero.  The exact candidate triangle remains fixed after this step.
-    weights = 1.0 / np.maximum(source_d2 + float(epsilon_m) ** 2, 1.0e-30)
+    weights = guide_affinity / np.maximum(source_d2 + float(epsilon_m) ** 2, 1.0e-30)
     weights /= np.sum(weights, axis=1, keepdims=True)
     if not np.all(np.isfinite(weights)):
         raise ValueError("component weights are non-finite")
     source_rest_reconstructed = source_closest + np.einsum(
         "pkij,pkj->pki", source_frames, source_offset_local
     )
-    target_rest_reconstructed = target_closest + np.einsum(
+    target_surface_rest = np.einsum("pkj,pkji->pki", target_bary, target_triangles)
+    target_rest_reconstructed = target_surface_rest + np.einsum(
         "pkij,pkj->pki", target_frames, target_offset_local
     )
     source_reconstruction_error = np.linalg.norm(source_rest_reconstructed - source_points[:, None, :], axis=2)
@@ -796,7 +977,12 @@ def compile_material_attachment_map_v13(
     report: dict[str, Any] = {
         "schema": SCHEMA_VERSION,
         "compile_backend": "libigl_or_exact_triangle_fallback",
-        "candidate_selection": "nearest_component_centroids",
+        "candidate_selection": ("source_driver_guided_surface" if guides is not None
+                                else "nearest_component_surface_exact"),
+        # Guidance only chooses/blends attachment components.  The authored
+        # sparse driver weights on points and source surfaces are untouched.
+        "authored_driver_weights_modified": False,
+        "component_weights_modified_by_guidance": bool(guides is not None),
         "candidate_count": int(candidate_count),
         "requested_max_components": int(requested_k),
         "epsilon_m": float(epsilon_m),
@@ -811,7 +997,7 @@ def compile_material_attachment_map_v13(
         "source_nearest_distance_max_m": float(np.max(np.sqrt(source_d2))),
         "source_nearest_distance_rms_m": float(np.sqrt(np.mean(source_d2))),
         "source_rest_reconstruction_max_m": float(np.max(source_reconstruction_error)),
-        "target_rest_reconstruction_max_m": float(np.max(target_reconstruction_error)),
+        "target_rest_transfer_displacement_max_m": float(np.max(target_reconstruction_error)),
         # A surface attachment does not by itself prove volume containment.
         "containment_status": "not_evaluated",
         "containment_verified": False,

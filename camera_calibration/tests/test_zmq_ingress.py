@@ -28,6 +28,15 @@ def _jpeg_parts(camera_name: str, topic: bytes) -> list[bytes]:
 
 
 class TestZmqIngress(unittest.TestCase):
+    def test_shared_clock_header_survives_ingress(self) -> None:
+        from multicam_calib.ingress.zmq_streams import _meta_to_frame
+        meta = {"camera_name": "cam1", "source_time_ns": 11, "wall_time_ns": 12,
+                "clock_id": "experiment", "timestamp_ns": 1_000_000_023,
+                "header": {"stamp": {"sec": 1, "nanosec": 23}, "frame_id": "cam1"}}
+        frame = _meta_to_frame(meta, np.zeros((2, 2, 3), dtype=np.uint8), frame_index=1)
+        self.assertEqual(frame.metadata["header"], meta["header"])
+        self.assertEqual(frame.metadata["clock_id"], "experiment")
+
     def test_hub_keeps_all_cameras_after_cam1_burst(self) -> None:
         aliases = ["cam1", "cam2", "cam3", "cam4"]
         endpoint = "tcp://127.0.0.1:18756"

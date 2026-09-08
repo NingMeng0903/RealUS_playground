@@ -180,7 +180,7 @@ class WbcArm:
             (0, [rail_mm, j1..j7 °]) on success, (1, []) on failure.
 
         ``q_seed``: if ``q_seed_deg`` then industrial list ``[rail_mm, °…]`` /
-        7-arm °; else full ``q`` in rad (8).
+        7 arm angles in degrees; otherwise ``[rail_m, j1..j7 rad]``.
         """
         from rm75_control.control.joint_admittance_8dof.pose_ik import solve_pose_ik
 
@@ -213,13 +213,15 @@ class WbcArm:
         *,
         q_deg: bool = True,
     ) -> tuple[int, list[float]]:
-        """关节 → TCP 位姿 (FK).
+        """Convert joint positions to a TCP pose (FK).
 
         Args:
-            joint: ``q_deg=True`` 时工业列表 ``[rail_mm, j1..j7 °]`` 或 7 臂角 °；
-                ``False`` 时为 8 维 rad。
+            joint: With ``q_deg=True``, ``[rail_mm, j1..j7 deg]`` or seven
+                arm angles in degrees (rail defaults to 0.4 m). With
+                ``q_deg=False``, ``[rail_m, j1..j7 rad]``.
         Returns:
-            (0, [x,y,z,rx,ry,rz]) 位置 m、姿态 rad；失败 (1, [])。
+            (0, [x, y, z, rx, ry, rz]) in meters and radians on success;
+            (1, []) for invalid joint input.
         """
         try:
             q = (
@@ -246,17 +248,21 @@ class WbcArm:
         q0_deg: list[float] | None = None,
         timeout_s: float | None = None,
     ) -> int:
-        """关节空间运动 (MoveJ).
+        """Move to a joint configuration (MoveJ).
 
         Args:
-            joint: 目标构型。长度 8：``[rail_mm, j1..j7 °]``；长度 7：仅臂角 °（rail=0.4 m）。
-            v: 速度百分比 1~100
-            r: 交融半径（本轮忽略）
-            connect: 轨迹连接（本轮忽略）
-            block: 0 非阻塞；1 阻塞至到位；>1 阻塞并作超时秒数
+            joint: ``[rail_mm, j1..j7 deg]`` or seven arm angles in degrees
+                (rail defaults to 0.4 m).
+            v: Speed percentage, clamped to 1..100.
+            r: Blend radius; currently ignored.
+            connect: Trajectory connection flag; currently ignored.
+            block: 0 returns after start; 1 waits for arrival; values greater
+                than 1 set the timeout in seconds, overriding ``timeout_s``.
 
         Returns:
-            0 成功；1 参数/规划失败；-1 IPC 失败；-2 未到位/停止；-4 到位校验失败；-5 超时。
+            0 on success; 1 for invalid target joint input; -1 for an IPC
+            failure; -2 for incomplete/stopped motion; -4 for failed arrival
+            validation; -5 on timeout.
         """
         _warn_stub(r, connect)
         try:
@@ -287,12 +293,13 @@ class WbcArm:
         q_target_deg: list[float] | None = None,
         timeout_s: float | None = None,
     ) -> int:
-        """笛卡尔空间直线运动 (MoveL / SRS)。
+        """Move along a Cartesian straight line (MoveL / SRS).
 
         Args:
-            pose: [x,y,z,rx,ry,rz]，位置 m，姿态 rad（xyz 欧拉）。
-            v/r/connect/block: 同 ``movej``。
-            q_target_deg: 可选预解关节；缺省则 ``algo_ik``。
+            pose: [x, y, z, rx, ry, rz], in meters and radians (xyz Euler).
+            v/r/connect/block: Same semantics as ``movej``.
+            q_target_deg: Optional pre-solved joint configuration, using
+                the same units as ``movej``; otherwise solved by ``algo_ik``.
         """
         _warn_stub(r, connect)
         pose_a = np.asarray(pose, dtype=float).reshape(6)
@@ -334,7 +341,7 @@ class WbcArm:
         q0_deg: list[float] | None = None,
         timeout_s: float | None = None,
     ) -> int:
-        """位姿目标 → IK → 关节空间运动（对应 RM ``rm_movej_p``）。"""
+        """Solve a target pose with IK, then MoveJ (RM ``rm_movej_p`` semantics)."""
         _warn_stub(r, connect)
         pose_a = np.asarray(pose, dtype=float).reshape(6)
         q0 = self._resolve_q0_rad(q0_deg)

@@ -102,7 +102,7 @@ class CanfdCommandReader:
         out = self.read_last_with_seq(dead_after_s=dead_after_s)
         if out is None:
             return None
-        q_deg, follow, _seq = out
+        q_deg, follow, _ = out
         return q_deg, follow
 
     def read_last_with_seq(

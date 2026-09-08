@@ -488,12 +488,6 @@ class _ClientMixin:
             time.sleep(0.01)
         return ERR_NO_ACK
 
-    # Keep the short spelling for callers from the first handshake draft.
-    # New integrations should use ``_wait_installed`` so the distinction from
-    # the mailbox ``ack_seq`` is explicit.
-    def _wait_install(self, seq: int, mode: Mode, timeout: float) -> int:
-        return self._wait_installed(seq, mode, timeout)
-
     def _wait_done(
         self,
         seq: int,
@@ -856,7 +850,7 @@ class _VelocityMixin(_ClientMixin):
         A 6-vector is a constant ``v_cmd`` for ``duration_s``. ``block=0`` is async.
         External callers send raw v*; Window A settles VCMD.
         ``filter`` is the receive-side a/j switch (default off). A 6-mask is
-        per-axis. ``follow=True`` is RM 高跟随 (same as ``filter=False``).
+        per-axis. ``follow=True`` is RM high-follow mode (``filter=False``).
         Commanded SERVO_TWIST may sit at ``v*=0``; HOLD does not steal that mode.
         """
 
@@ -1015,6 +1009,9 @@ class _ForceMixin(_ClientMixin):
         poses=None,
         *,
         reference: str | None = None,
+        path_spec: dict[str, Any] | None = None,
+        scan_contact_n: float | None = None,
+        scan_contact_s: float | None = None,
         speed_m_s: float | None = None,
         law: str = "tff",
         force=None,
@@ -1039,7 +1036,11 @@ class _ForceMixin(_ClientMixin):
         if bad is not None:
             return bad
         kind = str(reference or "polyline").lower()
-        if kind == "hold":
+        if kind == "icra_path":
+            if path_spec is None or poses is not None:
+                raise ValueError("icra_path requires path_spec and no poses")
+            arr, speed = None, float(path_spec["speed_m_s"])
+        elif kind == "hold":
             arr = None if poses is None else _as_poses(poses)
             speed = speed_m_s
         else:
@@ -1048,6 +1049,9 @@ class _ForceMixin(_ClientMixin):
             speed = speed_m_s if speed_m_s is not None else float(self._max_line_speed) * v
         payload = HfpcPayload(
             reference=kind,
+            path_spec=path_spec,
+            scan_contact_n=scan_contact_n,
+            scan_contact_s=scan_contact_s,
             poses=arr,
             speed_m_s=speed,
             law=law,

@@ -33,6 +33,8 @@ def main() -> int:
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--no-panel", action="store_true")
     args = parser.parse_args()
+    from realus_clock import get_clock
+    get_clock()
     return run_service(
         args.config,
         shm_prefix=str(args.shm_prefix),

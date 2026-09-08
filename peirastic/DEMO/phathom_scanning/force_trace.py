@@ -498,7 +498,7 @@ class ForceTraceRecorder:
                 self._last_force_seq = force_seq
             vector = np.asarray(raw_wrench, dtype=float).reshape(-1)
             force_age = (
-                time.time() - force_t_s
+                sample_t_mono - force_t_s
                 if math.isfinite(force_t_s)
                 else float("nan")
             )

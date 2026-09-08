@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
+import time
 
 import numpy as np
 
@@ -112,7 +113,13 @@ class HybridTffOuter:
         v_tcp_z_actual: float | None = None,
         slack_norm: float | None = None,
     ) -> np.ndarray:
-        del feedback_fresh_tick
+        gate = getattr(self, "contact_gate", None)
+        if gate is not None and gate.start_force_n is not None:
+            gate.guard_approach(current_pose)
+            age = max(float(sensor_age_s or 0), float(feedback_age_s or 0))
+            if feedback_fresh_tick is not False:
+                gate.observe_force(float(f_ext[2]), time.monotonic() - age,
+                                   valid=np.isfinite(age) and 0 <= age <= 0.1)
         velocity_valid = (
             bool(feedback_velocity_valid)
             if feedback_velocity_valid is not None
@@ -278,7 +285,11 @@ def _contact_gated_reference(
 
     if not bool(dict(payload or {}).get("wait_for_contact", False)):
         return reference, None
-    gate = ContactGatedReference(reference)
+    pay = dict(payload or {})
+    if pay.get("scan_contact_n") is not None and not bool(pay.get("use_tff_split", False)):
+        raise ValueError("independent scan force gate requires TFF")
+    gate = ContactGatedReference(reference, start_force_n=pay.get("scan_contact_n"),
+                                 start_force_s=pay.get("scan_contact_s", 0.1))
     return gate, gate
 
 

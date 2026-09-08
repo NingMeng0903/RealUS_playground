@@ -8,6 +8,7 @@ import time
 from enum import IntEnum
 
 import numpy as np
+from realus_clock import HeaderPublisher, get_clock
 
 from rm75_control.control.admittance_common.shm_util import (
     attach_named_shm,
@@ -129,6 +130,7 @@ class CommandHub:
     """Window A owner of request SHM."""
 
     def __init__(self, *, prefix: str = "") -> None:
+        self.clock = get_clock()
         self.ctl_name = (prefix + CTL_NAME) if prefix else CTL_NAME
         self.payload_name = (prefix + PAYLOAD_NAME) if prefix else PAYLOAD_NAME
         self._ctl_shm = create_named_shm(self.ctl_name, int(_CTL.itemsize))
@@ -147,10 +149,14 @@ class CommandHub:
         # client can therefore inspect the default structure before the first
         # control tick; a crashed/old segment still fails the age check.
         self._ctl[0]["t_mono"] = float(time.monotonic())
+        self._stamp_pub = HeaderPublisher(self.ctl_name, "controller", self.clock)
+        self._stamp_seq = 0
+        self._publish_header()
         self._seen = 0
         self.motion = MotionBus(prefix=prefix, create=True)
 
     def close(self) -> None:
+        self._stamp_pub.close()
         ctl, pay = self._ctl, self._pay
         self._ctl = None
         self._pay = None
@@ -158,6 +164,10 @@ class CommandHub:
         close_named_shm(self._ctl_shm)
         close_named_shm(self._pay_shm)
         self.motion.close()
+
+    def _publish_header(self) -> None:
+        self._stamp_seq += 1
+        self._stamp_pub.publish(round(float(self._ctl[0]["t_mono"]) * 1e9), self._stamp_seq)
 
     def poll(self) -> tuple[Cmd, int, ModeRequest | DofRequest | None] | None:
         row = self._ctl[0]
@@ -251,6 +261,7 @@ class CommandHub:
             row["done_seq"] = np.uint64(int(done_seq))
         if err_code is not None:
             row["err_code"] = np.int32(int(err_code))
+        self._publish_header()
 
     def should_stop(self) -> bool:
         return bool(self._ctl[0]["stop_req"])
@@ -266,6 +277,7 @@ class CommandClient:
     """Window C writer."""
 
     def __init__(self, *, prefix: str = "") -> None:
+        self.clock = get_clock()
         self.ctl_name = (prefix + CTL_NAME) if prefix else CTL_NAME
         self.payload_name = (prefix + PAYLOAD_NAME) if prefix else PAYLOAD_NAME
         try:
@@ -389,6 +401,7 @@ class CommandClient:
     def snapshot(self) -> dict:
         row = self._ctl[0]
         return {
+            **self.clock.metadata("controller", monotonic_ns=round(float(row["t_mono"]) * 1e9)),
             "abi_magic": bytes(row["abi_magic"]).split(b"\x00", 1)[0],
             "abi_version": int(row["abi_version"]),
             "status": int(row["status"]),
@@ -476,6 +489,8 @@ class TwistBus:
     """Latest 6D v_cmd. Gamepad writes; servo modes read."""
 
     def __init__(self, *, prefix: str = "", create: bool = False) -> None:
+        self.clock = get_clock()
+        self._stamp_pub = None
         self.name = (prefix + TWIST_NAME) if prefix else TWIST_NAME
         if create:
             self._shm = create_named_shm(self.name, int(_TWIST.itemsize))
@@ -487,6 +502,9 @@ class TwistBus:
         self._owner = bool(create)
 
     def close(self) -> None:
+        if self._stamp_pub is not None:
+            self._stamp_pub.close()
+            self._stamp_pub = None
         row = self._row
         self._row = None
         del row
@@ -521,10 +539,14 @@ class TwistBus:
         if buttons is not None:
             b = np.asarray(buttons, dtype=float).reshape(-1)
             row["buttons"][: min(16, b.size)] = b[:16]
+        if self._stamp_pub is None:
+            self._stamp_pub = HeaderPublisher(self.name, "tcp", self.clock)
+        self._stamp_pub.publish(round(float(row["stamp"]) * 1e9), int(row["seq"]))
 
     def read(self) -> dict:
         row = self._row[0]
         return {
+            **self.clock.metadata("tcp", monotonic_ns=round(float(row["stamp"]) * 1e9)),
             "seq": int(row["seq"]),
             "stamp": float(row["stamp"]),
             "hz": float(row["hz"]),
@@ -541,6 +563,8 @@ class MotionBus:
     """200 Hz measured tool-Z velocity for Window C backup replay."""
 
     def __init__(self, *, prefix: str = "", create: bool = False) -> None:
+        self.clock = get_clock()
+        self._stamp_pub = None
         self.name = (prefix + MOTION_NAME) if prefix else MOTION_NAME
         if create:
             self._shm = create_named_shm(self.name, int(_MOTION.itemsize))
@@ -550,8 +574,13 @@ class MotionBus:
         if create:
             self._row[0] = np.zeros(1, dtype=_MOTION)
         self._owner = bool(create)
+        if create:
+            self._stamp_pub = HeaderPublisher(self.name, "tcp", self.clock)
 
     def close(self) -> None:
+        if self._stamp_pub is not None:
+            self._stamp_pub.close()
+            self._stamp_pub = None
         row = self._row
         self._row = None
         del row
@@ -581,6 +610,8 @@ class MotionBus:
         row["feedback_age_s"] = float(feedback_age_s)
         row["valid"] = np.uint8(1 if valid else 0)
         row["seq"] = np.uint64(seq + 2)
+        if self._stamp_pub is not None:
+            self._stamp_pub.publish(round(float(row["t_mono"]) * 1e9), seq + 2)
 
     def read(self) -> dict:
         row, why = self._seqlock_copy()
@@ -609,6 +640,7 @@ class MotionBus:
                 continue
             t_mono = float(row["t_mono"])
             payload = {
+                **self.clock.metadata("tcp", monotonic_ns=round(t_mono * 1e9)),
                 "seq": s1,
                 "t_mono": t_mono,
                 "t_wall_s": float(row["t_wall_s"]),

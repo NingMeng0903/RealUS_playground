@@ -224,6 +224,10 @@ class FrameGrabSession:
             if not ok or frame is None:
                 time.sleep(min(0.05, period))
                 continue
+            # Capture timestamps belong immediately after the successful read,
+            # before auto-crop/crop/JPEG work can add variable latency.
+            capture_monotonic_ns = time.monotonic_ns()
+            capture_wall_time_ns = time.time_ns()
             height, width = frame.shape[:2]
             with self._lock:
                 self._latest_full = frame
@@ -255,7 +259,15 @@ class FrameGrabSession:
             cropped = apply_crop(frame, cbox, color=color, hflip=hflip)
             pub = self._publisher
             if pub is not None:
-                pub.send(cropped, self._frame_index)
+                pub.send(
+                    cropped,
+                    self._frame_index,
+                    capture_monotonic_ns=capture_monotonic_ns,
+                    capture_wall_time_ns=capture_wall_time_ns,
+                    crop_box=cbox,
+                    hflip=hflip,
+                    color=color,
+                )
             self._frame_index += 1
             self._note_publish()
             self._sleep_remainder(t0, period)

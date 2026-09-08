@@ -280,11 +280,6 @@ class CollisionModel:
             dist[bad] = -np.inf
         return dist
 
-    def _pair_lower_bound(self, pair_index: int) -> float:
-        """Scalar wrapper kept for tests; uses the vectorized path."""
-
-        return float(self._pair_lower_bounds()[int(pair_index)])
-
     def update(
         self,
         q_rad: np.ndarray,

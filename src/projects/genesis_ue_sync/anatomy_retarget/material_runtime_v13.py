@@ -8,7 +8,7 @@ This runtime does not assert anatomical containment or arbitrary-pose support.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, fields
+from dataclasses import dataclass, fields, replace
 import hashlib
 import json
 from pathlib import Path
@@ -93,6 +93,20 @@ class MaterialRuntimeV13:
     soft_ids: np.ndarray
     attachment: Any = None
 
+    def __post_init__(self) -> None:
+        self.pose_map.validate()
+        rest = np.asarray(self.target_rest)
+        ids = np.asarray(self.soft_ids)
+        if rest.shape != self.source_asset.vertices_rest.shape or not np.all(np.isfinite(rest)):
+            raise ValueError("invalid target rest")
+        if (ids.ndim != 1 or ids.dtype.kind not in "iu"
+                or len(np.unique(ids)) != len(ids) or np.any(ids < 0) or np.any(ids >= len(rest))):
+            raise ValueError("invalid soft vertex IDs")
+        if list(self.pose_map.bone_names) != list(self.source_asset.source_bone_names):
+            raise ValueError("pose map controller order differs from source rig")
+        if self.attachment is not None:
+            _validate_attachment_authority(self.source_asset, rest, ids, self.attachment)
+
     def apply_pose(self, pose_axis_angle: np.ndarray, *, mode: str = "weights",
                    transl: np.ndarray | None = None) -> np.ndarray:
         """Evaluate one supported SMPL-X pose without Blender or a skin model."""
@@ -117,9 +131,8 @@ class MaterialRuntimeV13:
             if mode == "attachments":
                 if self.attachment is None:
                     raise ValueError("runtime has no compiled material attachments")
-                from .material_attachment_v13 import transport_material_attachment_v13
-                result[self.soft_ids] = transport_material_attachment_v13(
-                    self.attachment, source, result, source[self.soft_ids])
+                result[self.soft_ids] = self.attachment.transport(
+                    source[self.soft_ids], source, result)
         if transl is not None:
             t = np.asarray(transl, dtype=np.float64).reshape(3)
             if not np.all(np.isfinite(t)):
@@ -135,18 +148,35 @@ class MaterialRuntimeV13:
         save_rigged_asset(root / "source_rig.npz", self.source_asset)
         arrays = {f.name: getattr(self.pose_map, f.name) for f in fields(self.pose_map)}
         arrays.update(target_rest=self.target_rest, soft_ids=self.soft_ids)
+        # The legacy rig serializer quantizes/reconstructs bind data. Retain
+        # original arrays as well so this compiled runtime replays exactly.
+        for field in fields(self.source_asset):
+            value = getattr(self.source_asset, field.name)
+            if isinstance(value, np.ndarray):
+                arrays[f"source_exact__{field.name}"] = value
         np.savez_compressed(root / "runtime.npz", **arrays)
         names = ["source_rig.npz", "runtime.npz"]
         if self.attachment is not None:
-            from .material_attachment_v13 import save_material_attachment_v13
-            save_material_attachment_v13(root / "attachment.npz", self.attachment)
+            self.attachment.save(root / "attachment.npz")
             names.append("attachment.npz")
         manifest = dict(schema_version=13, artifact_kind="MaterialRuntimeV13",
                         publishable=False, requires_blender_at_runtime=False,
                         requires_pose_rebake=False, requires_skin_queries_at_runtime=False,
+                        source_array_precision="exact_overlay_v1",
                         provenance=provenance,
                         files={name: sha256_file(root / name) for name in names})
         (root / "manifest.json").write_text(json.dumps(manifest, indent=2, allow_nan=False) + "\n")
+
+
+def _validate_attachment_authority(asset: Any, rest: np.ndarray, ids: np.ndarray, attachment: Any) -> None:
+    from .material_attachment_v13 import _digest_array
+    if attachment.point_count != len(ids) or not np.array_equal(
+            attachment.source_points_rest, np.asarray(asset.vertices_rest)[ids]):
+        raise ValueError("attachment points do not match the ordered soft vertex IDs")
+    if attachment.source_surface_digest != _digest_array(np.asarray(asset.vertices_rest, dtype=np.float64)):
+        raise ValueError("attachment source rest differs from runtime source rig")
+    if attachment.target_surface_digest != _digest_array(np.asarray(rest, dtype=np.float64)):
+        raise ValueError("attachment target rest differs from runtime target rest")
 
 
 def load_material_runtime_v13(root: Path) -> MaterialRuntimeV13:
@@ -154,6 +184,12 @@ def load_material_runtime_v13(root: Path) -> MaterialRuntimeV13:
     manifest = json.loads((root / "manifest.json").read_text())
     if manifest.get("artifact_kind") != "MaterialRuntimeV13":
         raise ValueError("not a MaterialRuntimeV13 artifact")
+    if manifest.get("schema_version") != 13:
+        raise ValueError("unsupported material runtime schema")
+    for flag in ("publishable", "requires_blender_at_runtime", "requires_pose_rebake",
+                 "requires_skin_queries_at_runtime"):
+        if manifest.get(flag) is not False:
+            raise ValueError(f"inconsistent experimental runtime capability: {flag}")
     expected = {"source_rig.npz", "runtime.npz"}
     if not expected <= set(manifest["files"]):
         raise ValueError("incomplete runtime artifact")
@@ -162,18 +198,22 @@ def load_material_runtime_v13(root: Path) -> MaterialRuntimeV13:
             raise ValueError(f"runtime file integrity check failed: {name}")
     asset = load_rigged_asset(root / "source_rig.npz")
     with np.load(root / "runtime.npz", allow_pickle=False) as data:
+        if manifest.get("source_array_precision") == "exact_overlay_v1":
+            known = {f.name for f in fields(asset)}
+            overlay = {name[len("source_exact__"):]: data[name].copy()
+                       for name in data.files if name.startswith("source_exact__")}
+            if not overlay or not set(overlay) <= known:
+                raise ValueError("invalid exact source array overlay")
+            asset = replace(asset, **overlay)
+            asset.validate()
         kwargs = {f.name: data[f.name].copy() for f in fields(PoseMapV1)}
         for name in ("source_operator_digest", "subject_label", "oracle_sha256"):
             kwargs[name] = str(kwargs[name].item())
         pose_map = PoseMapV1(**kwargs)
         pose_map.validate()
         rest, ids = data["target_rest"].copy(), data["soft_ids"].copy()
-    if rest.shape != asset.vertices_rest.shape or not np.all(np.isfinite(rest)):
-        raise ValueError("invalid target rest")
-    if ids.ndim != 1 or len(np.unique(ids)) != len(ids) or np.any(ids < 0) or np.any(ids >= len(rest)):
-        raise ValueError("invalid soft vertex IDs")
     attachment = None
     if "attachment.npz" in manifest["files"]:
-        from .material_attachment_v13 import load_material_attachment_v13
-        attachment = load_material_attachment_v13(root / "attachment.npz")
+        from .material_attachment_v13 import MaterialAttachmentMapV13
+        attachment = MaterialAttachmentMapV13.load(root / "attachment.npz")
     return MaterialRuntimeV13(asset, pose_map, rest, ids, attachment)

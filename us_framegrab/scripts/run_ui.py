@@ -25,6 +25,34 @@ sys.path = [p for p in sys.path if not p.startswith(_user_site)]
 PKG_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PKG_ROOT / "src"))
 
+# ``run_ui.py`` is also used directly from a shell, so the controller package
+# is not necessarily installed in the camera environment.  Add the sibling
+# repository checkout before importing the observer bootstrap.  Keep this
+# helper dependency-free: it must run before PyQt, OpenCV, ffmpeg bindings, or
+# any other camera worker can be imported.
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+_RM75_ROOT = _REPO_ROOT / "rm75_control"
+
+
+def _prepare_observer_process() -> None:
+    if (_RM75_ROOT / "rm75_control").is_dir():
+        rm75_root = str(_RM75_ROOT)
+        if rm75_root not in sys.path:
+            sys.path.insert(0, rm75_root)
+    try:
+        from rm75_control.control.admittance_common.observer_runtime import (
+            prepare_observer_process,
+        )
+    except (ImportError, OSError) as exc:
+        logging.getLogger(__name__).warning(
+            "observer resource setup unavailable: %s", exc
+        )
+        return
+    prepare_observer_process()
+    logging.getLogger(__name__).info(
+        "observer resources prepared: one numeric thread, background priority"
+    )
+
 
 def _parse_args(argv: list[str]) -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__)
@@ -46,11 +74,12 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
 
 
 def main(argv: list[str] | None = None) -> int:
-    args = _parse_args(list(sys.argv[1:] if argv is None else argv))
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     )
+    _prepare_observer_process()
+    args = _parse_args(list(sys.argv[1:] if argv is None else argv))
     from us_framegrab.config import load_config
 
     cfg = load_config(args.config)

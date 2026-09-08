@@ -22,10 +22,14 @@ import numpy as np
 import yaml
 
 _PERCEPTION_ROOT = Path(__file__).resolve().parents[1]
+if str(_PERCEPTION_ROOT.parent) not in sys.path:
+    sys.path.insert(0, str(_PERCEPTION_ROOT.parent))
 if str(_PERCEPTION_ROOT) not in sys.path:
     sys.path.insert(0, str(_PERCEPTION_ROOT))
 from realsense_open import open_color_pipeline  # noqa: E402
 from realsense_timestamps import frame_timing_ns  # noqa: E402
+from realsense_timestamps import shared_frame_metadata  # noqa: E402
+from realus_clock import get_clock  # noqa: E402
 
 DEFAULT_CAPTURE_TOPIC = "amongus_camera_frame_v1"
 DEFAULT_PREVIEW_TOPIC = "amongus_camera_preview_v1"
@@ -209,6 +213,7 @@ def _camera_publish_loop(
         if color is None:
             continue
         source_ns, wall_ns = frame_timing_ns(color)
+        shared_timing = shared_frame_metadata(color, cid, source_ns, wall_ns)
         # RealSense ring buffer is reused; copy before remap/JPEG.
         bgr = np.ascontiguousarray(color.get_data()).copy()
         full_h, full_w = bgr.shape[:2]
@@ -234,7 +239,7 @@ def _camera_publish_loop(
                 sock=sock,
                 send_lock=send_lock,
                 topic=preview_topic,
-                meta=meta_preview,
+                meta={**meta_preview, **shared_timing},
                 bgr=preview_bgr,
                 encode_params=preview_encode,
             )
@@ -253,7 +258,7 @@ def _camera_publish_loop(
             sock=sock,
             send_lock=send_lock,
             topic=capture_topic,
-            meta=meta_capture,
+            meta={**meta_capture, **shared_timing},
             bgr=capture_bgr,
             encode_params=capture_encode,
         )
@@ -307,6 +312,7 @@ def main() -> int:
     ap.add_argument("--session-id", type=str, default="realus_realsense")
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
+    get_clock()
 
     import os
 

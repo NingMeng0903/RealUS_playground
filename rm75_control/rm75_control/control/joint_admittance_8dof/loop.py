@@ -26,7 +26,6 @@ from rm75_control.control.admittance_common.async_state import arm_qdot_rad_s_fr
 from rm75_control.control.joint_admittance_8dof.collision_model import CollisionConfig
 from rm75_control.control.joint_admittance_8dof.ik_types import (
     saturate_error,
-    sr_damping_lambda,
 )
 from rm75_control.control.joint_admittance_8dof.model import (
     RobotKinematics,
@@ -60,16 +59,12 @@ from rm75_control.control.joint_admittance_8dof.tasks.rail_allocator import (
     RailAllocatorConfig,
     RailReferenceModel,
     RailStateObserver,
-    allocate_rail,
     arm_mirror_rail_limits,
-    margin_weight_from_activation,
-    margin_weight_toward_box,
     update_leave_sign,
     wall_leave_only_sign,
 )
 from rm75_control.control.joint_admittance_8dof.tasks.rail_command import (
     RailCommandMixer,
-    j4_index,
     press_escape_allowed_from_flags,
     q_star_srs_valid,
 )
@@ -2343,7 +2338,7 @@ class JointIkController:
                 rail_qdot_ff_val = float(self.rail_ext_task.last_v_ff)
             rail_task_weight = w_ext
             # Escape (and only escape) still comes from the extension task.
-            # Cartesian mid-ranging and allocate_rail own the committed
+            # Cartesian mid-ranging and task-axis projection own the committed
             # rail velocity below; w_ext only sets QP2 preference strength.
             if abs(float(self.rail_ext_task.last_v_escape)) > 1.0e-4:
                 rail_task_vel = v_ext
@@ -3767,7 +3762,7 @@ class _TickLogger:
            "rail_target_sent_m", "rail_meas_m", "rail_cmd_meas_err_m",
            "rail_vel_pin", "plan_drives_rail", "rail_qdot_ff",
            "rail_q_hat_m", "rail_goal_err_m",
-           # Motion-subspace accuracy (force axes excluded from "准" metrics).
+           # Motion-subspace accuracy excludes force-controlled axes.
            "pose_d_x", "pose_d_y", "pose_d_z", "pose_d_rx", "pose_d_ry", "pose_d_rz",
            "pose_meas_x", "pose_meas_y", "pose_meas_z",
            "pose_meas_rx", "pose_meas_ry", "pose_meas_rz",
@@ -6661,6 +6656,7 @@ def run_joint_admittance_phases(
                                 qdot_sdk=qdot_meas,
                                 rail_locked=rail_locked_now,
                                 sensor_age_s=sensor_age_s,
+                                wall_time_ns=getattr(snap, "wall_time_ns", 0),
                             )
                             f_ext_raw = getattr(obs, "f_ext_raw_last", None)
                             f_ext = inner.kin.wrench_link7_to_tcp(f_ext)

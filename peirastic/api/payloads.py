@@ -143,6 +143,9 @@ class HfpcPayload:
     """Position-force hybrid. Position axes track a pose reference."""
 
     reference: str = "polyline"
+    path_spec: dict[str, Any] | None = None
+    scan_contact_n: float | None = None
+    scan_contact_s: float | None = None
     poses: list[list[float]] | None = None
     speed_m_s: float | None = None
     law: str = "tff"
@@ -171,6 +174,9 @@ class HfpcPayload:
         out = _dump(
             {
                 "reference": self.reference,
+                "path_spec": self.path_spec,
+                "scan_contact_n": self.scan_contact_n,
+                "scan_contact_s": self.scan_contact_s,
                 "poses": self.poses,
                 "speed_m_s": self.speed_m_s,
                 "law": None if law == "tff" else law,

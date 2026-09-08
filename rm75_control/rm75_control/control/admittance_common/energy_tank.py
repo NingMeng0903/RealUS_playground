@@ -8,7 +8,6 @@ leaves the passive M, D, e_f law.
 
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass
 
 

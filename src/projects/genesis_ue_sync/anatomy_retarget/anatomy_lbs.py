@@ -281,9 +281,12 @@ def _skin_vertices_cuda(
             indices, weights = sparse_driver_weights(asset.lbs_weights)
         else:
             indices, weights = asset.driver_indices, asset.driver_weights
-        vertices_t = torch.as_tensor(asset.vertices_rest, dtype=torch.float32, device="cuda")
-        indices_t = torch.as_tensor(indices, dtype=torch.long, device="cuda")
-        weights_t = torch.as_tensor(weights, dtype=torch.float32, device="cuda")
+        # Frozen runtime assets expose read-only NumPy buffers. The CUDA
+        # cache owns its storage; request a copy explicitly rather than
+        # constructing a tensor that may alias a read-only host buffer.
+        vertices_t = torch.tensor(asset.vertices_rest, dtype=torch.float32, device="cuda")
+        indices_t = torch.tensor(indices, dtype=torch.long, device="cuda")
+        weights_t = torch.tensor(weights, dtype=torch.float32, device="cuda")
         soft_mask_t = torch.as_tensor(_soft_tissue_vertex_mask(asset), dtype=torch.bool, device="cuda")
         cached = (
             weakref.ref(asset),

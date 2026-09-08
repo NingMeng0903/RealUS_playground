@@ -195,7 +195,8 @@ def _render_layer(
                 StaticCameraConfig(
                     name=name, res=(720, 540), pos=spec["pos"],
                     lookat=spec["lookat"], up=spec["up"], fov=spec["fov"],
-                    near=0.01, far=10.0, gui=False,
+                    near=float(spec.get("near", 0.01)),
+                    far=float(spec.get("far", 10.0)), gui=False,
                 )
             )
         runtime.build()

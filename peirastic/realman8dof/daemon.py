@@ -282,6 +282,26 @@ class ControllerService:
             return
         wrench = np.asarray(f_ext, dtype=float).reshape(-1)
         if wrench.size == 6 and np.isfinite(wrench).all():
+            # ``CompensatedForceObserver.update`` consumes the latest UDP
+            # feedback timestamp. Preserve that monotonic source stamp on the
+            # force relay; fall back to the relay publication time for older
+            # injected observers that do not expose it.
+            sample_t = getattr(self.force_observer, "last_t_s", float("nan"))
+            sample_wall_ns = getattr(self.force_observer, "last_wall_time_ns", 0)
+            try:
+                sample_t = float(sample_t)
+            except (TypeError, ValueError, OverflowError):
+                sample_t = float("nan")
+            wall_ns = None
+            try:
+                candidate_wall_ns = int(sample_wall_ns or 0)
+                if candidate_wall_ns > 0:
+                    wall_ns = candidate_wall_ns
+            except (TypeError, ValueError, OverflowError):
+                pass
+            if np.isfinite(sample_t) and sample_t > 0.0:
+                relay.set_f_ext(wrench, t_s=sample_t, wall_time_ns=wall_ns)
+                return
             relay.set_f_ext(wrench)
 
     def _pad_source_present(self) -> bool:
@@ -1207,6 +1227,8 @@ class ControllerService:
                     vz_cmd = float(getattr(controller, "v_force_cmd_z", float("nan")))
                     msg = (f"{phase.label}:{stage} t={contact_gate.elapsed_s:.2f} "
                            f"contact={contact} vz_cmd={vz_cmd * 1000:+.1f}")
+                    if getattr(contact_gate, "start_force_n", None) is not None:
+                        msg += f" scan_gate={contact_gate.start_force_n:.1f}"
                 self._publish_tick_status(
                     mode=self.mode,
                     ticks=self.ticks,

@@ -905,19 +905,8 @@ class AdmittanceController:
             v = min(v, first)
         return max(v, 0.0)
 
-    def _v_recontact_safe(self) -> float:
-        return self._v_delay_safe()
-
     def _has_acquired_contact(self) -> bool:
         return bool(self._physical_contact.ever_acquired) or bool(self._episode_seen)
-
-    def _unconfirmed_contact(self) -> bool:
-        return (
-            (not self._has_acquired_contact())
-            or bool(self._first_contact_slow_latched)
-            or bool(self._recontact_slow_latched)
-            or (not bool(self.contact_present))
-        )
 
     def _use_delay_safe_press(self) -> bool:
         """K_ub limit only while touching and a first/recontact latch is on.
@@ -1691,7 +1680,7 @@ class AdmittanceController:
             # Paper A-only baseline is fixed LTI A(s)=1/(Ms+D).
             mass_z = cfg.admittance_mass_z
         elif cfg.ke_schedule.enabled:
-            mass_z, _d_sched = self._update_ke_schedule(
+            mass_z, _ = self._update_ke_schedule(
                 in_contact=physical_contact, dt_s=dt_flow
             )
         elif cfg.var_damping_enabled:

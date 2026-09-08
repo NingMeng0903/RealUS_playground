@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import argparse
 import sys
-import time
 
 from rm75_control.hw.lw100.drive import LW100Drive, LW100DriveConfig
 from rm75_control.hw.lw100.geometry import mm_to_position_command, position_command_to_mm

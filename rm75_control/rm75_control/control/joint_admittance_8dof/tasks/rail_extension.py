@@ -208,16 +208,12 @@ class RailExtensionTask:
         self._guard_active: bool = False
         self._escape_active: bool = False
         self._escape_sign: float = 0.0
-        self._escape_flipped_at_end: bool = False
-        self._escape_enter_timer_s: float = 0.0
-        self._sigma_raw_prev: float | None = None
         self._v_lpf: float = 0.0
         self._v_lpf_initialized: bool = False
         self.last_v_ff: float = 0.0
         self.last_v_escape: float = 0.0
         self.last_v_reach: float = 0.0
         self.last_e_mid_m: float = 0.0
-        self._escape_grad_hint: float = 0.0
         self.last_rail_ff_m: float = float("nan")
         self.last_track_err_m: float = 0.0
         self.last_d_star_reg_scale: float = 1.0
@@ -234,8 +230,6 @@ class RailExtensionTask:
             self._guard_active = False
             self._escape_active = False
             self._escape_sign = 0.0
-            self._escape_flipped_at_end = False
-            self._sigma_raw_prev = None
         self.mode = mode_s  # type: ignore[assignment]
 
     def _soft_travel(self) -> tuple[float, float]:
@@ -278,8 +272,6 @@ class RailExtensionTask:
         self._guard_active = False
         self._escape_active = False
         self._escape_sign = 0.0
-        self._escape_flipped_at_end = False
-        self._sigma_raw_prev = None
         self._v_lpf = 0.0
         self._v_lpf_initialized = False
 
@@ -381,105 +373,9 @@ class RailExtensionTask:
             return True
         return False
 
-    def _maybe_flip_escape_at_rail_end(self, q_rail: float) -> None:
-        """Dead-end flip is disabled; ``wall_cap`` stops into-wall motion."""
-        del q_rail
-        return
-
     def _clear_escape_latch(self) -> None:
         self._escape_active = False
         self._escape_sign = 0.0
-        self._escape_flipped_at_end = False
-        self._escape_enter_timer_s = 0.0
-
-    def _escape_latched(
-        self,
-        *,
-        sigma_scale: float,
-        sigma_grad_rail: float,
-        joint_margin_frac: float,
-        sigma_raw: float | None,
-        dt_s: float | None,
-        q_rail: float,
-        trajectory_owns: bool = False,
-        unload_sign: float = 0.0,
-    ) -> float:
-        """Narrow hysteresis latch: deep σ ∪ true near-limit (optional dσ/dt).
-
-        While the MotionReference owns the rail (``|v_ff|>thr``), never enter or
-        keep the latch — sticky escape fighting the path caused scan stutter and
-        LW100 Er-01 (overspeed) on run_20260813_151334.
-        """
-        if trajectory_owns:
-            self._clear_escape_latch()
-            if sigma_raw is not None:
-                self._sigma_raw_prev = float(sigma_raw)
-            return 0.0
-
-        sig = float(np.clip(sigma_scale, 0.0, 1.0))
-        mfrac = float(np.clip(joint_margin_frac, 0.0, 1.0))
-        enter = float(self.cfg.sigma_escape_enter)
-        exit_ = max(float(self.cfg.sigma_escape_exit), enter)
-        m_enter = float(self.cfg.margin_escape_enter)
-        m_exit = max(float(self.cfg.margin_escape_exit), m_enter)
-
-        dropping = False
-        if (
-            sigma_raw is not None
-            and dt_s is not None
-            and float(dt_s) > 1e-9
-            and float(self.cfg.sigma_drop_rate) > 0.0
-            and self._sigma_raw_prev is not None
-        ):
-            dsigma = (float(sigma_raw) - float(self._sigma_raw_prev)) / float(dt_s)
-            dropping = dsigma < -float(self.cfg.sigma_drop_rate)
-        if sigma_raw is not None:
-            self._sigma_raw_prev = float(sigma_raw)
-
-        want_enter = (sig < enter) or (mfrac < m_enter) or dropping
-        healthy_exit = (sig >= exit_) and (mfrac >= m_exit)
-        dt = float(dt_s) if dt_s is not None and float(dt_s) > 0.0 else 0.0
-        dwell = max(float(self.cfg.escape_enter_dwell_s), 0.0)
-
-        if self._escape_active:
-            if healthy_exit:
-                self._clear_escape_latch()
-            else:
-                pref = self._preferred_escape_sign(q_rail, unload_sign=unload_sign)
-                if abs(pref) < 1.0e-12:
-                    self._clear_escape_latch()
-                elif pref * self._escape_sign < 0.0:
-                    self._escape_sign = pref
-        else:
-            if want_enter:
-                self._escape_enter_timer_s += dt
-                if self._escape_enter_timer_s + 1.0e-12 >= dwell:
-                    self._escape_active = True
-                    self._escape_flipped_at_end = False
-                    self._escape_enter_timer_s = 0.0
-                    self._escape_sign = self._preferred_escape_sign(
-                        q_rail, unload_sign=unload_sign
-                    )
-                    if abs(self._escape_sign) < 1.0e-12:
-                        self._clear_escape_latch()
-                        if sigma_raw is not None:
-                            self._sigma_raw_prev = float(sigma_raw)
-                        return 0.0
-            else:
-                self._escape_enter_timer_s = 0.0
-
-        if not self._escape_active:
-            return 0.0
-        self._maybe_flip_escape_at_rail_end(q_rail)
-        if not self._escape_active:
-            return 0.0
-        floor = float(self.cfg.escape_grad_floor)
-        mag = abs(float(sigma_grad_rail))
-        if floor > 0.0:
-            mag = max(mag, floor)
-        if mag < 1.0e-12:
-            return 0.0
-        return self._escape_sign * mag
 
     def _limit_saturation(self, q_rail: float, v: float) -> float:
         """Return 0..1 scale; C¹ smoothstep fade before a directional hard stop.
@@ -608,12 +504,11 @@ class RailExtensionTask:
         unload_sign: float = 0.0,
         jacobian: np.ndarray | None = None,
     ) -> tuple[float, float]:
-        del tool_y_err_m, unload_sign, sigma_raw
+        del tool_y_err_m, unload_sign, sigma_raw, sigma_grad_rail, dt_s, block_escape
         if self.d_pref_m is None:
             self.capture_reference(q)
         d_star = float(self.d_pref_m)
         y = float(q[RAIL_INDEX])
-        self._escape_grad_hint = float(sigma_grad_rail)
         if y_tcp_d is not None and np.isfinite(float(y_tcp_d)):
             y_des = float(y_tcp_d)
         else:
@@ -632,14 +527,12 @@ class RailExtensionTask:
         w_reach = float(self.cfg.w_max) * smoothstep01(
             (abs(err) - float(self.cfg.e0_m)) / span
         )
-        v_reach = 0.0
         sig = float(np.clip(sigma_scale, 0.0, 1.0))
         err_abs = abs(err)
         e0 = max(float(self.cfg.d_star_err0_m), 0.0)
         e1 = max(float(self.cfg.d_star_err1_m), e0 + 1.0e-6)
         drift = smoothstep01((err_abs - e0) / (e1 - e0)) if e0 > 0.0 else 0.0
-        # allocate_rail already cheapens the rail on |e_mid| / |v_y|; do not
-        # also make the QP rail more expensive when |e_mid| is large.
+        # Mid-ranging owns the rail tracking velocity; keep its QP cost fixed.
         self.last_d_star_reg_scale = 1.0
         v_ff_measured = (
             rail_vel_ff_from_reference(
@@ -648,8 +541,8 @@ class RailExtensionTask:
             if vel_ff is not None
             else 0.0
         )
-        # Legacy FF is retired: allocate_rail owns task-side rail velocity.
-        # Still record the measured feedforward for telemetry / escape latch.
+        # Reference feedforward affects telemetry and task weighting here.
+        # Mid-ranging supplies the task-side rail velocity.
         thr = float(self.cfg.v_ff_thr_m_s)
         ff_owns = abs(v_ff_measured) > thr
         if ff_owns:
@@ -658,18 +551,11 @@ class RailExtensionTask:
         else:
             self.last_k_ff_scale = 1.0 - drift
             v_ff_att = float(v_ff_measured) * self.last_k_ff_scale
-        v_ff = 0.0
         use_limiters = bool(stroke_limiters)
         in_band = self._rail_in_limit_band(y) if use_limiters else False
         self.last_in_limit_band = bool(in_band)
         allow_press_escape = bool(press_escape_allowed) and self._rail_has_open_travel(y)
-        if block_escape and not allow_press_escape:
-            self._clear_escape_latch()
-            v_escape = 0.0
-        elif in_band and not allow_press_escape:
-            self._clear_escape_latch()
-            v_escape = 0.0
-        elif not allow_press_escape:
+        if not allow_press_escape:
             self._clear_escape_latch()
             v_escape = 0.0
         else:

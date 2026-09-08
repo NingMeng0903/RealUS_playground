@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import Any
 
 _REPO = Path(os.environ.get("REALUS_PROJECT_ROOT") or Path(__file__).resolve().parents[2]).resolve()
-for _p in (_REPO / "rm75_control", _REPO / "camera_calibration" / "src"):
+for _p in (_REPO, _REPO / "rm75_control", _REPO / "camera_calibration" / "src"):
     if _p.is_dir() and str(_p) not in sys.path:
         sys.path.insert(0, str(_p))
 
@@ -30,6 +30,7 @@ if __name__ == "__main__":
     prepare_observer_process()
 
 import numpy as np
+from realus_clock import get_clock
 
 from rm75_control.control.joint_admittance_8dof.viewer.orbbec_cloud import (  # noqa: E402
     DEFAULT_CLOUD_STRIDE,
@@ -79,6 +80,7 @@ def _cloud_rgb(rgb: np.ndarray | None, source: str) -> np.ndarray:
 
 def main() -> int:
     args = _parse_args()
+    clock = get_clock()
     T_link7_cam = load_T_link7_cam(args.handeye)
     print(
         f"bind={args.pub_bind} topic={args.topic} fps={args.fps} depth_fps={args.depth_fps} "
@@ -176,7 +178,7 @@ def main() -> int:
             if rgb_f.shape[0] != xyz.shape[0]:
                 rgb_f = np.full((int(xyz.shape[0]), 3), 0.7, dtype=np.float32)
             wall_ns = int(time.time_ns())
-            source_ns = int(frame.timestamp_ns) if int(getattr(frame, "timestamp_ns", 0) or 0) else wall_ns
+            source_ns = int(frame.timestamp_ns) if int(getattr(frame, "timestamp_ns", 0) or 0) else time.monotonic_ns()
             meta: dict[str, Any] = {
                 "schema_version": 1,
                 "session_id": str(args.session_id),
@@ -194,6 +196,9 @@ def main() -> int:
                 "depth_ray_coeff": [float(v) for v in np.asarray(ray_c, dtype=np.float64).reshape(3)],
                 "depth_ray_applied": bool(ray_meta.get("source") not in {"identity", "identity_bad_yaml", "identity_bad_coeff", "disabled"}),
             }
+            meta.update(clock.metadata("orbbec_camera", monotonic_ns=source_ns))
+            meta["capture_monotonic_ns"] = source_ns
+            meta["timestamp_source"] = "host_camera_frame"
             payload = pack_cloud_multipart(args.topic, meta, xyz, rgb_f)
             try:
                 sock.send_multipart(payload, flags=zmq.NOBLOCK)

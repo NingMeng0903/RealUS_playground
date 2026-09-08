@@ -32,7 +32,7 @@ def _meta_to_frame(meta: dict[str, Any], image_bgr: np.ndarray, *, frame_index: 
         timestamp_ns=wall_ns,
         device_timestamp_ns=source_ns,
         frame_index=int(frame_index),
-        metadata={"camera_name": str(meta.get("camera_name", ""))},
+        metadata=dict(meta),  # Preserve the shared clock ID and ROS-style header.
     )
 
 

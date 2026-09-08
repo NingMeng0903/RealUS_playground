@@ -141,7 +141,7 @@ def compare_once(robot, kin: RobotKinematics, mode: str, idx: int, *, verbose: b
         d_mm, d_deg = pose_diff(fk, rm_fk, kin.euler_order)
         row.update(pos_mm=d_mm, rot_deg=d_deg, rm_fk=rm_fk.tolist())
     else:  # flange
-        _tool_name, tool_offset = _read_tool_offset(robot)
+        _, tool_offset = _read_tool_offset(robot)
         flange_meas = base_flange_from_tool(tool_pose, tool_offset, kin.euler_order)
         fk = kin.frame_pose(q, "link_7")
         d_mm, d_deg = pose_diff(fk, flange_meas, kin.euler_order)
@@ -230,7 +230,7 @@ def _load_pose_targets(poses_yaml: str) -> list[np.ndarray]:
     # Accept either {poses: {a: {q_deg: [...]}, ...}} or {slots: [...]} or a plain list.
     src = data.get("poses", data.get("slots", data))
     if isinstance(src, dict):
-        for _k, rec in src.items():
+        for _, rec in src.items():
             if isinstance(rec, dict) and "q_deg" in rec:
                 targets.append(np.asarray(rec["q_deg"][:7], dtype=float))
     elif isinstance(src, list):

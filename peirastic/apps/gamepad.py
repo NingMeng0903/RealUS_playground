@@ -76,6 +76,12 @@ def pad_link_event(prev: bool | None, live: bool) -> str | None:
     return "[PAD] bluetooth live" if live else "[PAD] bluetooth lost"
 
 
+def pad_hybrid_active(snapshot: dict) -> bool:
+    """Resync L3 after an external program has returned control to the pad."""
+    return (try_mode(snapshot.get("mode")) == Mode.TRACK_HYBRID
+            and "pad" in str(snapshot.get("msg") or "").lower())
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="peirastic gamepad source")
     parser.add_argument("--shm-prefix", default="")
@@ -83,6 +89,8 @@ def main() -> int:
     parser.add_argument("--trans-m-s", type=float, default=None)
     parser.add_argument("--rot-rad-s", type=float, default=None)
     parser.add_argument("--hold", action="store_true", help="use servo_twist_hold")
+    parser.add_argument("--force-profile", choices=("baseline", "icra"), default="baseline",
+                        help="task-local torque response; icra matches the two-point scanner")
     parser.add_argument(
         "--quiet",
         action="store_true",
@@ -120,6 +128,10 @@ def main() -> int:
         "label": "track_hybrid_pad",
         "filter": False,  # pad already LPF+jerk at source; force Z never filtered
     }
+    if args.force_profile == "icra":
+        from peirastic.scan_path import force_profile
+
+        hybrid_payload.update(force_profile("icra"))
     if args.desired_z is not None:
         hybrid_payload["desired_z"] = float(args.desired_z)
     prefix = str(args.shm_prefix)
@@ -181,6 +193,7 @@ def main() -> int:
             live = bool(snap["connected"]) and bool(snap["armed"])
             program = program_is_running()
             tel = client.snapshot()
+            hybrid = pad_hybrid_active(tel)
             pad_drive = live and pad_may_drive(
                 int(tel.get("mode") or 0),
                 program=program,

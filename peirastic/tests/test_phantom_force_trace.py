@@ -36,7 +36,7 @@ def _read_rows(path: Path) -> list[dict[str, str]]:
 
 def test_trace_filters_hybrid_label_and_preserves_invalid_force(tmp_path: Path) -> None:
     nan_wrench = np.full(6, np.nan)
-    force_t0 = time.time()
+    force_t0 = time.monotonic()
     bus = _FakeForceBus(
         [
             (True, 1, force_t0 + 0.01, [1.0, 2.0, 3.0, 0.1, 0.2, 0.3]),
@@ -166,7 +166,7 @@ def test_sampling_error_is_exposed_and_artifacts_are_retained(tmp_path: Path) ->
 
 def test_old_force_timestamp_cannot_become_a_valid_first_sample(tmp_path: Path) -> None:
     bus = _FakeForceBus(
-        [(True, 77, time.time() - 10.0, [1.0, 2.0, 3.0, 0.1, 0.2, 0.3])]
+        [(True, 77, time.monotonic() - 10.0, [1.0, 2.0, 3.0, 0.1, 0.2, 0.3])]
     )
     recorder = ForceTraceRecorder(
         tmp_path,
@@ -233,7 +233,7 @@ def test_frozen_status_timestamp_allows_only_one_fallback_sample(tmp_path: Path)
 
 def test_missing_status_timestamp_is_nan_and_invalid(tmp_path: Path) -> None:
     bus = _FakeForceBus(
-        [(True, 1, time.time(), [0.0, 0.0, 1.0, 0.0, 0.0, 0.0])]
+        [(True, 1, time.monotonic(), [0.0, 0.0, 1.0, 0.0, 0.0, 0.0])]
     )
     recorder = ForceTraceRecorder(
         tmp_path,
@@ -259,7 +259,7 @@ def test_missing_status_timestamp_is_nan_and_invalid(tmp_path: Path) -> None:
 
 
 def test_terminal_controller_status_stops_active_sampling(tmp_path: Path) -> None:
-    force_t0 = time.time()
+    force_t0 = time.monotonic()
     bus = _FakeForceBus(
         [(True, 1, force_t0, [0.0, 0.0, 1.0, 0.0, 0.0, 0.0])]
     )

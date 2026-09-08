@@ -22,8 +22,6 @@ if __name__ == "__main__":
 
     prepare_observer_process()
 
-import numpy as np
-
 from rm75_control.control.joint_admittance_8dof.param_model.paths import DEFAULT_SPEC_YAML
 from rm75_control.control.joint_admittance_8dof.viewer.scene import (
     DEFAULT_Q,

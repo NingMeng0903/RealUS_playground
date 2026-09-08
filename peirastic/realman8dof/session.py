@@ -348,14 +348,18 @@ def compile_request(
                     payload=payload,
                 ),
             )
-        if kind == "ellipse":
+        if kind == "icra_path":
+            from peirastic.scan_path import ForearmReference
+
+            ref = ForearmReference(payload["path_spec"])
+        elif kind == "ellipse":
             ref = _ellipse_ref(payload, ctx.euler_order)
         elif kind == "polyline":
             ref = _polyline_ref(payload, ctx.euler_order)
         else:
             ref = HoldReference()
         hybrid_dur = payload.get("duration_s")
-        if kind == "ellipse":
+        if kind in ("ellipse", "icra_path"):
             hybrid_dur = getattr(ref, "duration_s", hybrid_dur)
         return _finish_phase(
             ctx,

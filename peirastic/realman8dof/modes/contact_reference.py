@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import inspect
+import time
 from typing import Callable
 
 import numpy as np
@@ -29,8 +30,24 @@ class ContactGatedReference:
         self,
         reference: MotionReferenceSource,
         contact_present: Callable[[], bool] | None = None,
+        *,
+        start_force_n: float | None = None,
+        start_force_s: float = 0.1,
     ) -> None:
         self.reference = reference
+        self.start_force_n = start_force_n
+        self.start_force_s = float(start_force_s)
+        if start_force_n is not None and (
+            not np.isfinite(start_force_n) or start_force_n <= 0
+            or not np.isfinite(start_force_s) or start_force_s < 0
+        ):
+            raise ValueError("invalid independent scan force gate")
+        self._force_ready = start_force_n is None
+        self._force_since = None
+        self._force_last_time = None
+        self._seen_air = False
+        self._seek_wall_start = None
+        self._seek_normal = None
         self._contact_present: Callable[[], bool] | None = None
         self._started = False
         self._elapsed_s = 0.0
@@ -63,6 +80,53 @@ class ContactGatedReference:
         self._elapsed_s = 0.0
         self._last_input_t_s = None
         self._first_sample = None
+        self._force_ready = self.start_force_n is None
+        self._force_since = self._force_last_time = None
+        self._seen_air = False
+        self._seek_wall_start = None
+        self._seek_normal = None
+
+    def guard_approach(self, pose) -> None:
+        """Bound an ICRA seek even if the external acquisition process disappears."""
+        if self.start_force_n is None or self._started:
+            return
+        now = time.monotonic()
+        if self._seek_wall_start is None:
+            self._seek_wall_start = now
+        if now - self._seek_wall_start > 25.0:
+            raise RuntimeError("ICRA contact seek timed out before sustained 4 N")
+        if getattr(self.reference, "spec", {}).get("schema") == "icra_path_v1":
+            anchor = self._anchor().pose_d
+            if self._seek_normal is None:
+                from scipy.spatial.transform import Rotation
+
+                self._seek_normal = -Rotation.from_euler("xyz", anchor[3:]).as_matrix()[:, 2]
+            if float((np.asarray(pose)[:3] - anchor[:3]) @ self._seek_normal) < -0.010:
+                raise RuntimeError("ICRA contact seek exceeded taught surface by 10 mm")
+
+    def observe_force(self, fz: float, sample_time_s: float, *, valid: bool = True) -> None:
+        """Use fresh compensated samples, independently of physical contact tuning."""
+        if self.start_force_n is None or self._started:
+            return
+        if not valid or not np.isfinite(fz) or not np.isfinite(sample_time_s):
+            self._force_since = None
+            self._force_ready = False
+            return
+        if self._force_last_time is not None:
+            if sample_time_s <= self._force_last_time:
+                return
+            if sample_time_s - self._force_last_time > 0.1:
+                self._force_since = None
+                self._force_ready = False
+        self._force_last_time = sample_time_s
+        if fz < self.start_force_n:
+            self._seen_air = True
+            self._force_since = None
+            self._force_ready = False
+        elif self._seen_air:
+            if self._force_since is None:
+                self._force_since = sample_time_s
+            self._force_ready = sample_time_s - self._force_since >= self.start_force_s - 1e-9
 
     @staticmethod
     def _call_set_origin(reference, pose0: np.ndarray) -> None:
@@ -138,7 +202,7 @@ class ContactGatedReference:
             t_input = float("nan")
 
         if not self._started:
-            if not bool(self._contact_present()):
+            if not self._force_ready or not bool(self._contact_present()):
                 # Do not pass the runner's absolute/governor time through to
                 # an unstarted child: this is both the hold and the initial
                 # time anchor for sources without set_origin().

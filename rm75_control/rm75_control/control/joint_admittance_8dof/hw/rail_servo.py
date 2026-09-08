@@ -2344,19 +2344,6 @@ class RailServoBridge:
         return s_tx / s_tt, "lsq"
 
     @staticmethod
-    def _motion_from_candidates(
-        *candidates: float,
-        zero_eps: float = RAIL_IDLE_EPS_M_S,
-    ) -> float:
-        """First finite candidate whose magnitude exceeds ``zero_eps``."""
-        eps = max(float(zero_eps), 0.0)
-        for candidate in candidates:
-            value = float(candidate)
-            if math.isfinite(value) and abs(value) >= eps:
-                return value
-        return 0.0
-
-    @staticmethod
     def _is_decel_request(
         v_goal: float,
         v_motion: float,

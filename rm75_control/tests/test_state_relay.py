@@ -322,6 +322,46 @@ def test_f_ext_on_separate_shm_does_not_shift_rail(relay_name):
         pub.stop()
 
 
+def test_f_ext_timestamps_use_monotonic_source_and_wall_domains(relay_name):
+    from rm75_control.control.admittance_common.state_relay import (
+        ForceExtBus,
+        f_ext_name_for_relay,
+    )
+
+    obs = _FakeObserver()
+    pub = StateRelayPublisher(
+        RobotStateBus(None, observer=obs),
+        name=relay_name,
+        hz=200.0,
+        rail_m_fn=lambda: 0.0,
+    )
+    pub.start()
+    fbus = ForceExtBus(name=f_ext_name_for_relay(relay_name))
+    source_t = time.monotonic() - 0.125
+    source_wall_ns = 1_234_567_890_123
+    try:
+        pub.set_f_ext(
+            np.array([0.1, -0.2, 1.7, 0.0, 0.0, 0.0]),
+            t_s=source_t,
+            wall_time_ns=source_wall_ns,
+        )
+        deadline = time.monotonic() + 2.0
+        while time.monotonic() < deadline:
+            result = fbus.read_with_wall()
+            if result[0] and result[1] > 0:
+                break
+            time.sleep(0.005)
+        ok, _seq, stamp_mono, stamp_wall_ns, wrench = result
+        assert ok
+        assert stamp_mono == pytest.approx(source_t)
+        assert stamp_wall_ns == source_wall_ns
+        np.testing.assert_allclose(wrench, [0.1, -0.2, 1.7, 0.0, 0.0, 0.0])
+        assert fbus.last_wall_time_ns == source_wall_ns
+    finally:
+        fbus.stop()
+        pub.stop()
+
+
 def test_load_joint_zero_offsets_missing_is_zero(tmp_path):
     from rm75_control.control.admittance_common.state_relay import load_joint_zero_offsets_deg
 

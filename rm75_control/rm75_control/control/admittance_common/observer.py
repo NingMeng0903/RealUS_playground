@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import hashlib
-import json
 from collections import deque
 from dataclasses import dataclass, field, replace
 from pathlib import Path
@@ -90,6 +89,14 @@ class CompensatedForceObserver:
         self._lpf_zi_unit = lfilter_zi(self._lpf_b, self._lpf_a)  # (order,)
         self._lpf_zi: np.ndarray | None = None  # (order, 6), lazily warm-started
         self._f_ext_last = np.zeros(6, dtype=float)
+        # Timestamp of the latest feedback sample consumed by update().  This
+        # stays in the observer's monotonic clock domain and lets a relay
+        # preserve the sensor sample time instead of stamping at publication.
+        self.last_t_s = float("nan")
+        # Matching Unix timestamp from the same feedback snapshot, when the
+        # caller has one.  Keep it separate from ``last_t_s`` so consumers can
+        # align with publishers that use wall-clock timestamps.
+        self.last_wall_time_ns = 0
         # Compensated but UNfiltered wrench from the latest update(): the
         # Dimeas instability index must see the 5.8-20 Hz band the 6 Hz
         # control LPF removes (feed this to the index, f_ext_filt to control).
@@ -103,13 +110,6 @@ class CompensatedForceObserver:
         self.leftover_valid = False
         self.leftover_tau_s = 2.0
         self._leftover_contact = False
-
-    @staticmethod
-    def _load_phi(path: Path, source: str) -> np.ndarray:
-        data = json.loads(path.read_text())
-        if source not in data:
-            raise SystemExit(f"Key '{source}' not in {path}")
-        return np.array([data[source][k] for k in fid.PHI_NAMES])
 
     def _file_signature(self) -> tuple[int, int]:
         st = Path(self.cfg.phi_path).stat()
@@ -209,6 +209,7 @@ class CompensatedForceObserver:
         qdot_sdk: np.ndarray | None = None,
         rail_locked: bool = True,
         sensor_age_s: float | None = None,
+        wall_time_ns: int | None = None,
     ) -> tuple[np.ndarray, np.ndarray]:
         """Causal link_7-frame external wrench (before ``wrench_link7_to_tcp``).
 
@@ -216,6 +217,12 @@ class CompensatedForceObserver:
         ``now - total_t0``. Control output is gravity-only unless mode is
         ``apply`` and gates pass. ``observe`` stores a dynamic candidate only.
         """
+        self.last_t_s = float(t_s)
+        try:
+            wall_ns = int(wall_time_ns or 0)
+        except (TypeError, ValueError, OverflowError):
+            wall_ns = 0
+        self.last_wall_time_ns = wall_ns if wall_ns > 0 else 0
         self._pose_ring.append(np.asarray(regressor_pose, dtype=float).reshape(6).copy())
         self._t_ring.append(float(t_s))
         self._n_updates += 1

@@ -192,6 +192,7 @@ class RealtimeStateObserver:
                 return AsyncStateSnapshot(
                     force_raw=s.force_raw.copy(),
                     t_s=s.t_s,
+                    wall_time_ns=s.wall_time_ns,
                     ok=False,
                     seq=seq,
                     qdot_deg_s=_copy_vec(s.qdot_deg_s),
@@ -202,6 +203,7 @@ class RealtimeStateObserver:
                 qdot_deg_s=_copy_vec(s.qdot_deg_s),
                 force_raw=s.force_raw.copy(),
                 t_s=s.t_s,
+                wall_time_ns=s.wall_time_ns,
                 ok=s.ok,
                 seq=seq,
             )
@@ -213,6 +215,7 @@ class RealtimeStateObserver:
             return AsyncStateSnapshot(
                 force_raw=s.force_raw.copy(),
                 t_s=s.t_s,
+                wall_time_ns=s.wall_time_ns,
                 ok=False,
                 seq=self._seq,
                 qdot_deg_s=_copy_vec(s.qdot_deg_s),
@@ -223,6 +226,7 @@ class RealtimeStateObserver:
             qdot_deg_s=_copy_vec(s.qdot_deg_s),
             force_raw=s.force_raw.copy(),
             t_s=s.t_s,
+            wall_time_ns=s.wall_time_ns,
             ok=s.ok,
             seq=self._seq,
         )

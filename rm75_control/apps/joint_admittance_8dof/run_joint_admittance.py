@@ -33,7 +33,7 @@ from pathlib import Path
 import numpy as np
 import yaml
 
-from rm75_control.control.admittance_common.phase_ipc import PhaseCmd, PhaseCommandHub, PhaseStatus
+from rm75_control.control.admittance_common.phase_ipc import PhaseCmd, PhaseCommandHub
 from rm75_control.control.admittance_common.state_bus import RobotStateBus
 from rm75_control.control.admittance_common.observer import CompensatedForceObserver
 from rm75_control.control.admittance_common.state_relay import (

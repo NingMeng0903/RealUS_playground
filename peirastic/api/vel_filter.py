@@ -6,7 +6,7 @@ Public knob is ``filter``:
     True                      → on (hybrid: track axes only; force axes stay off)
     [1, 1, 0, 1, 1, 1]        → per-axis; 1 = on
 
-RM ``follow`` is the inverse alias: ``follow=True`` is 高跟随 (filter off).
+RM ``follow`` is the inverse alias: ``follow=True`` is high-follow mode (filter off).
 Payload JSON stores only ``filter``. ``slew`` / ``slew_axes`` still decode.
 """
 

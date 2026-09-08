@@ -591,18 +591,6 @@ class DelaySafetyShield:
             return max(float(table[idx]), 0.0)
         return self._error_v_persistent()
 
-    def _error_x(self, step_index: int) -> float:
-        table = self.cfg.position_error_ub_m
-        if table:
-            idx = min(max(int(step_index) - 1, 0), len(table) - 1)
-            return max(float(table[idx]), 0.0)
-        ev = self.cfg.velocity_error_ub_m_s or default_velocity_error_ub(
-            max(int(self.cfg.horizon_steps), 1)
-        )
-        px = default_position_error_ub(ev, self.dt_s)
-        idx = min(max(int(step_index) - 1, 0), len(px) - 1)
-        return px[idx]
-
     def _error_x_plus(self, step_index: int) -> float:
         """Press-positive indent error ``ē_{x,+}(i)``.
 

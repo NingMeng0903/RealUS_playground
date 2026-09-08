@@ -315,25 +315,6 @@ def _json_value(value: Any) -> str:
     return json.dumps(value, ensure_ascii=True, separators=(",", ":"), allow_nan=False)
 
 
-def _timestamp_dt(
-    row: Mapping[str, Any], previous_t: float | None, nominal_dt: float
-) -> tuple[float, float | None]:
-    """Return a positive replay dt and the current wall timestamp if present."""
-
-    current_t = _finite_float(row.get("t_wall_s"))
-    dt = _finite_float(row.get("dt_actual_s"))
-    if dt is None or dt <= 0.0:
-        if current_t is not None and previous_t is not None:
-            delta = current_t - previous_t
-            if math.isfinite(delta) and delta > 0.0:
-                dt = delta
-    if dt is None or dt <= 0.0:
-        dt = float(nominal_dt)
-    if not math.isfinite(dt) or dt <= 0.0:
-        raise ValueError("replay dt must be finite and positive")
-    return float(dt), current_t
-
-
 def _set_cbf_enabled(cfg: Any, enabled: bool) -> None:
     """Disable both config references before constructing the QPIK core."""
 

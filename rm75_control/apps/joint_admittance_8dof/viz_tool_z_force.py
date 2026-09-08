@@ -176,7 +176,7 @@ def main() -> int:
     last_seq = -1
     try:
         while True:
-            now = time.time()
+            now = time.monotonic()
             try:
                 if not f_ext_shm_has_publisher(f_ext_name):
                     plot.set_status("no publisher (start A)")

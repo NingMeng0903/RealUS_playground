@@ -301,7 +301,9 @@ def main(argv: list[str] | None = None) -> int:
                 model, betas=betas, pose_axis_angle=pose_aa
             )
             frames, _widths, _details = _measure_frames(
-                np.asarray(vertices, dtype=np.float32),
+                # The comparison camera must not follow a candidate's moved
+                # joints. Its provenance promises the frozen 142 reference.
+                np.asarray(skin_vertices(asset, pose_aa), dtype=np.float32),
                 calibration.domains,
                 calibration.joint_domain_bases,
                 partition="validation",

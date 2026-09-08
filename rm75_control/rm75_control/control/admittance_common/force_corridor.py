@@ -12,7 +12,6 @@ observe; the corridor clamps the command that is actually sent.
 
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass
 
 

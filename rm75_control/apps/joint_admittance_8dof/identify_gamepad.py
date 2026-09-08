@@ -29,22 +29,22 @@ from rm75_control.control.joint_admittance_8dof.teleop.pad_layout import (
 
 
 STEPS: tuple[tuple[str, str, str], ...] = (
-    ("axis", "lx_left", "左摇杆 向左推满并按住"),
-    ("axis", "lx_right", "左摇杆 向右推满并按住"),
-    ("axis", "ly_up", "左摇杆 向上推满并按住"),
-    ("axis", "ly_down", "左摇杆 向下推满并按住"),
-    ("axis", "rx_left", "右摇杆 向左推满并按住"),
-    ("axis", "rx_right", "右摇杆 向右推满并按住"),
-    ("axis", "ry_up", "右摇杆 向上推满并按住"),
-    ("axis", "ry_down", "右摇杆 向下推满并按住"),
-    ("button", "lb", "按下 LB（左肩键）并按住"),
-    ("axis", "lt", "按下 LT（左扳机）并按住"),
-    ("button", "rb", "按下 RB（右肩键）并按住"),
-    ("axis", "rt", "按下 RT（右扳机）并按住"),
-    ("button", "y", "按下 Y 并按住"),
-    ("button", "b", "按下 B 并按住"),
-    ("button", "a", "按下 A 并按住"),
-    ("button", "x", "按下 X 并按住"),
+    ("axis", "lx_left", "Push the left stick fully left and hold"),
+    ("axis", "lx_right", "Push the left stick fully right and hold"),
+    ("axis", "ly_up", "Push the left stick fully up and hold"),
+    ("axis", "ly_down", "Push the left stick fully down and hold"),
+    ("axis", "rx_left", "Push the right stick fully left and hold"),
+    ("axis", "rx_right", "Push the right stick fully right and hold"),
+    ("axis", "ry_up", "Push the right stick fully up and hold"),
+    ("axis", "ry_down", "Push the right stick fully down and hold"),
+    ("button", "lb", "Press and hold LB (left shoulder)"),
+    ("axis", "lt", "Press and hold LT (left trigger)"),
+    ("button", "rb", "Press and hold RB (right shoulder)"),
+    ("axis", "rt", "Press and hold RT (right trigger)"),
+    ("button", "y", "Press and hold Y"),
+    ("button", "b", "Press and hold B"),
+    ("button", "a", "Press and hold A"),
+    ("button", "x", "Press and hold X"),
 )
 
 
@@ -207,7 +207,7 @@ def main() -> None:
                 f"  [{i}] {n!r}  transport={transport_from_name(n)}{mark}",
                 flush=True,
             )
-        print("松开全部摇杆和按键…", flush=True)
+        print("Release all sticks and buttons...", flush=True)
         time.sleep(0.6)
         rest_ax, rest_btn, _, _ = _mean_sample(pygame, joy, seconds=args.rest_s)
         guessed = classify_layout(rest_ax, name=name)
@@ -218,7 +218,7 @@ def main() -> None:
         )
         hits: dict[str, tuple[int, float]] = {}
         for kind, key, prompt in STEPS:
-            print(f"\n>>> 3 秒内：{prompt}", flush=True)
+            print(f"\n>>> Within 3 seconds: {prompt}", flush=True)
             time.sleep(0.8)
             held_ax, held_btn, _, _ = _mean_sample(pygame, joy, seconds=args.hold_s)
             if kind == "axis":
@@ -229,7 +229,7 @@ def main() -> None:
                 i_btn, delta = _peak_button(rest_btn, held_btn)
                 hits[key] = (i_btn, delta)
                 print(f"    button[{i_btn}] Δ={delta:+.3f}", flush=True)
-            print("    松开，下一拍…", flush=True)
+            print("    Release, then continue...", flush=True)
             time.sleep(0.7)
             rest_ax, rest_btn, _, _ = _mean_sample(pygame, joy, seconds=0.6)
 
