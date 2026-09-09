@@ -17,12 +17,20 @@ from ..motion_response_v14 import BakedMotionResponseV14
 from ..v8_artifacts import load_source_operator
 
 
-def compile_bilateral_response(old, operator):
+def compile_bilateral_response(old, operator, calibration=None):
     from ..collar_response_v15 import make_bilateral_collar_pivot_response_asset_v15
+    from ..translation_rebuild_v15 import rebuild_rest_world_jacobians_v15
     if old.corrector is not None:
         raise ValueError('old pose corrector was fitted under different response; refit it offline')
     if operator.runtime_digest(validate=False) != old.source_pack.operator_runtime_digest:
         raise ValueError('original shape and motion operator identities differ')
+    if calibration is None and old.provenance.get('translation_transport') != 'motion_reference_axes':
+        from ..anatomical_calibration_v1 import load_anatomical_calibration_v1
+        calibration = load_anatomical_calibration_v1(
+            Path('outputs/anatomy_retarget/v8_candidates/chain_retarget_v1_node1_006/anatomical_calibration_v1'),
+            operator=operator)
+    world_jacobians, translation_provenance = rebuild_rest_world_jacobians_v15(
+        old, operator, calibration)
     effective = make_bilateral_collar_pivot_response_asset_v15(old.source_asset)
     # Look up anatomical sides explicitly; controller ordering differs between
     # the left and right shoulder chains in the authored rig.
@@ -46,9 +54,14 @@ def compile_bilateral_response(old, operator):
     else:
         raise ValueError('unknown rest shape authority')
     new_reference = np.asarray(effective.target_bind_global, dtype=np.float64)
-    translation = old.translation_maps @ old.reference_bind[:, :3, :3].swapaxes(1, 2) @ new_reference[:, :3, :3]
+    # Rebuild the spatial rest-field Jacobian first. Legacy V14 packages may
+    # express their saved maps in shape-reference axes, so treating those maps
+    # as motion-reference coordinates would silently preserve the old error.
+    translation = bind[:, :3, :3].swapaxes(1, 2) @ world_jacobians @ new_reference[:, :3, :3]
     provenance = dict(old.provenance)
     provenance.update(rotation_transport='driver_axes',
+        translation_transport='motion_reference_axes',
+        translation_rebuild_v15=translation_provenance,
         bilateral_collar_correction_v15=dict(controller_ids=ids, smplx_joint_ids=[13,14],
             rest_refit_performed=False, target_rest_unchanged=True,
             calibrated_response_replaces_previous_response=True,
@@ -63,12 +76,16 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--compiled', type=Path, required=True)
     parser.add_argument('--operator', type=Path, default=Path('outputs/anatomy_retarget/v8_candidates/rebuild_012/source_operator_v8'))
+    parser.add_argument('--calibration', type=Path,
+        default=Path('outputs/anatomy_retarget/v8_candidates/chain_retarget_v1_node1_006/anatomical_calibration_v1'))
     parser.add_argument('--output', type=Path, required=True)
     args = parser.parse_args()
     if args.output.exists(): raise FileExistsError(args.output)
     old = load_compiled_subject(args.compiled)
     operator = load_source_operator(args.operator)
-    new = compile_bilateral_response(old, operator)
+    from ..anatomical_calibration_v1 import load_anatomical_calibration_v1
+    calibration = load_anatomical_calibration_v1(args.calibration, operator=operator)
+    new = compile_bilateral_response(old, operator, calibration)
     args.output.mkdir(parents=True)
     new.save(args.output/'compiled')
     reloaded = load_compiled_subject(args.output/'compiled')
@@ -88,6 +105,7 @@ def main():
         betas=new.betas.tolist(), target_rest_bitexact=True,
         source_weights_bitexact=bool(np.array_equal(old.source_asset.driver_weights,new.source_asset.driver_weights)),
         source_faces_bitexact=bool(np.array_equal(old.source_asset.faces,new.source_asset.faces)),
+        translation_rebuild=new.provenance['translation_rebuild_v15'],
         saved_pose_replay_bitexact=all(exact), tested_contract_pose_count=len(probes),
         runtime_recompile=False, runtime_blender=False, runtime_optimization=False,
         beta_fit_completed=False, shared_soft_field_compiled=False,

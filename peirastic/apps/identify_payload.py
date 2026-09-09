@@ -11,6 +11,12 @@ import argparse
 import json
 from pathlib import Path
 
+if __name__ == "__main__":
+    # Window B only plans, collects and fits; Window A owns the control loop.
+    # Apply before NumPy/SciPy/Pinocchio create their numerical worker pools.
+    from rm75_control.control.admittance_common.observer_runtime import prepare_observer_process
+    prepare_observer_process()
+
 import numpy as np
 import yaml
 

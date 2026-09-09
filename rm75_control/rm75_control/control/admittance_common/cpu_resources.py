@@ -6,6 +6,7 @@ affinity, scheduler policy or priority. All operations are best effort on Linux.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 import os
 from pathlib import Path
 
@@ -36,12 +37,23 @@ def physical_siblings(cpu: int, *, sysfs: Path = Path("/sys/devices/system/cpu")
         return {int(cpu)}
 
 
-def configured_control_cpus() -> set[int]:
-    """Default machine config; custom launches may override the observer set."""
-    override = os.environ.get("RM75_OBSERVER_AVOID_CPUS")
-    if override is not None:
-        return parse_cpu_list(override)
-    config = Path(__file__).resolve().parents[4] / "peirastic/configs/controller.yaml"
+def configured_control_cpus(config_path: str | Path | None = None) -> set[int]:
+    """Read reserved controller CPUs, honoring an explicit config path.
+
+    ``RM75_OBSERVER_AVOID_CPUS`` remains the explicit environment override for
+    existing observer entry points when no config path is supplied.  A
+    caller-supplied ``config_path`` takes precedence so
+    ``run_controller --config`` always follows its actual timing section.
+    """
+    if config_path is None:
+        override = os.environ.get("RM75_OBSERVER_AVOID_CPUS")
+        if override is not None:
+            return parse_cpu_list(override)
+    config = (
+        Path(config_path)
+        if config_path is not None
+        else Path(__file__).resolve().parents[4] / "peirastic/configs/controller.yaml"
+    )
     try:
         import yaml
         timing = (yaml.safe_load(config.read_text()) or {}).get("timing", {})
@@ -51,15 +63,29 @@ def configured_control_cpus() -> set[int]:
         return set()
 
 
-def prepare_background_cpus() -> list[int]:
+def prepare_background_cpus(
+    *,
+    avoid_cpus: Iterable[int] | None = None,
+    config_path: str | Path | None = None,
+) -> list[int]:
     """Keep observers off configured control cores, including SMT siblings.
 
     Existing task-specific masks are narrowed, never widened. An empty result
     leaves a constrained task alone rather than assigning an invalid mask.
-    Call before starting camera, BLAS, Torch or Genesis worker threads.
+    ``avoid_cpus`` takes precedence over the config/environment lookup.  Call
+    before starting camera, BLAS, Torch or Genesis worker threads.
     """
     try:
-        avoid = set().union(*(physical_siblings(cpu) for cpu in configured_control_cpus()))
+        configured = (
+            {int(cpu) for cpu in avoid_cpus}
+            if avoid_cpus is not None
+            else (
+                configured_control_cpus(config_path)
+                if config_path is not None
+                else configured_control_cpus()
+            )
+        )
+        avoid = set().union(*(physical_siblings(cpu) for cpu in configured))
         allowed = set(os.sched_getaffinity(0))
         available = allowed - avoid
         if not avoid or not available:

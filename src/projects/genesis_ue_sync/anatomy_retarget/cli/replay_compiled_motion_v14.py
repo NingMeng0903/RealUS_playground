@@ -53,14 +53,30 @@ def main():
     parser.add_argument('--views',nargs='+',default=['whole_ap','left_elbow_lateral'])
     parser.add_argument('--backend',default='cpu')
     parser.add_argument('--metrics-only',action='store_true')
+    parser.add_argument('--metrics-scope',choices=('all','lower'),default='all')
+    parser.add_argument('--render-every',type=int,default=1,
+                        help='measure every supplied frame, render every Nth frame')
+    parser.add_argument('--skin-alpha',type=float,default=COLORS['skin'][3])
     args=parser.parse_args(); args.output.mkdir(parents=True,exist_ok=False)
+    if args.render_every<1 or not 0<=args.skin_alpha<=1:
+        raise ValueError('render-every must be positive and skin-alpha in [0,1]')
     # Genesis isolates portions of sys.path during initialization. Resolve the
     # already-installed encoder before that isolation, not after rendering.
     ffmpeg_executable=None
     if not args.metrics_only:
         import imageio_ffmpeg
         ffmpeg_executable=imageio_ffmpeg.get_ffmpeg_exe()
-    compiled=load_compiled_subject(args.compiled)
+    envelope=json.loads((args.compiled/'manifest.json').read_text())
+    if envelope.get('schema')=='CompiledLowerSubjectV17':
+        from ..generic_lower_compile_v17 import load_lower_subject
+        subject=load_lower_subject(args.compiled)
+        compiled=subject.runtime
+        target_beta=subject.target_betas
+        evaluate_pose=subject.apply_pose
+    else:
+        compiled=load_compiled_subject(args.compiled)
+        target_beta=compiled.betas
+        evaluate_pose=compiled.apply_pose
     model_path,model_sha=require_frozen_smplx_male_v7(args.smplx_model)
     model=load_smplx_model_v7(model_path)
     asset=compiled.source_asset; labels=_tissue_codes(asset)
@@ -76,6 +92,9 @@ def main():
                   motion_sha256=sha(args.motion),smplx_model_sha256=model_sha,fps=fps,
                   publishable=False,anatomical_passed=False,used_for_fit=False,
                   runtime_optimization=False,runtime_blender=False,
+                  target_beta=target_beta.tolist(), motion_reference_beta=compiled.betas.tolist(),
+                  metrics_scope=args.metrics_scope,render_every=args.render_every,
+                  skin_alpha=args.skin_alpha,
                   display='root orientation and translation removed equally from skin and anatomy for upright review',
                   internal_material_alpha=1.0,frames=[])
     bone=np.flatnonzero(labels==0)
@@ -93,31 +112,54 @@ def main():
         if n in ['Humerus_L','Radius_L','Ulna_L'] or (t=='bone' and int(c) in left_hand):
             arm.extend(range(start,stop))
     arm=np.asarray(arm,dtype=np.int64)
+    metric_groups={'all_bones':bone,'left_arm_bones':arm,'vessels':vessels,
+                   'nerves':np.flatnonzero(labels==2)}
+    if args.metrics_scope=='lower':
+        from ..segment_similarity_rest_v10 import _descendants
+        names=list(asset.source_bone_names)
+        controllers=set().union(*[_descendants(compiled.parents,names.index(f'Femur_Rot_{side}'))
+                                  for side in ('L','R')])
+        mass=np.sum(compiled.weights*np.isin(compiled.indices,list(controllers)),axis=1)
+        major=np.zeros(len(labels),dtype=bool)
+        for name,(start,stop) in zip(asset.source_mesh_names,asset.source_vertex_ranges):
+            if str(name) in {f'{base}_{side}' for base in ('Femur','Tibia','Fibula','Patella','Talus','Calcaneus')
+                            for side in ('L','R')}:
+                major[int(start):int(stop)]=True
+        metric_groups={'major_leg_bones':np.flatnonzero(major),
+                       'all_lower_bones':np.flatnonzero((labels==0)&(mass>.05)),
+                       'vessels':vessels,'nerves':np.flatnonzero(labels==2)}
+    query_ids=np.unique(np.concatenate(list(metric_groups.values())))
+    group_query_ids={name:np.searchsorted(query_ids,ids) for name,ids in metric_groups.items()}
     output_frames=args.output/'video_frames';output_frames.mkdir()
     for index,(p,translation,frame_id) in enumerate(zip(poses,translations,frame_ids)):
-        record=dict(index=index,source_frame=int(frame_id),time_s=index/fps)
+        render_this=not args.metrics_only and index%args.render_every==0
+        record=dict(index=index,source_frame=int(frame_id),time_s=index/fps,rendered=render_this)
         start=time.perf_counter()
         try:
-            vertices=pose(compiled,p,translation)
+            vertices=evaluate_pose(p,translation)
         except ValueError as exc:
             record.update(status='unsupported_or_evaluation_error',error=str(exc),error_type=type(exc).__name__)
-            if not args.metrics_only:
+            if render_this:
                 card=Image.new('RGB',(720*len(args.views),570),(35,8,8));draw=ImageDraw.Draw(card)
                 draw.text((20,20),f'Frame {frame_id}: unsupported / evaluation error',fill='white')
-                draw.text((20,55),str(exc)[:160],fill='white');card.save(output_frames/f'{index:05d}.png')
+                draw.text((20,55),str(exc)[:160],fill='white');card.save(output_frames/f'{index//args.render_every:05d}.png')
         else:
             import igl
             pose_seconds=time.perf_counter()-start
-            skin,skin_faces,joints=_pose_joints_and_skin(model,betas=compiled.betas,pose=p)
+            skin,skin_faces,joints=_pose_joints_and_skin(model,betas=target_beta,pose=p)
             skin=skin+translation;joints=joints+translation
             record.update(status='evaluated',vertices_sha256=hashlib.sha256(vertices.tobytes()).hexdigest(),
                           pose_seconds=pose_seconds)
-            distances=igl.signed_distance(np.asarray(vertices,dtype=np.float64),
-                np.asarray(skin,dtype=np.float64),np.asarray(skin_faces,dtype=np.int64))[0]
+            distances=igl.signed_distance(np.asarray(vertices[query_ids],dtype=np.float64),
+                np.asarray(skin,dtype=np.float64),np.asarray(skin_faces,dtype=np.int64),
+                igl.SIGNED_DISTANCE_TYPE_FAST_WINDING_NUMBER)[0]
             record['skin']={name:dict(max_outside_m=float(np.maximum(distances[ids],0).max()),
-                                      outside_over_1mm_count=int(np.count_nonzero(distances[ids]>.001)))
-                            for name,ids in [('all_bones',bone),('left_arm_bones',arm),('vessels',vessels)]}
-            if not args.metrics_only:
+                                      vertex_count=len(ids),
+                                      outside_over_1mm_count=int(np.count_nonzero(distances[ids]>.001)),
+                                      outside_over_5mm_count=int(np.count_nonzero(distances[ids]>.005)),
+                                      outside_over_10mm_count=int(np.count_nonzero(distances[ids]>.010)))
+                            for name,ids in group_query_ids.items()}
+            if render_this:
                 pivot=joints[0]; inverse=Rotation.from_rotvec(p[0]).inv()
                 def upright(v):return inverse.apply(v-pivot)
                 skin_u=upright(skin);joints_u=upright(joints);anatomy_u=upright(vertices)
@@ -130,7 +172,7 @@ def main():
                 with tempfile.TemporaryDirectory(prefix='anatomy_v14_frame_') as temporary:
                     temporary=Path(temporary)
                     skin_obj=_export(temporary/'skin.obj',skin_u,skin_faces)
-                    entities=[('skin',skin_obj,COLORS['skin'])]
+                    entities=[('skin',skin_obj,(*COLORS['skin'][:3],args.skin_alpha))]
                     for name,color in [('bones',COLORS['candidate']),('vessels',(*COLORS['vessels'][:3],1.0)),('nerves',(*COLORS['nerves'][:3],1.0))]:
                         obj=_export(temporary/f'{name}.obj',anatomy_u,tissue_faces[name])
                         entities.append((name,obj,color))
@@ -140,14 +182,14 @@ def main():
                 for col,name in enumerate(args.views):
                     with Image.open(render_dir/'rgb'/f'{name}.png') as im:sheet.paste(im.convert('RGB'),(720*col,30))
                     draw.text((720*col+8,8),f'{name} | frame {frame_id} | diagnostic candidate',fill='white')
-                sheet.save(output_frames/f'{index:05d}.png')
+                sheet.save(output_frames/f'{index//args.render_every:05d}.png')
         record['elapsed_s']=time.perf_counter()-start;manifest['frames'].append(record)
         (args.output/'report.json').write_text(json.dumps(manifest,indent=2,allow_nan=False)+'\n')
         print(index,int(frame_id),record['status'],flush=True)
     manifest['evaluated_frames']=sum(f['status']=='evaluated' for f in manifest['frames'])
     manifest['unsupported_or_error_frames']=len(poses)-manifest['evaluated_frames']
     if not args.metrics_only:
-        manifest['video']=encode_video(args.output,fps,ffmpeg_executable)
+        manifest['video']=encode_video(args.output,fps/args.render_every,ffmpeg_executable)
     (args.output/'report.json').write_text(json.dumps(manifest,indent=2,allow_nan=False)+'\n')
 
 

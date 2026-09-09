@@ -1,6 +1,8 @@
 #pragma once
 
+#include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <limits>
 #include <memory>
 #include <string>
@@ -17,6 +19,126 @@
 #include "wbc_rt/task_weight.hpp"
 
 namespace wbc_rt {
+
+namespace collision_broadphase {
+
+// A local, axis-aligned bound represented by its center and positive
+// half-widths. Mesh bounds are kept in this form until the geometry object is
+// placed; the runtime then turns them into an oriented box.
+struct Aabb {
+  Eigen::Vector3d center = Eigen::Vector3d::Zero();
+  Eigen::Vector3d halfwidth = Eigen::Vector3d::Zero();
+  bool valid = false;
+};
+
+// A world-space oriented box. Keeping the rotation and half-widths cached
+// avoids rebuilding a mesh AABB or allocating any Coal objects in update().
+struct Obb {
+  Eigen::Vector3d center = Eigen::Vector3d::Zero();
+  Eigen::Matrix3d rotation = Eigen::Matrix3d::Identity();
+  Eigen::Vector3d halfwidth = Eigen::Vector3d::Zero();
+  bool valid = false;
+};
+
+// A zero-volume bound is deliberately treated as unavailable.  It can be the
+// sentinel from a failed mesh load as well as a real degenerate mesh, and the
+// existing sphere broadphase is the conservative fallback in either case.
+inline Aabb from_bounds(const Eigen::Vector3d& min,
+                        const Eigen::Vector3d& max) {
+  Aabb out;
+  if (!min.allFinite() || !max.allFinite()) return out;
+  const Eigen::Vector3d width = max - min;
+  if (!width.allFinite() || !(width.array() > 0.0).all()) return out;
+  out.center = 0.5 * (min + max);
+  out.halfwidth = 0.5 * width;
+  out.valid = out.center.allFinite() && out.halfwidth.allFinite();
+  return out;
+}
+
+inline Obb transformed(const Aabb& local,
+                       const Eigen::Matrix3d& rotation,
+                       const Eigen::Vector3d& translation) {
+  Obb out;
+  if (!local.valid || !rotation.allFinite() || !translation.allFinite()) {
+    return out;
+  }
+  out.center = rotation * local.center + translation;
+  out.rotation = rotation;
+  out.halfwidth = local.halfwidth;
+  // updateGeometryPlacements supplies proper rotations. Reject malformed
+  // matrices here rather than allowing a non-rigid transform to suppress an
+  // exact query. The orthonormality check is only nine multiplies per
+  // geometry per tick and keeps this helper conservative for tests too.
+  const Eigen::Matrix3d gram = rotation.transpose() * rotation;
+  const Eigen::Matrix3d identity = Eigen::Matrix3d::Identity();
+  out.valid = out.center.allFinite() && out.halfwidth.allFinite() &&
+              (out.halfwidth.array() > 0.0).all() &&
+              (gram - identity).cwiseAbs().maxCoeff() <= 1.0e-9 &&
+              std::abs(rotation.determinant() - 1.0) <= 1.0e-9;
+  return out;
+}
+
+inline double axis_gap(const Obb& a, const Obb& b,
+                       const Eigen::Vector3d& axis) {
+  const double norm = axis.norm();
+  if (!std::isfinite(norm) || norm <= 1.0e-12) {
+    return -std::numeric_limits<double>::infinity();
+  }
+  const Eigen::Vector3d unit_axis = axis / norm;
+  const double ra =
+      (a.rotation.transpose() * unit_axis).cwiseAbs().dot(a.halfwidth);
+  const double rb =
+      (b.rotation.transpose() * unit_axis).cwiseAbs().dot(b.halfwidth);
+  const double center_projection =
+      std::abs(unit_axis.dot(a.center - b.center));
+  const double gap = center_projection - ra - rb;
+  return std::isfinite(gap) ? gap : -std::numeric_limits<double>::infinity();
+}
+
+// Return the largest separating-axis gap for two OBBs. Face axes and
+// cross-product axes are normalized inside axis_gap(). A nearly parallel cross
+// product carries no independent separating direction and is skipped.
+inline double obb_lower_bound(const Obb& a, const Obb& b) {
+  if (!a.valid || !b.valid) {
+    return -std::numeric_limits<double>::infinity();
+  }
+  double best = 0.0;
+  for (int i = 0; i < 3; ++i) {
+    best = std::max(best, axis_gap(a, b, a.rotation.col(i)));
+    best = std::max(best, axis_gap(a, b, b.rotation.col(i)));
+  }
+  for (int i = 0; i < 3; ++i) {
+    for (int j = 0; j < 3; ++j) {
+      const Eigen::Vector3d cross =
+          a.rotation.col(i).cross(b.rotation.col(j));
+      if (cross.squaredNorm() <= 1.0e-24) continue;
+      best = std::max(best, axis_gap(a, b, cross));
+    }
+  }
+  return std::isfinite(best) ? best : -std::numeric_limits<double>::infinity();
+}
+
+inline bool obb_separates_above(const Obb& a, const Obb& b, double threshold) {
+  if (!a.valid || !b.valid || !std::isfinite(threshold)) return false;
+  const double limit = threshold + 1.0e-9;
+  for (int i = 0; i < 3; ++i) {
+    if (axis_gap(a, b, a.rotation.col(i)) > limit ||
+        axis_gap(a, b, b.rotation.col(i)) > limit) {
+      return true;
+    }
+  }
+  for (int i = 0; i < 3; ++i) {
+    for (int j = 0; j < 3; ++j) {
+      const Eigen::Vector3d cross =
+          a.rotation.col(i).cross(b.rotation.col(j));
+      if (cross.squaredNorm() <= 1.0e-24) continue;
+      if (axis_gap(a, b, cross) > limit) return true;
+    }
+  }
+  return false;
+}
+
+}  // namespace collision_broadphase
 
 struct TickIn {
   Vec6 v_cmd = Vec6::Zero();
@@ -173,6 +295,8 @@ class Collision {
   Config cfg_;
   std::vector<int> slots_;
   std::vector<LocalSphere> local_spheres_;
+  std::vector<collision_broadphase::Aabb> local_aabbs_;
+  std::vector<collision_broadphase::Obb> world_obbs_;
   std::vector<int> queried_;
 };
 

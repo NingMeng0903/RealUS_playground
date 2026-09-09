@@ -56,7 +56,26 @@ struct GeomSphere {
   double r = std::numeric_limits<double>::infinity();
 };
 
-GeomSphere make_local_sphere(const pinocchio::GeometryObject& go) {
+collision_broadphase::Aabb make_local_aabb(const pinocchio::GeometryObject& go) {
+  if (!go.geometry || !go.meshScale.allFinite() ||
+      !go.meshScale.isApprox(Eigen::Vector3d::Ones(), 1.0e-12)) {
+    // A non-unit mesh scale cannot be reconstructed safely from the local
+    // shape here. Keep the existing sphere path as the conservative fallback.
+    return {};
+  }
+  try {
+    go.geometry->computeLocalAABB();
+  } catch (...) {
+    return {};
+  }
+  const auto& bounds = go.geometry->aabb_local;
+  return collision_broadphase::from_bounds(
+      Eigen::Vector3d(bounds.min_), Eigen::Vector3d(bounds.max_));
+}
+
+GeomSphere make_local_sphere(
+    const pinocchio::GeometryObject& go,
+    const collision_broadphase::Aabb& local_aabb) {
   GeomSphere s;
   if (!go.geometry) return s;
   const coal::CollisionGeometry* g = go.geometry.get();
@@ -79,16 +98,11 @@ GeomSphere make_local_sphere(const pinocchio::GeometryObject& go) {
   }
   // The mesh collision model also needs a finite conservative broadphase
   // bound. Previously every mesh got radius=infinity, so all pairs paid
-  // for narrow-phase queries each tick. Coal's local AABB encloses the
-  // actual loaded geometry; never guess how non-unit mesh scales were baked.
-  if (go.meshScale.isApprox(Eigen::Vector3d::Ones(), 1.0e-12)) {
-    go.geometry->computeLocalAABB();
-    const auto& bounds = go.geometry->aabb_local;
-    if (bounds.min_.allFinite() && bounds.max_.allFinite() &&
-        (bounds.max_.array() >= bounds.min_.array()).all()) {
-      s.c = 0.5 * (bounds.min_ + bounds.max_);
-      s.r = 0.5 * (bounds.max_ - bounds.min_).norm() + 1.0e-9;
-    }
+  // for narrow-phase queries each tick. Reuse the validated local AABB and
+  // never guess how non-unit mesh scales were baked.
+  if (local_aabb.valid) {
+    s.c = local_aabb.center;
+    s.r = local_aabb.halfwidth.norm() + 1.0e-9;
   }
   return s;
 }
@@ -218,8 +232,12 @@ Collision::Collision(pinocchio::Model& model, const Config& cfg)
   geom_data_ = pinocchio::GeometryData(geom_model_);
   slots_.assign(static_cast<std::size_t>(cfg.max_pairs), -1);
   local_spheres_.resize(geom_model_.geometryObjects.size());
+  local_aabbs_.resize(geom_model_.geometryObjects.size());
+  world_obbs_.resize(geom_model_.geometryObjects.size());
   for (std::size_t i = 0; i < geom_model_.geometryObjects.size(); ++i) {
-    const GeomSphere s = make_local_sphere(geom_model_.geometryObjects[i]);
+    local_aabbs_[i] = make_local_aabb(geom_model_.geometryObjects[i]);
+    const GeomSphere s =
+        make_local_sphere(geom_model_.geometryObjects[i], local_aabbs_[i]);
     local_spheres_[i].c = s.c;
     local_spheres_[i].r = s.r;
   }
@@ -229,6 +247,11 @@ void Collision::update(const Vec8& q, pinocchio::Data& data) {
   queried_.clear();
   if (geom_model_.ngeoms == 0) return;
   pinocchio::updateGeometryPlacements(*model_, data, geom_model_, geom_data_, q);
+  for (std::size_t i = 0; i < local_aabbs_.size(); ++i) {
+    const auto& placement = geom_data_.oMg[i];
+    world_obbs_[i] = collision_broadphase::transformed(
+        local_aabbs_[i], placement.rotation(), placement.translation());
+  }
   const double thresh = cfg_.d_activate + 0.01;
   const std::size_t np = geom_model_.collisionPairs.size();
   double best_lb = std::numeric_limits<double>::infinity();
@@ -249,7 +272,12 @@ void Collision::update(const Vec8& q, pinocchio::Data& data) {
       best_lb = lb;
       best_i = static_cast<int>(i);
     }
-    if (lb <= thresh) {
+    // Keep the sphere lower bound as the candidate gate and as the diagnostic
+    // best_i selector. The OBB test only removes a sphere candidate whose
+    // exact distance is provably above the same activation threshold.
+    if (lb <= thresh &&
+        !collision_broadphase::obb_separates_above(
+            world_obbs_[ga], world_obbs_[gb], thresh)) {
       pinocchio::computeDistance(geom_model_, geom_data_,
                                  static_cast<pinocchio::PairIndex>(i));
       queried_.push_back(static_cast<int>(i));

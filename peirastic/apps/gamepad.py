@@ -21,6 +21,13 @@ import time
 from dataclasses import replace
 from pathlib import Path
 
+if __name__ == "__main__":
+    from rm75_control.control.admittance_common.observer_runtime import limit_numeric_threads
+    from rm75_control.control.admittance_common.cpu_resources import prepare_background_cpus
+    # Preserve pad/R3 priority while keeping its libraries off the control cores.
+    limit_numeric_threads()
+    prepare_background_cpus()
+
 os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
 
 _REPO = Path(os.environ.get("REALUS_PROJECT_ROOT", Path(__file__).resolve().parents[2]))

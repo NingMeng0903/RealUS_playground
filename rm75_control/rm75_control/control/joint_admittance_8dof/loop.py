@@ -16,6 +16,7 @@ import os
 import queue
 import threading
 import time
+from contextlib import ExitStack, contextmanager
 from dataclasses import dataclass, field
 from typing import Protocol
 
@@ -3465,6 +3466,32 @@ def _pin_control_cpu(cpu: int | None) -> bool:
         return False
 
 
+@contextmanager
+def _control_cpu_scope(cpu: int | None):
+    """Keep the control pin local to a run, including exceptional exits.
+
+    The daemon starts on background CPUs and calls the runner repeatedly.
+    Leaving it pinned after the first run makes later CSV processes inherit
+    the control CPU, where their non-widening observer setup cannot move them
+    away. Restore the incoming mask before the daemon starts another task.
+    """
+    original = None
+    if cpu is not None:
+        try:
+            original = set(os.sched_getaffinity(0))
+        except (AttributeError, OSError, ValueError):
+            pass
+    pinned = original is not None and _pin_control_cpu(cpu)
+    try:
+        yield pinned
+    finally:
+        if pinned:
+            try:
+                os.sched_setaffinity(0, original)
+            except (AttributeError, OSError, ValueError):
+                pass
+
+
 def isolate_native_process(
     pid: int,
     *,
@@ -6256,6 +6283,7 @@ def run_joint_admittance_phases(
         cstate.__enter__()
         if verbose and not cstate.active:
             print("  (/dev/cpu_dma_latency unavailable — C-states not held)", flush=True)
+    runtime_resources = ExitStack()
     try:
         _pose0_rm = async_obs.wait_first_pose(timeout_s=5.0)
         snap0 = async_obs.read()
@@ -6276,7 +6304,9 @@ def run_joint_admittance_phases(
             if not _set_realtime_priority():
                 if verbose:
                     print("  (SCHED_FIFO unavailable - running at normal priority)", flush=True)
-        if _pin_control_cpu(getattr(inner.cfg, "control_cpu", None)):
+        if runtime_resources.enter_context(
+            _control_cpu_scope(getattr(inner.cfg, "control_cpu", None))
+        ):
             if verbose:
                 print(
                     f"  control thread pinned to CPU {inner.cfg.control_cpu}",
@@ -7284,6 +7314,7 @@ def run_joint_admittance_phases(
             wd.stop()
             stalled = wd.fired
     finally:
+        runtime_resources.close()
         if own_bus:
             state_bus.stop()
         if logger is not None:

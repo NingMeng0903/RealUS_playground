@@ -406,6 +406,7 @@ def compile_request(
                 q_start=q_start,
                 duration_s=dur,
                 v=v,
+                label=str(payload.get("label") or "movej"),
                 secondary=_task_policy(payload, dof=dof, default="move"),
             ),
         )

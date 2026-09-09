@@ -488,6 +488,66 @@ def test_cartesian_plan_is_joint_ptp() -> None:
     assert isinstance(phase.outer.reference, JointSmoothMoveReference)
 
 
+def test_movej_p_label_reaches_compiled_phase() -> None:
+    """The acquisition handoff label must survive API and local compilation."""
+
+    raw, ctx = _ctx()
+    pose = ctx.kin.fk_pose(_SEED)
+    arm = _arm(ctx=ctx)
+
+    assert arm.movej_p(
+        pose.tolist(), v=0.2, block=0, label="icra_movej"
+    ) == OK
+    req = arm.last_request
+    assert req is not None
+    assert req.mode == Mode.MOVEJ
+    assert req.payload["label"] == "icra_movej"
+
+    phase = compile_request(ctx, req, raw=raw)
+    assert phase.label == "icra_movej"
+
+
+def test_icra_completion_hold_anchors_pose_and_ignores_pad() -> None:
+    """ICRA completion must not hand a live/nonzero pad twist to the arm."""
+
+    from peirastic.core.session import pad_may_drive
+    from peirastic.realman8dof.daemon import idle_after_command
+    from rm75_control.control.joint_admittance_8dof.loop import CartesianTrackOuterLoop
+
+    raw, ctx = _ctx()
+    pose = ctx.kin.fk_pose(_SEED)
+    pad_reads: list[int] = []
+
+    def nonzero_pad() -> np.ndarray:
+        pad_reads.append(1)
+        return np.full(6, 0.25, dtype=float)
+
+    req = idle_after_command(
+        dof=8, pad_source=True, completed_label="icra_scan"
+    )
+    assert req.mode == Mode.TRACK_CARTESIAN
+    assert req.payload == {
+        "reference": "hold",
+        "task_policy": "off",
+        "label": "icra_wait",
+    }
+    assert not pad_may_drive(req.mode, label=req.payload["label"])
+
+    phase = compile_request(ctx, req, raw=raw, twist_read=nonzero_pad)
+    assert isinstance(phase.outer, CartesianTrackOuterLoop)
+    assert phase.label == "icra_wait"
+    assert phase.duration_s is None
+    phase.on_enter()
+    assert ctx.inner._arm_task_suppressed is True
+    assert ctx.inner._centering_suppressed is True
+    assert ctx.inner._manipulability_active is False
+
+    phase.outer.set_origin(pose, t_s=0.0)
+    output = phase.outer.sample(0.0, pose, np.full(6, 100.0))
+    np.testing.assert_allclose(output, np.zeros(6), atol=1.0e-12)
+    assert pad_reads == []
+
+
 def test_idle_after_finite_is_hold_unless_gamepad() -> None:
     from peirastic.core.session import (
         idle_after_finite,

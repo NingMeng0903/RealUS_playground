@@ -20,6 +20,7 @@ SCAN_ORDER = tuple((shape, direction) for direction in ("DtP", "PtD") for shape 
 SCAN_FORCE_AXES = [0.0, 0.0, 1.0, 0.0, 1.0, 0.0]
 TILT_PROFILE = dict(mass=0.051, damping=0.22, coulomb_nm=0.025,
                     vmax_rad_s=0.28, a_max=3.0)
+PEAK_RANGE_M = (0.013, 0.020)
 
 
 def force_profile(name="icra"):
@@ -90,13 +91,36 @@ def make_spec(distal, proximal, shape, direction, seed, *, speed=0.02, side=1):
         coefficients[1:] = 0.15 * spatial / max(float(np.abs(spatial).sum()), 1e-9)
     # Integrate externally, then transmit only 129 monotonically spaced knots.
     grid = np.linspace(0, 1, 4097)
-    _, dy = _offset(grid, shape, coefficients, 0.02)
+    amplitude = 0.02  # Preserve the legacy straight-line specification.
+    peaks = np.zeros(2)
+    if shape != "L":
+        # Find the actual noisy extrema, not just the nominal base amplitude.
+        # This planning work stays outside the controller's sampling loop.
+        from scipy.optimize import brentq
+
+        _, slope = _offset(grid, shape, coefficients, 1.0)
+        brackets = np.flatnonzero(slope[:-1] * slope[1:] < 0)
+        extrema = [0.0, 0.5, 1.0]
+        extrema += [brentq(lambda u: float(_offset(u, shape, coefficients, 1.0)[1]),
+                          grid[i], grid[i+1], xtol=1e-14) for i in brackets]
+        offsets, _ = _offset(extrema, shape, coefficients, 1.0)
+        peaks = np.array([max(offsets), -min(offsets)])
+        if shape == "C":
+            peaks[1] = 0.0
+        lobes = peaks[:1] if shape == "C" else peaks
+        # Both S lobes must remain in range. One common scale preserves the
+        # smooth centre crossing; independent half-curve scaling would kink it.
+        amplitude = float(rng.uniform((PEAK_RANGE_M[0] + 1e-10) / min(lobes),
+                                      (PEAK_RANGE_M[1] - 1e-10) / max(lobes)))
+        peaks *= amplitude
+    _, dy = _offset(grid, shape, coefficients, amplitude)
     tangent = delta[None, :] + dy[:, None] * lateral
     rate = np.linalg.norm(tangent, axis=1)
     arc = np.r_[0.0, np.cumsum((rate[:-1] + rate[1:]) * (0.5 / 4096))]
     return dict(schema="icra_path_v1", poses=poses.tolist(), shape=shape, direction=direction,
                 seed=int(seed), side=int(side), lateral=lateral.tolist(),
-                noise_coefficients=coefficients.tolist(), amplitude_m=0.02,
+                noise_coefficients=coefficients.tolist(), amplitude_m=amplitude,
+                peak_range_m=list(PEAK_RANGE_M), peak_offsets_m=peaks.tolist(),
                 speed_m_s=float(speed), ramp_s=0.4, arc_m=arc[::32].tolist())
 
 
@@ -116,7 +140,10 @@ class ForearmReference:
         if (self.arc.shape != (129,) or self.arc[0] != 0 or np.any(np.diff(self.arc) <= 0)
                 or not all(np.isfinite(a).all() for a in
                            (self.poses, self.lateral, self.coefficients, self.arc))
-                or not 0 < self.speed <= 0.02 or self.ramp != 0.4 or self.amplitude != 0.02
+                or not 0 < self.speed <= 0.02 or self.ramp != 0.4
+                # The coefficient factor is in [0.925, 1.075]. The stored
+                # amplitude is pre-normalization; old 20 mm specs still load.
+                or not PEAK_RANGE_M[0]/1.075 <= self.amplitude <= PEAK_RANGE_M[1]/0.925
                 or abs(np.linalg.norm(self.lateral) - 1) > 1e-6
                 or np.abs(self.coefficients).sum() > 1.000001
                 or spec["shape"] not in ("L", "C", "S")

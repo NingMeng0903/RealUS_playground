@@ -157,6 +157,111 @@ def _service_for_boundary() -> daemon.ControllerService:
     return svc
 
 
+def test_idle_request_forwards_icra_completion_label() -> None:
+    svc = object.__new__(daemon.ControllerService)
+    svc._dof = 8
+    svc._pad_source_present = lambda: True
+
+    icra = svc._idle_request(completed_label="icra_movej")
+    assert icra.mode == Mode.TRACK_CARTESIAN
+    assert icra.payload["reference"] == "hold"
+    assert icra.payload["task_policy"] == "off"
+    assert icra.payload["label"] == "icra_wait"
+
+    ordinary = svc._idle_request()
+    assert ordinary.mode == Mode.SERVO_TWIST
+    assert ordinary.payload["task_policy"] == "track"
+
+
+@pytest.mark.parametrize(
+    ("completed_label", "expected_idle_mode"),
+    [
+        ("icra_movej", Mode.TRACK_CARTESIAN),
+        ("ordinary_movej", Mode.SERVO_TWIST),
+    ],
+)
+def test_finite_movej_completion_installs_expected_idle(
+    monkeypatch, completed_label, expected_idle_mode
+) -> None:
+    """Exercise the daemon's finite completion → idle handoff branch."""
+
+    svc = _hot_swap_service()
+    # Make the ordinary baseline take its historical pad-owned idle path.
+    svc._pad_source_present = lambda: True
+    svc._pad_hz = lambda: 125.0
+    svc._pad_twist = lambda: np.full(6, 0.25, dtype=float)
+    compiled: list[ModeRequest] = []
+    runner_labels: list[str] = []
+
+    def fake_compile(ctx, req, *, raw, twist_read, dt):
+        del ctx, raw, twist_read, dt
+        compiled.append(req)
+        return Phase(
+            outer=_Outer(),
+            label=str(req.payload.get("label") or req.mode.name),
+        )
+
+    def fake_runner(_sess, phases, _inner, **kwargs):
+        phase = phases[0]
+        runner_labels.append(str(phase.label))
+        step = SimpleNamespace(q_send=np.zeros(8), slack_norm=0.0)
+        if len(runner_labels) == 1:
+            # A command received while the initial idle proxy is running is
+            # queued as a finite MOVEJ and stops the old runner.
+            svc.hub.polls = [
+                (
+                    Cmd.SET_MODE,
+                    77,
+                    ModeRequest(
+                        Mode.MOVEJ,
+                        {"label": completed_label, "q_target": np.zeros(8).tolist()},
+                    ),
+                )
+            ]
+            kwargs["on_step"](
+                "servo",
+                0.0,
+                step,
+                np.zeros(6),
+                np.zeros(6),
+                0.0,
+            )
+        elif len(runner_labels) == 2:
+            assert svc.mode == Mode.MOVEJ
+        else:
+            # The third phase is the idle request installed after MOVEJ
+            # completion. Stop the synthetic daemon after observing it.
+            assert svc.mode == expected_idle_mode
+            svc._stop = True
+        return LoopResult(1, 0.005, 0.0, False)
+
+    monkeypatch.setattr(daemon, "compile_request", fake_compile)
+    monkeypatch.setattr(daemon, "run_joint_admittance_phases", fake_runner)
+
+    svc.run(SimpleNamespace(robot=None), None, None)
+
+    assert [req.mode for req in compiled] == [
+        Mode.SERVO_TWIST,
+        Mode.MOVEJ,
+        expected_idle_mode,
+    ]
+    assert compiled[1].payload["label"] == completed_label
+    if completed_label.startswith("icra_"):
+        assert compiled[2].payload == {
+            "reference": "hold",
+            "task_policy": "off",
+            "label": "icra_wait",
+        }
+    else:
+        assert compiled[2].payload["task_policy"] == "track"
+    done = [
+        event
+        for event in _publish_events(svc)
+        if event.get("status") == Status.DONE
+    ]
+    assert done and done[-1]["mode"] == Mode.MOVEJ
+
+
 def test_pending_dof_runs_transition_hold_then_installs_queued_mode(monkeypatch):
     svc = _service_for_boundary()
     force_samples = []

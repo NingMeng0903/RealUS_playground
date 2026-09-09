@@ -593,6 +593,7 @@ class _MovePlanMixin(_ClientMixin):
         block: int = 1,
         *,
         rail_m: float | None = None,
+        label: str = "movej_p",
     ) -> int:
         bad = self._check_tail(r, connect)
         if bad is not None:
@@ -606,7 +607,7 @@ class _MovePlanMixin(_ClientMixin):
                 raise ValueError("7-DOF session rejects a rail-moving MOVEJ pose target")
             rail_m = current_rail
         payload = MoveJPayload(
-            pose=_as_pose(pose), v=v, rail_m=rail_m, label="movej_p"
+            pose=_as_pose(pose), v=v, rail_m=rail_m, label=str(label or "movej_p")
         ).to_json()
         return self._send(Mode.MOVEJ, payload, block=block)
 

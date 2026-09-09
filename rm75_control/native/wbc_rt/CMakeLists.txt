@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.16)
 project(wbc_rt LANGUAGES CXX)
 
+include(CTest)
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
@@ -76,5 +78,21 @@ target_link_libraries(wbc_rt PRIVATE
   rt
   pthread
 )
+
+if(BUILD_TESTING)
+  add_executable(collision_broadphase_test
+    tests/collision_broadphase.cpp
+  )
+  target_include_directories(collision_broadphase_test PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+  )
+  target_link_libraries(collision_broadphase_test PRIVATE
+    Eigen3::Eigen
+    pinocchio::pinocchio
+    proxsuite_headers
+    coal::coal
+  )
+  add_test(NAME collision_broadphase COMMAND collision_broadphase_test)
+endif()
 
 install(TARGETS wbc_rt RUNTIME DESTINATION bin)

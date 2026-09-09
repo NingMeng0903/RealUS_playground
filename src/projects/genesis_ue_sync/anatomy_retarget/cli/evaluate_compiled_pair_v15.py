@@ -630,6 +630,7 @@ def evaluate_compiled_pair_v15(
     amass_root: str | Path = DEFAULT_AMASS_ROOT,
     endpoint_metrics: bool = False,
     require_frozen_validation: bool = False,
+    geometry_labels: Iterable[str] | None = None,
 ) -> dict[str, Any]:
     """Build the V15 geometry review pack and return its JSON report."""
 
@@ -638,6 +639,7 @@ def evaluate_compiled_pair_v15(
     output_root = Path(output).expanduser().resolve()
     if output_root.exists():
         raise FileExistsError(f"refusing to overwrite immutable output: {output_root}")
+    geometry_label_set = None if geometry_labels is None else frozenset(str(label) for label in geometry_labels)
 
     model_path, model_sha = require_frozen_smplx_male_v7(smplx_model)
     model = load_smplx_model_v7(model_path)
@@ -739,6 +741,7 @@ def evaluate_compiled_pair_v15(
         },
         "frame_plan_count": len(frame_plan),
         "geometry_default_count": 9,
+        "geometry_labels_requested": None if geometry_label_set is None else sorted(geometry_label_set),
         "endpoint_metrics_enabled": bool(endpoint_metrics),
         "frame_plan": frame_plan,
         "regions": {
@@ -812,13 +815,13 @@ def evaluate_compiled_pair_v15(
     evaluate_and_record(
         label="tpose", role="tpose", pose=np.zeros((55, 3), dtype=np.float32),
         transl=np.zeros(3), clip_name=None, frame_id=None, fps=None,
-        write_geometry=True, include_per_mesh=True,
+        write_geometry=geometry_label_set is None or "tpose" in geometry_label_set, include_per_mesh=True,
     )
     for name, (pose, transl, _info) in captures.items():
         evaluate_and_record(
             label=name, role="capture", pose=pose, transl=transl,
             clip_name=None, frame_id=None, fps=None,
-            write_geometry=True, include_per_mesh=True,
+            write_geometry=geometry_label_set is None or name in geometry_label_set, include_per_mesh=True,
         )
     for spec in CLIPS_V15:
         clip = clips[spec.name]
@@ -827,7 +830,7 @@ def evaluate_compiled_pair_v15(
             label=f"{spec.name}_middle", role="middle",
             pose=clip.poses[middle], transl=clip.transl[middle],
             clip_name=spec.name, frame_id=int(clip.frame_ids[middle]), fps=clip.fps,
-            write_geometry=True, include_per_mesh=True,
+            write_geometry=geometry_label_set is None or f"{spec.name}_middle" in geometry_label_set, include_per_mesh=True,
         )
         if endpoint_metrics:
             for role, index in (("first", 0), ("last", clip.frame_count - 1)):
@@ -889,6 +892,12 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="fail if the immutable V15 validation manifest is absent",
     )
+    parser.add_argument(
+        "--geometry-labels",
+        nargs="*",
+        default=None,
+        help="write only matching geometry labels; an empty list evaluates all metrics without NPZ geometry",
+    )
     return parser
 
 
@@ -905,6 +914,7 @@ def main(argv: list[str] | None = None) -> int:
         amass_root=args.amass_root,
         endpoint_metrics=args.endpoint_metrics,
         require_frozen_validation=args.require_frozen_validation,
+        geometry_labels=args.geometry_labels,
     )
     print(json.dumps({
         "output": str(Path(args.output).expanduser().resolve()),

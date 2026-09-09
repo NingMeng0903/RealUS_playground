@@ -142,17 +142,30 @@ def idle_after_command(
     *,
     dof: int | None = None,
     pad_source: bool = False,
+    completed_label: str | None = None,
     **legacy,
 ) -> ModeRequest:
     """Idle after a finite move.
 
     The task policy is derived from the persistent session DOF.  A zero
-    velocity command never ends a continuous SERVO task by itself.
+    velocity command never ends a continuous SERVO task by itself.  The
+    acquisition supervisor marks its finite commands with an ``icra_`` label;
+    those commands enter a pose hold so a live gamepad cannot resume motion
+    during recorder startup.
     """
     _reject_legacy_dof_kwargs(legacy)
     if dof is None:
         raise TypeError("idle_after_command requires dof=7 or 8")
     value = validate_dof(dof)
+    if str(completed_label or "").strip().lower().startswith("icra_"):
+        return ModeRequest(
+            Mode.TRACK_CARTESIAN,
+            {
+                "reference": "hold",
+                "task_policy": "off",
+                "label": "icra_wait",
+            },
+        )
     if value == 7:
         return ModeRequest(
             Mode.SERVO_TWIST,
@@ -312,10 +325,11 @@ class ControllerService:
             connected=bool(row.get("connected")),
         )
 
-    def _idle_request(self) -> ModeRequest:
+    def _idle_request(self, *, completed_label: str | None = None) -> ModeRequest:
         return idle_after_command(
             dof=self._dof,
             pad_source=self._pad_source_present(),
+            completed_label=completed_label,
         )
 
     @property
@@ -1185,7 +1199,7 @@ class ControllerService:
                             idle_req = (
                                 dof_transition_hold(dof=self._dof)
                                 if self._pending_dof is not None
-                                else self._idle_request()
+                                else self._idle_request(completed_label=phase.label)
                             )
                             idle = compile_request(
                                 self.ctx,
@@ -1377,7 +1391,7 @@ class ControllerService:
                     err_code=0,
                 )
                 if self._pending is None:
-                    self._pending = self._idle_request()
+                    self._pending = self._idle_request(completed_label=phase.label)
                     self._pending_commanded = False
 
 

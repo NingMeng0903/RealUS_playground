@@ -1,0 +1,107 @@
+{
+  "dataset_root": "/media/camp/yameng/icra 2027/uncalibrated/002",
+  "trial": "RH_Per_C_PtD.h5",
+  "attempt": "attempts/RH_Per_C_PtD/001",
+  "failure": {
+    "error": "TCP target timeout.",
+    "stages_ns": {
+      "prepare_begin": 1788878458766361872,
+      "standoff_ready": 1788878465587708690
+    },
+    "raw_path": "/media/camp/yameng/icra 2027/uncalibrated/002/attempts/RH_Per_C_PtD/001/raw.h5"
+  },
+  "standoff_comparison": {
+    "path_start_pose_m_rad": [
+      0.28485017883943187,
+      0.15513664470992478,
+      0.06588916312760662,
+      -2.9878462949267734,
+      -0.0718929130813295,
+      2.9736991167872318
+    ],
+    "outward_unit": [
+      0.09557642333779532,
+      0.1391262451040479,
+      0.9856515780132096
+    ],
+    "standoff_distance_m": 0.03,
+    "expected_standoff_pose_m_rad": [
+      0.28771747138426573,
+      0.15931043206604623,
+      0.09545871051285114,
+      -2.9878462949267734,
+      -0.0718929130813295,
+      2.9736991167872318
+    ],
+    "raw_first_pose_m_rad": [
+      0.2846398277180617,
+      0.1542710569873419,
+      0.06806108488602688,
+      -2.9853530035188665,
+      -0.07185713592800425,
+      2.9728177686724533
+    ],
+    "raw_first_minus_expected_mm": [-3.077643666204055, -5.039375078704333, -27.397625626824254],
+    "raw_first_position_error_norm_mm": 28.02672085185153,
+    "raw_first_rotation_error_deg": 0.1480732177801244,
+    "raw_first_minus_standoff_ready_ms": 130.790221,
+    "raw_first_minus_prepare_begin_ms": 6952.137039,
+    "interpretation": "The raw recorder begins about 131 ms after standoff_ready, but the first recorded TCP pose is already 28.0 mm from the expected standoff, mostly 27.4 mm low. The raw file does not contain the MOVEJ interval itself, so this localizes the anomaly to the post-standoff/target-wait interval without proving which command caused it."
+  },
+  "raw_streams": {
+    "clock_id": "a0d4007ab3e74f19944db5cd76c0f38a",
+    "timestamp_domain": "realus_shared",
+    "complete": true,
+    "counts": {"tcp": 228, "force": 246, "ultrasound": 36, "clock": 2},
+    "relative_duration_s": {"tcp": 1.229857998, "force": 1.224508114, "ultrasound": 1.168052916},
+    "controller_timestamp_minus_force_timestamp_ns": {
+      "min": 890108,
+      "median": 6357591,
+      "p95": 6967872.25,
+      "max": 8998493
+    },
+    "mode_values": {"1_SERVO_TWIST": 246},
+    "mode_valid_all_true": true,
+    "force_control_active_all_false": true
+  },
+  "downward_motion": {
+    "tcp_position_mm_start": [284.6398277180617, 154.2710569873419, 68.06108488602689],
+    "tcp_position_mm_end": [301.6575563683191, 146.9948660154226, 1.3318878888786967],
+    "z_delta_mm": -66.7291969971482,
+    "z_min_mm": 1.3318878888786967,
+    "z_max_mm": 68.06108488602689,
+    "single_difference": {
+      "interval_start_relative_ms": 425.496316,
+      "interval_end_relative_ms": 429.763802,
+      "z_start_mm": 36.150395844567804,
+      "z_end_mm": 35.22793999119357,
+      "delta_mm": -0.9224558533742311,
+      "speed_mm_s": -216.1590813359985
+    },
+    "full_100ms_centered_least_squares": {
+      "window_start_relative_ms": 200.651432,
+      "window_end_relative_ms": 294.939665,
+      "z_start_mm": 52.476703248480334,
+      "z_end_mm": 44.603912214822515,
+      "slope_mm_s": -82.7179019761426,
+      "method": "linear least-squares fit over complete ~100 ms windows"
+    }
+  },
+  "force": {
+    "contact_force_min_n": 2.6560338688122873,
+    "contact_force_p01_p50_p99_n": [4.14535225102527, 157.42110381609862, 264.9446760030274],
+    "contact_force_max_n": 266.02460457293284,
+    "max_sample": {
+      "force_timestamp_ns": 1788878466918392721,
+      "relative_ms": 1199.89381,
+      "wrench_tcp": [-2.520334184416072, 2.66864302305058, 266.02460457293284, -0.7841091281266731, 0.2760674781234744, -0.05082010752623012],
+      "nearest_tcp_relative_ms": 1199.89381,
+      "nearest_tcp_z_mm": 2.1867029250439014
+    }
+  },
+  "notes": [
+    "No hardware command was sent during this audit.",
+    "The raw recorder starts after standoff_ready and therefore cannot certify the preceding MOVEJ trajectory; the recorded post-standoff interval itself contains the large downward motion and force spike.",
+    "The raw stream timestamps share the same realus_shared clock id."
+  ]
+}

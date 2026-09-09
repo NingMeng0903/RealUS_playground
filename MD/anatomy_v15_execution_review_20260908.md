@@ -5,11 +5,24 @@
 ## 直接查看
 
 - [Genesis 对照检查页](../outputs/anatomy_retarget/v15_review_20260908_001/index.html)
-- [固定 213328 包的走路视频](../outputs/anatomy_retarget/v15_bilateral_walk_video_213328_20260908_001/genesis_motion.mp4)
+- [最新固定 213328 包的走路视频：全身与足部](../outputs/anatomy_retarget/v15_translation_walk_video_213328_20260908_001/genesis_motion.mp4)
 - [新候选独立代码与图审](anatomy_v15_bilateral_independent_review_20260908.md)
 - [旧 V14 包的独立二次检查](anatomy_v15_independent_recheck_20260908.md)
 
 视频为原生走路窗口每 8 帧取一帧，共 33 帧，按 12.5 fps 播放。主 agent 实际打开了首、中、末帧；不能把视频抽帧称作全部原生帧的解剖验收。
+
+独立 agent 另完成了两个保存包各 1211 帧、合计 2422 帧的六段原生动作直接回放：全部 finite，0 rejected，0 exception；每包仅加载一次，没有重编译、裁角、Blender 或逐帧优化。耗时分别约 212.6 s / 274.6 s。这是完整原生窗口的**运行支持**检查，没有计算全帧表面距离，不能转为完整解剖通过。见[原生运行报告](../outputs/anatomy_retarget/v15_native_runtime_recheck_20260908_001/report.md)。
+
+上述整段回放及下文 42 帧对照对应 `v15_bilateral_collar_*_001`。独立检查另发现 `_001` 继承的旧平移映射缺少坐标基认证，不能把求值成功写成平移坐标一致性已经通过。原报告与图片保留作为该版证据，数值修复必须另存候选并复测。
+
+**最新 `_002` 已修复该兼容性问题。** `translation_rebuild_v15.py` 从保存的 ArmMap 参数重建原 rest 场，全量 rest/bind/reference 核对通过后才恢复世界 Jacobian 并生成新平移映射；未知旧格式拒绝迁移。213328 重建误差为 0，213712 约 3e-16。6 项新增测试通过，独立 agent 代码复审确认原坐标基问题已修复。
+
+两个 `_002` 包又分别复测 21 帧，0 异常；相对 `_001` 的最大顶点变化为 0.2406 mm / 0.0581 mm。主 agent 实际打开新的肘、足部 Genesis 对照，以及新包走路视频的首、中、末帧：图中足部方向与位置的偏差仍在。最新血管最坏出皮为 38.923 mm / 29.911 mm，解剖结论仍失败。新包视频为 33 帧抽样视觉回放；没有把旧包的 2422 帧原生检查套用于新包。
+
+- [_002 的 213328 复测](../outputs/anatomy_retarget/v15_translation_eval_213328_20260908_001/report.json)
+- [_002 的 213712 复测](../outputs/anatomy_retarget/v15_translation_eval_213712_20260908_001/report.json)
+- [_002 肘部实际对照](../outputs/anatomy_retarget/v15_translation_genesis_213328_20260908_001/capture_213712/comparison/left_elbow_lateral.png)
+- [_002 足部实际对照](../outputs/anatomy_retarget/v15_translation_genesis_213712_20260908_001/sitstand_sid4336_middle/comparison/left_foot_oblique.png)
 
 ## 本轮实际修改
 
@@ -20,10 +33,24 @@
 
 针对双侧响应、骨组件和冻结动作的 31 项测试通过。两个体型的原 `faces`、14 槽 `driver_indices/driver_weights`、mesh ranges 和 controller owner 在 before/after 包中逐元素一致。
 
-本轮编译包：
+本轮最新编译包（包含数值重建，仍为未通过候选）：
 
-- [213328](../outputs/anatomy_retarget/v15_bilateral_collar_213328_20260908_001/compiled/manifest.json)
-- [213712](../outputs/anatomy_retarget/v15_bilateral_collar_213712_20260908_001/compiled/manifest.json)
+- [213328](../outputs/anatomy_retarget/v15_bilateral_collar_213328_20260908_002/compiled/manifest.json)
+- [213712](../outputs/anatomy_retarget/v15_bilateral_collar_213712_20260908_002/compiled/manifest.json)
+
+直接驱动示例（工作目录为仓库根，`PYTHONPATH=src`）：
+
+```python
+from projects.genesis_ue_sync.anatomy_retarget.consistent_runtime_v14 import (
+    load_compiled_subject, pose,
+)
+compiled = load_compiled_subject(
+    'outputs/anatomy_retarget/v15_bilateral_collar_213328_20260908_002/compiled'
+)
+# theta55: [55, 3] 轴角弧度；transl: [3] 米。
+# 在动作循环外加载一次，此后每帧只调用 pose。
+vertices = pose(compiled, theta55, transl)
+```
 
 这两个包继承各自已物化的 β/rest。**没有完成新 β 的全身自动骨长适配器。** 原 V8 路径的人工 β 范围限制与旧线性 anatomy 体型基底仍在；不能通过本轮两个包宣称这些问题已经消失。
 
@@ -59,6 +86,8 @@
 | 213712 | 坐起 | 61.63 | 29.93 |
 
 两个体型的全部 42 个抽查帧仍有血管出皮超过 1 mm。每体型最坏值分别为 38.966 mm 与 29.930 mm，均出现在坐起中点。因此即使承认肘部等骨骼可以轻微出皮，也不能把当前结果算作软组织通过。
+
+进一步按逐顶点距离和原权重定位：坐起的最坏血管点主要在左脚/左踝（两个体型一致），213328 使用另一采集动作时最坏点在右脚/右踝。已补出并实际打开 [213328 坐起左足斜视](../outputs/anatomy_retarget/v15_worst_region_genesis_213328_20260908_001/sitstand_sid4336_middle/comparison/left_foot_oblique.png)及[同相机不透明目标皮肤](../outputs/anatomy_retarget/v15_worst_region_genesis_213328_20260908_001/sitstand_sid4336_middle/smplx_skin/rgb/left_foot_oblique.png)，以及[采集动作右足](../outputs/anatomy_retarget/v15_worst_region_genesis_213328_20260908_001/capture_213712/comparison/right_foot_oblique.png)及[目标皮肤](../outputs/anatomy_retarget/v15_worst_region_genesis_213328_20260908_001/capture_213712/smplx_skin/rgb/right_foot_oblique.png)。图中足骨与相连血管偏离目标脚的方向和轮廓，属于整段足部适配问题，不能以允许局部轻微骨出皮为由通过。最近 SMPL-X 关节仅用于选视角，不作为根因判定；控制器链还须单独审查。详见[顶点与权重定位](../outputs/anatomy_retarget/v15_vessel_failure_localization_20260908_001/report.json)。
 
 - [213328 同输入完整报告](../outputs/anatomy_retarget/v15_pair_eval_213328_20260908_001/report.json)
 - [213712 同输入完整报告](../outputs/anatomy_retarget/v15_pair_eval_213712_20260908_001/report.json)

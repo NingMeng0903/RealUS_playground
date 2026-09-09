@@ -30,6 +30,12 @@
 
 ## 同时出现的滑轨信息
 
-`FA24 latched without encoder` 和 `modbus error (3x): not connected` 还说明滑轨路径出现状态/通信异常。此次快照中滑轨反馈年龄约 14.6 ms，后续超时日志又显示 connected/armed；这些记录不能重建完整断连过程，也不能把全部错误当作 QP 数值失败。
+`FA24 latched without encoder` 表示最近 FA24 命令非零、编码器超过约 120 ms 未成功更新。安全路径 `emergency_zero_fa24()` 会主动关闭主 Modbus socket，经临时连接写零后重连，因此紧接着的 `not connected` 也可能来自保护动作，并不能单凭这一行判断物理网线断开。三次连续通信失败会进入 HOLD。此次快照中滑轨反馈年龄约 14.6 ms，后续超时日志又显示 connected/armed；这些记录不能重建完整断连过程，也不能证明它是 native 调度排队的直接原因。
+
+## 验证
+
+- 超声入口 bootstrap 和 Qt 导入顺序两个测试通过，UI/headless 在实际相机环境的 `--help` 均不启动硬件。
+- 相机环境执行新 bootstrap 的只读子进程核验：有效 CPU mask 为 0/1/6–31，nice=10，数值线程为 1，尚未导入 Qt/OpenCV。
+- native 通知/超时保护的 13 项测试通过。没有接受过期解或增加等待上限。
 
 本次未发送机器人运动、恢复或急停解除命令，未改变控制器超时阈值。

@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 from scipy.spatial.transform import Rotation
 
-from peirastic.scan_path import ForearmReference, make_spec, force_profile, SCAN_FORCE_AXES, TILT_PROFILE
+from peirastic.scan_path import ForearmReference, make_spec, force_profile, SCAN_FORCE_AXES, TILT_PROFILE, _offset
 from peirastic.realman8dof.modes.contact_reference import ContactGatedReference
 from peirastic.realman8dof.force.torque_tilt import TorqueTilt, TorqueTiltConfig
 
@@ -35,12 +35,12 @@ def test_shape_endpoints_side_speed_and_smooth_ramps(shape, direction):
     if shape == "L":
         np.testing.assert_allclose(lateral, 0, atol=1e-14)
     else:
-        assert .0185 < np.max(lateral) < .0216
+        assert .013 - 1e-6 <= np.max(lateral) <= .020
         assert np.all(lateral[:200] >= -1e-14)
         if shape == "C":
             assert np.all(lateral >= -1e-14)
         else:
-            assert -.0216 < np.min(lateral) < -.0185
+            assert -.020 <= np.min(lateral) <= -.013 + 1e-6
             assert np.all(lateral[201:] <= 1e-14)
     for end in (0, 1):
         assert abs(float(ref.at(end)[1] @ ref.lateral)) < 1e-12
@@ -65,7 +65,50 @@ def test_noise_is_repeatable_independent_and_always_on_the_fixed_side():
                 displacement = ref.at(u)[0][:3] - (D[:3]+u*(P[:3]-D[:3]))
                 signed = float(displacement @ ref.lateral)
                 assert np.sign(signed) == (1 if shape == "C" or u < .5 else -1)
-                assert abs(signed) <= .0215
+                assert abs(signed) <= .020
+
+
+@pytest.mark.parametrize("shape", ["C", "S"])
+def test_actual_noisy_peaks_stay_in_range_and_metadata_matches(shape):
+    maxima = []
+    u = np.linspace(0, 1, 20001)
+    for seed in range(100):
+        spec = make_spec(D, P, shape, "DtP", seed)
+        offset, _ = _offset(u, shape, spec["noise_coefficients"], spec["amplitude_m"])
+        peaks = np.array([offset.max(), -offset.min()])
+        np.testing.assert_allclose(peaks, spec["peak_offsets_m"], atol=2e-9)
+        lobes = peaks[:1] if shape == "C" else peaks
+        assert np.all(lobes >= .013 - 2e-9)
+        assert np.all(lobes <= .020)
+        maxima.append(max(lobes))
+        # Scaling must not introduce a derivative jump at the S crossing.
+        ref = ForearmReference(spec)
+        np.testing.assert_allclose(ref.at(.5-1e-8)[1], ref.at(.5+1e-8)[1], atol=1e-7)
+    assert min(maxima) < .014
+    assert max(maxima) > .019
+
+
+def test_legacy_fixed_amplitude_specs_remain_readable():
+    spec = make_spec(D, P, "S", "PtD", 20)
+    for field in ("peak_offsets_m", "peak_range_m"):
+        spec.pop(field)
+    spec["amplitude_m"] = .02
+    u = np.linspace(0, 1, 4097)
+    _, derivative = _offset(u, "S", spec["noise_coefficients"], .02)
+    tangent = (P[:3]-D[:3]) + derivative[:, None]*np.asarray(spec["lateral"])
+    rate = np.linalg.norm(tangent, axis=1)
+    arc = np.r_[0., np.cumsum((rate[:-1]+rate[1:])*.5/4096)]
+    spec["arc_m"] = arc[::32].tolist()
+    ref = ForearmReference(spec)
+    np.testing.assert_allclose(ref.sample(ref.duration_s).pose_d, D, atol=1e-12)
+
+
+@pytest.mark.parametrize("amplitude", [float("nan"), float("inf"), 0., -.01, .03])
+def test_invalid_amplitude_rejected(amplitude):
+    spec = make_spec(D, P, "C", "DtP", 0)
+    spec["amplitude_m"] = amplitude
+    with pytest.raises(ValueError, match="invalid ICRA"):
+        ForearmReference(spec)
 
 
 def test_gate_needs_air_then_continuous_fresh_4n_without_changing_physical_contact():
