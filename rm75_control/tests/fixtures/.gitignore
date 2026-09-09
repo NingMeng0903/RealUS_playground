@@ -1,0 +1,2 @@
+# Keep the deterministic controller baseline despite the repository-wide npz ignore.
+!active_force_baseline.npz

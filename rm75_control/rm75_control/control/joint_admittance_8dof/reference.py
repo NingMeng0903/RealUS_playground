@@ -2,7 +2,7 @@
 
 HoldReference, JointSmoothMoveReference, SrsSmoothMoveReference (branch-locked
 quintic in pose/ψ), RailSmoothMoveReference, SinToolYReference,
-EllipseToolXYReference, WorldPolylineReference.
+SinToolZReference, EllipseToolXYReference, WorldPolylineReference.
 """
 
 from __future__ import annotations
@@ -840,6 +840,134 @@ class EllipseToolXYReference:
             vel[3:6] = _omega_base_from_tool_euler(
                 r_mat, rpy, rpy_dot, self.euler_order
             )
+        return MotionReference(pose_d=pose, vel_ff=vel, t_ref=t_s)
+
+
+def tool_z_sine_motion(
+    t_s: float,
+    amplitude_m: float,
+    omega: float,
+    *,
+    soft_start: bool,
+    ramp_s: float = 0.4,
+    duration_s: float | None = None,
+    stop_ramp_s: float | None = None,
+) -> tuple[float, float]:
+    """Apex-held +tool-Z press: ``z = A/2 (1-cos(ωτ))``. τ=0 is the origin."""
+
+    if soft_start or duration_s is not None:
+        tau, tau_dot = _soft_start_time_warp(
+            t_s,
+            ramp_s if soft_start else 0.0,
+            duration_s=duration_s,
+            stop_ramp_s=stop_ramp_s,
+        )
+    else:
+        tau = float(t_s)
+        tau_dot = 1.0
+    amp = float(amplitude_m)
+    wt = float(omega) * tau
+    dz = 0.5 * amp * (1.0 - math.cos(wt))
+    vz = 0.5 * amp * float(omega) * math.sin(wt) * tau_dot
+    return dz, vz
+
+
+class SinToolZReference:
+    """Tool-frame +Z sinusoid. The live origin is the highest point (apex).
+
+    Displacement is ``A/2 (1-cos(ωτ))`` along +tool Z (into tissue). τ=0 is
+    the origin, velocity is zero, and the path never goes above the start.
+    """
+
+    def __init__(
+        self,
+        amplitude_m: float,
+        *,
+        period_s: float | None = None,
+        max_vel_m_s: float | None = None,
+        soft_start: bool = True,
+        ramp_s: float = 0.4,
+        duration_s: float | None = None,
+        stop_ramp_s: float | None = None,
+        euler_order: str = "xyz",
+        apex: bool = True,
+        origin_pose: np.ndarray | list[float] | None = None,
+    ) -> None:
+        if not apex:
+            raise ValueError("SinToolZReference only supports apex=True")
+        self.amplitude_m = float(amplitude_m)
+        if not math.isfinite(self.amplitude_m) or self.amplitude_m <= 0.0:
+            raise ValueError("tool-Z sine amplitude must be > 0")
+        if self.amplitude_m > 0.005:
+            raise ValueError("tool-Z sine amplitude must be ≤ 5 mm")
+        self.soft_start = bool(soft_start)
+        self.ramp_s = float(ramp_s)
+        self.scan_duration_s = None if duration_s is None else float(duration_s)
+        if self.scan_duration_s is None:
+            self.stop_ramp_s = 0.0 if stop_ramp_s is None else max(float(stop_ramp_s), 0.0)
+        else:
+            self.stop_ramp_s = (
+                float(DEFAULT_STOP_RAMP_S)
+                if stop_ramp_s is None
+                else max(float(stop_ramp_s), 0.0)
+            )
+        self.duration_s = (
+            None
+            if self.scan_duration_s is None
+            else float(self.scan_duration_s) + float(self.stop_ramp_s)
+        )
+        self.euler_order = str(euler_order)
+        self._explicit_origin: np.ndarray | None = None
+        if origin_pose is not None:
+            explicit = np.asarray(origin_pose, dtype=float).reshape(-1)
+            if explicit.size != 6 or not np.all(np.isfinite(explicit)):
+                raise ValueError("tool-Z sine origin_pose must contain six finite values")
+            self._explicit_origin = explicit.copy()
+        self._origin: np.ndarray | None = (
+            None if self._explicit_origin is None else self._explicit_origin.copy()
+        )
+        self._t_anchor: float = 0.0
+        if period_s is None:
+            if max_vel_m_s is None:
+                raise ValueError("provide either period_s or max_vel_m_s")
+            # Peak |vz| of A/2 (1-cos) is A π f = A π / T, so T = A π / vmax.
+            period_s = math.pi * self.amplitude_m / max(float(max_vel_m_s), 1.0e-9)
+        self.period_s = float(period_s)
+        if self.period_s <= 1.0e-9:
+            raise ValueError("tool-Z sine period_s must be > 0")
+        self.omega = 2.0 * math.pi / self.period_s
+
+    def set_origin(self, pose0: np.ndarray, *, t_s: float | None = None) -> None:
+        # The phase runner always calls set_origin() with its live encoder pose.
+        # An explicitly taught calibration origin must survive that reseed; the
+        # call still anchors the reference clock at the phase boundary.
+        if self._explicit_origin is None:
+            self._origin = np.asarray(pose0, dtype=float).reshape(-1).copy()
+            if self._origin.size != 6 or not np.all(np.isfinite(self._origin)):
+                raise ValueError("tool-Z sine live origin must contain six finite values")
+        else:
+            self._origin = self._explicit_origin.copy()
+        if t_s is not None:
+            self._t_anchor = float(t_s)
+
+    def sample(self, t_s: float) -> MotionReference:
+        if self._origin is None:
+            raise RuntimeError("SinToolZReference.set_origin must be called first")
+        t_eff = float(t_s) - float(self._t_anchor)
+        dz, vz = tool_z_sine_motion(
+            t_eff,
+            self.amplitude_m,
+            self.omega,
+            soft_start=self.soft_start,
+            ramp_s=self.ramp_s,
+            duration_s=self.duration_s,
+            stop_ramp_s=self.stop_ramp_s,
+        )
+        r_mat = Rsc.from_euler(self.euler_order, self._origin[3:6], degrees=False).as_matrix()
+        pose = self._origin.copy()
+        pose[:3] = self._origin[:3] + r_mat @ np.array([0.0, 0.0, dz])
+        vel = np.zeros(6, dtype=float)
+        vel[:3] = r_mat @ np.array([0.0, 0.0, vz])
         return MotionReference(pose_d=pose, vel_ff=vel, t_ref=t_s)
 
 

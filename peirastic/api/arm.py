@@ -688,6 +688,7 @@ class _TrackMixin(_ClientMixin):
         reference: str = "ellipse",
         amplitude_x_m: float | None = None,
         amplitude_y_m: float | None = None,
+        amplitude_z_m: float | None = None,
         rot_amp_rad=None,
         rot_amp_deg=None,
         period_s: float | None = None,
@@ -697,6 +698,8 @@ class _TrackMixin(_ClientMixin):
         speed_m_s: float | None = None,
         soft_start: bool = True,
         ramp_s: float | None = None,
+        stop_ramp_s: float | None = None,
+        origin_pose=None,
         duration_s: float | None = None,
         max_lin_vel_m_s: float | None = None,
         move_kp: float | None = None,
@@ -711,6 +714,11 @@ class _TrackMixin(_ClientMixin):
         collect live ``track_err_mm`` while waiting.
         """
 
+        encoded_origin = None
+        if origin_pose is not None:
+            encoded_origin = _as_pose(origin_pose)
+            if not np.all(np.isfinite(np.asarray(encoded_origin, dtype=float))):
+                raise ValueError("origin_pose must contain six finite values")
         payload = TrackCartesianPayload(
             reference=str(reference or "ellipse"),
             poses=None if poses is None else _as_poses(poses),
@@ -718,8 +726,11 @@ class _TrackMixin(_ClientMixin):
             speed_m_s=speed_m_s,
             soft_start=bool(soft_start),
             ramp_s=ramp_s,
+            stop_ramp_s=None if stop_ramp_s is None else float(stop_ramp_s),
+            origin_pose=encoded_origin,
             amplitude_x_m=None if amplitude_x_m is None else float(amplitude_x_m),
             amplitude_y_m=None if amplitude_y_m is None else float(amplitude_y_m),
+            amplitude_z_m=None if amplitude_z_m is None else float(amplitude_z_m),
             rot_amp_rad=None if rot_amp_rad is None else list(np.asarray(rot_amp_rad, dtype=float).reshape(-1)),
             rot_amp_deg=None if rot_amp_deg is None else list(np.asarray(rot_amp_deg, dtype=float).reshape(-1)),
             period_s=period_s,

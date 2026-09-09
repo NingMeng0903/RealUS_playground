@@ -631,18 +631,14 @@ def test_analyze_tn_recovers_fopdt(tmp_path: Path) -> None:
     yaml_path = tmp_path / "tn.yaml"
     assert analyze_tn(train, val_path=val, write_yaml=yaml_path) == 0
     loaded = yaml.safe_load(yaml_path.read_text())
-    assert loaded["hybrid_motion"]["cdyob"]["mode"] == "shadow"
-    assert float(loaded["hybrid_motion"]["cdyob"]["t0_s"]) == pytest.approx(
+    plant = loaded["safety_shield"]["plant"]
+    assert plant["model"] == "fopdt"
+    assert float(plant["t0_s"]) == pytest.approx(
         0.050, abs=0.010
     )
-    assert float(loaded["hybrid_motion"]["cdyob"]["tp_s"]) == pytest.approx(
+    assert float(plant["tp_s"]) == pytest.approx(
         0.020, abs=0.010
     )
-    assert float(
-        loaded["hybrid_motion"]["cdyob"]["omega_q_hz"]
-    ) == pytest.approx(0.75)
-    assert float(
-        loaded["hybrid_motion"]["cdyob"]["v_corr_max_m_s"]
-    ) == pytest.approx(0.003)
-    assert loaded["hybrid_motion"]["cdyob"]["active_model_validated"] is False
-
+    assert float(plant["gain"]) == pytest.approx(1.0, abs=0.05)
+    assert int(plant["delay_steps"]) == pytest.approx(10)
+    assert plant["min_phase"] is True

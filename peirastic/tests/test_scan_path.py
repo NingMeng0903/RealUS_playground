@@ -6,7 +6,16 @@ import numpy as np
 import pytest
 from scipy.spatial.transform import Rotation
 
-from peirastic.scan_path import ForearmReference, make_spec, force_profile, SCAN_FORCE_AXES, TILT_PROFILE, _offset
+from peirastic.scan_path import (
+    AMPLITUDE_LOAD_MAX_M,
+    ForearmReference,
+    PEAK_RANGE_M,
+    make_spec,
+    force_profile,
+    SCAN_FORCE_AXES,
+    TILT_PROFILE,
+    _offset,
+)
 from peirastic.realman8dof.modes.contact_reference import ContactGatedReference
 from peirastic.realman8dof.force.torque_tilt import TorqueTilt, TorqueTiltConfig
 
@@ -35,12 +44,12 @@ def test_shape_endpoints_side_speed_and_smooth_ramps(shape, direction):
     if shape == "L":
         np.testing.assert_allclose(lateral, 0, atol=1e-14)
     else:
-        assert .013 - 1e-6 <= np.max(lateral) <= .020
+        assert .010 - 1e-6 <= np.max(lateral) <= .015
         assert np.all(lateral[:200] >= -1e-14)
         if shape == "C":
             assert np.all(lateral >= -1e-14)
         else:
-            assert -.020 <= np.min(lateral) <= -.013 + 1e-6
+            assert -.015 <= np.min(lateral) <= -.010 + 1e-6
             assert np.all(lateral[201:] <= 1e-14)
     for end in (0, 1):
         assert abs(float(ref.at(end)[1] @ ref.lateral)) < 1e-12
@@ -65,7 +74,7 @@ def test_noise_is_repeatable_independent_and_always_on_the_fixed_side():
                 displacement = ref.at(u)[0][:3] - (D[:3]+u*(P[:3]-D[:3]))
                 signed = float(displacement @ ref.lateral)
                 assert np.sign(signed) == (1 if shape == "C" or u < .5 else -1)
-                assert abs(signed) <= .020
+                assert abs(signed) <= .015
 
 
 @pytest.mark.parametrize("shape", ["C", "S"])
@@ -78,14 +87,23 @@ def test_actual_noisy_peaks_stay_in_range_and_metadata_matches(shape):
         peaks = np.array([offset.max(), -offset.min()])
         np.testing.assert_allclose(peaks, spec["peak_offsets_m"], atol=2e-9)
         lobes = peaks[:1] if shape == "C" else peaks
-        assert np.all(lobes >= .013 - 2e-9)
-        assert np.all(lobes <= .020)
+        assert np.all(lobes >= .010 - 2e-9)
+        assert np.all(lobes <= .015)
         maxima.append(max(lobes))
         # Scaling must not introduce a derivative jump at the S crossing.
         ref = ForearmReference(spec)
         np.testing.assert_allclose(ref.at(.5-1e-8)[1], ref.at(.5+1e-8)[1], atol=1e-7)
-    assert min(maxima) < .014
-    assert max(maxima) > .019
+    assert min(maxima) < .011
+    assert max(maxima) > .014
+
+
+def test_planning_peaks_are_10_to_15_mm_and_old_20_mm_specs_still_load():
+    assert PEAK_RANGE_M == (0.010, 0.015)
+    assert AMPLITUDE_LOAD_MAX_M == 0.020
+    spec = make_spec(D, P, "C", "DtP", 3)
+    assert spec["peak_range_m"] == [0.010, 0.015]
+    spec["amplitude_m"] = 0.020
+    ForearmReference(spec)
 
 
 def test_legacy_fixed_amplitude_specs_remain_readable():

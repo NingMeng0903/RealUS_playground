@@ -405,7 +405,7 @@ hybrid_motion:
   - 2.0
   - 2.0
   - 2.0
-  # e85 force law.  TDPA/corridor/shield do not change the command.
+  # e85 force law. TDPA and shield do not change the command.
   admittance_mass_z: 1.0
   admittance_damping_z: 40.0
   admittance_stiffness_z: 0.0
@@ -436,14 +436,6 @@ hybrid_motion:
   recontact_settle_hold_s: 0.050
   contact_episode_release_s: 0.80
   contact_episode_release_force_n: 0.75
-  # Extra force-error integrator.  Off for the fixed-admittance baseline.
-  force_dob:
-    enabled: false
-    ki: 8.0
-    leak_s: 0.4
-    u_max_n: 1.5
-    freeze_is: 0.45
-    reset_on_reversal: true
   # R2 air seek only.  Confirmed contact uses max_vz (80).  Barrier
   # does not clamp — e85 had no clamp_velocity.
   force_barrier:
@@ -469,25 +461,6 @@ hybrid_motion:
     stiffness_cap_enabled: true
     ke_floor_n_m: 50.0
     mass_floor_kg: 0.05
-  # CDYOB is off.  At our delay it lowers Ke* (1059→775 N/m).
-  # Do not invert Γd or claim Y=A when any downstream constraint is active.
-  cdyob:
-    mode: "off"
-    omega_q_hz: 0.75
-    t0_s: 0.028
-    tp_s: 0.014
-    tau_s: 0.028
-    t_n_s: 0.014
-    pn_m: 0.0
-    v_corr_max_m_s: 0.015
-    blend_s: 0.30
-    active_press_max_m_s: 0.010
-    active_retract_max_m_s: 0.015
-    active_q_max_hz: 1.0
-    active_force_ratio: 0.90
-    active_settle_speed_m_s: 0.010
-    active_settle_hold_s: 0.05
-    active_model_validated: false
   # De Stefano Sec. IV only.  Port (F_meas, v_cmd), same tick.  Td is
   # runtime — do not bake 55 ms or D=40.  Voice-coil keeps this block.
   tdpa:
@@ -498,20 +471,15 @@ hybrid_motion:
     alpha_max: 20.0
     bias_lpf_s: 8.0
     v_bias_gate_m_s: 0.003
-  # Certificate 3: set invariance, not passivity.  Shield stays observe.
-  force_corridor:
-    enabled: false
-    f_keep_n: 0.5
   press_envelope:
     # 0 = unused; confirmed contact falls through to max_vz (80).
     soft_approach_m_s: 0.0
     first_touch_m_s: 0.0
     max_force_axis_m_s: 0.0
-    a_linear_m_s2: 1.20
   # Normal-port delay-aware shield. Stay in observe until the same solver
   # is feasible on hardware. force/observe are empirical peak guards:
   # require_contact_free_terminal is false until a release model exists.
-  # Do not enable passive/ospf/CDYOB from this file.
+  # Do not enable passive/ospf from this file.
   safety_shield:
     enabled: true
     mode: observe
@@ -670,15 +638,6 @@ hybrid_motion:
     Tmin: 0.0001
     mu_power_w: 0.0
     positive_switching_cost_j: 0.0
-  # Optional Piedra-style elastic-surface force reduction.  Disabled until
-  # stable-contact hardware validation; it is not a passivity guarantee.
-  surface_force_modulation:
-    enabled: false
-    min_force_scale: 0.25
-    beta_per_m: 80.0
-    stable_contact_s: 0.20
-    attack_s: 0.05
-    release_s: 0.15
   # Soften under-force chase near scan turnaround (tool-XY slow).
   force_lateral_soft_m_s: 0.006
   force_lateral_full_m_s: 0.018
@@ -721,12 +680,6 @@ hybrid_motion:
     m_max: 1.0
     slew_s: 0.30
     confirm_s: 0.15
-  energy_tank:
-    enabled: false
-    eps_j: 0.08
-    t_soft_j: 0.25
-    t_bar_j: 1.0
-    t0_j: 0.50
   # Tool-y torque balance at the TCP; no angle budget or normal-force-error gate.
   # Zero moment uses the compensated TCP wrench. No online contact-bias learning.
   torque_tilt:
@@ -739,7 +692,7 @@ hybrid_motion:
     a_max: 5.0
     contact_only: true
   proactive_feedforward: false
-  # Legacy parameters are retained for isolated non-CDYOB tests only.
+  # Legacy parameters are retained for isolated tests only.
   proactive_retract_only: false
   proactive_gain: 0.0
   proactive_retract_gain: 0.0

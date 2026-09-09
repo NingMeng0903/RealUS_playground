@@ -1,4 +1,4 @@
-"""Ke schedule, air approach, energy tank, and D+α TDPA apply."""
+"""Ke schedule, air approach, and D+α TDPA apply."""
 
 from __future__ import annotations
 
@@ -9,11 +9,6 @@ from rm75_control.control.admittance_common.controller import (
     AdmittanceConfig,
     AdmittanceController,
 )
-from rm75_control.control.admittance_common.energy_tank import (
-    ActiveTermTank,
-    EnergyTankConfig,
-)
-from rm75_control.control.admittance_common.force_dob import ForceDobConfig
 from rm75_control.control.admittance_common.proactive_force_ff import ProactiveFfConfig
 
 
@@ -33,8 +28,6 @@ def _z_cfg(**kwargs) -> AdmittanceConfig:
     )
     cfg.proactive_ff = ProactiveFfConfig(enabled=False)
     cfg.adaptive_ke.enabled = False
-    cfg.force_dob.enabled = False
-    cfg.force_corridor.enabled = False
     cfg.force_barrier.enabled = False
     cfg.tdpa.enabled = False
     cfg.safety_shield.mode = "observe"
@@ -155,47 +148,6 @@ def test_confirmed_ke_opens_eighty() -> None:
     assert ctrl._ke_confirmed()
     assert float(ctrl._press_vz_cap()) == pytest.approx(0.08)
     assert float(cmd[2]) > 0.008
-
-
-def test_energy_tank_drained_zeros_active_keeps_error() -> None:
-    cfg = _z_cfg()
-    cfg.energy_tank = EnergyTankConfig(
-        enabled=True, eps_j=0.08, t_soft_j=0.25, t_bar_j=1.0, t0_j=0.08
-    )
-    cfg.force_dob = ForceDobConfig(enabled=True, ki=8.0, leak_s=0.4, u_max_n=1.5)
-    cfg.proactive_ff = ProactiveFfConfig(enabled=True, gain=0.24, retract_gain=0.24)
-    ctrl = AdmittanceController(DT, cfg)
-    ctrl._energy_tank.energy_j = 0.08
-    ctrl._first_contact_slow_latched = False
-    ctrl._recontact_slow_latched = False
-    pose = np.zeros(6)
-    f_des = np.array([0.0, 0.0, 2.0, 0.0, 0.0, 0.0])
-    f_ext = np.array([0.0, 0.0, 0.5, 0.0, 0.0, 0.0])
-    cmd = ctrl.compute_velocity_command(
-        pose,
-        pose,
-        np.zeros(6),
-        f_ext,
-        f_des,
-        in_contact=True,
-        v_tcp_z_actual=0.0,
-        dt_actual=DT,
-    )
-    assert ctrl.tank_drained is True
-    assert ctrl.v_r_z == pytest.approx(0.0)
-    assert ctrl.u_dob_z == pytest.approx(0.0)
-    assert float(cmd[2]) > 0.0
-
-
-def test_energy_tank_lambda_ramps_in_soft_band() -> None:
-    tank = ActiveTermTank(
-        EnergyTankConfig(enabled=True, eps_j=0.08, t_soft_j=0.25, t_bar_j=1.0, t0_j=0.165)
-    )
-    lam = tank.update(
-        damping=25.0, v_cmd=0.0, v_r=0.0, u_dob=0.0, f_star=0.0, dt_s=DT
-    )
-    assert lam == pytest.approx(0.5, abs=0.02)
-    assert tank.drained is False
 
 
 def test_tdpa_apply_does_not_invert_underforce() -> None:

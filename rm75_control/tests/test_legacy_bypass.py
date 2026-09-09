@@ -27,12 +27,10 @@ def test_legacy_emits_u_sent_when_barrier_clamps() -> None:
     cfg.physical_contact.enabled = False
     cfg.proactive_ff = ProactiveFfConfig(enabled=False)
     cfg.adaptive_ke.enabled = False
-    cfg.force_dob.enabled = False
     cfg.force_barrier.enabled = True
     cfg.force_barrier.stiffness_cap_enabled = True
     cfg.force_barrier.budget_min_n = 0.2
     cfg.force_barrier.budget_frac = 0.0
-    cfg.cdyob.mode = "off"
     ctrl = AdmittanceController(0.005, cfg)
     ctrl._first_contact_slow_latched = False
     ctrl._recontact_slow_latched = False

@@ -819,7 +819,7 @@ def write_controller_ref(report: dict, out_dir: Path) -> None:
             "key": "plant.t0_s",
             "identified": f"{t0:.6f}",
             "unit": "s",
-            "yaml_now": "shield.plant.t0_s=0.028; system_delay_s=0.055; barrier.t_react_s=0.055; cdyob.t0_s=0.028",
+            "yaml_now": "shield.plant.t0_s=0.028; system_delay_s=0.055; barrier.t_react_s=0.055",
             "consume": "use T0=0.028 as the delay centre; do not bake 0.055 into certificates",
             "note": "Td is a band (age p95).  55 ms is a placeholder aligned to t_react.",
         },
@@ -827,7 +827,7 @@ def write_controller_ref(report: dict, out_dir: Path) -> None:
             "key": "plant.tp_s",
             "identified": f"{tp:.6f}",
             "unit": "s",
-            "yaml_now": "shield.plant.tp_s=0.014; cdyob.tp_s=0.014",
+            "yaml_now": "shield.plant.tp_s=0.014",
             "consume": "0.014",
             "note": "chirp median",
         },
@@ -901,8 +901,8 @@ def write_controller_ref(report: dict, out_dir: Path) -> None:
             "key": "not.force_loop_frf",
             "identified": "missing",
             "unit": "",
-            "yaml_now": "cdyob.mode=off",
-            "consume": "do not turn CDYOB on",
+            "yaml_now": "no force-loop model configured",
+            "consume": "use suitable excitation before fitting a force-loop model",
             "note": "hybrid tracking is the wrong excitation until chatter stops",
         },
         {
@@ -933,7 +933,7 @@ def write_controller_ref(report: dict, out_dir: Path) -> None:
         f"plant  T0={1e3 * t0:.1f} ms  Tp={1e3 * tp:.1f} ms  "
         f"Td_band_p95={1e3 * age_p95:.1f} ms  linear_label={linear:.0f} mm/s\n"
         f"do_not_write  system_delay_s=0.055 as if it were T0; "
-        f"3 Hz group delay; CDYOB t0=30 ms\n"
+        f"3 Hz group delay\n"
         f"envelope  air/first_touch=10 mm/s  "
         f"confirmed_chase=soft_approach 20 mm/s  "
         f"overforce_retract=max_force_axis 25 mm/s  "
@@ -942,9 +942,8 @@ def write_controller_ref(report: dict, out_dir: Path) -> None:
         f"surfaces={int((report.get('tdpa_sign') or {}).get('n_surfaces') or 0)}  "
         f"ke_settled={ke_txt}\n"
         f"missing  force-loop F→v FRF; single tissue Ke; stop-reverse Δx_b^ub\n"
-        f"certificates  Nyquist=filter+CDYOB off  "
-        f"TDPA=enabled (clamp ⇒ no passivity claim)  "
-        f"corridor=enabled shield=observe\n"
+        f"observations  TDPA=enabled shield=observe; "
+        f"no patient-port passivity certificate\n"
     )
     (out_dir / "id_reference.log").write_text(log)
 

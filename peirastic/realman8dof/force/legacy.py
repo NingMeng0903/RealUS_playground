@@ -10,8 +10,8 @@ from peirastic.realman8dof.force.protocol import ForceOutput
 class LegacyForceLaw:
     """Wrap ``AdmittanceController.compute_velocity_command``.
 
-    A and B share this object. B layers stay behind yaml
-    ``bidirectional_flow.mode`` / ``surface_force_modulation``.
+    A and B share this object. Optional flow and safety layers remain selected
+    by their corresponding YAML modes.
     """
 
     def __init__(self, controller) -> None:
@@ -58,7 +58,7 @@ class LegacyForceLaw:
         )
         v = np.asarray(cmd, dtype=float).reshape(6)
         # R1: emit the clamped command.  v_force_z is the pre-clamp admittance
-        # state and bypasses barrier / slew / shield / corridor.
+        # state and bypasses barrier / slew / shield.
         if hasattr(self.controller, "v_force_cmd_z"):
             v_force_z = float(self.controller.v_force_cmd_z)
         else:

@@ -16,6 +16,7 @@ from rm75_control.control.joint_admittance_8dof.loop import Phase
 from rm75_control.control.joint_admittance_8dof.reference import (
     EllipseToolXYReference,
     HoldReference,
+    SinToolZReference,
     WorldPolylineReference,
 )
 from peirastic.core.modes import Mode, ModeRequest
@@ -41,6 +42,31 @@ def _twist_source(payload: dict, twist_read: Callable | None):
         return twist_read
     z = np.zeros(6, dtype=float)
     return lambda: z.copy()
+
+
+def _tool_z_sine_ref(payload: dict, euler_order: str) -> SinToolZReference:
+    amp = payload.get("amplitude_z_m")
+    if amp is None:
+        amp = payload.get("amplitude_m", 0.002)
+    period = payload.get("period_s")
+    vmax = payload.get("max_vel_m_s")
+    origin = payload.get("origin_pose")
+    if origin is not None:
+        origin = np.asarray(origin, dtype=float).reshape(-1)
+        if origin.size != 6 or not np.all(np.isfinite(origin)):
+            raise ValueError("tool_z_sine origin_pose must contain six finite values")
+    return SinToolZReference(
+        float(amp),
+        period_s=None if period is None else float(period),
+        max_vel_m_s=None if vmax is None else float(vmax),
+        soft_start=bool(payload.get("soft_start", True)),
+        ramp_s=float(payload.get("ramp_s", 0.4)),
+        duration_s=None if payload.get("duration_s") is None else float(payload["duration_s"]),
+        stop_ramp_s=None if payload.get("stop_ramp_s") is None else float(payload["stop_ramp_s"]),
+        euler_order=euler_order,
+        apex=bool(payload.get("apex", True)),
+        origin_pose=origin,
+    )
 
 
 def _ellipse_ref(payload: dict, euler_order: str) -> EllipseToolXYReference:
@@ -316,10 +342,12 @@ def compile_request(
             ref = HoldReference()
         elif kind == "polyline":
             ref = _polyline_ref(payload, ctx.euler_order)
+        elif kind == "tool_z_sine":
+            ref = _tool_z_sine_ref(payload, ctx.euler_order)
         else:
             ref = _ellipse_ref(payload, ctx.euler_order)
         track_dur = payload.get("duration_s")
-        if kind == "ellipse":
+        if kind in ("ellipse", "tool_z_sine"):
             track_dur = getattr(ref, "duration_s", track_dur)
         return _finish_phase(
             ctx,

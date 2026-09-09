@@ -136,29 +136,28 @@ def test_force_log_has_energy_aware_reference_and_actual_tcp_velocity(tmp_path):
     assert "comfort_slack_j4" in header
     assert "pad_lx" in header
     assert "pad_vcmd_base_vy" in header
-    assert "u_dob_z" in header
     assert "v_force_cmd_z" in header
     assert "tdpa_e_obs_j" in header
     assert "tdpa_alpha" in header
     assert "tdpa_clamped" in header
     assert "tdpa_passivity_holds" in header
-    assert "corridor_applied" in header
     assert "ke_cap_n_m" in header
-    assert "cdyob_corr_m_s" in header
-    assert "cdyob_qtinv_vm" in header
-    assert "cdyob_q_vi" in header
-    assert "cdyob_n1_force" in header
-    assert "cdyob_pert_unclipped" in header
-    assert "cdyob_blend" in header
-    assert "cdyob_vi" in header
-    assert "cdyob_candidate" in header
-    assert "cdyob_antiwindup_error" in header
-    assert "cdyob_residual" in header
-    assert "cdyob_saturated" in header
-    assert "cdyob_constrained" in header
-    assert "cdyob_linear_equivalent" in header
-    assert "cdyob_apply_ready" in header
-    assert "cdyob_ready_s" in header
+    assert {
+        "flow_T", "flow_S_n", "flow_S_r_hat", "flow_alpha",
+        "tdpa_e_obs_j", "tdpa_alpha", "shield_applied", "f_ub_n",
+    }.issubset(header)
+    retired = {
+        "u_dob_z", "tank_energy_j", "tank_lambda", "tank_drained",
+        "corridor_applied", "corridor_infeasible",
+        "surface_force_scale", "surface_force_alpha", "surface_xy_error_m",
+        "cdyob_corr_m_s", "cdyob_mode", "cdyob_qtinv_vm", "cdyob_q_vi",
+        "cdyob_n1_force", "cdyob_n2_velocity", "cdyob_pert_unclipped",
+        "cdyob_pert_clipped", "cdyob_blend", "cdyob_vi", "cdyob_candidate",
+        "cdyob_antiwindup_error", "cdyob_residual", "cdyob_saturated",
+        "cdyob_constrained", "cdyob_linear_equivalent", "cdyob_apply_ready",
+        "cdyob_ready_s",
+    }
+    assert retired.isdisjoint(header)
     assert "overforce_escape" in header
     assert "u_nom_raw" in header
     assert "u_nom_capped" in header

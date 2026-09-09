@@ -18,10 +18,16 @@ no publisher). Window A SHM is ``rm75_state``.
 from __future__ import annotations
 
 import argparse
+import os
 import signal
 import sys
 import time
 from pathlib import Path
+
+_REPO = Path(os.environ.get("REALUS_PROJECT_ROOT") or Path(__file__).resolve().parents[3]).resolve()
+for _p in (_REPO, _REPO / "rm75_control"):
+    if _p.is_dir() and str(_p) not in sys.path:
+        sys.path.insert(0, str(_p))
 
 if __name__ == "__main__":
     from rm75_control.control.admittance_common.observer_runtime import prepare_observer_process

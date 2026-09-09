@@ -53,8 +53,6 @@ def test_hybrid_episode_reset_is_bumpless_and_clears_episode_state():
     ctrl._episode_detached_s = 0.2
     ctrl._proactive_ff.v_r = 0.02
     ctrl.v_r_z = 0.02
-    ctrl._force_dob.u_dob = 0.8
-    ctrl.u_dob_z = 0.8
     ctrl._ke_estimator.ke_est = 1234.0
     seed = np.array([0.01, -0.02, 0.015, 0.03, -0.04, 0.05])
 
@@ -71,8 +69,6 @@ def test_hybrid_episode_reset_is_bumpless_and_clears_episode_state():
     assert ctrl._episode_detached_s == 0.0
     assert ctrl._proactive_ff.v_r == 0.0
     assert ctrl.v_r_z == 0.0
-    assert ctrl._force_dob.u_dob == 0.0
-    assert ctrl.u_dob_z == 0.0
     assert ctrl._ke_estimator.ke_est == pytest.approx(cfg.adaptive_ke.ke_initial)
 
 
@@ -156,10 +152,11 @@ def test_unified_vz_cap_no_state_windup():
 
 
 def test_closed_loop_stiff_surface_no_bounce():
-    """Closed-loop regression on a stiff unilateral spring with the SHIPPED
-    yaml: approach → impact → settle at the setpoint with no sustained
-    contact flipping. Regression guard against the /tmp/scan_v5.csv bounce
-    cascade (71 contact losses in 45 s, fz range 0..9.4 N)."""
+    """Stiff-spring regression with explicit speed-envelope/barrier overrides.
+
+    Approach, impact and settling must not produce sustained contact flipping.
+    This checks the configured guard combination, not unmodified shipped YAML.
+    """
     import yaml
     from pathlib import Path
 
@@ -176,7 +173,6 @@ def test_closed_loop_stiff_surface_no_bounce():
     cfg.press_envelope.soft_approach_m_s = 0.020
     cfg.press_envelope.max_force_axis_m_s = 0.025
     cfg.force_barrier.enabled = True
-    cfg.force_corridor.enabled = True
     cfg.var_damping_d_u = 0.0
     cfg.var_damping_m_u = 0.0
     cfg.admittance_stiffness_z = 10.0
@@ -212,9 +208,9 @@ def test_closed_loop_stiff_surface_no_bounce():
 
 
 def test_closed_loop_very_hard_surface_no_bounce_cascade():
-    """A very stiff (20 kN/m) surface with the SHIPPED yaml must not enter a
-    bounce cascade even on repeated re-impact. This is the direct guard
-    against the scan_v5.csv failure mode (71 contact losses in 45 s)."""
+    """The envelope/barrier overrides must prevent a repeated-impact cascade
+    on a 20 kN/m spring; the production YAML is only the starting configuration.
+    """
     import yaml
     from pathlib import Path
 
@@ -229,7 +225,6 @@ def test_closed_loop_very_hard_surface_no_bounce_cascade():
     cfg.press_envelope.soft_approach_m_s = 0.020
     cfg.press_envelope.max_force_axis_m_s = 0.025
     cfg.force_barrier.enabled = True
-    cfg.force_corridor.enabled = True
     cfg.var_damping_d_u = 0.0
     cfg.var_damping_m_u = 0.0
     cfg.admittance_stiffness_z = 10.0
@@ -392,13 +387,9 @@ def test_production_stack_tracks_moving_surface_at_1n_and_5n():
     for desired in (1.0, 5.0):
         for surface_velocity in (-0.008, 0.008):
             cfg = AdmittanceConfig.from_dict(raw)
-            # Surface-velocity match uses the passive+proactive chase; DOB is
-            # covered separately for steady-force bias rejection.
-            cfg.force_dob.enabled = False
+            # Surface-velocity match uses the passive+proactive chase.
             cfg.tdpa.enabled = False
             cfg.admittance_stiffness_z = 0.0
-            cfg.force_corridor.enabled = False
-            cfg.cdyob.mode = "off"
             cfg.force_axis_slew_press_m_s2 = 0.0
             cfg.force_axis_slew_retract_m_s2 = 0.0
             cfg.force_axis_slew_reverse_m_s2 = 0.0

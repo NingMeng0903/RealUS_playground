@@ -28,7 +28,6 @@ def test_kc_keeps_equilibrium_off_origin() -> None:
     cfg.physical_contact.enabled = False
     cfg.proactive_ff = ProactiveFfConfig(enabled=False)
     cfg.adaptive_ke.enabled = False
-    cfg.force_dob.enabled = False
     cfg.force_barrier.enabled = False
     ctrl = AdmittanceController(0.005, cfg)
     ctrl._first_contact_slow_latched = False
@@ -60,7 +59,6 @@ def test_xd_integrator_is_rate_bounded() -> None:
     cfg.physical_contact.enabled = False
     cfg.proactive_ff = ProactiveFfConfig(enabled=False)
     cfg.adaptive_ke.enabled = False
-    cfg.force_dob.enabled = False
     cfg.force_barrier.enabled = False
     ctrl = AdmittanceController(0.005, cfg)
     ctrl._first_contact_slow_latched = False

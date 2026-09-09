@@ -12,11 +12,6 @@ from rm75_control.control.admittance_common.controller import (
     AdmittanceController,
     smooth_deadband_eff,
 )
-from rm75_control.control.admittance_common.force_dob import (
-    ForceDobConfig,
-    ForceDisturbanceObserver,
-)
-
 DT = 0.005
 
 
@@ -78,17 +73,3 @@ def test_smooth_deadband_is_c1_and_monotone() -> None:
     assert abs(d_left - d_right) < 1e-3
     pos = ys[xs >= 0.0]
     assert np.all(np.diff(pos) >= -1e-12)
-
-
-def test_force_dob_resets_through_deadband_zero() -> None:
-    dob = ForceDisturbanceObserver(
-        ForceDobConfig(enabled=True, ki=8.0, leak_s=0.4, u_max_n=1.5)
-    )
-    for _ in range(40):
-        dob.update(0.4, dt_eff=DT, in_contact=True, instability_index=0.0)
-    assert dob.u_dob > 0.2
-    for _ in range(10):
-        dob.update(0.0, dt_eff=DT, in_contact=True, instability_index=0.0)
-    assert dob._last_signed_eff > 0.0
-    out = dob.update(-0.1, dt_eff=DT, in_contact=True, instability_index=0.0)
-    assert out <= 0.0

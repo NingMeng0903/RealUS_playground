@@ -718,8 +718,6 @@ def test_qpik_yaml_keeps_rail_planner_and_baseline_force() -> None:
     hm = raw["hybrid_motion"]
     assert hm["proactive_retract_only"] is False
     assert hm["proactive_feedforward"] is False
-    assert hm["force_dob"]["enabled"] is False
-    assert hm["cdyob"]["mode"] == "off"
     assert float(hm["force_axis_slew_press_m_s2"]) >= 0.8
     assert hm["force_barrier"]["enabled"] is False
     # The blunt phase-2 instruments stay out.

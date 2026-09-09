@@ -37,8 +37,8 @@ export AMONGUS_PROJECT_ROOT="${AMONGUS_PROJECT_ROOT:-${REALUS_PROJECT_ROOT}}"
 # Twin (run_with_twin.py) subscribes here for orange SMPL-X unless --no-track-subscribe.
 export AMONGUS_GENESIS_TRACK_SUBSCRIBE="${AMONGUS_GENESIS_TRACK_SUBSCRIBE:-tcp://127.0.0.1:5598}"
 # Robotic_Arm only needed for rm75_control package __init__ import chain; not used by viewer runtime.
-# RealUS src enables track/anatomy/canonical overlays on the twin.
-export PYTHONPATH="${REALUS_PROJECT_ROOT}/src:${RM75_CONTROL_ROOT}:${RM_API2_PYTHON}:${PYTHONPATH:-}"
+# Repo root is required for realus_clock; src enables track/anatomy overlays.
+export PYTHONPATH="${REALUS_PROJECT_ROOT}:${REALUS_PROJECT_ROOT}/src:${RM75_CONTROL_ROOT}:${RM_API2_PYTHON}:${PYTHONPATH:-}"
 
 echo "viewer env: $(which python)  (genesis / Among_US)"
 echo "RM75_CONTROL_ROOT=${RM75_CONTROL_ROOT}"

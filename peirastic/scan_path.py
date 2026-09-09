@@ -20,7 +20,10 @@ SCAN_ORDER = tuple((shape, direction) for direction in ("DtP", "PtD") for shape 
 SCAN_FORCE_AXES = [0.0, 0.0, 1.0, 0.0, 1.0, 0.0]
 TILT_PROFILE = dict(mass=0.051, damping=0.22, coulomb_nm=0.025,
                     vmax_rad_s=0.28, a_max=3.0)
-PEAK_RANGE_M = (0.013, 0.020)
+PEAK_RANGE_M = (0.010, 0.015)
+# Stored amplitude is pre-normalization. New C/S peaks use PEAK_RANGE_M;
+# old 20 mm specs and the legacy L placeholder (0.02) still load.
+AMPLITUDE_LOAD_MAX_M = 0.020
 
 
 def force_profile(name="icra"):
@@ -143,7 +146,7 @@ class ForearmReference:
                 or not 0 < self.speed <= 0.02 or self.ramp != 0.4
                 # The coefficient factor is in [0.925, 1.075]. The stored
                 # amplitude is pre-normalization; old 20 mm specs still load.
-                or not PEAK_RANGE_M[0]/1.075 <= self.amplitude <= PEAK_RANGE_M[1]/0.925
+                or not PEAK_RANGE_M[0]/1.075 <= self.amplitude <= AMPLITUDE_LOAD_MAX_M/0.925
                 or abs(np.linalg.norm(self.lateral) - 1) > 1e-6
                 or np.abs(self.coefficients).sum() > 1.000001
                 or spec["shape"] not in ("L", "C", "S")

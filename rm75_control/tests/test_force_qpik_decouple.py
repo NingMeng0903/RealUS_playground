@@ -11,7 +11,6 @@ from rm75_control.control.admittance_common.controller import (
     AdmittanceConfig,
     AdmittanceController,
 )
-from rm75_control.control.admittance_common.force_dob import ForceDobConfig
 from rm75_control.control.admittance_common.proactive_force_ff import (
     ProactiveFfConfig,
 )
@@ -34,7 +33,6 @@ def _ctrl() -> AdmittanceController:
         var_damping_enabled=False,
     )
     cfg.proactive_ff = ProactiveFfConfig(enabled=False)
-    cfg.force_dob = ForceDobConfig(enabled=False)
     cfg.adaptive_ke.enabled = False
     if hasattr(cfg, "force_barrier"):
         cfg.force_barrier.enabled = False

@@ -47,7 +47,7 @@ git push -u origin main
 cd /media/camp/EXT_DRIVE/RealUS_playground
 git status
 git add .
-git commit -m "力控制修了一下，加了单轴旋，有bug,奇怪限制位置"
+git commit -m "大修正备份"
 git push origin main
 
 

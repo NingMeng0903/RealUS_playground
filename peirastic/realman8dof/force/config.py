@@ -10,6 +10,7 @@ import yaml
 from rm75_control.control.admittance_common.controller import (
     AdmittanceConfig,
     AdmittanceController,
+    _reject_retired_mechanisms,
 )
 from peirastic.configs import DEFAULT_FORCE_YAML
 
@@ -78,6 +79,7 @@ def apply_force_payload(raw: dict, payload: dict | None) -> dict:
 
     out = copy.deepcopy(raw)
     pay = dict(payload or {})
+    _reject_retired_mechanisms(pay, pay)
     if pay.get("desired_z") is not None:
         out.setdefault("force", {})["desired_z_n"] = float(pay["desired_z"])
     if pay.get("desired_force") is not None:

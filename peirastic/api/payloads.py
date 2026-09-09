@@ -103,8 +103,11 @@ class TrackCartesianPayload:
     speed_m_s: float | None = None
     soft_start: bool | None = None
     ramp_s: float | None = None
+    stop_ramp_s: float | None = None
+    origin_pose: list[float] | None = None
     amplitude_x_m: float | None = None
     amplitude_y_m: float | None = None
+    amplitude_z_m: float | None = None
     rot_amp_rad: list[float] | float | None = None
     rot_amp_deg: list[float] | float | None = None
     period_s: float | None = None
@@ -124,8 +127,11 @@ class TrackCartesianPayload:
                 "speed_m_s": self.speed_m_s,
                 "soft_start": self.soft_start,
                 "ramp_s": self.ramp_s,
+                "stop_ramp_s": self.stop_ramp_s,
+                "origin_pose": self.origin_pose,
                 "amplitude_x_m": self.amplitude_x_m,
                 "amplitude_y_m": self.amplitude_y_m,
+                "amplitude_z_m": self.amplitude_z_m,
                 "rot_amp_rad": self.rot_amp_rad,
                 "rot_amp_deg": self.rot_amp_deg,
                 "period_s": self.period_s,

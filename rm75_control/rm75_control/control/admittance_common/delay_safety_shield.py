@@ -1,6 +1,6 @@
 """Delay-aware normal-port safety/energy shield.
 
-Nominal feel is ``u_nom`` (low-M/D admittance + optional CDYOB).  This
+Nominal feel is ``u_nom`` from the force admittance. This
 module only certifies a predicted force upper bound and a measured-port
 energy lower bound.  It does not claim whole-robot passivity, zero
 overshoot, or a theorem until the plant set, ``K_ub``, and the terminal

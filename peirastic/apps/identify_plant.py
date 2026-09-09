@@ -22,8 +22,8 @@ every event reaches T, jerk-state covering passes, and
 the terminal box proof and backup-table state are complete.
 
 Does not enable force mode.  Bidirectional_flow stays observe/off.
-``--analyze-tn`` fits Γ_d + min-phase T_n from ``vel_ff_vz → vz_achieved_tool``.
-``--replay-cdyob`` shadows the observer on an existing hybrid CSV.
+``--analyze-tn`` fits a first-order-plus-dead-time plant model from
+``vel_ff_vz → vz_achieved_tool`` and emits it under ``safety_shield.plant``.
 """
 
 from __future__ import annotations
@@ -1996,9 +1996,9 @@ def analyze_tn(
 ) -> int:
     """Fit a shadow-only Γ_d + T_n candidate on tool-Z step logs.
 
-    Step validation does not certify phase in the intended Q band.  Active
-    operation still requires PRBS/multisine (or an equivalent FRF experiment)
-    and leaves ``active_model_validated`` false.
+    Step validation does not certify phase in the intended Q band.  The emitted
+    plant block is an estimate; active operation still requires PRBS/multisine
+    (or an equivalent FRF experiment) for independent validation.
     """
     t, u, y = _load_tool_z_csv(path)
     tu, uu, yy, dt = _resample_uniform(t, u, y)
@@ -2084,22 +2084,18 @@ def analyze_tn(
     )
     t0_s = delay * dt
     yaml_block = (
-        "hybrid_motion:\n"
-        "  cdyob:\n"
-        "    mode: shadow\n"
+        "safety_shield:\n"
+        "  plant:\n"
+        "    model: fopdt\n"
         f"    t0_s: {t0_s:.4f}\n"
         f"    tp_s: {tp:.4f}\n"
-        "    omega_q_hz: 0.75\n"
-        "    pn_m: 0.0\n"
-        "    v_corr_max_m_s: 0.003\n"
-        "    blend_s: 0.30\n"
-        "    active_press_max_m_s: 0.010\n"
-        "    active_retract_max_m_s: 0.010\n"
-        "    active_q_max_hz: 1.0\n"
-        "    active_force_ratio: 0.90\n"
-        "    active_settle_speed_m_s: 0.003\n"
-        "    active_settle_hold_s: 0.20\n"
-        "    active_model_validated: false\n"
+        f"    gain: {gain:.6f}\n"
+        f"    sample_dt_s: {dt:.6f}\n"
+        f"    delay_steps: {int(delay)}\n"
+        f"    train_rmse_m_s: {train_rmse:.8f}\n"
+        f"    validation_rmse_m_s: {val_rmse:.8f}\n"
+        f"    min_phase: true\n"
+        f"    second_order_candidate: {str(bool(choose_second)).lower()}\n"
     )
     print("[ID-TN] yaml:\n" + yaml_block, flush=True)
     if write_yaml is not None:
@@ -2115,189 +2111,15 @@ def analyze_tn(
         print(
             "[ID-TN] ACTIVE BLOCKED: one broadband/chirp record is not an "
             "independent validation.  Repeat it in a separate log and compare "
-            "the target-Q-band FRF before active_model_validated=true.",
+            "the target-Q-band FRF before using this estimate for active control.",
             flush=True,
         )
     else:
         print(
             "[ID-TN] ACTIVE BLOCKED: stop/step data do not bound 1–3 Hz phase. "
-            "Collect PRBS/multisine before setting active_model_validated=true.",
+            "Collect PRBS/multisine before using this estimate for active control.",
             flush=True,
         )
-    return 0
-
-
-def _col_or_nan(row: dict[str, str], *keys: str) -> float:
-    for key in keys:
-        raw = row.get(key)
-        if raw in (None, ""):
-            continue
-        try:
-            value = float(raw)
-        except (TypeError, ValueError):
-            continue
-        if math.isfinite(value):
-            return value
-    return float("nan")
-
-
-def replay_cdyob(path: Path) -> int:
-    """Shadow the paper CDYOB on a recorded hybrid CSV.  Not a closed-loop claim."""
-    from rm75_control.control.admittance_common.cdyob import (
-        CdyobConfig,
-        CombinedDynamicsYob,
-    )
-
-    with path.open(newline="") as f:
-        rows = list(csv.DictReader(f))
-    if len(rows) < 20:
-        print(f"[CDYOB-REPLAY] too few rows in {path}", flush=True)
-        return 1
-    cfg = CdyobConfig(
-        mode="shadow",
-        omega_q_hz=0.75,
-        t0_s=0.050,
-        tp_s=0.026,
-        v_corr_max_m_s=0.003,
-        blend_s=0.30,
-    )
-    yob = CombinedDynamicsYob(cfg)
-    dt_med = 0.005
-    t = _finite_col(rows, "t_wall_s")
-    if np.isfinite(t).sum() > 4:
-        dts = np.diff(t[np.isfinite(t)])
-        dts = dts[(dts > 1e-4) & (dts < 0.05)]
-        if dts.size:
-            dt_med = float(np.median(dts))
-    corrs: list[float] = []
-    unclip: list[float] = []
-    v_r_seen: list[float] = []
-    dob_seen: list[float] = []
-    sat = 0
-    contact_n = 0
-    for i, row in enumerate(rows):
-        dt = _col_or_nan(row, "dt_actual_s")
-        if not math.isfinite(dt) or dt <= 0.0:
-            dt = dt_med
-        v_nom = _col_or_nan(row, "v_force_z", "u_nom_raw", "vel_ff_vz")
-        v_meas = _col_or_nan(row, "vz_achieved_tool")
-        force = _col_or_nan(row, "fz")
-        if not math.isfinite(v_nom):
-            v_nom = 0.0
-        if not math.isfinite(force):
-            force = 0.0
-        # Logged fz is tool-Z (press-negative on this stack).  Observer uses
-        # press-positive force, same as controller.force_normal_filtered.
-        force_n = -force if math.isfinite(force) else 0.0
-        v_meas_n = (
-            None if not math.isfinite(v_meas) else float(v_meas)
-        )
-        yob.update(
-            float(v_nom),
-            v_meas_m_s=v_meas_n,
-            force_n=force_n,
-            dt_s=float(dt),
-            mass_z=1.0,
-            damping_z=40.0,
-            apply_scale=0.0,
-        )
-        sent = _col_or_nan(
-            row, "u_sent", "u_nom_capped", "vel_ff_vz", "v_force_z"
-        )
-        yob.commit_sent(
-            float(sent) if math.isfinite(sent) else float(v_nom),
-            dt_s=float(dt),
-        )
-        tel = yob.telemetry
-        state = str(row.get("physical_contact_state") or "")
-        in_contact = state in (
-            "contact",
-            "confirmed",
-            "held",
-            "stable",
-        ) or str(row.get("contact_present") or "0") in ("1", "true", "True")
-        if in_contact or not any(
-            str(row.get(k) or "").strip() for k in ("physical_contact_state",)
-        ):
-            unclip.append(float(tel.pert_unclipped))
-            corrs.append(float(tel.pert_clipped))
-            sat += int(bool(tel.saturated))
-            v_r = _col_or_nan(row, "v_r_z")
-            dob = _col_or_nan(row, "u_dob_z")
-            if math.isfinite(v_r):
-                v_r_seen.append(v_r)
-            if math.isfinite(dob):
-                dob_seen.append(dob)
-        if in_contact:
-            contact_n += 1
-    arr = np.asarray(unclip, dtype=float)
-    clip = np.asarray(corrs, dtype=float)
-    peak = float(np.max(np.abs(arr))) if arr.size else 0.0
-    p95 = float(np.percentile(np.abs(arr), 95)) if arr.size else 0.0
-    # 2.73 Hz tone in the unclipped correction (offline, open-loop).
-    tone = float("nan")
-    if arr.size > 64:
-        freq = np.fft.rfftfreq(arr.size, dt_med)
-        spec = np.abs(np.fft.rfft(arr - np.mean(arr))) ** 2
-        idx = int(np.argmin(np.abs(freq - 2.73)))
-        tone = float(spec[idx]) if spec.size else float("nan")
-    v_r_p95 = (
-        float(np.percentile(np.abs(np.asarray(v_r_seen)), 95))
-        if v_r_seen
-        else 0.0
-    )
-    dob_p95 = (
-        float(np.percentile(np.abs(np.asarray(dob_seen)), 95))
-        if dob_seen
-        else 0.0
-    )
-    baseline_known = bool(v_r_seen) and bool(dob_seen)
-    baseline_compatible = (
-        baseline_known and v_r_p95 < 1e-6 and dob_p95 < 1e-6
-    )
-    runtime_shadow_rows = sum(
-        1
-        for row in rows
-        if str(row.get("cdyob_mode") or "").strip().lower() == "shadow"
-        and math.isfinite(_col_or_nan(row, "cdyob_pert_unclipped"))
-    )
-    print(
-        f"[CDYOB-REPLAY] {path.name}  n={len(rows)} used={arr.size} "
-        f"contact_rows≈{contact_n}  "
-        f"|pert| p95={1e3 * p95:.2f} mm/s  peak={1e3 * peak:.2f} mm/s  "
-        f"clip={sat}/{arr.size}  2.73Hz pwr={tone:.3e}",
-        flush=True,
-    )
-    print(
-        "[CDYOB-REPLAY] A-only baseline="
-        f"{'yes' if baseline_compatible else 'NO' if baseline_known else 'unknown'}  "
-        f"|v_r|p95={1e3 * v_r_p95:.2f} mm/s  |u_dob|p95={dob_p95:.3f} N",
-        flush=True,
-    )
-    print(
-        f"[CDYOB-REPLAY] runtime shadow telemetry rows={runtime_shadow_rows}  "
-        f"contact rows={contact_n}",
-        flush=True,
-    )
-    print(
-        "[CDYOB-REPLAY] open-loop shadow only.  Does not claim closed-loop "
-        "suppression.  polarity check: +force (press) should not produce a "
-        f"sustained +pert (mean={1e3 * float(np.mean(arr)):.2f} mm/s).",
-        flush=True,
-    )
-    if not baseline_known or runtime_shadow_rows == 0:
-        print(
-            "[CDYOB-REPLAY] NOT A SHADOW RUN: controller CDYOB telemetry is "
-            "blank (for example, plain servo_twist rather than hybrid force).",
-            flush=True,
-        )
-    elif not baseline_compatible:
-        print(
-            "[CDYOB-REPLAY] NOT AN ACTIVE PREDICTOR: this log contains v_r/DOB. "
-            "Record A-only off baseline, then A-only CDYOB shadow.",
-            flush=True,
-        )
-    del clip
     return 0
 
 
@@ -2376,13 +2198,7 @@ def main() -> int:
         "--analyze-tn",
         type=str,
         default="",
-        help="fit Γ_d + T_n from vel_ff_vz → vz_achieved_tool",
-    )
-    parser.add_argument(
-        "--replay-cdyob",
-        type=str,
-        default="",
-        help="shadow paper CDYOB on an existing hybrid CSV",
+        help="fit an FOPDT plant from vel_ff_vz → vz_achieved_tool",
     )
     parser.add_argument(
         "--val",
@@ -2542,8 +2358,6 @@ def main() -> int:
             val_path=Path(args.val) if args.val else None,
             write_yaml=Path(args.write_yaml) if args.write_yaml else None,
         )
-    if args.replay_cdyob:
-        return replay_cdyob(Path(args.replay_cdyob))
     if args.analyze_stop:
         elog = Path(args.event_log) if args.event_log else None
         return analyze_stop_reverse(

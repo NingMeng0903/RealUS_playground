@@ -55,7 +55,6 @@ def test_air_seek_uses_first_touch_not_soft_20() -> None:
     cfg.physical_contact.enabled = False
     cfg.proactive_ff = ProactiveFfConfig(enabled=False)
     cfg.adaptive_ke.enabled = False
-    cfg.force_dob.enabled = False
     cfg.force_barrier.v_seek_free_m_s = 0.020
     cfg.press_envelope.soft_approach_m_s = 0.020
     cfg.press_envelope.first_touch_m_s = 0.010
@@ -84,7 +83,6 @@ def test_air_command_is_seek_not_fstar_over_d() -> None:
     cfg.physical_contact.enabled = False
     cfg.proactive_ff = ProactiveFfConfig(enabled=False)
     cfg.adaptive_ke.enabled = False
-    cfg.force_dob.enabled = False
     cfg.force_barrier.v_seek_free_m_s = 0.020
     cfg.press_envelope.soft_approach_m_s = 0.020
     cfg.press_envelope.max_force_axis_m_s = 0.0
@@ -144,8 +142,6 @@ def _first_touch_cfg() -> AdmittanceConfig:
     )
     cfg.proactive_ff = ProactiveFfConfig(enabled=False)
     cfg.adaptive_ke.enabled = False
-    cfg.force_dob.enabled = False
-    cfg.force_corridor.enabled = True
     cfg.safety_shield.mode = "observe"
     cfg.force_barrier.v_seek_free_m_s = 0.010
     cfg.force_barrier.v_underforce_press_m_s = 0.010
@@ -220,53 +216,12 @@ def test_first_touch_does_not_yank_off_inside_force_set() -> None:
     assert float(ctrl.u_sent_z) <= 0.010 + 1e-9
 
 
-def test_overforce_retract_can_reach_eighty() -> None:
-    """63401843: 80 mm/s retract left the pad before Td piled F.
-
-    Press stays in the linear envelope.  F ≥ F* opens u_retract.
-    """
-    cfg = _first_touch_cfg()
-    cfg.safety_shield.u_retract_m_s = 0.080
-    cfg.press_envelope.soft_approach_m_s = 0.020
-    ctrl = AdmittanceController(0.005, cfg)
-    pose = np.zeros(6)
-    f_des = np.array([0.0, 0.0, 2.0, 0.0, 0.0, 0.0])
-    for _ in range(24):
-        ctrl.compute_velocity_command(
-            pose,
-            pose,
-            np.zeros(6),
-            np.array([0.0, 0.0, 1.4, 0.0, 0.0, 0.0]),
-            f_des,
-            v_tcp_z_actual=0.0,
-            dt_actual=0.005,
-        )
-    assert ctrl._use_delay_safe_press() is False
-    cmd = np.zeros(6)
-    for _ in range(20):
-        cmd = ctrl.compute_velocity_command(
-            pose,
-            pose,
-            np.zeros(6),
-            np.array([0.0, 0.0, 3.8, 0.0, 0.0, 0.0]),
-            f_des,
-            v_tcp_z_actual=0.0,
-            dt_actual=0.005,
-        )
-        assert float(ctrl.u_sent_z) >= -0.080 - 1e-9
-        assert float(cmd[2]) >= -0.080 - 1e-9
-    assert float(cmd[2]) < -0.025
-    assert float(ctrl.u_sent_z) < -0.025
-    assert float(ctrl._press_vz_cap()) <= 0.025 + 1e-9
-
-
 def test_tdpa_observe_does_not_relay_on_last_retract() -> None:
     """222808: Fc = Fe − α v with α=400 flipped underforce into retract."""
     cfg = _first_touch_cfg()
     cfg.tdpa.enabled = True
     cfg.tdpa.apply = False
     cfg.tdpa.alpha_max = 400.0
-    cfg.force_corridor.enabled = False
     cfg.force_barrier.enabled = False
     ctrl = AdmittanceController(0.005, cfg)
     pose = np.zeros(6)
@@ -304,7 +259,6 @@ def test_tdpa_apply_adds_damping_and_still_presses() -> None:
     cfg.tdpa.enabled = True
     cfg.tdpa.apply = True
     cfg.tdpa.alpha_max = 400.0
-    cfg.force_corridor.enabled = False
     cfg.force_barrier.enabled = False
     ctrl = AdmittanceController(0.005, cfg)
     pose = np.zeros(6)
@@ -351,8 +305,6 @@ def test_e85_confirmed_contact_overforce_reaches_eighty() -> None:
     )
     cfg.proactive_ff = ProactiveFfConfig(enabled=False)
     cfg.adaptive_ke.enabled = False
-    cfg.force_dob.enabled = False
-    cfg.force_corridor.enabled = False
     cfg.force_barrier.enabled = False
     cfg.tdpa.enabled = False
     cfg.safety_shield.mode = "observe"

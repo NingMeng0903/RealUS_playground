@@ -272,11 +272,8 @@ def test_stable_controller_tracks_moving_surface_at_1n_and_5n_without_bias():
             # have their own regression tests.
             cfg.adaptive_ke.enabled = False
             cfg.var_damping_enabled = False
-            cfg.force_dob.enabled = False
             cfg.tdpa.enabled = False
             cfg.admittance_stiffness_z = 0.0
-            cfg.force_corridor.enabled = False
-            cfg.cdyob.mode = "off"
             # Isolation: do not inherit the production first-touch lock.
             # That envelope is covered by test_r2_air_governor.
             cfg.press_envelope.first_touch_m_s = 0.0

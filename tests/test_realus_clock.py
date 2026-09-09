@@ -140,3 +140,37 @@ def test_control_and_force_publishers_write_matching_headers():
         force.stop_publisher()
         twist.close()
         hub.close()
+
+
+def test_env_viewer_puts_repo_root_on_pythonpath_for_shared_clock():
+    text = (Path(__file__).resolve().parents[1] / "rm75_control" / "env_viewer.sh").read_text()
+    line = next(part for part in text.splitlines() if part.startswith("export PYTHONPATH="))
+    assert "${REALUS_PROJECT_ROOT}:" in line
+    assert "${REALUS_PROJECT_ROOT}/src:" in line
+
+
+def test_twin_script_can_import_clock_without_repo_root_on_pythonpath():
+    root = Path(__file__).resolve().parents[1]
+    env = os.environ.copy()
+    env["PYTHONPATH"] = os.pathsep.join((str(root / "src"), str(root / "rm75_control")))
+    env.pop("REALUS_PROJECT_ROOT", None)
+    env["PYTHONNOUSERSITE"] = "1"
+    script = root / "rm75_control" / "apps" / "joint_admittance_8dof" / "run_with_twin.py"
+    code = (
+        "import pathlib, sys\n"
+        f"script = pathlib.Path({str(script)!r})\n"
+        "ns = {'__file__': str(script)}\n"
+        "exec(compile(script.read_text().split('if __name__')[0], str(script), 'exec'), ns)\n"
+        "from realus_clock import get_clock\n"
+        "print(get_clock().clock_id)\n"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", code],
+        cwd=str(root),
+        env=env,
+        check=True,
+        text=True,
+        capture_output=True,
+        timeout=20,
+    )
+    assert result.stdout.strip()

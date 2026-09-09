@@ -3819,7 +3819,6 @@ class _TickLogger:
            "flow_alpha_would_gate", "flow_edot_aligned",
            "flow_sign_fault", "flow_feedback_stale", "flow_blocked_reason",
            "contact_episode_rearm_event", "contact_episode_release_s",
-           "surface_force_scale", "surface_force_alpha", "surface_xy_error_m",
            "force_barrier_contact_active",
            # Fixed single-shot QPIK telemetry.
            "qpik_backend", "qpik_solver_status", "qpik_solver_iterations",
@@ -3922,33 +3921,12 @@ class _TickLogger:
         ]
         + [f"pad_vcmd_base_{a}" for a in ("vx", "vy", "vz", "wx", "wy", "wz")]
         + [
-            "u_dob_z",
             "v_force_cmd_z",
             "tdpa_e_obs_j",
             "tdpa_alpha",
             "tdpa_clamped",
             "tdpa_passivity_holds",
-            "corridor_applied",
-            "corridor_infeasible",
             "ke_cap_n_m",
-            "cdyob_corr_m_s",
-            "cdyob_mode",
-            "cdyob_qtinv_vm",
-            "cdyob_q_vi",
-            "cdyob_n1_force",
-            "cdyob_n2_velocity",
-            "cdyob_pert_unclipped",
-            "cdyob_pert_clipped",
-            "cdyob_blend",
-            "cdyob_vi",
-            "cdyob_candidate",
-            "cdyob_antiwindup_error",
-            "cdyob_residual",
-            "cdyob_saturated",
-            "cdyob_constrained",
-            "cdyob_linear_equivalent",
-            "cdyob_apply_ready",
-            "cdyob_ready_s",
             "overforce_escape",
             "u_nom_raw",
             "u_nom_capped",
@@ -4301,15 +4279,10 @@ class _TickLogger:
         )
         ctrl_names = (
             "instability_index", "instability_index_raw", "damping_z_eff",
-            "damping_ke_z", "damping_dimeas_z", "v_force_z", "u_dob_z",
+            "damping_ke_z", "damping_dimeas_z", "v_force_z",
             "v_force_cmd_z", "tdpa_e_obs_j", "tdpa_alpha", "tdpa_clamped",
-            "tdpa_passivity_holds", "corridor_applied", "corridor_infeasible",
-            "ke_cap_n_m", "cdyob_corr_m_s", "cdyob_mode", "cdyob_qtinv_vm",
-            "cdyob_q_vi", "cdyob_n1_force", "cdyob_n2_velocity",
-            "cdyob_pert_unclipped", "cdyob_pert_clipped", "cdyob_blend",
-            "cdyob_vi", "cdyob_candidate", "cdyob_residual",
-            "cdyob_saturated", "cdyob_constrained", "cdyob_apply_ready",
-            "cdyob_ready_s", "overforce_escape", "u_nom_raw_z", "u_nom_capped_z",
+            "tdpa_passivity_holds", "ke_cap_n_m", "overforce_escape",
+            "u_nom_raw_z", "u_nom_capped_z",
             "u_shield_hyp_z", "u_sent_z", "lambda_obs", "shield_applied",
             "shield_feasible", "shield_f_ub_n", "shield_e_lb_j", "shield_w_lb_j",
             "shield_rho_v2_w", "shield_n_stop", "shield_tube_violation",
@@ -4331,7 +4304,6 @@ class _TickLogger:
             "force_pred_z", "force_dot_z", "force_barrier_contact_active",
             "contact_phase", "v_air_cmd", "ke_hat", "dob_v", "barrier_cap_floor",
             "contact_episode_rearm_event",
-            "surface_force_scale", "surface_force_alpha", "surface_xy_error_m",
         )
         flow_names = (
             "xp", "vp", "v_aux", "xa", "va", "e", "edot", "fc", "v_track",
@@ -4507,37 +4479,12 @@ class _TickLogger:
         d_ke = getattr(ctrl, "damping_ke_z", float("nan"))
         d_dimeas = getattr(ctrl, "damping_dimeas_z", float("nan"))
         v_fz = getattr(ctrl, "v_force_z", float("nan"))
-        u_dob_z = getattr(ctrl, "u_dob_z", float("nan"))
         v_force_cmd_z = getattr(ctrl, "v_force_cmd_z", float("nan"))
         tdpa_e_obs_j = getattr(ctrl, "tdpa_e_obs_j", float("nan"))
         tdpa_alpha = getattr(ctrl, "tdpa_alpha", float("nan"))
         tdpa_clamped = getattr(ctrl, "tdpa_clamped", False)
         tdpa_passivity_holds = getattr(ctrl, "tdpa_passivity_holds", True)
-        corridor_applied = getattr(ctrl, "corridor_applied", False)
-        corridor_infeasible = getattr(ctrl, "corridor_infeasible", False)
         ke_cap_n_m = getattr(ctrl, "ke_cap_n_m", float("nan"))
-        cdyob_corr_m_s = getattr(ctrl, "cdyob_corr_m_s", float("nan"))
-        cdyob_mode = getattr(ctrl, "cdyob_mode", "")
-        cdyob_qtinv_vm = getattr(ctrl, "cdyob_qtinv_vm", float("nan"))
-        cdyob_q_vi = getattr(ctrl, "cdyob_q_vi", float("nan"))
-        cdyob_n1_force = getattr(ctrl, "cdyob_n1_force", float("nan"))
-        cdyob_n2_velocity = getattr(ctrl, "cdyob_n2_velocity", float("nan"))
-        cdyob_pert_unclipped = getattr(ctrl, "cdyob_pert_unclipped", float("nan"))
-        cdyob_pert_clipped = getattr(ctrl, "cdyob_pert_clipped", float("nan"))
-        cdyob_blend = getattr(ctrl, "cdyob_blend", float("nan"))
-        cdyob_vi = getattr(ctrl, "cdyob_vi", float("nan"))
-        cdyob_candidate = getattr(ctrl, "cdyob_candidate", float("nan"))
-        cdyob_antiwindup_error = getattr(
-            ctrl, "cdyob_antiwindup_error", float("nan")
-        )
-        cdyob_residual = getattr(ctrl, "cdyob_residual", float("nan"))
-        cdyob_saturated = getattr(ctrl, "cdyob_saturated", False)
-        cdyob_constrained = getattr(ctrl, "cdyob_constrained", False)
-        cdyob_linear_equivalent = getattr(
-            ctrl, "cdyob_linear_equivalent", False
-        )
-        cdyob_apply_ready = getattr(ctrl, "cdyob_apply_ready", False)
-        cdyob_ready_s = getattr(ctrl, "cdyob_ready_s", float("nan"))
         overforce_escape = getattr(ctrl, "overforce_escape", False)
         u_nom_raw = getattr(ctrl, "u_nom_raw_z", float("nan"))
         u_nom_capped = getattr(ctrl, "u_nom_capped_z", float("nan"))
@@ -4674,9 +4621,6 @@ class _TickLogger:
         episode_release_s = getattr(
             ctrl, "contact_episode_release_s", float("nan")
         )
-        surface_force_scale = getattr(ctrl, "surface_force_scale", float("nan"))
-        surface_force_alpha = getattr(ctrl, "surface_force_alpha", float("nan"))
-        surface_xy_error_m = getattr(ctrl, "surface_xy_error_m", float("nan"))
         raw_comp = (
             np.asarray(f_ext_raw, dtype=float)
             if f_ext_raw is not None
@@ -5092,8 +5036,7 @@ class _TickLogger:
                f"{float(flow_edot_aligned):.8f}",
                int(bool(flow_sign_fault)), int(bool(flow_stale)),
                str(flow_blocked), int(bool(episode_rearm)),
-               f"{episode_release_s:.6f}", f"{surface_force_scale:.6f}",
-               f"{surface_force_alpha:.6f}", f"{surface_xy_error_m:.8f}",
+               f"{episode_release_s:.6f}",
                int(bool(force_barrier_contact_active)),
                str(step.qp_backend), str(step.qp_solver_status),
                int(step.qp_solver_iterations),
@@ -5395,7 +5338,6 @@ class _TickLogger:
                *_fmt6(getattr(step, "feedback_twist", None)),
                *(f"{float(v):.9e}" for v in comfort),
                *pad_fields,
-               f"{float(u_dob_z):.6f}" if np.isfinite(float(u_dob_z)) else "",
                (
                    f"{float(v_force_cmd_z):.6f}"
                    if np.isfinite(float(v_force_cmd_z))
@@ -5413,47 +5355,7 @@ class _TickLogger:
                ),
                int(bool(tdpa_clamped)),
                int(bool(tdpa_passivity_holds)),
-               int(bool(corridor_applied)),
-               int(bool(corridor_infeasible)),
                f"{float(ke_cap_n_m):.4f}" if np.isfinite(float(ke_cap_n_m)) else "",
-               (
-                   f"{float(cdyob_corr_m_s):.6f}"
-                   if np.isfinite(float(cdyob_corr_m_s))
-                   else ""
-               ),
-               str(cdyob_mode or ""),
-               f"{float(cdyob_qtinv_vm):.6f}" if np.isfinite(float(cdyob_qtinv_vm)) else "",
-               f"{float(cdyob_q_vi):.6f}" if np.isfinite(float(cdyob_q_vi)) else "",
-               f"{float(cdyob_n1_force):.6f}" if np.isfinite(float(cdyob_n1_force)) else "",
-               f"{float(cdyob_n2_velocity):.6f}" if np.isfinite(float(cdyob_n2_velocity)) else "",
-               (
-                   f"{float(cdyob_pert_unclipped):.6f}"
-                   if np.isfinite(float(cdyob_pert_unclipped))
-                   else ""
-               ),
-               (
-                   f"{float(cdyob_pert_clipped):.6f}"
-                   if np.isfinite(float(cdyob_pert_clipped))
-                   else ""
-               ),
-               f"{float(cdyob_blend):.4f}" if np.isfinite(float(cdyob_blend)) else "",
-               f"{float(cdyob_vi):.6f}" if np.isfinite(float(cdyob_vi)) else "",
-               (
-                   f"{float(cdyob_candidate):.6f}"
-                   if np.isfinite(float(cdyob_candidate))
-                   else ""
-               ),
-               (
-                   f"{float(cdyob_antiwindup_error):.6f}"
-                   if np.isfinite(float(cdyob_antiwindup_error))
-                   else ""
-               ),
-               f"{float(cdyob_residual):.6f}" if np.isfinite(float(cdyob_residual)) else "",
-               int(bool(cdyob_saturated)),
-               int(bool(cdyob_constrained)),
-               int(bool(cdyob_linear_equivalent)),
-               int(bool(cdyob_apply_ready)),
-               f"{float(cdyob_ready_s):.4f}" if np.isfinite(float(cdyob_ready_s)) else "",
                int(bool(overforce_escape)),
                f"{float(u_nom_raw):.6f}" if np.isfinite(float(u_nom_raw)) else "",
                f"{float(u_nom_capped):.6f}" if np.isfinite(float(u_nom_capped)) else "",
