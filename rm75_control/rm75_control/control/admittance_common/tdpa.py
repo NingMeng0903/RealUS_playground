@@ -119,6 +119,8 @@ class TimeDomainPassivityObserver:
         dt_s: float,
         *,
         in_contact: bool = False,
+        measurement_fresh: bool = True,
+        source_dt_s: float | None = None,
     ) -> None:
         """Accumulate F_meas × v_cmd on this tick; leak only E>0.
 
@@ -132,8 +134,8 @@ class TimeDomainPassivityObserver:
         f = float(f_meas_n)
         gate = max(float(self.cfg.v_bias_gate_m_s), 0.0)
         tau_b = max(float(self.cfg.bias_lpf_s), 1e-3)
-        if dt > 0.0 and abs(v) <= gate and not in_contact:
-            alpha_b = 1.0 - math.exp(-dt / tau_b)
+        if measurement_fresh and dt > 0.0 and abs(v) <= gate and not in_contact:
+            alpha_b = 1.0 - math.exp(-(dt if source_dt_s is None else source_dt_s) / tau_b)
             self.f_bias_n += alpha_b * (f - self.f_bias_n)
         fe = f - float(self.f_bias_n)
         self.f_comp_n = fe

@@ -1,0 +1,19 @@
+{
+  "mode": "active",
+  "configuration_valid": true,
+  "command_authority": "outer_qp_original_ik",
+  "calibration_status": "declared",
+  "missing_active_calibration": [],
+  "physical_port_assurance": "unverified",
+  "hardware_connected": false,
+  "command_energy_budget_enabled": false,
+  "allocation_policy": "differential_repair_v8",
+  "force_limit_assurance": "measured_policy_not_prediction",
+  "required_capabilities": [
+    "contact_qp.active_v1",
+    "contact_qp.source_timebase_bilinear_v1",
+    "contact_qp.differential_repair_v8_r2"
+  ],
+  "config_path": "peirastic/config/contact_qp/active_probe50_v8.yaml",
+  "revision": "v8r2_bounded_episode"
+}

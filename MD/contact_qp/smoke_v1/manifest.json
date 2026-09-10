@@ -1,0 +1,178 @@
+{
+  "schema_version": 1,
+  "algorithm": "contact_qp_synthetic_v1",
+  "plant": {
+    "schema_version": 1,
+    "dt_s": 0.005,
+    "half_length_m": 0.025,
+    "elements": 81,
+    "stiffness_n_m": 800.0,
+    "damping_n_s_m": 8.0,
+    "friction": 0.18,
+    "rocking_friction_nm": 0.004,
+    "actuator_tau_s": 0.012,
+    "actuator_delay_s": 0.025,
+    "path_length_m": 0.06,
+    "scan_speed_m_s": 0.02,
+    "warmup_s": 1.5,
+    "image_period_s": 0.04,
+    "image_delay_s": 0.152,
+    "feature_processing_delay_s": 0.006,
+    "image_width": 32,
+    "image_height": 48,
+    "coupling_depth_m": 0.00012,
+    "force_noise_n": 0.015,
+    "torque_noise_nm": 0.00015
+  },
+  "features": {
+    "algorithm_version": "randomwalk_thesis_v1",
+    "width": 32,
+    "height": 48,
+    "attenuation": 2.0,
+    "contrast": 90.0,
+    "lateral_penalty": 0.03,
+    "min_weight": 1e-10,
+    "near_depth": [
+      0.04,
+      0.22
+    ],
+    "lateral_windows": [
+      [
+        0.04,
+        0.34
+      ],
+      [
+        0.34,
+        0.66
+      ],
+      [
+        0.66,
+        0.96
+      ]
+    ],
+    "effective_delay_s": 0.152,
+    "calibration_version": "synthetic_v1",
+    "image_x_sign": 1
+  },
+  "qp": {
+    "schema_version": 1,
+    "force_target_n": 4.0,
+    "force_sign_band_n": 0.1,
+    "aperture_budget_m_s": 0.00075,
+    "c_min": 0.5,
+    "quality_policy_version": "synthetic_quality_policy_v1_unverified_hardware",
+    "repair_speed_m_s": 0.002,
+    "keep_speed_m_s": 0.004,
+    "max_image_age_s": 0.3,
+    "max_step_s": 0.01,
+    "certificate_horizon_s": 0.01,
+    "normal_scale_m_s": 0.002,
+    "angular_scale_rad_s": 0.1,
+    "slack_scale_m_s": 0.002,
+    "normal_weight": 1.0,
+    "angular_weight": 1.0,
+    "progress_weight": 1.0,
+    "slack_weight": 10.0,
+    "aperture_cost_weight": 1.0,
+    "max_velocity": [
+      0.04,
+      0.04,
+      0.01,
+      0.6,
+      0.28,
+      0.6
+    ],
+    "max_acceleration": [
+      1.0,
+      1.0,
+      0.8,
+      2.0,
+      3.0,
+      2.0
+    ],
+    "angle_limit_rad": 0.35,
+    "lateral_windows": [
+      [
+        0.04,
+        0.34
+      ],
+      [
+        0.34,
+        0.66
+      ],
+      [
+        0.66,
+        0.96
+      ]
+    ],
+    "enable_visual": true,
+    "enable_aperture": true,
+    "enable_force_priority": true,
+    "enable_consistency": false,
+    "enable_progress_loss": true,
+    "compute_interval_diagnostics": false,
+    "subspace_tolerance": [
+      1e-05,
+      1e-05,
+      1e-05,
+      0.0001,
+      0.0001,
+      0.0001
+    ],
+    "solver_tolerance": 1e-09,
+    "feasibility_tolerance": 1e-08,
+    "max_iterations": 200
+  },
+  "response": {
+    "displacement_min_m": 1e-05,
+    "quality_change_min": 0.005,
+    "max_interval_s": 0.4,
+    "max_planar_travel_m": 0.004,
+    "update_fraction": 0.2,
+    "gamma_floor": 0.1
+  },
+  "nominal_payload": {
+    "hybrid_motion": {
+      "torque_tilt": {
+        "mass": 0.051,
+        "damping": 0.22,
+        "coulomb_nm": 0.025,
+        "vmax_rad_s": 0.28,
+        "a_max": 3.0
+      }
+    },
+    "force_axes": [
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      1.0,
+      0.0
+    ],
+    "control_frame": "tool",
+    "desired_z": 4.0,
+    "max_vz_tool_m_s": 0.01,
+    "v_seek_free_m_s": 0.01
+  },
+  "hashes": {
+    "MD/contact_qp/acceptance_v1.json": "cfa260774740d457f827ff238a904428b79ceab5215a33b3ba5aeee23e09fa47",
+    "peirastic/apps/contact_qp_experiment.py": "d596df573f1fec7fb95dd6eb61d35e393cb09453018e155ab1effc64ef2431ab",
+    "peirastic/configs/force.yaml": "e14199951a84f9693228b2c2b627422fda3db9148700ed69e2f4e4153655ecb3",
+    "peirastic/contact_qp/__init__.py": "7d2834ba59ec7671faca1e7f9fa62a7a228ed4c91fd1267fc4aa1f72530131e7",
+    "peirastic/contact_qp/evaluation.py": "280cceda8ce921d68aaa7e30973cdf1804755e6d5ed0cc161a0e6b642cc3eff5",
+    "peirastic/contact_qp/features.py": "697d3b10c0813e28068bef93747c151a2226545002ca3313193f0bd154dbe46b",
+    "peirastic/contact_qp/geometry.py": "8c0311f6320401cb0e19e790252bf732a53ee3cfb4b89a6daa7e3a44800181f7",
+    "peirastic/contact_qp/history.py": "30bb6c58b53f8693c611bdc94ece253e6e54fb20bf86489316c18d6006dcfaec",
+    "peirastic/contact_qp/plant.py": "ba1a02b90665308dfdbf7ef4b6bec1237951a3491398c3fd1c2804978eca71f2",
+    "peirastic/contact_qp/qp.py": "7bed362a6c61f68646f4790a859fdf50f291acd454f11ad8edaea2d7c3e38926",
+    "peirastic/contact_qp/types.py": "c672e771de6bf53855783af9cda6312d0ef8a3e9dd6f2d2c0156f60a68a7b0ac",
+    "peirastic/realman8dof/force/contact_nominal.py": "d9605c7274c1c433950a1f1a51bbc586d45bbe33a18faaccf41701ca54e64c46",
+    "peirastic/realman8dof/force/legacy.py": "27b21bf0b24a6f97c840fb5b2a4ef148f1f93feca451d031e98cc98fcbd939d8",
+    "peirastic/realman8dof/force/nominal_transaction.py": "39afa71b72537608ba12250d8b6cd1997c0b2fbc9fdd85edf79817459b9a2ed8",
+    "peirastic/realman8dof/force/torque_tilt.py": "ca10263140c605f2a3d7af37c55a231a77eef72fee72fa0e92db41efc11c2a5c",
+    "peirastic/scan_path.py": "91b01456da528644a0286308f9fd8e085225aad17553982063b33aaa2feb407c",
+    "rm75_control/rm75_control/control/admittance_common/controller.py": "047a084e27cfda3024b5d73a6f8d041eb809b639876d193c4c97695ea4090a3f"
+  },
+  "hardware_geometry_verified": false,
+  "hardware_energy_certified": false
+}

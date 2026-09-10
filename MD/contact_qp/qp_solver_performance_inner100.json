@@ -1,0 +1,30 @@
+{
+  "inner_iterations": 100,
+  "image_computation_included": false,
+  "interval_diagnostics_enabled": false,
+  "mechanical_row_counts": {
+    "0": {
+      "ticks": 4000,
+      "warmup_ticks": 10,
+      "cold_first_ms": 3.546469146385789,
+      "median_ms": 0.41193352080881596,
+      "p95_ms": 0.4598107887431979,
+      "p99_ms": 0.6756311003118752,
+      "maximum_ms": 1.3813008554279804,
+      "over_5ms": 0,
+      "failures": 0
+    },
+    "96": {
+      "ticks": 4000,
+      "warmup_ticks": 10,
+      "cold_first_ms": 0.8431051392108202,
+      "median_ms": 0.5596984410658479,
+      "p95_ms": 0.6032434408552945,
+      "p99_ms": 0.6494287145324051,
+      "maximum_ms": 1.2078550644218922,
+      "over_5ms": 0,
+      "failures": 0
+    }
+  },
+  "note": "Captured design shadow input; software timing on shared host, not a hard realtime certificate."
+}

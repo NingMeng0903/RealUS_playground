@@ -1,0 +1,938 @@
+{
+  "scope": "Selected original JPEG frames only. No flip/crop/intensity enhancement. Confidence is unchanged logged config. Gray <20 occupancy is descriptive, not contact truth.",
+  "selection": "Saved contact segment +0.5s, minimum logged left quality with h_ref>0 and frame in saved segment, segment end-0.5s. Same-frame online matches only; no temporal substitution.",
+  "scans": {
+    "RH_Per_C_DtP": {
+      "input_h5": "/media/camp/EXT_DRIVE/ICRA_2027/icra 2027_contact/real_characterization/active_probe50/003/RH_Per_C_DtP.h5",
+      "online_log": "/media/camp/EXT_DRIVE/ICRA_2027/icra 2027_contact/real_characterization/active_probe50/003/attempts/RH_Per_C_DtP/001/contact_qp.jsonl",
+      "config": {
+        "config": {
+          "algorithm_version": "randomwalk_welleweerd2020_v3",
+          "width": 145,
+          "height": 100,
+          "attenuation": 2.0,
+          "contrast": 90.0,
+          "lateral_penalty": 0.03,
+          "min_weight": 1e-10,
+          "camp_weight_epsilon": 1e-05,
+          "near_depth": [
+            0.0,
+            0.22
+          ],
+          "lateral_windows": [
+            [
+              0.04,
+              0.34
+            ],
+            [
+              0.34,
+              0.66
+            ],
+            [
+              0.66,
+              0.96
+            ]
+          ],
+          "effective_delay_s": 0.15196365053143765,
+          "calibration_version": "probe50_center_tcp_user_20260910_v1",
+          "image_x_sign": -1,
+          "low_confidence_threshold": 0.8,
+          "unknown_scanline_range": 1.0
+        },
+        "window_version": "8b51133835031ba9ee2d",
+        "registration_version": "fbe3a5c9d4cb3065966a",
+        "quality_policy_version": "welleweerd_toproi_v3_initial_unverified",
+        "c_min": 0.8,
+        "verified": true
+      },
+      "duration_s": 33.648774815,
+      "selected_frames": [
+        {
+          "selection": "start +0.5s",
+          "frame_index": 2044799,
+          "saved_index": 15,
+          "relative_segment_time_s": 0.500171272,
+          "timestamp_ns": 1789023548865312096,
+          "quality_lcr": [
+            0.7555927739802368,
+            0.9168333522358314,
+            0.9951374992627158
+          ],
+          "full_depth_left_window_dark_fraction_gray_lt20": 0.23345377022855324,
+          "outermost_left_4percent_dark_fraction": 0.2739987285441831,
+          "online_quality_lcr": [
+            0.7555927739802368,
+            0.9168333522358314,
+            0.9951374992627158
+          ],
+          "online_matching_control_samples": 8,
+          "max_sameframe_quality_abs_error": 0.0,
+          "windows": [
+            {
+              "minimum_top_column_confidence": 0.741579940905876,
+              "fraction_columns_below_08": 1.0
+            },
+            {
+              "minimum_top_column_confidence": 0.7811552182886778,
+              "fraction_columns_below_08": 0.08695652173913043
+            },
+            {
+              "minimum_top_column_confidence": 0.9920917273661228,
+              "fraction_columns_below_08": 0.0
+            }
+          ],
+          "feature_window_version": "8b51133835031ba9ee2d",
+          "feature_algorithm": "randomwalk_welleweerd2020_v3",
+          "online_control_ids": [
+            922,
+            923,
+            924,
+            925,
+            926,
+            927,
+            928,
+            929
+          ]
+        },
+        {
+          "selection": "worst online LEFT during scan",
+          "frame_index": 2044808,
+          "saved_index": 24,
+          "relative_segment_time_s": 0.79982805,
+          "timestamp_ns": 1789023549164968874,
+          "quality_lcr": [
+            0.7256676066800656,
+            0.9118758951535362,
+            0.9945648736871545
+          ],
+          "full_depth_left_window_dark_fraction_gray_lt20": 0.23319766878469483,
+          "outermost_left_4percent_dark_fraction": 0.26478067387158294,
+          "online_quality_lcr": [
+            0.7256676066800656,
+            0.9118758951535362,
+            0.9945648736871545
+          ],
+          "online_matching_control_samples": 8,
+          "max_sameframe_quality_abs_error": 0.0,
+          "windows": [
+            {
+              "minimum_top_column_confidence": 0.7126937777365515,
+              "fraction_columns_below_08": 1.0
+            },
+            {
+              "minimum_top_column_confidence": 0.7605582152761808,
+              "fraction_columns_below_08": 0.15217391304347827
+            },
+            {
+              "minimum_top_column_confidence": 0.9887254526798624,
+              "fraction_columns_below_08": 0.0
+            }
+          ],
+          "feature_window_version": "8b51133835031ba9ee2d",
+          "feature_algorithm": "randomwalk_welleweerd2020_v3",
+          "online_control_ids": [
+            984,
+            985,
+            986,
+            987,
+            988,
+            989,
+            990,
+            991
+          ]
+        },
+        {
+          "selection": "end -0.5s",
+          "frame_index": 2045779,
+          "saved_index": 995,
+          "relative_segment_time_s": 33.148833066,
+          "timestamp_ns": 1789023581513973890,
+          "quality_lcr": [
+            0.9933962362591587,
+            0.9940954692714,
+            0.9967253613173362
+          ],
+          "full_depth_left_window_dark_fraction_gray_lt20": 0.04315655412046458,
+          "outermost_left_4percent_dark_fraction": 0.04831532104259377,
+          "online_quality_lcr": null,
+          "online_matching_control_samples": 0,
+          "max_sameframe_quality_abs_error": null,
+          "windows": [
+            {
+              "minimum_top_column_confidence": 0.9882078169800379,
+              "fraction_columns_below_08": 0.0
+            },
+            {
+              "minimum_top_column_confidence": 0.984110204078016,
+              "fraction_columns_below_08": 0.0
+            },
+            {
+              "minimum_top_column_confidence": 0.9910349329621617,
+              "fraction_columns_below_08": 0.0
+            }
+          ],
+          "feature_window_version": "8b51133835031ba9ee2d",
+          "feature_algorithm": "randomwalk_welleweerd2020_v3",
+          "online_control_ids": []
+        }
+      ],
+      "image": "RH_Per_C_DtP.png"
+    },
+    "RH_Per_C_PtD": {
+      "input_h5": "/media/camp/EXT_DRIVE/ICRA_2027/icra 2027_contact/real_characterization/active_probe50/003/RH_Per_C_PtD.h5",
+      "online_log": "/media/camp/EXT_DRIVE/ICRA_2027/icra 2027_contact/real_characterization/active_probe50/003/attempts/RH_Per_C_PtD/001/contact_qp.jsonl",
+      "config": {
+        "config": {
+          "algorithm_version": "randomwalk_welleweerd2020_v3",
+          "width": 145,
+          "height": 100,
+          "attenuation": 2.0,
+          "contrast": 90.0,
+          "lateral_penalty": 0.03,
+          "min_weight": 1e-10,
+          "camp_weight_epsilon": 1e-05,
+          "near_depth": [
+            0.0,
+            0.22
+          ],
+          "lateral_windows": [
+            [
+              0.04,
+              0.34
+            ],
+            [
+              0.34,
+              0.66
+            ],
+            [
+              0.66,
+              0.96
+            ]
+          ],
+          "effective_delay_s": 0.15196365053143765,
+          "calibration_version": "probe50_center_tcp_user_20260910_v1",
+          "image_x_sign": -1,
+          "low_confidence_threshold": 0.8,
+          "unknown_scanline_range": 1.0
+        },
+        "window_version": "8b51133835031ba9ee2d",
+        "registration_version": "fbe3a5c9d4cb3065966a",
+        "quality_policy_version": "welleweerd_toproi_v3_initial_unverified",
+        "c_min": 0.8,
+        "verified": true
+      },
+      "duration_s": 33.974514028,
+      "selected_frames": [
+        {
+          "selection": "start +0.5s",
+          "frame_index": 2049575,
+          "saved_index": 15,
+          "relative_segment_time_s": 0.500266187,
+          "timestamp_ns": 1789023708001024996,
+          "quality_lcr": [
+            0.9940535256366807,
+            0.9939680809361422,
+            0.9966745522447162
+          ],
+          "full_depth_left_window_dark_fraction_gray_lt20": 0.022474632113736726,
+          "outermost_left_4percent_dark_fraction": 0.0050858232676414495,
+          "online_quality_lcr": null,
+          "online_matching_control_samples": 0,
+          "max_sameframe_quality_abs_error": null,
+          "windows": [
+            {
+              "minimum_top_column_confidence": 0.9909849483571229,
+              "fraction_columns_below_08": 0.0
+            },
+            {
+              "minimum_top_column_confidence": 0.9904726761155708,
+              "fraction_columns_below_08": 0.0
+            },
+            {
+              "minimum_top_column_confidence": 0.9919321812085989,
+              "fraction_columns_below_08": 0.0
+            }
+          ],
+          "feature_window_version": "8b51133835031ba9ee2d",
+          "feature_algorithm": "randomwalk_welleweerd2020_v3",
+          "online_control_ids": []
+        },
+        {
+          "selection": "worst online LEFT during scan",
+          "frame_index": 2050214,
+          "saved_index": 654,
+          "relative_segment_time_s": 21.79969914,
+          "timestamp_ns": 1789023729300457949,
+          "quality_lcr": [
+            0.5980245463871586,
+            0.64354060289674,
+            0.9371509057849163
+          ],
+          "full_depth_left_window_dark_fraction_gray_lt20": 0.06346470645237205,
+          "outermost_left_4percent_dark_fraction": 0.004132231404958678,
+          "online_quality_lcr": [
+            0.5980245463871586,
+            0.64354060289674,
+            0.9371509057849163
+          ],
+          "online_matching_control_samples": 9,
+          "max_sameframe_quality_abs_error": 0.0,
+          "windows": [
+            {
+              "minimum_top_column_confidence": 0.5675643794437795,
+              "fraction_columns_below_08": 1.0
+            },
+            {
+              "minimum_top_column_confidence": 0.5886368754984412,
+              "fraction_columns_below_08": 1.0
+            },
+            {
+              "minimum_top_column_confidence": 0.7676413185293914,
+              "fraction_columns_below_08": 0.06818181818181818
+            }
+          ],
+          "feature_window_version": "8b51133835031ba9ee2d",
+          "feature_algorithm": "randomwalk_welleweerd2020_v3",
+          "online_control_ids": [
+            5167,
+            5168,
+            5169,
+            5170,
+            5171,
+            5172,
+            5173,
+            5174,
+            5175
+          ]
+        },
+        {
+          "selection": "end -0.5s",
+          "frame_index": 2050565,
+          "saved_index": 1005,
+          "relative_segment_time_s": 33.476562588,
+          "timestamp_ns": 1789023740977321397,
+          "quality_lcr": [
+            0.9985374703957859,
+            0.998849503531582,
+            0.9989071039788272
+          ],
+          "full_depth_left_window_dark_fraction_gray_lt20": 0.0016888851973365449,
+          "outermost_left_4percent_dark_fraction": 0.0,
+          "online_quality_lcr": [
+            0.9985374703957859,
+            0.998849503531582,
+            0.9989071039788272
+          ],
+          "online_matching_control_samples": 10,
+          "max_sameframe_quality_abs_error": 0.0,
+          "windows": [
+            {
+              "minimum_top_column_confidence": 0.9981507029302683,
+              "fraction_columns_below_08": 0.0
+            },
+            {
+              "minimum_top_column_confidence": 0.9983056293145244,
+              "fraction_columns_below_08": 0.0
+            },
+            {
+              "minimum_top_column_confidence": 0.9984055019838554,
+              "fraction_columns_below_08": 0.0
+            }
+          ],
+          "feature_window_version": "8b51133835031ba9ee2d",
+          "feature_algorithm": "randomwalk_welleweerd2020_v3",
+          "online_control_ids": [
+            7432,
+            7433,
+            7434,
+            7435,
+            7436,
+            7437,
+            7438,
+            7439,
+            7440,
+            7441
+          ]
+        }
+      ],
+      "image": "RH_Per_C_PtD.png"
+    },
+    "RH_Per_L_DtP": {
+      "input_h5": "/media/camp/EXT_DRIVE/ICRA_2027/icra 2027_contact/real_characterization/active_probe50/003/RH_Per_L_DtP.h5",
+      "online_log": "/media/camp/EXT_DRIVE/ICRA_2027/icra 2027_contact/real_characterization/active_probe50/003/attempts/RH_Per_L_DtP/001/contact_qp.jsonl",
+      "config": {
+        "config": {
+          "algorithm_version": "randomwalk_welleweerd2020_v3",
+          "width": 145,
+          "height": 100,
+          "attenuation": 2.0,
+          "contrast": 90.0,
+          "lateral_penalty": 0.03,
+          "min_weight": 1e-10,
+          "camp_weight_epsilon": 1e-05,
+          "near_depth": [
+            0.0,
+            0.22
+          ],
+          "lateral_windows": [
+            [
+              0.04,
+              0.34
+            ],
+            [
+              0.34,
+              0.66
+            ],
+            [
+              0.66,
+              0.96
+            ]
+          ],
+          "effective_delay_s": 0.15196365053143765,
+          "calibration_version": "probe50_center_tcp_user_20260910_v1",
+          "image_x_sign": -1,
+          "low_confidence_threshold": 0.8,
+          "unknown_scanline_range": 1.0
+        },
+        "window_version": "8b51133835031ba9ee2d",
+        "registration_version": "fbe3a5c9d4cb3065966a",
+        "quality_policy_version": "welleweerd_toproi_v3_initial_unverified",
+        "c_min": 0.8,
+        "verified": true
+      },
+      "duration_s": 32.852909027,
+      "selected_frames": [
+        {
+          "selection": "start +0.5s",
+          "frame_index": 2043110,
+          "saved_index": 15,
+          "relative_segment_time_s": 0.501250703,
+          "timestamp_ns": 1789023492580819073,
+          "quality_lcr": [
+            0.7502775402071814,
+            0.9752040313123943,
+            0.9967342573034859
+          ],
+          "full_depth_left_window_dark_fraction_gray_lt20": 0.22249678142780016,
+          "outermost_left_4percent_dark_fraction": 0.2768065268065268,
+          "online_quality_lcr": [
+            0.7502775402071814,
+            0.9752040313123943,
+            0.9967342573034859
+          ],
+          "online_matching_control_samples": 12,
+          "max_sameframe_quality_abs_error": 0.0,
+          "windows": [
+            {
+              "minimum_top_column_confidence": 0.6851166896431864,
+              "fraction_columns_below_08": 0.7954545454545454
+            },
+            {
+              "minimum_top_column_confidence": 0.8927151464192242,
+              "fraction_columns_below_08": 0.0
+            },
+            {
+              "minimum_top_column_confidence": 0.9945593348300334,
+              "fraction_columns_below_08": 0.0
+            }
+          ],
+          "feature_window_version": "8b51133835031ba9ee2d",
+          "feature_algorithm": "randomwalk_welleweerd2020_v3",
+          "online_control_ids": [
+            1643,
+            1644,
+            1645,
+            1646,
+            1647,
+            1648,
+            1649,
+            1650,
+            1651,
+            1652,
+            1653,
+            1654
+          ]
+        },
+        {
+          "selection": "worst online LEFT during scan",
+          "frame_index": 2043251,
+          "saved_index": 156,
+          "relative_segment_time_s": 5.200312528,
+          "timestamp_ns": 1789023497279880898,
+          "quality_lcr": [
+            0.6945591943500525,
+            0.9669087757302705,
+            0.9938597488917251
+          ],
+          "full_depth_left_window_dark_fraction_gray_lt20": 0.17818430997965032,
+          "outermost_left_4percent_dark_fraction": 0.2641979232888324,
+          "online_quality_lcr": [
+            0.6945591943500525,
+            0.9669087757302705,
+            0.9938597488917251
+          ],
+          "online_matching_control_samples": 8,
+          "max_sameframe_quality_abs_error": 0.0,
+          "windows": [
+            {
+              "minimum_top_column_confidence": 0.6152419337773134,
+              "fraction_columns_below_08": 0.8863636363636364
+            },
+            {
+              "minimum_top_column_confidence": 0.8620359456891588,
+              "fraction_columns_below_08": 0.0
+            },
+            {
+              "minimum_top_column_confidence": 0.9914229274908728,
+              "fraction_columns_below_08": 0.0
+            }
+          ],
+          "feature_window_version": "8b51133835031ba9ee2d",
+          "feature_algorithm": "randomwalk_welleweerd2020_v3",
+          "online_control_ids": [
+            2561,
+            2562,
+            2563,
+            2564,
+            2565,
+            2566,
+            2567,
+            2568
+          ]
+        },
+        {
+          "selection": "end -0.5s",
+          "frame_index": 2044066,
+          "saved_index": 971,
+          "relative_segment_time_s": 32.352937172,
+          "timestamp_ns": 1789023524432505542,
+          "quality_lcr": [
+            0.9941673385408495,
+            0.9944142823025117,
+            0.9962165359629702
+          ],
+          "full_depth_left_window_dark_fraction_gray_lt20": 0.04301119924692332,
+          "outermost_left_4percent_dark_fraction": 0.053877940241576605,
+          "online_quality_lcr": [
+            0.9941673385408495,
+            0.9944142823025117,
+            0.9962165359629702
+          ],
+          "online_matching_control_samples": 12,
+          "max_sameframe_quality_abs_error": 0.0,
+          "windows": [
+            {
+              "minimum_top_column_confidence": 0.9901211723934537,
+              "fraction_columns_below_08": 0.0
+            },
+            {
+              "minimum_top_column_confidence": 0.9898788865625733,
+              "fraction_columns_below_08": 0.0
+            },
+            {
+              "minimum_top_column_confidence": 0.9913300316346444,
+              "fraction_columns_below_08": 0.0
+            }
+          ],
+          "feature_window_version": "8b51133835031ba9ee2d",
+          "feature_algorithm": "randomwalk_welleweerd2020_v3",
+          "online_control_ids": [
+            7963,
+            7964,
+            7965,
+            7966,
+            7967,
+            7968,
+            7969,
+            7970,
+            7971,
+            7972,
+            7973,
+            7974
+          ]
+        }
+      ],
+      "image": "RH_Per_L_DtP.png"
+    },
+    "RH_Per_L_PtD": {
+      "input_h5": "/media/camp/EXT_DRIVE/ICRA_2027/icra 2027_contact/real_characterization/active_probe50/003/RH_Per_L_PtD.h5",
+      "online_log": "/media/camp/EXT_DRIVE/ICRA_2027/icra 2027_contact/real_characterization/active_probe50/003/attempts/RH_Per_L_PtD/001/contact_qp.jsonl",
+      "config": {
+        "config": {
+          "algorithm_version": "randomwalk_welleweerd2020_v3",
+          "width": 145,
+          "height": 100,
+          "attenuation": 2.0,
+          "contrast": 90.0,
+          "lateral_penalty": 0.03,
+          "min_weight": 1e-10,
+          "camp_weight_epsilon": 1e-05,
+          "near_depth": [
+            0.0,
+            0.22
+          ],
+          "lateral_windows": [
+            [
+              0.04,
+              0.34
+            ],
+            [
+              0.34,
+              0.66
+            ],
+            [
+              0.66,
+              0.96
+            ]
+          ],
+          "effective_delay_s": 0.15196365053143765,
+          "calibration_version": "probe50_center_tcp_user_20260910_v1",
+          "image_x_sign": -1,
+          "low_confidence_threshold": 0.8,
+          "unknown_scanline_range": 1.0
+        },
+        "window_version": "8b51133835031ba9ee2d",
+        "registration_version": "fbe3a5c9d4cb3065966a",
+        "quality_policy_version": "welleweerd_toproi_v3_initial_unverified",
+        "c_min": 0.8,
+        "verified": true
+      },
+      "duration_s": 35.732658688,
+      "selected_frames": [
+        {
+          "selection": "start +0.5s",
+          "frame_index": 2047970,
+          "saved_index": 15,
+          "relative_segment_time_s": 0.5002694,
+          "timestamp_ns": 1789023654515868238,
+          "quality_lcr": [
+            0.995828869018767,
+            0.9948809282759654,
+            0.9974886634571285
+          ],
+          "full_depth_left_window_dark_fraction_gray_lt20": 0.04220136495147916,
+          "outermost_left_4percent_dark_fraction": 0.05605001059546514,
+          "online_quality_lcr": [
+            0.995828869018767,
+            0.9948809282759654,
+            0.9974886634571285
+          ],
+          "online_matching_control_samples": 13,
+          "max_sameframe_quality_abs_error": 0.0,
+          "windows": [
+            {
+              "minimum_top_column_confidence": 0.994414357007388,
+              "fraction_columns_below_08": 0.0
+            },
+            {
+              "minimum_top_column_confidence": 0.993399521187716,
+              "fraction_columns_below_08": 0.0
+            },
+            {
+              "minimum_top_column_confidence": 0.9961485987523936,
+              "fraction_columns_below_08": 0.0
+            }
+          ],
+          "feature_window_version": "8b51133835031ba9ee2d",
+          "feature_algorithm": "randomwalk_welleweerd2020_v3",
+          "online_control_ids": [
+            1313,
+            1314,
+            1315,
+            1316,
+            1317,
+            1318,
+            1319,
+            1320,
+            1321,
+            1322,
+            1323,
+            1324,
+            1325
+          ]
+        },
+        {
+          "selection": "worst online LEFT during scan",
+          "frame_index": 2048624,
+          "saved_index": 669,
+          "relative_segment_time_s": 22.300374449,
+          "timestamp_ns": 1789023676315973287,
+          "quality_lcr": [
+            0.41557716418166835,
+            0.6363928674467738,
+            0.9796364956361513
+          ],
+          "full_depth_left_window_dark_fraction_gray_lt20": 0.23330841535501198,
+          "outermost_left_4percent_dark_fraction": 0.2830578512396694,
+          "online_quality_lcr": [
+            0.41557716418166835,
+            0.6363928674467738,
+            0.9796364956361513
+          ],
+          "online_matching_control_samples": 11,
+          "max_sameframe_quality_abs_error": 0.0,
+          "windows": [
+            {
+              "minimum_top_column_confidence": 0.390198655085147,
+              "fraction_columns_below_08": 1.0
+            },
+            {
+              "minimum_top_column_confidence": 0.47022369627182525,
+              "fraction_columns_below_08": 0.8695652173913043
+            },
+            {
+              "minimum_top_column_confidence": 0.8951230340398112,
+              "fraction_columns_below_08": 0.0
+            }
+          ],
+          "feature_window_version": "8b51133835031ba9ee2d",
+          "feature_algorithm": "randomwalk_welleweerd2020_v3",
+          "online_control_ids": [
+            5641,
+            5642,
+            5643,
+            5644,
+            5645,
+            5646,
+            5647,
+            5648,
+            5649,
+            5650,
+            5651
+          ]
+        },
+        {
+          "selection": "end -0.5s",
+          "frame_index": 2049012,
+          "saved_index": 1057,
+          "relative_segment_time_s": 35.232900958,
+          "timestamp_ns": 1789023689248499796,
+          "quality_lcr": [
+            0.9324549426647796,
+            0.9943277524375763,
+            0.9978476001068053
+          ],
+          "full_depth_left_window_dark_fraction_gray_lt20": 0.050901892382020295,
+          "outermost_left_4percent_dark_fraction": 0.28236914600550966,
+          "online_quality_lcr": [
+            0.9324549426647796,
+            0.9943277524375763,
+            0.9978476001068053
+          ],
+          "online_matching_control_samples": 10,
+          "max_sameframe_quality_abs_error": 0.0,
+          "windows": [
+            {
+              "minimum_top_column_confidence": 0.8775537826925756,
+              "fraction_columns_below_08": 0.0
+            },
+            {
+              "minimum_top_column_confidence": 0.984445297024249,
+              "fraction_columns_below_08": 0.0
+            },
+            {
+              "minimum_top_column_confidence": 0.9972545917911776,
+              "fraction_columns_below_08": 0.0
+            }
+          ],
+          "feature_window_version": "8b51133835031ba9ee2d",
+          "feature_algorithm": "randomwalk_welleweerd2020_v3",
+          "online_control_ids": [
+            8165,
+            8166,
+            8167,
+            8168,
+            8169,
+            8170,
+            8171,
+            8172,
+            8173,
+            8174
+          ]
+        }
+      ],
+      "image": "RH_Per_L_PtD.png"
+    },
+    "RH_Per_S_DtP": {
+      "input_h5": "/media/camp/EXT_DRIVE/ICRA_2027/icra 2027_contact/real_characterization/active_probe50/003/RH_Per_S_DtP.h5",
+      "online_log": "/media/camp/EXT_DRIVE/ICRA_2027/icra 2027_contact/real_characterization/active_probe50/003/attempts/RH_Per_S_DtP/001/contact_qp.jsonl",
+      "config": {
+        "config": {
+          "algorithm_version": "randomwalk_welleweerd2020_v3",
+          "width": 145,
+          "height": 100,
+          "attenuation": 2.0,
+          "contrast": 90.0,
+          "lateral_penalty": 0.03,
+          "min_weight": 1e-10,
+          "camp_weight_epsilon": 1e-05,
+          "near_depth": [
+            0.0,
+            0.22
+          ],
+          "lateral_windows": [
+            [
+              0.04,
+              0.34
+            ],
+            [
+              0.34,
+              0.66
+            ],
+            [
+              0.66,
+              0.96
+            ]
+          ],
+          "effective_delay_s": 0.15196365053143765,
+          "calibration_version": "probe50_center_tcp_user_20260910_v1",
+          "image_x_sign": -1,
+          "low_confidence_threshold": 0.8,
+          "unknown_scanline_range": 1.0
+        },
+        "window_version": "8b51133835031ba9ee2d",
+        "registration_version": "fbe3a5c9d4cb3065966a",
+        "quality_policy_version": "welleweerd_toproi_v3_initial_unverified",
+        "c_min": 0.8,
+        "verified": true
+      },
+      "duration_s": 34.483913578,
+      "selected_frames": [
+        {
+          "selection": "start +0.5s",
+          "frame_index": 2046484,
+          "saved_index": 15,
+          "relative_segment_time_s": 0.499246305,
+          "timestamp_ns": 1789023605014605245,
+          "quality_lcr": [
+            0.8024461922750684,
+            0.9376923855732897,
+            0.9947763713164651
+          ],
+          "full_depth_left_window_dark_fraction_gray_lt20": 0.23204175145700956,
+          "outermost_left_4percent_dark_fraction": 0.24194744649290104,
+          "online_quality_lcr": null,
+          "online_matching_control_samples": 0,
+          "max_sameframe_quality_abs_error": null,
+          "windows": [
+            {
+              "minimum_top_column_confidence": 0.7787869699516615,
+              "fraction_columns_below_08": 0.5227272727272727
+            },
+            {
+              "minimum_top_column_confidence": 0.8410914946449828,
+              "fraction_columns_below_08": 0.0
+            },
+            {
+              "minimum_top_column_confidence": 0.9925475508838919,
+              "fraction_columns_below_08": 0.0
+            }
+          ],
+          "feature_window_version": "8b51133835031ba9ee2d",
+          "feature_algorithm": "randomwalk_welleweerd2020_v3",
+          "online_control_ids": []
+        },
+        {
+          "selection": "worst online LEFT during scan",
+          "frame_index": 2046656,
+          "saved_index": 187,
+          "relative_segment_time_s": 6.215315393,
+          "timestamp_ns": 1789023610730674333,
+          "quality_lcr": [
+            0.7272428882421722,
+            0.8986911796269239,
+            0.9931633368362381
+          ],
+          "full_depth_left_window_dark_fraction_gray_lt20": 0.19338427675567924,
+          "outermost_left_4percent_dark_fraction": 0.2570989616444162,
+          "online_quality_lcr": [
+            0.7272428882421722,
+            0.8986911796269239,
+            0.9931633368362381
+          ],
+          "online_matching_control_samples": 8,
+          "max_sameframe_quality_abs_error": 0.0,
+          "windows": [
+            {
+              "minimum_top_column_confidence": 0.708667509516539,
+              "fraction_columns_below_08": 1.0
+            },
+            {
+              "minimum_top_column_confidence": 0.7891727947253727,
+              "fraction_columns_below_08": 0.06521739130434782
+            },
+            {
+              "minimum_top_column_confidence": 0.9891635583063788,
+              "fraction_columns_below_08": 0.0
+            }
+          ],
+          "feature_window_version": "8b51133835031ba9ee2d",
+          "feature_algorithm": "randomwalk_welleweerd2020_v3",
+          "online_control_ids": [
+            2681,
+            2682,
+            2683,
+            2684,
+            2685,
+            2686,
+            2687,
+            2688
+          ]
+        },
+        {
+          "selection": "end -0.5s",
+          "frame_index": 2047489,
+          "saved_index": 1020,
+          "relative_segment_time_s": 33.98377718,
+          "timestamp_ns": 1789023638499136120,
+          "quality_lcr": [
+            0.9944633625181241,
+            0.994071202655685,
+            0.9974844603743708
+          ],
+          "full_depth_left_window_dark_fraction_gray_lt20": 0.04126001910378338,
+          "outermost_left_4percent_dark_fraction": 0.051599915236278875,
+          "online_quality_lcr": [
+            0.9944633625181241,
+            0.994071202655685,
+            0.9974844603743708
+          ],
+          "online_matching_control_samples": 13,
+          "max_sameframe_quality_abs_error": 0.0,
+          "windows": [
+            {
+              "minimum_top_column_confidence": 0.9900399832388458,
+              "fraction_columns_below_08": 0.0
+            },
+            {
+              "minimum_top_column_confidence": 0.9893588232696129,
+              "fraction_columns_below_08": 0.0
+            },
+            {
+              "minimum_top_column_confidence": 0.9951914465187646,
+              "fraction_columns_below_08": 0.0
+            }
+          ],
+          "feature_window_version": "8b51133835031ba9ee2d",
+          "feature_algorithm": "randomwalk_welleweerd2020_v3",
+          "online_control_ids": [
+            8133,
+            8134,
+            8135,
+            8136,
+            8137,
+            8138,
+            8139,
+            8140,
+            8141,
+            8142,
+            8143,
+            8144,
+            8145
+          ]
+        }
+      ],
+      "image": "RH_Per_S_DtP.png"
+    }
+  }
+}

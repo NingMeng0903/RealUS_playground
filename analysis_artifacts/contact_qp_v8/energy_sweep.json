@@ -1,0 +1,4934 @@
+{
+  "units": 144,
+  "admitted": 144,
+  "admitted_constraint_violations": 0,
+  "zero_vs_ample_repair_checks": [
+    {
+      "quality": [
+        0.2,
+        0.9,
+        0.9
+      ],
+      "environment_torque_y_nm": -0.2,
+      "requested_direction": 1,
+      "zero_omega": -0.0019769694078259534,
+      "ample_omega": 0.015000000000413261,
+      "zero_alpha": 0.0,
+      "ample_alpha": 0.04937500000612701,
+      "energy_consuming_repair_suppressed": true
+    },
+    {
+      "quality": [
+        0.9,
+        0.9,
+        0.2
+      ],
+      "environment_torque_y_nm": 0.2,
+      "requested_direction": -1,
+      "zero_omega": 0.001976969407845564,
+      "ample_omega": -0.015000000000414064,
+      "zero_alpha": 0.0,
+      "ample_alpha": 0.04937500000613858,
+      "energy_consuming_repair_suppressed": true
+    }
+  ],
+  "assurance": "known synthetic wrench, command model only; no physical certification",
+  "rows": [
+    {
+      "policy": "legacy_v7",
+      "quality": [
+        0.2,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.0,
+      "wrench": [
+        -0.2,
+        -1.0,
+        -4.0,
+        -0.1,
+        -0.2,
+        0.1
+      ],
+      "budget_j": 0.0,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.0,
+        0.0,
+        0.0005666666666701518,
+        0.0,
+        -0.01133333333325625,
+        0.0
+      ],
+      "alpha": 0.0,
+      "margin_work_j": -1.4678579532412252e-16,
+      "admissible": true,
+      "minimum_prefix_j": -1.4678579532412252e-16,
+      "difference_from_energy_off": 0.011333333348380263
+    },
+    {
+      "policy": "legacy_v7",
+      "quality": [
+        0.2,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.0,
+      "wrench": [
+        -0.2,
+        -1.0,
+        -4.0,
+        -0.1,
+        -0.2,
+        0.1
+      ],
+      "budget_j": 1e-06,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.0,
+        0.0,
+        0.000583333333337612,
+        0.0,
+        -0.010666666666572032,
+        0.0
+      ],
+      "alpha": 0.0,
+      "margin_work_j": -1.802079535942469e-16,
+      "admissible": true,
+      "minimum_prefix_j": -1.802079535942469e-16,
+      "difference_from_energy_off": 0.010666666681696045
+    },
+    {
+      "policy": "legacy_v7",
+      "quality": [
+        0.2,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.0,
+      "wrench": [
+        -0.2,
+        -1.0,
+        -4.0,
+        -0.1,
+        -0.2,
+        0.1
+      ],
+      "budget_j": 0.0001,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.0004374999999999999,
+        0.0021874999999999993,
+        0.0008500000000133504,
+        0.004374999999999999,
+        3.264283050957998e-13,
+        -0.0021874999999999993
+      ],
+      "alpha": 0.4374999999999999,
+      "margin_work_j": 6.834374999940657e-05,
+      "admissible": true,
+      "minimum_prefix_j": 6.834374999940658e-05,
+      "difference_from_energy_off": 1.4797585055161833e-11
+    },
+    {
+      "policy": "legacy_v7",
+      "quality": [
+        0.2,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.0,
+      "wrench": [
+        -0.2,
+        -1.0,
+        -4.0,
+        -0.1,
+        -0.2,
+        0.1
+      ],
+      "budget_j": 1.0,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.0004374999999999999,
+        0.0021874999999999993,
+        0.0008500000000133504,
+        0.004374999999999999,
+        3.264283050957998e-13,
+        -0.0021874999999999993
+      ],
+      "alpha": 0.4374999999999999,
+      "margin_work_j": 0.9999683437499993,
+      "admissible": true,
+      "minimum_prefix_j": 0.9999683437499994,
+      "difference_from_energy_off": 1.4797585055161833e-11
+    },
+    {
+      "policy": "legacy_v7",
+      "quality": [
+        0.2,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.0,
+      "wrench": [
+        0.2,
+        -1.0,
+        -4.0,
+        0.1,
+        0.2,
+        -0.1
+      ],
+      "budget_j": 0.0,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.0002507951223837127,
+        0.0012539756119185636,
+        0.0004976980080599403,
+        0.0025079512238371272,
+        0.014092079679811742,
+        -0.0012539756119185636
+      ],
+      "alpha": 0.2507951223837127,
+      "margin_work_j": -7.183198534686103e-16,
+      "admissible": true,
+      "minimum_prefix_j": -7.183198534686103e-16,
+      "difference_from_energy_off": 0.014092079664687729
+    },
+    {
+      "policy": "legacy_v7",
+      "quality": [
+        0.2,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.0,
+      "wrench": [
+        0.2,
+        -1.0,
+        -4.0,
+        0.1,
+        0.2,
+        -0.1
+      ],
+      "budget_j": 1e-06,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.0002579534742316932,
+        0.001289767371158466,
+        0.0005123961279677381,
+        0.002579534742316932,
+        0.0135041548834693,
+        -0.001289767371158466
+      ],
+      "alpha": 0.2579534742316932,
+      "margin_work_j": -7.083981838629238e-16,
+      "admissible": true,
+      "minimum_prefix_j": -7.083982177442417e-16,
+      "difference_from_energy_off": 0.013504154868345287
+    },
+    {
+      "policy": "legacy_v7",
+      "quality": [
+        0.2,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.0,
+      "wrench": [
+        0.2,
+        -1.0,
+        -4.0,
+        0.1,
+        0.2,
+        -0.1
+      ],
+      "budget_j": 0.0001,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.0004374999999999999,
+        0.0021874999999999993,
+        0.0008500000000133504,
+        0.004374999999999999,
+        3.264283050957998e-13,
+        -0.0021874999999999993
+      ],
+      "alpha": 0.4374999999999999,
+      "margin_work_j": 7.578125000005942e-05,
+      "admissible": true,
+      "minimum_prefix_j": 7.578125000005942e-05,
+      "difference_from_energy_off": 1.4797585055161833e-11
+    },
+    {
+      "policy": "legacy_v7",
+      "quality": [
+        0.2,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.0,
+      "wrench": [
+        0.2,
+        -1.0,
+        -4.0,
+        0.1,
+        0.2,
+        -0.1
+      ],
+      "budget_j": 1.0,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.0004374999999999999,
+        0.0021874999999999993,
+        0.0008500000000133504,
+        0.004374999999999999,
+        3.264283050957998e-13,
+        -0.0021874999999999993
+      ],
+      "alpha": 0.4374999999999999,
+      "margin_work_j": 0.9999757812500001,
+      "admissible": true,
+      "minimum_prefix_j": 0.9999757812500001,
+      "difference_from_energy_off": 1.4797585055161833e-11
+    },
+    {
+      "policy": "legacy_v7",
+      "quality": [
+        0.2,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.3,
+      "wrench": [
+        -0.2,
+        -1.0,
+        -4.0,
+        -0.1,
+        -0.2,
+        0.1
+      ],
+      "budget_j": 0.0,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.0,
+        0.0,
+        6.666666667721293e-05,
+        0.0,
+        -0.00133333333310007,
+        0.0
+      ],
+      "alpha": 0.0,
+      "margin_work_j": -4.441886853993882e-16,
+      "admissible": true,
+      "minimum_prefix_j": -4.441886853993882e-16,
+      "difference_from_energy_off": 0.004374999999999999
+    },
+    {
+      "policy": "legacy_v7",
+      "quality": [
+        0.2,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.3,
+      "wrench": [
+        -0.2,
+        -1.0,
+        -4.0,
+        -0.1,
+        -0.2,
+        0.1
+      ],
+      "budget_j": 1e-06,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.0,
+        0.0,
+        8.333333334574154e-05,
+        0.0,
+        -0.0006666666663922212,
+        0.0
+      ],
+      "alpha": 0.0,
+      "margin_work_j": -5.226095706363509e-16,
+      "admissible": true,
+      "minimum_prefix_j": -5.226095875770099e-16,
+      "difference_from_energy_off": 0.004374999999999999
+    },
+    {
+      "policy": "legacy_v7",
+      "quality": [
+        0.2,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.3,
+      "wrench": [
+        -0.2,
+        -1.0,
+        -4.0,
+        -0.1,
+        -0.2,
+        0.1
+      ],
+      "budget_j": 0.0001,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.0004374999999999999,
+        0.0021874999999999993,
+        9.999999999981298e-05,
+        0.004374999999999999,
+        -4.573027823380522e-15,
+        -0.0021874999999999993
+      ],
+      "alpha": 0.4374999999999999,
+      "margin_work_j": 8.334375000000832e-05,
+      "admissible": true,
+      "minimum_prefix_j": 8.334375000000832e-05,
+      "difference_from_energy_off": 3.533277013392809e-20
+    },
+    {
+      "policy": "legacy_v7",
+      "quality": [
+        0.2,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.3,
+      "wrench": [
+        -0.2,
+        -1.0,
+        -4.0,
+        -0.1,
+        -0.2,
+        0.1
+      ],
+      "budget_j": 1.0,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.0004374999999999999,
+        0.0021874999999999993,
+        9.999999999981298e-05,
+        0.004374999999999999,
+        -4.573027823380522e-15,
+        -0.0021874999999999993
+      ],
+      "alpha": 0.4374999999999999,
+      "margin_work_j": 0.99998334375,
+      "admissible": true,
+      "minimum_prefix_j": 0.99998334375,
+      "difference_from_energy_off": 3.533277013392809e-20
+    },
+    {
+      "policy": "legacy_v7",
+      "quality": [
+        0.2,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.3,
+      "wrench": [
+        0.2,
+        -1.0,
+        -4.0,
+        0.1,
+        0.2,
+        -0.1
+      ],
+      "budget_j": 0.0,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        4.8958702508544014e-05,
+        0.00024479351254272006,
+        5.32030234764329e-05,
+        0.0004895870250854401,
+        0.0018718790609252866,
+        -0.00024479351254272006
+      ],
+      "alpha": 0.04895870250854401,
+      "margin_work_j": 5.652657432842629e-18,
+      "admissible": true,
+      "minimum_prefix_j": 0.0,
+      "difference_from_energy_off": 0.0038854129749145584
+    },
+    {
+      "policy": "legacy_v7",
+      "quality": [
+        0.2,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.3,
+      "wrench": [
+        0.2,
+        -1.0,
+        -4.0,
+        0.1,
+        0.2,
+        -0.1
+      ],
+      "budget_j": 1e-06,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        5.611705435691098e-05,
+        0.0002805852717845549,
+        6.790114338479121e-05,
+        0.0005611705435691098,
+        0.0012839542645906215,
+        -0.0002805852717845549
+      ],
+      "alpha": 0.05611705435691098,
+      "margin_work_j": 5.7660582038210344e-18,
+      "admissible": true,
+      "minimum_prefix_j": 5.7661767884336496e-18,
+      "difference_from_energy_off": 0.003813829456430889
+    },
+    {
+      "policy": "legacy_v7",
+      "quality": [
+        0.2,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.3,
+      "wrench": [
+        0.2,
+        -1.0,
+        -4.0,
+        0.1,
+        0.2,
+        -0.1
+      ],
+      "budget_j": 0.0001,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.0004374999999999999,
+        0.0021874999999999993,
+        9.999999999981298e-05,
+        0.004374999999999999,
+        -4.573027823380522e-15,
+        -0.0021874999999999993
+      ],
+      "alpha": 0.4374999999999999,
+      "margin_work_j": 9.078124999999917e-05,
+      "admissible": true,
+      "minimum_prefix_j": 9.078124999999917e-05,
+      "difference_from_energy_off": 3.533277013392809e-20
+    },
+    {
+      "policy": "legacy_v7",
+      "quality": [
+        0.2,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.3,
+      "wrench": [
+        0.2,
+        -1.0,
+        -4.0,
+        0.1,
+        0.2,
+        -0.1
+      ],
+      "budget_j": 1.0,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.0004374999999999999,
+        0.0021874999999999993,
+        9.999999999981298e-05,
+        0.004374999999999999,
+        -4.573027823380522e-15,
+        -0.0021874999999999993
+      ],
+      "alpha": 0.4374999999999999,
+      "margin_work_j": 0.99999078125,
+      "admissible": true,
+      "minimum_prefix_j": 0.99999078125,
+      "difference_from_energy_off": 3.533277013392809e-20
+    },
+    {
+      "policy": "legacy_v7",
+      "quality": [
+        0.2,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.5,
+      "wrench": [
+        -0.2,
+        -1.0,
+        -4.0,
+        -0.1,
+        -0.2,
+        0.1
+      ],
+      "budget_j": 0.0,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.0,
+        0.0,
+        6.666666667721293e-05,
+        0.0,
+        -0.00133333333310007,
+        0.0
+      ],
+      "alpha": 0.0,
+      "margin_work_j": -4.441886853993882e-16,
+      "admissible": true,
+      "minimum_prefix_j": -4.441886853993882e-16,
+      "difference_from_energy_off": 0.004374999999999999
+    },
+    {
+      "policy": "legacy_v7",
+      "quality": [
+        0.2,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.5,
+      "wrench": [
+        -0.2,
+        -1.0,
+        -4.0,
+        -0.1,
+        -0.2,
+        0.1
+      ],
+      "budget_j": 1e-06,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.0,
+        0.0,
+        8.333333334574154e-05,
+        0.0,
+        -0.0006666666663922212,
+        0.0
+      ],
+      "alpha": 0.0,
+      "margin_work_j": -5.226095706363509e-16,
+      "admissible": true,
+      "minimum_prefix_j": -5.226095875770099e-16,
+      "difference_from_energy_off": 0.004374999999999999
+    },
+    {
+      "policy": "legacy_v7",
+      "quality": [
+        0.2,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.5,
+      "wrench": [
+        -0.2,
+        -1.0,
+        -4.0,
+        -0.1,
+        -0.2,
+        0.1
+      ],
+      "budget_j": 0.0001,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.0004374999999999999,
+        0.0021874999999999993,
+        9.999999999981298e-05,
+        0.004374999999999999,
+        -4.573027823380522e-15,
+        -0.0021874999999999993
+      ],
+      "alpha": 0.4374999999999999,
+      "margin_work_j": 8.334375000000832e-05,
+      "admissible": true,
+      "minimum_prefix_j": 8.334375000000832e-05,
+      "difference_from_energy_off": 3.533277013392809e-20
+    },
+    {
+      "policy": "legacy_v7",
+      "quality": [
+        0.2,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.5,
+      "wrench": [
+        -0.2,
+        -1.0,
+        -4.0,
+        -0.1,
+        -0.2,
+        0.1
+      ],
+      "budget_j": 1.0,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.0004374999999999999,
+        0.0021874999999999993,
+        9.999999999981298e-05,
+        0.004374999999999999,
+        -4.573027823380522e-15,
+        -0.0021874999999999993
+      ],
+      "alpha": 0.4374999999999999,
+      "margin_work_j": 0.99998334375,
+      "admissible": true,
+      "minimum_prefix_j": 0.99998334375,
+      "difference_from_energy_off": 3.533277013392809e-20
+    },
+    {
+      "policy": "legacy_v7",
+      "quality": [
+        0.2,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.5,
+      "wrench": [
+        0.2,
+        -1.0,
+        -4.0,
+        0.1,
+        0.2,
+        -0.1
+      ],
+      "budget_j": 0.0,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        4.8958702508544014e-05,
+        0.00024479351254272006,
+        5.32030234764329e-05,
+        0.0004895870250854401,
+        0.0018718790609252866,
+        -0.00024479351254272006
+      ],
+      "alpha": 0.04895870250854401,
+      "margin_work_j": 5.652657432842629e-18,
+      "admissible": true,
+      "minimum_prefix_j": 0.0,
+      "difference_from_energy_off": 0.0038854129749145584
+    },
+    {
+      "policy": "legacy_v7",
+      "quality": [
+        0.2,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.5,
+      "wrench": [
+        0.2,
+        -1.0,
+        -4.0,
+        0.1,
+        0.2,
+        -0.1
+      ],
+      "budget_j": 1e-06,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        5.611705435691098e-05,
+        0.0002805852717845549,
+        6.790114338479121e-05,
+        0.0005611705435691098,
+        0.0012839542645906215,
+        -0.0002805852717845549
+      ],
+      "alpha": 0.05611705435691098,
+      "margin_work_j": 5.7660582038210344e-18,
+      "admissible": true,
+      "minimum_prefix_j": 5.7661767884336496e-18,
+      "difference_from_energy_off": 0.003813829456430889
+    },
+    {
+      "policy": "legacy_v7",
+      "quality": [
+        0.2,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.5,
+      "wrench": [
+        0.2,
+        -1.0,
+        -4.0,
+        0.1,
+        0.2,
+        -0.1
+      ],
+      "budget_j": 0.0001,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.0004374999999999999,
+        0.0021874999999999993,
+        9.999999999981298e-05,
+        0.004374999999999999,
+        -4.573027823380522e-15,
+        -0.0021874999999999993
+      ],
+      "alpha": 0.4374999999999999,
+      "margin_work_j": 9.078124999999917e-05,
+      "admissible": true,
+      "minimum_prefix_j": 9.078124999999917e-05,
+      "difference_from_energy_off": 3.533277013392809e-20
+    },
+    {
+      "policy": "legacy_v7",
+      "quality": [
+        0.2,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.5,
+      "wrench": [
+        0.2,
+        -1.0,
+        -4.0,
+        0.1,
+        0.2,
+        -0.1
+      ],
+      "budget_j": 1.0,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.0004374999999999999,
+        0.0021874999999999993,
+        9.999999999981298e-05,
+        0.004374999999999999,
+        -4.573027823380522e-15,
+        -0.0021874999999999993
+      ],
+      "alpha": 0.4374999999999999,
+      "margin_work_j": 0.99999078125,
+      "admissible": true,
+      "minimum_prefix_j": 0.99999078125,
+      "difference_from_energy_off": 3.533277013392809e-20
+    },
+    {
+      "policy": "legacy_v7",
+      "quality": [
+        0.9,
+        0.9,
+        0.2
+      ],
+      "force_n": 4.0,
+      "wrench": [
+        -0.2,
+        -1.0,
+        -4.0,
+        -0.1,
+        -0.2,
+        0.1
+      ],
+      "budget_j": 0.0,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        8.158659733051636e-05,
+        0.0004079329866525818,
+        0.0005211141498483793,
+        0.0008158659733051636,
+        -0.013155434007244619,
+        -0.0004079329866525818
+      ],
+      "alpha": 0.08158659733051636,
+      "margin_work_j": -2.9526487727244213e-16,
+      "admissible": true,
+      "minimum_prefix_j": -2.9526487727244213e-16,
+      "difference_from_energy_off": 0.013155433992120606
+    },
+    {
+      "policy": "legacy_v7",
+      "quality": [
+        0.9,
+        0.9,
+        0.2
+      ],
+      "force_n": 4.0,
+      "wrench": [
+        -0.2,
+        -1.0,
+        -4.0,
+        -0.1,
+        -0.2,
+        0.1
+      ],
+      "budget_j": 1e-06,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        9.220466436526326e-05,
+        0.00046102332182631627,
+        0.0005318523957524434,
+        0.0009220466436526325,
+        -0.01272590417100837,
+        -0.00046102332182631627
+      ],
+      "alpha": 0.09220466436526326,
+      "margin_work_j": -2.7681605922411093e-16,
+      "admissible": true,
+      "minimum_prefix_j": -2.768160846350993e-16,
+      "difference_from_energy_off": 0.012725904155884357
+    },
+    {
+      "policy": "legacy_v7",
+      "quality": [
+        0.9,
+        0.9,
+        0.2
+      ],
+      "force_n": 4.0,
+      "wrench": [
+        -0.2,
+        -1.0,
+        -4.0,
+        -0.1,
+        -0.2,
+        0.1
+      ],
+      "budget_j": 0.0001,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.0004374999999999999,
+        0.0021874999999999993,
+        0.0008500000000133504,
+        0.004374999999999999,
+        -3.2642824916703847e-13,
+        -0.0021874999999999993
+      ],
+      "alpha": 0.4374999999999999,
+      "margin_work_j": 6.834375000005943e-05,
+      "admissible": true,
+      "minimum_prefix_j": 6.834375000005943e-05,
+      "difference_from_energy_off": 1.4797585079074452e-11
+    },
+    {
+      "policy": "legacy_v7",
+      "quality": [
+        0.9,
+        0.9,
+        0.2
+      ],
+      "force_n": 4.0,
+      "wrench": [
+        -0.2,
+        -1.0,
+        -4.0,
+        -0.1,
+        -0.2,
+        0.1
+      ],
+      "budget_j": 1.0,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.0004374999999999999,
+        0.0021874999999999993,
+        0.0008500000000133504,
+        0.004374999999999999,
+        -3.2642824916703847e-13,
+        -0.0021874999999999993
+      ],
+      "alpha": 0.4374999999999999,
+      "margin_work_j": 0.9999683437500001,
+      "admissible": true,
+      "minimum_prefix_j": 0.9999683437500001,
+      "difference_from_energy_off": 1.4797585079074452e-11
+    },
+    {
+      "policy": "legacy_v7",
+      "quality": [
+        0.9,
+        0.9,
+        0.2
+      ],
+      "force_n": 4.0,
+      "wrench": [
+        0.2,
+        -1.0,
+        -4.0,
+        0.1,
+        0.2,
+        -0.1
+      ],
+      "budget_j": 0.0,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        2.027216210310915e-17,
+        1.0136081051554573e-16,
+        0.0005666666666654925,
+        2.0272162103109147e-16,
+        0.011333333333358975,
+        -1.0136081051554573e-16
+      ],
+      "alpha": 2.0272162103109147e-14,
+      "margin_work_j": 4.879207327151611e-17,
+      "admissible": true,
+      "minimum_prefix_j": 0.0,
+      "difference_from_energy_off": 0.011333333348482988
+    },
+    {
+      "policy": "legacy_v7",
+      "quality": [
+        0.9,
+        0.9,
+        0.2
+      ],
+      "force_n": 4.0,
+      "wrench": [
+        0.2,
+        -1.0,
+        -4.0,
+        0.1,
+        0.2,
+        -0.1
+      ],
+      "budget_j": 1e-06,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.0,
+        0.0,
+        0.0005833333333372735,
+        0.0,
+        0.010666666666580619,
+        0.0
+      ],
+      "alpha": 0.0,
+      "margin_work_j": -1.6485131402316223e-16,
+      "admissible": true,
+      "minimum_prefix_j": -1.6485124626052644e-16,
+      "difference_from_energy_off": 0.010666666681704632
+    },
+    {
+      "policy": "legacy_v7",
+      "quality": [
+        0.9,
+        0.9,
+        0.2
+      ],
+      "force_n": 4.0,
+      "wrench": [
+        0.2,
+        -1.0,
+        -4.0,
+        0.1,
+        0.2,
+        -0.1
+      ],
+      "budget_j": 0.0001,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.0004374999999999999,
+        0.0021874999999999993,
+        0.0008500000000133504,
+        0.004374999999999999,
+        -3.2642824916703847e-13,
+        -0.0021874999999999993
+      ],
+      "alpha": 0.4374999999999999,
+      "margin_work_j": 7.578124999940656e-05,
+      "admissible": true,
+      "minimum_prefix_j": 7.578124999940656e-05,
+      "difference_from_energy_off": 1.4797585079074452e-11
+    },
+    {
+      "policy": "legacy_v7",
+      "quality": [
+        0.9,
+        0.9,
+        0.2
+      ],
+      "force_n": 4.0,
+      "wrench": [
+        0.2,
+        -1.0,
+        -4.0,
+        0.1,
+        0.2,
+        -0.1
+      ],
+      "budget_j": 1.0,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.0004374999999999999,
+        0.0021874999999999993,
+        0.0008500000000133504,
+        0.004374999999999999,
+        -3.2642824916703847e-13,
+        -0.0021874999999999993
+      ],
+      "alpha": 0.4374999999999999,
+      "margin_work_j": 0.9999757812499995,
+      "admissible": true,
+      "minimum_prefix_j": 0.9999757812499994,
+      "difference_from_energy_off": 1.4797585079074452e-11
+    },
+    {
+      "policy": "legacy_v7",
+      "quality": [
+        0.9,
+        0.9,
+        0.2
+      ],
+      "force_n": 4.3,
+      "wrench": [
+        -0.2,
+        -1.0,
+        -4.0,
+        -0.1,
+        -0.2,
+        0.1
+      ],
+      "budget_j": 0.0,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.0,
+        0.0,
+        6.666666666730975e-05,
+        0.0,
+        -0.0013333333333188965,
+        0.0
+      ],
+      "alpha": 0.0,
+      "margin_work_j": -2.7298584399926273e-17,
+      "admissible": true,
+      "minimum_prefix_j": -2.7298584399926273e-17,
+      "difference_from_energy_off": 0.004374999999999999
+    },
+    {
+      "policy": "legacy_v7",
+      "quality": [
+        0.9,
+        0.9,
+        0.2
+      ],
+      "force_n": 4.3,
+      "wrench": [
+        -0.2,
+        -1.0,
+        -4.0,
+        -0.1,
+        -0.2,
+        0.1
+      ],
+      "budget_j": 1e-06,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.0,
+        0.0,
+        8.33333333339679e-05,
+        0.0,
+        -0.0006666666666524253,
+        0.0
+      ],
+      "alpha": 0.0,
+      "margin_work_j": -2.6932801691983976e-17,
+      "admissible": true,
+      "minimum_prefix_j": -2.693268310737136e-17,
+      "difference_from_energy_off": 0.004374999999999999
+    },
+    {
+      "policy": "legacy_v7",
+      "quality": [
+        0.9,
+        0.9,
+        0.2
+      ],
+      "force_n": 4.3,
+      "wrench": [
+        -0.2,
+        -1.0,
+        -4.0,
+        -0.1,
+        -0.2,
+        0.1
+      ],
+      "budget_j": 0.0001,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.0004374999999999999,
+        0.0021874999999999993,
+        9.999999999981241e-05,
+        0.004374999999999999,
+        4.587191890159645e-15,
+        -0.0021874999999999993
+      ],
+      "alpha": 0.4374999999999999,
+      "margin_work_j": 8.334374999999919e-05,
+      "admissible": true,
+      "minimum_prefix_j": 8.334374999999918e-05,
+      "difference_from_energy_off": 2.2282989005656895e-19
+    },
+    {
+      "policy": "legacy_v7",
+      "quality": [
+        0.9,
+        0.9,
+        0.2
+      ],
+      "force_n": 4.3,
+      "wrench": [
+        -0.2,
+        -1.0,
+        -4.0,
+        -0.1,
+        -0.2,
+        0.1
+      ],
+      "budget_j": 1.0,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.0004374999999999999,
+        0.0021874999999999993,
+        9.999999999981241e-05,
+        0.004374999999999999,
+        4.587191890159645e-15,
+        -0.0021874999999999993
+      ],
+      "alpha": 0.4374999999999999,
+      "margin_work_j": 0.99998334375,
+      "admissible": true,
+      "minimum_prefix_j": 0.99998334375,
+      "difference_from_energy_off": 2.2282989005656895e-19
+    },
+    {
+      "policy": "legacy_v7",
+      "quality": [
+        0.9,
+        0.9,
+        0.2
+      ],
+      "force_n": 4.3,
+      "wrench": [
+        0.2,
+        -1.0,
+        -4.0,
+        0.1,
+        0.2,
+        -0.1
+      ],
+      "budget_j": 0.0,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.0,
+        0.0,
+        6.666666667637018e-05,
+        0.0,
+        0.0013333333331214169,
+        0.0
+      ],
+      "alpha": 0.0,
+      "margin_work_j": -4.059868218518614e-16,
+      "admissible": true,
+      "minimum_prefix_j": -4.059868218518614e-16,
+      "difference_from_energy_off": 0.004374999999999999
+    },
+    {
+      "policy": "legacy_v7",
+      "quality": [
+        0.9,
+        0.9,
+        0.2
+      ],
+      "force_n": 4.3,
+      "wrench": [
+        0.2,
+        -1.0,
+        -4.0,
+        0.1,
+        0.2,
+        -0.1
+      ],
+      "budget_j": 1e-06,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.0,
+        0.0,
+        8.33333333447632e-05,
+        0.0,
+        0.0006666666664170482,
+        0.0
+      ],
+      "alpha": 0.0,
+      "margin_work_j": -4.78215964007031e-16,
+      "admissible": true,
+      "minimum_prefix_j": -4.782159555367016e-16,
+      "difference_from_energy_off": 0.004374999999999999
+    },
+    {
+      "policy": "legacy_v7",
+      "quality": [
+        0.9,
+        0.9,
+        0.2
+      ],
+      "force_n": 4.3,
+      "wrench": [
+        0.2,
+        -1.0,
+        -4.0,
+        0.1,
+        0.2,
+        -0.1
+      ],
+      "budget_j": 0.0001,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.0004374999999999999,
+        0.0021874999999999993,
+        9.999999999981241e-05,
+        0.004374999999999999,
+        4.587191890159645e-15,
+        -0.0021874999999999993
+      ],
+      "alpha": 0.4374999999999999,
+      "margin_work_j": 9.078125000000834e-05,
+      "admissible": true,
+      "minimum_prefix_j": 9.078125000000835e-05,
+      "difference_from_energy_off": 2.2282989005656895e-19
+    },
+    {
+      "policy": "legacy_v7",
+      "quality": [
+        0.9,
+        0.9,
+        0.2
+      ],
+      "force_n": 4.3,
+      "wrench": [
+        0.2,
+        -1.0,
+        -4.0,
+        0.1,
+        0.2,
+        -0.1
+      ],
+      "budget_j": 1.0,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.0004374999999999999,
+        0.0021874999999999993,
+        9.999999999981241e-05,
+        0.004374999999999999,
+        4.587191890159645e-15,
+        -0.0021874999999999993
+      ],
+      "alpha": 0.4374999999999999,
+      "margin_work_j": 0.99999078125,
+      "admissible": true,
+      "minimum_prefix_j": 0.99999078125,
+      "difference_from_energy_off": 2.2282989005656895e-19
+    },
+    {
+      "policy": "legacy_v7",
+      "quality": [
+        0.9,
+        0.9,
+        0.2
+      ],
+      "force_n": 4.5,
+      "wrench": [
+        -0.2,
+        -1.0,
+        -4.0,
+        -0.1,
+        -0.2,
+        0.1
+      ],
+      "budget_j": 0.0,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.0,
+        0.0,
+        6.666666666730975e-05,
+        0.0,
+        -0.0013333333333188965,
+        0.0
+      ],
+      "alpha": 0.0,
+      "margin_work_j": -2.7298584399926273e-17,
+      "admissible": true,
+      "minimum_prefix_j": -2.7298584399926273e-17,
+      "difference_from_energy_off": 0.004374999999999999
+    },
+    {
+      "policy": "legacy_v7",
+      "quality": [
+        0.9,
+        0.9,
+        0.2
+      ],
+      "force_n": 4.5,
+      "wrench": [
+        -0.2,
+        -1.0,
+        -4.0,
+        -0.1,
+        -0.2,
+        0.1
+      ],
+      "budget_j": 1e-06,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.0,
+        0.0,
+        8.33333333339679e-05,
+        0.0,
+        -0.0006666666666524253,
+        0.0
+      ],
+      "alpha": 0.0,
+      "margin_work_j": -2.6932801691983976e-17,
+      "admissible": true,
+      "minimum_prefix_j": -2.693268310737136e-17,
+      "difference_from_energy_off": 0.004374999999999999
+    },
+    {
+      "policy": "legacy_v7",
+      "quality": [
+        0.9,
+        0.9,
+        0.2
+      ],
+      "force_n": 4.5,
+      "wrench": [
+        -0.2,
+        -1.0,
+        -4.0,
+        -0.1,
+        -0.2,
+        0.1
+      ],
+      "budget_j": 0.0001,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.0004374999999999999,
+        0.0021874999999999993,
+        9.999999999981241e-05,
+        0.004374999999999999,
+        4.587191890159645e-15,
+        -0.0021874999999999993
+      ],
+      "alpha": 0.4374999999999999,
+      "margin_work_j": 8.334374999999919e-05,
+      "admissible": true,
+      "minimum_prefix_j": 8.334374999999918e-05,
+      "difference_from_energy_off": 2.2282989005656895e-19
+    },
+    {
+      "policy": "legacy_v7",
+      "quality": [
+        0.9,
+        0.9,
+        0.2
+      ],
+      "force_n": 4.5,
+      "wrench": [
+        -0.2,
+        -1.0,
+        -4.0,
+        -0.1,
+        -0.2,
+        0.1
+      ],
+      "budget_j": 1.0,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.0004374999999999999,
+        0.0021874999999999993,
+        9.999999999981241e-05,
+        0.004374999999999999,
+        4.587191890159645e-15,
+        -0.0021874999999999993
+      ],
+      "alpha": 0.4374999999999999,
+      "margin_work_j": 0.99998334375,
+      "admissible": true,
+      "minimum_prefix_j": 0.99998334375,
+      "difference_from_energy_off": 2.2282989005656895e-19
+    },
+    {
+      "policy": "legacy_v7",
+      "quality": [
+        0.9,
+        0.9,
+        0.2
+      ],
+      "force_n": 4.5,
+      "wrench": [
+        0.2,
+        -1.0,
+        -4.0,
+        0.1,
+        0.2,
+        -0.1
+      ],
+      "budget_j": 0.0,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.0,
+        0.0,
+        6.666666667637018e-05,
+        0.0,
+        0.0013333333331214169,
+        0.0
+      ],
+      "alpha": 0.0,
+      "margin_work_j": -4.059868218518614e-16,
+      "admissible": true,
+      "minimum_prefix_j": -4.059868218518614e-16,
+      "difference_from_energy_off": 0.004374999999999999
+    },
+    {
+      "policy": "legacy_v7",
+      "quality": [
+        0.9,
+        0.9,
+        0.2
+      ],
+      "force_n": 4.5,
+      "wrench": [
+        0.2,
+        -1.0,
+        -4.0,
+        0.1,
+        0.2,
+        -0.1
+      ],
+      "budget_j": 1e-06,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.0,
+        0.0,
+        8.33333333447632e-05,
+        0.0,
+        0.0006666666664170482,
+        0.0
+      ],
+      "alpha": 0.0,
+      "margin_work_j": -4.78215964007031e-16,
+      "admissible": true,
+      "minimum_prefix_j": -4.782159555367016e-16,
+      "difference_from_energy_off": 0.004374999999999999
+    },
+    {
+      "policy": "legacy_v7",
+      "quality": [
+        0.9,
+        0.9,
+        0.2
+      ],
+      "force_n": 4.5,
+      "wrench": [
+        0.2,
+        -1.0,
+        -4.0,
+        0.1,
+        0.2,
+        -0.1
+      ],
+      "budget_j": 0.0001,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.0004374999999999999,
+        0.0021874999999999993,
+        9.999999999981241e-05,
+        0.004374999999999999,
+        4.587191890159645e-15,
+        -0.0021874999999999993
+      ],
+      "alpha": 0.4374999999999999,
+      "margin_work_j": 9.078125000000834e-05,
+      "admissible": true,
+      "minimum_prefix_j": 9.078125000000835e-05,
+      "difference_from_energy_off": 2.2282989005656895e-19
+    },
+    {
+      "policy": "legacy_v7",
+      "quality": [
+        0.9,
+        0.9,
+        0.2
+      ],
+      "force_n": 4.5,
+      "wrench": [
+        0.2,
+        -1.0,
+        -4.0,
+        0.1,
+        0.2,
+        -0.1
+      ],
+      "budget_j": 1.0,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.0004374999999999999,
+        0.0021874999999999993,
+        9.999999999981241e-05,
+        0.004374999999999999,
+        4.587191890159645e-15,
+        -0.0021874999999999993
+      ],
+      "alpha": 0.4374999999999999,
+      "margin_work_j": 0.99999078125,
+      "admissible": true,
+      "minimum_prefix_j": 0.99999078125,
+      "difference_from_energy_off": 2.2282989005656895e-19
+    },
+    {
+      "policy": "legacy_v7",
+      "quality": [
+        0.9,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.0,
+      "wrench": [
+        -0.2,
+        -1.0,
+        -4.0,
+        -0.1,
+        -0.2,
+        0.1
+      ],
+      "budget_j": 0.0,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.0005851915221950929,
+        0.002925957610975465,
+        -0.00023019580322782712,
+        0.00585191522195093,
+        -0.014999999958627514,
+        -0.002925957610975465
+      ],
+      "alpha": 0.585191522195093,
+      "margin_work_j": 2.964844353098989e-14,
+      "admissible": true,
+      "minimum_prefix_j": 0.0,
+      "difference_from_energy_off": 0.014999999958627514
+    },
+    {
+      "policy": "legacy_v7",
+      "quality": [
+        0.9,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.0,
+      "wrench": [
+        -0.2,
+        -1.0,
+        -4.0,
+        -0.1,
+        -0.2,
+        0.1
+      ],
+      "budget_j": 1e-06,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.0006054260810196043,
+        0.0030271304050980214,
+        -0.000214088691725768,
+        0.006054260810196043,
+        -0.014999999929711677,
+        -0.0030271304050980214
+      ],
+      "alpha": 0.6054260810196043,
+      "margin_work_j": 5.0070294590164046e-14,
+      "admissible": true,
+      "minimum_prefix_j": 5.0070294598634373e-14,
+      "difference_from_energy_off": 0.014999999929711677
+    },
+    {
+      "policy": "legacy_v7",
+      "quality": [
+        0.9,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.0,
+      "wrench": [
+        -0.2,
+        -1.0,
+        -4.0,
+        -0.1,
+        -0.2,
+        0.1
+      ],
+      "budget_j": 0.0001,
+      "status": "nominal",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.001,
+        0.005,
+        0.0001,
+        0.01,
+        0.0,
+        -0.005
+      ],
+      "alpha": 1.0,
+      "margin_work_j": 6.45e-05,
+      "admissible": true,
+      "minimum_prefix_j": 6.45e-05,
+      "difference_from_energy_off": 0.0
+    },
+    {
+      "policy": "legacy_v7",
+      "quality": [
+        0.9,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.0,
+      "wrench": [
+        -0.2,
+        -1.0,
+        -4.0,
+        -0.1,
+        -0.2,
+        0.1
+      ],
+      "budget_j": 1.0,
+      "status": "nominal",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.001,
+        0.005,
+        0.0001,
+        0.01,
+        0.0,
+        -0.005
+      ],
+      "alpha": 1.0,
+      "margin_work_j": 0.9999645,
+      "admissible": true,
+      "minimum_prefix_j": 0.9999645,
+      "difference_from_energy_off": 0.0
+    },
+    {
+      "policy": "legacy_v7",
+      "quality": [
+        0.9,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.0,
+      "wrench": [
+        0.2,
+        -1.0,
+        -4.0,
+        0.1,
+        0.2,
+        -0.1
+      ],
+      "budget_j": 0.0,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.0009054902569708519,
+        0.00452745128485426,
+        -5.274301903698194e-05,
+        0.00905490256970852,
+        0.013885729003361684,
+        -0.00452745128485426
+      ],
+      "alpha": 0.905490256970852,
+      "margin_work_j": 1.4408226402338325e-13,
+      "admissible": true,
+      "minimum_prefix_j": 0.0,
+      "difference_from_energy_off": 0.013885729003361684
+    },
+    {
+      "policy": "legacy_v7",
+      "quality": [
+        0.9,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.0,
+      "wrench": [
+        0.2,
+        -1.0,
+        -4.0,
+        0.1,
+        0.2,
+        -0.1
+      ],
+      "budget_j": 1e-06,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.0009105988922672202,
+        0.004552994461336101,
+        -4.448663875998593e-05,
+        0.009105988922672201,
+        0.013135148978179766,
+        -0.004552994461336101
+      ],
+      "alpha": 0.9105988922672201,
+      "margin_work_j": 3.097035079563035e-14,
+      "admissible": true,
+      "minimum_prefix_j": 3.097035088880397e-14,
+      "difference_from_energy_off": 0.013135148978179766
+    },
+    {
+      "policy": "legacy_v7",
+      "quality": [
+        0.9,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.0,
+      "wrench": [
+        0.2,
+        -1.0,
+        -4.0,
+        0.1,
+        0.2,
+        -0.1
+      ],
+      "budget_j": 0.0001,
+      "status": "nominal",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.001,
+        0.005,
+        0.0001,
+        0.01,
+        0.0,
+        -0.005
+      ],
+      "alpha": 1.0,
+      "margin_work_j": 8.149999999999999e-05,
+      "admissible": true,
+      "minimum_prefix_j": 8.15e-05,
+      "difference_from_energy_off": 0.0
+    },
+    {
+      "policy": "legacy_v7",
+      "quality": [
+        0.9,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.0,
+      "wrench": [
+        0.2,
+        -1.0,
+        -4.0,
+        0.1,
+        0.2,
+        -0.1
+      ],
+      "budget_j": 1.0,
+      "status": "nominal",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.001,
+        0.005,
+        0.0001,
+        0.01,
+        0.0,
+        -0.005
+      ],
+      "alpha": 1.0,
+      "margin_work_j": 0.9999815,
+      "admissible": true,
+      "minimum_prefix_j": 0.9999815,
+      "difference_from_energy_off": 0.0
+    },
+    {
+      "policy": "legacy_v7",
+      "quality": [
+        0.9,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.3,
+      "wrench": [
+        -0.2,
+        -1.0,
+        -4.0,
+        -0.1,
+        -0.2,
+        0.1
+      ],
+      "budget_j": 0.0,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.0006119402960183464,
+        0.003059701480091732,
+        -0.0002749999994463601,
+        0.006119402960183464,
+        -0.014999999978935218,
+        -0.003059701480091732
+      ],
+      "alpha": 0.6119402960183464,
+      "margin_work_j": 5.124781160418049e-14,
+      "admissible": true,
+      "minimum_prefix_j": 0.0,
+      "difference_from_energy_off": 0.014999999978935218
+    },
+    {
+      "policy": "legacy_v7",
+      "quality": [
+        0.9,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.3,
+      "wrench": [
+        -0.2,
+        -1.0,
+        -4.0,
+        -0.1,
+        -0.2,
+        0.1
+      ],
+      "budget_j": 1e-06,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.0006417910447102782,
+        0.003208955223551391,
+        -0.00027499999998905966,
+        0.006417910447102782,
+        -0.01499999999946236,
+        -0.003208955223551391
+      ],
+      "alpha": 0.6417910447102781,
+      "margin_work_j": 1.4492370519793297e-15,
+      "admissible": true,
+      "minimum_prefix_j": 1.4492371620936128e-15,
+      "difference_from_energy_off": 0.01499999999946236
+    },
+    {
+      "policy": "legacy_v7",
+      "quality": [
+        0.9,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.3,
+      "wrench": [
+        -0.2,
+        -1.0,
+        -4.0,
+        -0.1,
+        -0.2,
+        0.1
+      ],
+      "budget_j": 0.0001,
+      "status": "nominal",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.001,
+        0.005,
+        0.0001,
+        0.01,
+        0.0,
+        -0.005
+      ],
+      "alpha": 1.0,
+      "margin_work_j": 6.45e-05,
+      "admissible": true,
+      "minimum_prefix_j": 6.45e-05,
+      "difference_from_energy_off": 0.0
+    },
+    {
+      "policy": "legacy_v7",
+      "quality": [
+        0.9,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.3,
+      "wrench": [
+        -0.2,
+        -1.0,
+        -4.0,
+        -0.1,
+        -0.2,
+        0.1
+      ],
+      "budget_j": 1.0,
+      "status": "nominal",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.001,
+        0.005,
+        0.0001,
+        0.01,
+        0.0,
+        -0.005
+      ],
+      "alpha": 1.0,
+      "margin_work_j": 0.9999645,
+      "admissible": true,
+      "minimum_prefix_j": 0.9999645,
+      "difference_from_energy_off": 0.0
+    },
+    {
+      "policy": "legacy_v7",
+      "quality": [
+        0.9,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.3,
+      "wrench": [
+        0.2,
+        -1.0,
+        -4.0,
+        0.1,
+        0.2,
+        -0.1
+      ],
+      "budget_j": 0.0,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.000891963785940467,
+        0.004459818929702335,
+        -0.0001786233766095491,
+        0.00891963785940467,
+        0.011144935015695018,
+        -0.004459818929702335
+      ],
+      "alpha": 0.891963785940467,
+      "margin_work_j": 7.986829703458472e-14,
+      "admissible": true,
+      "minimum_prefix_j": 0.0,
+      "difference_from_energy_off": 0.011144935015695018
+    },
+    {
+      "policy": "legacy_v7",
+      "quality": [
+        0.9,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.3,
+      "wrench": [
+        0.2,
+        -1.0,
+        -4.0,
+        0.1,
+        0.2,
+        -0.1
+      ],
+      "budget_j": 1e-06,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.0008978035821524974,
+        0.004489017910762487,
+        -0.00016356265044753634,
+        0.008978035821524974,
+        0.010542506047989751,
+        -0.004489017910762487
+      ],
+      "alpha": 0.8978035821524973,
+      "margin_work_j": -4.857572677430255e-14,
+      "admissible": true,
+      "minimum_prefix_j": -4.857572677430255e-14,
+      "difference_from_energy_off": 0.010542506047989751
+    },
+    {
+      "policy": "legacy_v7",
+      "quality": [
+        0.9,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.3,
+      "wrench": [
+        0.2,
+        -1.0,
+        -4.0,
+        0.1,
+        0.2,
+        -0.1
+      ],
+      "budget_j": 0.0001,
+      "status": "nominal",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.001,
+        0.005,
+        0.0001,
+        0.01,
+        0.0,
+        -0.005
+      ],
+      "alpha": 1.0,
+      "margin_work_j": 8.149999999999999e-05,
+      "admissible": true,
+      "minimum_prefix_j": 8.15e-05,
+      "difference_from_energy_off": 0.0
+    },
+    {
+      "policy": "legacy_v7",
+      "quality": [
+        0.9,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.3,
+      "wrench": [
+        0.2,
+        -1.0,
+        -4.0,
+        0.1,
+        0.2,
+        -0.1
+      ],
+      "budget_j": 1.0,
+      "status": "nominal",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.001,
+        0.005,
+        0.0001,
+        0.01,
+        0.0,
+        -0.005
+      ],
+      "alpha": 1.0,
+      "margin_work_j": 0.9999815,
+      "admissible": true,
+      "minimum_prefix_j": 0.9999815,
+      "difference_from_energy_off": 0.0
+    },
+    {
+      "policy": "legacy_v7",
+      "quality": [
+        0.9,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.5,
+      "wrench": [
+        -0.2,
+        -1.0,
+        -4.0,
+        -0.1,
+        -0.2,
+        0.1
+      ],
+      "budget_j": 0.0,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.0006119402960183464,
+        0.003059701480091732,
+        -0.0002749999994463601,
+        0.006119402960183464,
+        -0.014999999978935218,
+        -0.003059701480091732
+      ],
+      "alpha": 0.6119402960183464,
+      "margin_work_j": 5.124781160418049e-14,
+      "admissible": true,
+      "minimum_prefix_j": 0.0,
+      "difference_from_energy_off": 0.014999999978935218
+    },
+    {
+      "policy": "legacy_v7",
+      "quality": [
+        0.9,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.5,
+      "wrench": [
+        -0.2,
+        -1.0,
+        -4.0,
+        -0.1,
+        -0.2,
+        0.1
+      ],
+      "budget_j": 1e-06,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.0006417910447102782,
+        0.003208955223551391,
+        -0.00027499999998905966,
+        0.006417910447102782,
+        -0.01499999999946236,
+        -0.003208955223551391
+      ],
+      "alpha": 0.6417910447102781,
+      "margin_work_j": 1.4492370519793297e-15,
+      "admissible": true,
+      "minimum_prefix_j": 1.4492371620936128e-15,
+      "difference_from_energy_off": 0.01499999999946236
+    },
+    {
+      "policy": "legacy_v7",
+      "quality": [
+        0.9,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.5,
+      "wrench": [
+        -0.2,
+        -1.0,
+        -4.0,
+        -0.1,
+        -0.2,
+        0.1
+      ],
+      "budget_j": 0.0001,
+      "status": "nominal",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.001,
+        0.005,
+        0.0001,
+        0.01,
+        0.0,
+        -0.005
+      ],
+      "alpha": 1.0,
+      "margin_work_j": 6.45e-05,
+      "admissible": true,
+      "minimum_prefix_j": 6.45e-05,
+      "difference_from_energy_off": 0.0
+    },
+    {
+      "policy": "legacy_v7",
+      "quality": [
+        0.9,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.5,
+      "wrench": [
+        -0.2,
+        -1.0,
+        -4.0,
+        -0.1,
+        -0.2,
+        0.1
+      ],
+      "budget_j": 1.0,
+      "status": "nominal",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.001,
+        0.005,
+        0.0001,
+        0.01,
+        0.0,
+        -0.005
+      ],
+      "alpha": 1.0,
+      "margin_work_j": 0.9999645,
+      "admissible": true,
+      "minimum_prefix_j": 0.9999645,
+      "difference_from_energy_off": 0.0
+    },
+    {
+      "policy": "legacy_v7",
+      "quality": [
+        0.9,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.5,
+      "wrench": [
+        0.2,
+        -1.0,
+        -4.0,
+        0.1,
+        0.2,
+        -0.1
+      ],
+      "budget_j": 0.0,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.000891963785940467,
+        0.004459818929702335,
+        -0.0001786233766095491,
+        0.00891963785940467,
+        0.011144935015695018,
+        -0.004459818929702335
+      ],
+      "alpha": 0.891963785940467,
+      "margin_work_j": 7.986829703458472e-14,
+      "admissible": true,
+      "minimum_prefix_j": 0.0,
+      "difference_from_energy_off": 0.011144935015695018
+    },
+    {
+      "policy": "legacy_v7",
+      "quality": [
+        0.9,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.5,
+      "wrench": [
+        0.2,
+        -1.0,
+        -4.0,
+        0.1,
+        0.2,
+        -0.1
+      ],
+      "budget_j": 1e-06,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.0008978035821524974,
+        0.004489017910762487,
+        -0.00016356265044753634,
+        0.008978035821524974,
+        0.010542506047989751,
+        -0.004489017910762487
+      ],
+      "alpha": 0.8978035821524973,
+      "margin_work_j": -4.857572677430255e-14,
+      "admissible": true,
+      "minimum_prefix_j": -4.857572677430255e-14,
+      "difference_from_energy_off": 0.010542506047989751
+    },
+    {
+      "policy": "legacy_v7",
+      "quality": [
+        0.9,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.5,
+      "wrench": [
+        0.2,
+        -1.0,
+        -4.0,
+        0.1,
+        0.2,
+        -0.1
+      ],
+      "budget_j": 0.0001,
+      "status": "nominal",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.001,
+        0.005,
+        0.0001,
+        0.01,
+        0.0,
+        -0.005
+      ],
+      "alpha": 1.0,
+      "margin_work_j": 8.149999999999999e-05,
+      "admissible": true,
+      "minimum_prefix_j": 8.15e-05,
+      "difference_from_energy_off": 0.0
+    },
+    {
+      "policy": "legacy_v7",
+      "quality": [
+        0.9,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.5,
+      "wrench": [
+        0.2,
+        -1.0,
+        -4.0,
+        0.1,
+        0.2,
+        -0.1
+      ],
+      "budget_j": 1.0,
+      "status": "nominal",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.001,
+        0.005,
+        0.0001,
+        0.01,
+        0.0,
+        -0.005
+      ],
+      "alpha": 1.0,
+      "margin_work_j": 0.9999815,
+      "admissible": true,
+      "minimum_prefix_j": 0.9999815,
+      "difference_from_energy_off": 0.0
+    },
+    {
+      "policy": "differential_repair_v8",
+      "quality": [
+        0.2,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.0,
+      "wrench": [
+        -0.2,
+        -1.0,
+        -4.0,
+        -0.1,
+        -0.2,
+        0.1
+      ],
+      "budget_j": 0.0,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.0,
+        0.0,
+        9.884847040356633e-05,
+        0.0,
+        -0.0019769694078259534,
+        0.0
+      ],
+      "alpha": 0.0,
+      "margin_work_j": -2.453731120198588e-16,
+      "admissible": true,
+      "minimum_prefix_j": -2.453731120198588e-16,
+      "difference_from_energy_off": 0.016976969496077368
+    },
+    {
+      "policy": "differential_repair_v8",
+      "quality": [
+        0.2,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.0,
+      "wrench": [
+        -0.2,
+        -1.0,
+        -4.0,
+        -0.1,
+        -0.2,
+        0.1
+      ],
+      "budget_j": 1e-06,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.0,
+        0.0,
+        0.00010918890173158985,
+        0.0,
+        -0.001183778034345961,
+        0.0
+      ],
+      "alpha": 0.0,
+      "margin_work_j": -2.8583607919810405e-16,
+      "admissible": true,
+      "minimum_prefix_j": -2.8583613849041036e-16,
+      "difference_from_energy_off": 0.016183778122597376
+    },
+    {
+      "policy": "differential_repair_v8",
+      "quality": [
+        0.2,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.0,
+      "wrench": [
+        -0.2,
+        -1.0,
+        -4.0,
+        -0.1,
+        -0.2,
+        0.1
+      ],
+      "budget_j": 0.0001,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        4.9375000006127044e-05,
+        0.00024687500003063524,
+        0.0004749999999850147,
+        0.0004937500000612705,
+        0.015000000000413261,
+        -0.00024687500003063524
+      ],
+      "alpha": 0.049375000006127046,
+      "margin_work_j": 7.38459374996812e-05,
+      "admissible": true,
+      "minimum_prefix_j": 7.38459374996812e-05,
+      "difference_from_energy_off": 8.783815341750767e-11
+    },
+    {
+      "policy": "differential_repair_v8",
+      "quality": [
+        0.2,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.0,
+      "wrench": [
+        -0.2,
+        -1.0,
+        -4.0,
+        -0.1,
+        -0.2,
+        0.1
+      ],
+      "budget_j": 1.0,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        4.937500000612701e-05,
+        0.0002468750000306351,
+        0.0004749999999850147,
+        0.0004937500000612702,
+        0.015000000000413261,
+        -0.0002468750000306351
+      ],
+      "alpha": 0.04937500000612701,
+      "margin_work_j": 0.9999738459374997,
+      "admissible": true,
+      "minimum_prefix_j": 0.9999738459374997,
+      "difference_from_energy_off": 8.783815341750767e-11
+    },
+    {
+      "policy": "differential_repair_v8",
+      "quality": [
+        0.2,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.0,
+      "wrench": [
+        0.2,
+        -1.0,
+        -4.0,
+        0.1,
+        0.2,
+        -0.1
+      ],
+      "budget_j": 0.0,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        4.937500000580567e-05,
+        0.00024687500002902834,
+        0.00047499999998582856,
+        0.0004937500000580567,
+        0.015000000000391459,
+        -0.00024687500002902834
+      ],
+      "alpha": 0.04937500000580567,
+      "margin_work_j": 4.685312500579095e-06,
+      "admissible": true,
+      "minimum_prefix_j": 0.0,
+      "difference_from_energy_off": 8.785995542215375e-11
+    },
+    {
+      "policy": "differential_repair_v8",
+      "quality": [
+        0.2,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.0,
+      "wrench": [
+        0.2,
+        -1.0,
+        -4.0,
+        0.1,
+        0.2,
+        -0.1
+      ],
+      "budget_j": 1e-06,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        4.937500000612701e-05,
+        0.0002468750000306351,
+        0.0004749999999850147,
+        0.0004937500000612702,
+        0.015000000000413261,
+        -0.0002468750000306351
+      ],
+      "alpha": 0.04937500000612701,
+      "margin_work_j": 5.685312500611872e-06,
+      "admissible": true,
+      "minimum_prefix_j": 1e-06,
+      "difference_from_energy_off": 8.783815341750767e-11
+    },
+    {
+      "policy": "differential_repair_v8",
+      "quality": [
+        0.2,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.0,
+      "wrench": [
+        0.2,
+        -1.0,
+        -4.0,
+        0.1,
+        0.2,
+        -0.1
+      ],
+      "budget_j": 0.0001,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        4.9375000006127044e-05,
+        0.00024687500003063524,
+        0.0004749999999850147,
+        0.0004937500000612705,
+        0.015000000000413261,
+        -0.00024687500003063524
+      ],
+      "alpha": 0.049375000006127046,
+      "margin_work_j": 0.00010468531250061187,
+      "admissible": true,
+      "minimum_prefix_j": 0.0001,
+      "difference_from_energy_off": 8.783815341750767e-11
+    },
+    {
+      "policy": "differential_repair_v8",
+      "quality": [
+        0.2,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.0,
+      "wrench": [
+        0.2,
+        -1.0,
+        -4.0,
+        0.1,
+        0.2,
+        -0.1
+      ],
+      "budget_j": 1.0,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        4.937500000612701e-05,
+        0.0002468750000306351,
+        0.0004749999999850147,
+        0.0004937500000612702,
+        0.015000000000413261,
+        -0.0002468750000306351
+      ],
+      "alpha": 0.04937500000612701,
+      "margin_work_j": 1.0000046853125006,
+      "admissible": true,
+      "minimum_prefix_j": 1.0,
+      "difference_from_energy_off": 8.783815341750767e-11
+    },
+    {
+      "policy": "differential_repair_v8",
+      "quality": [
+        0.2,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.3,
+      "wrench": [
+        -0.2,
+        -1.0,
+        -4.0,
+        -0.1,
+        -0.2,
+        0.1
+      ],
+      "budget_j": 0.0,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.0,
+        0.0,
+        6.995917244606307e-05,
+        0.0,
+        -0.001399183448543459,
+        0.0
+      ],
+      "alpha": 0.0,
+      "margin_work_j": -3.778024442770145e-16,
+      "admissible": true,
+      "minimum_prefix_j": -3.778024442770145e-16,
+      "difference_from_energy_off": 0.016038868074818
+    },
+    {
+      "policy": "differential_repair_v8",
+      "quality": [
+        0.2,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.3,
+      "wrench": [
+        -0.2,
+        -1.0,
+        -4.0,
+        -0.1,
+        -0.2,
+        0.1
+      ],
+      "budget_j": 1e-06,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.0,
+        0.0,
+        8.358675351879423e-05,
+        0.0,
+        -0.0006717350698402376,
+        0.0
+      ],
+      "alpha": 0.0,
+      "margin_work_j": -5.356471017604891e-16,
+      "admissible": true,
+      "minimum_prefix_j": -5.356471187011481e-16,
+      "difference_from_energy_off": 0.015311419696114778
+    },
+    {
+      "policy": "differential_repair_v8",
+      "quality": [
+        0.2,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.3,
+      "wrench": [
+        -0.2,
+        -1.0,
+        -4.0,
+        -0.1,
+        -0.2,
+        0.1
+      ],
+      "budget_j": 0.0001,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.00038268633374136113,
+        0.0019134316687068056,
+        0.00012815243109613508,
+        0.003826863337413611,
+        0.014639684626274541,
+        -0.0019134316687068056
+      ],
+      "alpha": 0.38268633374136113,
+      "margin_work_j": 6.997727457146716e-05,
+      "admissible": true,
+      "minimum_prefix_j": 6.997727457146716e-05,
+      "difference_from_energy_off": 0.0
+    },
+    {
+      "policy": "differential_repair_v8",
+      "quality": [
+        0.2,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.3,
+      "wrench": [
+        -0.2,
+        -1.0,
+        -4.0,
+        -0.1,
+        -0.2,
+        0.1
+      ],
+      "budget_j": 1.0,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.00038268633374136113,
+        0.0019134316687068056,
+        0.00012815243109613508,
+        0.003826863337413611,
+        0.014639684626274541,
+        -0.0019134316687068056
+      ],
+      "alpha": 0.38268633374136113,
+      "margin_work_j": 0.9999699772745715,
+      "admissible": true,
+      "minimum_prefix_j": 0.9999699772745715,
+      "difference_from_energy_off": 0.0
+    },
+    {
+      "policy": "differential_repair_v8",
+      "quality": [
+        0.2,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.3,
+      "wrench": [
+        0.2,
+        -1.0,
+        -4.0,
+        0.1,
+        0.2,
+        -0.1
+      ],
+      "budget_j": 0.0,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.00038268633374017756,
+        0.001913431668700888,
+        0.00012815243109988065,
+        0.003826863337401776,
+        0.014639684626296995,
+        -0.001913431668700888
+      ],
+      "alpha": 0.3826863337401776,
+      "margin_work_j": 5.762311497586452e-06,
+      "admissible": true,
+      "minimum_prefix_j": 0.0,
+      "difference_from_energy_off": 2.245426067304379e-14
+    },
+    {
+      "policy": "differential_repair_v8",
+      "quality": [
+        0.2,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.3,
+      "wrench": [
+        0.2,
+        -1.0,
+        -4.0,
+        0.1,
+        0.2,
+        -0.1
+      ],
+      "budget_j": 1e-06,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.00038268633374136113,
+        0.0019134316687068056,
+        0.00012815243109613508,
+        0.003826863337413611,
+        0.014639684626274541,
+        -0.0019134316687068056
+      ],
+      "alpha": 0.38268633374136113,
+      "margin_work_j": 6.762311497619381e-06,
+      "admissible": true,
+      "minimum_prefix_j": 1e-06,
+      "difference_from_energy_off": 0.0
+    },
+    {
+      "policy": "differential_repair_v8",
+      "quality": [
+        0.2,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.3,
+      "wrench": [
+        0.2,
+        -1.0,
+        -4.0,
+        0.1,
+        0.2,
+        -0.1
+      ],
+      "budget_j": 0.0001,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.00038268633374136113,
+        0.0019134316687068056,
+        0.00012815243109613508,
+        0.003826863337413611,
+        0.014639684626274541,
+        -0.0019134316687068056
+      ],
+      "alpha": 0.38268633374136113,
+      "margin_work_j": 0.00010576231149761937,
+      "admissible": true,
+      "minimum_prefix_j": 0.0001,
+      "difference_from_energy_off": 0.0
+    },
+    {
+      "policy": "differential_repair_v8",
+      "quality": [
+        0.2,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.3,
+      "wrench": [
+        0.2,
+        -1.0,
+        -4.0,
+        0.1,
+        0.2,
+        -0.1
+      ],
+      "budget_j": 1.0,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.00038268633374136113,
+        0.0019134316687068056,
+        0.00012815243109613508,
+        0.003826863337413611,
+        0.014639684626274541,
+        -0.0019134316687068056
+      ],
+      "alpha": 0.38268633374136113,
+      "margin_work_j": 1.0000057623114977,
+      "admissible": true,
+      "minimum_prefix_j": 1.0,
+      "difference_from_energy_off": 0.0
+    },
+    {
+      "policy": "differential_repair_v8",
+      "quality": [
+        0.2,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.5,
+      "wrench": [
+        -0.2,
+        -1.0,
+        -4.0,
+        -0.1,
+        -0.2,
+        0.1
+      ],
+      "budget_j": 0.0,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.00028192588775461367,
+        0.0014096294387730686,
+        -7.849247199632433e-05,
+        0.002819258877546137,
+        -0.007874667864533355,
+        -0.0014096294387730686
+      ],
+      "alpha": 0.2819258877546137,
+      "margin_work_j": 6.46802830208109e-14,
+      "admissible": true,
+      "minimum_prefix_j": 0.0,
+      "difference_from_energy_off": 0.007874667864533355
+    },
+    {
+      "policy": "differential_repair_v8",
+      "quality": [
+        0.2,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.5,
+      "wrench": [
+        -0.2,
+        -1.0,
+        -4.0,
+        -0.1,
+        -0.2,
+        0.1
+      ],
+      "budget_j": 1e-06,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.00029126617181359545,
+        0.0014563308590679772,
+        -6.777622653367062e-05,
+        0.0029126617181359543,
+        -0.007401892321062101,
+        -0.0014563308590679772
+      ],
+      "alpha": 0.29126617181359543,
+      "margin_work_j": 9.598006607157081e-14,
+      "admissible": true,
+      "minimum_prefix_j": 9.598006606310048e-14,
+      "difference_from_energy_off": 0.007401892321062101
+    },
+    {
+      "policy": "differential_repair_v8",
+      "quality": [
+        0.2,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.5,
+      "wrench": [
+        -0.2,
+        -1.0,
+        -4.0,
+        -0.1,
+        -0.2,
+        0.1
+      ],
+      "budget_j": 0.0001,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.0004374999998542542,
+        0.002187499999271271,
+        9.999994566697332e-05,
+        0.004374999998542542,
+        -1.1252039441055894e-23,
+        -0.002187499999271271
+      ],
+      "alpha": 0.4374999998542542,
+      "margin_work_j": 8.334375109154302e-05,
+      "admissible": true,
+      "minimum_prefix_j": 8.334375109154302e-05,
+      "difference_from_energy_off": 0.0
+    },
+    {
+      "policy": "differential_repair_v8",
+      "quality": [
+        0.2,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.5,
+      "wrench": [
+        -0.2,
+        -1.0,
+        -4.0,
+        -0.1,
+        -0.2,
+        0.1
+      ],
+      "budget_j": 1.0,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.0004374999998542542,
+        0.002187499999271271,
+        9.999994566697332e-05,
+        0.004374999998542542,
+        -1.1252039441055894e-23,
+        -0.002187499999271271
+      ],
+      "alpha": 0.4374999998542542,
+      "margin_work_j": 0.9999833437510915,
+      "admissible": true,
+      "minimum_prefix_j": 0.9999833437510915,
+      "difference_from_energy_off": 0.0
+    },
+    {
+      "policy": "differential_repair_v8",
+      "quality": [
+        0.2,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.5,
+      "wrench": [
+        0.2,
+        -1.0,
+        -4.0,
+        0.1,
+        0.2,
+        -0.1
+      ],
+      "budget_j": 0.0,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.0003819169533329615,
+        0.0019095847666648076,
+        -2.9474959338148163e-05,
+        0.003819169533329615,
+        0.005712130556073281,
+        -0.0019095847666648076
+      ],
+      "alpha": 0.3819169533329615,
+      "margin_work_j": 1.2842381238303835e-14,
+      "admissible": true,
+      "minimum_prefix_j": 0.0,
+      "difference_from_energy_off": 0.005712130556073281
+    },
+    {
+      "policy": "differential_repair_v8",
+      "quality": [
+        0.2,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.5,
+      "wrench": [
+        0.2,
+        -1.0,
+        -4.0,
+        0.1,
+        0.2,
+        -0.1
+      ],
+      "budget_j": 1e-06,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.00038794629956875843,
+        0.0019397314978437921,
+        -1.5430221230604033e-05,
+        0.0038794629956875842,
+        0.005092509717268473,
+        -0.0019397314978437921
+      ],
+      "alpha": 0.3879462995687584,
+      "margin_work_j": 1.9899603950876596e-13,
+      "admissible": true,
+      "minimum_prefix_j": 1.989960394664143e-13,
+      "difference_from_energy_off": 0.005092509717268473
+    },
+    {
+      "policy": "differential_repair_v8",
+      "quality": [
+        0.2,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.5,
+      "wrench": [
+        0.2,
+        -1.0,
+        -4.0,
+        0.1,
+        0.2,
+        -0.1
+      ],
+      "budget_j": 0.0001,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.0004374999998542542,
+        0.002187499999271271,
+        9.999994566697332e-05,
+        0.004374999998542542,
+        -1.1252039441055894e-23,
+        -0.002187499999271271
+      ],
+      "alpha": 0.4374999998542542,
+      "margin_work_j": 9.078125108906535e-05,
+      "admissible": true,
+      "minimum_prefix_j": 9.078125108906535e-05,
+      "difference_from_energy_off": 0.0
+    },
+    {
+      "policy": "differential_repair_v8",
+      "quality": [
+        0.2,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.5,
+      "wrench": [
+        0.2,
+        -1.0,
+        -4.0,
+        0.1,
+        0.2,
+        -0.1
+      ],
+      "budget_j": 1.0,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.0004374999998542542,
+        0.002187499999271271,
+        9.999994566697332e-05,
+        0.004374999998542542,
+        -1.1252039441055894e-23,
+        -0.002187499999271271
+      ],
+      "alpha": 0.4374999998542542,
+      "margin_work_j": 0.9999907812510891,
+      "admissible": true,
+      "minimum_prefix_j": 0.9999907812510891,
+      "difference_from_energy_off": 0.0
+    },
+    {
+      "policy": "differential_repair_v8",
+      "quality": [
+        0.9,
+        0.9,
+        0.2
+      ],
+      "force_n": 4.0,
+      "wrench": [
+        -0.2,
+        -1.0,
+        -4.0,
+        -0.1,
+        -0.2,
+        0.1
+      ],
+      "budget_j": 0.0,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        4.937500000582195e-05,
+        0.00024687500002910977,
+        0.0004749999999857848,
+        0.0004937500000582195,
+        -0.015000000000392578,
+        -0.00024687500002910977
+      ],
+      "alpha": 0.04937500000582195,
+      "margin_work_j": 3.8459375004818465e-06,
+      "admissible": true,
+      "minimum_prefix_j": 0.0,
+      "difference_from_energy_off": 8.802035489363647e-11
+    },
+    {
+      "policy": "differential_repair_v8",
+      "quality": [
+        0.9,
+        0.9,
+        0.2
+      ],
+      "force_n": 4.0,
+      "wrench": [
+        -0.2,
+        -1.0,
+        -4.0,
+        -0.1,
+        -0.2,
+        0.1
+      ],
+      "budget_j": 1e-06,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        4.9375000006138564e-05,
+        0.0002468750000306928,
+        0.0004749999999849828,
+        0.0004937500000613856,
+        -0.015000000000414064,
+        -0.0002468750000306928
+      ],
+      "alpha": 0.049375000006138564,
+      "margin_work_j": 4.8459375005087675e-06,
+      "admissible": true,
+      "minimum_prefix_j": 1e-06,
+      "difference_from_energy_off": 8.799886860866302e-11
+    },
+    {
+      "policy": "differential_repair_v8",
+      "quality": [
+        0.9,
+        0.9,
+        0.2
+      ],
+      "force_n": 4.0,
+      "wrench": [
+        -0.2,
+        -1.0,
+        -4.0,
+        -0.1,
+        -0.2,
+        0.1
+      ],
+      "budget_j": 0.0001,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        4.9375000006138584e-05,
+        0.0002468750000306929,
+        0.0004749999999849829,
+        0.0004937500000613858,
+        -0.015000000000414064,
+        -0.0002468750000306929
+      ],
+      "alpha": 0.049375000006138585,
+      "margin_work_j": 0.00010384593750050876,
+      "admissible": true,
+      "minimum_prefix_j": 0.0001,
+      "difference_from_energy_off": 8.799886860866302e-11
+    },
+    {
+      "policy": "differential_repair_v8",
+      "quality": [
+        0.9,
+        0.9,
+        0.2
+      ],
+      "force_n": 4.0,
+      "wrench": [
+        -0.2,
+        -1.0,
+        -4.0,
+        -0.1,
+        -0.2,
+        0.1
+      ],
+      "budget_j": 1.0,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        4.937500000613858e-05,
+        0.0002468750000306929,
+        0.0004749999999849829,
+        0.0004937500000613858,
+        -0.015000000000414064,
+        -0.0002468750000306929
+      ],
+      "alpha": 0.04937500000613858,
+      "margin_work_j": 1.0000038459375005,
+      "admissible": true,
+      "minimum_prefix_j": 1.0,
+      "difference_from_energy_off": 8.799886860866302e-11
+    },
+    {
+      "policy": "differential_repair_v8",
+      "quality": [
+        0.9,
+        0.9,
+        0.2
+      ],
+      "force_n": 4.0,
+      "wrench": [
+        0.2,
+        -1.0,
+        -4.0,
+        0.1,
+        0.2,
+        -0.1
+      ],
+      "budget_j": 0.0,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.0,
+        0.0,
+        9.88484704034368e-05,
+        0.0,
+        0.001976969407845564,
+        0.0
+      ],
+      "alpha": 0.0,
+      "margin_work_j": -2.231719041338731e-16,
+      "admissible": true,
+      "minimum_prefix_j": -2.231719041338731e-16,
+      "difference_from_energy_off": 0.016976969496258498
+    },
+    {
+      "policy": "differential_repair_v8",
+      "quality": [
+        0.9,
+        0.9,
+        0.2
+      ],
+      "force_n": 4.0,
+      "wrench": [
+        0.2,
+        -1.0,
+        -4.0,
+        0.1,
+        0.2,
+        -0.1
+      ],
+      "budget_j": 1e-06,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.0,
+        0.0,
+        0.00010918890173144067,
+        0.0,
+        0.0011837780343683674,
+        0.0
+      ],
+      "alpha": 0.0,
+      "margin_work_j": -2.604459616722954e-16,
+      "admissible": true,
+      "minimum_prefix_j": -2.604459023799891e-16,
+      "difference_from_energy_off": 0.016183778122781302
+    },
+    {
+      "policy": "differential_repair_v8",
+      "quality": [
+        0.9,
+        0.9,
+        0.2
+      ],
+      "force_n": 4.0,
+      "wrench": [
+        0.2,
+        -1.0,
+        -4.0,
+        0.1,
+        0.2,
+        -0.1
+      ],
+      "budget_j": 0.0001,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        4.9375000006138584e-05,
+        0.0002468750000306929,
+        0.0004749999999849829,
+        0.0004937500000613858,
+        -0.015000000000414064,
+        -0.0002468750000306929
+      ],
+      "alpha": 0.049375000006138585,
+      "margin_work_j": 7.4685312499785e-05,
+      "admissible": true,
+      "minimum_prefix_j": 7.4685312499785e-05,
+      "difference_from_energy_off": 8.799886860866302e-11
+    },
+    {
+      "policy": "differential_repair_v8",
+      "quality": [
+        0.9,
+        0.9,
+        0.2
+      ],
+      "force_n": 4.0,
+      "wrench": [
+        0.2,
+        -1.0,
+        -4.0,
+        0.1,
+        0.2,
+        -0.1
+      ],
+      "budget_j": 1.0,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        4.937500000613858e-05,
+        0.0002468750000306929,
+        0.0004749999999849829,
+        0.0004937500000613858,
+        -0.015000000000414064,
+        -0.0002468750000306929
+      ],
+      "alpha": 0.04937500000613858,
+      "margin_work_j": 0.9999746853124998,
+      "admissible": true,
+      "minimum_prefix_j": 0.9999746853124998,
+      "difference_from_energy_off": 8.799886860866302e-11
+    },
+    {
+      "policy": "differential_repair_v8",
+      "quality": [
+        0.9,
+        0.9,
+        0.2
+      ],
+      "force_n": 4.3,
+      "wrench": [
+        -0.2,
+        -1.0,
+        -4.0,
+        -0.1,
+        -0.2,
+        0.1
+      ],
+      "budget_j": 0.0,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.0003676376421700239,
+        0.0018381882108501194,
+        0.00012364878790253807,
+        0.003676376421700239,
+        -0.01478883677121923,
+        -0.0018381882108501194
+      ],
+      "alpha": 0.36763764217002387,
+      "margin_work_j": 4.726697277936815e-16,
+      "admissible": true,
+      "minimum_prefix_j": 0.0,
+      "difference_from_energy_off": 0.00015048691571337234
+    },
+    {
+      "policy": "differential_repair_v8",
+      "quality": [
+        0.9,
+        0.9,
+        0.2
+      ],
+      "force_n": 4.3,
+      "wrench": [
+        -0.2,
+        -1.0,
+        -4.0,
+        -0.1,
+        -0.2,
+        0.1
+      ],
+      "budget_j": 1e-06,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.00038268633374574895,
+        0.0019134316687287448,
+        0.0001281524310848203,
+        0.0038268633374574897,
+        -0.014639684626139737,
+        -0.0019134316687287448
+      ],
+      "alpha": 0.38268633374574895,
+      "margin_work_j": 2.5664382396074077e-07,
+      "admissible": true,
+      "minimum_prefix_j": 2.566438239607408e-07,
+      "difference_from_energy_off": 1.3480709604163366e-13
+    },
+    {
+      "policy": "differential_repair_v8",
+      "quality": [
+        0.9,
+        0.9,
+        0.2
+      ],
+      "force_n": 4.3,
+      "wrench": [
+        -0.2,
+        -1.0,
+        -4.0,
+        -0.1,
+        -0.2,
+        0.1
+      ],
+      "budget_j": 0.0001,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.00038268633374136113,
+        0.0019134316687068056,
+        0.00012815243109613497,
+        0.003826863337413611,
+        -0.014639684626274544,
+        -0.0019134316687068056
+      ],
+      "alpha": 0.38268633374136113,
+      "margin_work_j": 9.925664382401625e-05,
+      "admissible": true,
+      "minimum_prefix_j": 9.925664382401625e-05,
+      "difference_from_energy_off": 5.421010862427522e-20
+    },
+    {
+      "policy": "differential_repair_v8",
+      "quality": [
+        0.9,
+        0.9,
+        0.2
+      ],
+      "force_n": 4.3,
+      "wrench": [
+        -0.2,
+        -1.0,
+        -4.0,
+        -0.1,
+        -0.2,
+        0.1
+      ],
+      "budget_j": 1.0,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.00038268633374136113,
+        0.0019134316687068056,
+        0.00012815243109613503,
+        0.003826863337413611,
+        -0.014639684626274544,
+        -0.0019134316687068056
+      ],
+      "alpha": 0.38268633374136113,
+      "margin_work_j": 0.999999256643824,
+      "admissible": true,
+      "minimum_prefix_j": 0.999999256643824,
+      "difference_from_energy_off": 0.0
+    },
+    {
+      "policy": "differential_repair_v8",
+      "quality": [
+        0.9,
+        0.9,
+        0.2
+      ],
+      "force_n": 4.3,
+      "wrench": [
+        0.2,
+        -1.0,
+        -4.0,
+        0.1,
+        0.2,
+        -0.1
+      ],
+      "budget_j": 0.0,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.0,
+        0.0,
+        6.99591724454968e-05,
+        0.0,
+        0.0013991834485729002,
+        0.0
+      ],
+      "alpha": 0.0,
+      "margin_work_j": -3.370359004904733e-16,
+      "admissible": true,
+      "minimum_prefix_j": -3.370359004904733e-16,
+      "difference_from_energy_off": 0.016038868074847445
+    },
+    {
+      "policy": "differential_repair_v8",
+      "quality": [
+        0.9,
+        0.9,
+        0.2
+      ],
+      "force_n": 4.3,
+      "wrench": [
+        0.2,
+        -1.0,
+        -4.0,
+        0.1,
+        0.2,
+        -0.1
+      ],
+      "budget_j": 1e-06,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.0,
+        0.0,
+        8.358675351801252e-05,
+        0.0,
+        0.0006717350698809649,
+        0.0
+      ],
+      "alpha": 0.0,
+      "margin_work_j": -4.792856649754596e-16,
+      "admissible": true,
+      "minimum_prefix_j": -4.792855463908469e-16,
+      "difference_from_energy_off": 0.01531141969615551
+    },
+    {
+      "policy": "differential_repair_v8",
+      "quality": [
+        0.9,
+        0.9,
+        0.2
+      ],
+      "force_n": 4.3,
+      "wrench": [
+        0.2,
+        -1.0,
+        -4.0,
+        0.1,
+        0.2,
+        -0.1
+      ],
+      "budget_j": 0.0001,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.00038268633374136113,
+        0.0019134316687068056,
+        0.00012815243109613497,
+        0.003826863337413611,
+        -0.014639684626274544,
+        -0.0019134316687068056
+      ],
+      "alpha": 0.38268633374136113,
+      "margin_work_j": 7.64829422450703e-05,
+      "admissible": true,
+      "minimum_prefix_j": 7.64829422450703e-05,
+      "difference_from_energy_off": 5.421010862427522e-20
+    },
+    {
+      "policy": "differential_repair_v8",
+      "quality": [
+        0.9,
+        0.9,
+        0.2
+      ],
+      "force_n": 4.3,
+      "wrench": [
+        0.2,
+        -1.0,
+        -4.0,
+        0.1,
+        0.2,
+        -0.1
+      ],
+      "budget_j": 1.0,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.00038268633374136113,
+        0.0019134316687068056,
+        0.00012815243109613503,
+        0.003826863337413611,
+        -0.014639684626274544,
+        -0.0019134316687068056
+      ],
+      "alpha": 0.38268633374136113,
+      "margin_work_j": 0.9999764829422451,
+      "admissible": true,
+      "minimum_prefix_j": 0.9999764829422451,
+      "difference_from_energy_off": 0.0
+    },
+    {
+      "policy": "differential_repair_v8",
+      "quality": [
+        0.9,
+        0.9,
+        0.2
+      ],
+      "force_n": 4.5,
+      "wrench": [
+        -0.2,
+        -1.0,
+        -4.0,
+        -0.1,
+        -0.2,
+        0.1
+      ],
+      "budget_j": 0.0,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.00028192588775461367,
+        0.0014096294387730686,
+        -7.849247199632433e-05,
+        0.002819258877546137,
+        -0.007874667864533355,
+        -0.0014096294387730686
+      ],
+      "alpha": 0.2819258877546137,
+      "margin_work_j": 6.46802830208109e-14,
+      "admissible": true,
+      "minimum_prefix_j": 0.0,
+      "difference_from_energy_off": 0.007874667864533355
+    },
+    {
+      "policy": "differential_repair_v8",
+      "quality": [
+        0.9,
+        0.9,
+        0.2
+      ],
+      "force_n": 4.5,
+      "wrench": [
+        -0.2,
+        -1.0,
+        -4.0,
+        -0.1,
+        -0.2,
+        0.1
+      ],
+      "budget_j": 1e-06,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.00029126617181359545,
+        0.0014563308590679772,
+        -6.777622653367062e-05,
+        0.0029126617181359543,
+        -0.007401892321062101,
+        -0.0014563308590679772
+      ],
+      "alpha": 0.29126617181359543,
+      "margin_work_j": 9.598006607157081e-14,
+      "admissible": true,
+      "minimum_prefix_j": 9.598006606310048e-14,
+      "difference_from_energy_off": 0.007401892321062101
+    },
+    {
+      "policy": "differential_repair_v8",
+      "quality": [
+        0.9,
+        0.9,
+        0.2
+      ],
+      "force_n": 4.5,
+      "wrench": [
+        -0.2,
+        -1.0,
+        -4.0,
+        -0.1,
+        -0.2,
+        0.1
+      ],
+      "budget_j": 0.0001,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.0004374999998542542,
+        0.002187499999271271,
+        9.999994566697332e-05,
+        0.004374999998542542,
+        -1.1252039441055894e-23,
+        -0.002187499999271271
+      ],
+      "alpha": 0.4374999998542542,
+      "margin_work_j": 8.334375109154302e-05,
+      "admissible": true,
+      "minimum_prefix_j": 8.334375109154302e-05,
+      "difference_from_energy_off": 0.0
+    },
+    {
+      "policy": "differential_repair_v8",
+      "quality": [
+        0.9,
+        0.9,
+        0.2
+      ],
+      "force_n": 4.5,
+      "wrench": [
+        -0.2,
+        -1.0,
+        -4.0,
+        -0.1,
+        -0.2,
+        0.1
+      ],
+      "budget_j": 1.0,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.0004374999998542542,
+        0.002187499999271271,
+        9.999994566697332e-05,
+        0.004374999998542542,
+        -1.1252039441055894e-23,
+        -0.002187499999271271
+      ],
+      "alpha": 0.4374999998542542,
+      "margin_work_j": 0.9999833437510915,
+      "admissible": true,
+      "minimum_prefix_j": 0.9999833437510915,
+      "difference_from_energy_off": 0.0
+    },
+    {
+      "policy": "differential_repair_v8",
+      "quality": [
+        0.9,
+        0.9,
+        0.2
+      ],
+      "force_n": 4.5,
+      "wrench": [
+        0.2,
+        -1.0,
+        -4.0,
+        0.1,
+        0.2,
+        -0.1
+      ],
+      "budget_j": 0.0,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.0003819169533329615,
+        0.0019095847666648076,
+        -2.9474959338148163e-05,
+        0.003819169533329615,
+        0.005712130556073281,
+        -0.0019095847666648076
+      ],
+      "alpha": 0.3819169533329615,
+      "margin_work_j": 1.2842381238303835e-14,
+      "admissible": true,
+      "minimum_prefix_j": 0.0,
+      "difference_from_energy_off": 0.005712130556073281
+    },
+    {
+      "policy": "differential_repair_v8",
+      "quality": [
+        0.9,
+        0.9,
+        0.2
+      ],
+      "force_n": 4.5,
+      "wrench": [
+        0.2,
+        -1.0,
+        -4.0,
+        0.1,
+        0.2,
+        -0.1
+      ],
+      "budget_j": 1e-06,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.00038794629956875843,
+        0.0019397314978437921,
+        -1.5430221230604033e-05,
+        0.0038794629956875842,
+        0.005092509717268473,
+        -0.0019397314978437921
+      ],
+      "alpha": 0.3879462995687584,
+      "margin_work_j": 1.9899603950876596e-13,
+      "admissible": true,
+      "minimum_prefix_j": 1.989960394664143e-13,
+      "difference_from_energy_off": 0.005092509717268473
+    },
+    {
+      "policy": "differential_repair_v8",
+      "quality": [
+        0.9,
+        0.9,
+        0.2
+      ],
+      "force_n": 4.5,
+      "wrench": [
+        0.2,
+        -1.0,
+        -4.0,
+        0.1,
+        0.2,
+        -0.1
+      ],
+      "budget_j": 0.0001,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.0004374999998542542,
+        0.002187499999271271,
+        9.999994566697332e-05,
+        0.004374999998542542,
+        -1.1252039441055894e-23,
+        -0.002187499999271271
+      ],
+      "alpha": 0.4374999998542542,
+      "margin_work_j": 9.078125108906535e-05,
+      "admissible": true,
+      "minimum_prefix_j": 9.078125108906535e-05,
+      "difference_from_energy_off": 0.0
+    },
+    {
+      "policy": "differential_repair_v8",
+      "quality": [
+        0.9,
+        0.9,
+        0.2
+      ],
+      "force_n": 4.5,
+      "wrench": [
+        0.2,
+        -1.0,
+        -4.0,
+        0.1,
+        0.2,
+        -0.1
+      ],
+      "budget_j": 1.0,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.0004374999998542542,
+        0.002187499999271271,
+        9.999994566697332e-05,
+        0.004374999998542542,
+        -1.1252039441055894e-23,
+        -0.002187499999271271
+      ],
+      "alpha": 0.4374999998542542,
+      "margin_work_j": 0.9999907812510891,
+      "admissible": true,
+      "minimum_prefix_j": 0.9999907812510891,
+      "difference_from_energy_off": 0.0
+    },
+    {
+      "policy": "differential_repair_v8",
+      "quality": [
+        0.9,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.0,
+      "wrench": [
+        -0.2,
+        -1.0,
+        -4.0,
+        -0.1,
+        -0.2,
+        0.1
+      ],
+      "budget_j": 0.0,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.0005779510612437738,
+        0.0028897553062188688,
+        -0.00021806802767696996,
+        0.0057795106124377375,
+        -0.014999999998902695,
+        -0.0028897553062188688
+      ],
+      "alpha": 0.5779510612437737,
+      "margin_work_j": 7.756759102216237e-16,
+      "admissible": true,
+      "minimum_prefix_j": 0.0,
+      "difference_from_energy_off": 0.014999999998902695
+    },
+    {
+      "policy": "differential_repair_v8",
+      "quality": [
+        0.9,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.0,
+      "wrench": [
+        -0.2,
+        -1.0,
+        -4.0,
+        -0.1,
+        -0.2,
+        0.1
+      ],
+      "budget_j": 1e-06,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.0005985388143183713,
+        0.0029926940715918567,
+        -0.00020255251415846032,
+        0.0059853881431837135,
+        -0.014999999997947044,
+        -0.0029926940715918567
+      ],
+      "alpha": 0.5985388143183713,
+      "margin_work_j": 1.4508115845843217e-15,
+      "admissible": true,
+      "minimum_prefix_j": 1.4508115845843217e-15,
+      "difference_from_energy_off": 0.014999999997947044
+    },
+    {
+      "policy": "differential_repair_v8",
+      "quality": [
+        0.9,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.0,
+      "wrench": [
+        -0.2,
+        -1.0,
+        -4.0,
+        -0.1,
+        -0.2,
+        0.1
+      ],
+      "budget_j": 0.0001,
+      "status": "nominal",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.001,
+        0.005,
+        0.0001,
+        0.01,
+        0.0,
+        -0.005
+      ],
+      "alpha": 1.0,
+      "margin_work_j": 6.45e-05,
+      "admissible": true,
+      "minimum_prefix_j": 6.45e-05,
+      "difference_from_energy_off": 0.0
+    },
+    {
+      "policy": "differential_repair_v8",
+      "quality": [
+        0.9,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.0,
+      "wrench": [
+        -0.2,
+        -1.0,
+        -4.0,
+        -0.1,
+        -0.2,
+        0.1
+      ],
+      "budget_j": 1.0,
+      "status": "nominal",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.001,
+        0.005,
+        0.0001,
+        0.01,
+        0.0,
+        -0.005
+      ],
+      "alpha": 1.0,
+      "margin_work_j": 0.9999645,
+      "admissible": true,
+      "minimum_prefix_j": 0.9999645,
+      "difference_from_energy_off": 0.0
+    },
+    {
+      "policy": "differential_repair_v8",
+      "quality": [
+        0.9,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.0,
+      "wrench": [
+        0.2,
+        -1.0,
+        -4.0,
+        0.1,
+        0.2,
+        -0.1
+      ],
+      "budget_j": 0.0,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.0009006451706905272,
+        0.004503225853452636,
+        -5.2022212080667485e-05,
+        0.009006451706905273,
+        0.013820201098241919,
+        -0.004503225853452636
+      ],
+      "alpha": 0.9006451706905272,
+      "margin_work_j": 2.346157176955771e-14,
+      "admissible": true,
+      "minimum_prefix_j": 0.0,
+      "difference_from_energy_off": 0.013820201098241919
+    },
+    {
+      "policy": "differential_repair_v8",
+      "quality": [
+        0.9,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.0,
+      "wrench": [
+        0.2,
+        -1.0,
+        -4.0,
+        0.1,
+        0.2,
+        -0.1
+      ],
+      "budget_j": 1e-06,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.0009060157016003149,
+        0.004530078508001575,
+        -4.380479582999404e-05,
+        0.00906015701600315,
+        0.013073163257271975,
+        -0.004530078508001575
+      ],
+      "alpha": 0.9060157016003149,
+      "margin_work_j": 9.746666147780747e-14,
+      "admissible": true,
+      "minimum_prefix_j": 9.74666614015745e-14,
+      "difference_from_energy_off": 0.013073163257271975
+    },
+    {
+      "policy": "differential_repair_v8",
+      "quality": [
+        0.9,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.0,
+      "wrench": [
+        0.2,
+        -1.0,
+        -4.0,
+        0.1,
+        0.2,
+        -0.1
+      ],
+      "budget_j": 0.0001,
+      "status": "nominal",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.001,
+        0.005,
+        0.0001,
+        0.01,
+        0.0,
+        -0.005
+      ],
+      "alpha": 1.0,
+      "margin_work_j": 8.149999999999999e-05,
+      "admissible": true,
+      "minimum_prefix_j": 8.15e-05,
+      "difference_from_energy_off": 0.0
+    },
+    {
+      "policy": "differential_repair_v8",
+      "quality": [
+        0.9,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.0,
+      "wrench": [
+        0.2,
+        -1.0,
+        -4.0,
+        0.1,
+        0.2,
+        -0.1
+      ],
+      "budget_j": 1.0,
+      "status": "nominal",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.001,
+        0.005,
+        0.0001,
+        0.01,
+        0.0,
+        -0.005
+      ],
+      "alpha": 1.0,
+      "margin_work_j": 0.9999815,
+      "admissible": true,
+      "minimum_prefix_j": 0.9999815,
+      "difference_from_energy_off": 0.0
+    },
+    {
+      "policy": "differential_repair_v8",
+      "quality": [
+        0.9,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.3,
+      "wrench": [
+        -0.2,
+        -1.0,
+        -4.0,
+        -0.1,
+        -0.2,
+        0.1
+      ],
+      "budget_j": 0.0,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.0005976553829650706,
+        0.002988276914825353,
+        -0.000251072764785687,
+        0.005976553829650706,
+        -0.015000000021984934,
+        -0.002988276914825353
+      ],
+      "alpha": 0.5976553829650706,
+      "margin_work_j": -1.1631187549557276e-14,
+      "admissible": true,
+      "minimum_prefix_j": -1.1631187549557276e-14,
+      "difference_from_energy_off": 0.015000000021984934
+    },
+    {
+      "policy": "differential_repair_v8",
+      "quality": [
+        0.9,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.3,
+      "wrench": [
+        -0.2,
+        -1.0,
+        -4.0,
+        -0.1,
+        -0.2,
+        0.1
+      ],
+      "budget_j": 1e-06,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.0006236131007124998,
+        0.0031180655035624996,
+        -0.0002445519413285515,
+        0.006236131007124999,
+        -0.015000000030934518,
+        -0.0031180655035624996
+      ],
+      "alpha": 0.6236131007124999,
+      "margin_work_j": -1.6363199586543614e-14,
+      "admissible": true,
+      "minimum_prefix_j": -1.6363199527251308e-14,
+      "difference_from_energy_off": 0.015000000030934518
+    },
+    {
+      "policy": "differential_repair_v8",
+      "quality": [
+        0.9,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.3,
+      "wrench": [
+        -0.2,
+        -1.0,
+        -4.0,
+        -0.1,
+        -0.2,
+        0.1
+      ],
+      "budget_j": 0.0001,
+      "status": "nominal",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.001,
+        0.005,
+        0.0001,
+        0.01,
+        0.0,
+        -0.005
+      ],
+      "alpha": 1.0,
+      "margin_work_j": 6.45e-05,
+      "admissible": true,
+      "minimum_prefix_j": 6.45e-05,
+      "difference_from_energy_off": 0.0
+    },
+    {
+      "policy": "differential_repair_v8",
+      "quality": [
+        0.9,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.3,
+      "wrench": [
+        -0.2,
+        -1.0,
+        -4.0,
+        -0.1,
+        -0.2,
+        0.1
+      ],
+      "budget_j": 1.0,
+      "status": "nominal",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.001,
+        0.005,
+        0.0001,
+        0.01,
+        0.0,
+        -0.005
+      ],
+      "alpha": 1.0,
+      "margin_work_j": 0.9999645,
+      "admissible": true,
+      "minimum_prefix_j": 0.9999645,
+      "difference_from_energy_off": 0.0
+    },
+    {
+      "policy": "differential_repair_v8",
+      "quality": [
+        0.9,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.3,
+      "wrench": [
+        0.2,
+        -1.0,
+        -4.0,
+        0.1,
+        0.2,
+        -0.1
+      ],
+      "budget_j": 0.0,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.0008894855402220139,
+        0.00444742770111007,
+        -0.00015073076691530902,
+        0.00889485540222014,
+        0.011661896125547182,
+        -0.00444742770111007
+      ],
+      "alpha": 0.8894855402220139,
+      "margin_work_j": 5.0190135250996474e-14,
+      "admissible": true,
+      "minimum_prefix_j": 0.0,
+      "difference_from_energy_off": 0.011661896125547182
+    },
+    {
+      "policy": "differential_repair_v8",
+      "quality": [
+        0.9,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.3,
+      "wrench": [
+        0.2,
+        -1.0,
+        -4.0,
+        0.1,
+        0.2,
+        -0.1
+      ],
+      "budget_j": 1e-06,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.0008954592952645444,
+        0.004477296476322722,
+        -0.000137177751286358,
+        0.008954592952645444,
+        0.011031523320655582,
+        -0.004477296476322722
+      ],
+      "alpha": 0.8954592952645444,
+      "margin_work_j": -2.5482239473899328e-14,
+      "admissible": true,
+      "minimum_prefix_j": -2.5482239346844384e-14,
+      "difference_from_energy_off": 0.011031523320655582
+    },
+    {
+      "policy": "differential_repair_v8",
+      "quality": [
+        0.9,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.3,
+      "wrench": [
+        0.2,
+        -1.0,
+        -4.0,
+        0.1,
+        0.2,
+        -0.1
+      ],
+      "budget_j": 0.0001,
+      "status": "nominal",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.001,
+        0.005,
+        0.0001,
+        0.01,
+        0.0,
+        -0.005
+      ],
+      "alpha": 1.0,
+      "margin_work_j": 8.149999999999999e-05,
+      "admissible": true,
+      "minimum_prefix_j": 8.15e-05,
+      "difference_from_energy_off": 0.0
+    },
+    {
+      "policy": "differential_repair_v8",
+      "quality": [
+        0.9,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.3,
+      "wrench": [
+        0.2,
+        -1.0,
+        -4.0,
+        0.1,
+        0.2,
+        -0.1
+      ],
+      "budget_j": 1.0,
+      "status": "nominal",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.001,
+        0.005,
+        0.0001,
+        0.01,
+        0.0,
+        -0.005
+      ],
+      "alpha": 1.0,
+      "margin_work_j": 0.9999815,
+      "admissible": true,
+      "minimum_prefix_j": 0.9999815,
+      "difference_from_energy_off": 0.0
+    },
+    {
+      "policy": "differential_repair_v8",
+      "quality": [
+        0.9,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.5,
+      "wrench": [
+        -0.2,
+        -1.0,
+        -4.0,
+        -0.1,
+        -0.2,
+        0.1
+      ],
+      "budget_j": 0.0,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.0006016373004714999,
+        0.0030081865023574993,
+        -0.0002577424785290636,
+        0.0060163730047149986,
+        -0.014999999996839743,
+        -0.0030081865023574993
+      ],
+      "alpha": 0.6016373004714999,
+      "margin_work_j": 1.6257711865121095e-15,
+      "admissible": true,
+      "minimum_prefix_j": 0.0,
+      "difference_from_energy_off": 0.014999999996839743
+    },
+    {
+      "policy": "differential_repair_v8",
+      "quality": [
+        0.9,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.5,
+      "wrench": [
+        -0.2,
+        -1.0,
+        -4.0,
+        -0.1,
+        -0.2,
+        0.1
+      ],
+      "budget_j": 1e-06,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.0006286802018381237,
+        0.003143401009190619,
+        -0.0002530393344870153,
+        0.006286802018381238,
+        -0.015000000047466234,
+        -0.003143401009190619
+      ],
+      "alpha": 0.6286802018381238,
+      "margin_work_j": -2.4370605902247767e-14,
+      "admissible": true,
+      "minimum_prefix_j": -2.4370605800603812e-14,
+      "difference_from_energy_off": 0.015000000047466234
+    },
+    {
+      "policy": "differential_repair_v8",
+      "quality": [
+        0.9,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.5,
+      "wrench": [
+        -0.2,
+        -1.0,
+        -4.0,
+        -0.1,
+        -0.2,
+        0.1
+      ],
+      "budget_j": 0.0001,
+      "status": "nominal",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.001,
+        0.005,
+        0.0001,
+        0.01,
+        0.0,
+        -0.005
+      ],
+      "alpha": 1.0,
+      "margin_work_j": 6.45e-05,
+      "admissible": true,
+      "minimum_prefix_j": 6.45e-05,
+      "difference_from_energy_off": 0.0
+    },
+    {
+      "policy": "differential_repair_v8",
+      "quality": [
+        0.9,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.5,
+      "wrench": [
+        -0.2,
+        -1.0,
+        -4.0,
+        -0.1,
+        -0.2,
+        0.1
+      ],
+      "budget_j": 1.0,
+      "status": "nominal",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.001,
+        0.005,
+        0.0001,
+        0.01,
+        0.0,
+        -0.005
+      ],
+      "alpha": 1.0,
+      "margin_work_j": 0.9999645,
+      "admissible": true,
+      "minimum_prefix_j": 0.9999645,
+      "difference_from_energy_off": 0.0
+    },
+    {
+      "policy": "differential_repair_v8",
+      "quality": [
+        0.9,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.5,
+      "wrench": [
+        0.2,
+        -1.0,
+        -4.0,
+        0.1,
+        0.2,
+        -0.1
+      ],
+      "budget_j": 0.0,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.0008884570722592919,
+        0.00444228536129646,
+        -0.00015982771553622817,
+        0.00888457072259292,
+        0.011462987437156761,
+        -0.00444228536129646
+      ],
+      "alpha": 0.8884570722592919,
+      "margin_work_j": 5.56030048393108e-14,
+      "admissible": true,
+      "minimum_prefix_j": 0.0,
+      "difference_from_energy_off": 0.011462987437156761
+    },
+    {
+      "policy": "differential_repair_v8",
+      "quality": [
+        0.9,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.5,
+      "wrench": [
+        0.2,
+        -1.0,
+        -4.0,
+        0.1,
+        0.2,
+        -0.1
+      ],
+      "budget_j": 1e-06,
+      "status": "repair",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.0008944864202241359,
+        0.004472432101120679,
+        -0.00014578297273666824,
+        0.008944864202241358,
+        0.010843366450769264,
+        -0.004472432101120679
+      ],
+      "alpha": 0.8944864202241358,
+      "margin_work_j": -2.819560828305062e-14,
+      "admissible": true,
+      "minimum_prefix_j": -2.819560817293634e-14,
+      "difference_from_energy_off": 0.010843366450769264
+    },
+    {
+      "policy": "differential_repair_v8",
+      "quality": [
+        0.9,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.5,
+      "wrench": [
+        0.2,
+        -1.0,
+        -4.0,
+        0.1,
+        0.2,
+        -0.1
+      ],
+      "budget_j": 0.0001,
+      "status": "nominal",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.001,
+        0.005,
+        0.0001,
+        0.01,
+        0.0,
+        -0.005
+      ],
+      "alpha": 1.0,
+      "margin_work_j": 8.149999999999999e-05,
+      "admissible": true,
+      "minimum_prefix_j": 8.15e-05,
+      "difference_from_energy_off": 0.0
+    },
+    {
+      "policy": "differential_repair_v8",
+      "quality": [
+        0.9,
+        0.9,
+        0.9
+      ],
+      "force_n": 4.5,
+      "wrench": [
+        0.2,
+        -1.0,
+        -4.0,
+        0.1,
+        0.2,
+        -0.1
+      ],
+      "budget_j": 1.0,
+      "status": "nominal",
+      "success": true,
+      "ledger": "one read-only PortEnergyConstraint snapshot; no settlement",
+      "twist": [
+        0.001,
+        0.005,
+        0.0001,
+        0.01,
+        0.0,
+        -0.005
+      ],
+      "alpha": 1.0,
+      "margin_work_j": 0.9999815,
+      "admissible": true,
+      "minimum_prefix_j": 0.9999815,
+      "difference_from_energy_off": 0.0
+    }
+  ]
+}

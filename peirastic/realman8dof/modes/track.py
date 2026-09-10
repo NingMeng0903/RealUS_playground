@@ -368,6 +368,9 @@ def build_track_hybrid_phase(
     use_tff_split: bool = False,
     payload: dict | None = None,
 ) -> Phase:
+    from .contact_qp import wrap_study_phase
+    if dict(payload or {}).get("contact_qp") is not None and not use_tff_split:
+        raise ValueError("contact_qp study requires the existing TFF split")
     gated_reference, gate = _contact_gated_reference(reference, payload)
     if not use_tff_split:
         controller, f_des, _raw = _hybrid_controller(dt, payload)
@@ -400,7 +403,7 @@ def build_track_hybrid_phase(
     phase.label = label
     if gate is not None:
         _bind_contact_gate(phase, gate, duration_s=duration_s)
-    return phase
+    return wrap_study_phase(phase,payload or {},ctx)
 
 
 def wrap_admittance(reference, controller, desired_force) -> AdmittanceOuterLoop:

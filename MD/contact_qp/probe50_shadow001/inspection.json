@@ -1,0 +1,262 @@
+{
+  "source": "/media/camp/EXT_DRIVE/ICRA_2027/icra 2027_contact/real_characterization/shadow_probe50/001",
+  "scope": "shadow suggestions never executed; moving subset uses nominal path-feedforward norm >1e-5; repeated image snapshots are not independent trials",
+  "scans": [
+    {
+      "scan": "RH_Per_C_DtP",
+      "control_samples": 6976,
+      "shadow_samples": 6895,
+      "all_statuses": {
+        "repair": 2028,
+        "nominal": 4862,
+        "image_unavailable": 5
+      },
+      "dropped_records": 0,
+      "shadow_queue_dropped": 0,
+      "all": {
+        "count": 6895,
+        "force_mean_n": 3.7319666333786956,
+        "force_rmse_n": 1.1960631282122305,
+        "force_range_n": [
+          -0.7178000875927399,
+          4.396282224389481
+        ],
+        "force_over_4_1_count": 3204,
+        "statuses": {
+          "repair": 2028,
+          "nominal": 4862,
+          "image_unavailable": 5
+        },
+        "low_quality_count": 1740,
+        "low_quality_overforce_count": 646,
+        "added_normal_or_rocking_count": 521,
+        "low_quality_added_motion_count": 469,
+        "low_quality_positive_added_local_count": 469,
+        "alpha_min_mean": [
+          0.24999999922289448,
+          0.9520767931588846
+        ],
+        "alpha_below_099_count": 1673,
+        "added_vn_mm_s_min_max": [
+          -0.00015518870350892874,
+          0.7500000023640903
+        ],
+        "added_omega_deg_s_min_max": [
+          -0.7036448329277198,
+          0.705676521082688
+        ],
+        "max_hard_violation": 2.437757678011576e-12,
+        "time_ms_p50_p99_max": [
+          0.33537205308675766,
+          0.9404746489599346,
+          2.1987389773130417
+        ]
+      },
+      "moving": {
+        "count": 6030,
+        "force_mean_n": 4.103095116456985,
+        "force_rmse_n": 0.131665600608572,
+        "force_range_n": [
+          3.7604347888451177,
+          4.396282224389481
+        ],
+        "force_over_4_1_count": 3200,
+        "statuses": {
+          "nominal": 4647,
+          "repair": 1378,
+          "image_unavailable": 5
+        },
+        "low_quality_count": 1090,
+        "low_quality_overforce_count": 646,
+        "added_normal_or_rocking_count": 492,
+        "low_quality_added_motion_count": 440,
+        "low_quality_positive_added_local_count": 440,
+        "alpha_min_mean": [
+          0.24999999922289448,
+          0.9887137410736683
+        ],
+        "alpha_below_099_count": 1033,
+        "added_vn_mm_s_min_max": [
+          -0.00015518870350892874,
+          0.7500000023640903
+        ],
+        "added_omega_deg_s_min_max": [
+          -0.7036448329277198,
+          0.705676521082688
+        ],
+        "max_hard_violation": 2.437757678011576e-12,
+        "time_ms_p50_p99_max": [
+          0.3272820031270385,
+          0.8678083983249963,
+          2.1987389773130417
+        ]
+      },
+      "examples": [
+        {
+          "control_id": 1212,
+          "quality": [
+            0.9551491007080017,
+            0.7376180532099758
+          ],
+          "force_n": 4.044631080607828,
+          "alpha": 0.9415169248843522,
+          "nominal_vn_mm_s": -0.6119046814964906,
+          "added_vn_mm_s": 0.44199503081039615,
+          "nominal_omega_deg_s": 0.0,
+          "added_omega_deg_s": 0.705676521082688,
+          "status": "repair",
+          "local_added_mm_s": [
+            0.25109116023325884,
+            0.6328989013875335
+          ]
+        },
+        {
+          "control_id": 1983,
+          "quality": [
+            0.7716462379446539,
+            0.6289811643011138
+          ],
+          "force_n": 4.092556105894386,
+          "alpha": 0.8396698415322942,
+          "nominal_vn_mm_s": -0.4340511019183418,
+          "added_vn_mm_s": 0.5760930231246825,
+          "nominal_omega_deg_s": 0.0,
+          "added_omega_deg_s": 0.39856541672738405,
+          "status": "repair",
+          "local_added_mm_s": [
+            0.4682707016243024,
+            0.6839153446250625
+          ]
+        }
+      ]
+    },
+    {
+      "scan": "RH_Per_L_DtP",
+      "control_samples": 6762,
+      "shadow_samples": 6738,
+      "all_statuses": {
+        "repair": 3599,
+        "nominal": 3136,
+        "image_unavailable": 3
+      },
+      "dropped_records": 0,
+      "shadow_queue_dropped": 0,
+      "all": {
+        "count": 6738,
+        "force_mean_n": 3.7152181810442535,
+        "force_rmse_n": 1.2244263652880116,
+        "force_range_n": [
+          -0.7482933469291833,
+          4.465370815264033
+        ],
+        "force_over_4_1_count": 3115,
+        "statuses": {
+          "repair": 3599,
+          "nominal": 3136,
+          "image_unavailable": 3
+        },
+        "low_quality_count": 2971,
+        "low_quality_overforce_count": 1068,
+        "added_normal_or_rocking_count": 1223,
+        "low_quality_added_motion_count": 1132,
+        "low_quality_positive_added_local_count": 1131,
+        "alpha_min_mean": [
+          0.24999999918100202,
+          0.9361155996853091
+        ],
+        "alpha_below_099_count": 2881,
+        "added_vn_mm_s_min_max": [
+          -0.0001563487001573615,
+          0.7500000010789464
+        ],
+        "added_omega_deg_s_min_max": [
+          -0.6937121086343437,
+          0.7072168395587458
+        ],
+        "max_hard_violation": 2.4373590168727532e-12,
+        "time_ms_p50_p99_max": [
+          0.47961657401174307,
+          1.020634544547648,
+          2.359414007514715
+        ]
+      },
+      "moving": {
+        "count": 5987,
+        "force_mean_n": 4.099924225019955,
+        "force_rmse_n": 0.13239208755504925,
+        "force_range_n": [
+          3.745663770489778,
+          4.465370815264033
+        ],
+        "force_over_4_1_count": 3094,
+        "statuses": {
+          "repair": 2854,
+          "nominal": 3130,
+          "image_unavailable": 3
+        },
+        "low_quality_count": 2238,
+        "low_quality_overforce_count": 1051,
+        "added_normal_or_rocking_count": 1184,
+        "low_quality_added_motion_count": 1101,
+        "low_quality_positive_added_local_count": 1100,
+        "alpha_min_mean": [
+          0.24999999918100202,
+          0.9761262773402667
+        ],
+        "alpha_below_099_count": 2148,
+        "added_vn_mm_s_min_max": [
+          -0.0001563487001573615,
+          0.7500000010789464
+        ],
+        "added_omega_deg_s_min_max": [
+          -0.5976186138973734,
+          0.7072168395587458
+        ],
+        "max_hard_violation": 2.4373590168727532e-12,
+        "time_ms_p50_p99_max": [
+          0.4598880186676979,
+          0.9833158506080515,
+          2.359414007514715
+        ]
+      },
+      "examples": [
+        {
+          "control_id": 4927,
+          "quality": [
+            0.9936725300002597,
+            0.6991152428616144
+          ],
+          "force_n": 4.052724590810203,
+          "alpha": 0.9054205401827635,
+          "nominal_vn_mm_s": -0.6121755938626734,
+          "added_vn_mm_s": 0.4412985634940593,
+          "nominal_omega_deg_s": 0.36167134532411316,
+          "added_omega_deg_s": 0.7072168395587458,
+          "status": "repair",
+          "local_added_mm_s": [
+            0.2499779966684061,
+            0.6326191303197125
+          ]
+        },
+        {
+          "control_id": 1585,
+          "quality": [
+            0.8823939129075228,
+            0.6024834408568808
+          ],
+          "force_n": 4.045888138908472,
+          "alpha": 0.8148282258033257,
+          "nominal_vn_mm_s": -0.7484270454339262,
+          "added_vn_mm_s": 0.6964187018931761,
+          "nominal_omega_deg_s": 0.0,
+          "added_omega_deg_s": 0.12279928998134036,
+          "status": "repair",
+          "local_added_mm_s": [
+            0.6631982969892481,
+            0.7296391067971042
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "inner_iterations": 100,
+  "solver_preconditioning": false,
+  "image_computation_included": false,
+  "interval_diagnostics_enabled": false,
+  "mechanical_row_counts": {
+    "0": {
+      "ticks": 4000,
+      "warmup_ticks": 10,
+      "cold_first_ms": 4.5709440018981695,
+      "median_ms": 0.5329065024852753,
+      "p95_ms": 0.9938418515957892,
+      "p99_ms": 1.027253249194473,
+      "maximum_ms": 1.8993238918483257,
+      "over_5ms": 0,
+      "failures": 0
+    },
+    "96": {
+      "ticks": 4000,
+      "warmup_ticks": 10,
+      "cold_first_ms": 0.8465980645269156,
+      "median_ms": 0.7018999895080924,
+      "p95_ms": 0.740926107391715,
+      "p99_ms": 0.7648006989620626,
+      "maximum_ms": 1.0664069559425116,
+      "over_5ms": 0,
+      "failures": 0
+    }
+  },
+  "note": "Captured design shadow v2 input; shared host during concurrent experiments, not a hard realtime certificate."
+}

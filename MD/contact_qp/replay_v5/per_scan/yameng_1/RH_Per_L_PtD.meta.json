@@ -1,0 +1,22 @@
+{
+  "signature": {
+    "config_hash": "31ff0275df845acc34865c1a646c48007b9533c93fda098b646dab717edc1c76",
+    "source_size": 11872496,
+    "source_mtime_ns": 1788936320230000000,
+    "v1_csv_sha256": "1b0049abec59b2fdfde40e565f2be8e3feae1da0614baa7eb84b8f1ad69576b5",
+    "expected_frames": 185
+  },
+  "frames": 185,
+  "output_sha256": "a29dd9438923ec02bc8c2b9846d886272b51b09cb1d6831ef48b357cf51e7f15",
+  "elapsed_s": 17.89867500611581,
+  "extraction_ms": {
+    "v2": {
+      "mean": 38.28325788742183,
+      "p95": 40.29266568832099
+    },
+    "v3": {
+      "mean": 56.791848126748526,
+      "p95": 58.50297496654093
+    }
+  }
+}

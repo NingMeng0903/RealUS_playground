@@ -1,0 +1,10 @@
+{
+  "scope": "offline real-frame production input-interface test; not acoustic-effect evidence",
+  "result": "FAIL",
+  "reason": "process_parts rejected actual clock_domain=realus_shared despite raw capture_monotonic_ns present",
+  "source_file": "/media/camp/EXT_DRIVE/ICRA_2027/icra 2027_contact/uncalibrated/chenwei/LH_Per_C_DtP.h5",
+  "jpeg_sha256": "bdca19a34b17fb204c195c3d32b0433db97486a9e6169709051a75d806a571f9",
+  "clock_domain": "realus_shared",
+  "capture_monotonic_ns": 1048465350605926,
+  "worker_sha256": "1f498e2e8524c200ac8cf1f17d5c7a9d33f0ba1c2593685e33975d1fcb326c9e"
+}

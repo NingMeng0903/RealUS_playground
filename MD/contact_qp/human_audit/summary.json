@@ -1,0 +1,935 @@
+{
+  "schema_version": 1,
+  "source": "/media/camp/EXT_DRIVE/ICRA_2027/icra 2027_contact/uncalibrated",
+  "files": 68,
+  "processed_frames": 12588,
+  "config": {
+    "algorithm_version": "randomwalk_thesis_v1",
+    "width": 96,
+    "height": 112,
+    "attenuation": 2.0,
+    "contrast": 90.0,
+    "lateral_penalty": 0.03,
+    "min_weight": 1e-10,
+    "near_depth": [
+      0.04,
+      0.22
+    ],
+    "lateral_windows": [
+      [
+        0.04,
+        0.34
+      ],
+      [
+        0.34,
+        0.66
+      ],
+      [
+        0.66,
+        0.96
+      ]
+    ],
+    "effective_delay_s": 0.15196365053143765,
+    "calibration_version": "unverified",
+    "image_x_sign": 1
+  },
+  "window_version": "fecfe5c107ef36f7ce31",
+  "config_sha256": "eafec5c5b01b175bc5c702c32e36929e916441a8dce3f97329f0950e95024be2",
+  "processing_ms": {
+    "median": 33.876311499625444,
+    "p95": 34.91987711749971,
+    "max": 65.8864218275994
+  },
+  "scans": [
+    {
+      "file": "chenwei/LH_Per_C_DtP.h5",
+      "schema": "realus_icra_v1",
+      "frames": 148,
+      "processed": 148,
+      "aligned_frames": 144,
+      "mean_quality": [
+        0.05528216871534845,
+        0.06419979521590233,
+        0.08170468757270313
+      ],
+      "low_torque_fraction": 0.6944444444444444
+    },
+    {
+      "file": "chenwei/LH_Per_C_PtD.h5",
+      "schema": "realus_icra_v1",
+      "frames": 150,
+      "processed": 150,
+      "aligned_frames": 145,
+      "mean_quality": [
+        0.049468670673798884,
+        0.05448426937123833,
+        0.061483342457489924
+      ],
+      "low_torque_fraction": 0.6620689655172414
+    },
+    {
+      "file": "chenwei/LH_Per_L_DtP.h5",
+      "schema": "realus_icra_v1",
+      "frames": 142,
+      "processed": 142,
+      "aligned_frames": 137,
+      "mean_quality": [
+        0.020840105849134795,
+        0.039822908030107365,
+        0.0614035270322613
+      ],
+      "low_torque_fraction": 0.8832116788321168
+    },
+    {
+      "file": "chenwei/LH_Per_L_PtD.h5",
+      "schema": "realus_icra_v1",
+      "frames": 141,
+      "processed": 141,
+      "aligned_frames": 137,
+      "mean_quality": [
+        0.02868462191159238,
+        0.048683875908373926,
+        0.0742649243102257
+      ],
+      "low_torque_fraction": 0.9197080291970803
+    },
+    {
+      "file": "chenwei/LH_Per_S_DtP.h5",
+      "schema": "realus_icra_v1",
+      "frames": 163,
+      "processed": 163,
+      "aligned_frames": 158,
+      "mean_quality": [
+        0.030240319067915092,
+        0.04294651215793814,
+        0.0642385055093786
+      ],
+      "low_torque_fraction": 0.6265822784810127
+    },
+    {
+      "file": "chenwei/LH_Per_S_PtD.h5",
+      "schema": "realus_icra_v1",
+      "frames": 171,
+      "processed": 171,
+      "aligned_frames": 167,
+      "mean_quality": [
+        0.026140299690212084,
+        0.035701473528839095,
+        0.04632634092205381
+      ],
+      "low_torque_fraction": 0.46107784431137727
+    },
+    {
+      "file": "chenwei/RH_Per_C_DtP.h5",
+      "schema": "realus_icra_v1",
+      "frames": 192,
+      "processed": 192,
+      "aligned_frames": 187,
+      "mean_quality": [
+        0.032251436367256824,
+        0.036555479365792655,
+        0.04295691029765567
+      ],
+      "low_torque_fraction": 0.5026737967914439
+    },
+    {
+      "file": "chenwei/RH_Per_C_PtD.h5",
+      "schema": "realus_icra_v1",
+      "frames": 191,
+      "processed": 191,
+      "aligned_frames": 187,
+      "mean_quality": [
+        0.010316350893969942,
+        0.021991506045054607,
+        0.023466045629503926
+      ],
+      "low_torque_fraction": 0.6737967914438503
+    },
+    {
+      "file": "chenwei/RH_Per_L_DtP.h5",
+      "schema": "realus_icra_v1",
+      "frames": 188,
+      "processed": 188,
+      "aligned_frames": 183,
+      "mean_quality": [
+        0.02726252005528476,
+        0.04169414197940524,
+        0.04449480607326625
+      ],
+      "low_torque_fraction": 0.7158469945355191
+    },
+    {
+      "file": "chenwei/RH_Per_L_PtD.h5",
+      "schema": "realus_icra_v1",
+      "frames": 188,
+      "processed": 188,
+      "aligned_frames": 184,
+      "mean_quality": [
+        0.01989930056764066,
+        0.031415373577885625,
+        0.04754012924480265
+      ],
+      "low_torque_fraction": 0.9565217391304348
+    },
+    {
+      "file": "chenwei/RH_Per_S_DtP.h5",
+      "schema": "realus_icra_v1",
+      "frames": 204,
+      "processed": 204,
+      "aligned_frames": 200,
+      "mean_quality": [
+        0.034845293382493224,
+        0.03852016436394053,
+        0.03771251537367277
+      ],
+      "low_torque_fraction": 0.375
+    },
+    {
+      "file": "chenwei/RH_Per_S_PtD.h5",
+      "schema": "realus_icra_v1",
+      "frames": 201,
+      "processed": 201,
+      "aligned_frames": 197,
+      "mean_quality": [
+        0.015062685151226263,
+        0.01540660484946308,
+        0.02028139584929957
+      ],
+      "low_torque_fraction": 0.5532994923857868
+    },
+    {
+      "file": "dianye/LH_Per_C_DtP.h5",
+      "schema": "realus_icra_v1",
+      "frames": 167,
+      "processed": 167,
+      "aligned_frames": 162,
+      "mean_quality": [
+        0.05283566557626205,
+        0.06332827116568202,
+        0.058737857078570176
+      ],
+      "low_torque_fraction": 0.3765432098765432
+    },
+    {
+      "file": "dianye/LH_Per_C_PtD.h5",
+      "schema": "realus_icra_v1",
+      "frames": 174,
+      "processed": 174,
+      "aligned_frames": 170,
+      "mean_quality": [
+        0.03589009595082712,
+        0.048216582989680803,
+        0.04649817380528468
+      ],
+      "low_torque_fraction": 0.5117647058823529
+    },
+    {
+      "file": "dianye/LH_Per_L_DtP.h5",
+      "schema": "realus_icra_v1",
+      "frames": 160,
+      "processed": 160,
+      "aligned_frames": 156,
+      "mean_quality": [
+        0.05379659423171075,
+        0.07923440625099501,
+        0.07904493864480369
+      ],
+      "low_torque_fraction": 0.34615384615384615
+    },
+    {
+      "file": "dianye/LH_Per_L_PtD.h5",
+      "schema": "realus_icra_v1",
+      "frames": 164,
+      "processed": 164,
+      "aligned_frames": 159,
+      "mean_quality": [
+        0.03218983843592338,
+        0.060086801727883624,
+        0.07364097418336436
+      ],
+      "low_torque_fraction": 0.8427672955974843
+    },
+    {
+      "file": "dianye/LH_Per_S_DtP.h5",
+      "schema": "realus_icra_v1",
+      "frames": 190,
+      "processed": 190,
+      "aligned_frames": 186,
+      "mean_quality": [
+        0.042625316929969265,
+        0.04991299764394762,
+        0.05690938210148769
+      ],
+      "low_torque_fraction": 0.5053763440860215
+    },
+    {
+      "file": "dianye/LH_Per_S_PtD.h5",
+      "schema": "realus_icra_v1",
+      "frames": 198,
+      "processed": 198,
+      "aligned_frames": 193,
+      "mean_quality": [
+        0.03538252114604595,
+        0.04579930701994244,
+        0.0523582117699048
+      ],
+      "low_torque_fraction": 0.5906735751295337
+    },
+    {
+      "file": "dianye/RH_Per_C_DtP.h5",
+      "schema": "realus_icra_v1",
+      "frames": 192,
+      "processed": 192,
+      "aligned_frames": 187,
+      "mean_quality": [
+        0.021433976752719658,
+        0.04369572617161089,
+        0.05526061329903469
+      ],
+      "low_torque_fraction": 0.8716577540106952
+    },
+    {
+      "file": "dianye/RH_Per_C_PtD.h5",
+      "schema": "realus_icra_v1",
+      "frames": 194,
+      "processed": 194,
+      "aligned_frames": 189,
+      "mean_quality": [
+        0.010773741506599663,
+        0.012735108404889818,
+        0.015207866680231014
+      ],
+      "low_torque_fraction": 0.708994708994709
+    },
+    {
+      "file": "dianye/RH_Per_L_DtP.h5",
+      "schema": "realus_icra_v1",
+      "frames": 186,
+      "processed": 186,
+      "aligned_frames": 182,
+      "mean_quality": [
+        0.031821121248238056,
+        0.05195486903963126,
+        0.054897718991611485
+      ],
+      "low_torque_fraction": 0.4945054945054945
+    },
+    {
+      "file": "dianye/RH_Per_L_PtD.h5",
+      "schema": "realus_icra_v1",
+      "frames": 190,
+      "processed": 190,
+      "aligned_frames": 186,
+      "mean_quality": [
+        0.034614485106555945,
+        0.03821479843767076,
+        0.03216444617263921
+      ],
+      "low_torque_fraction": 0.8064516129032258
+    },
+    {
+      "file": "dianye/RH_Per_S_DtP.h5",
+      "schema": "realus_icra_v1",
+      "frames": 220,
+      "processed": 220,
+      "aligned_frames": 215,
+      "mean_quality": [
+        0.03612050993883221,
+        0.04072857723787346,
+        0.046303784633103015
+      ],
+      "low_torque_fraction": 0.5581395348837209
+    },
+    {
+      "file": "dianye/RH_Per_S_PtD.h5",
+      "schema": "realus_icra_v1",
+      "frames": 205,
+      "processed": 205,
+      "aligned_frames": 201,
+      "mean_quality": [
+        0.02860451788958131,
+        0.022436382769267283,
+        0.02359439837318764
+      ],
+      "low_torque_fraction": 0.5422885572139303
+    },
+    {
+      "file": "yameng_1/LH_Per_C_DtP.h5",
+      "schema": "realus_icra_v1",
+      "frames": 165,
+      "processed": 165,
+      "aligned_frames": 160,
+      "mean_quality": [
+        0.014355055291595548,
+        0.014405605333686424,
+        0.01630823571997407
+      ],
+      "low_torque_fraction": 0.55625
+    },
+    {
+      "file": "yameng_1/LH_Per_C_PtD.h5",
+      "schema": "realus_icra_v1",
+      "frames": 167,
+      "processed": 167,
+      "aligned_frames": 162,
+      "mean_quality": [
+        0.020300195152149127,
+        0.021436269610474908,
+        0.02484307923095863
+      ],
+      "low_torque_fraction": 0.5185185185185185
+    },
+    {
+      "file": "yameng_1/LH_Per_L_DtP.h5",
+      "schema": "realus_icra_v1",
+      "frames": 156,
+      "processed": 156,
+      "aligned_frames": 151,
+      "mean_quality": [
+        0.010491805550093533,
+        0.011093311197626026,
+        0.011367886044180433
+      ],
+      "low_torque_fraction": 0.9735099337748344
+    },
+    {
+      "file": "yameng_1/LH_Per_L_PtD.h5",
+      "schema": "realus_icra_v1",
+      "frames": 156,
+      "processed": 156,
+      "aligned_frames": 151,
+      "mean_quality": [
+        0.01597195836442397,
+        0.019334673329266354,
+        0.021131139581376416
+      ],
+      "low_torque_fraction": 0.9668874172185431
+    },
+    {
+      "file": "yameng_1/LH_Per_S_DtP.h5",
+      "schema": "realus_icra_v1",
+      "frames": 187,
+      "processed": 187,
+      "aligned_frames": 182,
+      "mean_quality": [
+        0.010363664943029045,
+        0.011671192651499672,
+        0.012644223369090012
+      ],
+      "low_torque_fraction": 0.489010989010989
+    },
+    {
+      "file": "yameng_1/LH_Per_S_PtD.h5",
+      "schema": "realus_icra_v1",
+      "frames": 188,
+      "processed": 188,
+      "aligned_frames": 183,
+      "mean_quality": [
+        0.012894953877836618,
+        0.017992610558704186,
+        0.022036169398285968
+      ],
+      "low_torque_fraction": 0.639344262295082
+    },
+    {
+      "file": "yameng_1/RH_Per_C_DtP.h5",
+      "schema": "realus_icra_v1",
+      "frames": 191,
+      "processed": 191,
+      "aligned_frames": 186,
+      "mean_quality": [
+        0.008256572155497344,
+        0.010755188232250164,
+        0.014260387450594058
+      ],
+      "low_torque_fraction": 0.7741935483870968
+    },
+    {
+      "file": "yameng_1/RH_Per_C_PtD.h5",
+      "schema": "realus_icra_v1",
+      "frames": 194,
+      "processed": 194,
+      "aligned_frames": 189,
+      "mean_quality": [
+        0.0021770279533602833,
+        0.003979093332955472,
+        0.0037897367298903597
+      ],
+      "low_torque_fraction": 0.7354497354497355
+    },
+    {
+      "file": "yameng_1/RH_Per_L_DtP.h5",
+      "schema": "realus_icra_v1",
+      "frames": 186,
+      "processed": 186,
+      "aligned_frames": 181,
+      "mean_quality": [
+        0.0063701086014649345,
+        0.010380712263147402,
+        0.01273812892473021
+      ],
+      "low_torque_fraction": 0.6629834254143646
+    },
+    {
+      "file": "yameng_1/RH_Per_L_PtD.h5",
+      "schema": "realus_icra_v1",
+      "frames": 185,
+      "processed": 185,
+      "aligned_frames": 181,
+      "mean_quality": [
+        0.003779449092447894,
+        0.008804176541189748,
+        0.010967498148672464
+      ],
+      "low_torque_fraction": 0.9779005524861878
+    },
+    {
+      "file": "yameng_1/RH_Per_S_DtP.h5",
+      "schema": "realus_icra_v1",
+      "frames": 226,
+      "processed": 226,
+      "aligned_frames": 221,
+      "mean_quality": [
+        0.005324116946111378,
+        0.006383611467360645,
+        0.007253807644545441
+      ],
+      "low_torque_fraction": 0.5565610859728507
+    },
+    {
+      "file": "yameng_1/RH_Per_S_PtD.h5",
+      "schema": "realus_icra_v1",
+      "frames": 214,
+      "processed": 214,
+      "aligned_frames": 210,
+      "mean_quality": [
+        0.025882989852037585,
+        0.019698917539528595,
+        0.015355318291549454
+      ],
+      "low_torque_fraction": 0.6333333333333333
+    },
+    {
+      "file": "yameng_2/LH_Per_C_DtP.h5",
+      "schema": "realus_icra_v1",
+      "frames": 157,
+      "processed": 157,
+      "aligned_frames": 152,
+      "mean_quality": [
+        0.010282925185644911,
+        0.01108778785594206,
+        0.012463545867716823
+      ],
+      "low_torque_fraction": 0.5197368421052632
+    },
+    {
+      "file": "yameng_2/LH_Per_C_PtD.h5",
+      "schema": "realus_icra_v1",
+      "frames": 156,
+      "processed": 156,
+      "aligned_frames": 151,
+      "mean_quality": [
+        0.01965735297032593,
+        0.02225438288690707,
+        0.02622445725027588
+      ],
+      "low_torque_fraction": 0.543046357615894
+    },
+    {
+      "file": "yameng_2/LH_Per_L_DtP.h5",
+      "schema": "realus_icra_v1",
+      "frames": 143,
+      "processed": 143,
+      "aligned_frames": 139,
+      "mean_quality": [
+        0.007003094841949063,
+        0.012630990702632771,
+        0.01563199844746162
+      ],
+      "low_torque_fraction": 0.9424460431654677
+    },
+    {
+      "file": "yameng_2/LH_Per_L_PtD.h5",
+      "schema": "realus_icra_v1",
+      "frames": 145,
+      "processed": 145,
+      "aligned_frames": 140,
+      "mean_quality": [
+        0.007619013921747363,
+        0.013149944024745107,
+        0.017339605077645683
+      ],
+      "low_torque_fraction": 0.9428571428571428
+    },
+    {
+      "file": "yameng_2/LH_Per_S_DtP.h5",
+      "schema": "realus_icra_v1",
+      "frames": 165,
+      "processed": 165,
+      "aligned_frames": 161,
+      "mean_quality": [
+        0.008514468946031287,
+        0.013008095179845065,
+        0.017290957012451987
+      ],
+      "low_torque_fraction": 0.6770186335403726
+    },
+    {
+      "file": "yameng_2/LH_Per_S_PtD.h5",
+      "schema": "realus_icra_v1",
+      "frames": 164,
+      "processed": 164,
+      "aligned_frames": 159,
+      "mean_quality": [
+        0.011230523223563002,
+        0.016008016852264908,
+        0.021404225829120264
+      ],
+      "low_torque_fraction": 0.5849056603773585
+    },
+    {
+      "file": "yameng_2/RH_Per_C_DtP.h5",
+      "schema": "realus_icra_v1",
+      "frames": 162,
+      "processed": 162,
+      "aligned_frames": 157,
+      "mean_quality": [
+        0.009368785772994118,
+        0.011270876447312662,
+        0.01170237506949149
+      ],
+      "low_torque_fraction": 0.6305732484076433
+    },
+    {
+      "file": "yameng_2/RH_Per_C_PtD.h5",
+      "schema": "realus_icra_v1",
+      "frames": 161,
+      "processed": 161,
+      "aligned_frames": 156,
+      "mean_quality": [
+        0.01506374337445415,
+        0.009515877939910143,
+        0.007431026931892597
+      ],
+      "low_torque_fraction": 0.4551282051282051
+    },
+    {
+      "file": "yameng_2/RH_Per_L_DtP.h5",
+      "schema": "realus_icra_v1",
+      "frames": 159,
+      "processed": 159,
+      "aligned_frames": 155,
+      "mean_quality": [
+        0.0022305756659990114,
+        0.003094399025268646,
+        0.004392942217316178
+      ],
+      "low_torque_fraction": 0.4838709677419355
+    },
+    {
+      "file": "yameng_2/RH_Per_L_PtD.h5",
+      "schema": "realus_icra_v1",
+      "frames": 157,
+      "processed": 157,
+      "aligned_frames": 153,
+      "mean_quality": [
+        0.006762314296445136,
+        0.006709155921879706,
+        0.008329748552899184
+      ],
+      "low_torque_fraction": 0.9738562091503268
+    },
+    {
+      "file": "yameng_2/RH_Per_S_DtP.h5",
+      "schema": "realus_icra_v1",
+      "frames": 183,
+      "processed": 183,
+      "aligned_frames": 178,
+      "mean_quality": [
+        0.019550994250652005,
+        0.007124019855957112,
+        0.007350506486150863
+      ],
+      "low_torque_fraction": 0.47191011235955055
+    },
+    {
+      "file": "yameng_2/RH_Per_S_PtD.h5",
+      "schema": "realus_icra_v1",
+      "frames": 174,
+      "processed": 174,
+      "aligned_frames": 169,
+      "mean_quality": [
+        0.023110082292507016,
+        0.014923081985786317,
+        0.013874166243653792
+      ],
+      "low_torque_fraction": 0.4378698224852071
+    },
+    {
+      "file": "zhongkai/LH_Per_C_DtP.h5",
+      "schema": "realus_icra_v1",
+      "frames": 214,
+      "processed": 214,
+      "aligned_frames": 210,
+      "mean_quality": [
+        0.010754190065411062,
+        0.013124083977840994,
+        0.023554675601081244
+      ],
+      "low_torque_fraction": 0.5428571428571428
+    },
+    {
+      "file": "zhongkai/LH_Per_C_PtD.h5",
+      "schema": "realus_icra_v1",
+      "frames": 215,
+      "processed": 215,
+      "aligned_frames": 211,
+      "mean_quality": [
+        0.014669438363529257,
+        0.016577916741550843,
+        0.018475484986313812
+      ],
+      "low_torque_fraction": 0.5924170616113744
+    },
+    {
+      "file": "zhongkai/LH_Per_L_DtP.h5",
+      "schema": "realus_icra_v1",
+      "frames": 211,
+      "processed": 211,
+      "aligned_frames": 207,
+      "mean_quality": [
+        0.005269166027631654,
+        0.013595048643469642,
+        0.019573748763929328
+      ],
+      "low_torque_fraction": 0.5120772946859904
+    },
+    {
+      "file": "zhongkai/LH_Per_L_PtD.h5",
+      "schema": "realus_icra_v1",
+      "frames": 209,
+      "processed": 209,
+      "aligned_frames": 204,
+      "mean_quality": [
+        0.021218842157807463,
+        0.021105548875294897,
+        0.028594795488795018
+      ],
+      "low_torque_fraction": 0.6666666666666666
+    },
+    {
+      "file": "zhongkai/LH_Per_S_DtP.h5",
+      "schema": "realus_icra_v1",
+      "frames": 228,
+      "processed": 228,
+      "aligned_frames": 223,
+      "mean_quality": [
+        0.008522859426583432,
+        0.01464697049400828,
+        0.025962958990385334
+      ],
+      "low_torque_fraction": 0.6143497757847534
+    },
+    {
+      "file": "zhongkai/LH_Per_S_PtD.h5",
+      "schema": "realus_icra_v1",
+      "frames": 223,
+      "processed": 223,
+      "aligned_frames": 219,
+      "mean_quality": [
+        0.015298896105480799,
+        0.011719766089898926,
+        0.01513233204921808
+      ],
+      "low_torque_fraction": 0.6621004566210046
+    },
+    {
+      "file": "zhongkai/RH_Per_C_DtP.h5",
+      "schema": "realus_icra_v1",
+      "frames": 178,
+      "processed": 178,
+      "aligned_frames": 173,
+      "mean_quality": [
+        0.01719895247943953,
+        0.013890331239539516,
+        0.01512538765431381
+      ],
+      "low_torque_fraction": 0.653179190751445
+    },
+    {
+      "file": "zhongkai/RH_Per_C_PtD.h5",
+      "schema": "realus_icra_v1",
+      "frames": 181,
+      "processed": 181,
+      "aligned_frames": 176,
+      "mean_quality": [
+        0.010429384587716133,
+        0.012463982793515568,
+        0.011074488451106658
+      ],
+      "low_torque_fraction": 0.5284090909090909
+    },
+    {
+      "file": "zhongkai/RH_Per_L_DtP.h5",
+      "schema": "realus_icra_v1",
+      "frames": 174,
+      "processed": 174,
+      "aligned_frames": 169,
+      "mean_quality": [
+        0.01456319438417611,
+        0.01785941501847579,
+        0.020083418798944975
+      ],
+      "low_torque_fraction": 0.9644970414201184
+    },
+    {
+      "file": "zhongkai/RH_Per_L_PtD.h5",
+      "schema": "realus_icra_v1",
+      "frames": 177,
+      "processed": 177,
+      "aligned_frames": 173,
+      "mean_quality": [
+        0.016085178272824813,
+        0.011575302217508195,
+        0.01649217458764746
+      ],
+      "low_torque_fraction": 0.7572254335260116
+    },
+    {
+      "file": "zhongkai/RH_Per_S_DtP.h5",
+      "schema": "realus_icra_v1",
+      "frames": 196,
+      "processed": 196,
+      "aligned_frames": 191,
+      "mean_quality": [
+        0.01901772081355752,
+        0.014639480539494421,
+        0.01890627612700715
+      ],
+      "low_torque_fraction": 0.6282722513089005
+    },
+    {
+      "file": "zhongkai/RH_Per_S_PtD.h5",
+      "schema": "realus_icra_v1",
+      "frames": 191,
+      "processed": 191,
+      "aligned_frames": 187,
+      "mean_quality": [
+        0.01523653448912266,
+        0.012402669148363419,
+        0.014444111946319806
+      ],
+      "low_torque_fraction": 0.7967914438502673
+    },
+    {
+      "file": "zhongyao/LH_Per_C_DtP.h5",
+      "schema": "realus_icra_v1",
+      "frames": 190,
+      "processed": 190,
+      "aligned_frames": 185,
+      "mean_quality": [
+        0.028003108056972422,
+        0.029595912574595797,
+        0.03727195432247825
+      ],
+      "low_torque_fraction": 0.3567567567567568
+    },
+    {
+      "file": "zhongyao/LH_Per_L_DtP.h5",
+      "schema": "realus_icra_v1",
+      "frames": 180,
+      "processed": 180,
+      "aligned_frames": 176,
+      "mean_quality": [
+        0.013022257365977723,
+        0.017240590360616745,
+        0.02499161044176919
+      ],
+      "low_torque_fraction": 0.5170454545454546
+    },
+    {
+      "file": "zhongyao/RH_Per_C_DtP.h5",
+      "schema": "realus_icra_v1",
+      "frames": 225,
+      "processed": 225,
+      "aligned_frames": 221,
+      "mean_quality": [
+        0.045402450853322486,
+        0.04364754561133572,
+        0.032940527846205846
+      ],
+      "low_torque_fraction": 0.5746606334841629
+    },
+    {
+      "file": "zhongyao/RH_Per_C_PtD.h5",
+      "schema": "realus_icra_v1",
+      "frames": 224,
+      "processed": 224,
+      "aligned_frames": 220,
+      "mean_quality": [
+        0.04528842286602184,
+        0.04960058017647785,
+        0.044600038325505784
+      ],
+      "low_torque_fraction": 0.4590909090909091
+    },
+    {
+      "file": "zhongyao/RH_Per_L_DtP.h5",
+      "schema": "realus_icra_v1",
+      "frames": 221,
+      "processed": 221,
+      "aligned_frames": 217,
+      "mean_quality": [
+        0.04199111479781493,
+        0.032484949419135004,
+        0.022822919833761324
+      ],
+      "low_torque_fraction": 0.8064516129032258
+    },
+    {
+      "file": "zhongyao/RH_Per_L_PtD.h5",
+      "schema": "realus_icra_v1",
+      "frames": 222,
+      "processed": 222,
+      "aligned_frames": 217,
+      "mean_quality": [
+        0.04798224270810889,
+        0.03779648344648031,
+        0.028155032488178303
+      ],
+      "low_torque_fraction": 0.8525345622119815
+    },
+    {
+      "file": "zhongyao/RH_Per_S_DtP.h5",
+      "schema": "realus_icra_v1",
+      "frames": 235,
+      "processed": 235,
+      "aligned_frames": 230,
+      "mean_quality": [
+        0.04625246111930481,
+        0.033400358839416805,
+        0.02465321967930509
+      ],
+      "low_torque_fraction": 0.5826086956521739
+    },
+    {
+      "file": "zhongyao/RH_Per_S_PtD.h5",
+      "schema": "realus_icra_v1",
+      "frames": 234,
+      "processed": 234,
+      "aligned_frames": 229,
+      "mean_quality": [
+        0.0678115139310796,
+        0.0615798325417994,
+        0.05061146320870306
+      ],
+      "low_torque_fraction": 0.6200873362445415
+    }
+  ],
+  "evidence_limits": [
+    "confidence is not mechanical contact truth",
+    "no new controller commands in H5",
+    "effective delay is not certified hardware latency",
+    "no physical aperture/image-axis calibration"
+  ]
+}

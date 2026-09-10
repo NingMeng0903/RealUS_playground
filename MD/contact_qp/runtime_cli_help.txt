@@ -1,0 +1,16 @@
+usage: contact_qp_run.py [-h] --config CONFIG [--validate-only | --execute]
+                         [--path-spec PATH_SPEC] [--prefix PREFIX]
+
+Validate a real study configuration or explicitly submit an ICRA scan. The
+default operation is offline. --execute uses the existing public HFPC API; it
+neither starts a controller nor homes or positions the robot.
+
+options:
+  -h, --help            show this help message and exit
+  --config CONFIG       study YAML (baseline/shadow/active)
+  --validate-only       offline validation; also the default
+  --execute             explicitly send to an already running controller
+  --path-spec PATH_SPEC
+                        existing taught icra_path_v1 JSON or YAML; required to
+                        execute
+  --prefix PREFIX       existing controller IPC prefix

@@ -1,0 +1,49 @@
+# Original TFF + optional study recording; installation calibration remains unverified.
+mode: baseline
+log_path: null
+feature_endpoint: tcp://127.0.0.1:17361
+geometry:
+  half_length_m: null
+  T_tcp_face: null
+  image_x_sign: null
+  face_normal_convention: null
+  calibration_version: null
+  verified: false
+feature:
+  config:
+    algorithm_version: randomwalk_welleweerd2020_v3
+    width: 145
+    height: 100
+    attenuation: 2.0
+    contrast: 90.0
+    lateral_penalty: 0.03
+    min_weight: 1.0e-10
+    camp_weight_epsilon: 1.0e-05
+    near_depth:
+    - 0.0
+    - 0.22
+    lateral_windows:
+    - - 0.04
+      - 0.34
+    - - 0.34
+      - 0.66
+    - - 0.66
+      - 0.96
+    effective_delay_s: 0.15196365053143765
+    calibration_version: unverified
+    image_x_sign: 1
+    low_confidence_threshold: 0.8
+    unknown_scanline_range: 1.0
+  window_version: a3dd6a785d0fad60c1fc
+  registration_version: null
+  quality_policy_version: welleweerd_toproi_v3_initial_unverified
+  c_min: 0.8
+  verified: false
+source:
+  period_s: null
+  jitter_fraction: null
+  max_age_s: null
+force_axis_monotonicity_confirmed: false
+physical_w_checked: false
+energy_constraint_enabled: false
+energy: null

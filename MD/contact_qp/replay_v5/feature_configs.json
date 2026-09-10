@@ -1,0 +1,101 @@
+{
+  "v1": {
+    "algorithm_version": "randomwalk_thesis_v1",
+    "width": 96,
+    "height": 112,
+    "attenuation": 2.0,
+    "contrast": 90.0,
+    "lateral_penalty": 0.03,
+    "min_weight": 1e-10,
+    "camp_weight_epsilon": 1e-05,
+    "near_depth": [
+      0.04,
+      0.22
+    ],
+    "lateral_windows": [
+      [
+        0.04,
+        0.34
+      ],
+      [
+        0.34,
+        0.66
+      ],
+      [
+        0.66,
+        0.96
+      ]
+    ],
+    "effective_delay_s": 0.15196365053143765,
+    "calibration_version": "unverified",
+    "image_x_sign": 1,
+    "low_confidence_threshold": 0.8,
+    "unknown_scanline_range": 1.0
+  },
+  "v2": {
+    "algorithm_version": "randomwalk_camp_bmode_v2",
+    "width": 96,
+    "height": 112,
+    "attenuation": 2.0,
+    "contrast": 90.0,
+    "lateral_penalty": 0.03,
+    "min_weight": 1e-10,
+    "camp_weight_epsilon": 1e-05,
+    "near_depth": [
+      0.04,
+      0.22
+    ],
+    "lateral_windows": [
+      [
+        0.04,
+        0.34
+      ],
+      [
+        0.34,
+        0.66
+      ],
+      [
+        0.66,
+        0.96
+      ]
+    ],
+    "effective_delay_s": 0.15196365053143765,
+    "calibration_version": "unverified",
+    "image_x_sign": 1,
+    "low_confidence_threshold": 0.8,
+    "unknown_scanline_range": 1.0
+  },
+  "v3": {
+    "algorithm_version": "randomwalk_welleweerd2020_v3",
+    "width": 145,
+    "height": 100,
+    "attenuation": 2.0,
+    "contrast": 90.0,
+    "lateral_penalty": 0.03,
+    "min_weight": 1e-10,
+    "camp_weight_epsilon": 1e-05,
+    "near_depth": [
+      0.0,
+      0.22
+    ],
+    "lateral_windows": [
+      [
+        0.04,
+        0.34
+      ],
+      [
+        0.34,
+        0.66
+      ],
+      [
+        0.66,
+        0.96
+      ]
+    ],
+    "effective_delay_s": 0.15196365053143765,
+    "calibration_version": "unverified",
+    "image_x_sign": 1,
+    "low_confidence_threshold": 0.8,
+    "unknown_scanline_range": 1.0
+  }
+}

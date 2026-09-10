@@ -1,0 +1,285 @@
+{
+  "scope": "Fixed five previously diagnosed real states. No commanded motion executed; no acoustic efficacy or closed-loop force claim.",
+  "reconstruction": "Logs omit solve time/angle. Use log monotonic time and angle zero, away from freshness/angle boundaries. Require v7 output to reproduce saved candidate. Actual prior outer command and slew interval retained.",
+  "energy_enabled": false,
+  "feature_changed": false,
+  "episode_assumption": "Each point starts a fresh solver with a full repair allowance. Historical logs omit exact measured angle. This does not replay the episode state of a continuous v8r2 scan.",
+  "force_policy": "v7 zero-degradation direction versus v8 measured 4/4.5 N repair gate; 6 N supervision is outside this solver replay.",
+  "source_hashes": {
+    "peirastic/contact_qp/qp.py": "f0c60085f487271d9e1d9883a5192e0d4987e13b46b5e8e082e36b62e9443fb4",
+    "peirastic/contact_qp/repair_policy.py": "b451ebd6ac89b97c2b1d1724bd0c70fe9722d4c30f9b0d3b246159ee6466378a",
+    "peirastic/contact_qp/repair_episode.py": "7d590d80633e95ef06d128dd092e354041e2f9a61a6635a83cb6ed18ebb2550d"
+  },
+  "input_hashes": {
+    "/media/camp/EXT_DRIVE/ICRA_2027/icra 2027_contact/real_characterization/active_probe50/003/attempts/RH_Per_L_DtP/001/contact_qp.jsonl": "561c44508a0c5f0c49bb31906ca4f05d300ed0529ca2cd252d8bc90b4e517689",
+    "/media/camp/EXT_DRIVE/ICRA_2027/icra 2027_contact/real_characterization/active_probe50/003/attempts/RH_Per_L_PtD/001/contact_qp.jsonl": "958f05b39f9636ac96d3304b174e9e4a91232f60702b5a6a1a706ba744a04dce"
+  },
+  "points": [
+    {
+      "path": "RH_Per_L_DtP",
+      "control_id": 1452,
+      "elapsed_s": 0.015154902124777436,
+      "force_n": 4.101890620897497,
+      "quality": [
+        0.6598992528153697,
+        0.9511897141313989,
+        0.995750324864004
+      ],
+      "nominal_vn_mm_s": 0.16282170190810397,
+      "nominal_omega_deg_s": -0.3391355980117147,
+      "variants": {
+        "v7": {
+          "vn_mm_s": 0.1628217009735382,
+          "omega_deg_s": -0.3391355967029223,
+          "added_vn_mm_s": -9.345657657044287e-10,
+          "added_omega_deg_s": 1.30879243697071e-09,
+          "left_local_mm_s": 0.2545667089578533,
+          "right_local_mm_s": 0.07107669298922308,
+          "alpha": 0.868655549514409,
+          "slack_mm_s": [
+            0.09568515900372265,
+            0.0
+          ],
+          "force_gate": 1.0,
+          "differential_request_mm_s": 0.0,
+          "differential_shortfall_mm_s": 0.0,
+          "binding": [
+            "force_priority_left_endpoint",
+            "force_priority_right_endpoint"
+          ]
+        },
+        "v8": {
+          "vn_mm_s": 0.14506696379883438,
+          "omega_deg_s": -0.4810488576634484,
+          "added_vn_mm_s": -0.017754738109269592,
+          "added_omega_deg_s": -0.14191325965173368,
+          "left_local_mm_s": 0.2752032034511977,
+          "right_local_mm_s": 0.014930724146470998,
+          "alpha": 0.8616788139861197,
+          "slack_mm_s": [
+            0.0036739039161520423,
+            0.0
+          ],
+          "force_gate": 0.796218758205006,
+          "differential_request_mm_s": 0.2788771073673497,
+          "differential_shortfall_mm_s": 0.01860462806262304,
+          "binding": []
+        }
+      },
+      "v7_saved_max_abs_error": 0.0
+    },
+    {
+      "path": "RH_Per_L_DtP",
+      "control_id": 1528,
+      "elapsed_s": 0.3973796139471233,
+      "force_n": 3.8506398782960507,
+      "quality": [
+        0.6947812589771845,
+        0.9541291186969112,
+        0.9961652736600255
+      ],
+      "nominal_vn_mm_s": -0.8202862833276128,
+      "nominal_omega_deg_s": -1.081263736321928,
+      "variants": {
+        "v7": {
+          "vn_mm_s": -0.366005091925428,
+          "omega_deg_s": -1.759001315871343,
+          "added_vn_mm_s": 0.4542811914021848,
+          "added_omega_deg_s": -0.6777375795494149,
+          "left_local_mm_s": 0.10985055796202167,
+          "right_local_mm_s": -0.8418607418128778,
+          "alpha": 0.9013574302911104,
+          "slack_mm_s": [
+            0.1531962945950173,
+            0.0
+          ],
+          "force_gate": 1.0,
+          "differential_request_mm_s": 0.0,
+          "differential_shortfall_mm_s": 0.0,
+          "binding": [
+            "aperture_right_endpoint"
+          ]
+        },
+        "v8": {
+          "vn_mm_s": -0.3659632582111381,
+          "omega_deg_s": -1.7586190897798606,
+          "added_vn_mm_s": 0.45432302511647465,
+          "added_omega_deg_s": -0.6773553534579326,
+          "left_local_mm_s": 0.10978898956766896,
+          "right_local_mm_s": -0.8417155059899453,
+          "alpha": 0.9013574302910632,
+          "slack_mm_s": [
+            0.15325786298937003,
+            0.0
+          ],
+          "force_gate": 1.0,
+          "differential_request_mm_s": 0.26304685255703897,
+          "differential_shortfall_mm_s": 0.0,
+          "binding": []
+        }
+      },
+      "v7_saved_max_abs_error": 0.0
+    },
+    {
+      "path": "RH_Per_L_PtD",
+      "control_id": 5641,
+      "elapsed_s": 22.783509023021907,
+      "force_n": 3.640201324493997,
+      "quality": [
+        0.41557716418166835,
+        0.6363928674467738,
+        0.9796364956361513
+      ],
+      "nominal_vn_mm_s": 4.453005011889321,
+      "nominal_omega_deg_s": -0.8418080117000669,
+      "variants": {
+        "v7": {
+          "vn_mm_s": 4.453005115534583,
+          "omega_deg_s": -0.8418078534610263,
+          "added_vn_mm_s": 1.0364526251138706e-07,
+          "added_omega_deg_s": 1.5823904069747962e-07,
+          "left_local_mm_s": 4.6807360555712165,
+          "right_local_mm_s": 4.22527417549795,
+          "alpha": 0.6396035914202242,
+          "slack_mm_s": [
+            0.0,
+            0.0
+          ],
+          "force_gate": 1.0,
+          "differential_request_mm_s": 0.0,
+          "differential_shortfall_mm_s": 0.0,
+          "binding": [
+            "force_priority_left_endpoint",
+            "force_priority_right_endpoint"
+          ]
+        },
+        "v8": {
+          "vn_mm_s": 4.453005011889321,
+          "omega_deg_s": -1.3449535709470377,
+          "added_vn_mm_s": 0.0,
+          "added_omega_deg_s": -0.5031455592469707,
+          "left_local_mm_s": 4.816849967431276,
+          "right_local_mm_s": 4.089160056347366,
+          "alpha": 0.5520908994940412,
+          "slack_mm_s": [
+            0.0,
+            0.0
+          ],
+          "force_gate": 1.0,
+          "differential_request_mm_s": 0.9610570895458292,
+          "differential_shortfall_mm_s": 0.23336717846191957,
+          "binding": [
+            "acceleration_4"
+          ]
+        }
+      },
+      "v7_saved_max_abs_error": 0.0
+    },
+    {
+      "path": "RH_Per_L_PtD",
+      "control_id": 5791,
+      "elapsed_s": 23.553361162077636,
+      "force_n": 3.9793333462841716,
+      "quality": [
+        0.49777769034389907,
+        0.7570683692804695,
+        0.9911715868427792
+      ],
+      "nominal_vn_mm_s": -0.2528660294072229,
+      "nominal_omega_deg_s": -1.1541186611902752,
+      "variants": {
+        "v7": {
+          "vn_mm_s": 0.15530762912721505,
+          "omega_deg_s": -1.7661890483942853,
+          "added_vn_mm_s": 0.40817365853443793,
+          "added_omega_deg_s": -0.6120703872040099,
+          "left_local_mm_s": 0.6331077477879741,
+          "right_local_mm_s": -0.3224924895335441,
+          "alpha": 0.7166665846974054,
+          "slack_mm_s": [
+            0.12244802635227837,
+            0.0
+          ],
+          "force_gate": 1.0,
+          "differential_request_mm_s": 0.0,
+          "differential_shortfall_mm_s": 0.0,
+          "binding": []
+        },
+        "v8": {
+          "vn_mm_s": 0.15532296886455005,
+          "omega_deg_s": -1.7661426049027877,
+          "added_vn_mm_s": 0.40818899827177296,
+          "added_omega_deg_s": -0.6120239437125125,
+          "left_local_mm_s": 0.6331105233517463,
+          "right_local_mm_s": -0.3224645856226464,
+          "alpha": 0.7166582960027998,
+          "slack_mm_s": [
+            0.12244525078850606,
+            0.0
+          ],
+          "force_gate": 1.0,
+          "differential_request_mm_s": 0.7555557741402524,
+          "differential_shortfall_mm_s": 0.0,
+          "binding": []
+        }
+      },
+      "v7_saved_max_abs_error": 0.0
+    },
+    {
+      "path": "RH_Per_L_PtD",
+      "control_id": 7288,
+      "elapsed_s": 31.274014868075028,
+      "force_n": 3.8906570654096377,
+      "quality": [
+        0.82768886744635,
+        0.9795807968218309,
+        0.9965501593041624
+      ],
+      "nominal_vn_mm_s": 0.3037052184901255,
+      "nominal_omega_deg_s": 0.0,
+      "variants": {
+        "v7": {
+          "vn_mm_s": 0.3037052184901255,
+          "omega_deg_s": 0.0,
+          "added_vn_mm_s": 0.0,
+          "added_omega_deg_s": 0.0,
+          "left_local_mm_s": 0.3037052184901255,
+          "right_local_mm_s": 0.3037052184901255,
+          "alpha": 1.0,
+          "slack_mm_s": [
+            0.0,
+            0.0
+          ],
+          "force_gate": 1.0,
+          "differential_request_mm_s": 0.0,
+          "differential_shortfall_mm_s": 0.0,
+          "binding": [
+            "progress_range",
+            "force_priority_left_endpoint",
+            "force_priority_right_endpoint"
+          ]
+        },
+        "v8": {
+          "vn_mm_s": 0.3037052184901255,
+          "omega_deg_s": 0.0,
+          "added_vn_mm_s": 0.0,
+          "added_omega_deg_s": 0.0,
+          "left_local_mm_s": 0.3037052184901255,
+          "right_local_mm_s": 0.3037052184901255,
+          "alpha": 1.0,
+          "slack_mm_s": [
+            0.0,
+            0.0
+          ],
+          "force_gate": 1.0,
+          "differential_request_mm_s": 0.0,
+          "differential_shortfall_mm_s": 0.0,
+          "binding": [
+            "progress_range"
+          ]
+        }
+      },
+      "v7_saved_max_abs_error": 0.0
+    }
+  ]
+}

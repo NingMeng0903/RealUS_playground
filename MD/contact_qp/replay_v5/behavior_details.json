@@ -1,0 +1,567 @@
+{
+  "counts": {
+    "left_only": 4877,
+    "left_rock_sign": 4877,
+    "both_above": 7014,
+    "transparent": 7014,
+    "right_only": 112,
+    "right_rock_sign": 112
+  },
+  "example": [
+    {
+      "frame_id": "chenwei/RH_Per_C_PtD.h5:95",
+      "source_file": "chenwei/RH_Per_C_PtD.h5",
+      "frame_index": 95,
+      "historical_force_n_audit_only": 3.7048525923186775,
+      "dark_fraction_lcr_analysis_only": [
+        0.011309993493638993,
+        0.007268588574606501,
+        0.0
+      ],
+      "profile": "nominal_no_image",
+      "force_n": 4.0,
+      "force_error_n": 0.0,
+      "nominal_mode": "visual_isolation",
+      "nominal_twist_tool": [
+        0.0,
+        0.02,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "quality": null,
+      "valid": null,
+      "c_min": 0.5,
+      "window_version": "c7935dfa980a7f2706d3",
+      "image_valid": false,
+      "visual_rows_active": false,
+      "quality_left_deficit": null,
+      "quality_right_deficit": null,
+      "alpha": 1.0,
+      "alpha_preferred": 1.0,
+      "success": true,
+      "status": "image_unavailable",
+      "reason": null,
+      "slack_m_s": [
+        0.0,
+        0.0
+      ],
+      "visual_requests_m_s": [
+        0.0,
+        0.0
+      ],
+      "force_sign_reliable": false,
+      "active_hard_rows": [
+        "progress_range"
+      ],
+      "omega_interval_mechanical": null,
+      "omega_interval_force_priority": null,
+      "omega_interval_complete": null,
+      "geometry_verified": false,
+      "physical_motion_observed": false,
+      "repair_success_measured": null,
+      "energy_constraint_enabled": false,
+      "solver_time_s": 0.0,
+      "solve_total_time_s": 0.00022710696794092655,
+      "qp_twist_tool": [
+        0.0,
+        0.02,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "normal_m_s": 0.0,
+      "rocking_rad_s": 0.0,
+      "local_velocity_lcr_m_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "added_local_velocity_lcr_m_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "added_aperture_endpoint_m_s": [
+        0.0,
+        0.0
+      ],
+      "max_hard_violation": 0.0,
+      "hard_row_count": 22,
+      "minimum_hard_margin": 0.0,
+      "binding_hard_rows": [
+        {
+          "label": "progress_range",
+          "lower": 0.0,
+          "value": 1.0,
+          "upper": 1.0,
+          "margin": 0.0
+        }
+      ],
+      "force_priority_added_endpoint_residual": null,
+      "visual_satisfied_with_slack": null,
+      "v3_task_reference_valid": true,
+      "v3_task_reference_quality_lr": [
+        0.5459566365632009,
+        0.917920026328885
+      ],
+      "v3_task_reference_requests_m_s": [
+        0.0006351084085919978,
+        -0.0023584005265776995
+      ],
+      "v3_task_reference_local_m_s": [
+        0.0,
+        0.0
+      ],
+      "v3_task_reference_added_local_m_s": [
+        0.0,
+        0.0
+      ],
+      "v3_task_reference_required_slack_m_s": [
+        0.0006351084085919978,
+        0.0
+      ],
+      "v3_task_reference_low_window_repair_intent": [
+        false,
+        false
+      ],
+      "v3_task_reference_is_ground_truth": false
+    },
+    {
+      "frame_id": "chenwei/RH_Per_C_PtD.h5:95",
+      "source_file": "chenwei/RH_Per_C_PtD.h5",
+      "frame_index": 95,
+      "historical_force_n_audit_only": 3.7048525923186775,
+      "dark_fraction_lcr_analysis_only": [
+        0.011309993493638993,
+        0.007268588574606501,
+        0.0
+      ],
+      "profile": "v1",
+      "force_n": 4.0,
+      "force_error_n": 0.0,
+      "nominal_mode": "visual_isolation",
+      "nominal_twist_tool": [
+        0.0,
+        0.02,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "quality": [
+        0.016971457489222106,
+        0.03154016456920004,
+        0.036828559208118124
+      ],
+      "valid": [
+        true,
+        true,
+        true
+      ],
+      "c_min": 0.5,
+      "window_version": "fecfe5c107ef36f7ce31",
+      "image_valid": true,
+      "visual_rows_active": true,
+      "quality_left_deficit": 0.48302854251077787,
+      "quality_right_deficit": 0.4631714407918819,
+      "alpha": 0.7500000000000001,
+      "alpha_preferred": 0.2754571862338332,
+      "success": true,
+      "status": "repair",
+      "reason": null,
+      "slack_m_s": [
+        0.0011821141700437063,
+        0.0011026857631681194
+      ],
+      "visual_requests_m_s": [
+        0.0019321141700431115,
+        0.0018526857631675276
+      ],
+      "force_sign_reliable": false,
+      "active_hard_rows": [
+        "acceleration_1",
+        "aperture_left_endpoint",
+        "aperture_right_endpoint"
+      ],
+      "omega_interval_mechanical": null,
+      "omega_interval_force_priority": null,
+      "omega_interval_complete": null,
+      "geometry_verified": false,
+      "physical_motion_observed": false,
+      "repair_success_measured": null,
+      "energy_constraint_enabled": false,
+      "solver_time_s": 0.00011337711475789547,
+      "solve_total_time_s": 0.0004590710159391165,
+      "qp_twist_tool": [
+        0.0,
+        0.015000000000000003,
+        0.0007499999999994067,
+        0.0,
+        -9.355664997450692e-17,
+        0.0
+      ],
+      "normal_m_s": 0.0007499999999994067,
+      "rocking_rad_s": -9.355664997450692e-17,
+      "local_velocity_lcr_m_s": [
+        0.0007499999999994053,
+        0.0007499999999994067,
+        0.0007499999999994081
+      ],
+      "added_local_velocity_lcr_m_s": [
+        0.0007499999999994053,
+        0.0007499999999994067,
+        0.0007499999999994081
+      ],
+      "added_aperture_endpoint_m_s": [
+        0.0007499999999994044,
+        0.0007499999999994091
+      ],
+      "max_hard_violation": 0.0,
+      "hard_row_count": 22,
+      "minimum_hard_margin": 0.0,
+      "binding_hard_rows": [
+        {
+          "label": "acceleration_1",
+          "lower": 0.015,
+          "value": 0.015000000000000003,
+          "upper": 0.025,
+          "margin": 3.469446951953614e-18
+        },
+        {
+          "label": "progress_range",
+          "lower": 0.0,
+          "value": 0.7500000000000001,
+          "upper": 0.7500000000000001,
+          "margin": 0.0
+        },
+        {
+          "label": "aperture_left_endpoint",
+          "lower": -0.00075,
+          "value": 0.0007499999999994044,
+          "upper": 0.00075,
+          "margin": 5.956606735635361e-16
+        },
+        {
+          "label": "aperture_right_endpoint",
+          "lower": -0.00075,
+          "value": 0.0007499999999994091,
+          "upper": 0.00075,
+          "margin": 5.908901840045999e-16
+        }
+      ],
+      "force_priority_added_endpoint_residual": null,
+      "visual_satisfied_with_slack": true,
+      "v3_task_reference_valid": true,
+      "v3_task_reference_quality_lr": [
+        0.5459566365632009,
+        0.917920026328885
+      ],
+      "v3_task_reference_requests_m_s": [
+        0.0006351084085919978,
+        -0.0023584005265776995
+      ],
+      "v3_task_reference_local_m_s": [
+        0.0007499999999994053,
+        0.0007499999999994081
+      ],
+      "v3_task_reference_added_local_m_s": [
+        0.0007499999999994053,
+        0.0007499999999994081
+      ],
+      "v3_task_reference_required_slack_m_s": [
+        0.0,
+        0.0
+      ],
+      "v3_task_reference_low_window_repair_intent": [
+        true,
+        false
+      ],
+      "v3_task_reference_is_ground_truth": false
+    },
+    {
+      "frame_id": "chenwei/RH_Per_C_PtD.h5:95",
+      "source_file": "chenwei/RH_Per_C_PtD.h5",
+      "frame_index": 95,
+      "historical_force_n_audit_only": 3.7048525923186775,
+      "dark_fraction_lcr_analysis_only": [
+        0.011309993493638993,
+        0.007268588574606501,
+        0.0
+      ],
+      "profile": "v2",
+      "force_n": 4.0,
+      "force_error_n": 0.0,
+      "nominal_mode": "visual_isolation",
+      "nominal_twist_tool": [
+        0.0,
+        0.02,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "quality": [
+        0.5485460724171031,
+        0.7204786818876611,
+        0.8660698785695535
+      ],
+      "valid": [
+        true,
+        true,
+        true
+      ],
+      "c_min": 0.5,
+      "window_version": "c7935dfa980a7f2706d3",
+      "image_valid": true,
+      "visual_rows_active": true,
+      "quality_left_deficit": 0.0,
+      "quality_right_deficit": 0.0,
+      "alpha": 1.0,
+      "alpha_preferred": 1.0,
+      "success": true,
+      "status": "nominal",
+      "reason": null,
+      "slack_m_s": [
+        0.0,
+        0.0
+      ],
+      "visual_requests_m_s": [
+        -0.00038836857933682455,
+        -0.0029285590285564283
+      ],
+      "force_sign_reliable": false,
+      "active_hard_rows": [
+        "progress_range"
+      ],
+      "omega_interval_mechanical": null,
+      "omega_interval_force_priority": null,
+      "omega_interval_complete": null,
+      "geometry_verified": false,
+      "physical_motion_observed": false,
+      "repair_success_measured": null,
+      "energy_constraint_enabled": false,
+      "solver_time_s": 0.0,
+      "solve_total_time_s": 0.0003336628433316946,
+      "qp_twist_tool": [
+        0.0,
+        0.02,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "normal_m_s": 0.0,
+      "rocking_rad_s": 0.0,
+      "local_velocity_lcr_m_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "added_local_velocity_lcr_m_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "added_aperture_endpoint_m_s": [
+        0.0,
+        0.0
+      ],
+      "max_hard_violation": 0.0,
+      "hard_row_count": 22,
+      "minimum_hard_margin": 0.0,
+      "binding_hard_rows": [
+        {
+          "label": "progress_range",
+          "lower": 0.0,
+          "value": 1.0,
+          "upper": 1.0,
+          "margin": 0.0
+        }
+      ],
+      "force_priority_added_endpoint_residual": null,
+      "visual_satisfied_with_slack": true,
+      "v3_task_reference_valid": true,
+      "v3_task_reference_quality_lr": [
+        0.5459566365632009,
+        0.917920026328885
+      ],
+      "v3_task_reference_requests_m_s": [
+        0.0006351084085919978,
+        -0.0023584005265776995
+      ],
+      "v3_task_reference_local_m_s": [
+        0.0,
+        0.0
+      ],
+      "v3_task_reference_added_local_m_s": [
+        0.0,
+        0.0
+      ],
+      "v3_task_reference_required_slack_m_s": [
+        0.0006351084085919978,
+        0.0
+      ],
+      "v3_task_reference_low_window_repair_intent": [
+        false,
+        false
+      ],
+      "v3_task_reference_is_ground_truth": false
+    },
+    {
+      "frame_id": "chenwei/RH_Per_C_PtD.h5:95",
+      "source_file": "chenwei/RH_Per_C_PtD.h5",
+      "frame_index": 95,
+      "historical_force_n_audit_only": 3.7048525923186775,
+      "dark_fraction_lcr_analysis_only": [
+        0.011309993493638993,
+        0.007268588574606501,
+        0.0
+      ],
+      "profile": "v3",
+      "force_n": 4.0,
+      "force_error_n": 0.0,
+      "nominal_mode": "visual_isolation",
+      "nominal_twist_tool": [
+        0.0,
+        0.02,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "quality": [
+        0.5459566365632009,
+        0.7329227090497206,
+        0.917920026328885
+      ],
+      "valid": [
+        true,
+        true,
+        true
+      ],
+      "c_min": 0.8,
+      "window_version": "a3dd6a785d0fad60c1fc",
+      "image_valid": true,
+      "visual_rows_active": true,
+      "quality_left_deficit": 0.2540433634367991,
+      "quality_right_deficit": 0.0,
+      "alpha": 0.7618343467784584,
+      "alpha_preferred": 0.7618343467780009,
+      "success": true,
+      "status": "repair",
+      "reason": null,
+      "slack_m_s": [
+        0.00010970203795454883,
+        0.0
+      ],
+      "visual_requests_m_s": [
+        0.0006351084085919978,
+        -0.0023584005265777004
+      ],
+      "force_sign_reliable": false,
+      "active_hard_rows": [],
+      "omega_interval_mechanical": null,
+      "omega_interval_force_priority": null,
+      "omega_interval_complete": null,
+      "geometry_verified": false,
+      "physical_motion_observed": false,
+      "repair_success_measured": null,
+      "energy_constraint_enabled": false,
+      "solver_time_s": 0.00012080301530659199,
+      "solve_total_time_s": 0.00045061204582452774,
+      "qp_twist_tool": [
+        0.0,
+        0.015236686935569168,
+        0.00036567352591029655,
+        0.0,
+        0.010305344821106606,
+        0.0
+      ],
+      "normal_m_s": 0.00036567352591029655,
+      "rocking_rad_s": 0.010305344821106606,
+      "local_velocity_lcr_m_s": [
+        0.000525406370637449,
+        0.00036567352591029655,
+        0.00020594068118314412
+      ],
+      "added_local_velocity_lcr_m_s": [
+        0.000525406370637449,
+        0.00036567352591029655,
+        0.00020594068118314412
+      ],
+      "added_aperture_endpoint_m_s": [
+        0.0006233071464379617,
+        0.00010803990538263137
+      ],
+      "max_hard_violation": 0.0,
+      "hard_row_count": 22,
+      "minimum_hard_margin": 0.0,
+      "binding_hard_rows": [
+        {
+          "label": "progress_range",
+          "lower": 0.0,
+          "value": 0.7618343467784584,
+          "upper": 0.7618343467784584,
+          "margin": 0.0
+        }
+      ],
+      "force_priority_added_endpoint_residual": null,
+      "visual_satisfied_with_slack": true,
+      "v3_task_reference_valid": true,
+      "v3_task_reference_quality_lr": [
+        0.5459566365632009,
+        0.917920026328885
+      ],
+      "v3_task_reference_requests_m_s": [
+        0.0006351084085919978,
+        -0.0023584005265776995
+      ],
+      "v3_task_reference_local_m_s": [
+        0.000525406370637449,
+        0.00020594068118314412
+      ],
+      "v3_task_reference_added_local_m_s": [
+        0.000525406370637449,
+        0.00020594068118314412
+      ],
+      "v3_task_reference_required_slack_m_s": [
+        0.00010970203795454883,
+        0.0
+      ],
+      "v3_task_reference_low_window_repair_intent": [
+        true,
+        false
+      ],
+      "v3_task_reference_is_ground_truth": false
+    }
+  ],
+  "time_quantiles_ms": {
+    "nominal_no_image": {
+      "p50": 0.22642046678811312,
+      "p95": 0.2468358492478728,
+      "p99": 0.2768028411082923,
+      "max": 0.7182059343904257
+    },
+    "v1": {
+      "p50": 0.44492539018392563,
+      "p95": 0.48687633825466037,
+      "p99": 0.5373130133375523,
+      "max": 10.536542860791087
+    },
+    "v2": {
+      "p50": 0.24129648227244616,
+      "p95": 0.4411278758198023,
+      "p99": 0.47435755375772715,
+      "max": 0.9852820076048374
+    },
+    "v3": {
+      "p50": 0.2471704501658678,
+      "p95": 0.4725005477666855,
+      "p99": 0.5164632597006855,
+      "max": 1.0991930030286312
+    }
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "created_utc": "2026-09-10T06:15:03.310249+00:00",
+  "version": "probe50_active_variable_timebase_v6",
+  "changed_since_v5": [
+    "peirastic/api/arm.py",
+    "peirastic/contact_qp/runtime_source.py",
+    "peirastic/core/capabilities.py",
+    "peirastic/realman8dof/daemon.py",
+    "peirastic/realman8dof/modes/contact_active.py",
+    "rm75_control/rm75_control/control/admittance_common/controller.py",
+    "rm75_control/rm75_control/control/admittance_common/observer.py",
+    "rm75_control/rm75_control/control/joint_admittance_8dof/loop.py"
+  ],
+  "files": {
+    "peirastic/api/arm.py": "4ffffbf5bf42254d98900751058d561329282b2e957f7d62ca9dbcd4614d5a9e",
+    "peirastic/config/contact_qp/active_probe50.yaml": "ddef6c9cdc640d430d980ab77cf57fa4db2862ed8dba6fdcad20e2b277c50cf0",
+    "peirastic/config/contact_qp/baseline_probe50.yaml": "eea043be491e9a45bda17606de66709fe9a4e4926c27990943536985f6680760",
+    "peirastic/config/contact_qp/shadow_probe50.yaml": "d884010b4dfd06e4c75953d25def7cd95b2474e1e9c70a6fb77a82a62c3d3791",
+    "peirastic/contact_qp/runtime_source.py": "21388d61f17cccc7c46233d4eeeecce74214b75050bff70e99ed04472bc4d483",
+    "peirastic/core/capabilities.py": "68500d5e5eec959cc1faff28f12c5b92f2b313cf203e39a66541d5d52e7f06bf",
+    "peirastic/realman8dof/daemon.py": "d69a640ab4e92b39b093b505cc95ea1274eb290438749764b7c640e45caa40e0",
+    "peirastic/realman8dof/modes/contact_active.py": "e224eabceb78ace34d9d1d83ed66d4e071d8fe0482a03c8aed3b5ad68b9b18f1",
+    "peirastic/tests/test_contact_qp_variable_timebase.py": "03e6f4b195b9aea465e5ba1c80187ad6b97136c511cfcd74692025cf853f80e5",
+    "rm75_control/rm75_control/control/admittance_common/controller.py": "b0ae8a5a224106624cfd17bcf1ec2cc3b33f34551dfe1510e635db066317b4b3",
+    "rm75_control/rm75_control/control/admittance_common/observer.py": "fe902230ba0939720420bdcc85230c0ec082b8d2597a67e75788ae0d44e02efc",
+    "rm75_control/rm75_control/control/admittance_common/variable_step_filter.py": "22b2975d0e71c1436a598f0b2c8073d4aac4f72c21a6352da6bdf155b98440fb",
+    "rm75_control/rm75_control/control/joint_admittance_8dof/loop.py": "ac52277e7065f46980bed69371952a3ac9df10215ed60252b18cb583fb65c8db"
+  },
+  "external": {
+    "/media/camp/EXT_DRIVE/ICRA_YM/script/scan_robot.py": "8cbfdc1c0f32d9b3e90d147e540a61c2ecfff82a78be9fab196b67778a07821b",
+    "/media/camp/EXT_DRIVE/ICRA_YM/script/tests/test_scan_contact_qp.py": "eabd4e53f99cdd9621666a684f3e8111e07ac3ecae71bb7a66069b7485ecf7f0"
+  },
+  "evidence": {
+    "ACTIVE_PROBE50_RUN.md": "67b002162702879072f4c4110d0e31586d098c5ea69acce1ea159f1e9a871bbb",
+    "SOURCE_TIMEBASE_V6.md": "0973e9d10de60702d45c674149145ffa195373175a06341feab11462e948f00e",
+    "review_irregular_source_v5.md": "14826753e17fa0fc697bc3f03850485c29038717b31a4061793fba7b20e8ec84",
+    "source_timebase_v6_replay.json": "beca0d6aebb03017f45686d489e83a405b8d4782886631d5a68bac6e1f277c72",
+    "replay_source_timebase_v6.py": "aafb18d20110923db610fcee4766164c36cfd67518095e598ee279e105848fc8",
+    "peirastic_regression_active_probe50.xml": "cd7f5353386b9076c010991a53d8768ece73aabb658598d241024bb85d7f25d4",
+    "force_regression_active_probe50.xml": "7e52508978b46edb3c6532b235ccb36c267f5ccea71dd076985da158e79788f4"
+  },
+  "hardware_executed_by_agent": false,
+  "coding": "GPT-6 medium",
+  "critical_review": "GPT-6 ultra scoped PASS"
+}

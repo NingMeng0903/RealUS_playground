@@ -150,6 +150,7 @@ class HfpcPayload:
 
     reference: str = "polyline"
     path_spec: dict[str, Any] | None = None
+    contact_qp: dict[str, Any] | str | None = None
     scan_contact_n: float | None = None
     scan_contact_s: float | None = None
     poses: list[list[float]] | None = None
@@ -173,14 +174,19 @@ class HfpcPayload:
 
     def to_json(self) -> dict[str, Any]:
         law = str(self.law or "tff").lower()
-        if law not in ("tff", "admittance", "fce"):
+        if law not in ("tff", "admittance", "fce", "contact_qp"):
             raise ValueError(
-                f"hfpc law must be 'tff', 'admittance', or 'fce', got {self.law!r}"
+                f"hfpc law must be 'tff', 'admittance', 'fce', or 'contact_qp', got {self.law!r}"
             )
+        if (law=="contact_qp" or self.contact_qp is not None) and self.reference!="icra_path":
+            raise ValueError("contact_qp requires reference=icra_path")
+        if law=="contact_qp" and self.contact_qp is None:
+            raise ValueError("contact_qp requires explicit study configuration")
         out = _dump(
             {
                 "reference": self.reference,
                 "path_spec": self.path_spec,
+                "contact_qp": self.contact_qp,
                 "scan_contact_n": self.scan_contact_n,
                 "scan_contact_s": self.scan_contact_s,
                 "poses": self.poses,

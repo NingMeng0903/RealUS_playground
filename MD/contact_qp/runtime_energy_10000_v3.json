@@ -1,0 +1,20 @@
+{
+  "intervals": 10000,
+  "wall_s": 5.763631489826366,
+  "p50_ms": 0.5613055,
+  "p99_ms": 0.8669254300000018,
+  "max_ms": 2.528856,
+  "balance_j": 0.9499999999996724,
+  "reserved_j": 7.105427357601002e-18,
+  "drained_events": 40000,
+  "retained_events": 0,
+  "memory_current_bytes": 2275663,
+  "memory_peak_bytes": 2281743,
+  "profiling": "tracemalloc enabled; software characterization, not RT certification",
+  "script": "MD/contact_qp/runtime_energy_10000_v3.py",
+  "source_hashes": {
+    "peirastic/contact_qp/runtime_energy.py": "08fb252adbf04e5ed2b9cfe050a08835024a84f28af4aacd47415f375657af1e",
+    "peirastic/tests/test_contact_qp_runtime_energy.py": "99ef1169cc72c1e22e8e9808b25c887e58a5cd56b2557247dc905e2609106256"
+  },
+  "invocation": "env PYTHONNOUSERSITE=1 PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 PYTHONPATH=/media/camp/EXT_DRIVE/RealUS_playground:/media/camp/EXT_DRIVE/RealUS_playground/rm75_control:/media/camp/EXT_DRIVE/envs/rm75/lib/python3.10/site-packages/cmeel.prefix/lib/python3.10/site-packages LD_LIBRARY_PATH=/media/camp/EXT_DRIVE/envs/rm75/lib/python3.10/site-packages/cmeel.prefix/lib OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 /media/camp/EXT_DRIVE/envs/rm75/bin/python MD/contact_qp/runtime_energy_10000_v3.py"
+}

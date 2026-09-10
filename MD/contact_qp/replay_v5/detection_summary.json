@@ -1,0 +1,1663 @@
+{
+  "schema": 1,
+  "config_hash": "31ff0275df845acc34865c1a646c48007b9533c93fda098b646dab717edc1c76",
+  "scans": 68,
+  "frames": 12588,
+  "features_sha256": "15431d14120d8ec794e8894f6a49bc2a505a9bd7d2730d49475ad5af12b323ce",
+  "groups": {
+    "v1_t05": {
+      "count": 12588,
+      "classes": {
+        "both_low": 12588
+      },
+      "quality_quantiles_lcr": {
+        "0": [
+          3.013589046364129e-06,
+          1.8227855568547978e-06,
+          7.817074415665453e-07
+        ],
+        "0.05": [
+          0.00019946073498300435,
+          0.00021182760172159347,
+          0.00021994096932238225
+        ],
+        "0.25": [
+          0.003281624484093884,
+          0.004449793734307944,
+          0.004545015793691702
+        ],
+        "0.5": [
+          0.010971499367354483,
+          0.014075141920666334,
+          0.015963619358518276
+        ],
+        "0.75": [
+          0.029189748470584972,
+          0.03626583311742473,
+          0.0441128714666341
+        ],
+        "0.95": [
+          0.09169082612706109,
+          0.09549460291790593,
+          0.0988405445953617
+        ],
+        "1": [
+          0.332783848037711,
+          0.2601744167562697,
+          0.200917866714762
+        ]
+      },
+      "unknown_window_counts_lcr": [
+        0,
+        0,
+        0
+      ],
+      "classification_fraction": {
+        "both_low": 1.0
+      }
+    },
+    "v2_t05": {
+      "count": 12588,
+      "classes": {
+        "both_above_threshold": 10767,
+        "left_low": 1775,
+        "both_low": 9,
+        "right_low": 37
+      },
+      "quality_quantiles_lcr": {
+        "0": [
+          0.16422861757360585,
+          0.2321834721307969,
+          0.28894491901556907
+        ],
+        "0.05": [
+          0.3802441552362475,
+          0.628970610433042,
+          0.7413568498547622
+        ],
+        "0.25": [
+          0.6101387685278674,
+          0.823345869968636,
+          0.8667371913867613
+        ],
+        "0.5": [
+          0.8349973391084629,
+          0.9021639117539808,
+          0.9298925834420348
+        ],
+        "0.75": [
+          0.9423995109133808,
+          0.950353262864214,
+          0.9652493285129655
+        ],
+        "0.95": [
+          0.9793794638053439,
+          0.9801746421017751,
+          0.9885119408235747
+        ],
+        "1": [
+          0.9926732159664802,
+          0.9970422933158787,
+          0.9970530459734391
+        ]
+      },
+      "unknown_window_counts_lcr": [
+        0,
+        0,
+        0
+      ],
+      "classification_fraction": {
+        "both_above_threshold": 0.8553384175405148,
+        "left_low": 0.1410073085478233,
+        "both_low": 0.0007149666348903718,
+        "right_low": 0.0029393072767715284
+      }
+    },
+    "v3_t08": {
+      "count": 12588,
+      "classes": {
+        "left_low": 4877,
+        "both_above_threshold": 7014,
+        "both_low": 585,
+        "right_low": 112
+      },
+      "quality_quantiles_lcr": {
+        "0": [
+          0.29205818082628143,
+          0.3645764051181951,
+          0.4114216915048477
+        ],
+        "0.05": [
+          0.424093681912422,
+          0.6762661798444602,
+          0.7939042239147773
+        ],
+        "0.25": [
+          0.627832440290279,
+          0.8540969520412083,
+          0.8941151047919059
+        ],
+        "0.5": [
+          0.844386225036676,
+          0.9179730307259142,
+          0.945184272042334
+        ],
+        "0.75": [
+          0.9445701216200487,
+          0.9567409661108097,
+          0.9726754748443277
+        ],
+        "0.95": [
+          0.979675782503941,
+          0.9828464003707404,
+          0.9907861093004776
+        ],
+        "1": [
+          0.9943203308477961,
+          0.9972860678547586,
+          0.9982288935099168
+        ]
+      },
+      "unknown_window_counts_lcr": [
+        0,
+        0,
+        0
+      ],
+      "classification_fraction": {
+        "left_low": 0.38743247537337144,
+        "both_above_threshold": 0.5571973307912298,
+        "both_low": 0.046472831267874166,
+        "right_low": 0.008897362567524627
+      }
+    },
+    "v2_t08": {
+      "count": 12588,
+      "classes": {
+        "left_low": 4310,
+        "both_above_threshold": 6766,
+        "both_low": 1347,
+        "right_low": 165
+      },
+      "quality_quantiles_lcr": {
+        "0": [
+          0.16422861757360585,
+          0.2321834721307969,
+          0.28894491901556907
+        ],
+        "0.05": [
+          0.3802441552362475,
+          0.628970610433042,
+          0.7413568498547622
+        ],
+        "0.25": [
+          0.6101387685278674,
+          0.823345869968636,
+          0.8667371913867613
+        ],
+        "0.5": [
+          0.8349973391084629,
+          0.9021639117539808,
+          0.9298925834420348
+        ],
+        "0.75": [
+          0.9423995109133808,
+          0.950353262864214,
+          0.9652493285129655
+        ],
+        "0.95": [
+          0.9793794638053439,
+          0.9801746421017751,
+          0.9885119408235747
+        ],
+        "1": [
+          0.9926732159664802,
+          0.9970422933158787,
+          0.9970530459734391
+        ]
+      },
+      "unknown_window_counts_lcr": [
+        0,
+        0,
+        0
+      ],
+      "classification_fraction": {
+        "left_low": 0.34238957737527803,
+        "both_above_threshold": 0.5374960279631394,
+        "both_low": 0.10700667302192564,
+        "right_low": 0.013107721639656816
+      }
+    }
+  },
+  "per_scan": {
+    "chenwei/LH_Per_C_DtP.h5": {
+      "frame_count": 148,
+      "classification_counts": {
+        "v1_t05": {
+          "both_low": 148
+        },
+        "v2_t05": {
+          "both_above_threshold": 142,
+          "left_low": 6
+        },
+        "v3_t08": {
+          "left_low": 38,
+          "both_above_threshold": 106,
+          "both_low": 4
+        },
+        "v2_t08": {
+          "left_low": 36,
+          "both_above_threshold": 106,
+          "both_low": 6
+        }
+      }
+    },
+    "chenwei/LH_Per_C_PtD.h5": {
+      "frame_count": 150,
+      "classification_counts": {
+        "v1_t05": {
+          "both_low": 150
+        },
+        "v2_t05": {
+          "both_above_threshold": 140,
+          "left_low": 10
+        },
+        "v3_t08": {
+          "both_above_threshold": 110,
+          "left_low": 40
+        },
+        "v2_t08": {
+          "both_above_threshold": 110,
+          "left_low": 40
+        }
+      }
+    },
+    "chenwei/LH_Per_L_DtP.h5": {
+      "frame_count": 142,
+      "classification_counts": {
+        "v1_t05": {
+          "both_low": 142
+        },
+        "v2_t05": {
+          "both_above_threshold": 142
+        },
+        "v3_t08": {
+          "left_low": 8,
+          "both_above_threshold": 134
+        },
+        "v2_t08": {
+          "left_low": 14,
+          "both_above_threshold": 128
+        }
+      }
+    },
+    "chenwei/LH_Per_L_PtD.h5": {
+      "frame_count": 141,
+      "classification_counts": {
+        "v1_t05": {
+          "both_low": 141
+        },
+        "v2_t05": {
+          "both_above_threshold": 141
+        },
+        "v3_t08": {
+          "both_above_threshold": 141
+        },
+        "v2_t08": {
+          "both_above_threshold": 141
+        }
+      }
+    },
+    "chenwei/LH_Per_S_DtP.h5": {
+      "frame_count": 163,
+      "classification_counts": {
+        "v1_t05": {
+          "both_low": 163
+        },
+        "v2_t05": {
+          "both_above_threshold": 132,
+          "left_low": 31
+        },
+        "v3_t08": {
+          "left_low": 101,
+          "both_above_threshold": 56,
+          "both_low": 6
+        },
+        "v2_t08": {
+          "left_low": 75,
+          "both_above_threshold": 61,
+          "both_low": 27
+        }
+      }
+    },
+    "chenwei/LH_Per_S_PtD.h5": {
+      "frame_count": 171,
+      "classification_counts": {
+        "v1_t05": {
+          "both_low": 171
+        },
+        "v2_t05": {
+          "both_above_threshold": 171
+        },
+        "v3_t08": {
+          "both_above_threshold": 146,
+          "left_low": 25
+        },
+        "v2_t08": {
+          "both_above_threshold": 144,
+          "left_low": 27
+        }
+      }
+    },
+    "chenwei/RH_Per_C_DtP.h5": {
+      "frame_count": 192,
+      "classification_counts": {
+        "v1_t05": {
+          "both_low": 192
+        },
+        "v2_t05": {
+          "both_above_threshold": 192
+        },
+        "v3_t08": {
+          "left_low": 109,
+          "both_above_threshold": 83
+        },
+        "v2_t08": {
+          "left_low": 110,
+          "both_above_threshold": 82
+        }
+      }
+    },
+    "chenwei/RH_Per_C_PtD.h5": {
+      "frame_count": 191,
+      "classification_counts": {
+        "v1_t05": {
+          "both_low": 191
+        },
+        "v2_t05": {
+          "both_above_threshold": 189,
+          "left_low": 2
+        },
+        "v3_t08": {
+          "both_above_threshold": 49,
+          "left_low": 137,
+          "both_low": 5
+        },
+        "v2_t08": {
+          "both_above_threshold": 25,
+          "left_low": 157,
+          "both_low": 9
+        }
+      }
+    },
+    "chenwei/RH_Per_L_DtP.h5": {
+      "frame_count": 188,
+      "classification_counts": {
+        "v1_t05": {
+          "both_low": 188
+        },
+        "v2_t05": {
+          "both_above_threshold": 188
+        },
+        "v3_t08": {
+          "left_low": 13,
+          "both_above_threshold": 175
+        },
+        "v2_t08": {
+          "left_low": 17,
+          "both_above_threshold": 171
+        }
+      }
+    },
+    "chenwei/RH_Per_L_PtD.h5": {
+      "frame_count": 188,
+      "classification_counts": {
+        "v1_t05": {
+          "both_low": 188
+        },
+        "v2_t05": {
+          "both_above_threshold": 130,
+          "left_low": 58
+        },
+        "v3_t08": {
+          "left_low": 181,
+          "both_low": 7
+        },
+        "v2_t08": {
+          "left_low": 158,
+          "both_low": 30
+        }
+      }
+    },
+    "chenwei/RH_Per_S_DtP.h5": {
+      "frame_count": 204,
+      "classification_counts": {
+        "v1_t05": {
+          "both_low": 204
+        },
+        "v2_t05": {
+          "both_above_threshold": 203,
+          "left_low": 1
+        },
+        "v3_t08": {
+          "both_above_threshold": 155,
+          "left_low": 49
+        },
+        "v2_t08": {
+          "both_above_threshold": 152,
+          "left_low": 52
+        }
+      }
+    },
+    "chenwei/RH_Per_S_PtD.h5": {
+      "frame_count": 201,
+      "classification_counts": {
+        "v1_t05": {
+          "both_low": 201
+        },
+        "v2_t05": {
+          "both_above_threshold": 199,
+          "left_low": 2
+        },
+        "v3_t08": {
+          "left_low": 140,
+          "both_above_threshold": 61
+        },
+        "v2_t08": {
+          "both_low": 13,
+          "left_low": 129,
+          "both_above_threshold": 59
+        }
+      }
+    },
+    "dianye/LH_Per_C_DtP.h5": {
+      "frame_count": 167,
+      "classification_counts": {
+        "v1_t05": {
+          "both_low": 167
+        },
+        "v2_t05": {
+          "both_above_threshold": 159,
+          "left_low": 8
+        },
+        "v3_t08": {
+          "left_low": 63,
+          "both_above_threshold": 104
+        },
+        "v2_t08": {
+          "left_low": 54,
+          "both_above_threshold": 108,
+          "both_low": 5
+        }
+      }
+    },
+    "dianye/LH_Per_C_PtD.h5": {
+      "frame_count": 174,
+      "classification_counts": {
+        "v1_t05": {
+          "both_low": 174
+        },
+        "v2_t05": {
+          "both_above_threshold": 132,
+          "left_low": 42
+        },
+        "v3_t08": {
+          "right_low": 1,
+          "both_above_threshold": 106,
+          "left_low": 67
+        },
+        "v2_t08": {
+          "both_above_threshold": 107,
+          "left_low": 67
+        }
+      }
+    },
+    "dianye/LH_Per_L_DtP.h5": {
+      "frame_count": 160,
+      "classification_counts": {
+        "v1_t05": {
+          "both_low": 160
+        },
+        "v2_t05": {
+          "both_above_threshold": 160
+        },
+        "v3_t08": {
+          "left_low": 62,
+          "both_above_threshold": 98
+        },
+        "v2_t08": {
+          "left_low": 65,
+          "both_above_threshold": 95
+        }
+      }
+    },
+    "dianye/LH_Per_L_PtD.h5": {
+      "frame_count": 164,
+      "classification_counts": {
+        "v1_t05": {
+          "both_low": 164
+        },
+        "v2_t05": {
+          "both_above_threshold": 164
+        },
+        "v3_t08": {
+          "both_above_threshold": 49,
+          "left_low": 115
+        },
+        "v2_t08": {
+          "both_above_threshold": 55,
+          "left_low": 109
+        }
+      }
+    },
+    "dianye/LH_Per_S_DtP.h5": {
+      "frame_count": 190,
+      "classification_counts": {
+        "v1_t05": {
+          "both_low": 190
+        },
+        "v2_t05": {
+          "both_above_threshold": 149,
+          "left_low": 41
+        },
+        "v3_t08": {
+          "left_low": 76,
+          "both_above_threshold": 83,
+          "both_low": 31
+        },
+        "v2_t08": {
+          "left_low": 60,
+          "both_above_threshold": 91,
+          "both_low": 39
+        }
+      }
+    },
+    "dianye/LH_Per_S_PtD.h5": {
+      "frame_count": 198,
+      "classification_counts": {
+        "v1_t05": {
+          "both_low": 198
+        },
+        "v2_t05": {
+          "both_above_threshold": 135,
+          "left_low": 63
+        },
+        "v3_t08": {
+          "both_above_threshold": 88,
+          "left_low": 96,
+          "both_low": 14
+        },
+        "v2_t08": {
+          "both_above_threshold": 86,
+          "left_low": 92,
+          "both_low": 20
+        }
+      }
+    },
+    "dianye/RH_Per_C_DtP.h5": {
+      "frame_count": 192,
+      "classification_counts": {
+        "v1_t05": {
+          "both_low": 192
+        },
+        "v2_t05": {
+          "both_above_threshold": 189,
+          "left_low": 3
+        },
+        "v3_t08": {
+          "both_above_threshold": 116,
+          "left_low": 76
+        },
+        "v2_t08": {
+          "both_above_threshold": 107,
+          "left_low": 85
+        }
+      }
+    },
+    "dianye/RH_Per_C_PtD.h5": {
+      "frame_count": 194,
+      "classification_counts": {
+        "v1_t05": {
+          "both_low": 194
+        },
+        "v2_t05": {
+          "both_above_threshold": 194
+        },
+        "v3_t08": {
+          "both_above_threshold": 117,
+          "left_low": 77
+        },
+        "v2_t08": {
+          "both_above_threshold": 121,
+          "left_low": 73
+        }
+      }
+    },
+    "dianye/RH_Per_L_DtP.h5": {
+      "frame_count": 186,
+      "classification_counts": {
+        "v1_t05": {
+          "both_low": 186
+        },
+        "v2_t05": {
+          "both_above_threshold": 186
+        },
+        "v3_t08": {
+          "both_above_threshold": 186
+        },
+        "v2_t08": {
+          "both_above_threshold": 186
+        }
+      }
+    },
+    "dianye/RH_Per_L_PtD.h5": {
+      "frame_count": 190,
+      "classification_counts": {
+        "v1_t05": {
+          "both_low": 190
+        },
+        "v2_t05": {
+          "both_above_threshold": 190
+        },
+        "v3_t08": {
+          "both_above_threshold": 190
+        },
+        "v2_t08": {
+          "both_above_threshold": 190
+        }
+      }
+    },
+    "dianye/RH_Per_S_DtP.h5": {
+      "frame_count": 220,
+      "classification_counts": {
+        "v1_t05": {
+          "both_low": 220
+        },
+        "v2_t05": {
+          "both_above_threshold": 180,
+          "left_low": 40
+        },
+        "v3_t08": {
+          "both_above_threshold": 107,
+          "left_low": 113
+        },
+        "v2_t08": {
+          "both_above_threshold": 102,
+          "left_low": 118
+        }
+      }
+    },
+    "dianye/RH_Per_S_PtD.h5": {
+      "frame_count": 205,
+      "classification_counts": {
+        "v1_t05": {
+          "both_low": 205
+        },
+        "v2_t05": {
+          "both_above_threshold": 161,
+          "left_low": 44
+        },
+        "v3_t08": {
+          "both_above_threshold": 114,
+          "left_low": 91
+        },
+        "v2_t08": {
+          "both_above_threshold": 116,
+          "left_low": 89
+        }
+      }
+    },
+    "yameng_1/LH_Per_C_DtP.h5": {
+      "frame_count": 165,
+      "classification_counts": {
+        "v1_t05": {
+          "both_low": 165
+        },
+        "v2_t05": {
+          "both_above_threshold": 147,
+          "left_low": 18
+        },
+        "v3_t08": {
+          "both_above_threshold": 121,
+          "both_low": 11,
+          "left_low": 33
+        },
+        "v2_t08": {
+          "both_above_threshold": 121,
+          "both_low": 24,
+          "left_low": 20
+        }
+      }
+    },
+    "yameng_1/LH_Per_C_PtD.h5": {
+      "frame_count": 167,
+      "classification_counts": {
+        "v1_t05": {
+          "both_low": 167
+        },
+        "v2_t05": {
+          "both_above_threshold": 134,
+          "left_low": 33
+        },
+        "v3_t08": {
+          "both_above_threshold": 107,
+          "right_low": 2,
+          "left_low": 54,
+          "both_low": 4
+        },
+        "v2_t08": {
+          "both_above_threshold": 103,
+          "right_low": 5,
+          "left_low": 41,
+          "both_low": 18
+        }
+      }
+    },
+    "yameng_1/LH_Per_L_DtP.h5": {
+      "frame_count": 156,
+      "classification_counts": {
+        "v1_t05": {
+          "both_low": 156
+        },
+        "v2_t05": {
+          "both_above_threshold": 156
+        },
+        "v3_t08": {
+          "both_above_threshold": 156
+        },
+        "v2_t08": {
+          "both_above_threshold": 150,
+          "right_low": 6
+        }
+      }
+    },
+    "yameng_1/LH_Per_L_PtD.h5": {
+      "frame_count": 156,
+      "classification_counts": {
+        "v1_t05": {
+          "both_low": 156
+        },
+        "v2_t05": {
+          "both_above_threshold": 156
+        },
+        "v3_t08": {
+          "both_above_threshold": 156
+        },
+        "v2_t08": {
+          "both_above_threshold": 141,
+          "right_low": 15
+        }
+      }
+    },
+    "yameng_1/LH_Per_S_DtP.h5": {
+      "frame_count": 187,
+      "classification_counts": {
+        "v1_t05": {
+          "both_low": 187
+        },
+        "v2_t05": {
+          "both_above_threshold": 111,
+          "left_low": 76
+        },
+        "v3_t08": {
+          "left_low": 48,
+          "both_above_threshold": 83,
+          "both_low": 56
+        },
+        "v2_t08": {
+          "left_low": 24,
+          "both_above_threshold": 83,
+          "both_low": 80
+        }
+      }
+    },
+    "yameng_1/LH_Per_S_PtD.h5": {
+      "frame_count": 188,
+      "classification_counts": {
+        "v1_t05": {
+          "both_low": 188
+        },
+        "v2_t05": {
+          "both_above_threshold": 158,
+          "left_low": 30
+        },
+        "v3_t08": {
+          "both_above_threshold": 120,
+          "left_low": 64,
+          "both_low": 4
+        },
+        "v2_t08": {
+          "both_above_threshold": 116,
+          "right_low": 8,
+          "left_low": 43,
+          "both_low": 21
+        }
+      }
+    },
+    "yameng_1/RH_Per_C_DtP.h5": {
+      "frame_count": 191,
+      "classification_counts": {
+        "v1_t05": {
+          "both_low": 191
+        },
+        "v2_t05": {
+          "left_low": 144,
+          "both_above_threshold": 47
+        },
+        "v3_t08": {
+          "left_low": 116,
+          "both_low": 49,
+          "both_above_threshold": 24,
+          "right_low": 2
+        },
+        "v2_t08": {
+          "left_low": 78,
+          "both_low": 91,
+          "right_low": 3,
+          "both_above_threshold": 19
+        }
+      }
+    },
+    "yameng_1/RH_Per_C_PtD.h5": {
+      "frame_count": 194,
+      "classification_counts": {
+        "v1_t05": {
+          "both_low": 194
+        },
+        "v2_t05": {
+          "both_above_threshold": 181,
+          "left_low": 13
+        },
+        "v3_t08": {
+          "both_above_threshold": 25,
+          "both_low": 26,
+          "left_low": 143
+        },
+        "v2_t08": {
+          "both_above_threshold": 17,
+          "right_low": 9,
+          "both_low": 49,
+          "left_low": 119
+        }
+      }
+    },
+    "yameng_1/RH_Per_L_DtP.h5": {
+      "frame_count": 186,
+      "classification_counts": {
+        "v1_t05": {
+          "both_low": 186
+        },
+        "v2_t05": {
+          "left_low": 89,
+          "both_above_threshold": 97
+        },
+        "v3_t08": {
+          "left_low": 155,
+          "both_low": 24,
+          "both_above_threshold": 7
+        },
+        "v2_t08": {
+          "left_low": 118,
+          "both_low": 62,
+          "both_above_threshold": 6
+        }
+      }
+    },
+    "yameng_1/RH_Per_L_PtD.h5": {
+      "frame_count": 185,
+      "classification_counts": {
+        "v1_t05": {
+          "both_low": 185
+        },
+        "v2_t05": {
+          "both_above_threshold": 179,
+          "left_low": 6
+        },
+        "v3_t08": {
+          "left_low": 83,
+          "both_low": 17,
+          "both_above_threshold": 85
+        },
+        "v2_t08": {
+          "both_low": 52,
+          "left_low": 93,
+          "both_above_threshold": 37,
+          "right_low": 3
+        }
+      }
+    },
+    "yameng_1/RH_Per_S_DtP.h5": {
+      "frame_count": 226,
+      "classification_counts": {
+        "v1_t05": {
+          "both_low": 226
+        },
+        "v2_t05": {
+          "left_low": 137,
+          "both_above_threshold": 89
+        },
+        "v3_t08": {
+          "left_low": 137,
+          "both_low": 39,
+          "both_above_threshold": 50
+        },
+        "v2_t08": {
+          "left_low": 85,
+          "both_low": 93,
+          "both_above_threshold": 48
+        }
+      }
+    },
+    "yameng_1/RH_Per_S_PtD.h5": {
+      "frame_count": 214,
+      "classification_counts": {
+        "v1_t05": {
+          "both_low": 214
+        },
+        "v2_t05": {
+          "both_above_threshold": 107,
+          "left_low": 106,
+          "both_low": 1
+        },
+        "v3_t08": {
+          "both_above_threshold": 91,
+          "left_low": 53,
+          "both_low": 70
+        },
+        "v2_t08": {
+          "right_low": 11,
+          "both_above_threshold": 78,
+          "left_low": 32,
+          "both_low": 93
+        }
+      }
+    },
+    "yameng_2/LH_Per_C_DtP.h5": {
+      "frame_count": 157,
+      "classification_counts": {
+        "v1_t05": {
+          "both_low": 157
+        },
+        "v2_t05": {
+          "both_above_threshold": 127,
+          "left_low": 30
+        },
+        "v3_t08": {
+          "left_low": 51,
+          "both_above_threshold": 84,
+          "both_low": 22
+        },
+        "v2_t08": {
+          "left_low": 28,
+          "both_above_threshold": 87,
+          "both_low": 42
+        }
+      }
+    },
+    "yameng_2/LH_Per_C_PtD.h5": {
+      "frame_count": 156,
+      "classification_counts": {
+        "v1_t05": {
+          "both_low": 156
+        },
+        "v2_t05": {
+          "both_above_threshold": 111,
+          "left_low": 45
+        },
+        "v3_t08": {
+          "both_above_threshold": 100,
+          "left_low": 50,
+          "both_low": 6
+        },
+        "v2_t08": {
+          "both_above_threshold": 94,
+          "right_low": 6,
+          "left_low": 36,
+          "both_low": 20
+        }
+      }
+    },
+    "yameng_2/LH_Per_L_DtP.h5": {
+      "frame_count": 143,
+      "classification_counts": {
+        "v1_t05": {
+          "both_low": 143
+        },
+        "v2_t05": {
+          "both_above_threshold": 139,
+          "left_low": 4
+        },
+        "v3_t08": {
+          "left_low": 52,
+          "both_above_threshold": 89,
+          "right_low": 2
+        },
+        "v2_t08": {
+          "left_low": 51,
+          "both_above_threshold": 85,
+          "right_low": 7
+        }
+      }
+    },
+    "yameng_2/LH_Per_L_PtD.h5": {
+      "frame_count": 145,
+      "classification_counts": {
+        "v1_t05": {
+          "both_low": 145
+        },
+        "v2_t05": {
+          "both_above_threshold": 145
+        },
+        "v3_t08": {
+          "right_low": 1,
+          "both_above_threshold": 133,
+          "left_low": 11
+        },
+        "v2_t08": {
+          "both_low": 5,
+          "right_low": 2,
+          "both_above_threshold": 127,
+          "left_low": 11
+        }
+      }
+    },
+    "yameng_2/LH_Per_S_DtP.h5": {
+      "frame_count": 165,
+      "classification_counts": {
+        "v1_t05": {
+          "both_low": 165
+        },
+        "v2_t05": {
+          "both_above_threshold": 97,
+          "left_low": 68
+        },
+        "v3_t08": {
+          "left_low": 76,
+          "both_above_threshold": 51,
+          "both_low": 38
+        },
+        "v2_t08": {
+          "left_low": 63,
+          "both_above_threshold": 49,
+          "both_low": 53
+        }
+      }
+    },
+    "yameng_2/LH_Per_S_PtD.h5": {
+      "frame_count": 164,
+      "classification_counts": {
+        "v1_t05": {
+          "both_low": 164
+        },
+        "v2_t05": {
+          "both_above_threshold": 141,
+          "left_low": 23
+        },
+        "v3_t08": {
+          "both_above_threshold": 89,
+          "left_low": 75
+        },
+        "v2_t08": {
+          "both_above_threshold": 86,
+          "right_low": 1,
+          "left_low": 76,
+          "both_low": 1
+        }
+      }
+    },
+    "yameng_2/RH_Per_C_DtP.h5": {
+      "frame_count": 162,
+      "classification_counts": {
+        "v1_t05": {
+          "both_low": 162
+        },
+        "v2_t05": {
+          "both_above_threshold": 122,
+          "left_low": 40
+        },
+        "v3_t08": {
+          "both_above_threshold": 70,
+          "left_low": 91,
+          "both_low": 1
+        },
+        "v2_t08": {
+          "both_above_threshold": 64,
+          "left_low": 91,
+          "both_low": 7
+        }
+      }
+    },
+    "yameng_2/RH_Per_C_PtD.h5": {
+      "frame_count": 161,
+      "classification_counts": {
+        "v1_t05": {
+          "both_low": 161
+        },
+        "v2_t05": {
+          "both_above_threshold": 94,
+          "left_low": 46,
+          "right_low": 21
+        },
+        "v3_t08": {
+          "both_above_threshold": 30,
+          "left_low": 102,
+          "right_low": 8,
+          "both_low": 21
+        },
+        "v2_t08": {
+          "both_above_threshold": 25,
+          "both_low": 82,
+          "left_low": 54
+        }
+      }
+    },
+    "yameng_2/RH_Per_L_DtP.h5": {
+      "frame_count": 159,
+      "classification_counts": {
+        "v1_t05": {
+          "both_low": 159
+        },
+        "v2_t05": {
+          "both_above_threshold": 159
+        },
+        "v3_t08": {
+          "both_above_threshold": 47,
+          "left_low": 108,
+          "both_low": 4
+        },
+        "v2_t08": {
+          "both_above_threshold": 48,
+          "left_low": 83,
+          "both_low": 28
+        }
+      }
+    },
+    "yameng_2/RH_Per_L_PtD.h5": {
+      "frame_count": 157,
+      "classification_counts": {
+        "v1_t05": {
+          "both_low": 157
+        },
+        "v2_t05": {
+          "both_above_threshold": 154,
+          "left_low": 3
+        },
+        "v3_t08": {
+          "left_low": 52,
+          "both_low": 3,
+          "both_above_threshold": 102
+        },
+        "v2_t08": {
+          "left_low": 33,
+          "both_low": 33,
+          "both_above_threshold": 90,
+          "right_low": 1
+        }
+      }
+    },
+    "yameng_2/RH_Per_S_DtP.h5": {
+      "frame_count": 183,
+      "classification_counts": {
+        "v1_t05": {
+          "both_low": 183
+        },
+        "v2_t05": {
+          "both_above_threshold": 152,
+          "left_low": 31
+        },
+        "v3_t08": {
+          "both_above_threshold": 70,
+          "left_low": 81,
+          "right_low": 16,
+          "both_low": 16
+        },
+        "v2_t08": {
+          "both_above_threshold": 64,
+          "left_low": 64,
+          "right_low": 16,
+          "both_low": 39
+        }
+      }
+    },
+    "yameng_2/RH_Per_S_PtD.h5": {
+      "frame_count": 174,
+      "classification_counts": {
+        "v1_t05": {
+          "both_low": 174
+        },
+        "v2_t05": {
+          "both_above_threshold": 109,
+          "left_low": 57,
+          "both_low": 8
+        },
+        "v3_t08": {
+          "both_above_threshold": 73,
+          "left_low": 66,
+          "both_low": 35
+        },
+        "v2_t08": {
+          "both_above_threshold": 69,
+          "left_low": 47,
+          "both_low": 58
+        }
+      }
+    },
+    "zhongkai/LH_Per_C_DtP.h5": {
+      "frame_count": 214,
+      "classification_counts": {
+        "v1_t05": {
+          "both_low": 214
+        },
+        "v2_t05": {
+          "left_low": 57,
+          "both_above_threshold": 157
+        },
+        "v3_t08": {
+          "left_low": 162,
+          "both_above_threshold": 45,
+          "both_low": 7
+        },
+        "v2_t08": {
+          "left_low": 136,
+          "both_above_threshold": 49,
+          "both_low": 29
+        }
+      }
+    },
+    "zhongkai/LH_Per_C_PtD.h5": {
+      "frame_count": 215,
+      "classification_counts": {
+        "v1_t05": {
+          "both_low": 215
+        },
+        "v2_t05": {
+          "both_above_threshold": 206,
+          "left_low": 9
+        },
+        "v3_t08": {
+          "both_above_threshold": 157,
+          "left_low": 58
+        },
+        "v2_t08": {
+          "both_above_threshold": 157,
+          "left_low": 58
+        }
+      }
+    },
+    "zhongkai/LH_Per_L_DtP.h5": {
+      "frame_count": 211,
+      "classification_counts": {
+        "v1_t05": {
+          "both_low": 211
+        },
+        "v2_t05": {
+          "left_low": 132,
+          "both_above_threshold": 79
+        },
+        "v3_t08": {
+          "left_low": 205,
+          "both_low": 6
+        },
+        "v2_t08": {
+          "left_low": 165,
+          "both_low": 46
+        }
+      }
+    },
+    "zhongkai/LH_Per_L_PtD.h5": {
+      "frame_count": 209,
+      "classification_counts": {
+        "v1_t05": {
+          "both_low": 209
+        },
+        "v2_t05": {
+          "both_above_threshold": 209
+        },
+        "v3_t08": {
+          "both_above_threshold": 178,
+          "left_low": 31
+        },
+        "v2_t08": {
+          "both_above_threshold": 179,
+          "left_low": 30
+        }
+      }
+    },
+    "zhongkai/LH_Per_S_DtP.h5": {
+      "frame_count": 228,
+      "classification_counts": {
+        "v1_t05": {
+          "both_low": 228
+        },
+        "v2_t05": {
+          "left_low": 72,
+          "both_above_threshold": 156
+        },
+        "v3_t08": {
+          "left_low": 197,
+          "both_above_threshold": 15,
+          "both_low": 16
+        },
+        "v2_t08": {
+          "left_low": 167,
+          "both_above_threshold": 13,
+          "both_low": 48
+        }
+      }
+    },
+    "zhongkai/LH_Per_S_PtD.h5": {
+      "frame_count": 223,
+      "classification_counts": {
+        "v1_t05": {
+          "both_low": 223
+        },
+        "v2_t05": {
+          "both_above_threshold": 223
+        },
+        "v3_t08": {
+          "both_above_threshold": 184,
+          "left_low": 39
+        },
+        "v2_t08": {
+          "both_above_threshold": 173,
+          "left_low": 44,
+          "both_low": 6
+        }
+      }
+    },
+    "zhongkai/RH_Per_C_DtP.h5": {
+      "frame_count": 178,
+      "classification_counts": {
+        "v1_t05": {
+          "both_low": 178
+        },
+        "v2_t05": {
+          "both_above_threshold": 178
+        },
+        "v3_t08": {
+          "both_above_threshold": 123,
+          "left_low": 55
+        },
+        "v2_t08": {
+          "both_above_threshold": 96,
+          "left_low": 82
+        }
+      }
+    },
+    "zhongkai/RH_Per_C_PtD.h5": {
+      "frame_count": 181,
+      "classification_counts": {
+        "v1_t05": {
+          "both_low": 181
+        },
+        "v2_t05": {
+          "both_above_threshold": 125,
+          "left_low": 56
+        },
+        "v3_t08": {
+          "left_low": 147,
+          "both_low": 3,
+          "both_above_threshold": 31
+        },
+        "v2_t08": {
+          "left_low": 121,
+          "both_low": 28,
+          "both_above_threshold": 32
+        }
+      }
+    },
+    "zhongkai/RH_Per_L_DtP.h5": {
+      "frame_count": 174,
+      "classification_counts": {
+        "v1_t05": {
+          "both_low": 174
+        },
+        "v2_t05": {
+          "both_above_threshold": 174
+        },
+        "v3_t08": {
+          "left_low": 69,
+          "both_above_threshold": 105
+        },
+        "v2_t08": {
+          "left_low": 73,
+          "both_above_threshold": 101
+        }
+      }
+    },
+    "zhongkai/RH_Per_L_PtD.h5": {
+      "frame_count": 177,
+      "classification_counts": {
+        "v1_t05": {
+          "both_low": 177
+        },
+        "v2_t05": {
+          "both_above_threshold": 176,
+          "left_low": 1
+        },
+        "v3_t08": {
+          "left_low": 177
+        },
+        "v2_t08": {
+          "left_low": 177
+        }
+      }
+    },
+    "zhongkai/RH_Per_S_DtP.h5": {
+      "frame_count": 196,
+      "classification_counts": {
+        "v1_t05": {
+          "both_low": 196
+        },
+        "v2_t05": {
+          "both_above_threshold": 196
+        },
+        "v3_t08": {
+          "both_above_threshold": 147,
+          "left_low": 49
+        },
+        "v2_t08": {
+          "both_above_threshold": 145,
+          "left_low": 51
+        }
+      }
+    },
+    "zhongkai/RH_Per_S_PtD.h5": {
+      "frame_count": 191,
+      "classification_counts": {
+        "v1_t05": {
+          "both_low": 191
+        },
+        "v2_t05": {
+          "both_above_threshold": 147,
+          "left_low": 44
+        },
+        "v3_t08": {
+          "both_above_threshold": 82,
+          "left_low": 108,
+          "both_low": 1
+        },
+        "v2_t08": {
+          "left_low": 108,
+          "both_above_threshold": 80,
+          "both_low": 3
+        }
+      }
+    },
+    "zhongyao/LH_Per_C_DtP.h5": {
+      "frame_count": 190,
+      "classification_counts": {
+        "v1_t05": {
+          "both_low": 190
+        },
+        "v2_t05": {
+          "both_above_threshold": 147,
+          "left_low": 43
+        },
+        "v3_t08": {
+          "both_above_threshold": 122,
+          "left_low": 55,
+          "both_low": 13
+        },
+        "v2_t08": {
+          "both_above_threshold": 123,
+          "left_low": 30,
+          "both_low": 37
+        }
+      }
+    },
+    "zhongyao/LH_Per_L_DtP.h5": {
+      "frame_count": 180,
+      "classification_counts": {
+        "v1_t05": {
+          "both_low": 180
+        },
+        "v2_t05": {
+          "both_above_threshold": 180
+        },
+        "v3_t08": {
+          "both_above_threshold": 180
+        },
+        "v2_t08": {
+          "both_above_threshold": 173,
+          "left_low": 7
+        }
+      }
+    },
+    "zhongyao/RH_Per_C_DtP.h5": {
+      "frame_count": 225,
+      "classification_counts": {
+        "v1_t05": {
+          "both_low": 225
+        },
+        "v2_t05": {
+          "both_above_threshold": 224,
+          "left_low": 1
+        },
+        "v3_t08": {
+          "both_above_threshold": 160,
+          "left_low": 60,
+          "both_low": 5
+        },
+        "v2_t08": {
+          "both_above_threshold": 158,
+          "left_low": 57,
+          "both_low": 10
+        }
+      }
+    },
+    "zhongyao/RH_Per_C_PtD.h5": {
+      "frame_count": 224,
+      "classification_counts": {
+        "v1_t05": {
+          "both_low": 224
+        },
+        "v2_t05": {
+          "both_above_threshold": 208,
+          "right_low": 16
+        },
+        "v3_t08": {
+          "both_above_threshold": 156,
+          "left_low": 17,
+          "both_low": 21,
+          "right_low": 30
+        },
+        "v2_t08": {
+          "both_above_threshold": 147,
+          "left_low": 26,
+          "both_low": 29,
+          "right_low": 22
+        }
+      }
+    },
+    "zhongyao/RH_Per_L_DtP.h5": {
+      "frame_count": 221,
+      "classification_counts": {
+        "v1_t05": {
+          "both_low": 221
+        },
+        "v2_t05": {
+          "both_above_threshold": 221
+        },
+        "v3_t08": {
+          "both_above_threshold": 221
+        },
+        "v2_t08": {
+          "both_above_threshold": 219,
+          "left_low": 2
+        }
+      }
+    },
+    "zhongyao/RH_Per_L_PtD.h5": {
+      "frame_count": 222,
+      "classification_counts": {
+        "v1_t05": {
+          "both_low": 222
+        },
+        "v2_t05": {
+          "both_above_threshold": 222
+        },
+        "v3_t08": {
+          "both_above_threshold": 222
+        },
+        "v2_t08": {
+          "both_above_threshold": 222
+        }
+      }
+    },
+    "zhongyao/RH_Per_S_DtP.h5": {
+      "frame_count": 235,
+      "classification_counts": {
+        "v1_t05": {
+          "both_low": 235
+        },
+        "v2_t05": {
+          "both_above_threshold": 235
+        },
+        "v3_t08": {
+          "both_above_threshold": 199,
+          "left_low": 34,
+          "right_low": 2
+        },
+        "v2_t08": {
+          "both_above_threshold": 199,
+          "left_low": 28,
+          "both_low": 4,
+          "right_low": 4
+        }
+      }
+    },
+    "zhongyao/RH_Per_S_PtD.h5": {
+      "frame_count": 234,
+      "classification_counts": {
+        "v1_t05": {
+          "both_low": 234
+        },
+        "v2_t05": {
+          "both_above_threshold": 224,
+          "left_low": 10
+        },
+        "v3_t08": {
+          "both_above_threshold": 150,
+          "right_low": 48,
+          "left_low": 36
+        },
+        "v2_t08": {
+          "both_above_threshold": 150,
+          "right_low": 46,
+          "left_low": 31,
+          "both_low": 7
+        }
+      }
+    }
+  },
+  "evidence_limits": [
+    "No annotated contact labels; classification proportions are not accuracy or repair success.",
+    "v1/v2 thresholds 0.5 and v3 threshold 0.8 are deployment policies; v2_t08 isolates the threshold choice.",
+    "Left/right windows are required. Center is recorded but does not determine class.",
+    "Grey-value dark fraction is an analysis comparator, not contact ground truth.",
+    "Archived force is audit-only; no new command execution or closed-loop counterfactual is inferred."
+  ],
+  "elapsed_s": 208.77649146621116,
+  "complete_frozen_manifest": true,
+  "worker_limit": 6
+}

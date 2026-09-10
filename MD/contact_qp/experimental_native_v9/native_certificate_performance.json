@@ -1,0 +1,38 @@
+{
+  "note": "Private SHM/native processes only; software timing, no hardware or realtime certification.",
+  "cases": {
+    "0": {
+      "ticks": 1000,
+      "warmup_ticks": 20,
+      "failures": 0,
+      "total_p50_ms": 0.24051754735410213,
+      "total_p99_ms": 0.4746747319586575,
+      "total_max_ms": 0.6923580076545477,
+      "over5ms": 0,
+      "native_p99_ms": 0.14842324999999998,
+      "native_max_ms": 0.200829
+    },
+    "96": {
+      "ticks": 1000,
+      "warmup_ticks": 20,
+      "failures": 0,
+      "total_p50_ms": 0.4401199985295534,
+      "total_p99_ms": 1.4307127194479108,
+      "total_max_ms": 1.6888058744370937,
+      "over5ms": 0,
+      "native_p99_ms": 0.7078559,
+      "native_max_ms": 0.844889
+    },
+    "96_active": {
+      "ticks": 1000,
+      "warmup_ticks": 20,
+      "failures": 288,
+      "total_p50_ms": 0.6034461548551917,
+      "total_p99_ms": 9.371486676391214,
+      "total_max_ms": 20.242904080078006,
+      "over5ms": 44,
+      "native_p99_ms": 9.117278399999991,
+      "native_max_ms": 12.242438
+    }
+  }
+}

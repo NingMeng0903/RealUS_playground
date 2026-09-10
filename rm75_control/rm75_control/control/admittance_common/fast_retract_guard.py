@@ -95,6 +95,8 @@ class FastRetractGuard:
         instability_index: float,
         force_pred_n: float | None = None,
         overforce_escape: bool = False,
+        measurement_fresh: bool = True,
+        source_dt_s: float | None = None,
     ) -> bool:
         cfg = self.cfg
         dt = max(float(dt_s), 0.0)
@@ -126,7 +128,8 @@ class FastRetractGuard:
             self._hold_timer_s = 0.0
             return False
 
-        fast_force = self._update_fast_force(float(raw_force_n), dt)
+        fast_force = (self._update_fast_force(float(raw_force_n),dt if source_dt_s is None else source_dt_s)
+                      if measurement_fresh else self.fast_force_n)
         target = abs(float(desired_force_n))
         stop_margin = max(
             float(cfg.stop_margin_n),

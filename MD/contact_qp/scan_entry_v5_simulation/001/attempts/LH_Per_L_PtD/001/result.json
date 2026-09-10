@@ -1,0 +1,22 @@
+{
+  "outcome": "completed",
+  "output": "/media/camp/EXT_DRIVE/RealUS_playground/MD/contact_qp/scan_entry_v5_simulation/001/LH_Per_L_PtD.h5",
+  "episode": {
+    "status": "accepted",
+    "episode_index": 1,
+    "session_index": 0,
+    "entry_time_ns": 1789001439564887888,
+    "entry_confirmed_time_ns": 1789001439664887888,
+    "exit_time_ns": 1789001451274887888,
+    "exit_confirmed_time_ns": 1789001451524887888,
+    "start_time_ns": 1789001440064887888,
+    "end_time_ns": 1789001450774887888,
+    "raw_duration_s": 11.71,
+    "duration_s": 10.71,
+    "crop_s": 0.5,
+    "threshold_n": 4.0,
+    "exit_threshold_n": 0.7999999999999998,
+    "exit_hysteresis_n": 3.2,
+    "exit_absolute": true
+  }
+}

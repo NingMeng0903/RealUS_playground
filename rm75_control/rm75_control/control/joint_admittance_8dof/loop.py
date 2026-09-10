@@ -5704,6 +5704,127 @@ def _rail_execution_velocity_estimate(
     )
 
 
+class _FullMeasuredTwistTracker:
+    """Raw measurement derivative/FK, separate from rail execution prediction.
+
+    Rail speed is a difference of two accepted encoder samples. Arm speed is
+    SDK feedback, or a difference of measured arm positions. Independent
+    source times and derivative intervals remain visible; this asynchronous
+    diagnostic is not a verified, wrench-aligned physical power port.
+    """
+
+    def __init__(self):
+        self.arm_previous = None
+        self.arm_velocity = None
+        self.rail_previous = None
+        self.rail_velocity = None
+        self.last_pair = None
+
+    def update(self, snap, rail_feedback, kin, *, now_s, freshness_s, max_skew_s):
+        metadata = {"port_verified": False, "reason": "unavailable"}
+        result = dict(measured_twist_base=None, measured_twist_valid=False,
+                      measured_twist_fresh=False, measurement_time_s=None,
+                      measurement_id=int(getattr(snap, "seq", 0)),
+                      measured_twist_metadata=metadata)
+
+        def unavailable(reason):
+            metadata["reason"] = reason
+            return result
+
+        try:
+            now, budget, skew_budget = float(now_s), float(freshness_s), float(max_skew_s)
+            arm_t = float(snap.t_s)
+            arm_seq = int(snap.seq)
+            arm_q = np.deg2rad(np.asarray(snap.q_deg, dtype=float).reshape(7))
+            if not bool(snap.ok) or not np.isfinite(arm_q).all():
+                return unavailable("arm_invalid")
+            if not all(math.isfinite(v) for v in (now, budget, skew_budget, arm_t)):
+                return unavailable("time_invalid")
+            if budget <= 0 or skew_budget < 0 or arm_t <= 0 or not 0 <= now - arm_t <= budget:
+                return unavailable("arm_stale_or_future")
+            metadata["arm_position_time_s"] = arm_t
+            previous = self.arm_previous
+            arm_new = previous is None or arm_t > previous[1]
+            if not arm_new and arm_t != previous[1]:
+                return unavailable("arm_out_of_order")
+            if not arm_new and not np.array_equal(arm_q, previous[2]):
+                return unavailable("arm_identity_changed")
+            arm_speed = arm_qdot_rad_s_from_snap(snap)
+            arm_start = arm_t
+            arm_source = "sdk_joint_speed"
+            if arm_speed is None:
+                arm_source = "measured_joint_difference"
+                if arm_new and previous is not None and 1e-6 < arm_t - previous[1] <= budget:
+                    arm_start = previous[1]
+                    delta = (arm_q - previous[2] + np.pi) % (2.0 * np.pi) - np.pi
+                    arm_speed = delta / (arm_t - arm_start)
+                elif not arm_new and self.arm_velocity is not None:
+                    arm_speed, arm_start = self.arm_velocity
+            if arm_new:
+                self.arm_previous = (arm_seq, arm_t, arm_q.copy())
+                self.arm_velocity = None if arm_speed is None else (arm_speed.copy(), arm_start)
+                self._arm_velocity_source=arm_source
+            elif self.arm_velocity is not None:
+                arm_speed,arm_start=self.arm_velocity
+                arm_source=self._arm_velocity_source
+            # Even if arm derivative startup is incomplete, seed the raw rail
+            # history below; neither source may be replaced by a command.
+            if rail_feedback is None or not bool(rail_feedback.valid):
+                return unavailable("rail_invalid_or_unavailable")
+            rail_t = float(rail_feedback.sample_mono_s)
+            rail_seq = int(rail_feedback.motion_seq)
+            rail_q = float(rail_feedback.position_m)
+            metadata["rail_position_time_s"] = rail_t
+            if not all(math.isfinite(v) for v in (rail_t, rail_q)):
+                return unavailable("rail_nonfinite")
+            if rail_t <= 0 or not 0 <= now - rail_t <= budget:
+                return unavailable("rail_stale_or_future")
+            previous = self.rail_previous
+            rail_new = previous is None or (rail_seq > previous[0] and rail_t > previous[1])
+            if not rail_new and (rail_seq, rail_t) != previous[:2]:
+                return unavailable("rail_out_of_order")
+            if not rail_new and rail_q != previous[2]:
+                return unavailable("rail_identity_changed")
+            if rail_new:
+                self.rail_velocity = None
+                if previous is not None and 1e-6 < rail_t - previous[1] <= budget:
+                    self.rail_velocity = ((rail_q - previous[2]) / (rail_t - previous[1]),
+                                          previous[1], rail_t)
+                self.rail_previous = (rail_seq, rail_t, rail_q)
+            if arm_speed is None or self.rail_velocity is None:
+                return unavailable("derivative_startup_or_gap")
+            rail_speed, rail_start, rail_end = self.rail_velocity
+            arm_time = 0.5 * (arm_start + arm_t)
+            rail_time = 0.5 * (rail_start + rail_end)
+            skew = abs(arm_time - rail_time)
+            pose_skew = abs(arm_t - rail_t)
+            metadata.update(arm_velocity_interval_s=(arm_start, arm_t),
+                            rail_velocity_interval_s=(rail_start, rail_end),
+                            arm_velocity_source=arm_source,
+                            rail_velocity_source="raw_encoder_difference",
+                            arm_sequence=arm_seq, rail_sequence=rail_seq,
+                            time_skew_s=skew, pose_time_skew_s=pose_skew,
+                            max_time_skew_s=skew_budget)
+            if now - min(arm_start, rail_start) > budget:
+                return unavailable("derivative_interval_stale")
+            if max(skew, pose_skew) > skew_budget:
+                return unavailable("measurement_time_skew")
+            raw_q = np.concatenate(([rail_q], arm_q))
+            raw_qdot = np.concatenate(([rail_speed], arm_speed))
+            twist = np.asarray(kin.jacobian(raw_q), dtype=float) @ raw_qdot
+            if twist.shape != (6,) or not np.isfinite(twist).all():
+                return unavailable("measured_fk_invalid")
+            pair = (arm_t, rail_seq, rail_t)
+            result.update(measured_twist_base=twist.copy(), measured_twist_valid=True,
+                          measured_twist_fresh=pair != self.last_pair,
+                          measurement_time_s=min(arm_time, rail_time))
+            self.last_pair = pair
+            metadata["reason"] = ""
+            return result
+        except (AttributeError, TypeError, ValueError, OverflowError, RuntimeError):
+            return unavailable("measurement_fields_unavailable")
+
+
 def _qdot_meas_8dof(
     q_new: np.ndarray,
     last_q: np.ndarray | None,
@@ -6307,6 +6428,16 @@ def run_joint_admittance_phases(
                         phase.outer.begin_hybrid_episode(applied_twist, pose_pin)
 
                     obs = phase.force_observer if phase.force_observer is not None else force_observer
+                    # Rebind only at the stopped phase boundary. Held source samples
+                    # retain observer state while command integration runs every tick.
+                    source_owner = getattr(phase.outer, "publication_owner", None)
+                    if obs is not None and hasattr(obs, "configure_source_period"):
+                        obs.configure_source_period(
+                            source_owner.source_clock.period_s if source_owner is not None else None,
+                            variable_dt=bool(source_owner is not None and source_owner.source_clock.timebase=="variable_step_bilinear_v1"),
+                            max_interval_s=source_owner.source_clock.max_interval_s if source_owner is not None else None,
+                            new_epoch=source_owner is not None,
+                        )
                     phase_t0 = time.perf_counter()
                     next_tick = phase_t0
                     last_tick_time = phase_t0
@@ -6335,6 +6466,7 @@ def run_joint_admittance_phases(
                     # sensor transport age is a separate diagnostic.
                     last_feedback_velocity_t = last_feedback_t
                     twist_achieved_base = np.full(6, np.nan)
+                    full_measured_tracker = _FullMeasuredTwistTracker()
                     qdot_meas = None
                     v_tcp_z_actual = 0.0
                     last_v_tcp_z = None
@@ -6345,9 +6477,11 @@ def run_joint_admittance_phases(
                     rail_reject_streak_s = 0.0
                     sensor_stale_streak_s = 0.0
                     rail_coast_active = False
+                    study_termination_reason = ''
                     wd.arm()
                     while True:
                         if stop_check is not None and stop_check():
+                            study_termination_reason = 'stop_requested'
                             phase_stopped = True
                             break
                         if wd.fired or fault_epoch[0] > 0:
@@ -6386,6 +6520,7 @@ def run_joint_admittance_phases(
                         ):
                             break
                         if phase.max_duration_s is not None and t_wall >= phase.max_duration_s:
+                            study_termination_reason = 'max_duration_reached'
                             break
     
                         feedback_fresh_tick = False
@@ -6569,6 +6704,15 @@ def run_joint_admittance_phases(
                             _wait_until(next_tick)
                             continue
 
+                        # Capture the actual child before callbacks can swap the proxy.
+                        publication_owner = getattr(phase.outer, "publication_owner", None)
+                        active_source = None
+                        if publication_owner is not None:
+                            active_source = publication_owner.prepare_source(
+                                f"{id(obs)}:{getattr(state_bus, 'session_id', 'direct')}",
+                                float(getattr(snap, "t_s", float("nan"))),
+                                int(getattr(snap, "wall_time_ns", 0)), now_s=time.monotonic(),
+                            )
                         f_ext = np.zeros(6)
                         f_ext_raw = None
                         if obs is not None:
@@ -6580,6 +6724,14 @@ def run_joint_admittance_phases(
                                 str(getattr(getattr(inner, "rail_mode", None), "value", ""))
                                 == "locked"
                             )
+                            observer_kwargs = {}
+                            if active_source is not None:
+                                # Preserve the shared observer watermark on hot entry.
+                                observer_kwargs["measurement_fresh"] = bool(
+                                    active_source.fresh and snap_t_obs != getattr(obs, "last_t_s", None)
+                                )
+                                if publication_owner.source_clock.timebase=="variable_step_bilinear_v1":
+                                    observer_kwargs["source_dt_s"]=active_source.source_dt_s
                             _signed, f_ext = obs.update(
                                 snap_t_obs,
                                 pose_l7,
@@ -6589,7 +6741,12 @@ def run_joint_admittance_phases(
                                 rail_locked=rail_locked_now,
                                 sensor_age_s=sensor_age_s,
                                 wall_time_ns=getattr(snap, "wall_time_ns", 0),
+                                **observer_kwargs,
                             )
+                            epoch_reset=getattr(obs,"source_filter_epoch_reset",None)
+                            if publication_owner is not None and epoch_reset is not None:
+                                publication_owner.sink.emit("source_filter_epoch_reset",**epoch_reset)
+                                obs.source_filter_epoch_reset=None
                             f_ext_raw = getattr(obs, "f_ext_raw_last", None)
                             f_ext = inner.kin.wrench_link7_to_tcp(f_ext)
                             if f_ext_raw is not None:
@@ -6604,6 +6761,13 @@ def run_joint_admittance_phases(
                             except Exception:
                                 pass
                         sample_kwargs: dict = {}
+                        # Source timestamps identify wrench samples; relay seq
+                        # can advance while repeating the same physical sample.
+                        study_source = dict(wrench_source_time_s=float(getattr(snap,"t_s",float("nan"))),
+                            wrench_source_wall_time_ns=int(getattr(snap,"wall_time_ns",0)),
+                            wrench_source_id=f"{id(obs)}:{getattr(state_bus,'session_id','direct')}")
+                        for key,value in study_source.items():
+                            if key in sample_params:sample_kwargs[key]=value
                         if "q_meas" in sample_params:
                             sample_kwargs["q_meas"] = q_meas
                         if "f_ext_raw" in sample_params and f_ext_raw is not None:
@@ -6623,6 +6787,31 @@ def run_joint_admittance_phases(
                             sample_kwargs["feedback_velocity_valid"] = (
                                 feedback_velocity_valid
                             )
+                        # Existing scalar feedback uses the rail execution
+                        # predictor. The full measured channel must instead
+                        # use raw encoder samples, with joint source metadata.
+                        try:
+                            raw_rail_feedback = (
+                                rail_bridge.execution_feedback
+                                if rail_bridge is not None and getattr(rail_bridge, "enabled", False)
+                                else None
+                            )
+                        except Exception:
+                            raw_rail_feedback = None
+                        if publication_owner is not None:
+                            publication_owner.observe_measured_port(
+                                snap, raw_rail_feedback, f_ext_raw, inner.kin,
+                                now_s=time.monotonic(), source_id=study_source['wrench_source_id'],
+                            )
+                        full_measurement = full_measured_tracker.update(
+                            snap, raw_rail_feedback, inner.kin,
+                            now_s=time.monotonic(),
+                            freshness_s=float(inner.cfg.feedback_timeout_s),
+                            max_skew_s=min(float(inner.cfg.feedback_timeout_s), 0.020),
+                        )
+                        for key, value in full_measurement.items():
+                            if key in sample_params:
+                                sample_kwargs[key] = value
                         if "slack_norm" in sample_params:
                             sample_kwargs["slack_norm"] = float(
                                 getattr(inner, "last_slack_norm", 0.0) or 0.0
@@ -6636,7 +6825,7 @@ def run_joint_admittance_phases(
                             if obs is not None
                             else None
                         )
-                        if callable(leftover_fn):
+                        if callable(leftover_fn) and (active_source is None or active_source.fresh):
                             ctrl = getattr(phase.outer, "controller", None)
                             if ctrl is None:
                                 ctrl = getattr(
@@ -6787,6 +6976,12 @@ def run_joint_admittance_phases(
                                 inner, step, q_meas, phase, reason,
                             ),
                         )
+                        if publication_owner is not None and str(getattr(step, "fallback_reason", "")) == "native_timeout_coast":
+                            publication_owner.publication_abort("native_timeout", definitely_not_sent=True)
+                            phase_stopped = True
+                            stop_reason = "contact_qp_native_timeout"
+                            _fault_stop(stop_reason)
+                            break
                         if str(getattr(step, "fallback_reason", "")) == "native_timeout_coast":
                             native = getattr(inner, "_native", None)
                             wait_s = float(
@@ -6969,6 +7164,15 @@ def run_joint_admittance_phases(
                             meas_m=rail_meas_pub,
                             lead_max_m=float(inner.cfg.resync_err_rail_m),
                         )
+                        if publication_owner is not None and (
+                            rail_coast_active or (rail_bridge is not None and getattr(rail_bridge, "enabled", False)
+                            and not callable(getattr(rail_bridge, "reserve_target_m", None)))
+                        ):
+                            publication_owner.publication_abort("rail_transaction_unavailable", definitely_not_sent=True)
+                            phase_stopped = True
+                            stop_reason = "contact_qp_rail_transaction_unavailable"
+                            _fault_stop(stop_reason)
+                            break
                         if rail_coast_active:
                             qdot0_pub = 0.0
                             step.v_r_ref = 0.0
@@ -7001,6 +7205,30 @@ def run_joint_admittance_phases(
                             if callable(abort_pub):
                                 abort_pub()
                             break
+                        final_tool = None
+                        proposal_id = None
+                        if publication_owner is not None:
+                            proposal_id = publication_owner.pending_id
+                            final_qdot = np.asarray(step.qdot, dtype=float).copy()
+                            # Final payload model includes the last Python rail correction.
+                            final_qdot[0] = (float(rail_pub_m) - float(q_prev[0])) / float(inner.cfg.dt)
+                            if rail_coast_active: final_qdot[0] = 0.0
+                            final_base = inner.kin.jacobian(q_meas) @ final_qdot
+                            rotation = publication_owner.pending_rotation_base_tcp
+                            final_tool = np.r_[rotation.T @ final_base[:3], rotation.T @ final_base[3:]]
+                            if not publication_owner.publication_review(
+                                proposal_id, final_tool, now_s=time.monotonic(),
+                                facts={"rail_target_m": float(rail_pub_m), "rail_coast": bool(rail_coast_active)},
+                            ):
+                                abort_reservation = getattr(rail_bridge, "abort_reservation", None)
+                                if callable(abort_reservation): abort_reservation()
+                                publication_owner.publication_abort("final_review_rejected", definitely_not_sent=True)
+                                phase_stopped = True
+                                stop_reason = "contact_qp_final_review_rejected"
+                                abort_pub = getattr(inner, "abort_publication", None)
+                                if callable(abort_pub): abort_pub()
+                                _fault_stop(stop_reason)
+                                break
                         if rail_bridge is not None:
                             step.rail_fa24_write_mono_ns = int(
                                 getattr(rail_bridge, "last_fa24_write_mono_ns", 0) or 0
@@ -7009,6 +7237,8 @@ def run_joint_admittance_phases(
                                 getattr(rail_bridge, "last_encoder_sample_mono_ns", 0)
                                 or 0
                             )
+                        if publication_owner is not None:
+                            publication_owner.publication_started(proposal_id)
                         try:
                             step.arm_send_mono_ns = time.monotonic_ns()
                             _send_joint_canfd_cmd(
@@ -7025,6 +7255,8 @@ def run_joint_admittance_phases(
                                 except Exception:
                                     pass
                             phase_stopped = True
+                            if publication_owner is not None:
+                                publication_owner.publication_abort("arm_send_unknown", facts={"arm": "unknown", "rail": "not_committed"})
                             stop_reason = (
                                 "arm_send_fault:"
                                 f"{type(exc).__name__}:{exc}"
@@ -7043,6 +7275,8 @@ def run_joint_admittance_phases(
                             if callable(commit) and not commit():
                                 phase_stopped = True
                                 stop_reason = "PARTIAL_ARM:rail_commit_failed"
+                                if publication_owner is not None:
+                                    publication_owner.publication_abort("partial_publish", facts={"arm": "sent", "rail": "failed_or_unknown"})
                                 abort_pub = getattr(inner, "abort_publication", None)
                                 if callable(abort_pub):
                                     abort_pub()
@@ -7051,6 +7285,12 @@ def run_joint_admittance_phases(
                         commit_pub = getattr(inner, "commit_publication", None)
                         if callable(commit_pub):
                             commit_pub(step.qdot)
+                        if publication_owner is not None:
+                            if rail_coast_active:
+                                publication_owner.publication_abort("rail_coast_partial", facts={"arm": "sent", "rail": "holding"})
+                            else:
+                                publication_owner.publication_commit(proposal_id, final_tool, now_s=time.monotonic(),
+                                    facts={"arm": "sent", "rail": "sent" if rail_bridge is not None and rail_bridge.enabled else "disabled"})
                         if not wd.fired:
                             wd.beat()
                         step.tick_send_ms = (
@@ -7078,10 +7318,20 @@ def run_joint_admittance_phases(
                             scale *= float(np.clip(t_wall / ramp_s, 0.0, 1.0))
                         if path_reference_should_freeze(step):
                             scale = 0.0
-                        t_ref += reference_time_step(dt_wall_actual, scale)
+                        if publication_owner is not None:
+                            t_ref = publication_owner.reference_time_s
+                            scale = 1.0
+                        else:
+                            t_ref += reference_time_step(dt_wall_actual, scale)
                         step.accepted_reference_lag_s = max(0.0, t_wall - t_ref)
     
                         if phase.on_tick is not None:
+                            if getattr(phase.outer,'contact_study_enabled',False):
+                                step.study_rail_target_m=float(rail_pub_m) if rail_bridge is not None and rail_bridge.enabled and not rail_coast_active else None
+                                step.study_rail_velocity_m_s=float(qdot0_pub) if rail_bridge is not None and rail_bridge.enabled else None
+                                step.study_rail_coast=bool(rail_coast_active)
+                                step.study_rail_target_modified=bool(step.study_rail_target_m is not None and
+                                    step.study_rail_target_m!=float(step.q_send[0]))
                             phase.on_tick(t_ref, step, q_meas)
     
                         dq_deg = np.abs(rad2deg(step.q_send - q_prev))
@@ -7167,6 +7417,8 @@ def run_joint_admittance_phases(
                                 ),
                             ):
                                 phase_arrived = True
+                                if publication_owner is not None:
+                                    publication_owner.arrival_confirmed = True
                                 break
                             phase_arrived = False
     
@@ -7174,6 +7426,11 @@ def run_joint_admittance_phases(
                         next_tick += dt
                         _wait_until(next_tick)
 
+                    if getattr(phase.outer, 'contact_study_enabled', False):
+                        study_reason = stop_reason or study_termination_reason or (
+                            f'arrival_timeout:{phase.label or phase_idx}'
+                            if phase.require_arrival and not phase_arrived else 'phase_complete')
+                        phase.outer.record_stop(study_reason)
                     if phase.on_exit is not None:
                         phase.on_exit()
 
@@ -7207,10 +7464,33 @@ def run_joint_admittance_phases(
                             flush=True,
                         )
                         break
+            except Exception as exc:
+                active_owner = getattr(getattr(locals().get("phase"), "outer", None), "publication_owner", None)
+                if active_owner is None:
+                    raise
+                stop_reason = f"contact_qp_exception:{type(exc).__name__}:{exc}"
+                phase_stopped = True
+                # Stop FIRST: logging or proposal cleanup must never postpone it.
+                _fault_stop(stop_reason)
+                abort_inner = getattr(inner, "abort_publication", None)
+                if callable(abort_inner):
+                    try: abort_inner()
+                    except Exception: pass
+                try: active_owner.publication_abort(stop_reason)
+                except Exception: pass
             except KeyboardInterrupt:
+                active_owner = getattr(getattr(locals().get("phase"), "outer", None), "publication_owner", None)
+                if active_owner is not None:
+                    stop_reason = "contact_qp_interrupted"
+                    _fault_stop(stop_reason)
                 if verbose:
                     print("\nStopped.", flush=True)
         finally:
+            current_phase=locals().get("phase")
+            current_outer=getattr(current_phase,"outer",None)
+            if bool(getattr(current_outer,"contact_study_enabled",False)):
+                current_outer.record_stop(locals().get("stop_reason") or "runner_exit")
+                current_outer.close(wait=False)
             inner.set_direct_joint_ptp(False)
             inner.set_plan_drives_rail(False)
             wd.stop()

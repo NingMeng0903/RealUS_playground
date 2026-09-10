@@ -1,0 +1,60 @@
+{
+  "revision": "v8r2_bounded_episode",
+  "created_utc": "2026-09-10T07:44:29.655320+00:00",
+  "scope": "Incremental source and documentation; full frozen production dependencies are in regression_frozen_source.zip. No hardware command sent.",
+  "files": {
+    "peirastic/contact_qp/repair_policy.py": "b451ebd6ac89b97c2b1d1724bd0c70fe9722d4c30f9b0d3b246159ee6466378a",
+    "peirastic/contact_qp/repair_episode.py": "7d590d80633e95ef06d128dd092e354041e2f9a61a6635a83cb6ed18ebb2550d",
+    "peirastic/contact_qp/qp.py": "f0c60085f487271d9e1d9883a5192e0d4987e13b46b5e8e082e36b62e9443fb4",
+    "peirastic/contact_qp/runtime_config.py": "8d197ac8a4d1add1e959ce1e38b340757cc09e888a29e6cb7ca028b56b5c5832",
+    "peirastic/realman8dof/modes/contact_active.py": "75f6c0b0739b17979c22303f83cebed5e634c70494a11bf1b7b4f437f86bdfed",
+    "peirastic/core/capabilities.py": "297dbe69839c403874b814f4cfd1fe8228f7d54a823d247ab38cfa6e9be19869",
+    "peirastic/realman8dof/daemon.py": "ecf97293bb8b6f301d9c1bb43116910f41e3bb6c98bff59e916397863ad43360",
+    "peirastic/config/contact_qp/active_probe50_v8.yaml": "80aacdb94ff291f4f06daad584aa8ad5f5c33ad920c968a2c607681d49d75713",
+    "peirastic/tests/test_contact_qp_differential_repair.py": "f55e373b80ee090d7e1aa1b7002b9fae29de24f4ae45dfe8e220e4b07c2524c4",
+    "peirastic/tests/test_contact_qp_repair_episode.py": "a53b674c55bb3435a9047b80447b6da9184e6fdcdabf96002193577289ba3ba5",
+    "MD/contact_qp/V8_ALLOCATION_AND_TEST.md": "3169332613bd3186e520c1c3507b7830e1c8495c34709643e34db72bc372df40",
+    "MD/contact_qp/V8_FINAL_REVIEW.md": "fc4b74bf22ae59403082657b3787d1b01e94a03f3b8e9ac5de1b6c6cc503760c",
+    "MD/contact_qp/V8_ALLOCATION_MATH_REVIEW.md": "a43273845e0217333328bdd127e2b76d0f7f17fc0979640c52657ca11bc544ed",
+    "MD/contact_qp/ACTIVE_PROBE50_RUN.md": "46a4e45869d79ac7a98087959d2d21e5ba54306434b17e99656d703e1248b450",
+    "analysis_artifacts/contact_qp_v8_r2/real_five_state_replay.py": "f86ce07f3d0e335803c830ea9fa95f47a2ea9176ed7a0f5ed1c0b0fc92d3b2d8"
+  },
+  "regression_source_current_match": true,
+  "junit": {
+    "peirastic_final.xml": {
+      "name": "pytest",
+      "errors": "0",
+      "failures": "1",
+      "skipped": "0",
+      "tests": "603",
+      "time": "23.321",
+      "timestamp": "2026-09-10T15:40:45.238622+08:00",
+      "hostname": "pei"
+    },
+    "native_final.xml": {
+      "name": "pytest",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "tests": "1",
+      "time": "1.563",
+      "timestamp": "2026-09-10T15:40:49.826099+08:00",
+      "hostname": "pei"
+    },
+    "force_regression.xml": {
+      "name": "pytest",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "tests": "46",
+      "time": "12.818",
+      "timestamp": "2026-09-10T15:36:01.533216+08:00",
+      "hostname": "pei"
+    }
+  },
+  "native_result_note": "Restricted sandbox: 602 pass and one native startup failure; unchanged isolated native test passed outside sandbox. Preserve both records.",
+  "force_note": "46 original force tests passed; underlying force implementation unchanged by final active adapter contact guard.",
+  "energy_enabled_in_real_config": false,
+  "capability": "contact_qp.differential_repair_v8_r2",
+  "simulation_note": "801/802 20 units;701/702 shadow4 regression; no acoustic benefit established. Main run only unused real adapter drift, final old-seed run source stable."
+}

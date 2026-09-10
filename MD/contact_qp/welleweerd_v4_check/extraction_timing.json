@@ -1,0 +1,8 @@
+{
+  "scope": "isolated image extraction only, excluded from 200Hz control; 30 samples not a real-time guarantee",
+  "count": 30,
+  "median_ms": 47.977310488931835,
+  "p95_ms": 48.72620849637315,
+  "max_ms": 51.59000004641712,
+  "window_version": "a3dd6a785d0fad60c1fc"
+}

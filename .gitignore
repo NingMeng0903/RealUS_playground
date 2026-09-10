@@ -46,6 +46,9 @@ peirastic/**/logs/
 !peirastic/logs/phantom/
 !peirastic/logs/phantom/**
 
+# GitHub rejects blobs >100 MB
+MD/contact_qp/replay_v5/qp_main/qp_diagnostics.jsonl
+
 # Controller / plant run CSVs (local only; GitHub rejects >100 MB)
 MD/todo_controller_logs/**/*.csv
 MD/recursive_sns_hw_*/csv/

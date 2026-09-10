@@ -1,0 +1,35 @@
+# Default: record the original TFF scan. No synthetic geometry is substituted.
+mode: baseline
+log_path: null  # unique JSONL under apps/logs/contact_qp when omitted
+feature_endpoint: null  # e.g. tcp://127.0.0.1:17361 when user starts the worker
+geometry:
+  half_length_m: null
+  T_tcp_face: null
+  image_x_sign: null
+  face_normal_convention: null  # into_contact or outward for FACE +z
+  calibration_version: null
+  verified: false
+feature:
+  config: null  # exact FeatureConfig mapping shared with the image worker
+  window_version: null  # computed from that exact FeatureConfig
+  registration_version: null
+  quality_policy_version: null
+  c_min: null  # a measured, declared real-image decision threshold
+  verified: false
+
+# Active mode requires the measured ingress cadence and installation relation.
+source:
+  period_s: null
+  jitter_fraction: null
+  max_age_s: null
+force_axis_monotonicity_confirmed: false
+physical_w_checked: false
+energy_constraint_enabled: false  # pure monitoring until explicitly configured
+energy: null
+# Physical settlement uses a separate measured W/arm interval plus raw rail
+# encoder brackets (no extrapolation), not the mixed-time diagnostic twist.
+# physical_w_checked must reflect the actual TCP/sign/unit binding. Missing
+# brackets retain liabilities; all such runtime estimates remain uncertified.
+# Optional energy.max_measurement_age_s bounds delayed bracket settlement;
+# energy.max_rail_interval_s bounds each rail interpolation support.
+# The same energy.constraint.contact_map/damping feed QP and measured D debit.

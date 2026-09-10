@@ -1,0 +1,80 @@
+{
+  "version": "probe50_active_command_interface_v7",
+  "created_utc": "2026-09-10T06:39:52.676124+00:00",
+  "scope": "incremental source/config snapshot on the existing workspace; not a standalone checkout",
+  "coding": "GPT-6 medium",
+  "critical_review": "GPT-6 ultra, scoped interface PASS",
+  "files": {
+    "peirastic/api/arm.py": "4ffffbf5bf42254d98900751058d561329282b2e957f7d62ca9dbcd4614d5a9e",
+    "peirastic/config/contact_qp/active_probe50.yaml": "ddef6c9cdc640d430d980ab77cf57fa4db2862ed8dba6fdcad20e2b277c50cf0",
+    "peirastic/config/contact_qp/baseline_probe50.yaml": "eea043be491e9a45bda17606de66709fe9a4e4926c27990943536985f6680760",
+    "peirastic/config/contact_qp/shadow_probe50.yaml": "d884010b4dfd06e4c75953d25def7cd95b2474e1e9c70a6fb77a82a62c3d3791",
+    "peirastic/contact_qp/qp.py": "c9888391c435a88887435bdbf8322506b1a322af78123eed905fcb6f59cff043",
+    "peirastic/contact_qp/runtime_source.py": "21388d61f17cccc7c46233d4eeeecce74214b75050bff70e99ed04472bc4d483",
+    "peirastic/core/capabilities.py": "68500d5e5eec959cc1faff28f12c5b92f2b313cf203e39a66541d5d52e7f06bf",
+    "peirastic/realman8dof/daemon.py": "d69a640ab4e92b39b093b505cc95ea1274eb290438749764b7c640e45caa40e0",
+    "peirastic/realman8dof/modes/contact_active.py": "5dc1c17a2a1dcab425d2dae8c1397acb8a131698597ac7e079391ee49a32898c",
+    "peirastic/tests/test_contact_qp_active_history.py": "88749dee90ba7bfb6b164afe6d87cb9331de2a2c0bb10b1db7e7daa83021047b",
+    "peirastic/tests/test_contact_qp_variable_timebase.py": "03e6f4b195b9aea465e5ba1c80187ad6b97136c511cfcd74692025cf853f80e5",
+    "rm75_control/rm75_control/control/admittance_common/controller.py": "b0ae8a5a224106624cfd17bcf1ec2cc3b33f34551dfe1510e635db066317b4b3",
+    "rm75_control/rm75_control/control/admittance_common/observer.py": "fe902230ba0939720420bdcc85230c0ec082b8d2597a67e75788ae0d44e02efc",
+    "rm75_control/rm75_control/control/admittance_common/variable_step_filter.py": "22b2975d0e71c1436a598f0b2c8073d4aac4f72c21a6352da6bdf155b98440fb",
+    "rm75_control/rm75_control/control/joint_admittance_8dof/loop.py": "ac52277e7065f46980bed69371952a3ac9df10215ed60252b18cb583fb65c8db"
+  },
+  "changed_from_v6_recorded_files": [
+    "peirastic/realman8dof/modes/contact_active.py"
+  ],
+  "additional_snapshotted_files": [
+    "peirastic/contact_qp/qp.py",
+    "peirastic/tests/test_contact_qp_active_history.py"
+  ],
+  "external_read_only": {
+    "/media/camp/EXT_DRIVE/ICRA_YM/script/scan_robot.py": "8cbfdc1c0f32d9b3e90d147e540a61c2ecfff82a78be9fab196b67778a07821b",
+    "/media/camp/EXT_DRIVE/ICRA_YM/script/tests/test_scan_contact_qp.py": "eabd4e53f99cdd9621666a684f3e8111e07ac3ecae71bb7a66069b7485ecf7f0"
+  },
+  "evidence": {
+    "ACTIVE_PROBE50_RUN.md": "f7dc32ebfa5a539250cd49a903db62de0b9a78dd384b79f4b5cd6686b309b07f",
+    "ACTIVE_FAILURE_INTERFACE_V7.md": "9ca0c64a8a5f74b93a1060590b9aace87176022c1c38f07ef0d6f55c47d2eb66",
+    "review_active_interface_v7.md": "d1e576e165c9ebfb20752a980ebfb7bc5ce39c5f39b00b5fcfb4b5c1ad4344b8",
+    "active001_failure_evidence_v7.json": "455123e66a5aae591b526494d2e1d9bf8f2e48743362c2b51e7f41c15a51c3bd",
+    "peirastic_regression_active_v7.xml": "d93fd806537a042bfdc8292cdd96dbb386e893fe93f7e46586e9668b4e211f18",
+    "force_regression_active_v7.xml": "a72d5b598761f277ea520b4e6db3627817914809768f761aa1d432e96d1f6fe6",
+    "native_handoff_recheck_active_v7.xml": "917a6b58e230837dda41c28e43e2bcb3e10d1f5e10a228bbd7f5fb33a5b04d40",
+    "native_handoff_host_recheck_active_v7.xml": "07744103c9221f14823253bf7675c9993b6a8c45b9df4d5b7a1c87f7122a582d"
+  },
+  "hardware_executed_by_agent": false,
+  "unchanged_policy": {
+    "target_force_n": 4.0,
+    "force_margin_added_n": 0.0,
+    "final_review_horizon_s": 0.01,
+    "energy_constraint_enabled": false,
+    "original_ik_native_rail_modified_this_revision": false
+  },
+  "validation": {
+    "peirastic": "584 passed, 1 native-startup failure in root sandbox, 3 previously exercised long tests deselected",
+    "native_recheck": "same test and source passed outside root sandbox; original failure retained",
+    "force": "46 passed",
+    "config_validate_only": "PASS, hardware_connected false",
+    "source_diff_check": "PASS"
+  },
+  "remaining_real_execution_issues": [
+    "003 final-review timing long tail; exact old rejection reason unavailable",
+    "untimestamped rail FA24 and Modbus errors; no claim of resolution",
+    "real force/coverage efficacy of revised active controller not yet accepted"
+  ],
+  "commands": [
+    "python -m pytest -q peirastic/tests -k \"not 100000\" --junitxml=MD/contact_qp/peirastic_regression_active_v7.xml",
+    "python -m pytest -q peirastic/tests/test_cartesian_ptp_handoff.py::test_replanned_standoff_can_enter_native_hold_with_same_constraints --junitxml=MD/contact_qp/native_handoff_host_recheck_active_v7.xml",
+    "python -m peirastic.apps.contact_qp_run --config peirastic/config/contact_qp/active_probe50.yaml --validate-only",
+    "git diff --check -- peirastic rm75_control/rm75_control"
+  ],
+  "environment": {
+    "python": "/media/camp/EXT_DRIVE/envs/rm75/bin/python",
+    "PYTHONPATH": "/media/camp/EXT_DRIVE/RealUS_playground:/media/camp/EXT_DRIVE/RealUS_playground/rm75_control:/media/camp/EXT_DRIVE/envs/rm75/lib/python3.10/site-packages/cmeel.prefix/lib/python3.10/site-packages",
+    "LD_LIBRARY_PATH": "/media/camp/EXT_DRIVE/envs/rm75/lib/python3.10/site-packages/cmeel.prefix/lib",
+    "PYTEST_DISABLE_PLUGIN_AUTOLOAD": "1",
+    "PYTHONNOUSERSITE": "1",
+    "OPENBLAS_NUM_THREADS": "1",
+    "OMP_NUM_THREADS": "1"
+  }
+}

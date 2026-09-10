@@ -1022,6 +1022,7 @@ class _ForceMixin(_ClientMixin):
         *,
         reference: str | None = None,
         path_spec: dict[str, Any] | None = None,
+        contact_qp: dict[str, Any] | str | None = None,
         scan_contact_n: float | None = None,
         scan_contact_s: float | None = None,
         speed_m_s: float | None = None,
@@ -1044,6 +1045,11 @@ class _ForceMixin(_ClientMixin):
         existing force law approaches. Path time and duration start after
         that controller confirms contact, without restarting the force law.
         """
+        if contact_qp is not None and self.client is not None:
+            from peirastic.contact_qp.runtime_config import load_study_config
+            from peirastic.core.capabilities import study_capabilities
+            for capability in study_capabilities(load_study_config(contact_qp)):
+                self.client.require_capability(capability)
         bad = self._check_tail(r, connect)
         if bad is not None:
             return bad
@@ -1062,6 +1068,7 @@ class _ForceMixin(_ClientMixin):
         payload = HfpcPayload(
             reference=kind,
             path_spec=path_spec,
+            contact_qp=contact_qp,
             scan_contact_n=scan_contact_n,
             scan_contact_s=scan_contact_s,
             poses=arr,

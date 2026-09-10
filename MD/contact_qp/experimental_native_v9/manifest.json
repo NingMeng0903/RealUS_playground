@@ -1,0 +1,29 @@
+{
+  "baseline_commit": "95038b5f33ff28ed38179482f626eacbb5822329",
+  "source_sha256": {
+    "rm75_control/native/wbc_rt/CMakeLists.txt": "9fb8449b47b252463da4f72cfb854490d982b1a96ef24a229f9d8b3c7227516f",
+    "rm75_control/native/wbc_rt/gen_build_id.py": "7a3afcabbf902f3769935e3da2282619080637325ea8cc68b6195b8dd97bada9",
+    "rm75_control/native/wbc_rt/include/wbc_rt/inner.hpp": "a7bae055efab60a7c387f7c619aca1ca3a9a2fafcd9f2f52e5dd56e52f5fc3a4",
+    "rm75_control/native/wbc_rt/include/wbc_rt/protocol.hpp": "ed99a375ccd00b9d0918afcc9a5ab076eb25e8dc11591de236163d0c22e5f832",
+    "rm75_control/native/wbc_rt/src/inner.cpp": "fd26587e7bc86cf91326ed2c2eebe448c9cbdeaec9f3edaa5cfc77be9df2373a",
+    "rm75_control/native/wbc_rt/src/main.cpp": "29a25d2b25272acd288e13fcd79187da7d40468165bdf0b8e7161a49d67b4556",
+    "rm75_control/native/wbc_rt/test_native_contract.py": "b641b130b7f6dc94586dcde18977a0b7dd4623fa2065532c419cc9af8e7f728e",
+    "rm75_control/rm75_control/control/joint_admittance_8dof/wbc_rt/build_id.py": "ee52fe2c60e80c597a57ea94599ce962b5a35a61179420d215544dbf49cae03d",
+    "rm75_control/rm75_control/control/joint_admittance_8dof/wbc_rt/client.py": "1924b4ca7110f8d75a5515b3a28319686d375a50ca34e9c1d55e6ecfdf753966",
+    "rm75_control/rm75_control/control/joint_admittance_8dof/wbc_rt/protocol.py": "1126b277db6a0946df12f361cc405e504271d0b3398e029feb4db85d2f82eddc",
+    "rm75_control/rm75_control/control/joint_admittance_8dof/hw/rail_servo.py": "6ca91c056332ff8b747066c70df03fcaa558d64c99fd19ac6ab09fab0b8ad939",
+    "rm75_control/tests/test_rail_reservation.py": "0453259ef7c7fe0ce70acef10eff0939a8b7146a6f04143144fb5a32d52ed855",
+    "rm75_control/rm75_control/control/joint_admittance_8dof/loop.py": "c448031aadc589ee1281c6066fdb4e54c496ab35f33c7108fe152a77ef749abb",
+    "rm75_control/native/wbc_rt/include/wbc_rt/cartesian.hpp": "06933ebd758f2a70dc4a2a798033dbed20fe00eb45dbf2cc66ddb1a6f9cb5579",
+    "rm75_control/rm75_control/control/joint_admittance_8dof/wbc_rt/cartesian.py": "9d51b144b49975bc5cab2e73ec2668ee1e85e56bdff95dce4bd4ee0607ad6e69",
+    "rm75_control/tests/test_native_cartesian_constraints.py": "2831d9487cccd3dd20d80b5f6d799224ed3dc2e06d9b587dc73a25b89893d882",
+    "rm75_control/rm75_control/control/joint_admittance_8dof/hw/contact_publication.py": "ae4a19a1c76d0ef5c69c1130e2a42822e52664a8cd4b4930afb73d211ca206da",
+    "rm75_control/tests/test_contact_publication.py": "f7d5a0e66fe1f7bbbf12628894018e5e9e1106426be175a42c8f4864f0d250fe"
+  },
+  "restored_loop_sha256": "c73185e530f5d2d101cf6f36f4f1368d7aabad0fd9edfd2cfe877695b3702ffc",
+  "native_last_build_exit": 0,
+  "latest_confirmation_fixes_tests": "not rerun before user pause",
+  "unresolved": "confirmation lock serialization and bool return propagation not implemented; 96-active performance failed",
+  "binary_sha256": "05bc9ffc32226e9de07f3614f807ea5f24ffa13875a7618837aca6427aba41d3",
+  "protocol_info": "version 9 in 6796 out 1556\n"
+}

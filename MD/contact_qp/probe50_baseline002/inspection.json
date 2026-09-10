@@ -1,0 +1,113 @@
+{
+  "source": "/media/camp/EXT_DRIVE/ICRA_2027/icra 2027_contact/real_characterization/baseline_probe50/002",
+  "mode": "baseline",
+  "scans": [
+    {
+      "scan": "RH_Per_C_DtP",
+      "attempt": "003",
+      "control_samples": 6837,
+      "feature_samples": 6837,
+      "unique_feature_frames": 687,
+      "both_above": 530,
+      "left_low": 85,
+      "right_low": 0,
+      "both_low": 72,
+      "valid_required": 687,
+      "quality_lcr_min_median": [
+        [
+          0.23089060634000694,
+          0.21861096132325497,
+          0.215268396089458
+        ],
+        [
+          0.9777511514156646,
+          0.9882738243862392,
+          0.9926931352590534
+        ]
+      ],
+      "image_age_ms_quantiles": [
+        206.89772255718708,
+        251.09815341420472,
+        279.7965723555535,
+        287.8862218745053,
+        297.7683814242482
+      ],
+      "image_over_300ms": 0,
+      "force_mean_n": 4.134068256715265,
+      "force_rmse_n": 0.16743588340040677,
+      "force_range_n": [
+        3.641825129666702,
+        4.459682464310053
+      ],
+      "force_over_4_1_fraction": 0.6361092824226465,
+      "source_dt_ms_quantiles": [
+        2.5063641369342804,
+        5.0112075405195355,
+        5.594081885647029,
+        6.096102222800255,
+        10.154742049053311
+      ],
+      "source_intervals_over_10ms": 6,
+      "dropped_records": 0
+    },
+    {
+      "scan": "RH_Per_L_DtP",
+      "attempt": "001",
+      "control_samples": 6766,
+      "feature_samples": 6766,
+      "unique_feature_frames": 682,
+      "both_above": 569,
+      "left_low": 6,
+      "right_low": 26,
+      "both_low": 81,
+      "valid_required": 682,
+      "quality_lcr_min_median": [
+        [
+          0.21915872663852404,
+          0.22001040432583155,
+          0.21823808963350252
+        ],
+        [
+          0.9864641453931285,
+          0.9924669272235647,
+          0.9795924783935854
+        ]
+      ],
+      "image_age_ms_quantiles": [
+        206.93699130788445,
+        251.296347938478,
+        280.11891519417986,
+        287.82038058852777,
+        311.9306762237102
+      ],
+      "image_over_300ms": 3,
+      "force_mean_n": 4.136816348363015,
+      "force_rmse_n": 0.17353381735713255,
+      "force_range_n": [
+        3.684445139263586,
+        4.539521485323766
+      ],
+      "force_over_4_1_fraction": 0.6922305764411028,
+      "source_dt_ms_quantiles": [
+        2.7071149088442326,
+        5.333850858733058,
+        5.665358202531934,
+        7.566696624271591,
+        11.55324000865221
+      ],
+      "source_intervals_over_10ms": 18,
+      "dropped_records": 0
+    }
+  ],
+  "registration_version": "fbe3a5c9d4cb3065966a",
+  "shadow_config": "peirastic/config/contact_qp/shadow_probe50.yaml",
+  "shadow_validation": {
+    "mode": "shadow",
+    "configuration_valid": true,
+    "command_authority": "unchanged_baseline",
+    "calibration_status": "declared",
+    "missing_active_calibration": [],
+    "physical_port_assurance": "unverified",
+    "hardware_connected": false
+  }
+}

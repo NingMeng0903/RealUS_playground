@@ -1,0 +1,2275 @@
+#include "wbc_rt/inner.hpp"
+#include "wbc_rt/rail_command.hpp"
+
+#include <algorithm>
+#include <chrono>
+#include <cmath>
+#include <fstream>
+#include <limits>
+#include <stdexcept>
+
+#include <coal/shape/geometric_shapes.h>
+#include <pinocchio/algorithm/frames.hpp>
+#include <pinocchio/algorithm/geometry.hpp>
+#include <pinocchio/collision/distance.hpp>
+#include <pinocchio/parsers/urdf.hpp>
+
+namespace wbc_rt {
+namespace {
+
+// Residual HQP layout: qdot[8], task_slack[6], preference_slack[9].
+constexpr int kNVar = kNv + kNTaskSlack + kNPref;
+constexpr int kNEq1 = kTask;
+constexpr int kNEq2 = kTask;
+constexpr int kNIn = kNv + kMaxCbf + kMaxPrefRows + kNPref;
+constexpr double kRailDriveCap = 0.40;
+constexpr double kRailPrefW = 64.0;
+constexpr double kQuietLinEnter = 0.005;
+constexpr double kQuietRotEnter = 0.05;
+constexpr double kQuietLinExit = 0.008;
+constexpr double kQuietRotExit = 0.08;
+constexpr double kQuietTcp = 0.010;
+constexpr double kQuietHold = 0.15;
+// ProxQP has a separate inner Newton loop whose default (1500) is not
+// covered by settings.max_iter. Bound it explicitly on every solve so the
+// controller's wall-clock iteration budget cannot expand into an unbounded
+// solver path.
+constexpr int kMaxQpInnerIter = 32;
+
+uint32_t qp_status_code(proxsuite::proxqp::QPSolverOutput s) {
+  using S = proxsuite::proxqp::QPSolverOutput;
+  if (s == S::PROXQP_SOLVED) return kQpSolved;
+  if (s == S::PROXQP_MAX_ITER_REACHED) return kQpMaxIter;
+  if (s == S::PROXQP_PRIMAL_INFEASIBLE) return kQpPrimalInfeasible;
+  if (s == S::PROXQP_DUAL_INFEASIBLE) return kQpDualInfeasible;
+  return kQpFailed;
+}
+
+double elapsed_ms(std::chrono::steady_clock::time_point t0) {
+  return std::chrono::duration<double, std::milli>(
+             std::chrono::steady_clock::now() - t0)
+      .count();
+}
+
+struct GeomSphere {
+  Eigen::Vector3d c = Eigen::Vector3d::Zero();
+  double r = std::numeric_limits<double>::infinity();
+};
+
+collision_broadphase::Aabb make_local_aabb(const pinocchio::GeometryObject& go) {
+  if (!go.geometry || !go.meshScale.allFinite() ||
+      !go.meshScale.isApprox(Eigen::Vector3d::Ones(), 1.0e-12)) {
+    // A non-unit mesh scale cannot be reconstructed safely from the local
+    // shape here. Keep the existing sphere path as the conservative fallback.
+    return {};
+  }
+  try {
+    go.geometry->computeLocalAABB();
+  } catch (...) {
+    return {};
+  }
+  const auto& bounds = go.geometry->aabb_local;
+  return collision_broadphase::from_bounds(
+      Eigen::Vector3d(bounds.min_), Eigen::Vector3d(bounds.max_));
+}
+
+GeomSphere make_local_sphere(
+    const pinocchio::GeometryObject& go,
+    const collision_broadphase::Aabb& local_aabb) {
+  GeomSphere s;
+  if (!go.geometry) return s;
+  const coal::CollisionGeometry* g = go.geometry.get();
+  if (const auto* cyl = dynamic_cast<const coal::Cylinder*>(g)) {
+    s.r = std::hypot(static_cast<double>(cyl->radius),
+                     static_cast<double>(cyl->halfLength));
+    return s;
+  }
+  if (const auto* cap = dynamic_cast<const coal::Capsule*>(g)) {
+    s.r = static_cast<double>(cap->radius) + static_cast<double>(cap->halfLength);
+    return s;
+  }
+  if (const auto* box = dynamic_cast<const coal::Box*>(g)) {
+    s.r = box->halfSide.norm();
+    return s;
+  }
+  if (const auto* sph = dynamic_cast<const coal::Sphere*>(g)) {
+    s.r = static_cast<double>(sph->radius);
+    return s;
+  }
+  // The mesh collision model also needs a finite conservative broadphase
+  // bound. Previously every mesh got radius=infinity, so all pairs paid
+  // for narrow-phase queries each tick. Reuse the validated local AABB and
+  // never guess how non-unit mesh scales were baked.
+  if (local_aabb.valid) {
+    s.c = local_aabb.center;
+    s.r = local_aabb.halfwidth.norm() + 1.0e-9;
+  }
+  return s;
+}
+
+bool qp_is_candidate(uint32_t code) {
+  return code == kQpSolved || code == kQpMaxIter;
+}
+
+bool box_conflict(const Vec8& lo, const Vec8& hi, int* joint) {
+  for (int i = 0; i < kNv; ++i) {
+    if (std::isfinite(lo[i]) && std::isfinite(hi[i]) && lo[i] > hi[i] + 1.0e-12) {
+      if (joint) *joint = i;
+      return true;
+    }
+  }
+  return false;
+}
+
+double qp_eq_violation(const MatX& A, const VecX& b, const VecX& x) {
+  if (x.size() != A.cols() || b.size() != A.rows()) return std::numeric_limits<double>::infinity();
+  const VecX e = A * x - b;
+  if (!e.allFinite()) return std::numeric_limits<double>::infinity();
+  return e.cwiseAbs().maxCoeff();
+}
+
+double qp_ineq_violation(const MatX& C, const VecX& lo, const VecX& hi, const VecX& x) {
+  if (x.size() != C.cols() || lo.size() != C.rows() || hi.size() != C.rows()) {
+    return std::numeric_limits<double>::infinity();
+  }
+  const VecX y = C * x;
+  if (!y.allFinite()) return std::numeric_limits<double>::infinity();
+  double out = 0.0;
+  for (int i = 0; i < y.size(); ++i) {
+    if (std::isfinite(lo[i])) out = std::max(out, lo[i] - y[i]);
+    if (std::isfinite(hi[i])) out = std::max(out, y[i] - hi[i]);
+  }
+  return std::max(out, 0.0);
+}
+
+void solve_dense_qp(proxsuite::proxqp::dense::QP<double>& qp,
+                    bool* inited,
+                    bool last_ok,
+                    const MatX& H,
+                    const VecX& g,
+                    const MatX& A,
+                    const VecX& b,
+                    const MatX& C,
+                    const VecX& lo,
+                    const VecX& hi,
+                    const VecX* seed = nullptr) {
+  using IG = proxsuite::proxqp::InitialGuessStatus;
+  if (!*inited) {
+    qp.init(H, g, A, b, C, lo, hi, true);
+    *inited = true;
+  } else {
+    qp.settings.initial_guess =
+        last_ok ? IG::WARM_START_WITH_PREVIOUS_RESULT : IG::NO_INITIAL_GUESS;
+    qp.update(H, g, A, b, C, lo, hi, true);
+  }
+  if (seed != nullptr && seed->size() == H.rows()) {
+    qp.settings.initial_guess = IG::WARM_START;
+    qp.results.x = *seed;
+    if (!last_ok) {
+      // A failed/cold solve must not inherit its previous dual variables.
+      // WARM_START uses x/y/z together; carrying stale y/z can repeatedly
+      // drive the next solve into the same max-iteration path.
+      qp.results.y.setZero();
+      qp.results.z.setZero();
+      qp.results.se.setZero();
+      qp.results.si.setZero();
+    }
+  }
+  if (qp.settings.max_iter_in > kMaxQpInnerIter) {
+    qp.settings.max_iter_in = kMaxQpInnerIter;
+  }
+  qp.solve();
+}
+
+Vec6 twist_to_base(const Vec6& twist, const Eigen::Matrix3d& R, bool tool) {
+  if (!tool) return twist;
+  Vec6 out;
+  out.head<3>() = R * twist.head<3>();
+  out.tail<3>() = R * twist.tail<3>();
+  return out;
+}
+
+}  // namespace
+
+Collision::Collision(pinocchio::Model& model, const Config& cfg)
+    : model_(&model), geom_data_(pinocchio::GeometryModel()), cfg_(cfg) {
+  if (!cfg.collision_enabled || cfg.collision_urdf.empty()) return;
+  std::vector<std::string> dirs;
+  const auto slash = cfg.collision_urdf.find_last_of('/');
+  if (slash != std::string::npos) dirs.push_back(cfg.collision_urdf.substr(0, slash));
+  pinocchio::urdf::buildGeom(model, cfg.collision_urdf, pinocchio::COLLISION, geom_model_,
+                             dirs, ::coal::MeshLoaderPtr());
+  geom_model_.addAllCollisionPairs();
+  if (!cfg.pair_config.empty()) {
+    std::ifstream in(cfg.pair_config);
+    std::string line;
+    while (std::getline(in, line)) {
+      auto a0 = line.find('[');
+      auto a1 = line.find(',');
+      auto a2 = line.find(']');
+      if (a0 == std::string::npos || a1 == std::string::npos || a2 == std::string::npos) continue;
+      std::string na = line.substr(a0 + 1, a1 - a0 - 1);
+      std::string nb = line.substr(a1 + 1, a2 - a1 - 1);
+      auto trim = [](std::string s) {
+        while (!s.empty() && (s.front() == ' ' || s.front() == '"')) s.erase(s.begin());
+        while (!s.empty() && (s.back() == ' ' || s.back() == '"')) s.pop_back();
+        return s;
+      };
+      na = trim(na);
+      nb = trim(nb);
+      int ia = -1, ib = -1;
+      for (std::size_t i = 0; i < geom_model_.geometryObjects.size(); ++i) {
+        if (geom_model_.geometryObjects[i].name == na) ia = static_cast<int>(i);
+        if (geom_model_.geometryObjects[i].name == nb) ib = static_cast<int>(i);
+      }
+      if (ia >= 0 && ib >= 0) {
+        pinocchio::CollisionPair cp(static_cast<pinocchio::GeomIndex>(ia),
+                                    static_cast<pinocchio::GeomIndex>(ib));
+        if (geom_model_.existCollisionPair(cp)) geom_model_.removeCollisionPair(cp);
+      }
+    }
+  }
+  geom_data_ = pinocchio::GeometryData(geom_model_);
+  slots_.assign(static_cast<std::size_t>(cfg.max_pairs), -1);
+  local_spheres_.resize(geom_model_.geometryObjects.size());
+  local_aabbs_.resize(geom_model_.geometryObjects.size());
+  world_obbs_.resize(geom_model_.geometryObjects.size());
+  for (std::size_t i = 0; i < geom_model_.geometryObjects.size(); ++i) {
+    local_aabbs_[i] = make_local_aabb(geom_model_.geometryObjects[i]);
+    const GeomSphere s =
+        make_local_sphere(geom_model_.geometryObjects[i], local_aabbs_[i]);
+    local_spheres_[i].c = s.c;
+    local_spheres_[i].r = s.r;
+  }
+}
+
+void Collision::update(const Vec8& q, pinocchio::Data& data) {
+  queried_.clear();
+  if (geom_model_.ngeoms == 0) return;
+  pinocchio::updateGeometryPlacements(*model_, data, geom_model_, geom_data_, q);
+  for (std::size_t i = 0; i < local_aabbs_.size(); ++i) {
+    const auto& placement = geom_data_.oMg[i];
+    world_obbs_[i] = collision_broadphase::transformed(
+        local_aabbs_[i], placement.rotation(), placement.translation());
+  }
+  const double thresh = cfg_.d_activate + 0.01;
+  const std::size_t np = geom_model_.collisionPairs.size();
+  double best_lb = std::numeric_limits<double>::infinity();
+  int best_i = -1;
+  for (std::size_t i = 0; i < np; ++i) {
+    const auto& cp = geom_model_.collisionPairs[i];
+    const auto ga = static_cast<std::size_t>(cp.first);
+    const auto gb = static_cast<std::size_t>(cp.second);
+    const double ra = local_spheres_[ga].r;
+    const double rb = local_spheres_[gb].r;
+    double lb = -std::numeric_limits<double>::infinity();
+    if (std::isfinite(ra) && std::isfinite(rb)) {
+      const Eigen::Vector3d ca = geom_data_.oMg[ga].act(local_spheres_[ga].c);
+      const Eigen::Vector3d cb = geom_data_.oMg[gb].act(local_spheres_[gb].c);
+      lb = (ca - cb).norm() - ra - rb;
+    }
+    if (lb < best_lb) {
+      best_lb = lb;
+      best_i = static_cast<int>(i);
+    }
+    // Keep the sphere lower bound as the candidate gate and as the diagnostic
+    // best_i selector. The OBB test only removes a sphere candidate whose
+    // exact distance is provably above the same activation threshold.
+    if (lb <= thresh &&
+        !collision_broadphase::obb_separates_above(
+            world_obbs_[ga], world_obbs_[gb], thresh)) {
+      pinocchio::computeDistance(geom_model_, geom_data_,
+                                 static_cast<pinocchio::PairIndex>(i));
+      queried_.push_back(static_cast<int>(i));
+    }
+  }
+  if (queried_.empty() && best_i >= 0) {
+    pinocchio::computeDistance(geom_model_, geom_data_,
+                               static_cast<pinocchio::PairIndex>(best_i));
+    queried_.push_back(best_i);
+  }
+}
+
+int Collision::build_rows(pinocchio::Data& data, MatX* jac, VecX* lower, std::vector<int>* slots) {
+  jac->resize(0, kNv);
+  lower->resize(0);
+  slots->clear();
+  if (geom_model_.ngeoms == 0) return 0;
+  auto skew = [](const Eigen::Vector3d& r) {
+    Eigen::Matrix3d s;
+    s << 0, -r.z(), r.y(), r.z(), 0, -r.x(), -r.y(), r.x(), 0;
+    return s;
+  };
+  struct Hit {
+    double d;
+    Eigen::Vector3d n, pa, pb;
+    int ga, gb;
+  };
+  std::vector<Hit> hits;
+  for (int pair_i : queried_) {
+    const auto i = static_cast<std::size_t>(pair_i);
+    if (i >= geom_model_.collisionPairs.size()) continue;
+    const auto& res = geom_data_.distanceResults[i];
+    const double d = res.min_distance;
+    if (d > cfg_.d_activate + 0.01) continue;
+    Hit h;
+    h.d = d;
+    h.pa = Eigen::Vector3d(res.nearest_points[0][0], res.nearest_points[0][1],
+                           res.nearest_points[0][2]);
+    h.pb = Eigen::Vector3d(res.nearest_points[1][0], res.nearest_points[1][1],
+                           res.nearest_points[1][2]);
+    // Same witness normal as Python: (p_a - p_b).  coal's res.normal can flip.
+    const Eigen::Vector3d n_ab = h.pa - h.pb;
+    const double n_norm = n_ab.norm();
+    h.n = (n_norm > 1e-9) ? (n_ab / n_norm) : Eigen::Vector3d(0.0, 0.0, 1.0);
+    h.ga = static_cast<int>(geom_model_.collisionPairs[i].first);
+    h.gb = static_cast<int>(geom_model_.collisionPairs[i].second);
+    hits.push_back(h);
+  }
+  std::sort(hits.begin(), hits.end(), [](const Hit& a, const Hit& b) { return a.d < b.d; });
+  const int n = std::min(static_cast<int>(hits.size()), cfg_.max_pairs);
+  if (n == 0) return 0;
+  jac->resize(n, kNv);
+  lower->resize(n);
+  jac->setZero();
+  for (int i = 0; i < n; ++i) {
+    const auto& h = hits[static_cast<std::size_t>(i)];
+    const auto& goa = geom_model_.geometryObjects[static_cast<std::size_t>(h.ga)];
+    const auto& gob = geom_model_.geometryObjects[static_cast<std::size_t>(h.gb)];
+    pinocchio::Data::Matrix6x Ja(6, model_->nv), Jb(6, model_->nv);
+    pinocchio::getFrameJacobian(*model_, data, goa.parentFrame, pinocchio::LOCAL_WORLD_ALIGNED, Ja);
+    pinocchio::getFrameJacobian(*model_, data, gob.parentFrame, pinocchio::LOCAL_WORLD_ALIGNED, Jb);
+    const Eigen::Vector3d oa = data.oMf[goa.parentFrame].translation();
+    const Eigen::Vector3d ob = data.oMf[gob.parentFrame].translation();
+    const Eigen::Matrix<double, 3, 8> Ja_lin =
+        Ja.topRows<3>() - skew(h.pa - oa) * Ja.bottomRows<3>();
+    const Eigen::Matrix<double, 3, 8> Jb_lin =
+        Jb.topRows<3>() - skew(h.pb - ob) * Jb.bottomRows<3>();
+    jac->row(i) = h.n.transpose() * (Ja_lin - Jb_lin);
+    (*lower)[i] = -cfg_.cbf_gamma * (h.d - cfg_.d_safe);
+    slots->push_back(i);
+  }
+  return n;
+}
+
+InnerLoop::InnerLoop(const Config& cfg)
+    : cfg_(cfg), kin_(cfg.urdf, cfg.tcp_placement_R(), cfg.tcp_placement_t()),
+      posture_(cfg) {
+  q_lo_ = kin_.q_lower();
+  q_hi_ = kin_.q_upper();
+  v_max_ = kin_.v_max() * cfg.v_scale;
+  v_max_[0] = std::min(cfg.rail_v_max, kRailDriveCap);
+  q_lo_[0] = std::max(q_lo_[0], cfg.hard_min);
+  q_hi_[0] = std::min(q_hi_[0], cfg.hard_max);
+  a_max_.setConstant(cfg.a_max_arm);
+  a_max_[0] = cfg.a_max_rail;
+  j_max_.setConstant(cfg.j_max_arm);
+  j_max_[0] = cfg.j_max_rail;
+  q_mid_ = 0.5 * (q_lo_ + q_hi_);
+  half_ = (0.5 * (q_hi_ - q_lo_)).cwiseMax(1e-9);
+  q_nominal_ = cfg.q_nominal;
+  if (q_nominal_.norm() < 1e-12) q_nominal_ = q_mid_;
+  q_star_ = q_nominal_;
+  q_star_signs_ = q_nominal_;
+  rail_mode_ = cfg.rail_mode;
+  locked_style_ = cfg.locked_style;
+  if (cfg.collision_enabled) {
+    try {
+      collision_ = std::make_unique<Collision>(kin_.model(), cfg);
+    } catch (...) {
+      collision_.reset();
+    }
+  }
+  qp1_ = std::make_unique<proxsuite::proxqp::dense::QP<double>>(kNVar, kNEq1, kNIn);
+  qp2_ = std::make_unique<proxsuite::proxqp::dense::QP<double>>(kNVar, kNEq2, kNIn);
+  qp_constraint_count_ = kNIn;
+  qp1_->settings.eps_abs = cfg.eps_abs;
+  qp2_->settings.eps_abs = cfg.eps_abs;
+  // Keep ProxQP's infeasibility tests tighter than the certificate we expose
+  // to the caller.  The default primal/dual infeasibility tolerance can
+  // classify a feasible, tightly boxed directional task as infeasible before
+  // the equality/inequality certificate below has a chance to inspect it.
+  const double eps_inf = std::min(cfg.eps_abs * 0.01, 1.0e-8);
+  qp1_->settings.eps_primal_inf = eps_inf;
+  qp1_->settings.eps_dual_inf = eps_inf;
+  qp2_->settings.eps_primal_inf = eps_inf;
+  qp2_->settings.eps_dual_inf = eps_inf;
+  qp1_->settings.max_iter = std::min(cfg.max_iter, cfg.max_iter_cap);
+  qp2_->settings.max_iter = std::min(cfg.max_iter, cfg.max_iter_cap);
+  qp1_->settings.verbose = false;
+  qp2_->settings.verbose = false;
+  qp1_->settings.initial_guess =
+      proxsuite::proxqp::InitialGuessStatus::WARM_START_WITH_PREVIOUS_RESULT;
+  qp2_->settings.initial_guess =
+      proxsuite::proxqp::InitialGuessStatus::WARM_START_WITH_PREVIOUS_RESULT;
+}
+
+InnerLoop::HistorySnap InnerLoop::capture_history() const {
+  HistorySnap s;
+  s.q_cmd = q_cmd_;
+  s.qdot_prev = qdot_prev_;
+  s.qdot_seen = qdot_seen_;
+  s.qdot_prev2 = qdot_prev2_;
+  s.dq_prev = dq_prev_;
+  s.have_dq_prev = have_dq_prev_;
+  s.v_r_ref = v_r_ref_;
+  s.v_r_a = v_r_a_;
+  s.v_r_base_ref = v_r_base_ref_;
+  s.v_r_base_a = v_r_base_a_;
+  s.rail_prev_committed_ref = rail_prev_committed_ref_;
+  s.rail_prev_committed_a = rail_prev_committed_a_;
+  s.mid_integ = mid_integ_;
+  s.u_task_committed = u_task_committed_;
+  s.u_escape_committed = u_escape_committed_;
+  s.u_total_committed = u_total_committed_;
+  s.u_post_committed = u_post_committed_;
+  s.u_base_committed = u_base_committed_;
+  s.u_mid_committed = u_mid_committed_;
+  s.u_mid_applied = u_mid_applied_;
+  s.d_star = d_star_;
+  s.d_pref = d_pref_;
+  s.psi_cmd = psi_cmd_;
+  s.homotopy_s = homotopy_s_;
+  s.last_tcp_est = last_tcp_est_;
+  s.last_qdot_qp = last_qdot_qp_;
+  return s;
+}
+
+void InnerLoop::restore_history(const HistorySnap& s) {
+  q_cmd_ = s.q_cmd;
+  qdot_prev_ = s.qdot_prev;
+  qdot_seen_ = s.qdot_seen;
+  qdot_prev2_ = s.qdot_prev2;
+  dq_prev_ = s.dq_prev;
+  have_dq_prev_ = s.have_dq_prev;
+  v_r_ref_ = s.v_r_ref;
+  v_r_a_ = s.v_r_a;
+  v_r_base_ref_ = s.v_r_base_ref;
+  v_r_base_a_ = s.v_r_base_a;
+  rail_prev_committed_ref_ = s.rail_prev_committed_ref;
+  rail_prev_committed_a_ = s.rail_prev_committed_a;
+  mid_integ_ = s.mid_integ;
+  u_task_committed_ = s.u_task_committed;
+  u_escape_committed_ = s.u_escape_committed;
+  u_total_committed_ = s.u_total_committed;
+  u_post_committed_ = s.u_post_committed;
+  u_base_committed_ = s.u_base_committed;
+  u_mid_committed_ = s.u_mid_committed;
+  u_mid_applied_ = s.u_mid_applied;
+  d_star_ = s.d_star;
+  d_pref_ = s.d_pref;
+  psi_cmd_ = s.psi_cmd;
+  homotopy_s_ = s.homotopy_s;
+  last_tcp_est_ = s.last_tcp_est;
+  last_qdot_qp_ = s.last_qdot_qp;
+}
+
+bool InnerLoop::handle_pending_flags(const TickIn& in) {
+  if (in.flags & kInAbortPrev) {
+    pending_valid_ = false;
+    return true;
+  }
+  if ((in.flags & kInCommitPrev) && pending_valid_) {
+    if (in.commit_seq != pending_seq_ || (pending_cartesian_ &&
+        (!in.cartesian.enabled || in.cartesian.stop_epoch != pending_epoch_))) return false;
+    restore_history(pending_);
+    pending_valid_ = false;
+  }
+  return true;
+}
+
+void InnerLoop::enable() { enabled_ = true; }
+
+void InnerLoop::clear_rail_box_tel() {
+  rail_box_lo_ = 0.0;
+  rail_box_hi_ = 0.0;
+  rail_bind_lo_ = kRailBindNone;
+  rail_bind_hi_ = kRailBindNone;
+  rail_task_vel_used_ = 0.0;
+  rail_h1_ = 0.0;
+  rail_h2_ = 0.0;
+  rail_qdot_prev_tel_ = 0.0;
+  rail_qdot_prev2_tel_ = 0.0;
+  qdot_prev_tel_.setZero();
+  qdot_prev2_tel_.setZero();
+}
+
+void InnerLoop::note_rail_bind(double old_lo, double old_hi, const Vec8& lo, const Vec8& hi,
+                               uint32_t stage) {
+  constexpr double kEps = 1.0e-12;
+  if (lo[0] > old_lo + kEps) rail_bind_lo_ = stage;
+  if (hi[0] < old_hi - kEps) rail_bind_hi_ = stage;
+}
+
+void InnerLoop::stop() {
+  if (have_cartesian_identity_) cartesian_epoch_retired_ = true;
+  pending_valid_ = false;
+  enabled_ = false;
+  quiescent_ = true;
+  quiet_s_ = kQuietHold;
+  cmd_quiet_s_ = kQuietHold;
+  v_r_ref_ = 0.0;
+  v_r_a_ = 0.0;
+  rail_prev_committed_ref_ = 0.0;
+  rail_prev_committed_a_ = 0.0;
+  v_r_base_ref_ = 0.0;
+  v_r_base_a_ = 0.0;
+  v_r_base_lpf_ = 0.0;
+  v_r_base_init_ = false;
+  v_r_init_ = false;
+  leave_sign_ = 0.0;
+  mid_integ_ = 0.0;
+  u_base_committed_ = 0.0;
+  task_progress_alpha_ = 0.0;
+  task_progress_scale_used_ = 0.0;
+  rail_preview_arm_.setZero();
+  rail_preview_residual_ = 0.0;
+  task_paused_ = true;
+  task_pause_reason_ = 1;
+  slack_hold_latched_ = false;
+  sec_qdot_.setZero();
+  sec_acc_.setZero();
+  sec_target_.setZero();
+  sec_lpf_.setZero();
+  gN_lpf_.setZero();
+  gN_lpf_init_ = false;
+  clear_rail_box_tel();
+}
+
+void InnerLoop::reset(const Vec8& q0) {
+  if (have_cartesian_identity_) cartesian_epoch_retired_ = true;
+  q_cmd_ = q0;
+  qdot_prev_.setZero();
+  qdot_seen_.setZero();
+  qdot_prev2_.setZero();
+  dq_prev_.setZero();
+  have_dq_prev_ = false;
+  v_r_ref_ = 0.0;
+  v_r_a_ = 0.0;
+  rail_prev_committed_ref_ = 0.0;
+  rail_prev_committed_a_ = 0.0;
+  v_r_lpf_ = 0.0;
+  v_r_base_ref_ = 0.0;
+  v_r_base_a_ = 0.0;
+  v_r_base_lpf_ = 0.0;
+  v_r_base_init_ = false;
+  v_r_init_ = false;
+  wall_pi_frozen_ = false;
+  leave_sign_ = 0.0;
+  u_alloc_ = u_mid_ = u_mid_committed_ = mid_integ_ = 0.0;
+  u_task_raw_ = u_task_feasible_ = u_task_committed_ = u_pi_raw_ = u_mid_cmd_ = 0.0;
+  u_post_raw_ = u_post_feasible_ = u_mid_applied_ = d_star_dot_cmd_ = 0.0;
+  u_escape_raw_ = u_escape_feasible_ = u_escape_committed_ = 0.0;
+  u_post_committed_ = u_total_committed_ = rail_task_projection_ = u_base_raw_ = 0.0;
+  u_base_committed_ = 0.0;
+  u_base_ = u_feasible_ = 0.0;
+  e_d_ = V_d_proxy_ = j4_design_slack_ = sigma_slack_ = 0.0;
+  d_star_ref_ = 0.0;
+  d_star_ref_init_ = false;
+  escape_dir_ = 0;
+  have_valid_q_star_ = false;
+  last_valid_q_star_ = q0;
+  q_hat_ = q0[0];
+  v_hat_ = 0.0;
+  obs_init_ = true;
+  last_sample_t_ = -1.0;
+  last_slack_ = 0.0;
+  task_progress_alpha_ = 1.0;
+  task_progress_scale_used_ = 1.0;
+  rail_preview_arm_.setZero();
+  rail_preview_residual_ = 0.0;
+  task_paused_ = false;
+  task_pause_reason_ = 0;
+  slack_hold_latched_ = false;
+  sat_scale_ = 1.0;
+  quiet_s_ = 0.0;
+  cmd_quiet_s_ = 0.0;
+  quiescent_ = false;
+  hold_d_prev_ = false;
+  ns_enter_t_ = 1e9;
+  ns_homotopy_open_ = false;
+  enabled_ = true;
+  plan_drives_rail_ = false;
+  direct_ptp_ = false;
+  press_stall_s_ = 0.0;
+  nudge_cool_s_ = 0.0;
+  press_z_mark_ = std::numeric_limits<double>::quiet_NaN();
+  escape_active_ = false;
+  escape_sign_ = 0.0;
+  sec_qdot_.setZero();
+  sec_acc_.setZero();
+  sec_target_.setZero();
+  sec_lpf_.setZero();
+  gN_lpf_.setZero();
+  gN_lpf_init_ = false;
+  sec_age_ = 1e9;
+  m_diag_init_ = false;
+  box_t_init_ = false;
+  pending_valid_ = false;
+  pending_ = HistorySnap();
+  committed_snap_ = HistorySnap();
+  sigma_row_active_ = false;
+  sigma_grad_.setZero();
+  sigma_tick_ = 0;
+  clear_rail_box_tel();
+  task_weight_.reset();
+  kin_.update(q0);
+  posture_.reset(q0, kin_.fk_pose_at(q0));
+  d_star_ = posture_.d_star();
+  d_pref_ = d_star_;
+  d0_ = d_star_;
+  psi_cmd_ = posture_.psi_cmd();
+  psi_star_ = posture_.psi_star();
+  psi0_ = psi_cmd_;
+  homotopy_s_ = 0.0;
+  planned_ = false;
+  q_star_ = q0;
+  q_star_signs_ = q_nominal_;
+}
+
+void InnerLoop::begin_hybrid(const Vec8& q_meas, const Vec8& qdot_applied) {
+  qdot_prev_ = qdot_applied;
+  qdot_seen_ = qdot_applied;
+  q_star_ = q_meas;
+  q_star_signs_ = q_nominal_;
+  kin_.update(q_meas);
+  slack_hold_latched_ = false;
+}
+
+void InnerLoop::set_rail_mode(uint32_t mode, uint32_t style, double q_ref, bool has_ref) {
+  rail_mode_ = static_cast<int>(mode);
+  locked_style_ = static_cast<int>(style);
+  if (has_ref) {
+    rail_q_ref_ = q_ref;
+    has_rail_ref_ = true;
+  } else if (mode == kRailLocked && style == kStyleHold) {
+    rail_q_ref_ = q_cmd_[0];
+    has_rail_ref_ = true;
+  }
+}
+
+void InnerLoop::set_flags(uint32_t bits) {
+  plan_drives_rail_ = bits & kFlagPlanDrivesRail;
+  direct_ptp_ = bits & kFlagDirectPtp;
+  arm_suppress_ = bits & kFlagArmSuppress;
+  const bool next_center = bits & kFlagCenterSuppress;
+  if (center_suppress_ && !next_center) {
+    ns_enter_t_ = 0.0;
+    ns_homotopy_open_ = true;
+  }
+  center_suppress_ = next_center;
+  manip_active_ = bits & kFlagManipActive;
+  rail_ext_active_ = bits & kFlagRailExtActive;
+}
+
+void InnerLoop::set_stroke(double d_star, double psi_star) {
+  d_star_ = d_star;
+  d_pref_ = d_star;
+  psi_star_ = psi_star;
+  planned_ = true;
+  posture_.set_planned_stroke(d_star, psi_star);
+}
+
+std::pair<double, double> InnerLoop::plan_stroke(const Vec8& q, double y_center, double amp) {
+  kin_.update(q);
+  const double y_lo = y_center - std::abs(amp);
+  const double y_hi = y_center + std::abs(amp);
+  const double rail_lo_s = cfg_.hard_min + cfg_.rail_margin;
+  const double rail_hi_s = cfg_.hard_max - cfg_.rail_margin;
+  const double d_min = y_hi - rail_hi_s;
+  const double d_max = y_lo - rail_lo_s;
+  if (d_min > d_max + 1e-9) {
+    return {std::numeric_limits<double>::quiet_NaN(),
+            std::numeric_limits<double>::quiet_NaN()};
+  }
+  const double d = 0.5 * (d_min + d_max);
+  const double psi = fold_psi_to_positive(kin_.sew_psi(q));
+  set_stroke(d, psi);
+  return {d, psi};
+}
+
+void InnerLoop::set_rail_pose_target(double y, bool valid) {
+  has_y_target_ = valid;
+  y_rail_target_ = y;
+}
+
+void InnerLoop::capture_rail_ext_ref(const Vec8& q) {
+  kin_.update(q);
+  const double d_live = kin_.tcp_xyz()[1] - q[0];
+  d_pref_ = d_live;
+  d_star_ref_ = d_live;
+  d_star_ref_init_ = true;
+  d_star_dot_cmd_ = 0.0;
+  e_d_ = 0.0;
+  last_e_mid_ = 0.0;
+}
+
+void InnerLoop::set_rail_ext_mode(int pose_attract) { rail_ext_mode_ = pose_attract; }
+
+void InnerLoop::track_rail_authority(double d_live, double d_star_target, double v_applied,
+                                     double dt) {
+  const double target = std::isfinite(d_star_target) ? d_star_target : d_live;
+  d_star_ref_ = target;
+  d_star_ref_init_ = true;
+  d_star_dot_cmd_ = 0.0;
+  u_base_ = v_applied;
+  u_feasible_ = v_applied;
+  u_total_committed_ = v_applied;
+  u_task_committed_ = 0.0;
+  u_escape_committed_ = 0.0;
+  // This path is used when the coupled mixer does not own the command
+  // (locked/non-owner or a failed publication).  The applied velocity is a
+  // direct/braking command, not a posture contribution, so never feed it to
+  // the d* PI anti-windup path as u_post.
+  u_post_committed_ = 0.0;
+  u_mid_committed_ = 0.0;
+  u_mid_applied_ = 0.0;
+  u_base_committed_ = v_applied;
+  (void)d_live;
+  if (v_r_init_ && dt > 1e-12) {
+    // shape_rail() has already advanced v_r_ref_ to this tick's nominal
+    // candidate.  Use the snapshot from the preceding committed command so a
+    // failed/non-owner publication does not write nominal-reference slope
+    // into the next jerk history.
+    const double previous = std::isfinite(rail_prev_committed_ref_)
+                                ? rail_prev_committed_ref_
+                                : v_r_ref_;
+    // This branch is called after the final command is selected.  Its
+    // history must describe that command exactly; clipping a pre-command
+    // candidate here would make the next jerk box use a fictitious slope.
+    v_r_a_ = (v_applied - previous) / dt;
+  } else {
+    v_r_a_ = 0.0;
+  }
+  v_r_ref_ = v_applied;
+  v_r_lpf_ = v_applied;
+  v_r_init_ = true;
+  v_r_base_ref_ = v_applied;
+  v_r_base_a_ = v_r_a_;
+  v_r_base_lpf_ = v_applied;
+  v_r_base_init_ = true;
+}
+
+void InnerLoop::fill_mixer_out(TickOut* out) const {
+  out->u_alloc = u_alloc_;
+  out->u_mid = u_mid_;
+  out->v_r_ref = v_r_ref_;
+  out->rail_base_shaped = u_base_;
+  out->rail_base_raw = u_base_raw_;
+  out->d_star = d_star_;
+  out->d_pref = d_pref_;
+  out->u_task_raw = u_task_raw_;
+  out->u_task_feasible = u_task_feasible_;
+  out->u_pi_raw = u_pi_raw_;
+  out->u_mid_cmd = u_mid_cmd_;
+  out->u_post_raw = u_post_raw_;
+  out->u_post_feasible = u_post_feasible_;
+  out->u_mid_applied = u_mid_applied_;
+  out->d_star_dot_cmd = d_star_dot_cmd_;
+  out->u_escape_raw = u_escape_raw_;
+  out->u_escape_feasible = u_escape_feasible_;
+  out->escape_active = escape_active_ ? 1.0 : 0.0;
+  out->escape_dir = static_cast<double>(escape_dir_);
+  out->u_base = u_base_;
+  out->u_feasible = u_feasible_;
+  out->v_r_lpf = v_r_lpf_;
+  out->e_d = e_d_;
+  out->V_d_proxy = V_d_proxy_;
+  out->task_progress_alpha = task_progress_alpha_;
+  out->task_progress_scale_used = task_progress_scale_used_;
+  out->rail_task_projection = rail_task_projection_;
+  out->rail_task_committed = u_task_committed_;
+  out->rail_escape_committed = u_escape_committed_;
+  out->rail_post_committed = u_post_committed_;
+  out->rail_total_committed = u_total_committed_;
+  out->rail_preview_arm = rail_preview_arm_;
+  out->rail_preview_arm_norm = rail_preview_arm_.tail<7>().norm();
+  out->rail_preview_residual = rail_preview_residual_;
+  out->rail_pi_xi = mid_integ_;
+  out->rail_d_ref = d_star_ref_;
+  out->rail_ref_acceleration = v_r_a_;
+  out->task_paused = task_paused_ ? 1u : 0u;
+  out->task_pause_reason = task_pause_reason_;
+}
+
+void InnerLoop::apply_velocity_box(const Vec8& q_geom, const Vec8& q_cmd, const Vec8& q_meas,
+                                   double dt, double h1, double h2, bool rail_locked,
+                                   double rail_pin, bool has_pin, bool lead_exempt,
+                                   Vec8* lo, Vec8* hi) {
+  *lo = -v_max_;
+  *hi = v_max_;
+  rail_bind_lo_ = kRailBindVMaxDamper;
+  rail_bind_hi_ = kRailBindVMaxDamper;
+  Vec8 band = Vec8::Constant(cfg_.damper_band_rad);
+  band[0] = cfg_.damper_band_rail;
+  const Vec8 m = (Vec8() << cfg_.position_margin_rail_m,
+                  cfg_.position_margin_rad, cfg_.position_margin_rad, cfg_.position_margin_rad,
+                  cfg_.position_margin_rad, cfg_.position_margin_rad, cfg_.position_margin_rad,
+                  cfg_.position_margin_rad)
+                     .finished();
+  double q_rail_hi = std::max(q_geom[0], q_cmd[0]);
+  double q_rail_lo = std::min(q_geom[0], q_cmd[0]);
+  {
+    const double olo = (*lo)[0];
+    const double ohi = (*hi)[0];
+    for (int i = 0; i < kNv; ++i) {
+      const double b = std::max(band[i], 1e-9);
+      double d_hi = clip(((q_hi_[i] - m[i]) - q_geom[i]) / b, 0.0, 1.0);
+      double d_lo = clip((q_geom[i] - (q_lo_[i] + m[i])) / b, 0.0, 1.0);
+      if (band[i] <= 1e-9) {
+        d_hi = 1.0;
+        d_lo = 1.0;
+      }
+      (*hi)[i] = std::min((*hi)[i], v_max_[i] * d_hi);
+      (*lo)[i] = std::max((*lo)[i], -v_max_[i] * d_lo);
+    }
+    note_rail_bind(olo, ohi, *lo, *hi, kRailBindVMaxDamper);
+  }
+  // J4 design band is a QP2 preference, not a P0 box.
+  if (band[0] > 1e-9) {
+    const double olo = (*lo)[0];
+    const double ohi = (*hi)[0];
+    const double b0 = band[0];
+    const double d_hi = clip((q_hi_[0] - m[0] - q_rail_hi) / b0, 0.0, 1.0);
+    const double d_lo = clip((q_rail_lo - q_lo_[0] - m[0]) / b0, 0.0, 1.0);
+    (*hi)[0] = std::min((*hi)[0], v_max_[0] * d_hi);
+    (*lo)[0] = std::max((*lo)[0], -v_max_[0] * d_lo);
+    note_rail_bind(olo, ohi, *lo, *hi, kRailBindCmdDamper);
+  }
+  {
+    const double olo = (*lo)[0];
+    const double ohi = (*hi)[0];
+    double lo_cap, hi_cap;
+    wall_cap(q_geom[0], q_lo_[0] + m[0], q_hi_[0] - m[0], a_max_[0], cfg_.rail_reaction_s, &lo_cap,
+             &hi_cap);
+    double lo_hi, hi_hi, lo_lo, hi_lo;
+    wall_cap(q_rail_hi, q_lo_[0] + m[0], q_hi_[0] - m[0], a_max_[0], cfg_.rail_reaction_s, &lo_hi,
+             &hi_hi);
+    wall_cap(q_rail_lo, q_lo_[0] + m[0], q_hi_[0] - m[0], a_max_[0], cfg_.rail_reaction_s, &lo_lo,
+             &hi_lo);
+    (*hi)[0] = std::min({(*hi)[0], hi_cap, hi_hi, hi_lo});
+    (*lo)[0] = std::max({(*lo)[0], lo_cap, lo_hi, lo_lo});
+    note_rail_bind(olo, ohi, *lo, *hi, kRailBindWallCap);
+  }
+  {
+    const double olo = (*lo)[0];
+    const double ohi = (*hi)[0];
+    for (int i = 0; i < kNv; ++i) {
+      double p_lo = (q_lo_[i] + m[i] - q_geom[i]) / dt;
+      double p_hi = (q_hi_[i] - m[i] - q_geom[i]) / dt;
+      if (i == 0) {
+        if (q_geom[0] < q_lo_[0] + m[0]) p_lo = std::min(p_lo, 0.0);
+        if (q_geom[0] > q_hi_[0] - m[0]) p_hi = std::max(p_hi, 0.0);
+      }
+      (*lo)[i] = std::max((*lo)[i], p_lo);
+      (*hi)[i] = std::min((*hi)[i], p_hi);
+    }
+    note_rail_bind(olo, ohi, *lo, *hi, kRailBindPosBound);
+  }
+  {
+    const double olo = (*lo)[0];
+    const double ohi = (*hi)[0];
+    note_rail_bind(olo, ohi, *lo, *hi, kRailBindCollapse);
+  }
+  const double a_dt = h1;
+  {
+    const double olo = (*lo)[0];
+    const double ohi = (*hi)[0];
+    for (int i = 0; i < kNv; ++i) {
+      (*lo)[i] = std::max((*lo)[i], qdot_prev_[i] - a_max_[i] * a_dt);
+      (*hi)[i] = std::min((*hi)[i], qdot_prev_[i] + a_max_[i] * a_dt);
+    }
+    note_rail_bind(olo, ohi, *lo, *hi, kRailBindAccel);
+  }
+  {
+    const double olo = (*lo)[0];
+    const double ohi = (*hi)[0];
+    note_rail_bind(olo, ohi, *lo, *hi, kRailBindCollapse);
+  }
+  if (std::isfinite(h2) && h2 > 1e-9) {
+    {
+      const double olo = (*lo)[0];
+      const double ohi = (*hi)[0];
+      for (int i = 0; i < kNv; ++i) {
+        const double centre = qdot_prev_[i] + (a_dt / h2) * (qdot_prev_[i] - qdot_prev2_[i]);
+        const double span = j_max_[i] * a_dt * a_dt;
+        (*lo)[i] = std::max((*lo)[i], centre - span);
+        (*hi)[i] = std::min((*hi)[i], centre + span);
+      }
+      note_rail_bind(olo, ohi, *lo, *hi, kRailBindJerk);
+    }
+    const double olo = (*lo)[0];
+    const double ohi = (*hi)[0];
+    note_rail_bind(olo, ohi, *lo, *hi, kRailBindCollapse);
+  }
+  Vec8 re = Vec8::Constant(cfg_.resync_err_rad);
+  re[0] = cfg_.resync_err_rail_m;
+  {
+    const double olo = (*lo)[0];
+    const double ohi = (*hi)[0];
+    for (int i = 0; i < kNv; ++i) {
+      if (re[i] <= 0.0) continue;
+      double lead = q_cmd[i] - q_meas[i];
+      if (lead_exempt && i == 0) lead = 0.0;
+      const double reaction = (i == 0) ? cfg_.rail_reaction_s : dt;
+      const double toward_hi = stopping_velocity(re[i] - lead, a_max_[i], reaction);
+      const double toward_lo = -stopping_velocity(re[i] + lead, a_max_[i], reaction);
+      double chi = std::min((*hi)[i], toward_hi);
+      double clo = std::max((*lo)[i], toward_lo);
+      if (clo > chi) {
+        if (lead >= 0.0) chi = clo;
+        else clo = chi;
+      }
+      (*hi)[i] = chi;
+      (*lo)[i] = clo;
+    }
+    note_rail_bind(olo, ohi, *lo, *hi, kRailBindLead);
+  }
+  {
+    const double olo = (*lo)[0];
+    const double ohi = (*hi)[0];
+    note_rail_bind(olo, ohi, *lo, *hi, kRailBindCollapse);
+  }
+  if (has_pin) {
+    const double olo = (*lo)[0];
+    const double ohi = (*hi)[0];
+    const double v = clip(rail_pin, (*lo)[0], (*hi)[0]);
+    (*lo)[0] = v;
+    (*hi)[0] = v;
+    note_rail_bind(olo, ohi, *lo, *hi, kRailBindPin);
+  } else if (rail_locked) {
+    const double olo = (*lo)[0];
+    const double ohi = (*hi)[0];
+    const double prev = qdot_prev_[0];
+    double target = 0.0;
+    if (std::abs(prev) <= cfg_.lock_vel_eps && (*lo)[0] <= 0.0 && 0.0 <= (*hi)[0]) {
+      target = 0.0;
+    } else {
+      target = std::copysign(std::max(std::abs(prev) - a_max_[0] * dt, 0.0), prev);
+      target = clip(target, (*lo)[0], (*hi)[0]);
+    }
+    (*lo)[0] = target;
+    (*hi)[0] = target;
+    note_rail_bind(olo, ohi, *lo, *hi, kRailBindLocked);
+  }
+}
+
+void InnerLoop::tighten_branch(const Vec8& q, bool rail_open, Vec8* lo, Vec8* hi) {
+  if (!cfg_.branch_enabled) return;
+  double act = cfg_.branch_box_activate;
+  if (act <= 1e-9) act = cfg_.branch_activate;
+  const double eps = cfg_.branch_eps;
+  const double band = std::max(act - eps, 1e-6);
+  for (int i = 1; i < kNv; ++i) {
+    const double qs = q_star_signs_[i];
+    if (std::abs(qs) <= cfg_.branch_target_eps) continue;
+    const double sign = qs >= 0.0 ? 1.0 : -1.0;
+    const double margin = sign * q[i];
+    const double d = clip((margin - eps) / band, 0.0, 1.0);
+    if (sign > 0.0) (*lo)[i] = std::max((*lo)[i], -v_max_[i] * d);
+    else (*hi)[i] = std::min((*hi)[i], v_max_[i] * d);
+  }
+  const double qs1 = q_star_signs_[1];
+  if (std::abs(qs1) > cfg_.branch_target_eps) {
+    const double sign1 = qs1 >= 0.0 ? 1.0 : -1.0;
+    if (sign1 * q[1] > 0.0) {
+      const double wall = std::max(cfg_.j1_overfold_abs, 1e-6);
+      const double j1_eps = std::max(cfg_.j1_overfold_eps, 0.0);
+      const double j1_act = std::max(cfg_.j1_overfold_activate, j1_eps + 1e-6);
+      const double j1_band = std::max(j1_act - j1_eps, 1e-6);
+      const double d_ov = clip((wall - std::abs(q[1]) - j1_eps) / j1_band, 0.0, 1.0);
+      if (sign1 < 0.0) (*lo)[1] = std::max((*lo)[1], -v_max_[1] * d_ov);
+      else (*hi)[1] = std::min((*hi)[1], v_max_[1] * d_ov);
+    }
+  }
+  if (rail_open && q.size() > 4) {
+    const double j4_eps = cfg_.j4_limit_eps;
+    const double j4_act = std::max(cfg_.j4_limit_activate, j4_eps + 1e-6);
+    const double j4_band = std::max(j4_act - j4_eps, 1e-6);
+    const double d_hi = clip(((q_hi_[4] - q[4]) - j4_eps) / j4_band, 0.0, 1.0);
+    const double d_lo = clip(((q[4] - q_lo_[4]) - j4_eps) / j4_band, 0.0, 1.0);
+    (*hi)[4] = std::min((*hi)[4], v_max_[4] * d_hi);
+    (*lo)[4] = std::max((*lo)[4], -v_max_[4] * d_lo);
+  }
+}
+
+bool InnerLoop::solve_hqp(const Mat6x8& J, const Vec6& v_cmd, const Vec8& q_geom,
+                          const Vec8& q_prev, const Vec8& qdot_nom, double rail_exec,
+                          bool has_rail_exec, double rail_task_vel, double rail_w,
+                          bool rail_locked, double dt, double h1, double h2,
+                          bool rail_open,
+                          double rail_pin, bool has_pin, bool lead_exempt, double sigma_arm,
+                          Vec8* qdot, Vec6* residual, double* slack) {
+  const auto t_asm0 = std::chrono::steady_clock::now();
+  qp1_status_ = kQpNotRun;
+  qp2_status_ = kQpNotRun;
+  qp1_iter_ = qp2_iter_ = 0;
+  qp1_ms_ = qp2_ms_ = assembly_ms_ = fallback_ms_ = 0.0;
+  collision_ms_ = qp_total_ms_ = 0.0;
+  rail_preview_arm_.setConstant(std::numeric_limits<double>::quiet_NaN());
+  rail_preview_residual_ = std::numeric_limits<double>::quiet_NaN();
+  task_progress_alpha_ = 1.0;
+  Mat6x8 J_task = J;
+  Vec6 rail_actual_contrib = Vec6::Zero();
+  if (has_rail_exec) rail_actual_contrib = J.col(0) * rail_exec;
+  if (has_rail_exec) J_task.col(0).setZero();
+  Vec6 b_task = v_cmd - rail_actual_contrib;
+  rail_h1_ = h1;
+  rail_h2_ = h2;
+  rail_qdot_prev_tel_ = qdot_prev_[0];
+  rail_qdot_prev2_tel_ = qdot_prev2_[0];
+  qdot_prev_tel_ = qdot_prev_;
+  qdot_prev2_tel_ = qdot_prev2_;
+  Vec8 lo_box, hi_box;
+  apply_velocity_box(q_geom, q_prev, q_geom, dt, h1, h2, rail_locked, rail_pin, has_pin,
+                     lead_exempt, &lo_box, &hi_box);
+  {
+    const double olo = lo_box[0];
+    const double ohi = hi_box[0];
+    tighten_branch(q_geom, rail_open, &lo_box, &hi_box);
+    note_rail_bind(olo, ohi, lo_box, hi_box, kRailBindBranch);
+  }
+  {
+    const double olo = lo_box[0];
+    const double ohi = hi_box[0];
+    collapse_interval(&lo_box, &hi_box, &qdot_prev_, &a_max_, h1);
+    note_rail_bind(olo, ohi, lo_box, hi_box, kRailBindCollapse);
+  }
+  if (std::isfinite(rail_task_vel)) {
+    rail_task_vel = clip(rail_task_vel, lo_box[0], hi_box[0]);
+  }
+  rail_task_vel_used_ = rail_task_vel;
+  rail_box_lo_ = lo_box[0];
+  rail_box_hi_ = hi_box[0];
+  last_lo_box_ = lo_box;
+  last_hi_box_ = hi_box;
+
+  if (box_conflict(lo_box, hi_box, nullptr)) {
+    qp1_status_ = kQpP0Conflict;
+    *qdot = Vec8::Zero();
+    *residual = b_task;
+    *slack = residual->norm();
+    return false;
+  }
+
+  const int constraint_count = kNIn + (cartesian_.enabled ? 2 * cartesian_.count : 0);
+  if (constraint_count != qp_constraint_count_) {
+    const auto settings1 = qp1_->settings;
+    const auto settings2 = qp2_->settings;
+    qp1_ = std::make_unique<proxsuite::proxqp::dense::QP<double>>(kNVar, kNEq1, constraint_count);
+    qp2_ = std::make_unique<proxsuite::proxqp::dense::QP<double>>(kNVar, kNEq2, constraint_count);
+    qp1_->settings = settings1;
+    qp2_->settings = settings2;
+    qp1_inited_ = qp2_inited_ = qp1_last_ok_ = qp2_last_ok_ = false;
+    qp_constraint_count_ = constraint_count;
+  }
+  qp1_->settings.eps_abs = qp2_->settings.eps_abs = cartesian_.enabled ? 1.0e-9 : cfg_.eps_abs;
+  MatX C = MatX::Zero(constraint_count, kNVar);
+  VecX lo = VecX::Constant(constraint_count, -1e20);
+  VecX hi = VecX::Constant(constraint_count, 1e20);
+  append_cartesian_rows(cartesian_, J, rail_exec, &C, &lo, &hi, kNIn);
+  if (cartesian_.enabled && (!C.allFinite() || lo.array().isNaN().any() || hi.array().isNaN().any())) {
+    qp1_status_ = kQpFailed;
+    *qdot = Vec8::Zero();
+    *residual = b_task;
+    *slack = residual->norm();
+    return false;
+  }
+  C.block(0, 0, kNv, kNv) = Mat8::Identity();
+  lo.head<kNv>() = lo_box;
+  hi.head<kNv>() = hi_box;
+  n_cbf_active_ = 0;
+  if (collision_) {
+    const auto t_collision0 = std::chrono::steady_clock::now();
+    collision_->update(q_geom, kin_.data());
+    MatX cj;
+    VecX cl;
+    std::vector<int> slots;
+    const int n = collision_->build_rows(kin_.data(), &cj, &cl, &slots);
+    const auto t_collision1 = std::chrono::steady_clock::now();
+    collision_ms_ = std::chrono::duration<double, std::milli>(t_collision1 - t_collision0).count();
+    for (int i = 0; i < n; ++i) {
+      C.block(kNv + i, 0, 1, kNv) = cj.row(i);
+      lo[kNv + i] = cl[i];
+      if (has_rail_exec) {
+        lo[kNv + i] -= cj(i, 0) * rail_exec;
+        C(kNv + i, 0) = 0.0;
+      }
+      if (std::isfinite(lo[kNv + i]) && lo[kNv + i] > -1e19) ++n_cbf_active_;
+    }
+  }
+  for (int k = 0; k < kNPref; ++k) {
+    const int row = kNv + kMaxCbf + kMaxPrefRows + k;
+    C(row, kNv + kNTaskSlack + k) = 1.0;
+    lo[row] = 0.0;
+  }
+
+  MatX H1 = MatX::Zero(kNVar, kNVar);
+  H1.topLeftCorner<kNv, kNv>().diagonal().array() += 1.0e-8;
+  H1.block(kNv, kNv, kNTaskSlack, kNTaskSlack) = cfg_.task_weight.asDiagonal();
+  VecX g1 = VecX::Zero(kNVar);
+  MatX A1 = MatX::Zero(kNEq1, kNVar);
+  A1.leftCols(kNv) = J_task;
+  A1.block(0, kNv, kNEq1, kNTaskSlack) = -Eigen::Matrix<double, 6, 6>::Identity();
+  VecX b1 = b_task;
+
+  const double cert_tol = std::max(10.0 * cfg_.eps_abs, 1.0e-5);
+  auto clip_qdot = [&](Vec8 qd) {
+    for (int i = 0; i < kNv; ++i) {
+      if (std::isfinite(lo_box[i]) && std::isfinite(hi_box[i])) {
+        qd[i] = clip(qd[i], lo_box[i], hi_box[i]);
+      }
+    }
+    return qd;
+  };
+  auto pack_x = [&](const Vec8& qd) {
+    VecX x = VecX::Zero(kNVar);
+    x.head<kNv>() = qd;
+    x.segment<kNTaskSlack>(kNv) = J_task * qd - b_task;
+    return x;
+  };
+  auto try_qp1 = [&](const VecX& lo_use, const VecX& hi_use) -> bool {
+    solve_dense_qp(*qp1_, &qp1_inited_, qp1_last_ok_, H1, g1, A1, b1, C, lo_use, hi_use);
+    qp1_status_ = qp_status_code(qp1_->results.info.status);
+    qp1_iter_ = static_cast<uint32_t>(qp1_->results.info.iter);
+    qp1_last_ok_ = qp_is_candidate(qp1_status_);
+    if (!qp1_last_ok_) return false;
+    const VecX& x = qp1_->results.x;
+    // Always certify against the original hard rows. A caller may use a
+    // different numerical bound for diagnostics, but no relaxed CBF result
+    // can become a publishable QP1 candidate.
+    const bool certified = qp_eq_violation(A1, b1, x) <= cert_tol &&
+                           qp_ineq_violation(C, lo, hi, x) <= cert_tol;
+    qp1_last_ok_ = certified;
+    return certified;
+  };
+
+  const auto t_qp1_0 = std::chrono::steady_clock::now();
+  assembly_ms_ = std::chrono::duration<double, std::milli>(t_qp1_0 - t_asm0).count();
+  const int iter_nom = std::max(1, std::min(cfg_.max_iter, cfg_.max_iter_cap));
+  // QP1 must establish a certified command even after a scheduling hitch.
+  // Reducing it to one iteration when assembly used the wall-time budget
+  // turned ordinary preemption into a deterministic uncertified-QP stop.
+  // Bound both solver loops; spend the optional QP2 budget only afterwards.
+  qp1_->settings.max_iter = iter_nom;
+  bool qp1_ok = try_qp1(lo, hi);
+  // Do not retry with CBF lower bounds removed. That path could publish a
+  // result that only satisfied joint boxes while reporting QP1 as solved.
+  VecX x1;
+  if (qp1_ok) {
+    x1 = qp1_->results.x;
+  } else {
+    const auto t_qp1_1 = std::chrono::steady_clock::now();
+    qp1_ms_ = std::chrono::duration<double, std::milli>(t_qp1_1 - t_qp1_0).count();
+    qp_total_ms_ = qp1_ms_;
+    qp2_status_ = kQpNotRun;
+    qp2_ms_ = 0.0;
+    qp2_iter_ = 0;
+    *qdot = Vec8::Zero();
+    *residual = b_task;
+    *slack = residual->norm();
+    last_lock_J_ = J_task;
+    last_lock_v_.setZero();
+    last_qdot_qp_.setZero();
+    return false;
+  }
+  const auto t_qp1_1 = std::chrono::steady_clock::now();
+  qp1_ms_ = std::chrono::duration<double, std::milli>(t_qp1_1 - t_qp1_0).count();
+  Vec8 qdot1 = clip_qdot(x1.head<kNv>());
+  x1 = pack_x(qdot1);
+  const Vec6 t1 = J_task * qdot1;
+  last_lock_J_ = J_task;
+  last_lock_v_ = t1;
+  const Vec6 residual1 = b_task - t1;
+  const double req_n = v_cmd.norm();
+  if (req_n < 1.0e-9) {
+    task_progress_alpha_ = residual1.norm() <= 1.0e-4 ? 1.0 : 0.0;
+  } else {
+    task_progress_alpha_ = clip(residual1.dot(v_cmd) <= 0.0
+                                    ? 1.0
+                                    : (v_cmd - residual1).dot(v_cmd) / (req_n * req_n),
+                                0.0, 1.0);
+  }
+  if (cfg_.max_solve_ms > 0.0 && elapsed_ms(step_t0_) + 1.0 >= cfg_.max_solve_ms) {
+    qp2_status_ = kQpNotRun;
+    qp2_ms_ = 0.0;
+    qp2_iter_ = 0;
+    j4_design_slack_ = 0.0;
+    sigma_slack_ = 0.0;
+    if (x1.size() > kNv + kNTaskSlack) {
+      sigma_slack_ = std::max(0.0, x1[kNv + kNTaskSlack + 0]);
+    }
+    if (x1.size() > kNv + kNTaskSlack + 2) {
+      j4_design_slack_ = std::max(0.0, x1[kNv + kNTaskSlack + 2]);
+    }
+    *qdot = qdot1;
+    *residual = v_cmd - (J_task * qdot1 + rail_actual_contrib);
+    *slack = residual->norm();
+    qp_total_ms_ = elapsed_ms(t_qp1_0);
+    last_lock_v_ = last_lock_J_ * qdot1;
+    last_qdot_qp_ = qdot1;
+    return true;
+  }
+
+  Vec8 w_reg = cfg_.reg;
+  if (rail_locked) w_reg[0] *= cfg_.lock_reg_scale;
+  Vec8 h_reg = w_reg;
+  if (cfg_.use_mass_weighted_reg) {
+    Vec8 mdiag = kin_.mass().diagonal().cwiseMax(cfg_.mass_reg_floor);
+    if (cfg_.mass_weight_exempt_rail) mdiag[0] = 1.0;
+    if (cfg_.mass_reg_lpf_tau_s > 1e-9) {
+      if (!m_diag_init_) {
+        m_diag_lpf_ = mdiag;
+        m_diag_init_ = true;
+      } else {
+        m_diag_lpf_ = first_order_lpf_vec(m_diag_lpf_, mdiag, dt, cfg_.mass_reg_lpf_tau_s);
+      }
+      mdiag = m_diag_lpf_;
+    }
+    h_reg = w_reg.cwiseProduct(mdiag);
+  }
+  VecX slack_w = VecX::Zero(kNPref);
+  slack_w[0] = cfg_.sigma_slack_w;
+  slack_w[1] = cfg_.branch_slack_w * dwell_scale_;
+  for (int k = 2; k < kNPref; ++k) slack_w[k] = cfg_.comfort_slack_w;
+
+  MatX H2 = MatX::Zero(kNVar, kNVar);
+  H2.topLeftCorner<kNv, kNv>() = h_reg.asDiagonal();
+  H2.block(kNv, kNv, kNTaskSlack, kNTaskSlack) =
+      1e-10 * Eigen::Matrix<double, 6, 6>::Identity();
+  for (int k = 0; k < kNPref; ++k) H2(kNv + kNTaskSlack + k, kNv + kNTaskSlack + k) = slack_w[k];
+  VecX g2 = VecX::Zero(kNVar);
+  g2.head<kNv>() = -h_reg.cwiseProduct(qdot_nom);
+  if (rail_w > 0.0 && !rail_locked && !has_pin) {
+    H2(0, 0) += rail_w;
+    g2[0] -= rail_w * rail_task_vel;
+  }
+  if (cfg_.smoothness.maxCoeff() > 0.0) {
+    H2.topLeftCorner<kNv, kNv>() += cfg_.smoothness.cwiseMax(0.0).asDiagonal();
+    g2.head<kNv>() -= cfg_.smoothness.cwiseMax(0.0).cwiseProduct(qdot_prev_);
+  }
+
+  int pref_n = 0;
+  MatX pref_J = MatX::Zero(kMaxPrefRows, kNv);
+  VecX pref_lo = VecX::Zero(kMaxPrefRows);
+  Eigen::VectorXi pref_s = Eigen::VectorXi::Zero(kMaxPrefRows);
+  if (cfg_.comfort_enabled) {
+    const double d_hi = q_hi_[4] - q_geom[4];
+    const double d_lo = q_geom[4] - q_lo_[4];
+    const double margin = std::min(d_hi, d_lo);
+    const double band = std::max(cfg_.comfort_activate - cfg_.comfort_m, 1e-6);
+    const double w = smoothstep01((cfg_.comfort_activate - margin) / band);
+    if (w > 1e-6) {
+      pref_J(pref_n, 4) = (d_hi <= d_lo) ? -w : w;
+      pref_lo[pref_n] = -cfg_.comfort_gamma * (margin - cfg_.comfort_m) * w;
+      pref_s[pref_n] = 2 + 3;
+      ++pref_n;
+    }
+  }
+  if (cfg_.j4_design_enabled && cfg_.j4_design_hi > cfg_.j4_design_lo) {
+    const int j4 = 4;
+    const double d_lo = q_geom[j4] - cfg_.j4_design_lo;
+    const double d_hi = cfg_.j4_design_hi - q_geom[j4];
+    pref_J(pref_n, j4) = (d_hi <= d_lo) ? -1.0 : 1.0;
+    pref_lo[pref_n] = -cfg_.j4_design_gamma * std::min(d_lo, d_hi);
+    pref_s[pref_n] = 2;
+    ++pref_n;
+  }
+  if (cfg_.sigma_enabled) {
+    if (sigma_arm < cfg_.sigma_activate) sigma_row_active_ = true;
+    if (sigma_arm >= cfg_.sigma_exit) sigma_row_active_ = false;
+    if (sigma_row_active_ && sigma_grad_.norm() > 1e-12) {
+      pref_J.row(pref_n) = sigma_grad_.transpose();
+      pref_lo[pref_n] = -cfg_.sigma_gamma * (sigma_arm - cfg_.sigma_safe);
+      pref_s[pref_n] = 0;
+      ++pref_n;
+    }
+  }
+  const int pref_base = kNv + kMaxCbf;
+  for (int k = 0; k < pref_n; ++k) {
+    C.block(pref_base + k, 0, 1, kNv) = pref_J.row(k);
+    C(pref_base + k, kNv + kNTaskSlack + pref_s[k]) = 1.0;
+    lo[pref_base + k] = pref_lo[k];
+  }
+
+  MatX A2 = MatX::Zero(kNEq2, kNVar);
+  A2.leftCols(kNv) = J_task;
+  VecX b2 = t1;
+  VecX x2_seed = VecX::Zero(kNVar);
+  if (x1.size() == kNVar) x2_seed = x1;
+  x2_seed.head<kNv>() = qdot1;
+  for (int k = 0; k < pref_n; ++k) {
+    const int col = kNv + kNTaskSlack + pref_s[k];
+    const double base = pref_J.row(k).dot(qdot1);
+    const double need = std::max(pref_lo[k] - base, 0.0);
+    x2_seed[col] = std::max(x2_seed[col], need);
+  }
+  const auto t_qp2_0 = std::chrono::steady_clock::now();
+  qp2_->settings.max_iter = iter_nom;
+  solve_dense_qp(*qp2_, &qp2_inited_, qp2_last_ok_, H2, g2, A2, b2, C, lo, hi, &x2_seed);
+  const auto t_qp2_1 = std::chrono::steady_clock::now();
+  qp2_ms_ = std::chrono::duration<double, std::milli>(t_qp2_1 - t_qp2_0).count();
+  qp2_status_ = qp_status_code(qp2_->results.info.status);
+  qp2_iter_ = static_cast<uint32_t>(qp2_->results.info.iter);
+  bool qp2_ok = qp_is_candidate(qp2_status_);
+  qp2_last_ok_ = false;
+  Vec8 qdot_out = qdot1;
+  VecX x_pub = x1;
+  if (qp2_ok) {
+    const VecX x2 = qp2_->results.x;
+    if (qp_eq_violation(A2, b2, x2) > cert_tol || qp_ineq_violation(C, lo, hi, x2) > cert_tol) {
+      qp2_ok = false;
+    } else {
+      Vec8 qdot2 = x2.head<kNv>();
+      double excess = 0.0;
+      uint32_t deg = 0, inf = 0;
+      bool subst = false;
+      measure_qdot_box(qdot2, lo_box, hi_box, &excess, &deg, &inf, &subst);
+      if (subst) qp2_ok = false;
+      else {
+        qdot_out = qdot2;
+        x_pub = x2;
+      }
+    }
+  }
+  qp2_last_ok_ = qp2_ok;
+  qp_total_ms_ = std::chrono::duration<double, std::milli>(t_qp2_1 - t_qp1_0).count();
+  if (!qp2_ok) {
+    qdot_out = qdot1;
+    x_pub = x1;
+  }
+  j4_design_slack_ = 0.0;
+  sigma_slack_ = 0.0;
+  if (x_pub.size() > kNv + kNTaskSlack) {
+    sigma_slack_ = std::max(0.0, x_pub[kNv + kNTaskSlack + 0]);
+  }
+  if (x_pub.size() > kNv + kNTaskSlack + 2) {
+    j4_design_slack_ = std::max(0.0, x_pub[kNv + kNTaskSlack + 2]);
+  }
+  *qdot = qdot_out;
+  *residual = v_cmd - (J_task * qdot_out + rail_actual_contrib);
+  *slack = residual->norm();
+  last_lock_v_ = last_lock_J_ * qdot_out;
+  last_qdot_qp_ = qdot_out;
+  return true;
+}
+
+TickOut InnerLoop::step(const TickIn& in) {
+  const auto t0 = std::chrono::steady_clock::now();
+  step_t0_ = t0;
+  TickOut out;
+  out.cartesian_sequence = in.cartesian.sequence;
+  out.cartesian_stop_epoch = in.cartesian.stop_epoch;
+  const auto clock_now = []() {
+    return std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count();
+  };
+  // A transport-confirmed preceding publication is an independent fact.
+  // Apply it before deciding whether this NEW proposal can be admitted.
+  if (!handle_pending_flags(in)) {
+    out.q_cmd = q_cmd_;
+    out.status = kStatusFail;
+    out.flags |= kOutFailed;
+    return out;
+  }
+  const bool stale_identity = in.cartesian.enabled && have_cartesian_identity_ &&
+      (in.cartesian.stop_epoch < last_cartesian_epoch_ ||
+       (cartesian_epoch_retired_ && in.cartesian.stop_epoch <= last_cartesian_epoch_) ||
+       (in.cartesian.stop_epoch == last_cartesian_epoch_ && in.cartesian.sequence <= last_cartesian_sequence_));
+  if (in.cartesian.enabled && (!in.cartesian.valid(clock_now()) || stale_identity ||
+      !enabled_ || (in.flags & (kInAutoCommit | kInStale)) ||
+      !(in.flags & kInHasRailV) || !std::isfinite(in.rail_v) || direct_ptp_)) {
+    pending_valid_ = false;
+    out.q_cmd = q_cmd_;
+    out.status = kStatusFail;
+    out.flags |= kOutFailed;
+    return out;
+  }
+  cartesian_ = in.cartesian;
+  if (cartesian_.enabled) {
+    have_cartesian_identity_ = true;
+    last_cartesian_epoch_ = cartesian_.stop_epoch;
+    last_cartesian_sequence_ = cartesian_.sequence;
+    cartesian_epoch_retired_ = false;
+  }
+  Vec6 twist = in.v_cmd;
+  if (!enabled_ || (in.flags & kInStale)) {
+    twist.setZero();
+    out.flags |= kOutStale;
+  }
+  const double dt_nom = (std::isfinite(in.dt_nom) && in.dt_nom > 0.0) ? in.dt_nom : cfg_.dt;
+  const double dt = dt_nom;
+  // shape_rail() below advances v_r_ref_/v_r_a_ to the nominal slow
+  // reference before solve_hqp().  Preserve the values that were actually
+  // committed by the preceding HQP tick so the current candidate box is
+  // derived from final command history, rather than from that nominal
+  // candidate.
+  rail_prev_committed_ref_ = v_r_ref_;
+  rail_prev_committed_a_ = v_r_a_;
+  if (in.flags & kInSeedQcmd) {
+    q_cmd_ = in.q_meas;
+    q_hat_ = in.q_meas[0];
+    if (in.flags & kInHasQdotFf) {
+      qdot_prev_ = in.qdot_ff;
+      qdot_seen_ = in.qdot_ff;
+      dq_prev_ = in.qdot_ff * dt;
+      have_dq_prev_ = true;
+    }
+  }
+  Vec8 q_prev = q_cmd_;
+  const bool skip_rail_rebase = direct_ptp_ && plan_drives_rail_;
+  if (rail_mode_ == kRailCoupled && obs_init_ && last_sample_t_ >= 0.0 &&
+      !skip_rail_rebase) {
+    q_prev[0] = q_hat_;
+    q_cmd_[0] = q_hat_;
+  }
+  committed_snap_ = capture_history();
+  const Vec8 q_state = in.q_meas;
+  const auto t_kin0 = std::chrono::steady_clock::now();
+  kin_.update(q_state);
+  kinematics_ms_ = elapsed_ms(t_kin0);
+  const Mat6x8 J = kin_.jacobian();
+  last_sigma_ = kin_.sigma_min();
+  const double sigma_arm = kin_.sigma_arm();
+  const Eigen::Matrix3d R = kin_.tcp_R();
+  const Vec6 twist_base = twist_to_base(twist, R, cfg_.control_frame == "tool");
+  out.v_recv = twist_base;
+
+  const bool locked_hold = rail_mode_ == kRailLocked && locked_style_ == kStyleHold;
+  const bool rail_only = rail_mode_ == kRailLocked && locked_style_ == kStyleRailOnly;
+  const bool tcp_fixed = rail_mode_ == kRailLocked && locked_style_ == kStyleTcpFixed;
+
+  qdot_prev2_ = qdot_seen_;
+  qdot_seen_ = qdot_prev_;
+
+  const double now = in.t_mono > 0.0 ? in.t_mono : 0.0;
+  if (!obs_init_) {
+    q_hat_ = q_state[0];
+    v_hat_ = 0.0;
+    obs_init_ = true;
+  } else {
+    const double v_pred = (in.flags & kInHasRailV) ? in.rail_v : v_hat_;
+    q_hat_ += v_pred * dt;
+    v_hat_ = first_order_lpf(v_hat_, v_pred, dt, lpf_tau_from_fc(cfg_.observer_vel_lpf_hz));
+    if (now > last_sample_t_ + 1e-9) {
+      const double age = std::max(0.0, now - (last_sample_t_ < 0 ? now : last_sample_t_));
+      const double innov = q_state[0] - (q_hat_ - v_pred * age);
+      q_hat_ += cfg_.observer_pos_gain * innov;
+      v_hat_ += cfg_.observer_vel_gain * innov;
+      last_sample_t_ = now;
+    }
+    v_hat_ = clip(v_hat_, -v_max_[0], v_max_[0]);
+  }
+
+  if (direct_ptp_ && (in.flags & kInHasQdotFf)) {
+    Vec8 qdot = in.qdot_ff;
+    for (int i = 0; i < kNv; ++i) qdot[i] = clip(qdot[i], -v_max_[i], v_max_[i]);
+    if (rail_only) qdot.tail<7>().setZero();
+    if (locked_hold) qdot[0] = 0.0;
+    q_cmd_ = q_prev + qdot * dt;
+    if (locked_hold && cfg_.lock_hard_pin && has_rail_ref_) {
+      q_cmd_[0] = rail_q_ref_;
+      qdot[0] = 0.0;
+    }
+    qdot_prev_ = qdot;
+    if (cfg_.psi_enabled && rail_mode_ == kRailCoupled) {
+      const Vec6 pose = kin_.fk_pose_at(q_cmd_);
+      posture_.follow_live(q_cmd_, pose, dt);
+      d_star_ = posture_.d_star();
+      psi_cmd_ = posture_.psi_cmd();
+      psi_star_ = posture_.psi_star();
+      homotopy_s_ = posture_.homotopy_s();
+      d_pref_ = d_star_;
+    }
+    {
+      const Vec6 pose_cmd = kin_.fk_pose_at(q_cmd_);
+      const double d_live = pose_cmd[1] - q_cmd_[0];
+      const double d_target = std::isfinite(d_star_) ? d_star_ : d_live;
+      track_rail_authority(d_live, d_target, qdot[0], dt);
+    }
+    dq_prev_ = q_cmd_ - q_prev;
+    have_dq_prev_ = true;
+    out.q_cmd = q_cmd_;
+    out.qdot = qdot;
+    out.sigma_min = last_sigma_;
+    out.sigma_arm = sigma_arm;
+    out.homotopy_s = homotopy_s_;
+    out.psi = psi_cmd_;
+    out.solve_ms = elapsed_ms(t0);
+    out.kinematics_ms = kinematics_ms_;
+    fill_mixer_out(&out);
+    out.status = kStatusOk;
+    out.qp1_status = kQpSolved;
+    out.task_paused = 0;
+    out.task_pause_reason = 0;
+    task_paused_ = false;
+    task_pause_reason_ = 0;
+    qp1_status_ = kQpSolved;
+    const Vec8 cand_q = out.q_cmd;
+    const Vec8 cand_qd = out.qdot;
+    if (!(in.flags & kInAutoCommit)) {
+      pending_ = capture_history();
+      pending_valid_ = true;
+      pending_seq_ = in.request_seq;
+      pending_epoch_ = in.cartesian.stop_epoch;
+      pending_cartesian_ = in.cartesian.enabled;
+      restore_history(committed_snap_);
+      out.q_cmd = cand_q;
+      out.qdot = cand_qd;
+    }
+    return out;
+  }
+
+  double rail_exec = qdot_prev_[0];
+  bool has_rail_exec = false;
+  if (in.flags & kInHasRailV) {
+    rail_exec = in.rail_v;
+    has_rail_exec = true;
+  } else if (obs_init_ && last_sample_t_ >= 0.0) {
+    rail_exec = v_hat_;
+    has_rail_exec = true;
+  }
+
+  double h1 = dt_nom;
+  double h2 = std::numeric_limits<double>::quiet_NaN();
+  if (!box_t_init_) {
+    box_t_init_ = true;
+    box_last_t_ = now;
+    box_h1_ = dt_nom;
+  } else {
+    h2 = dt_nom;
+    box_last_t_ = now;
+    box_h1_ = dt_nom;
+    h1 = dt_nom;
+  }
+
+  const double z_now = kin_.tcp_xyz()[2];
+  const double y_tcp = kin_.tcp_xyz()[1];
+  double y_tcp_d = y_tcp;
+  bool has_pose_d = in.flags & kInHasPoseD;
+  if (has_pose_d && std::isfinite(in.pose_d[1])) y_tcp_d = in.pose_d[1];
+  const double tool_y_err = y_tcp_d - y_tcp;
+
+  const bool contact = in.flags & kInContact;
+  const bool has_vf = in.flags & kInHasVForce;
+  const bool demanding = contact && has_vf && std::abs(in.v_force_z) >= cfg_.press_v_force_min;
+  if (demanding) {
+    if (!std::isfinite(press_z_mark_)) press_z_mark_ = z_now;
+    if (std::abs(z_now - press_z_mark_) > cfg_.press_dz_max) {
+      press_z_mark_ = z_now;
+      press_stall_s_ = 0.0;
+    } else {
+      press_stall_s_ += dt;
+    }
+  } else {
+    press_z_mark_ = std::numeric_limits<double>::quiet_NaN();
+    press_stall_s_ = 0.0;
+  }
+  const bool press_stalled = press_stall_s_ + 1e-12 >= cfg_.press_stall_s;
+  double soft_lo = 0.0, soft_hi = 0.0;
+  soft_rail_travel(q_lo_[0], q_hi_[0], cfg_.soft_min, cfg_.soft_max, &soft_lo, &soft_hi);
+  const auto soft = std::pair<double, double>{soft_lo, soft_hi};
+  const double open_travel = std::max(q_state[0] - soft.first, soft.second - q_state[0]);
+  const bool has_travel = open_travel > cfg_.open_travel_min;
+  const bool j4_blocked =
+      (q_hi_[4] - q_prev[4]) <= cfg_.comfort_m || (q_prev[4] - q_lo_[4]) <= cfg_.comfort_m;
+  const bool arm_starved = std::abs(tool_y_err) >= cfg_.press_y_err;
+  const double pol_sign = policy_escape_sign(
+      cfg_.escape_sign_policy, q_state[0], soft.first, soft.second,
+      escape_active_ ? escape_sign_ : 0.0);
+  const bool policy_leave = in_leave_band(q_state[0], soft.first, soft.second,
+                                          leave_margin_m(cfg_.escape_leave, cfg_.pin_margin),
+                                          pol_sign);
+  const bool allow_press = press_escape_allowed_from_flags(
+      demanding, has_travel, press_stalled, j4_blocked, arm_starved, policy_leave);
+
+  const double lin = twist_base.head<3>().norm();
+  const double rot = twist_base.tail<3>().norm();
+  const double tcp_lin = last_tcp_est_.head<3>().norm();
+  const bool cmd_quiet_enter = lin < kQuietLinEnter && rot < kQuietRotEnter;
+  const bool cmd_active_exit = lin > kQuietLinExit || rot > kQuietRotExit;
+  const bool tcp_quiet = tcp_lin < kQuietTcp;
+  if (cmd_quiet_enter && tcp_quiet) quiet_s_ += dt;
+  else quiet_s_ = 0.0;
+  if (allow_press) {
+    quiescent_ = false;
+    cmd_quiet_s_ = 0.0;
+  } else if (quiescent_) {
+    if (cmd_active_exit) {
+      quiescent_ = false;
+      cmd_quiet_s_ = 0.0;
+    }
+  } else {
+    if (cmd_quiet_enter) cmd_quiet_s_ += dt;
+    else cmd_quiet_s_ = 0.0;
+    if (cmd_quiet_s_ + 1e-12 >= kQuietHold) quiescent_ = true;
+  }
+  if (!slack_hold_latched_ && last_slack_ >= cfg_.slack_enter) slack_hold_latched_ = true;
+  else if (slack_hold_latched_ && last_slack_ <= cfg_.slack_exit) slack_hold_latched_ = false;
+  const bool slack_high = slack_hold_latched_;
+  // A failed publication requests a brake on this tick.  Freeze only the
+  // secondary d*/posture planner for the following attempt; the primary TCP
+  // task is still solved so a newly feasible command can clear the pause.
+  // Capture the previous state before replacing task_paused_ at the end of
+  // this step.
+  const bool prior_task_paused = task_paused_;
+  secondary_alpha_ = raised_cosine_alpha(last_slack_, cfg_.slack_exit, cfg_.slack_enter,
+                                         last_sigma_, cfg_.sigma_fade_ref);
+  if (prior_task_paused) secondary_alpha_ = 0.0;
+  {
+    const double enter = std::max(0.0, cfg_.ns_enter_fade_s);
+    if (ns_enter_t_ < enter) ns_enter_t_ = std::min(ns_enter_t_ + dt, enter);
+  }
+  hold_d_prev_ = quiescent_;
+
+  if (cfg_.psi_enabled && rail_mode_ == kRailCoupled) {
+    const Vec6 pose = kin_.fk_pose_at(q_prev);
+    // The d* reference and posture retargeter share the same secondary
+    // permission.  If the task is being held by slack/conditioning, d* must
+    // stop advancing with an unbounded hidden reference.
+    posture_.step(q_prev, pose, dt, q_lo_[0], q_hi_[0], false,
+                  clip(secondary_alpha_, 0.0, 1.0));
+    d_star_ = posture_.d_star();
+    psi_cmd_ = posture_.psi_cmd();
+    psi_star_ = posture_.psi_star();
+    homotopy_s_ = posture_.homotopy_s();
+    planned_ = posture_.planned();
+    d_pref_ = d_star_;
+    const Vec8 cand = posture_.q_star();
+    if (q_finite_in_limits(cand, q_lo_, q_hi_)) {
+      q_star_ = cand;
+      last_valid_q_star_ = cand;
+      have_valid_q_star_ = true;
+    } else if (have_valid_q_star_) {
+      q_star_ = last_valid_q_star_;
+    } else {
+      q_star_ = q_nominal_;
+    }
+  }
+  if (press_stalled && allow_press && contact && has_vf && nudge_cool_s_ <= 0.0) {
+    const double away = (q_prev[0] > 0.5 * (soft.first + soft.second)) ? 1.0 : -1.0;
+    const double y_des = has_pose_d ? y_tcp_d : y_tcp;
+    const double d_n = posture_.nudge_d_star(-away * cfg_.d_star_nudge, y_des, soft.first,
+                                            soft.second, dt);
+    if (std::isfinite(d_n)) {
+      d_star_ = d_n;
+      d_pref_ = d_n;
+    }
+    nudge_cool_s_ = cfg_.press_stall_s;
+  } else {
+    nudge_cool_s_ = std::max(0.0, nudge_cool_s_ - dt);
+  }
+
+  double rail_task_vel = 0.0;
+  double rail_task_w = 0.0;
+  bool have_rail_vel = false;
+  last_v_escape_ = 0.0;
+  last_e_mid_ = 0.0;
+  if (cfg_.rail_ext_enabled && rail_ext_active_ && rail_mode_ == kRailCoupled) {
+    const double y = q_state[0];
+    // e_mid = (y_tcp − d*) − y_rail. SERVO_TWIST latches pose_d at set_origin;
+    // using that Y pulls the rail back to the start instead of tracking d*.
+    const double y_des = y_tcp;
+    const double rail_ff = y_des - d_pref_;
+    const double err_raw = rail_ff - y;
+    double band = planned_ ? 0.0 : cfg_.d_band;
+    const double err = err_raw - clip(err_raw, -band, band);
+    last_e_mid_ = err;
+    double v_ff = 0.0;
+    if (in.flags & kInHasVelFf) {
+      const Eigen::Vector3d j_rail = J.topLeftCorner<3, 1>();
+      const double den = j_rail.squaredNorm();
+      if (den > 1e-12) v_ff = cfg_.k_ff * j_rail.dot(in.vel_ff.head<3>()) / den;
+    }
+    last_v_ff_ = v_ff;
+    if (allow_press) {
+      if (!escape_active_ || std::abs(escape_sign_) < 1.0e-12) {
+        escape_sign_ = policy_escape_sign(cfg_.escape_sign_policy, y, soft.first, soft.second, 0.0);
+      }
+      last_v_escape_ = clip(0.25 * cfg_.k_esc * escape_sign_, -cfg_.v_max_ext, cfg_.v_max_ext);
+      escape_active_ = std::abs(last_v_escape_) > 1e-12;
+    } else {
+      escape_active_ = false;
+      last_v_escape_ = 0.0;
+      escape_sign_ = 0.0;
+    }
+    last_ext_w_ = cfg_.w_max_ext;
+    rail_task_w = last_ext_w_;
+  } else {
+    escape_active_ = false;
+    last_v_escape_ = 0.0;
+    escape_sign_ = 0.0;
+  }
+
+  double base_previous = v_r_base_ref_;
+  double total_previous = v_r_ref_;
+  if (rail_mode_ == kRailCoupled && !locked_hold) {
+    const double d_live = y_tcp - q_state[0];
+    const bool hold_ref = !std::isfinite(d_star_);
+    if (!d_star_ref_init_ || !std::isfinite(d_star_ref_)) {
+      d_star_ref_ = d_live;
+      d_star_ref_init_ = true;
+      d_star_dot_cmd_ = 0.0;
+    } else if (hold_ref || dt <= 1e-12) {
+      d_star_dot_cmd_ = 0.0;
+    } else {
+      const double lim = std::abs(cfg_.d_center_rate) * dt *
+                         clip(secondary_alpha_, 0.0, 1.0);
+      const double err = d_star_ - d_star_ref_;
+      const double delta = (lim > 1e-15) ? lim * std::tanh(err / lim) : 0.0;
+      d_star_ref_ += delta;
+      d_star_dot_cmd_ = delta / dt;
+    }
+    d_pref_ = d_star_ref_;
+    e_d_ = d_live - d_star_ref_;
+    last_e_mid_ = e_d_;
+    V_d_proxy_ = 0.5 * cfg_.kp_mid * e_d_ * e_d_;
+
+    // The rail task feed-forward is a scalar projection of the requested
+    // TCP twist onto the rail Jacobian.  The former full-6D damped allocator
+    // was allowed to inject a rail command from unrelated task components;
+    // that made a pure Z request carry an unrequested Y rail motion.
+    const Vec6 j_rail = J.col(0);
+    const double rail_den = j_rail.squaredNorm();
+    rail_task_projection_ =
+        rail_den > 1.0e-12 ? j_rail.dot(twist_base) / rail_den : 0.0;
+    u_alloc_ = rail_task_projection_;
+    // The previous accepted QP progress is the only feed-forward scale used
+    // before this tick's alpha is known.  It keeps the slow reference causal.
+    task_progress_scale_used_ = clip(task_progress_alpha_, 0.0, 1.0);
+    u_task_raw_ = task_progress_scale_used_ * rail_task_projection_;
+    u_escape_raw_ = last_v_escape_;
+    double leave_raw =
+        wall_leave_only_sign(q_state[0], q_lo_[0], q_hi_[0], cfg_.damper_band_rail);
+    if (planned_ && q_state[0] >= cfg_.soft_max - cfg_.escape_leave) {
+      leave_raw = std::max(leave_raw, 1.0);
+    }
+    const double leave = update_leave_sign(leave_raw, q_state[0], q_lo_[0], q_hi_[0],
+                                           cfg_.damper_band_rail, cfg_.leave_exit_eps,
+                                           leave_sign_);
+    leave_sign_ = leave;
+    wall_pi_frozen_ = (leave != 0.0);
+    escape_dir_ = update_escape_dir(escape_active_, u_escape_raw_, escape_dir_);
+    const int guard_dir = escape_active_ ? escape_dir_ : 0;
+    double u_lo = 0.0, u_hi = 0.0;
+    if (leave * u_task_raw_ > 1.0e-4) {
+      u_lo = 0.0;
+      u_hi = 0.0;
+    } else {
+      wall_velocity_bounds(v_max_[0], leave, &u_lo, &u_hi);
+    }
+
+    const double alpha = secondary_alpha_;
+    u_pi_raw_ = cfg_.kp_mid * e_d_ + mid_integ_;
+    u_mid_cmd_ = soft_saturate(u_pi_raw_, cfg_.u_mid_max);
+    u_post_raw_ = alpha * (u_mid_cmd_ - d_star_dot_cmd_);
+    u_mid_ = u_mid_cmd_;
+    const RailShares shares = allocate_rail_shares(
+        u_task_raw_,
+        u_post_raw_,
+        u_escape_raw_,
+        guard_dir,
+        u_lo, u_hi);
+    u_task_feasible_ = shares.u_task_feasible;
+    u_escape_feasible_ = shares.u_escape_feasible;
+    u_base_raw_ = shares.u_base;
+    u_post_feasible_ = shares.u_post_feasible;
+    auto [a_mir, j_mir] = arm_mirror_rail_limits(J, a_max_, j_max_, cfg_.rho_a, cfg_.rho_j);
+    const double tau = lpf_tau_from_fc(cfg_.f_c_hz);
+    const double a_lim = std::min(cfg_.a_max_rail, a_mir);
+    const double j_lim = std::min(kRailRefJerk, j_mir);
+    double lo_c, hi_c;
+    wall_cap(q_state[0], cfg_.hard_min, cfg_.hard_max, a_lim, cfg_.rail_reaction_s, &lo_c, &hi_c);
+
+    // Both the base-only shadow and the total rail chain use the same
+    // frequency split, acceleration/jerk limits and wall cap.  The shadow is
+    // what makes the final PI decomposition independent of a filtered task
+    // tail: post = committed_total - committed_base.
+    auto shape_rail = [&](double input, double* ref, double* acc, double* lpf,
+                          bool* init) {
+      const double previous = *ref;
+      double filtered = input;
+      if (*init && tau > 1.0e-9) filtered = first_order_lpf(previous, input, dt, tau);
+      filtered = project_lpf_into_wall(filtered, leave);
+      *lpf = filtered;
+      const double h = std::max(dt, 1.0e-9);
+      const double a_raw = (filtered - previous) / h;
+      double a = clip(a_raw, *acc - j_lim * h, *acc + j_lim * h);
+      a = clip(a, -a_lim, a_lim);
+      double shaped = clip(previous + a * h, -v_max_[0], v_max_[0]);
+      shaped = clip(shaped, lo_c, hi_c);
+      *ref = shaped;
+      // Store the acceleration generated by the final command after every
+      // wall/velocity clip.  This is the actual history used by next jerk
+      // limiting, rather than the pre-clip candidate acceleration.
+      *acc = (shaped - previous) / h;
+      *init = true;
+      return shaped;
+    };
+
+    base_previous = v_r_base_ref_;
+    total_previous = v_r_ref_;
+    const double base_shaped =
+      shape_rail(u_base_raw_, &v_r_base_ref_, &v_r_base_a_, &v_r_base_lpf_,
+                 &v_r_base_init_);
+    const double total_shaped =
+        shape_rail(shares.u_feasible, &v_r_ref_, &v_r_a_, &v_r_lpf_, &v_r_init_);
+    u_base_ = base_shaped;
+    u_feasible_ = total_shaped;
+    const double base_den = std::abs(u_base_raw_);
+    if (base_den > 1.0e-12) {
+      u_task_feasible_ = base_shaped * shares.u_task_feasible / u_base_raw_;
+      u_escape_feasible_ = base_shaped * shares.u_escape_feasible / u_base_raw_;
+    } else {
+      u_task_feasible_ = 0.0;
+      u_escape_feasible_ = 0.0;
+    }
+    u_post_feasible_ = total_shaped - base_shaped;
+    u_mid_applied_ = u_post_feasible_ + d_star_dot_cmd_;
+    rail_task_vel = total_shaped;
+    have_rail_vel = true;
+    rail_task_w = std::max(rail_task_w, kRailPrefW);
+  } else {
+    u_alloc_ = 0.0;
+    u_mid_ = 0.0;
+    rail_task_projection_ = 0.0;
+    task_progress_scale_used_ = clip(task_progress_alpha_, 0.0, 1.0);
+    u_task_raw_ = 0.0;
+    u_task_feasible_ = 0.0;
+    u_task_committed_ = 0.0;
+    u_escape_raw_ = 0.0;
+    u_escape_feasible_ = 0.0;
+    u_escape_committed_ = 0.0;
+    u_base_raw_ = 0.0;
+    u_base_ = 0.0;
+    u_feasible_ = 0.0;
+    u_mid_applied_ = 0.0;
+    u_post_raw_ = 0.0;
+    u_post_feasible_ = 0.0;
+    u_post_committed_ = 0.0;
+    u_total_committed_ = 0.0;
+    u_base_committed_ = 0.0;
+  }
+
+  Vec8 qdot_center = Vec8::Zero();
+  if (!center_suppress_) {
+    const Vec8 u_t = (q_prev - q_star_).cwiseQuotient(half_);
+    qdot_center = -cfg_.k_center * u_t;
+    if (cfg_.k_limit > 0.0) {
+      const Vec8 u_l = (q_prev - q_mid_).cwiseQuotient(half_);
+      const double span = std::max(1.0 - cfg_.ns_activation, 1e-6);
+      for (int i = 0; i < kNv; ++i) {
+        const double over = clip((std::abs(u_l[i]) - cfg_.ns_activation) / span, 0.0, 1.0);
+        qdot_center[i] -= cfg_.k_limit * ((u_l[i] >= 0) ? 1.0 : -1.0) * over * over;
+      }
+    }
+  }
+  Vec8 qdot_damp = Vec8::Zero();
+  if (cfg_.d_null > 0.0) qdot_damp = cfg_.d_null * qdot_prev_;
+  Vec8 sec = qdot_center - qdot_damp;
+  sec[0] = 0.0;
+  Vec8 qdot_mu = Vec8::Zero();
+  if (manip_active_ && cfg_.k_mu > 0.0 && sigma_grad_.norm() > 1e-12) {
+    const double fade = clip(last_sigma_ / std::max(cfg_.sigma_fade_ref, 1e-9), 0.0, 1.0);
+    qdot_mu = cfg_.k_mu * fade * sigma_grad_;
+    sec += qdot_mu;
+  }
+  Vec8 qdot_arm = Vec8::Zero();
+  if (cfg_.arm_enabled && !arm_suppress_) {
+    const double psi = kin_.sew_psi(q_prev);
+    const double err = wrap_pi(psi_cmd_ - fold_psi_to_positive(psi));
+    Vec8 g = Vec8::Zero();
+    const double eps = std::max(cfg_.fd_eps, 1e-5);
+    for (int i = 1; i < kNv; ++i) {
+      Vec8 qp = q_prev, qm = q_prev;
+      qp[i] += eps;
+      qm[i] -= eps;
+      g[i] = (kin_.sew_psi(qp) - kin_.sew_psi(qm)) / (2 * eps);
+    }
+    kin_.update(q_state);
+    const double lam = sr_damping_lambda(last_sigma_, cfg_.sr_lam0, cfg_.sr_sigma_ref,
+                                         cfg_.sr_sigma_floor);
+    const Vec8 gN = project_nullspace(J, g, lam);
+    if (!gN_lpf_init_) {
+      gN_lpf_ = gN;
+      gN_lpf_init_ = true;
+    } else {
+      gN_lpf_ = first_order_lpf_vec(gN_lpf_, gN, dt, lpf_tau_from_fc(cfg_.ns_grad_lpf_hz));
+    }
+    const double den = std::max(g.dot(gN_lpf_), cfg_.safe_denom_eps);
+    qdot_arm = cfg_.k_psi * err * gN_lpf_ / den;
+    sec += qdot_arm;
+  }
+  {
+    const double enter = cfg_.slack_enter;
+    const double exit_ = cfg_.slack_exit;
+    const double lo = clip(cfg_.secondary_scale, 0.0, 1.0);
+    const double span = std::max(enter - exit_, 1e-9);
+    const double s = clip((last_slack_ - exit_) / span, 0.0, 1.0);
+    const double target = 1.0 + smoothstep01(s) * (lo - 1.0);
+    const double tau = cfg_.secondary_scale_tau_s;
+    if (tau <= 1e-9 || dt <= 0.0) {
+      sat_scale_ = target;
+    } else {
+      const double alpha = std::min(1.0, dt / tau);
+      sat_scale_ += alpha * (target - sat_scale_);
+    }
+    sec.tail<7>() *= sat_scale_;
+  }
+  {
+    const double period = cfg_.ns_enter_fade_s;
+    if (period > 1e-9 && ns_enter_t_ < period) {
+      const double u = clip(ns_enter_t_ / period, 0.0, 1.0);
+      sec.tail<7>() *= smoothstep01(u);
+    }
+  }
+  sec[0] = 0.0;
+  out.ns_centering = qdot_center.norm();
+  out.ns_manip = qdot_mu.norm();
+  out.ns_arm_angle = qdot_arm.norm();
+  out.ns_damping = qdot_damp.norm();
+  out.ns_rail_lock = locked_hold ? std::abs(qdot_center[0] - qdot_damp[0]) : 0.0;
+  sec_lpf_ = first_order_lpf_vec(sec_lpf_, sec, dt, lpf_tau_from_fc(cfg_.sec_input_lpf_hz));
+  const double period = 1.0 / std::max(cfg_.sec_target_hz, 1.0e-6);
+  sec_age_ += dt;
+  if (quiescent_ || sec_age_ >= period) {
+    sec_target_ = sec_lpf_;
+    sec_age_ = 0.0;
+  }
+  if (dt > 1e-9) {
+    const double wn = 2.0 * M_PI * 8.0;
+    const double zeta = std::max(cfg_.sec_filter_zeta, 0.0);
+    Vec8 j = wn * wn * (sec_target_ - sec_qdot_) - 2.0 * zeta * wn * sec_acc_;
+    for (int i = 0; i < kNv; ++i) j[i] = clip(j[i], -j_max_[i], j_max_[i]);
+    sec_acc_ += j * dt;
+    sec_qdot_ += sec_acc_ * dt;
+  }
+  Vec8 sec_filt = sec_qdot_;
+  if (cfg_.max_qdot_frac > 0.0) {
+    Vec8 cap = kin_.v_max() * cfg_.max_qdot_frac;
+    cap[0] = v_max_[0];
+    for (int i = 0; i < kNv; ++i) sec_filt[i] = clip(sec_filt[i], -cap[i], cap[i]);
+    sec_qdot_ = sec_filt;
+  }
+
+  {
+    const double lam_ns = sr_damping_lambda(last_sigma_, cfg_.sr_lam0, cfg_.sr_sigma_ref,
+                                            cfg_.sr_sigma_floor);
+    sec_filt = project_nullspace(J, sec_filt, lam_ns);
+  }
+
+  const int sigma_period = std::max(cfg_.sigma_grad_period, 1);
+  const bool sigma_activated_edge =
+      !sigma_row_active_ && (sigma_arm < cfg_.sigma_activate);
+  const bool refresh_sigma_grad =
+      sigma_tick_ == 0 || sigma_activated_edge || (sigma_tick_ % sigma_period == 0);
+  if (cfg_.sigma_enabled && refresh_sigma_grad) {
+    const double eps = cfg_.sigma_grad_eps;
+    sigma_grad_.setZero();
+    for (int i = 1; i < kNv; ++i) {
+      Vec8 qp = q_state;
+      qp[i] += eps;
+      kin_.update(qp);
+      const double sp = kin_.sigma_arm();
+      sigma_grad_[i] = (sp - sigma_arm) / eps;
+    }
+    kin_.update(q_state);
+  }
+  ++sigma_tick_;
+
+  const bool plan_rail = rail_only || tcp_fixed || plan_drives_rail_;
+  double rail_pin = 0.0;
+  bool has_pin = false;
+  if ((in.flags & kInHasQdotFf) && plan_rail) {
+    rail_pin = in.qdot_ff[0];
+    has_pin = true;
+  }
+  const bool lead_exempt = std::abs(q_prev[0] - q_state[0]) > cfg_.resync_err_rail_m;
+  Vec8 qdot;
+  Vec6 residual;
+  double slack = 0.0;
+  const auto t_fb0 = std::chrono::steady_clock::now();
+  const bool ok = solve_hqp(J, twist_base, q_state, q_prev, sec_filt, rail_exec, has_rail_exec,
+                            have_rail_vel ? rail_task_vel : 0.0, rail_task_w, locked_hold, dt, h1,
+                            h2,
+                            rail_mode_ == kRailCoupled && has_travel && !locked_hold, rail_pin,
+                            has_pin, lead_exempt, sigma_arm, &qdot, &residual, &slack);
+  const Vec8 qdot_qp = qdot;
+  bool published_ok = ok;
+  if (!ok) {
+    fallback_ms_ = std::chrono::duration<double, std::milli>(
+                       std::chrono::steady_clock::now() - t_fb0)
+                       .count();
+    published_ok = false;
+    qdot = Vec8::Zero();
+  } else {
+    fallback_ms_ = 0.0;
+  }
+  last_qdot_qp_ = qdot_qp;
+  if (published_ok) {
+    q_cmd_ = q_prev + qdot * dt;
+    q_cmd_[0] = clip(q_cmd_[0], q_lo_[0], q_hi_[0]);
+    if (q_cmd_[0] <= q_lo_[0] + 1e-4 && qdot[0] < 0.0) {
+      q_cmd_[0] = q_lo_[0];
+      qdot[0] = 0.0;
+    } else if (q_cmd_[0] >= q_hi_[0] - 1e-4 && qdot[0] > 0.0) {
+      q_cmd_[0] = q_hi_[0];
+      qdot[0] = 0.0;
+    }
+    if (locked_hold && cfg_.lock_hard_pin && has_rail_ref_) {
+      q_cmd_[0] = rail_q_ref_;
+    }
+  }
+  if (published_ok && plan_rail && (in.flags & kInHasQdotFf)) {
+    q_cmd_[0] = clip(q_prev[0] + in.qdot_ff[0] * dt, q_lo_[0], q_hi_[0]);
+    qdot[0] = (q_cmd_[0] - q_prev[0]) / dt;
+    if (rail_only) {
+      q_cmd_.tail<7>() = q_prev.tail<7>();
+      qdot.tail<7>().setZero();
+    }
+  }
+  if (published_ok) {
+    Vec8 q_shadow, dq_s;
+    bool would = false;
+    clamp_command_step(q_prev, q_cmd_, have_dq_prev_ ? &dq_prev_ : nullptr, a_max_, dt, &q_shadow,
+                       &dq_s, &would);
+    if (would) {
+      const Vec8 qdot_s = (q_shadow - q_prev) / dt;
+      const Vec6 lock_err = last_lock_J_ * qdot_s - last_lock_v_;
+      if (lock_err.norm() <= std::max(10.0 * cfg_.eps_abs, 1e-5)) {
+        q_cmd_ = q_shadow;
+        qdot = qdot_s;
+      }
+    }
+  }
+  uint32_t publication_pause_reason = 0;
+  out.v_tcp_commanded = J * qdot;
+  if (cartesian_.enabled) {
+    const Vec6 predicted = J.rightCols<7>() * qdot.tail<7>() + J.col(0) * rail_exec;
+    out.cartesian_command_residual = cartesian_.violation(out.v_tcp_commanded);
+    out.cartesian_predicted_residual = cartesian_.violation(predicted);
+    const bool certified = cartesian_.valid(clock_now()) &&
+        out.cartesian_command_residual <= kCartesianTolerance &&
+        out.cartesian_predicted_residual <= kCartesianTolerance;
+    out.cartesian_valid = (published_ok && certified) ? 1u : 0u;
+    if (!certified) published_ok = false;
+  }
+  if (published_ok) {
+    dq_prev_ = q_cmd_ - q_prev;
+    have_dq_prev_ = true;
+    qdot_prev_ = qdot;
+  }
+  last_slack_ = slack;
+  last_tcp_est_ = J * qdot;
+  if (has_rail_exec) {
+    // The rail column in the current task is the measured executed velocity;
+    // qdot[0] is the next-refresh rail command and is not in J_task.
+    last_tcp_est_ += J.col(0) * (rail_exec - qdot[0]);
+  }
+  const bool mixer_owned =
+      published_ok && rail_mode_ == kRailCoupled && !locked_hold && !plan_rail;
+  if (mixer_owned) {
+    // The base shadow is shaped as one combined task+escape signal.  Keep
+    // that combined committed value explicit; the pre-shape task/escape
+    // fields remain available separately, but are not relabeled as physical
+    // committed components after nonlinear wall/jerk clipping.
+    u_task_committed_ = std::numeric_limits<double>::quiet_NaN();
+    u_escape_committed_ = std::numeric_limits<double>::quiet_NaN();
+    u_total_committed_ = qdot[0];
+    // The final HQP rail command can be slower than the shaped total
+    // reference.  Subtracting the full base shadow in that case falsely
+    // attributes the task reduction to posture (and winds the PI integral in
+    // a pure Cartesian task).  Attribute only the fraction of the shaped
+    // base-to-total interval that was actually admitted by the QP.  The
+    // braking point is the zero command clipped into the final rail box.
+    // Keep the raw/shaped base shadow in u_base_; u_base_committed_ is the
+    // physical base contribution after this final split.
+    const double rail_brake = clip(0.0, rail_box_lo_, rail_box_hi_);
+    const double rail_total_ref = u_feasible_;
+    const double rail_span = rail_total_ref - rail_brake;
+    const double rail_y = u_total_committed_;
+    const double rail_eps = std::max(10.0 * cfg_.eps_abs, 1.0e-8);
+    const double rail_min = std::min(rail_brake, rail_total_ref) - rail_eps;
+    const double rail_max = std::max(rail_brake, rail_total_ref) + rail_eps;
+    const bool attribution_override = rail_y < rail_min || rail_y > rail_max;
+    if (attribution_override) {
+      // A publication/plan override is outside the common slow chain.  Do
+      // not feed it into posture anti-windup as if it were a post command.
+      u_post_committed_ = 0.0;
+      u_base_committed_ = rail_y;
+    } else {
+      const double beta = std::abs(rail_span) > rail_eps
+                              ? clip((rail_y - rail_brake) / rail_span, 0.0, 1.0)
+                              : 1.0;
+      u_post_committed_ = beta * (rail_total_ref - u_base_);
+      u_base_committed_ = rail_y - u_post_committed_;
+    }
+    // Commit the shadow chain to the same final rail command decomposition.
+    // Otherwise the next tick shapes against the rejected base candidate and
+    // manufactures a negative posture contribution even for a pure task.
+    v_r_base_ref_ = u_base_committed_;
+    v_r_base_a_ = dt > 1.0e-12 ? (u_base_committed_ - base_previous) / dt : 0.0;
+    v_r_ref_ = u_total_committed_;
+    v_r_a_ = dt > 1.0e-12 ? (u_total_committed_ - total_previous) / dt : 0.0;
+    u_mid_committed_ = u_post_committed_ + d_star_dot_cmd_;
+    u_mid_applied_ = u_mid_committed_;
+    if (published_ok && dt > 0.0) {
+      const double alpha = secondary_alpha_;
+      if (alpha < 1.0e-6) {
+        mid_integ_ = -cfg_.kp_mid * e_d_;
+      } else {
+        // Secondary permission scales the integral drive.  Back-calculation
+        // compares the final committed post contribution with the same
+        // permission-scaled PI request; task/escape/base motion is excluded.
+        const double backcalc =
+            cfg_.kaw_mid * (u_mid_committed_ - alpha * u_pi_raw_);
+        // A wall freezes the error-driven integral, but still lets the
+        // anti-windup path unwind the part that could not be committed.
+        mid_integ_ +=
+            (wall_pi_frozen_ ? backcalc : alpha * cfg_.ki_mid * e_d_ + backcalc) * dt;
+      }
+    }
+  } else {
+    u_task_committed_ = 0.0;
+    u_escape_committed_ = 0.0;
+    u_total_committed_ = qdot[0];
+    u_post_committed_ = qdot[0];
+    u_base_committed_ = 0.0;
+    u_mid_committed_ = qdot[0];
+  }
+  task_paused_ = !published_ok;
+  task_pause_reason_ = published_ok ? 0u :
+                                      (publication_pause_reason != 0
+                                           ? publication_pause_reason
+                                           : 2u);
+  if (!published_ok) task_progress_alpha_ = 0.0;
+  if (!mixer_owned) {
+    const Vec6 pose_cmd = kin_.fk_pose_at(q_cmd_);
+    const double d_live = pose_cmd[1] - q_cmd_[0];
+    const double d_target = std::isfinite(d_star_) ? d_star_ : d_live;
+    track_rail_authority(d_live, d_target, qdot[0], dt);
+  }
+
+  const auto t1 = std::chrono::steady_clock::now();
+  out.q_cmd = q_cmd_;
+  out.qdot = qdot;
+  Vec6 v_feas_actual = last_lock_v_;
+  if (has_rail_exec) v_feas_actual += J.col(0) * rail_exec;
+  out.v_feas = v_feas_actual;
+  out.v_tcp = last_tcp_est_;
+  out.v_task_actual = last_tcp_est_;
+  out.residual = residual;
+  out.slack = slack;
+  out.e_qp = residual.norm();
+  out.psi = psi_cmd_;
+  out.sigma_min = last_sigma_;
+  out.sigma_arm = sigma_arm;
+  out.solve_ms = std::chrono::duration<double, std::milli>(t1 - t0).count();
+  fill_mixer_out(&out);
+  for (int i = 1; i < kNv; ++i) {
+    if (qdot[i] >= v_max_[i] - 1e-6 || qdot[i] <= -v_max_[i] + 1e-6) out.joint_limited = 1;
+  }
+  out.rail_limited = (std::abs(qdot[0]) >= v_max_[0] - 1e-6) ? 1 : 0;
+  out.wall_active =
+      (q_state[0] <= q_lo_[0] + cfg_.damper_band_rail || q_state[0] >= q_hi_[0] - cfg_.damper_band_rail)
+          ? 1
+          : 0;
+  out.secondary_suppressed = (quiescent_ || slack_high) ? 1 : 0;
+  out.ns_norm = sec_filt.norm();
+  out.sat_scale = sat_scale_;
+  out.sec_target_norm = sec_target_.norm();
+  out.homotopy_s = homotopy_s_;
+  out.psi_star = psi_star_;
+  out.j4_design_slack = j4_design_slack_;
+  out.sigma_slack = sigma_slack_;
+  out.rail_box_lo = rail_box_lo_;
+  out.rail_box_hi = rail_box_hi_;
+  out.rail_bind_lo = rail_bind_lo_;
+  out.rail_bind_hi = rail_bind_hi_;
+  out.rail_task_vel_used = rail_task_vel_used_;
+  out.rail_h1 = rail_h1_;
+  out.rail_h2 = rail_h2_;
+  out.rail_qdot_prev = rail_qdot_prev_tel_;
+  out.rail_qdot_prev2 = rail_qdot_prev2_tel_;
+  out.qdot_prev_used = qdot_prev_tel_;
+  out.qdot_prev2_used = qdot_prev2_tel_;
+  out.qp1_status = qp1_status_;
+  out.qp2_status = qp2_status_;
+  out.qp1_iter = qp1_iter_;
+  out.qp2_iter = qp2_iter_;
+  out.n_cbf_active = n_cbf_active_;
+  out.qp1_solve_ms = qp1_ms_;
+  out.qp2_solve_ms = qp2_ms_;
+  out.assembly_ms = assembly_ms_;
+  out.fallback_ms = fallback_ms_;
+  out.kinematics_ms = kinematics_ms_;
+  out.collision_ms = collision_ms_;
+  out.qp_total_ms = qp_total_ms_;
+  out.rail_exec = rail_exec;
+  out.follow_err_rad = (q_cmd_.tail<7>() - q_state.tail<7>()).norm();
+  out.qdot_qp_vs_sent_max = (last_qdot_qp_ - qdot).cwiseAbs().maxCoeff();
+  out.dual_cancel = dual_cancel_frac(u_task_feasible_, u_post_feasible_);
+  out.secondary_alpha = secondary_alpha_;
+  out.manip_active = manip_active_ ? 1u : 0u;
+  {
+    double excess = 0.0;
+    uint32_t deg = 0, inf = 0;
+    bool subst = false;
+    measure_qdot_box(qdot, last_lo_box_, last_hi_box_, &excess, &deg, &inf, &subst);
+    out.box_excess_max = excess;
+    out.box_degenerate = deg;
+    out.box_infeasible = inf;
+    out.box_lo = last_lo_box_;
+    out.box_hi = last_hi_box_;
+    (void)subst;
+  }
+  out.hard_residual_max = out.box_excess_max;
+  out.equality_residual_max = residual.cwiseAbs().maxCoeff();
+  {
+    const Vec6 twist_rail = J.col(0) * rail_exec;
+    const Vec6 twist_arm = J.rightCols<7>() * qdot.tail<7>();
+    Eigen::Vector3d motion = twist_base.head<3>();
+    if ((in.flags & kInHasVelFf) && in.vel_ff.head<3>().norm() > 1e-6) {
+      motion = in.vel_ff.head<3>();
+    }
+    double n_dir = motion.norm();
+    if (n_dir <= 1e-9) {
+      motion = J.topLeftCorner<3, 1>();
+      n_dir = motion.norm();
+    }
+    out.rail_motion_share = std::numeric_limits<double>::quiet_NaN();
+    if (n_dir > 1e-9) {
+      const Eigen::Vector3d u = motion / n_dir;
+      const double rc = twist_rail.head<3>().dot(u);
+      const double ac = twist_arm.head<3>().dot(u);
+      const double den = std::abs(rc) + std::abs(ac);
+      if (den > 1e-9) out.rail_motion_share = std::abs(rc) / den;
+    }
+  }
+  if (out.joint_limited) out.flags |= kOutJointLimited;
+  if (out.rail_limited) out.flags |= kOutRailLimited;
+  if (out.wall_active) out.flags |= kOutWallActive;
+  if (out.secondary_suppressed) out.flags |= kOutSecSuppressed;
+  if (cartesian_.enabled && !cartesian_.valid(clock_now())) {
+    published_ok = false;
+    out.cartesian_valid = 0;
+  }
+  out.status = published_ok ? kStatusOk : kStatusFail;
+  const Vec8 cand_q = out.q_cmd;
+  const Vec8 cand_qd = out.qdot;
+  if (published_ok && !(in.flags & kInAutoCommit)) {
+    pending_ = capture_history();
+    pending_valid_ = true;
+    pending_seq_ = in.request_seq;
+    pending_epoch_ = in.cartesian.stop_epoch;
+    pending_cartesian_ = in.cartesian.enabled;
+    restore_history(committed_snap_);
+    out.q_cmd = cand_q;
+    out.qdot = cand_qd;
+  } else if (!published_ok) {
+    pending_valid_ = false;
+    if (cartesian_.enabled) restore_history(committed_snap_);
+  }
+  return out;
+}
+
+}  // namespace wbc_rt

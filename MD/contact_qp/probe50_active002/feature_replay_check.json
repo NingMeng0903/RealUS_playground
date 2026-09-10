@@ -1,0 +1,14 @@
+{
+  "baseline": {
+    "overlapping_unique_live_frames": 594,
+    "max_quality_absolute_difference": 0.0
+  },
+  "shadow": {
+    "overlapping_unique_live_frames": 591,
+    "max_quality_absolute_difference": 0.0
+  },
+  "active": {
+    "overlapping_unique_live_frames": 589,
+    "max_quality_absolute_difference": 0.0
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "scope": "Supplemental independent Python coordinator snapshot before removal from active source. Existing parent manifest remains unchanged. Full historical energy test file preserves two branch tests plus shared ledger test context. Not a native or hardware acceptance claim.",
+  "files": {
+    "peirastic/__init__.py": "0a98f2490857410f46d4750cea443e98d035bc19f1e2b6e3204bd614934da43c",
+    "peirastic/contact_qp/__init__.py": "7d2834ba59ec7671faca1e7f9fa62a7a228ed4c91fd1267fc4aa1f72530131e7",
+    "peirastic/contact_qp/execution.py": "531394546f066a554d2d0a37b0abb73d414116694a510a95e5643df6db75c301",
+    "peirastic/contact_qp/energy.py": "33d2031abc4dc1591b87da66dd940f67aa133567a5929f0fd3cf6f115a44ffbe",
+    "peirastic/contact_qp/geometry.py": "8c0311f6320401cb0e19e790252bf732a53ee3cfb4b89a6daa7e3a44800181f7",
+    "peirastic/contact_qp/types.py": "9b7ee4727050c9514c5a9e045611d6d0a0c7f4c42dd754fe3481a095ec7fbe9e",
+    "peirastic/tests/test_contact_qp_execution.py": "85fbd6dd26efe5d6b035c5c86c3daeeaae2988b0869f4742b1fc6ebe2a704df9",
+    "peirastic/tests/test_contact_qp_energy.py": "12677afa95b53821755c058c5bf86223f268f92cef508ae8e22f967641b27b25"
+  }
+}

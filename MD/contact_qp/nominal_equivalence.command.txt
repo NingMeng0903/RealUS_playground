@@ -1,0 +1,6 @@
+Working directory: /media/camp/EXT_DRIVE/RealUS_playground
+PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 PYTHONPATH="$PWD:$PWD/rm75_control:/media/camp/EXT_DRIVE/envs/rm75/lib/python3.10/site-packages/cmeel.prefix/lib/python3.10/site-packages" LD_LIBRARY_PATH=/media/camp/EXT_DRIVE/envs/rm75/lib/python3.10/site-packages/cmeel.prefix/lib /media/camp/EXT_DRIVE/envs/rm75/bin/python -m pytest -q -s peirastic/tests/test_contact_qp_nominal.py > MD/contact_qp/nominal_equivalence.log 2>&1
+
+Fixture follows /media/camp/EXT_DRIVE/ICRA_YM/script/scan_robot.py:316-325:
+force.yaml + force_profile('icra') + force_axes=SCAN_FORCE_AXES + control_frame='tool' + desired_z=4 + max_vz_tool_m_s=.010 + v_seek_free_m_s=.010.
+No hardware calls. The legacy force/torque update path and prepare/commit path receive the same 100,000 raw measurement samples, with contact, force/torque deadbands, reversal, detach/recontact and reset episodes.

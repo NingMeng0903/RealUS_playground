@@ -1,0 +1,505 @@
+{
+  "accepted": false,
+  "missing": [],
+  "duplicate_runs": false,
+  "failed_runs": [
+    {
+      "scenario": "both_edges",
+      "seed": 2,
+      "variant": "full",
+      "status": "aborted",
+      "reason": "mechanical_infeasible"
+    },
+    {
+      "scenario": "both_edges",
+      "seed": 2,
+      "variant": "no_aperture",
+      "status": "aborted",
+      "reason": "mechanical_infeasible"
+    },
+    {
+      "scenario": "both_edges",
+      "seed": 2,
+      "variant": "full_consistency",
+      "status": "aborted",
+      "reason": "mechanical_infeasible"
+    },
+    {
+      "scenario": "both_edges",
+      "seed": 2,
+      "variant": "matched_scan_speed",
+      "status": "aborted",
+      "reason": "progress_confirmation_rejected: final velocity reverses or exceeds admitted progress"
+    },
+    {
+      "scenario": "wrong_direction",
+      "seed": 0,
+      "variant": "full",
+      "status": "aborted",
+      "reason": "mechanical_infeasible"
+    },
+    {
+      "scenario": "wrong_direction",
+      "seed": 0,
+      "variant": "no_aperture",
+      "status": "aborted",
+      "reason": "mechanical_infeasible"
+    },
+    {
+      "scenario": "wrong_direction",
+      "seed": 0,
+      "variant": "full_consistency",
+      "status": "aborted",
+      "reason": "mechanical_infeasible"
+    },
+    {
+      "scenario": "wrong_direction",
+      "seed": 0,
+      "variant": "matched_scan_speed",
+      "status": "aborted",
+      "reason": "progress_confirmation_rejected: final velocity reverses or exceeds admitted progress"
+    },
+    {
+      "scenario": "curvature",
+      "seed": 2,
+      "variant": "no_aperture",
+      "status": "aborted",
+      "reason": "mechanical_infeasible"
+    },
+    {
+      "scenario": "curvature",
+      "seed": 8,
+      "variant": "full",
+      "status": "aborted",
+      "reason": "mechanical_infeasible"
+    },
+    {
+      "scenario": "curvature",
+      "seed": 8,
+      "variant": "no_aperture",
+      "status": "aborted",
+      "reason": "mechanical_infeasible"
+    },
+    {
+      "scenario": "curvature",
+      "seed": 8,
+      "variant": "full_consistency",
+      "status": "aborted",
+      "reason": "mechanical_infeasible"
+    },
+    {
+      "scenario": "curvature",
+      "seed": 8,
+      "variant": "matched_scan_speed",
+      "status": "aborted",
+      "reason": "progress_confirmation_rejected: final velocity reverses or exceeds admitted progress"
+    },
+    {
+      "scenario": "moving_surface",
+      "seed": 7,
+      "variant": "full",
+      "status": "aborted",
+      "reason": "mechanical_infeasible"
+    },
+    {
+      "scenario": "moving_surface",
+      "seed": 7,
+      "variant": "no_aperture",
+      "status": "aborted",
+      "reason": "mechanical_infeasible"
+    },
+    {
+      "scenario": "moving_surface",
+      "seed": 7,
+      "variant": "full_consistency",
+      "status": "aborted",
+      "reason": "mechanical_infeasible"
+    },
+    {
+      "scenario": "moving_surface",
+      "seed": 7,
+      "variant": "matched_scan_speed",
+      "status": "aborted",
+      "reason": "progress_confirmation_rejected: final velocity reverses or exceeds admitted progress"
+    },
+    {
+      "scenario": "hard_contact",
+      "seed": 2,
+      "variant": "full",
+      "status": "aborted",
+      "reason": "mechanical_infeasible"
+    },
+    {
+      "scenario": "hard_contact",
+      "seed": 2,
+      "variant": "full_consistency",
+      "status": "aborted",
+      "reason": "mechanical_infeasible"
+    },
+    {
+      "scenario": "hard_contact",
+      "seed": 2,
+      "variant": "matched_scan_speed",
+      "status": "aborted",
+      "reason": "progress_confirmation_rejected: final velocity left the admitted motion subspace"
+    },
+    {
+      "scenario": "hard_contact",
+      "seed": 4,
+      "variant": "full",
+      "status": "aborted",
+      "reason": "mechanical_infeasible"
+    },
+    {
+      "scenario": "hard_contact",
+      "seed": 4,
+      "variant": "matched_scan_speed",
+      "status": "aborted",
+      "reason": "progress_confirmation_rejected: final velocity left the admitted motion subspace"
+    },
+    {
+      "scenario": "hard_contact",
+      "seed": 3,
+      "variant": "full_consistency",
+      "status": "aborted",
+      "reason": "mechanical_infeasible"
+    },
+    {
+      "scenario": "hard_contact",
+      "seed": 5,
+      "variant": "full",
+      "status": "aborted",
+      "reason": "mechanical_infeasible"
+    },
+    {
+      "scenario": "hard_contact",
+      "seed": 5,
+      "variant": "full_consistency",
+      "status": "aborted",
+      "reason": "mechanical_infeasible"
+    },
+    {
+      "scenario": "hard_contact",
+      "seed": 5,
+      "variant": "matched_scan_speed",
+      "status": "aborted",
+      "reason": "progress_confirmation_rejected: final velocity left the admitted motion subspace"
+    },
+    {
+      "scenario": "hard_contact",
+      "seed": 6,
+      "variant": "full",
+      "status": "aborted",
+      "reason": "mechanical_infeasible"
+    },
+    {
+      "scenario": "hard_contact",
+      "seed": 6,
+      "variant": "no_aperture",
+      "status": "aborted",
+      "reason": "mechanical_infeasible"
+    },
+    {
+      "scenario": "hard_contact",
+      "seed": 6,
+      "variant": "full_consistency",
+      "status": "aborted",
+      "reason": "mechanical_infeasible"
+    },
+    {
+      "scenario": "hard_contact",
+      "seed": 6,
+      "variant": "matched_scan_speed",
+      "status": "aborted",
+      "reason": "progress_confirmation_rejected: final velocity left the admitted motion subspace"
+    },
+    {
+      "scenario": "hard_contact",
+      "seed": 8,
+      "variant": "full_consistency",
+      "status": "aborted",
+      "reason": "mechanical_infeasible"
+    }
+  ],
+  "force": {
+    "rmse": {
+      "pooled": {
+        "mean": -0.012769349229740237,
+        "lower95": -0.013548834960433749,
+        "upper95": -0.012033949444250874
+      },
+      "scenarios": {
+        "healthy": {
+          "mean": -0.020731227719662116,
+          "lower95": -0.02418325501314243,
+          "upper95": -0.01715810809041393
+        },
+        "left_gap": {
+          "mean": -0.0010387763663917248,
+          "lower95": -0.001264289335360447,
+          "upper95": -0.0008204738499641483
+        },
+        "right_gap": {
+          "mean": -0.0015514973533978349,
+          "lower95": -0.00228020527957871,
+          "upper95": -0.0008529026666115034
+        },
+        "both_edges": {
+          "mean": -0.00036681435947933104,
+          "lower95": -0.0006833919752114054,
+          "upper95": -0.00011148609253208708
+        },
+        "central_gap": {
+          "mean": -6.322219056846823e-05,
+          "lower95": -0.0003607472423672088,
+          "upper95": 0.00022080101538916598
+        },
+        "shadow": {
+          "mean": 0.0607725235660424,
+          "lower95": 0.060048798739359546,
+          "upper95": 0.06152163642648925
+        },
+        "wrong_direction": {
+          "mean": -0.0008194980424037518,
+          "lower95": -0.0013886356468269176,
+          "upper95": -0.0002970603725767227
+        },
+        "nonmonotonic": {
+          "mean": -0.0016629334654724658,
+          "lower95": -0.002207383766481061,
+          "upper95": -0.001208011415052341
+        },
+        "curvature": {
+          "mean": -0.0002829497375636203,
+          "lower95": -0.0007200285551857027,
+          "upper95": 0.00013265108472822147
+        },
+        "moving_surface": {
+          "mean": -0.000197678750711755,
+          "lower95": -0.0009494128886702818,
+          "upper95": 0.0004830527880749413
+        },
+        "delayed_execution": {
+          "mean": 0.00019216378454722793,
+          "lower95": -9.541525001822704e-05,
+          "upper95": 0.00044811471500399346
+        },
+        "hard_contact": {
+          "mean": -0.18748228012182142,
+          "lower95": -0.1958871858416264,
+          "upper95": -0.17946889470406072
+        }
+      },
+      "passed": false
+    },
+    "absolute_mean_bias": {
+      "pooled": {
+        "mean": 0.001853331878815713,
+        "lower95": 0.001027640142696505,
+        "upper95": 0.0026546250836187515
+      },
+      "scenarios": {
+        "healthy": {
+          "mean": -0.025068253420997798,
+          "lower95": -0.029903588600650677,
+          "upper95": -0.02014535710590534
+        },
+        "left_gap": {
+          "mean": 0.0009589398244906691,
+          "lower95": 0.0006748136328336451,
+          "upper95": 0.0012202197677154904
+        },
+        "right_gap": {
+          "mean": 0.0009225888772552533,
+          "lower95": 0.00027566327050388393,
+          "upper95": 0.0017071007510150605
+        },
+        "both_edges": {
+          "mean": -0.00035322002564280527,
+          "lower95": -0.0007626959287658147,
+          "upper95": 0.00011164164329813492
+        },
+        "central_gap": {
+          "mean": -0.0022035985530769924,
+          "lower95": -0.0029818290959138447,
+          "upper95": -0.0014243277230049003
+        },
+        "shadow": {
+          "mean": 0.05886819309293937,
+          "lower95": 0.05813237808878667,
+          "upper95": 0.05963379300710719
+        },
+        "wrong_direction": {
+          "mean": 0.002986240323903408,
+          "lower95": 0.002461093447363108,
+          "upper95": 0.0035430002207207886
+        },
+        "nonmonotonic": {
+          "mean": 0.0011707016684498483,
+          "lower95": 5.7608722634840165e-05,
+          "upper95": 0.0030392349812688327
+        },
+        "curvature": {
+          "mean": -0.001598512593782138,
+          "lower95": -0.002364650587538127,
+          "upper95": -0.0009679139017829325
+        },
+        "moving_surface": {
+          "mean": 0.0010885170678858985,
+          "lower95": -0.0010799511665562345,
+          "upper95": 0.00343152101991069
+        },
+        "delayed_execution": {
+          "mean": -0.000976724432741112,
+          "lower95": -0.0023014350213244337,
+          "upper95": 0.0005392343375508519
+        },
+        "hard_contact": {
+          "mean": -0.013554889282895045,
+          "lower95": -0.021384805254085253,
+          "upper95": -0.006053740363248812
+        }
+      },
+      "passed": false
+    },
+    "peak_absolute_error": {
+      "pooled": {
+        "mean": 0.0023087132940779022,
+        "lower95": 0.001209331241912133,
+        "upper95": 0.0034322972937988016
+      },
+      "scenarios": {
+        "healthy": {
+          "mean": -0.0004717747691478813,
+          "lower95": -0.0012683851674166237,
+          "upper95": -2.206232589874404e-05
+        },
+        "left_gap": {
+          "mean": 0.0009217903845548658,
+          "lower95": -0.0001868929671215547,
+          "upper95": 0.002308992301849419
+        },
+        "right_gap": {
+          "mean": 0.0036602577103614477,
+          "lower95": 9.186519687480745e-06,
+          "upper95": 0.008397890640988604
+        },
+        "both_edges": {
+          "mean": 0.0006576117361313027,
+          "lower95": 0.00017729600977637762,
+          "upper95": 0.0011895196870545454
+        },
+        "central_gap": {
+          "mean": -0.002209510075548948,
+          "lower95": -0.004278829635051676,
+          "upper95": -0.0002744922307483091
+        },
+        "shadow": {
+          "mean": 0.07450945211962878,
+          "lower95": 0.07318979263162653,
+          "upper95": 0.0758884703945963
+        },
+        "wrong_direction": {
+          "mean": 0.002040537773878226,
+          "lower95": 0.0009010918763594944,
+          "upper95": 0.0033267301655945354
+        },
+        "nonmonotonic": {
+          "mean": 0.004182611601374298,
+          "lower95": 0.00018582653944263506,
+          "upper95": 0.0102837252547668
+        },
+        "curvature": {
+          "mean": -0.0015273069261268369,
+          "lower95": -0.0026925978137110947,
+          "upper95": -0.00036771381423354624
+        },
+        "moving_surface": {
+          "mean": -0.0001292309576060191,
+          "lower95": -0.0010589164494172953,
+          "upper95": 0.0007095573920601738
+        },
+        "delayed_execution": {
+          "mean": 0.02794317691843995,
+          "lower95": 0.020050066082103416,
+          "upper95": 0.03557992531340181
+        },
+        "hard_contact": {
+          "mean": -0.08187305598700437,
+          "lower95": -0.08977728637987567,
+          "upper95": -0.07392223032212678
+        }
+      },
+      "passed": false
+    }
+  },
+  "quality": {
+    "baseline": {
+      "bad_path": {
+        "mean": -2.1079689598462944e-05,
+        "lower95": -3.765599344141633e-05,
+        "upper95": -6.2747224573975345e-06
+      },
+      "valid_rate": {
+        "mean": -0.00019345954100524355,
+        "lower95": -0.0002179757792775842,
+        "upper95": -0.0001693312847909908
+      },
+      "scenario_fraction_deltas": {
+        "left_gap": 0.000982559484450296,
+        "right_gap": -0.00026208376958466453,
+        "both_edges": 0.0,
+        "curvature": 0.0,
+        "moving_surface": 0.0,
+        "delayed_execution": 0.0013874932449806864
+      },
+      "passed": false
+    },
+    "matched_scan_speed": {
+      "bad_path": {
+        "mean": -4.945959207200308e-06,
+        "lower95": -1.4703540346978585e-05,
+        "upper95": 4.718040410297391e-06
+      },
+      "valid_rate": {
+        "mean": 1.5109104953959715e-06,
+        "lower95": -1.3922538525279758e-06,
+        "upper95": 4.439838909298599e-06
+      },
+      "scenario_fraction_deltas": {
+        "left_gap": 0.0008333401435034582,
+        "right_gap": -0.0006069881217866335,
+        "both_edges": 0.0,
+        "curvature": 0.0,
+        "moving_surface": 0.0,
+        "delayed_execution": 0.00026824389900323984
+      },
+      "passed": false
+    },
+    "matched_rocking": {
+      "bad_path": {
+        "mean": -0.00023607994799376743,
+        "lower95": -0.00027821606499993113,
+        "upper95": -0.00019687982358590966
+      },
+      "valid_rate": {
+        "mean": -0.00012750854149748138,
+        "lower95": -0.00015801700936305752,
+        "upper95": -9.69433081195543e-05
+      },
+      "scenario_fraction_deltas": {
+        "left_gap": 0.008482559484450092,
+        "right_gap": 0.005904582897081933,
+        "both_edges": 0.0,
+        "curvature": 0.0,
+        "moving_surface": 0.0,
+        "delayed_execution": 0.009220852417844738
+      },
+      "passed": false
+    }
+  },
+  "margin_n": 0.0,
+  "unit": "paired independent scenario/seed run",
+  "split": "design",
+  "effectiveness_claim_permitted": false
+}

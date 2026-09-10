@@ -1,0 +1,132 @@
+{
+  "config": "peirastic/config/contact_qp/welleweerd2020_features.json",
+  "window_version": "a3dd6a785d0fad60c1fc",
+  "selection": "same five fixed dark-occupancy quantiles from v2 check; no outcome-based reselection",
+  "calibration": "unverified experimental threshold 0.8; not contact ground truth",
+  "real_frames": [
+    {
+      "source": "/media/camp/EXT_DRIVE/ICRA_2027/icra 2027_contact/uncalibrated/chenwei/LH_Per_C_DtP.h5",
+      "frame": 74,
+      "quality": [
+        0.9801223155223514,
+        0.9815514338857438,
+        0.986134431081374
+      ],
+      "valid": [
+        true,
+        true,
+        true
+      ],
+      "regions": [],
+      "png": "MD/contact_qp/welleweerd_v4_check/real_0.png"
+    },
+    {
+      "source": "/media/camp/EXT_DRIVE/ICRA_2027/icra 2027_contact/uncalibrated/zhongkai/LH_Per_C_PtD.h5",
+      "frame": 107,
+      "quality": [
+        0.9783099594218562,
+        0.975377563454145,
+        0.9733919111793918
+      ],
+      "valid": [
+        true,
+        true,
+        true
+      ],
+      "regions": [],
+      "png": "MD/contact_qp/welleweerd_v4_check/real_1.png"
+    },
+    {
+      "source": "/media/camp/EXT_DRIVE/ICRA_2027/icra 2027_contact/uncalibrated/chenwei/LH_Per_L_PtD.h5",
+      "frame": 70,
+      "quality": [
+        0.9308457108964828,
+        0.9498145018556822,
+        0.9625230165968768
+      ],
+      "valid": [
+        true,
+        true,
+        true
+      ],
+      "regions": [],
+      "png": "MD/contact_qp/welleweerd_v4_check/real_2.png"
+    },
+    {
+      "source": "/media/camp/EXT_DRIVE/ICRA_2027/icra 2027_contact/uncalibrated/chenwei/LH_Per_S_DtP.h5",
+      "frame": 81,
+      "quality": [
+        0.7252314980629622,
+        0.8791357591275224,
+        0.8959538115218032
+      ],
+      "valid": [
+        true,
+        true,
+        true
+      ],
+      "regions": [
+        {
+          "label": "low_confidence",
+          "x_start": 0,
+          "x_stop": 31
+        }
+      ],
+      "png": "MD/contact_qp/welleweerd_v4_check/real_3.png"
+    },
+    {
+      "source": "/media/camp/EXT_DRIVE/ICRA_2027/icra 2027_contact/uncalibrated/chenwei/RH_Per_C_PtD.h5",
+      "frame": 95,
+      "quality": [
+        0.5459566365632009,
+        0.7329227090497206,
+        0.917920026328885
+      ],
+      "valid": [
+        true,
+        true,
+        true
+      ],
+      "regions": [
+        {
+          "label": "low_confidence",
+          "x_start": 0,
+          "x_stop": 79
+        }
+      ],
+      "png": "MD/contact_qp/welleweerd_v4_check/real_4.png"
+    }
+  ],
+  "synthetic_counterexamples": [
+    {
+      "name": "black",
+      "quality": [
+        0.8939393939392325,
+        0.8939393939392295,
+        0.8939393939392335
+      ],
+      "valid": [
+        false,
+        false,
+        false
+      ],
+      "unknown_fraction": 1.0,
+      "raw_top_min": 1.0
+    },
+    {
+      "name": "black_right",
+      "quality": [
+        0.9109047379700548,
+        0.9024240637331329,
+        0.893944350104528
+      ],
+      "valid": [
+        true,
+        false,
+        false
+      ],
+      "unknown_fraction": 0.503448275862069,
+      "raw_top_min": 1.0
+    }
+  ]
+}

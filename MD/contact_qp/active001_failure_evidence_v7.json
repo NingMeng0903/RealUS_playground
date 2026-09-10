@@ -1,0 +1,978 @@
+{
+  "session": "/media/camp/EXT_DRIVE/ICRA_2027/icra 2027_contact/real_characterization/active_probe50/001",
+  "scope": "read-only record inspection; publication is software send success, not physical completion",
+  "attempts": {
+    "001": {
+      "failure": {
+        "directory": "attempts/RH_Per_L_DtP/001",
+        "status": "failed",
+        "contact_qp": {
+          "mode": "active",
+          "config": {
+            "mode": "active",
+            "log_path": "/media/camp/EXT_DRIVE/ICRA_2027/icra 2027_contact/real_characterization/active_probe50/001/attempts/RH_Per_L_DtP/001/contact_qp.jsonl",
+            "feature_endpoint": "tcp://127.0.0.1:17361",
+            "geometry": {
+              "half_length_m": 0.025,
+              "T_tcp_face": [
+                [
+                  1,
+                  0,
+                  0,
+                  0
+                ],
+                [
+                  0,
+                  1,
+                  0,
+                  0
+                ],
+                [
+                  0,
+                  0,
+                  1,
+                  0
+                ],
+                [
+                  0,
+                  0,
+                  0,
+                  1
+                ]
+              ],
+              "image_x_sign": -1,
+              "face_normal_convention": "into_contact",
+              "calibration_version": "probe50_center_tcp_user_20260910_v1",
+              "verified": true
+            },
+            "feature": {
+              "config": {
+                "algorithm_version": "randomwalk_welleweerd2020_v3",
+                "width": 145,
+                "height": 100,
+                "attenuation": 2.0,
+                "contrast": 90.0,
+                "lateral_penalty": 0.03,
+                "min_weight": 1e-10,
+                "camp_weight_epsilon": 1e-05,
+                "near_depth": [
+                  0.0,
+                  0.22
+                ],
+                "lateral_windows": [
+                  [
+                    0.04,
+                    0.34
+                  ],
+                  [
+                    0.34,
+                    0.66
+                  ],
+                  [
+                    0.66,
+                    0.96
+                  ]
+                ],
+                "effective_delay_s": 0.15196365053143765,
+                "calibration_version": "probe50_center_tcp_user_20260910_v1",
+                "image_x_sign": -1,
+                "low_confidence_threshold": 0.8,
+                "unknown_scanline_range": 1.0
+              },
+              "window_version": "8b51133835031ba9ee2d",
+              "registration_version": "fbe3a5c9d4cb3065966a",
+              "quality_policy_version": "welleweerd_toproi_v3_initial_unverified",
+              "c_min": 0.8,
+              "verified": true
+            },
+            "source": {
+              "period_s": 0.005,
+              "timebase": "variable_step_bilinear_v1",
+              "max_interval_s": 0.015,
+              "max_age_s": 0.015,
+              "jitter_fraction": 0.5
+            },
+            "force_axis_monotonicity_confirmed": true,
+            "physical_w_checked": false,
+            "energy_constraint_enabled": false,
+            "energy": null
+          },
+          "log_path": "/media/camp/EXT_DRIVE/ICRA_2027/icra 2027_contact/real_characterization/active_probe50/001/attempts/RH_Per_L_DtP/001/contact_qp.jsonl",
+          "execution": "controller_requested"
+        },
+        "error": "Stale or missing force feedback.",
+        "stages": {
+          "prepare_begin": 1789021154264755103
+        }
+      }
+    },
+    "002": {
+      "failure": {
+        "directory": "attempts/RH_Per_L_DtP/002",
+        "status": "failed",
+        "contact_qp": {
+          "mode": "active",
+          "config": {
+            "mode": "active",
+            "log_path": "/media/camp/EXT_DRIVE/ICRA_2027/icra 2027_contact/real_characterization/active_probe50/001/attempts/RH_Per_L_DtP/002/contact_qp.jsonl",
+            "feature_endpoint": "tcp://127.0.0.1:17361",
+            "geometry": {
+              "half_length_m": 0.025,
+              "T_tcp_face": [
+                [
+                  1,
+                  0,
+                  0,
+                  0
+                ],
+                [
+                  0,
+                  1,
+                  0,
+                  0
+                ],
+                [
+                  0,
+                  0,
+                  1,
+                  0
+                ],
+                [
+                  0,
+                  0,
+                  0,
+                  1
+                ]
+              ],
+              "image_x_sign": -1,
+              "face_normal_convention": "into_contact",
+              "calibration_version": "probe50_center_tcp_user_20260910_v1",
+              "verified": true
+            },
+            "feature": {
+              "config": {
+                "algorithm_version": "randomwalk_welleweerd2020_v3",
+                "width": 145,
+                "height": 100,
+                "attenuation": 2.0,
+                "contrast": 90.0,
+                "lateral_penalty": 0.03,
+                "min_weight": 1e-10,
+                "camp_weight_epsilon": 1e-05,
+                "near_depth": [
+                  0.0,
+                  0.22
+                ],
+                "lateral_windows": [
+                  [
+                    0.04,
+                    0.34
+                  ],
+                  [
+                    0.34,
+                    0.66
+                  ],
+                  [
+                    0.66,
+                    0.96
+                  ]
+                ],
+                "effective_delay_s": 0.15196365053143765,
+                "calibration_version": "probe50_center_tcp_user_20260910_v1",
+                "image_x_sign": -1,
+                "low_confidence_threshold": 0.8,
+                "unknown_scanline_range": 1.0
+              },
+              "window_version": "8b51133835031ba9ee2d",
+              "registration_version": "fbe3a5c9d4cb3065966a",
+              "quality_policy_version": "welleweerd_toproi_v3_initial_unverified",
+              "c_min": 0.8,
+              "verified": true
+            },
+            "source": {
+              "period_s": 0.005,
+              "timebase": "variable_step_bilinear_v1",
+              "max_interval_s": 0.015,
+              "max_age_s": 0.015,
+              "jitter_fraction": 0.5
+            },
+            "force_axis_monotonicity_confirmed": true,
+            "physical_w_checked": false,
+            "energy_constraint_enabled": false,
+            "energy": null
+          },
+          "log_path": "/media/camp/EXT_DRIVE/ICRA_2027/icra 2027_contact/real_characterization/active_probe50/001/attempts/RH_Per_L_DtP/002/contact_qp.jsonl",
+          "execution": "controller_requested"
+        },
+        "error": "Task ended before scan started.",
+        "stages": {
+          "prepare_begin": 1789021166932680743,
+          "standoff_ready": 1789021177829220421,
+          "seek_begin": 1789021178180461459
+        }
+      },
+      "event_counts": {
+        "study_start": 1,
+        "source_filter_epoch_reset": 1,
+        "control_sample": 1,
+        "publication_review": 1,
+        "publication": 1,
+        "publication_aborted": 3,
+        "stop": 1,
+        "recording_close": 1
+      },
+      "last_control_sample": {
+        "schema": "contact_study_v1",
+        "session_id": "1a535f90b97a4fa98fd7a810cd6ccbb3",
+        "event": "control_sample",
+        "record_monotonic_s": 1115512.431779401,
+        "dropped_records": 0,
+        "control_id": 1,
+        "reference_s": 0.0,
+        "nominal_twist_tool": [
+          -0.0005068726984023776,
+          -0.00016429909675512276,
+          0.001,
+          0.0012531227640416838,
+          0.0,
+          1.0554423876853824e-05
+        ],
+        "candidate_twist_tool": [
+          -0.00012671817437261425,
+          -4.107477411488258e-05,
+          0.0010000016206964696,
+          0.00031328069044679396,
+          -2.4074526050274966e-21,
+          2.638605964466309e-06
+        ],
+        "alpha": 0.24999999955022206,
+        "h_ref_s": 0.0,
+        "command_hold_model_s": 0.005,
+        "control_actual_dt_s": 0.005,
+        "source": {
+          "source_id": "133508002235488:direct",
+          "source_t_s": 1115512.427714934,
+          "source_wall_time_ns": 1789021178389298546,
+          "fresh": true,
+          "source_dt_s": 0.005,
+          "age_s": 0.0007811388932168484
+        },
+        "feature": null,
+        "image_compatible": false,
+        "control_wrench_tool": [
+          0.5581716828724025,
+          0.4885622948407648,
+          -0.19106811485140496,
+          0.04374090247873082,
+          -0.05519968433450903,
+          0.02822678369875159
+        ],
+        "physical_wrench_candidate_tool": [
+          0.5581716828724025,
+          0.48856229484076485,
+          -0.19106811485140499,
+          0.04374090247873083,
+          -0.055199684334509024,
+          0.02822678369875159
+        ],
+        "measured_twist_base": null,
+        "measured_twist_metadata": {
+          "port_verified": false,
+          "reason": "rail_stale_or_future",
+          "arm_position_time_s": 1115512.427714934,
+          "rail_position_time_s": 1115512.2170032887
+        },
+        "measured_twist_valid": false,
+        "measurement_time_s": null,
+        "energy": null,
+        "physical_certified": false
+      },
+      "last_publication_review": {
+        "schema": "contact_study_v1",
+        "session_id": "1a535f90b97a4fa98fd7a810cd6ccbb3",
+        "event": "publication_review",
+        "record_monotonic_s": 1115512.435699628,
+        "dropped_records": 0,
+        "control_id": 1,
+        "final_command_model_tool": [
+          -3.7602545565678615e-05,
+          0.0004043944746891044,
+          0.0009718339528201435,
+          0.00031328065821817916,
+          5.751473320680379e-11,
+          2.6384964905617328e-06
+        ],
+        "task_hard_violation": 0.0004249822275596253,
+        "task_certificate": false,
+        "physical_certified": false,
+        "facts": {
+          "rail_target_m": 0.31417751124844834,
+          "rail_coast": false
+        }
+      },
+      "last_publication": {
+        "schema": "contact_study_v1",
+        "session_id": "1a535f90b97a4fa98fd7a810cd6ccbb3",
+        "event": "publication",
+        "record_monotonic_s": 1115512.436111492,
+        "dropped_records": 0,
+        "control_id": 1,
+        "success": true,
+        "accepted_alpha": 0.1861711565956445,
+        "reference_s": 0.0,
+        "final_command_model_tool": [
+          -3.7602545565678615e-05,
+          0.0004043944746891044,
+          0.0009718339528201435,
+          0.00031328065821817916,
+          5.751473320680379e-11,
+          2.6384964905617328e-06
+        ],
+        "task_certificate": false,
+        "physical_certified": false,
+        "facts": {
+          "arm": "sent",
+          "rail": "sent"
+        }
+      },
+      "last_publication_aborted": {
+        "schema": "contact_study_v1",
+        "session_id": "1a535f90b97a4fa98fd7a810cd6ccbb3",
+        "event": "publication_aborted",
+        "record_monotonic_s": 1115512.497047884,
+        "dropped_records": 0,
+        "control_id": 2,
+        "reason": "contact_qp_exception:RuntimeError:outer QP: task_infeasible: relative_baseline_rows_conflict_with_mechanical_admission",
+        "reference_s": 0.0,
+        "facts": {}
+      },
+      "last_stop": {
+        "schema": "contact_study_v1",
+        "session_id": "1a535f90b97a4fa98fd7a810cd6ccbb3",
+        "event": "stop",
+        "record_monotonic_s": 1115512.497055968,
+        "dropped_records": 0,
+        "reason": "contact_qp_exception:RuntimeError:outer QP: task_infeasible: relative_baseline_rows_conflict_with_mechanical_admission",
+        "reference_s": 0.0,
+        "physical_execution": "unconfirmed"
+      },
+      "log_sha256": "8ead99a20d79e684cffa8ca7d1213a566e8d3bfcbca5de4c67fef9a23f99d5c2",
+      "last_raw_samples": {
+        "force": {
+          "source_time_s": 1115512.427714934,
+          "timestamp_mono_ns": 1115512427714934
+        },
+        "tcp": {
+          "source_time_s": 1115512.494632582,
+          "timestamp_mono_ns": 1115512494632582
+        },
+        "ultrasound": {
+          "source_time_s": 1115512.487454349,
+          "timestamp_mono_ns": 1115512487454349
+        }
+      }
+    },
+    "003": {
+      "failure": {
+        "directory": "attempts/RH_Per_L_DtP/003",
+        "status": "failed",
+        "contact_qp": {
+          "mode": "active",
+          "config": {
+            "mode": "active",
+            "log_path": "/media/camp/EXT_DRIVE/ICRA_2027/icra 2027_contact/real_characterization/active_probe50/001/attempts/RH_Per_L_DtP/003/contact_qp.jsonl",
+            "feature_endpoint": "tcp://127.0.0.1:17361",
+            "geometry": {
+              "half_length_m": 0.025,
+              "T_tcp_face": [
+                [
+                  1,
+                  0,
+                  0,
+                  0
+                ],
+                [
+                  0,
+                  1,
+                  0,
+                  0
+                ],
+                [
+                  0,
+                  0,
+                  1,
+                  0
+                ],
+                [
+                  0,
+                  0,
+                  0,
+                  1
+                ]
+              ],
+              "image_x_sign": -1,
+              "face_normal_convention": "into_contact",
+              "calibration_version": "probe50_center_tcp_user_20260910_v1",
+              "verified": true
+            },
+            "feature": {
+              "config": {
+                "algorithm_version": "randomwalk_welleweerd2020_v3",
+                "width": 145,
+                "height": 100,
+                "attenuation": 2.0,
+                "contrast": 90.0,
+                "lateral_penalty": 0.03,
+                "min_weight": 1e-10,
+                "camp_weight_epsilon": 1e-05,
+                "near_depth": [
+                  0.0,
+                  0.22
+                ],
+                "lateral_windows": [
+                  [
+                    0.04,
+                    0.34
+                  ],
+                  [
+                    0.34,
+                    0.66
+                  ],
+                  [
+                    0.66,
+                    0.96
+                  ]
+                ],
+                "effective_delay_s": 0.15196365053143765,
+                "calibration_version": "probe50_center_tcp_user_20260910_v1",
+                "image_x_sign": -1,
+                "low_confidence_threshold": 0.8,
+                "unknown_scanline_range": 1.0
+              },
+              "window_version": "8b51133835031ba9ee2d",
+              "registration_version": "fbe3a5c9d4cb3065966a",
+              "quality_policy_version": "welleweerd_toproi_v3_initial_unverified",
+              "c_min": 0.8,
+              "verified": true
+            },
+            "source": {
+              "period_s": 0.005,
+              "timebase": "variable_step_bilinear_v1",
+              "max_interval_s": 0.015,
+              "max_age_s": 0.015,
+              "jitter_fraction": 0.5
+            },
+            "force_axis_monotonicity_confirmed": true,
+            "physical_w_checked": false,
+            "energy_constraint_enabled": false,
+            "energy": null
+          },
+          "log_path": "/media/camp/EXT_DRIVE/ICRA_2027/icra 2027_contact/real_characterization/active_probe50/001/attempts/RH_Per_L_DtP/003/contact_qp.jsonl",
+          "execution": "controller_requested"
+        },
+        "error": "Stale or missing force feedback.",
+        "stages": {
+          "prepare_begin": 1789021185720112007,
+          "standoff_ready": 1789021191701699265,
+          "seek_begin": 1789021192054242509,
+          "tracking_observed": 1789021196385814544
+        }
+      },
+      "event_counts": {
+        "study_start": 1,
+        "source_filter_epoch_reset": 1,
+        "control_sample": 947,
+        "publication_review": 946,
+        "publication": 946,
+        "publication_aborted": 2,
+        "stop": 1,
+        "recording_close": 1
+      },
+      "last_control_sample": {
+        "schema": "contact_study_v1",
+        "session_id": "d287110819794edea2043e2c657fc968",
+        "event": "control_sample",
+        "record_monotonic_s": 1115531.145083652,
+        "dropped_records": 0,
+        "control_id": 947,
+        "reference_s": 0.6208107975155785,
+        "nominal_twist_tool": [
+          0.00036399409362472437,
+          0.004318655171672072,
+          2.0565069785469887e-05,
+          0.00036730995920275343,
+          0.0,
+          -0.00017285594382031744
+        ],
+        "candidate_twist_tool": [
+          0.00036399409362472437,
+          0.004318655171672072,
+          2.0565069785469887e-05,
+          0.00036730995920275343,
+          0.0,
+          -0.00017285594382031744
+        ],
+        "alpha": 1.0,
+        "h_ref_s": 0.0046753049828112125,
+        "command_hold_model_s": 0.0046753049828112125,
+        "control_actual_dt_s": 0.0046753049828112125,
+        "source": {
+          "source_id": "133508002235488:direct",
+          "source_t_s": 1115531.142182585,
+          "source_wall_time_ns": 1789021197103766147,
+          "fresh": true,
+          "source_dt_s": 0.004654743010178208,
+          "age_s": 0.0005956278182566166
+        },
+        "feature": {
+          "schema_version": 1,
+          "frame_seq": 1974217,
+          "source_id": "realus.us_framegrab:ce0fc1dd46634e21a114e0f683e1607b",
+          "effective_time_s": 1115530.8903132516,
+          "received_time_s": 1115531.073630811,
+          "quality": [
+            0.9982794053473284,
+            0.9980261623517427,
+            0.998626030697252
+          ],
+          "valid": [
+            true,
+            true,
+            true
+          ],
+          "registration_version": "fbe3a5c9d4cb3065966a",
+          "window_version": "8b51133835031ba9ee2d",
+          "calibration_version": "probe50_center_tcp_user_20260910_v1"
+        },
+        "image_compatible": true,
+        "control_wrench_tool": [
+          0.15981597853090435,
+          1.2925024999418129,
+          4.117137974610026,
+          0.06636705640224544,
+          0.009345250278564091,
+          0.011329695595875038
+        ],
+        "physical_wrench_candidate_tool": [
+          0.12616026255119794,
+          1.2737763690271466,
+          4.1182296958665585,
+          0.0648501476934033,
+          0.012179387285958953,
+          0.009296062434350959
+        ],
+        "measured_twist_base": null,
+        "measured_twist_metadata": {
+          "port_verified": false,
+          "reason": "measurement_time_skew",
+          "arm_position_time_s": 1115531.142182585,
+          "rail_position_time_s": 1115531.1134648116,
+          "arm_velocity_interval_s": [
+            1115531.142182585,
+            1115531.142182585
+          ],
+          "rail_velocity_interval_s": [
+            1115531.0972725025,
+            1115531.1134648116
+          ],
+          "arm_velocity_source": "sdk_joint_speed",
+          "rail_velocity_source": "raw_encoder_difference",
+          "arm_sequence": 20008,
+          "rail_sequence": 5486,
+          "time_skew_s": 0.03681392804719508,
+          "pose_time_skew_s": 0.028717773500829935,
+          "max_time_skew_s": 0.02
+        },
+        "measured_twist_valid": false,
+        "measurement_time_s": null,
+        "energy": null,
+        "physical_certified": false
+      },
+      "last_publication_review": {
+        "schema": "contact_study_v1",
+        "session_id": "d287110819794edea2043e2c657fc968",
+        "event": "publication_review",
+        "record_monotonic_s": 1115531.142133217,
+        "dropped_records": 0,
+        "control_id": 946,
+        "final_command_model_tool": [
+          0.00024307840023533384,
+          0.0042863865580117354,
+          6.024754082563361e-05,
+          0.00028341095711009045,
+          -1.1436246436083891e-09,
+          -0.00010396265835385543
+        ],
+        "task_hard_violation": 0.01364196204111523,
+        "task_certificate": false,
+        "physical_certified": false,
+        "facts": {
+          "rail_target_m": 0.31392898347698434,
+          "rail_coast": false
+        }
+      },
+      "last_publication": {
+        "schema": "contact_study_v1",
+        "session_id": "d287110819794edea2043e2c657fc968",
+        "event": "publication",
+        "record_monotonic_s": 1115531.142378284,
+        "dropped_records": 0,
+        "control_id": 946,
+        "success": true,
+        "accepted_alpha": 1.0,
+        "reference_s": 0.6208107975155785,
+        "final_command_model_tool": [
+          0.00024307840023533384,
+          0.0042863865580117354,
+          6.024754082563361e-05,
+          0.00028341095711009045,
+          -1.1436246436083891e-09,
+          -0.00010396265835385543
+        ],
+        "task_certificate": false,
+        "physical_certified": false,
+        "facts": {
+          "arm": "sent",
+          "rail": "sent"
+        }
+      },
+      "last_publication_aborted": {
+        "schema": "contact_study_v1",
+        "session_id": "d287110819794edea2043e2c657fc968",
+        "event": "publication_aborted",
+        "record_monotonic_s": 1115531.246359955,
+        "dropped_records": 0,
+        "control_id": 947,
+        "reason": "contact_qp_final_review_rejected",
+        "reference_s": 0.6208107975155785,
+        "facts": {}
+      },
+      "last_stop": {
+        "schema": "contact_study_v1",
+        "session_id": "d287110819794edea2043e2c657fc968",
+        "event": "stop",
+        "record_monotonic_s": 1115531.246387122,
+        "dropped_records": 0,
+        "reason": "contact_qp_final_review_rejected",
+        "reference_s": 0.6208107975155785,
+        "physical_execution": "unconfirmed"
+      },
+      "log_sha256": "e6669593edabf59c62b26c7ddab22274b4375f80d0c5c59773b8aa456264001f",
+      "last_raw_samples": {
+        "force": {
+          "source_time_s": 1115531.137527842,
+          "timestamp_mono_ns": 1115531137527842
+        },
+        "tcp": {
+          "source_time_s": 1115531.236930148,
+          "timestamp_mono_ns": 1115531236930148
+        },
+        "ultrasound": {
+          "source_time_s": 1115531.204604924,
+          "timestamp_mono_ns": 1115531204604924
+        }
+      }
+    },
+    "004": {
+      "failure": {
+        "directory": "attempts/RH_Per_L_DtP/004",
+        "status": "failed",
+        "contact_qp": {
+          "mode": "active",
+          "config": {
+            "mode": "active",
+            "log_path": "/media/camp/EXT_DRIVE/ICRA_2027/icra 2027_contact/real_characterization/active_probe50/001/attempts/RH_Per_L_DtP/004/contact_qp.jsonl",
+            "feature_endpoint": "tcp://127.0.0.1:17361",
+            "geometry": {
+              "half_length_m": 0.025,
+              "T_tcp_face": [
+                [
+                  1,
+                  0,
+                  0,
+                  0
+                ],
+                [
+                  0,
+                  1,
+                  0,
+                  0
+                ],
+                [
+                  0,
+                  0,
+                  1,
+                  0
+                ],
+                [
+                  0,
+                  0,
+                  0,
+                  1
+                ]
+              ],
+              "image_x_sign": -1,
+              "face_normal_convention": "into_contact",
+              "calibration_version": "probe50_center_tcp_user_20260910_v1",
+              "verified": true
+            },
+            "feature": {
+              "config": {
+                "algorithm_version": "randomwalk_welleweerd2020_v3",
+                "width": 145,
+                "height": 100,
+                "attenuation": 2.0,
+                "contrast": 90.0,
+                "lateral_penalty": 0.03,
+                "min_weight": 1e-10,
+                "camp_weight_epsilon": 1e-05,
+                "near_depth": [
+                  0.0,
+                  0.22
+                ],
+                "lateral_windows": [
+                  [
+                    0.04,
+                    0.34
+                  ],
+                  [
+                    0.34,
+                    0.66
+                  ],
+                  [
+                    0.66,
+                    0.96
+                  ]
+                ],
+                "effective_delay_s": 0.15196365053143765,
+                "calibration_version": "probe50_center_tcp_user_20260910_v1",
+                "image_x_sign": -1,
+                "low_confidence_threshold": 0.8,
+                "unknown_scanline_range": 1.0
+              },
+              "window_version": "8b51133835031ba9ee2d",
+              "registration_version": "fbe3a5c9d4cb3065966a",
+              "quality_policy_version": "welleweerd_toproi_v3_initial_unverified",
+              "c_min": 0.8,
+              "verified": true
+            },
+            "source": {
+              "period_s": 0.005,
+              "timebase": "variable_step_bilinear_v1",
+              "max_interval_s": 0.015,
+              "max_age_s": 0.015,
+              "jitter_fraction": 0.5
+            },
+            "force_axis_monotonicity_confirmed": true,
+            "physical_w_checked": false,
+            "energy_constraint_enabled": false,
+            "energy": null
+          },
+          "log_path": "/media/camp/EXT_DRIVE/ICRA_2027/icra 2027_contact/real_characterization/active_probe50/001/attempts/RH_Per_L_DtP/004/contact_qp.jsonl",
+          "execution": "controller_requested"
+        },
+        "error": "Stale or missing force feedback.",
+        "stages": {
+          "prepare_begin": 1789021203863106576,
+          "standoff_ready": 1789021209675782407,
+          "seek_begin": 1789021210028822242,
+          "tracking_observed": 1789021215270187412
+        }
+      },
+      "event_counts": {
+        "study_start": 1,
+        "source_filter_epoch_reset": 1,
+        "control_sample": 3357,
+        "publication_review": 3357,
+        "publication": 3357,
+        "publication_aborted": 3,
+        "stop": 1,
+        "recording_close": 1
+      },
+      "last_control_sample": {
+        "schema": "contact_study_v1",
+        "session_id": "2fd23837493441f18f4fc441a1bd6e34",
+        "event": "control_sample",
+        "record_monotonic_s": 1115561.482761633,
+        "dropped_records": 0,
+        "control_id": 3357,
+        "reference_s": 11.407006904597145,
+        "nominal_twist_tool": [
+          0.0008574774171818153,
+          0.004604096967433394,
+          -0.001106080811972955,
+          -0.0010776662902027819,
+          0.009030374238297358,
+          -0.00025448135422153045
+        ],
+        "candidate_twist_tool": [
+          0.0008574774171818153,
+          0.004604096967433394,
+          -0.001106080811972955,
+          -0.0010776662902027819,
+          0.009030374238297358,
+          -0.00025448135422153045
+        ],
+        "alpha": 1.0,
+        "h_ref_s": 0.005,
+        "command_hold_model_s": 0.005,
+        "control_actual_dt_s": 0.005467388080433011,
+        "source": {
+          "source_id": "133508002235488:direct",
+          "source_t_s": 1115561.479474658,
+          "source_wall_time_ns": 1789021227441057972,
+          "fresh": true,
+          "source_dt_s": 0.010705551831051707,
+          "age_s": 0.0006787132006138563
+        },
+        "feature": {
+          "schema_version": 1,
+          "frame_seq": 1975128,
+          "source_id": "realus.us_framegrab:ce0fc1dd46634e21a114e0f683e1607b",
+          "effective_time_s": 1115561.2377706035,
+          "received_time_s": 1115561.392262793,
+          "quality": [
+            0.9952745317384626,
+            0.9949611172491473,
+            0.9965562129959018
+          ],
+          "valid": [
+            true,
+            true,
+            true
+          ],
+          "registration_version": "fbe3a5c9d4cb3065966a",
+          "window_version": "8b51133835031ba9ee2d",
+          "calibration_version": "probe50_center_tcp_user_20260910_v1"
+        },
+        "image_compatible": true,
+        "control_wrench_tool": [
+          0.30157179129706724,
+          3.6029137614057882,
+          4.083202562713737,
+          0.11813751223259536,
+          -0.008901510307068553,
+          0.030532200515382968
+        ],
+        "physical_wrench_candidate_tool": [
+          0.5200187670682872,
+          3.747996695601025,
+          4.008560286143371,
+          0.1299674009398577,
+          -0.029111995707558368,
+          0.051127666009008164
+        ],
+        "measured_twist_base": null,
+        "measured_twist_metadata": {
+          "port_verified": false,
+          "reason": "measurement_time_skew",
+          "arm_position_time_s": 1115561.479474658,
+          "rail_position_time_s": 1115561.4632156026,
+          "arm_velocity_interval_s": [
+            1115561.479474658,
+            1115561.479474658
+          ],
+          "rail_velocity_interval_s": [
+            1115561.442439707,
+            1115561.4632156026
+          ],
+          "arm_velocity_source": "sdk_joint_speed",
+          "rail_velocity_source": "raw_encoder_difference",
+          "arm_sequence": 26059,
+          "rail_sequence": 7049,
+          "time_skew_s": 0.026647003134712577,
+          "pose_time_skew_s": 0.01625905535183847,
+          "max_time_skew_s": 0.02
+        },
+        "measured_twist_valid": false,
+        "measurement_time_s": null,
+        "energy": null,
+        "physical_certified": false
+      },
+      "last_publication_review": {
+        "schema": "contact_study_v1",
+        "session_id": "2fd23837493441f18f4fc441a1bd6e34",
+        "event": "publication_review",
+        "record_monotonic_s": 1115561.48465018,
+        "dropped_records": 0,
+        "control_id": 3357,
+        "final_command_model_tool": [
+          0.0018870292478143209,
+          0.009673986235770118,
+          -0.0013931276165965688,
+          -0.001077669286099677,
+          0.009030372701525175,
+          -0.00025448861491262514
+        ],
+        "task_hard_violation": 1.0460286645180061,
+        "task_certificate": false,
+        "physical_certified": false,
+        "facts": {
+          "rail_target_m": 0.3682478441852357,
+          "rail_coast": false
+        }
+      },
+      "last_publication": {
+        "schema": "contact_study_v1",
+        "session_id": "2fd23837493441f18f4fc441a1bd6e34",
+        "event": "publication",
+        "record_monotonic_s": 1115561.484937798,
+        "dropped_records": 0,
+        "control_id": 3357,
+        "success": true,
+        "accepted_alpha": 1.0,
+        "reference_s": 11.412006904597146,
+        "final_command_model_tool": [
+          0.0018870292478143209,
+          0.009673986235770118,
+          -0.0013931276165965688,
+          -0.001077669286099677,
+          0.009030372701525175,
+          -0.00025448861491262514
+        ],
+        "task_certificate": false,
+        "physical_certified": false,
+        "facts": {
+          "arm": "sent",
+          "rail": "sent"
+        }
+      },
+      "last_publication_aborted": {
+        "schema": "contact_study_v1",
+        "session_id": "2fd23837493441f18f4fc441a1bd6e34",
+        "event": "publication_aborted",
+        "record_monotonic_s": 1115561.607715142,
+        "dropped_records": 0,
+        "control_id": 3358,
+        "reason": "contact_qp_exception:RuntimeError:outer QP: task_infeasible: motion_subspace_conflict",
+        "reference_s": 11.412006904597146,
+        "facts": {}
+      },
+      "last_stop": {
+        "schema": "contact_study_v1",
+        "session_id": "2fd23837493441f18f4fc441a1bd6e34",
+        "event": "stop",
+        "record_monotonic_s": 1115561.607722954,
+        "dropped_records": 0,
+        "reason": "contact_qp_exception:RuntimeError:outer QP: task_infeasible: motion_subspace_conflict",
+        "reference_s": 11.412006904597146,
+        "physical_execution": "unconfirmed"
+      },
+      "log_sha256": "dd489b20d4eafc8e9bb862bafbb29e3171a91eaa235b90e17eaf938772ab60c9",
+      "last_raw_samples": {
+        "force": {
+          "source_time_s": 1115561.479474658,
+          "timestamp_mono_ns": 1115561479474658
+        },
+        "tcp": {
+          "source_time_s": 1115561.584198335,
+          "timestamp_mono_ns": 1115561584198335
+        },
+        "ultrasound": {
+          "source_time_s": 1115561.557717047,
+          "timestamp_mono_ns": 1115561557717047
+        }
+      }
+    }
+  }
+}

@@ -363,6 +363,8 @@ def compile_request(
         )
     if req.mode == Mode.TRACK_HYBRID:
         kind = str(payload.get("reference", "hold"))
+        if (payload.get("law")=="contact_qp" or payload.get("contact_qp") is not None) and kind!="icra_path":
+            raise ValueError("contact_qp study requires reference=icra_path")
         if kind in ("pad", "twist", "servo"):
             return _finish_phase(
                 ctx,
@@ -533,6 +535,16 @@ class ProxyOuter:
         feedback_age_s=None,
         feedback_fresh_tick=None,
         feedback_velocity_valid=None,
+        slack_norm=None,
+        measured_twist_base=None,
+        measured_twist_valid=None,
+        measured_twist_fresh=None,
+        measured_twist_metadata=None,
+        measurement_time_s=None,
+        measurement_id=None,
+        wrench_source_time_s=None,
+        wrench_source_wall_time_ns=None,
+        wrench_source_id=None,
         **kwargs,
     ):
         import inspect
@@ -548,6 +560,16 @@ class ProxyOuter:
             "feedback_age_s": feedback_age_s,
             "feedback_fresh_tick": feedback_fresh_tick,
             "feedback_velocity_valid": feedback_velocity_valid,
+            "slack_norm": slack_norm,
+            "measured_twist_base": measured_twist_base,
+            "measured_twist_valid": measured_twist_valid,
+            "measured_twist_fresh": measured_twist_fresh,
+            "measured_twist_metadata": measured_twist_metadata,
+            "measurement_time_s": measurement_time_s,
+            "measurement_id": measurement_id,
+            "wrench_source_time_s": wrench_source_time_s,
+            "wrench_source_wall_time_ns": wrench_source_wall_time_ns,
+            "wrench_source_id": wrench_source_id,
         }
         extra.update(kwargs)
         kw = {

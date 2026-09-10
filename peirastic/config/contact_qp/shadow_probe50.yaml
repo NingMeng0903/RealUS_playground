@@ -1,0 +1,67 @@
+# Measured image registration from baseline session 002. Shadow suggestions only.
+# Existing image worker uses identical feature.config; do not restart it unnecessarily.
+# Source clock bounds remain undeclared; this is not an active configuration.
+mode: shadow
+log_path: null
+feature_endpoint: tcp://127.0.0.1:17361
+geometry:
+  half_length_m: 0.025
+  T_tcp_face:
+  - - 1
+    - 0
+    - 0
+    - 0
+  - - 0
+    - 1
+    - 0
+    - 0
+  - - 0
+    - 0
+    - 1
+    - 0
+  - - 0
+    - 0
+    - 0
+    - 1
+  image_x_sign: -1
+  face_normal_convention: into_contact
+  calibration_version: probe50_center_tcp_user_20260910_v1
+  verified: true
+feature:
+  config:
+    algorithm_version: randomwalk_welleweerd2020_v3
+    width: 145
+    height: 100
+    attenuation: 2.0
+    contrast: 90.0
+    lateral_penalty: 0.03
+    min_weight: 1.0e-10
+    camp_weight_epsilon: 1.0e-05
+    near_depth:
+    - 0.0
+    - 0.22
+    lateral_windows:
+    - - 0.04
+      - 0.34
+    - - 0.34
+      - 0.66
+    - - 0.66
+      - 0.96
+    effective_delay_s: 0.15196365053143765
+    calibration_version: probe50_center_tcp_user_20260910_v1
+    image_x_sign: -1
+    low_confidence_threshold: 0.8
+    unknown_scanline_range: 1.0
+  window_version: 8b51133835031ba9ee2d
+  registration_version: fbe3a5c9d4cb3065966a
+  quality_policy_version: welleweerd_toproi_v3_initial_unverified
+  c_min: 0.8
+  verified: true
+source:
+  period_s: null
+  jitter_fraction: null
+  max_age_s: null
+force_axis_monotonicity_confirmed: false
+physical_w_checked: false
+energy_constraint_enabled: false
+energy: null

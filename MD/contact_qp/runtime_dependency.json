@@ -1,0 +1,9 @@
+{
+  "python": "/media/camp/EXT_DRIVE/envs/rm75/bin/python",
+  "package": "pyzmq",
+  "version": "27.1.0",
+  "zmq_version": "4.3.5",
+  "installation": "pip install --no-deps --only-binary=:all: pyzmq==27.1.0",
+  "verification": "inproc PAIR round trip passed; no hardware/network endpoint connected",
+  "other_dependencies_changed": false
+}

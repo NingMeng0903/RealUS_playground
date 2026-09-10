@@ -1,0 +1,298 @@
+{
+  "seeds": [
+    701,
+    702
+  ],
+  "scenarios": [
+    "healthy",
+    "left_gap",
+    "right_gap",
+    "shadow",
+    "delayed_execution"
+  ],
+  "policies": [
+    "legacy_v7",
+    "differential_repair_v8"
+  ],
+  "configs": {
+    "legacy_v7": [
+      {
+        "schema_version": 1,
+        "dt_s": 0.005,
+        "half_length_m": 0.025,
+        "elements": 81,
+        "stiffness_n_m": 800.0,
+        "damping_n_s_m": 8.0,
+        "friction": 0.18,
+        "rocking_friction_nm": 0.004,
+        "actuator_tau_s": 0.012,
+        "actuator_delay_s": 0.025,
+        "path_length_m": 0.06,
+        "scan_speed_m_s": 0.005,
+        "warmup_s": 1.5,
+        "image_period_s": 0.04,
+        "image_delay_s": 0.152,
+        "feature_processing_delay_s": 0.006,
+        "image_width": 145,
+        "image_height": 100,
+        "coupling_depth_m": 0.00012,
+        "force_noise_n": 0.015,
+        "torque_noise_nm": 0.00015
+      },
+      {
+        "algorithm_version": "randomwalk_welleweerd2020_v3",
+        "width": 145,
+        "height": 100,
+        "attenuation": 2.0,
+        "contrast": 90.0,
+        "lateral_penalty": 0.03,
+        "min_weight": 1e-10,
+        "camp_weight_epsilon": 1e-05,
+        "near_depth": [
+          0.04,
+          0.22
+        ],
+        "lateral_windows": [
+          [
+            0.04,
+            0.34
+          ],
+          [
+            0.34,
+            0.66
+          ],
+          [
+            0.66,
+            0.96
+          ]
+        ],
+        "effective_delay_s": 0.152,
+        "calibration_version": "synthetic_v1",
+        "image_x_sign": 1,
+        "low_confidence_threshold": 0.8,
+        "unknown_scanline_range": 1.0
+      },
+      {
+        "schema_version": 1,
+        "allocation_policy": "legacy_v7",
+        "differential_repair": {
+          "differential_weight": 10.0,
+          "residual_progress_gain": 0.75,
+          "loading_weight": 10.0,
+          "nominal_force_n": 4.0,
+          "soft_force_n": 4.5,
+          "hard_stop_n": 6.0
+        },
+        "force_target_n": 4.0,
+        "force_sign_band_n": 0.1,
+        "aperture_budget_m_s": 0.00075,
+        "c_min": 0.8,
+        "quality_policy_version": "synthetic_v3_cmin08_v8_comparison_unverified",
+        "repair_speed_m_s": 0.002,
+        "keep_speed_m_s": 0.004,
+        "max_image_age_s": 0.3,
+        "max_step_s": 0.01,
+        "certificate_horizon_s": 0.01,
+        "normal_scale_m_s": 0.002,
+        "angular_scale_rad_s": 0.1,
+        "slack_scale_m_s": 0.002,
+        "normal_weight": 1.0,
+        "angular_weight": 1.0,
+        "progress_weight": 1.0,
+        "slack_weight": 10.0,
+        "aperture_cost_weight": 1.0,
+        "max_velocity": [
+          0.04,
+          0.04,
+          0.01,
+          0.6,
+          0.28,
+          0.6
+        ],
+        "max_acceleration": [
+          1.0,
+          1.0,
+          0.8,
+          2.0,
+          3.0,
+          2.0
+        ],
+        "angle_limit_rad": 0.35,
+        "lateral_windows": [
+          [
+            0.04,
+            0.34
+          ],
+          [
+            0.34,
+            0.66
+          ],
+          [
+            0.66,
+            0.96
+          ]
+        ],
+        "enable_visual": true,
+        "enable_aperture": true,
+        "enable_force_priority": true,
+        "enable_consistency": false,
+        "enable_progress_loss": true,
+        "compute_interval_diagnostics": false,
+        "subspace_tolerance": [
+          1e-05,
+          1e-05,
+          1e-05,
+          0.0001,
+          0.0001,
+          0.0001
+        ],
+        "solver_tolerance": 1e-09,
+        "feasibility_tolerance": 1e-08,
+        "max_iterations": 200,
+        "inner_iterations": 100,
+        "solver_preconditioning": false
+      }
+    ],
+    "differential_repair_v8": [
+      {
+        "schema_version": 1,
+        "dt_s": 0.005,
+        "half_length_m": 0.025,
+        "elements": 81,
+        "stiffness_n_m": 800.0,
+        "damping_n_s_m": 8.0,
+        "friction": 0.18,
+        "rocking_friction_nm": 0.004,
+        "actuator_tau_s": 0.012,
+        "actuator_delay_s": 0.025,
+        "path_length_m": 0.06,
+        "scan_speed_m_s": 0.005,
+        "warmup_s": 1.5,
+        "image_period_s": 0.04,
+        "image_delay_s": 0.152,
+        "feature_processing_delay_s": 0.006,
+        "image_width": 145,
+        "image_height": 100,
+        "coupling_depth_m": 0.00012,
+        "force_noise_n": 0.015,
+        "torque_noise_nm": 0.00015
+      },
+      {
+        "algorithm_version": "randomwalk_welleweerd2020_v3",
+        "width": 145,
+        "height": 100,
+        "attenuation": 2.0,
+        "contrast": 90.0,
+        "lateral_penalty": 0.03,
+        "min_weight": 1e-10,
+        "camp_weight_epsilon": 1e-05,
+        "near_depth": [
+          0.04,
+          0.22
+        ],
+        "lateral_windows": [
+          [
+            0.04,
+            0.34
+          ],
+          [
+            0.34,
+            0.66
+          ],
+          [
+            0.66,
+            0.96
+          ]
+        ],
+        "effective_delay_s": 0.152,
+        "calibration_version": "synthetic_v1",
+        "image_x_sign": 1,
+        "low_confidence_threshold": 0.8,
+        "unknown_scanline_range": 1.0
+      },
+      {
+        "schema_version": 1,
+        "allocation_policy": "differential_repair_v8",
+        "differential_repair": {
+          "differential_weight": 10.0,
+          "residual_progress_gain": 0.75,
+          "loading_weight": 10.0,
+          "nominal_force_n": 4.0,
+          "soft_force_n": 4.5,
+          "hard_stop_n": 6.0
+        },
+        "force_target_n": 4.0,
+        "force_sign_band_n": 0.1,
+        "aperture_budget_m_s": 0.00075,
+        "c_min": 0.8,
+        "quality_policy_version": "synthetic_v3_cmin08_v8_comparison_unverified",
+        "repair_speed_m_s": 0.002,
+        "keep_speed_m_s": 0.004,
+        "max_image_age_s": 0.3,
+        "max_step_s": 0.01,
+        "certificate_horizon_s": 0.01,
+        "normal_scale_m_s": 0.002,
+        "angular_scale_rad_s": 0.1,
+        "slack_scale_m_s": 0.002,
+        "normal_weight": 1.0,
+        "angular_weight": 1.0,
+        "progress_weight": 1.0,
+        "slack_weight": 10.0,
+        "aperture_cost_weight": 1.0,
+        "max_velocity": [
+          0.04,
+          0.04,
+          0.01,
+          0.6,
+          0.28,
+          0.6
+        ],
+        "max_acceleration": [
+          1.0,
+          1.0,
+          0.8,
+          2.0,
+          3.0,
+          2.0
+        ],
+        "angle_limit_rad": 0.35,
+        "lateral_windows": [
+          [
+            0.04,
+            0.34
+          ],
+          [
+            0.34,
+            0.66
+          ],
+          [
+            0.66,
+            0.96
+          ]
+        ],
+        "enable_visual": true,
+        "enable_aperture": true,
+        "enable_force_priority": true,
+        "enable_consistency": false,
+        "enable_progress_loss": true,
+        "compute_interval_diagnostics": false,
+        "subspace_tolerance": [
+          1e-05,
+          1e-05,
+          1e-05,
+          0.0001,
+          0.0001,
+          0.0001
+        ],
+        "solver_tolerance": 1e-09,
+        "feasibility_tolerance": 1e-08,
+        "max_iterations": 200,
+        "inner_iterations": 100,
+        "solver_preconditioning": false
+      }
+    ]
+  },
+  "energy": "off: run_case has no energy input; joint full-port checks are separate",
+  "nominal": "unchanged build_contact_nominal, 4 N, same FeatureExtractor/run_case(full)",
+  "limits": "Exploratory synthetic runs, no acceptance tuning, hardware or real-data efficacy claim"
+}

@@ -1,0 +1,280 @@
+{
+  "scope": "One independently taught scan per condition. Descriptive, not paired causal validation. Confidence is a policy proxy, not contact ground truth.",
+  "feature_version": "8b51133835031ba9ee2d",
+  "threshold": 0.8,
+  "image_pose_delay_s": 0.15196365053143765,
+  "alignment": "Contact-segment H5 retains capture timestamps; subtract image delay once only for pose projection. Force uses latest force timestamp; videos use capture elapsed time.",
+  "scans": {
+    "baseline": {
+      "source": "/media/camp/EXT_DRIVE/ICRA_2027/icra 2027_contact/real_characterization/baseline_probe50/002/RH_Per_L_DtP.h5",
+      "frames": 889,
+      "frame_duration_s": 29.583458367967978,
+      "force_samples": 5895,
+      "force": {
+        "mean_n": 4.137261076633216,
+        "rmse_n": 0.17387814205848462,
+        "abs_bias_n": 0.13726107663321563,
+        "peak_abs_error_n": 0.5395214853237658,
+        "min_n": 3.684445139263586,
+        "max_n": 4.539521485323766
+      },
+      "taught_length_mm": 147.8681869512963,
+      "taught_start_m": [
+        0.2622362786262916,
+        0.12984234829604058,
+        0.1358971669907876
+      ],
+      "taught_end_m": [
+        0.2696364190445958,
+        0.27661668347057367,
+        0.15225360817237465
+      ],
+      "image_metadata": {
+        "crop_box": [
+          753,
+          1417,
+          154,
+          880
+        ],
+        "hflip": false,
+        "width": 664,
+        "height": 726
+      },
+      "stage_timestamps": {
+        "prepare_begin": 1789019069765360253,
+        "standoff_ready": 1789019080772849752,
+        "seek_begin": 1789019081123023198,
+        "tracking_observed": 1789019085149837124,
+        "path_done": 1789019115129817158,
+        "retract_begin": 1789019115130210336,
+        "retract_end": 1789019118404616872
+      },
+      "both_windows_good_frame_fraction": 0.953880764904387,
+      "low_window_frame_fraction": 0.04611923509561305,
+      "unknown_frame_fraction": 0.0,
+      "quality_mean_lcr": [
+        0.9750806410440099,
+        0.9889832789231621,
+        0.9558883181072928
+      ],
+      "low_left_right_fraction": [
+        0.003374578177727784,
+        0.04274465691788527
+      ],
+      "projected_image_span_mm": 147.3843159298926,
+      "forward_exposure_mm": 147.3843159298926,
+      "low_quality_forward_exposure_mm": 6.573753794362359,
+      "gap_metric": "Trapezoid low-confidence indicator times positive measured axial displacement; revisits count. Not unique anatomical coverage.",
+      "measured_relative_rotation_y_range_deg": [
+        0.0,
+        9.243717428845587
+      ],
+      "measured_body_y_total_variation_10hz_deg": 9.748180246747363,
+      "lateral_force_norm_mean_max_n": [
+        4.060530108214207,
+        5.796152063496007
+      ],
+      "events": {
+        "study_start": 1,
+        "control_sample": 6766,
+        "publication": 6766,
+        "stop": 1,
+        "recording_close": 1
+      },
+      "stop_reasons": [
+        "phase_exit_or_replaced"
+      ],
+      "dropped_records_max": 0,
+      "selected_control_samples": 5916
+    },
+    "shadow": {
+      "source": "/media/camp/EXT_DRIVE/ICRA_2027/icra 2027_contact/real_characterization/shadow_probe50/001/RH_Per_L_DtP.h5",
+      "frames": 891,
+      "frame_duration_s": 29.64785211510025,
+      "force_samples": 5919,
+      "force": {
+        "mean_n": 4.099329081248705,
+        "rmse_n": 0.1321740073959564,
+        "abs_bias_n": 0.09932908124870454,
+        "peak_abs_error_n": 0.46537081526403323,
+        "min_n": 3.745663770489778,
+        "max_n": 4.465370815264033
+      },
+      "taught_length_mm": 148.3687161746306,
+      "taught_start_m": [
+        0.27002216379023414,
+        0.1270728416571589,
+        0.13622775371378593
+      ],
+      "taught_end_m": [
+        0.2702971795332513,
+        0.27472622658625034,
+        0.15077691948474103
+      ],
+      "image_metadata": {
+        "crop_box": [
+          753,
+          1417,
+          154,
+          880
+        ],
+        "hflip": false,
+        "width": 664,
+        "height": 726
+      },
+      "stage_timestamps": {
+        "prepare_begin": 1789019406653336271,
+        "standoff_ready": 1789019417818492718,
+        "seek_begin": 1789019418169219863,
+        "tracking_observed": 1789019422127473800,
+        "path_done": 1789019452208498469,
+        "retract_begin": 1789019452208887474,
+        "retract_end": 1789019455507199280
+      },
+      "both_windows_good_frame_fraction": 0.6206509539842873,
+      "low_window_frame_fraction": 0.3793490460157127,
+      "unknown_frame_fraction": 0.0,
+      "quality_mean_lcr": [
+        0.954764712017466,
+        0.9725097868016427,
+        0.8431474878210198
+      ],
+      "low_left_right_fraction": [
+        0.01122334455667789,
+        0.372615039281706
+      ],
+      "projected_image_span_mm": 148.0293710354178,
+      "forward_exposure_mm": 148.0293710354178,
+      "low_quality_forward_exposure_mm": 56.0383352433807,
+      "gap_metric": "Trapezoid low-confidence indicator times positive measured axial displacement; revisits count. Not unique anatomical coverage.",
+      "measured_relative_rotation_y_range_deg": [
+        -0.04308073626754733,
+        6.059779038125364
+      ],
+      "measured_body_y_total_variation_10hz_deg": 6.63133916636659,
+      "lateral_force_norm_mean_max_n": [
+        4.289216863313701,
+        6.222337849657581
+      ],
+      "events": {
+        "study_start": 1,
+        "control_sample": 6762,
+        "shadow_candidate": 6738,
+        "publication": 6762,
+        "stop": 1,
+        "recording_close": 1
+      },
+      "stop_reasons": [
+        "phase_exit_or_replaced"
+      ],
+      "dropped_records_max": 0,
+      "selected_control_samples": 5936
+    },
+    "active": {
+      "source": "/media/camp/EXT_DRIVE/ICRA_2027/icra 2027_contact/real_characterization/active_probe50/002/RH_Per_L_DtP.h5",
+      "frames": 919,
+      "frame_duration_s": 30.601255510933697,
+      "force_samples": 5673,
+      "force": {
+        "mean_n": 4.094530412204815,
+        "rmse_n": 0.14225873021404267,
+        "abs_bias_n": 0.09453041220481422,
+        "peak_abs_error_n": 0.47801026444448524,
+        "min_n": 3.726072498267693,
+        "max_n": 4.478010264444485
+      },
+      "taught_length_mm": 144.99034955085213,
+      "taught_start_m": [
+        0.2625031666383078,
+        0.13148543989233882,
+        0.13593018473185708
+      ],
+      "taught_end_m": [
+        0.2780688542077847,
+        0.27492643989198906,
+        0.15023369312903226
+      ],
+      "image_metadata": {
+        "crop_box": [
+          753,
+          1417,
+          154,
+          880
+        ],
+        "hflip": false,
+        "width": 664,
+        "height": 726
+      },
+      "stage_timestamps": {
+        "prepare_begin": 1789022511243839773,
+        "standoff_ready": 1789022522466949047,
+        "seek_begin": 1789022522860701553,
+        "tracking_observed": 1789022529424125198,
+        "path_done": 1789022560447622280,
+        "retract_begin": 1789022560448015049,
+        "retract_end": 1789022563756810082
+      },
+      "both_windows_good_frame_fraction": 1.0,
+      "low_window_frame_fraction": 0.0,
+      "unknown_frame_fraction": 0.0,
+      "quality_mean_lcr": [
+        0.990584581515325,
+        0.9938796333557828,
+        0.9962498809319983
+      ],
+      "low_left_right_fraction": [
+        0.0,
+        0.0
+      ],
+      "projected_image_span_mm": 144.79250942738395,
+      "forward_exposure_mm": 144.80123208312645,
+      "low_quality_forward_exposure_mm": 0.0,
+      "gap_metric": "Trapezoid low-confidence indicator times positive measured axial displacement; revisits count. Not unique anatomical coverage.",
+      "measured_relative_rotation_y_range_deg": [
+        -0.020695345075251132,
+        10.633743514209787
+      ],
+      "measured_body_y_total_variation_10hz_deg": 11.047268449375263,
+      "lateral_force_norm_mean_max_n": [
+        2.5756917723987045,
+        3.7979563608466322
+      ],
+      "events": {
+        "study_start": 1,
+        "source_filter_epoch_reset": 1,
+        "control_sample": 7386,
+        "publication_review": 7386,
+        "publication": 7386,
+        "publication_aborted": 1,
+        "stop": 1,
+        "recording_close": 1
+      },
+      "stop_reasons": [
+        "phase_complete"
+      ],
+      "dropped_records_max": 0,
+      "selected_control_samples": 6076,
+      "active_commands": {
+        "alpha_min": 0.24999999997652936,
+        "alpha_mean": 0.9997531270572706,
+        "alpha_timeweighted": 0.9997548187161471,
+        "slowed_fraction": 0.0003291639236339697,
+        "added_normal_or_rocking_fraction": 0.0,
+        "added_normal_mm_s_min_max": [
+          -0.00030900936414703095,
+          2.4771747153540247e-09
+        ],
+        "added_rocking_deg_s_min_max": [
+          -4.8406055549612094e-05,
+          0.00021569489655866203
+        ],
+        "added_rocking_absolute_command_integral_deg": 5.936054210109309e-06,
+        "valid_measured_twist_fraction": 0.2152732060566162,
+        "compatible_image_fraction": 1.0,
+        "display_activation_threshold": "0.01 mm/s normal or 0.01 deg/s rocking; descriptive display threshold, not preregistered acceptance. Exact maxima also reported."
+      },
+      "reference_final_s": 29.398069910168772,
+      "accepted_alpha_mean": 0.9365182588563133
+    }
+  }
+}

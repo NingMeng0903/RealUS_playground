@@ -110,6 +110,35 @@ class CompensatedForceObserver:
         self.leftover_valid = False
         self.leftover_tau_s = 2.0
         self._leftover_contact = False
+        self._signed_last = np.zeros(6,dtype=float)
+
+    def configure_source_period(self, period_s: float | None, *, variable_dt=False, max_interval_s=None, new_epoch=False) -> None:
+        """Rebind at a stopped mode boundary; preserve the measured LP state."""
+        period=1./self.cfg.poll_hz if period_s is None else float(period_s)
+        self._max_source_interval_s=max_interval_s
+        if variable_dt and new_epoch:self._variable_epoch_first=True
+        previous_period=getattr(self,'_source_period_s',1./self.cfg.poll_hz)
+        previous_variable=getattr(self,'_variable_source_dt',False)
+        if period==previous_period and bool(variable_dt)==previous_variable:return
+        if not np.isfinite(period) or period<=0 or type(variable_dt) is not bool:
+            raise ValueError('invalid source filter timebase')
+        if variable_dt and int(self.cfg.causal_order)!=1:
+            raise ValueError('variable source timebase requires the deployed first-order force LP')
+        old_filter=getattr(self,'_variable_lpf',None)
+        if old_filter is not None:
+            self._lpf_zi=old_filter.digital_state(self._lpf_b,self._lpf_a)
+            self._f_ext_last=old_filter.output.copy()
+        if period!=previous_period:
+            wn=float(self.cfg.causal_fc_hz)*2*period
+            if not 0<wn<1:raise ValueError('source rate cannot represent the configured observer cutoff')
+            self._lpf_b,self._lpf_a=butter(int(self.cfg.causal_order),wn,btype='low')
+            self._lpf_zi_unit=lfilter_zi(self._lpf_b,self._lpf_a)
+            self._lpf_zi=(np.outer(self._lpf_zi_unit,self.f_ext_raw_last) if self._n_updates else None)
+        self._source_period_s=period;self._variable_source_dt=variable_dt;self._variable_lpf=None
+        if variable_dt and self._n_updates:
+            from .variable_step_filter import VariableLowpass1
+            self._variable_lpf=VariableLowpass1(self.cfg.causal_fc_hz,period,
+                                               self._f_ext_last,self.f_ext_raw_last)
 
     def _file_signature(self) -> tuple[int, int]:
         st = Path(self.cfg.phi_path).stat()
@@ -128,6 +157,8 @@ class CompensatedForceObserver:
         contact: bool,
         still: bool,
         dt_s: float,
+        measurement_fresh: bool = True,
+        source_dt_s: float | None = None,
     ) -> None:
         """Slow air/still TCP leftover. Freeze on contact; never subtract here."""
         wrench = np.asarray(wrench_tcp, dtype=float).reshape(6)
@@ -139,9 +170,9 @@ class CompensatedForceObserver:
         if contact:
             return
         self.leftover_frozen = False
-        if not still or not np.isfinite(wrench).all():
+        if not measurement_fresh or not still or not np.isfinite(wrench).all():
             return
-        dt = max(float(dt_s), 1e-4)
+        dt = max(float(dt_s if source_dt_s is None else source_dt_s), 1e-4)
         alpha = dt / (float(self.leftover_tau_s) + dt)
         if not self.leftover_valid:
             self.leftover_tcp = wrench.copy()
@@ -210,6 +241,8 @@ class CompensatedForceObserver:
         rail_locked: bool = True,
         sensor_age_s: float | None = None,
         wall_time_ns: int | None = None,
+        measurement_fresh: bool = True,
+        source_dt_s: float | None = None,
     ) -> tuple[np.ndarray, np.ndarray]:
         """Causal link_7-frame external wrench (before ``wrench_link7_to_tcp``).
 
@@ -217,6 +250,26 @@ class CompensatedForceObserver:
         ``now - total_t0``. Control output is gravity-only unless mode is
         ``apply`` and gates pass. ``observe`` stores a dynamic candidate only.
         """
+        if not measurement_fresh:
+            if not self._n_updates:raise ValueError('held observation requires an initial source sample')
+            return self._signed_last.copy(),self._f_ext_last.copy()
+        previous_source_t=self.last_t_s
+        variable_interval=None
+        if getattr(self,'_variable_source_dt',False):
+            variable_interval=(float(t_s)-previous_source_t if np.isfinite(previous_source_t) else self._source_period_s)
+            if not np.isfinite(variable_interval) or variable_interval<=0:
+                raise ValueError('observer source interval must be positive and finite')
+            if self._max_source_interval_s is not None and variable_interval>self._max_source_interval_s+1e-12:
+                if not getattr(self,'_variable_epoch_first',False):
+                    raise ValueError('observer source interval exceeds declared maximum')
+                # Only the explicitly entered stopped/new-phase measurement epoch
+                # may seed a current valid sample. Do not interpolate the old gap.
+                self._variable_lpf=None
+                self.source_filter_epoch_reset=dict(reason='new_active_epoch_after_history_gap',
+                    previous_source_t_s=previous_source_t,source_t_s=float(t_s),gap_s=variable_interval,
+                    interpolation_performed=False,steady_current_measurement_seed=True)
+                variable_interval=self._source_period_s
+            self._variable_epoch_first=False
         self.last_t_s = float(t_s)
         try:
             wall_ns = int(wall_time_ns or 0)
@@ -228,6 +281,7 @@ class CompensatedForceObserver:
         self._n_updates += 1
 
         signed = wrench_sensor_to_link7(force_raw, self.contract)
+        self._signed_last = signed.copy()
         use_dyn = bool(self.cfg.use_dynamic_kinematics)
         use_rot = bool(self.cfg.use_rotational_inertia)
         mode = str(self.cfg.dynamic_kinematics_mode)
@@ -248,12 +302,18 @@ class CompensatedForceObserver:
         residual = f_dyn if apply_dyn else f_grav
         self.f_ext_raw_last = residual.copy()
 
-        if self._lpf_zi is None:
-            self._lpf_zi = np.outer(self._lpf_zi_unit, residual)
-        f_ext_filt, self._lpf_zi = lfilter(
-            self._lpf_b, self._lpf_a, residual[None, :], axis=0, zi=self._lpf_zi
-        )
-        f_ext_filt = f_ext_filt.reshape(6)
+        if getattr(self,'_variable_source_dt',False):
+            from .variable_step_filter import VariableLowpass1
+            if self._variable_lpf is None:
+                self._variable_lpf=VariableLowpass1(self.cfg.causal_fc_hz,self._source_period_s,residual,residual)
+            f_ext_filt=self._variable_lpf.update(residual,variable_interval)
+        else:
+            if self._lpf_zi is None:
+                self._lpf_zi = np.outer(self._lpf_zi_unit, residual)
+            f_ext_filt, self._lpf_zi = lfilter(
+                self._lpf_b, self._lpf_a, residual[None, :], axis=0, zi=self._lpf_zi
+            )
+            f_ext_filt = f_ext_filt.reshape(6)
         self._f_ext_last = f_ext_filt
         return signed, f_ext_filt
 

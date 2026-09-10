@@ -1,0 +1,27 @@
+{
+  "scope": "real image feature to outer-QP interface smoke with explicitly synthetic geometry; no closed-loop acoustic evidence",
+  "quality": [
+    0.5459566365632009,
+    0.7329227090497206,
+    0.917920026328885
+  ],
+  "status": "repair",
+  "alpha": 0.7618343467780009,
+  "velocity": [
+    0.0015236686935560018,
+    0.0,
+    0.0003656735144798903,
+    0.0,
+    0.010305344498978738,
+    0.0
+  ],
+  "slack_m_s": [
+    0.00010970205437793709,
+    0.0
+  ],
+  "visual_requests_m_s": [
+    0.0006351084085919978,
+    -0.0023584005265777004
+  ],
+  "max_hard_violation": 0.0
+}

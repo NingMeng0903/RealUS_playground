@@ -1,0 +1,43 @@
+{
+  "source": "/media/camp/EXT_DRIVE/ICRA_2027/icra 2027_contact/real_characterization/baseline_probe50/001",
+  "mode": "baseline",
+  "force_scope": "control_wrench_tool Z; path-feedforward norm >1e-5; cycle-weighted descriptive metrics, not independent statistical acceptance",
+  "scans": [
+    {
+      "file": "RH_Per_C_DtP.h5",
+      "complete": true,
+      "frames": 966,
+      "decode_failures": 0,
+      "control_samples": 7329,
+      "feature_samples": 0,
+      "force_mean_n": 4.139626460069627,
+      "force_rmse_n": 0.16917171777087353,
+      "absolute_mean_bias_n": 0.139626460069627,
+      "force_range_n": [
+        3.8097937240549498,
+        4.479018071341088
+      ],
+      "force_peak_absolute_error_n": 0.47901807134108765,
+      "moving_samples": 6482,
+      "dropped_records": 0
+    },
+    {
+      "file": "RH_Per_L_DtP.h5",
+      "complete": true,
+      "frames": 949,
+      "decode_failures": 0,
+      "control_samples": 7352,
+      "feature_samples": 0,
+      "force_mean_n": 4.147452828330153,
+      "force_rmse_n": 0.16907297141266445,
+      "absolute_mean_bias_n": 0.1474528283301534,
+      "force_range_n": [
+        3.867564104519001,
+        4.451835895582439
+      ],
+      "force_peak_absolute_error_n": 0.4518358955824393,
+      "moving_samples": 6389,
+      "dropped_records": 0
+    }
+  ]
+}

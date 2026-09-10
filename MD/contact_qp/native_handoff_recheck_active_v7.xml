@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="1.322" timestamp="2026-09-10T14:35:24.201221+08:00" hostname="pei"><testcase classname="peirastic.tests.test_cartesian_ptp_handoff" name="test_replanned_standoff_can_enter_native_hold_with_same_constraints" time="0.857"><failure message="RuntimeError: wbc_rt exited during start (code 0)">def test_replanned_standoff_can_enter_native_hold_with_same_constraints():
+        from rm75_control.control.joint_admittance_8dof.wbc_rt.client import find_wbc_rt_binary
+        if find_wbc_rt_binary() is None:
+            pytest.skip("native binary is not built")
+        ctx = _context()
+        cfg = ctx.inner.cfg
+        cfg.backend = "native"
+        cfg.native_shm_prefix = "phantom_handoff_test_" + uuid.uuid4().hex
+        cfg.control_cpu, cfg.native_cpu = 6, 8
+        qt = resolve_pose_q(ctx, DATA["pose"], require_path=False)
+&gt;       inner = JointIkController(ctx.kin, cfg)
+
+peirastic/tests/test_cartesian_ptp_handoff.py:81: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+rm75_control/rm75_control/control/joint_admittance_8dof/loop.py:724: in __init__
+    self._native.start()
+rm75_control/rm75_control/control/joint_admittance_8dof/wbc_rt/client.py:119: in start
+    self._start()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = &lt;rm75_control.control.joint_admittance_8dof.wbc_rt.client.NativeWbcClient object at 0x7e596654a200&gt;
+
+    def _start(self) -&gt; None:
+        binary = find_wbc_rt_binary(getattr(self.cfg, "native_bin", None))
+        if binary is None:
+            raise FileNotFoundError(
+                "wbc_rt binary not found; build native/wbc_rt or set WBC_RT_BIN"
+            )
+        try:
+            hashed = subprocess.check_output([str(binary), "--hash"], text=True).strip()
+        except Exception as exc:
+            raise RuntimeError(f"wbc_rt --hash failed: {exc}") from exc
+        assert_native_matches_tree(hashed)
+        _ = combined_hash()
+        tmp = Path(tempfile.mkdtemp(prefix="wbc_rt_"))
+        self._cfg_path = tmp / "wbc.cfg"
+        dump_wbc_config(
+            self.cfg,
+            self._cfg_path,
+            urdf_path=self.ctrl.kin.urdf_path,
+            kin=self.ctrl.kin,
+        )
+        self._shm_in = create_named_shm(self.in_name, P.WBC_IN_SIZE)
+        self._shm_out = create_named_shm(self.out_name, P.WBC_OUT_SIZE)
+        self._in = P.view_in(self._shm_in.buf)
+        self._out = P.view_out(self._shm_out.buf)
+        self._in[0].fill(0)
+        self._out[0].fill(0)
+        self._in["magic"] = P.WBC_MAGIC
+        self._in["version"] = P.WBC_VERSION
+        env = os.environ.copy()
+        cmeel = env.get(
+            "CMEEL_PREFIX",
+            "/media/camp/EXT_DRIVE/envs/rm75/lib/python3.10/site-packages/cmeel.prefix",
+        )
+        lib = str(Path(cmeel) / "lib")
+        env["LD_LIBRARY_PATH"] = lib + (":" + env["LD_LIBRARY_PATH"] if env.get("LD_LIBRARY_PATH") else "")
+        for name in ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS", "BLIS_NUM_THREADS"):
+            env[name] = "1"
+        env["OMP_WAIT_POLICY"] = "PASSIVE"
+        self._notify, child_notify = socket.socketpair()
+        self._notify.setblocking(False)
+        try:
+            self._proc = subprocess.Popen([
+                str(binary),
+                "--config",
+                str(self._cfg_path),
+                "--in",
+                self.in_name,
+                "--out",
+                self.out_name,
+                "--notify-fd",
+                str(child_notify.fileno()),
+            ], env=env, pass_fds=(child_notify.fileno(),),
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        finally:
+            child_notify.close()
+        if self._proc is not None and self._proc.pid:
+            try:
+                self._schedstat_fd = os.open(f"/proc/{self._proc.pid}/schedstat", os.O_RDONLY | os.O_CLOEXEC)
+            except OSError:
+                pass
+            isolate_native_process(
+                self._proc.pid,
+                cpu=getattr(self.cfg, "native_cpu", None),
+                control_cpu=getattr(self.cfg, "control_cpu", None),
+            )
+        deadline = time.monotonic() + 5.0
+        while time.monotonic() &lt; deadline:
+            if self._proc.poll() is not None:
+&gt;               raise RuntimeError(
+                    f"wbc_rt exited during start (code {self._proc.returncode})"
+                )
+E               RuntimeError: wbc_rt exited during start (code 0)
+
+rm75_control/rm75_control/control/joint_admittance_8dof/wbc_rt/client.py:192: RuntimeError</failure></testcase></testsuite></testsuites>

@@ -1,0 +1,152 @@
+--- a/ICRA_YM/script/scan_session.py
++++ b/ICRA_YM/script/scan_session.py
+@@ -8,6 +8,7 @@
+ from __future__ import annotations
+ 
+ import argparse
++from copy import deepcopy
+ import json
+ import os
+ from pathlib import Path
+@@ -34,6 +35,12 @@
+                      preview_paths, save_json, trial_name)
+ 
+ DATA_ROOT = Path("/media/camp/yameng/icra 2027/uncalibrated")
++
++
++def study_metadata(config, *, simulated):
++    return dict(mode=config.get("mode", "baseline"), config=deepcopy(config),
++                log_path=config.get("log_path"),
++                execution="simulated_workflow_only_no_qp" if simulated else "controller_requested")
+ 
+ 
+ def wait_enter(prompt, tick=lambda: None):
+@@ -62,6 +69,8 @@
+                              clock=get_clock().description, hands={}, trials=[],
+                              contact_policy=contact_policy(),
+                              force_profile=args.force_profile, force_overrides=force_profile(args.force_profile))
++        if getattr(args, "contact_qp", None) is not None:
++            self.manifest["contact_qp"] = study_metadata(args.contact_qp, simulated=args.simulate)
+         self.active_recorder = None
+         self.active_attempt = None
+         self.save()
+@@ -136,17 +145,25 @@
+             attempt_dir.mkdir(parents=True, exist_ok=False)
+             self.active_attempt = attempt_dir
+             attempt = dict(directory=str(attempt_dir.relative_to(self.directory)), status="running")
++            config = deepcopy(getattr(self.args, "contact_qp", None))
++            if config is not None:
++                config["log_path"] = str((attempt_dir / "contact_qp.jsonl").resolve())
++                attempt["contact_qp"] = study_metadata(config, simulated=self.args.simulate)
++                trial["contact_qp"] = deepcopy(attempt["contact_qp"])
+             trial["attempts"].append(attempt)
+             trial["status"] = "running"
+             self.save()
+             recorder = None
+             try:
++                if config is not None:
++                    self.robot.preflight_contact_qp(config)
+                 self.robot.prepare(spec)
+                 print(f"[RECORD] Waiting for streams.", flush=True)
+                 recorder = self.recorder_factory(attempt_dir, self.args)
+                 self.active_recorder = recorder
+                 recorder.wait_ready(self.robot.check)
+-                stages = self.robot.scan(spec, recorder)
++                stages = (self.robot.scan(spec, recorder) if config is None else
++                          self.robot.scan(spec, recorder, contact_qp=config))
+                 recorder.close(require_success=True)
+                 self.active_recorder = None
+                 attempt.update(motion_completed=True, stages=stages)
+@@ -155,6 +172,8 @@
+                                 force_profile=self.args.force_profile,
+                                 force_overrides=force_profile(self.args.force_profile),
+                                 simulated=bool(self.args.simulate))
++                if config is not None:
++                    metadata["contact_qp"] = deepcopy(attempt["contact_qp"])
+                 episode = self.save_trial(recorder.path, destination, metadata, trial, attempt)
+                 attempt.update(status="completed", episode=episode)
+                 attempt.pop("save_error", None)
+@@ -245,6 +264,8 @@
+     parser.add_argument("--force-shm", default=None)
+     parser.add_argument("--shm-prefix", default="")
+     parser.add_argument("--us-endpoint", default="tcp://127.0.0.1:17359")
++    parser.add_argument("--contact-qp-config", type=Path,
++                        help="optional contact study YAML/JSON; validated before robot attachment")
+     parser.add_argument("--force-profile", choices=("icra", "baseline"), default="icra")
+     parser.add_argument("--speed-m-s", type=float, default=0.02)
+     parser.add_argument("--curve-side", type=int, choices=(-1, 1), default=1)
+@@ -254,6 +275,16 @@
+     parser.add_argument("--preview", type=Path, help="plan only from JSON {distal:[6], proximal:[6]}; no robot IPC")
+     parser.add_argument("--open-preview", action=argparse.BooleanOptionalAction, default=None)
+     args = parser.parse_args(argv)
++    args.contact_qp = None
++    if args.contact_qp_config is not None:
++        from peirastic.contact_qp.runtime_config import load_study_config, validate_study_config
++        try:
++            args.contact_qp = load_study_config(args.contact_qp_config)
++            report = validate_study_config(args.contact_qp)
++            if report["mode"] == "active" and args.force_profile != "icra":
++                raise ValueError("active contact_qp requires --force-profile icra")
++        except (OSError, ValueError, TypeError, KeyError) as exc:
++            parser.error(f"--contact-qp-config: {exc}")
+     if args.auto_enter and not args.simulate:
+         parser.error("--auto-enter is only allowed with --simulate")
+     if args.preview and args.simulate:
+--- a/ICRA_YM/script/scan_robot.py
++++ b/ICRA_YM/script/scan_robot.py
+@@ -94,6 +94,8 @@
+         # Attach only to IPC. The scanner does not open robot SDK/TCP/UDP channels.
+         try:
+             self.arm = PeirasticArm(prefix=args.shm_prefix)
++            if getattr(args, "contact_qp", None) is not None:
++                self.preflight_contact_qp(args.contact_qp)
+             self.samples = LiveSamples(args)
+         except BaseException:
+             os.close(self.lock_fd)
+@@ -305,7 +307,13 @@
+         self.status()
+         self.mark("standoff_ready")
+ 
+-    def scan(self, spec, recording):
++    def preflight_contact_qp(self, config):
++        """Read-only daemon capability check, before teaching or preparation motion."""
++        self.arm.client.require_capability(
++            "contact_qp.active_v1" if config.get("mode", "baseline") == "active"
++            else "contact_qp.recording_v1")
++
++    def scan(self, spec, recording, *, contact_qp=None):
+         ref = ForearmReference(spec)
+         start_pose = ref.sample(0).pose_d
+         self._await_pose(lift_pose(start_pose, 0.03), 1)
+@@ -320,9 +328,12 @@
+         self._air_motion = False
+         self.mark("seek_begin")
+         print("[SEEK] Waiting for contact.", flush=True)
+-        self._accepted(self.arm.hfpc(reference="icra_path", path_spec=spec, law="tff", force=4.0,
++        study_options = {} if contact_qp is None else {"contact_qp": contact_qp}
++        law = "contact_qp" if contact_qp is not None and contact_qp.get("mode") == "active" else "tff"
++        self._accepted(self.arm.hfpc(reference="icra_path", path_spec=spec, law=law, force=4.0,
+                      force_axes=SCAN_FORCE_AXES, wait_for_contact=True,
+-                     scan_contact_n=ENTRY_N, scan_contact_s=ENTRY_S, label="icra_scan", block=0))
++                     scan_contact_n=ENTRY_N, scan_contact_s=ENTRY_S, label="icra_scan", block=0,
++                     **study_options))
+         seek_started = time.monotonic()
+         tracking_started = None
+         release = ReleaseDetector()
+--- a/ICRA_YM/script/scan_simulation.py
++++ b/ICRA_YM/script/scan_simulation.py
+@@ -52,7 +52,13 @@
+         self.spec = spec
+         self.time_ns += 1_000_000_000
+ 
+-    def scan(self, spec, recording):
++    def preflight_contact_qp(self, config):
++        # Workflow simulation has no daemon and does not execute the contact QP.
++        self.events.append("contact_qp_simulated_workflow_only_no_qp")
++
++    def scan(self, spec, recording, *, contact_qp=None):
++        if contact_qp is not None:
++            print("[SIM] Contact study workflow only; no real QP executed or QP log generated.", flush=True)
+         recording.poll()
+         self.events += ["seek", "gate_4n", "scan", "retract", "park"]
+         ref = ForearmReference(spec)

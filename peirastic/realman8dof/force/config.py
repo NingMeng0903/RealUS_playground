@@ -37,6 +37,7 @@ _SKIP_PAYLOAD = {
     "mask_force_from_path",
     "qp_aux",
     "law",
+    "contact_qp",
     "source",
     "v",
     "r",

@@ -1,0 +1,22 @@
+{
+  "outcome": "completed",
+  "output": "/media/camp/EXT_DRIVE/RealUS_playground/MD/contact_qp/scan_entry_v5_simulation/001/RH_Per_S_DtP.h5",
+  "episode": {
+    "status": "accepted",
+    "episode_index": 1,
+    "session_index": 0,
+    "entry_time_ns": 1789001321202529599,
+    "entry_confirmed_time_ns": 1789001321302529599,
+    "exit_time_ns": 1789001333422529599,
+    "exit_confirmed_time_ns": 1789001333672529599,
+    "start_time_ns": 1789001321702529599,
+    "end_time_ns": 1789001332922529599,
+    "raw_duration_s": 12.22,
+    "duration_s": 11.22,
+    "crop_s": 0.5,
+    "threshold_n": 4.0,
+    "exit_threshold_n": 0.7999999999999998,
+    "exit_hysteresis_n": 3.2,
+    "exit_absolute": true
+  }
+}

@@ -343,6 +343,10 @@ class CommandClient:
         close_attached_shm(self._ctl_shm)
         close_attached_shm(self._pay_shm)
 
+    def require_capability(self, capability: str) -> None:
+        from peirastic.core.capabilities import require_capability
+        require_capability(self, capability)
+
     def set_mode(self, req: ModeRequest) -> int:
         blob = json.dumps(req.to_json(), separators=(",", ":")).encode("utf-8")
         if len(blob) > PAYLOAD_MAX:

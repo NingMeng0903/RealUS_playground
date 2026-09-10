@@ -1,0 +1,441 @@
+{
+  "accepted": false,
+  "missing": [
+    [
+      "both_edges",
+      2,
+      "baseline"
+    ],
+    [
+      "both_edges",
+      2,
+      "full"
+    ],
+    [
+      "both_edges",
+      2,
+      "full_consistency"
+    ],
+    [
+      "both_edges",
+      2,
+      "image_only"
+    ],
+    [
+      "both_edges",
+      2,
+      "matched_rocking"
+    ],
+    [
+      "both_edges",
+      2,
+      "matched_scan_speed"
+    ],
+    [
+      "both_edges",
+      2,
+      "no_aperture"
+    ],
+    [
+      "curvature",
+      2,
+      "baseline"
+    ],
+    [
+      "curvature",
+      2,
+      "full"
+    ],
+    [
+      "curvature",
+      2,
+      "full_consistency"
+    ],
+    [
+      "curvature",
+      2,
+      "image_only"
+    ],
+    [
+      "curvature",
+      2,
+      "matched_rocking"
+    ],
+    [
+      "curvature",
+      2,
+      "matched_scan_speed"
+    ],
+    [
+      "curvature",
+      2,
+      "no_aperture"
+    ],
+    [
+      "curvature",
+      8,
+      "baseline"
+    ],
+    [
+      "curvature",
+      8,
+      "full"
+    ],
+    [
+      "curvature",
+      8,
+      "full_consistency"
+    ],
+    [
+      "curvature",
+      8,
+      "image_only"
+    ],
+    [
+      "curvature",
+      8,
+      "matched_rocking"
+    ],
+    [
+      "curvature",
+      8,
+      "matched_scan_speed"
+    ],
+    [
+      "curvature",
+      8,
+      "no_aperture"
+    ],
+    [
+      "hard_contact",
+      2,
+      "baseline"
+    ],
+    [
+      "hard_contact",
+      2,
+      "full"
+    ],
+    [
+      "hard_contact",
+      2,
+      "full_consistency"
+    ],
+    [
+      "hard_contact",
+      2,
+      "image_only"
+    ],
+    [
+      "hard_contact",
+      2,
+      "matched_rocking"
+    ],
+    [
+      "hard_contact",
+      2,
+      "matched_scan_speed"
+    ],
+    [
+      "hard_contact",
+      2,
+      "no_aperture"
+    ],
+    [
+      "hard_contact",
+      4,
+      "baseline"
+    ],
+    [
+      "hard_contact",
+      4,
+      "full"
+    ],
+    [
+      "hard_contact",
+      4,
+      "full_consistency"
+    ],
+    [
+      "hard_contact",
+      4,
+      "image_only"
+    ],
+    [
+      "hard_contact",
+      4,
+      "matched_rocking"
+    ],
+    [
+      "hard_contact",
+      4,
+      "matched_scan_speed"
+    ],
+    [
+      "hard_contact",
+      4,
+      "no_aperture"
+    ],
+    [
+      "hard_contact",
+      5,
+      "baseline"
+    ],
+    [
+      "hard_contact",
+      5,
+      "full"
+    ],
+    [
+      "hard_contact",
+      5,
+      "full_consistency"
+    ],
+    [
+      "hard_contact",
+      5,
+      "image_only"
+    ],
+    [
+      "hard_contact",
+      5,
+      "matched_rocking"
+    ],
+    [
+      "hard_contact",
+      5,
+      "matched_scan_speed"
+    ],
+    [
+      "hard_contact",
+      5,
+      "no_aperture"
+    ],
+    [
+      "hard_contact",
+      6,
+      "baseline"
+    ],
+    [
+      "hard_contact",
+      6,
+      "full"
+    ],
+    [
+      "hard_contact",
+      6,
+      "full_consistency"
+    ],
+    [
+      "hard_contact",
+      6,
+      "image_only"
+    ],
+    [
+      "hard_contact",
+      6,
+      "matched_rocking"
+    ],
+    [
+      "hard_contact",
+      6,
+      "matched_scan_speed"
+    ],
+    [
+      "hard_contact",
+      6,
+      "no_aperture"
+    ],
+    [
+      "moving_surface",
+      7,
+      "baseline"
+    ],
+    [
+      "moving_surface",
+      7,
+      "full"
+    ],
+    [
+      "moving_surface",
+      7,
+      "full_consistency"
+    ],
+    [
+      "moving_surface",
+      7,
+      "image_only"
+    ],
+    [
+      "moving_surface",
+      7,
+      "matched_rocking"
+    ],
+    [
+      "moving_surface",
+      7,
+      "matched_scan_speed"
+    ],
+    [
+      "moving_surface",
+      7,
+      "no_aperture"
+    ],
+    [
+      "wrong_direction",
+      0,
+      "baseline"
+    ],
+    [
+      "wrong_direction",
+      0,
+      "full"
+    ],
+    [
+      "wrong_direction",
+      0,
+      "full_consistency"
+    ],
+    [
+      "wrong_direction",
+      0,
+      "image_only"
+    ],
+    [
+      "wrong_direction",
+      0,
+      "matched_rocking"
+    ],
+    [
+      "wrong_direction",
+      0,
+      "matched_scan_speed"
+    ],
+    [
+      "wrong_direction",
+      0,
+      "no_aperture"
+    ]
+  ],
+  "duplicate_runs": false,
+  "failed_runs": [
+    {
+      "scenario": "shadow",
+      "seed": 0,
+      "variant": "full_consistency",
+      "status": "aborted",
+      "reason": "solver_failed"
+    },
+    {
+      "scenario": "shadow",
+      "seed": 3,
+      "variant": "full",
+      "status": "aborted",
+      "reason": "solver_failed"
+    },
+    {
+      "scenario": "shadow",
+      "seed": 3,
+      "variant": "full_consistency",
+      "status": "aborted",
+      "reason": "solver_failed"
+    },
+    {
+      "scenario": "shadow",
+      "seed": 3,
+      "variant": "matched_scan_speed",
+      "status": "aborted",
+      "reason": "timeout"
+    },
+    {
+      "scenario": "shadow",
+      "seed": 2,
+      "variant": "full",
+      "status": "aborted",
+      "reason": "solver_failed"
+    },
+    {
+      "scenario": "shadow",
+      "seed": 2,
+      "variant": "matched_scan_speed",
+      "status": "aborted",
+      "reason": "timeout"
+    },
+    {
+      "scenario": "shadow",
+      "seed": 7,
+      "variant": "full_consistency",
+      "status": "aborted",
+      "reason": "solver_failed"
+    },
+    {
+      "scenario": "shadow",
+      "seed": 6,
+      "variant": "full",
+      "status": "aborted",
+      "reason": "solver_failed"
+    },
+    {
+      "scenario": "shadow",
+      "seed": 6,
+      "variant": "matched_scan_speed",
+      "status": "aborted",
+      "reason": "timeout"
+    },
+    {
+      "scenario": "shadow",
+      "seed": 9,
+      "variant": "full",
+      "status": "aborted",
+      "reason": "solver_failed"
+    },
+    {
+      "scenario": "shadow",
+      "seed": 9,
+      "variant": "full_consistency",
+      "status": "aborted",
+      "reason": "solver_failed"
+    },
+    {
+      "scenario": "shadow",
+      "seed": 9,
+      "variant": "matched_scan_speed",
+      "status": "aborted",
+      "reason": "timeout"
+    },
+    {
+      "scenario": "shadow",
+      "seed": 8,
+      "variant": "full",
+      "status": "aborted",
+      "reason": "solver_failed"
+    },
+    {
+      "scenario": "shadow",
+      "seed": 8,
+      "variant": "matched_scan_speed",
+      "status": "aborted",
+      "reason": "timeout"
+    },
+    {
+      "scenario": "hard_contact",
+      "seed": 3,
+      "variant": "full_consistency",
+      "status": "aborted",
+      "reason": "mechanical_infeasible"
+    },
+    {
+      "scenario": "hard_contact",
+      "seed": 8,
+      "variant": "full_consistency",
+      "status": "aborted",
+      "reason": "mechanical_infeasible"
+    }
+  ],
+  "force": {},
+  "quality": {},
+  "margin_n": 0.0,
+  "unit": "paired independent scenario/seed run",
+  "split": "design",
+  "effectiveness_claim_permitted": false
+}

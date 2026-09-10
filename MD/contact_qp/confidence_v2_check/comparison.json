@@ -1,0 +1,218 @@
+{
+  "scope": "Five real frames selected by preview dark-fraction quantiles plus synthetic counterexample; no mechanical contact labels.",
+  "selection": "Preview gray<8 fraction quantiles 0, .25, .5, .75, 1; original H5 JPEG decoded for computation.",
+  "old_config": {
+    "algorithm_version": "randomwalk_thesis_v1",
+    "width": 96,
+    "height": 112,
+    "attenuation": 2.0,
+    "contrast": 90.0,
+    "lateral_penalty": 0.03,
+    "min_weight": 1e-10,
+    "camp_weight_epsilon": 1e-05,
+    "near_depth": [
+      0.04,
+      0.22
+    ],
+    "lateral_windows": [
+      [
+        0.04,
+        0.34
+      ],
+      [
+        0.34,
+        0.66
+      ],
+      [
+        0.66,
+        0.96
+      ]
+    ],
+    "effective_delay_s": 0.15196365053143765,
+    "calibration_version": "unverified",
+    "image_x_sign": 1
+  },
+  "new_config": {
+    "algorithm_version": "randomwalk_camp_bmode_v2",
+    "width": 96,
+    "height": 112,
+    "attenuation": 2.0,
+    "contrast": 90.0,
+    "lateral_penalty": 0.03,
+    "min_weight": 1e-10,
+    "camp_weight_epsilon": 1e-05,
+    "near_depth": [
+      0.04,
+      0.22
+    ],
+    "lateral_windows": [
+      [
+        0.04,
+        0.34
+      ],
+      [
+        0.34,
+        0.66
+      ],
+      [
+        0.66,
+        0.96
+      ]
+    ],
+    "effective_delay_s": 0.15196365053143765,
+    "calibration_version": "unverified",
+    "image_x_sign": 1
+  },
+  "notes": [
+    "No final-map stretching or masking; display fixed 0..1.",
+    "CAMP reference gamma default is .05; project .03 remains uncalibrated.",
+    "The MATLAB source uses 1-exp(-alpha*d); retained thesis v1 uses exp(-alpha*d).",
+    "Confidence measures propagation and does not segment non-contact black areas."
+  ],
+  "reference": "https://github.com/TJKlein/Nakagami_Confidence_Maps",
+  "frames": [
+    {
+      "name": "chenwei/LH_Per_C_DtP frame 74",
+      "source_h5": "/media/camp/EXT_DRIVE/ICRA_2027/icra 2027_contact/uncalibrated/chenwei/LH_Per_C_DtP.h5",
+      "frame_index": 74,
+      "audit_panel": "MD/contact_qp/human_audit/chenwei/LH_Per_C_DtP/frame_0074_image_confidence.png",
+      "randomwalk_thesis_v1": {
+        "quality_left_center_right": [
+          0.06127306048032714,
+          0.06083026272941002,
+          0.06928284869041113
+        ],
+        "inner_mean": 0.03842722063688071,
+        "inner_fraction_below_0_01": 0.9328598484848485
+      },
+      "randomwalk_camp_bmode_v2": {
+        "quality_left_center_right": [
+          0.9789668752523802,
+          0.9803817911440392,
+          0.9843598367775666
+        ],
+        "inner_mean": 0.4607025446253241,
+        "inner_fraction_below_0_01": 0.19100378787878788
+      }
+    },
+    {
+      "name": "zhongkai/LH_Per_C_PtD frame 107",
+      "source_h5": "/media/camp/EXT_DRIVE/ICRA_2027/icra 2027_contact/uncalibrated/zhongkai/LH_Per_C_PtD.h5",
+      "frame_index": 107,
+      "audit_panel": "MD/contact_qp/human_audit/zhongkai/LH_Per_C_PtD/frame_0107_image_confidence.png",
+      "randomwalk_thesis_v1": {
+        "quality_left_center_right": [
+          0.015028218824053344,
+          0.013306616984144311,
+          0.015116630902355958
+        ],
+        "inner_mean": 0.007537841453744001,
+        "inner_fraction_below_0_01": 0.9072916666666667
+      },
+      "randomwalk_camp_bmode_v2": {
+        "quality_left_center_right": [
+          0.9737811669792015,
+          0.9667016423253311,
+          0.960473646858363
+        ],
+        "inner_mean": 0.4685038264978578,
+        "inner_fraction_below_0_01": 0.17083333333333334
+      }
+    },
+    {
+      "name": "chenwei/LH_Per_L_PtD frame 70",
+      "source_h5": "/media/camp/EXT_DRIVE/ICRA_2027/icra 2027_contact/uncalibrated/chenwei/LH_Per_L_PtD.h5",
+      "frame_index": 70,
+      "audit_panel": "MD/contact_qp/human_audit/chenwei/LH_Per_L_PtD/frame_0070_image_confidence.png",
+      "randomwalk_thesis_v1": {
+        "quality_left_center_right": [
+          0.009573322231259082,
+          0.05474750232533341,
+          0.0935317501092555
+        ],
+        "inner_mean": 0.02428238410639428,
+        "inner_fraction_below_0_01": 0.940435606060606
+      },
+      "randomwalk_camp_bmode_v2": {
+        "quality_left_center_right": [
+          0.9268360940003332,
+          0.9294612891194524,
+          0.9383237227698005
+        ],
+        "inner_mean": 0.4272804131734125,
+        "inner_fraction_below_0_01": 0.0959280303030303
+      }
+    },
+    {
+      "name": "chenwei/LH_Per_S_DtP frame 81",
+      "source_h5": "/media/camp/EXT_DRIVE/ICRA_2027/icra 2027_contact/uncalibrated/chenwei/LH_Per_S_DtP.h5",
+      "frame_index": 81,
+      "audit_panel": "MD/contact_qp/human_audit/chenwei/LH_Per_S_DtP/frame_0081_image_confidence.png",
+      "randomwalk_thesis_v1": {
+        "quality_left_center_right": [
+          0.030658918920134125,
+          0.03800403469645228,
+          0.08347598228707502
+        ],
+        "inner_mean": 0.028447969591666067,
+        "inner_fraction_below_0_01": 0.9287878787878788
+      },
+      "randomwalk_camp_bmode_v2": {
+        "quality_left_center_right": [
+          0.7229420371312663,
+          0.8770348370749708,
+          0.8994693885215422
+        ],
+        "inner_mean": 0.4097805945420066,
+        "inner_fraction_below_0_01": 0.034564393939393936
+      }
+    },
+    {
+      "name": "chenwei/RH_Per_C_PtD frame 95",
+      "source_h5": "/media/camp/EXT_DRIVE/ICRA_2027/icra 2027_contact/uncalibrated/chenwei/RH_Per_C_PtD.h5",
+      "frame_index": 95,
+      "audit_panel": "MD/contact_qp/human_audit/chenwei/RH_Per_C_PtD/frame_0095_image_confidence.png",
+      "randomwalk_thesis_v1": {
+        "quality_left_center_right": [
+          0.016971457489222106,
+          0.03154016456920004,
+          0.036828559208118124
+        ],
+        "inner_mean": 0.026708542930840243,
+        "inner_fraction_below_0_01": 0.937310606060606
+      },
+      "randomwalk_camp_bmode_v2": {
+        "quality_left_center_right": [
+          0.5485460724171031,
+          0.7204786818876611,
+          0.8660698785695535
+        ],
+        "inner_mean": 0.40302940609666676,
+        "inner_fraction_below_0_01": 0.008712121212121213
+      }
+    },
+    {
+      "name": "Synthetic: left=80, right=0",
+      "synthetic": true,
+      "purpose": "black-region counterexample; no acoustic truth",
+      "randomwalk_thesis_v1": {
+        "quality_left_center_right": [
+          0.849080663795196,
+          0.8632548346501497,
+          0.8783688666743188
+        ],
+        "inner_mean": 0.4821957135624128,
+        "inner_fraction_below_0_01": 0.00909090909090909
+      },
+      "randomwalk_camp_bmode_v2": {
+        "quality_left_center_right": [
+          0.7543248028759995,
+          0.8144900482953029,
+          0.8783484837338796
+        ],
+        "inner_mean": 0.43412741324415655,
+        "inner_fraction_below_0_01": 0.013636363636363636
+      }
+    }
+  ]
+}

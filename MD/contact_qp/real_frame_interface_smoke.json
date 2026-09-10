@@ -1,0 +1,24 @@
+{
+  "scope": "real recorded JPEG through production extractor, inproc feature receiver and asynchronous JSONL; interface replay only, not new live data or closed-loop efficacy",
+  "source_file": "/media/camp/EXT_DRIVE/ICRA_2027/icra 2027_contact/uncalibrated/chenwei/LH_Per_C_DtP.h5",
+  "jpeg_sha256": "bdca19a34b17fb204c195c3d32b0433db97486a9e6169709051a75d806a571f9",
+  "frame_seq": 13931,
+  "metadata_keys_preserved": true,
+  "current_frame_freshness": false,
+  "synthetic_received_time_for_fixture_s": 1048465.400605926,
+  "result": "PASS",
+  "source_sha256": {
+    "peirastic/apps/contact_qp_features.py": "50a68739c9b48c64d90994bd9827f79a78c78b9a5491e6594b4393e760e62f28",
+    "peirastic/realman8dof/force/contact_observer.py": "73b1a2fa5c2d0799ea3d36341d903dde9c44e84a63a602a851b0823a78ede134",
+    "peirastic/realman8dof/modes/contact_recording.py": "547efa2f485aa97ed3f5518b5c8af2f676f5bd7958398c2fc0ec2dd455aaf874"
+  },
+  "python": "/media/camp/EXT_DRIVE/envs/genesis/bin/python",
+  "dependencies": {
+    "cv2": "4.13.0",
+    "h5py": "3.16.0",
+    "zmq": "27.1.0",
+    "numpy": "2.2.6",
+    "scipy": "1.15.3"
+  },
+  "control_environment_note": "rm75 receives JSON only; JPEG extraction deliberately runs in separate genesis environment"
+}

@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "source": "/media/camp/EXT_DRIVE/ICRA_2027/icra 2027_contact/calibrated",
+  "files": 1,
+  "processed_frames": 18,
+  "config": {
+    "algorithm_version": "randomwalk_thesis_v1",
+    "width": 96,
+    "height": 112,
+    "attenuation": 2.0,
+    "contrast": 90.0,
+    "lateral_penalty": 0.03,
+    "min_weight": 1e-10,
+    "near_depth": [
+      0.04,
+      0.22
+    ],
+    "lateral_windows": [
+      [
+        0.04,
+        0.34
+      ],
+      [
+        0.34,
+        0.66
+      ],
+      [
+        0.66,
+        0.96
+      ]
+    ],
+    "effective_delay_s": 0.15196365053143765,
+    "calibration_version": "unverified",
+    "image_x_sign": 1
+  },
+  "window_version": "fecfe5c107ef36f7ce31",
+  "config_sha256": "eafec5c5b01b175bc5c702c32e36929e916441a8dce3f97329f0950e95024be2",
+  "processing_ms": {
+    "median": 34.8856468917802,
+    "p95": 38.75297044869512,
+    "max": 39.54312182031572
+  },
+  "scans": [
+    {
+      "file": "chenwei/LH_Per_C_DtP.h5",
+      "schema": "realus-ultrasound-aligned-v1",
+      "frames": 144,
+      "processed": 18,
+      "aligned_frames": 18,
+      "mean_quality": [
+        0.058526915879346136,
+        0.0733384666268187,
+        0.09182788941601644
+      ],
+      "low_torque_fraction": 0.6111111111111112
+    }
+  ],
+  "evidence_limits": [
+    "confidence is not mechanical contact truth",
+    "no new controller commands in H5",
+    "effective delay is not certified hardware latency",
+    "no physical aperture/image-axis calibration"
+  ]
+}

@@ -1,0 +1,588 @@
+#pragma once
+
+#include <algorithm>
+#include <chrono>
+#include <cmath>
+#include <limits>
+#include <memory>
+#include <string>
+#include <utility>
+#include <vector>
+
+#include <pinocchio/multibody/geometry.hpp>
+#include <proxsuite/proxqp/dense/dense.hpp>
+
+#include "wbc_rt/config.hpp"
+#include "wbc_rt/kinematics.hpp"
+#include "wbc_rt/posture.hpp"
+#include "wbc_rt/protocol.hpp"
+#include "wbc_rt/cartesian.hpp"
+#include "wbc_rt/task_weight.hpp"
+
+namespace wbc_rt {
+
+namespace collision_broadphase {
+
+// A local, axis-aligned bound represented by its center and positive
+// half-widths. Mesh bounds are kept in this form until the geometry object is
+// placed; the runtime then turns them into an oriented box.
+struct Aabb {
+  Eigen::Vector3d center = Eigen::Vector3d::Zero();
+  Eigen::Vector3d halfwidth = Eigen::Vector3d::Zero();
+  bool valid = false;
+};
+
+// A world-space oriented box. Keeping the rotation and half-widths cached
+// avoids rebuilding a mesh AABB or allocating any Coal objects in update().
+struct Obb {
+  Eigen::Vector3d center = Eigen::Vector3d::Zero();
+  Eigen::Matrix3d rotation = Eigen::Matrix3d::Identity();
+  Eigen::Vector3d halfwidth = Eigen::Vector3d::Zero();
+  bool valid = false;
+};
+
+// A zero-volume bound is deliberately treated as unavailable.  It can be the
+// sentinel from a failed mesh load as well as a real degenerate mesh, and the
+// existing sphere broadphase is the conservative fallback in either case.
+inline Aabb from_bounds(const Eigen::Vector3d& min,
+                        const Eigen::Vector3d& max) {
+  Aabb out;
+  if (!min.allFinite() || !max.allFinite()) return out;
+  const Eigen::Vector3d width = max - min;
+  if (!width.allFinite() || !(width.array() > 0.0).all()) return out;
+  out.center = 0.5 * (min + max);
+  out.halfwidth = 0.5 * width;
+  out.valid = out.center.allFinite() && out.halfwidth.allFinite();
+  return out;
+}
+
+inline Obb transformed(const Aabb& local,
+                       const Eigen::Matrix3d& rotation,
+                       const Eigen::Vector3d& translation) {
+  Obb out;
+  if (!local.valid || !rotation.allFinite() || !translation.allFinite()) {
+    return out;
+  }
+  out.center = rotation * local.center + translation;
+  out.rotation = rotation;
+  out.halfwidth = local.halfwidth;
+  // updateGeometryPlacements supplies proper rotations. Reject malformed
+  // matrices here rather than allowing a non-rigid transform to suppress an
+  // exact query. The orthonormality check is only nine multiplies per
+  // geometry per tick and keeps this helper conservative for tests too.
+  const Eigen::Matrix3d gram = rotation.transpose() * rotation;
+  const Eigen::Matrix3d identity = Eigen::Matrix3d::Identity();
+  out.valid = out.center.allFinite() && out.halfwidth.allFinite() &&
+              (out.halfwidth.array() > 0.0).all() &&
+              (gram - identity).cwiseAbs().maxCoeff() <= 1.0e-9 &&
+              std::abs(rotation.determinant() - 1.0) <= 1.0e-9;
+  return out;
+}
+
+inline double axis_gap(const Obb& a, const Obb& b,
+                       const Eigen::Vector3d& axis) {
+  const double norm = axis.norm();
+  if (!std::isfinite(norm) || norm <= 1.0e-12) {
+    return -std::numeric_limits<double>::infinity();
+  }
+  const Eigen::Vector3d unit_axis = axis / norm;
+  const double ra =
+      (a.rotation.transpose() * unit_axis).cwiseAbs().dot(a.halfwidth);
+  const double rb =
+      (b.rotation.transpose() * unit_axis).cwiseAbs().dot(b.halfwidth);
+  const double center_projection =
+      std::abs(unit_axis.dot(a.center - b.center));
+  const double gap = center_projection - ra - rb;
+  return std::isfinite(gap) ? gap : -std::numeric_limits<double>::infinity();
+}
+
+// Return the largest separating-axis gap for two OBBs. Face axes and
+// cross-product axes are normalized inside axis_gap(). A nearly parallel cross
+// product carries no independent separating direction and is skipped.
+inline double obb_lower_bound(const Obb& a, const Obb& b) {
+  if (!a.valid || !b.valid) {
+    return -std::numeric_limits<double>::infinity();
+  }
+  double best = 0.0;
+  for (int i = 0; i < 3; ++i) {
+    best = std::max(best, axis_gap(a, b, a.rotation.col(i)));
+    best = std::max(best, axis_gap(a, b, b.rotation.col(i)));
+  }
+  for (int i = 0; i < 3; ++i) {
+    for (int j = 0; j < 3; ++j) {
+      const Eigen::Vector3d cross =
+          a.rotation.col(i).cross(b.rotation.col(j));
+      if (cross.squaredNorm() <= 1.0e-24) continue;
+      best = std::max(best, axis_gap(a, b, cross));
+    }
+  }
+  return std::isfinite(best) ? best : -std::numeric_limits<double>::infinity();
+}
+
+inline bool obb_separates_above(const Obb& a, const Obb& b, double threshold) {
+  if (!a.valid || !b.valid || !std::isfinite(threshold)) return false;
+  const double limit = threshold + 1.0e-9;
+  for (int i = 0; i < 3; ++i) {
+    if (axis_gap(a, b, a.rotation.col(i)) > limit ||
+        axis_gap(a, b, b.rotation.col(i)) > limit) {
+      return true;
+    }
+  }
+  for (int i = 0; i < 3; ++i) {
+    for (int j = 0; j < 3; ++j) {
+      const Eigen::Vector3d cross =
+          a.rotation.col(i).cross(b.rotation.col(j));
+      if (cross.squaredNorm() <= 1.0e-24) continue;
+      if (axis_gap(a, b, cross) > limit) return true;
+    }
+  }
+  return false;
+}
+
+}  // namespace collision_broadphase
+
+struct TickIn {
+  uint64_t request_seq = 0;
+  uint64_t commit_seq = 0;
+  CartesianConstraints cartesian;
+  Vec6 v_cmd = Vec6::Zero();
+  Vec8 q_meas = Vec8::Zero();
+  Vec8 qdot_ff = Vec8::Zero();
+  Vec6 pose_d = Vec6::Zero();
+  Vec6 vel_ff = Vec6::Zero();
+  Vec6 path_twist = Vec6::Zero();
+  Vec6 feedback_twist = Vec6::Zero();
+  double dt_nom = 0.005;
+  double dt_wall = 0.005;
+  double t_mono = 0.0;
+  double rail_refresh_dt = std::numeric_limits<double>::quiet_NaN();
+  double rail_v = 0.0;
+  double v_force_z = 0.0;
+  double posture_d = std::numeric_limits<double>::quiet_NaN();
+  double posture_psi = std::numeric_limits<double>::quiet_NaN();
+  Vec8 posture_q = Vec8::Zero();
+  uint32_t flags = 0;
+};
+
+struct TickOut {
+  uint64_t cartesian_sequence = 0;
+  uint64_t cartesian_stop_epoch = 0;
+  uint32_t cartesian_valid = 0;
+  double cartesian_command_residual = std::numeric_limits<double>::infinity();
+  double cartesian_predicted_residual = std::numeric_limits<double>::infinity();
+  Vec6 v_tcp_commanded = Vec6::Zero();
+  Vec8 q_cmd = Vec8::Zero();
+  Vec8 qdot = Vec8::Zero();
+  Vec6 v_recv = Vec6::Zero();
+  Vec6 v_feas = Vec6::Zero();
+  Vec6 v_tcp = Vec6::Zero();
+  Vec6 residual = Vec6::Zero();
+  double slack = 0.0;
+  double e_qp = 0.0;
+  double u_alloc = 0.0;
+  double u_mid = 0.0;
+  double v_r_ref = 0.0;
+  double rail_base_shaped = 0.0;
+  double rail_base_raw = 0.0;
+  double psi = 0.0;
+  double d_star = 0.0;
+  double d_pref = 0.0;
+  double solve_ms = 0.0;
+  double sigma_min = 0.0;
+  double sigma_arm = 0.0;
+  uint32_t flags = 0;
+  uint32_t joint_limited = 0;
+  uint32_t rail_limited = 0;
+  uint32_t wall_active = 0;
+  uint32_t secondary_suppressed = 0;
+  uint32_t status = kStatusOk;
+  double ns_norm = 0.0;
+  double ns_centering = 0.0;
+  double ns_manip = 0.0;
+  double ns_arm_angle = 0.0;
+  double ns_damping = 0.0;
+  double ns_rail_lock = 0.0;
+  double sat_scale = 1.0;
+  double sec_target_norm = 0.0;
+  double homotopy_s = 0.0;
+  double psi_star = 0.0;
+  double rail_motion_share = std::numeric_limits<double>::quiet_NaN();
+  // Mixer telemetry (SHM v4). V_d_proxy is a configuration-error storage
+  // proxy: 0.5 * kp_mid * e_d^2. kp_mid is s^-1, not stiffness, not joules.
+  double u_task_raw = 0.0;
+  double u_task_feasible = 0.0;
+  double u_pi_raw = 0.0;
+  double u_mid_cmd = 0.0;
+  double u_post_raw = 0.0;
+  double u_post_feasible = 0.0;
+  double u_mid_applied = 0.0;
+  double d_star_dot_cmd = 0.0;
+  double u_escape_raw = 0.0;
+  double u_escape_feasible = 0.0;
+  double escape_active = 0.0;
+  double escape_dir = 0.0;
+  double u_base = 0.0;
+  double u_feasible = 0.0;
+  double v_r_lpf = 0.0;
+  double e_d = 0.0;
+  double V_d_proxy = 0.0;
+  double j4_design_slack = 0.0;
+  double sigma_slack = 0.0;
+  double rail_box_lo = 0.0;
+  double rail_box_hi = 0.0;
+  uint32_t rail_bind_lo = 0;
+  uint32_t rail_bind_hi = 0;
+  double rail_task_vel_used = 0.0;
+  double rail_h1 = 0.0;
+  double rail_h2 = 0.0;
+  double rail_qdot_prev = 0.0;
+  double rail_qdot_prev2 = 0.0;
+  uint32_t qp1_status = kQpNotRun;
+  uint32_t qp2_status = kQpNotRun;
+  uint32_t qp1_iter = 0;
+  uint32_t qp2_iter = 0;
+  uint32_t n_cbf_active = 0;
+  uint32_t box_degenerate = 0;
+  uint32_t box_infeasible = 0;
+  uint32_t manip_active = 0;
+  double qp1_solve_ms = 0.0;
+  double qp2_solve_ms = 0.0;
+  double assembly_ms = 0.0;
+  double fallback_ms = 0.0;
+  double kinematics_ms = 0.0;
+  double collision_ms = 0.0;
+  double qp_total_ms = 0.0;
+  double hard_residual_max = 0.0;
+  double equality_residual_max = 0.0;
+  double rail_exec = 0.0;
+  double box_excess_max = 0.0;
+  double follow_err_rad = 0.0;
+  double qdot_qp_vs_sent_max = 0.0;
+  double dual_cancel = 0.0;
+  double secondary_alpha = 1.0;
+  // Native HQP v7 telemetry.  The slow rail reference uses the previous
+  // accepted task progress; the current QP reports its own alpha and the
+  // auxiliary arm preview used at the next rail refresh.
+  double task_progress_alpha = 1.0;
+  double task_progress_scale_used = 1.0;
+  double rail_task_projection = 0.0;
+  double rail_task_committed = 0.0;
+  double rail_escape_committed = 0.0;
+  double rail_post_committed = 0.0;
+  double rail_total_committed = 0.0;
+  double rail_preview_arm_norm = 0.0;
+  double rail_preview_residual = 0.0;
+  double rail_pi_xi = 0.0;
+  double rail_d_ref = 0.0;
+  double rail_ref_acceleration = 0.0;
+  uint32_t task_paused = 0;
+  uint32_t task_pause_reason = 0;
+  // Native command-side estimate J*qdot.  It is deliberately named as a
+  // separate telemetry field: no sensor feedback is silently substituted.
+  Vec6 v_task_actual = Vec6::Zero();
+  Vec8 rail_preview_arm = Vec8::Zero();
+  Vec8 box_lo = Vec8::Constant(-1e20);
+  Vec8 box_hi = Vec8::Constant(1e20);
+  Vec8 qdot_prev_used = Vec8::Zero();
+  Vec8 qdot_prev2_used = Vec8::Zero();
+};
+
+class Collision {
+ public:
+  Collision(pinocchio::Model& model, const Config& cfg);
+  void update(const Vec8& q, pinocchio::Data& data);
+  int build_rows(pinocchio::Data& data, MatX* jac, VecX* lower, std::vector<int>* slots);
+
+ private:
+  struct LocalSphere {
+    Eigen::Vector3d c = Eigen::Vector3d::Zero();
+    double r = std::numeric_limits<double>::infinity();
+  };
+
+  pinocchio::Model* model_ = nullptr;
+  pinocchio::GeometryModel geom_model_;
+  pinocchio::GeometryData geom_data_;
+  Config cfg_;
+  std::vector<int> slots_;
+  std::vector<LocalSphere> local_spheres_;
+  std::vector<collision_broadphase::Aabb> local_aabbs_;
+  std::vector<collision_broadphase::Obb> world_obbs_;
+  std::vector<int> queried_;
+};
+
+class InnerLoop {
+ public:
+  explicit InnerLoop(const Config& cfg);
+
+  void enable();
+  void stop();
+  void reset(const Vec8& q0);
+  void begin_hybrid(const Vec8& q_meas, const Vec8& qdot_applied);
+  void set_rail_mode(uint32_t mode, uint32_t style, double q_ref, bool has_ref);
+  void set_flags(uint32_t bits);
+  void set_stroke(double d_star, double psi_star);
+  std::pair<double, double> plan_stroke(const Vec8& q, double y_center, double amp);
+  void set_rail_pose_target(double y, bool valid);
+  void capture_rail_ext_ref(const Vec8& q);
+  void set_rail_ext_mode(int pose_attract);
+
+  TickOut step(const TickIn& in);
+
+  const Vec8& q_cmd() const { return q_cmd_; }
+
+ private:
+  struct HistorySnap {
+    Vec8 q_cmd = Vec8::Zero();
+    Vec8 qdot_prev = Vec8::Zero();
+    Vec8 qdot_seen = Vec8::Zero();
+    Vec8 qdot_prev2 = Vec8::Zero();
+    Vec8 dq_prev = Vec8::Zero();
+    bool have_dq_prev = false;
+    double v_r_ref = 0.0;
+    double v_r_a = 0.0;
+    double v_r_base_ref = 0.0;
+    double v_r_base_a = 0.0;
+    double rail_prev_committed_ref = 0.0;
+    double rail_prev_committed_a = 0.0;
+    double mid_integ = 0.0;
+    double u_task_committed = 0.0;
+    double u_escape_committed = 0.0;
+    double u_total_committed = 0.0;
+    double u_post_committed = 0.0;
+    double u_base_committed = 0.0;
+    double u_mid_committed = 0.0;
+    double u_mid_applied = 0.0;
+    double d_star = 0.0;
+    double d_pref = 0.0;
+    double psi_cmd = 0.0;
+    double homotopy_s = 0.0;
+    Vec6 last_tcp_est = Vec6::Zero();
+    Vec8 last_qdot_qp = Vec8::Zero();
+  };
+  HistorySnap capture_history() const;
+  void restore_history(const HistorySnap& s);
+  bool handle_pending_flags(const TickIn& in);
+  void apply_velocity_box(const Vec8& q_geom, const Vec8& q_cmd, const Vec8& q_meas,
+                          double dt, double h1, double h2, bool rail_locked,
+                          double rail_pin, bool has_pin, bool lead_exempt,
+                          Vec8* lo, Vec8* hi);
+  void tighten_branch(const Vec8& q, bool rail_open, Vec8* lo, Vec8* hi);
+  void clear_rail_box_tel();
+  void note_rail_bind(double old_lo, double old_hi, const Vec8& lo, const Vec8& hi,
+                      uint32_t stage);
+  bool solve_hqp(const Mat6x8& J, const Vec6& v_cmd, const Vec8& q_geom,
+                 const Vec8& q_prev, const Vec8& qdot_nom, double rail_exec,
+                 bool has_rail_exec, double rail_task_vel, double rail_w,
+                 bool rail_locked, double dt, double h1, double h2,
+                 bool rail_open, double rail_pin, bool has_pin, bool lead_exempt,
+                 double sigma_arm, Vec8* qdot, Vec6* residual, double* slack);
+  void track_rail_authority(double d_live, double d_star_target, double v_applied,
+                            double dt);
+  void fill_mixer_out(TickOut* out) const;
+
+  Config cfg_;
+  std::chrono::steady_clock::time_point step_t0_{};
+  Kinematics kin_;
+  PostureRetarget posture_;
+  std::unique_ptr<Collision> collision_;
+  std::unique_ptr<proxsuite::proxqp::dense::QP<double>> qp1_;
+  std::unique_ptr<proxsuite::proxqp::dense::QP<double>> qp2_;
+  bool qp1_inited_ = false;
+  bool qp2_inited_ = false;
+  bool qp1_last_ok_ = false;
+  bool qp2_last_ok_ = false;
+
+  Vec8 q_cmd_ = Vec8::Zero();
+  Vec8 qdot_prev_ = Vec8::Zero();
+  Vec8 qdot_seen_ = Vec8::Zero();
+  Vec8 qdot_prev2_ = Vec8::Zero();
+  Vec8 dq_prev_ = Vec8::Zero();
+  bool have_dq_prev_ = false;
+  Vec8 q_lo_ = Vec8::Zero();
+  Vec8 q_hi_ = Vec8::Zero();
+  Vec8 v_max_ = Vec8::Ones();
+  Vec8 a_max_ = Vec8::Ones();
+  Vec8 j_max_ = Vec8::Ones();
+  Vec8 q_mid_ = Vec8::Zero();
+  Vec8 half_ = Vec8::Ones();
+  Vec8 q_star_ = Vec8::Zero();
+  Vec8 q_star_signs_ = Vec8::Zero();
+  Vec8 q_nominal_ = Vec8::Zero();
+  Vec8 last_valid_q_star_ = Vec8::Zero();
+  bool have_valid_q_star_ = false;
+  Vec8 m_diag_lpf_ = Vec8::Ones();
+  bool m_diag_init_ = false;
+
+  Vec8 sec_qdot_ = Vec8::Zero();
+  Vec8 sec_acc_ = Vec8::Zero();
+  Vec8 sec_target_ = Vec8::Zero();
+  Vec8 sec_lpf_ = Vec8::Zero();
+  Vec8 gN_lpf_ = Vec8::Zero();
+  bool gN_lpf_init_ = false;
+  double sec_age_ = 1e9;
+
+  double v_r_ref_ = 0.0;
+  double v_r_a_ = 0.0;
+  // Snapshot of the final rail command history from the preceding tick.
+  // The nominal shaper is evaluated before solve_hqp(), so v_r_ref_/v_r_a_
+  // are already the current nominal candidate by the time the QP is built.
+  // Keep the previous committed values separately for the slow-owner
+  // speed/acceleration/jerk box.
+  double rail_prev_committed_ref_ = 0.0;
+  double rail_prev_committed_a_ = 0.0;
+  double v_r_lpf_ = 0.0;
+  double v_r_base_ref_ = 0.0;
+  double v_r_base_a_ = 0.0;
+  double v_r_base_lpf_ = 0.0;
+  bool v_r_base_init_ = false;
+  bool v_r_init_ = false;
+  bool wall_pi_frozen_ = false;
+  double leave_sign_ = 0.0;
+  double u_alloc_ = 0.0;
+  double u_mid_ = 0.0;
+  double u_mid_committed_ = 0.0;
+  double mid_integ_ = 0.0;
+  double u_task_raw_ = 0.0;
+  double u_task_feasible_ = 0.0;
+  double u_task_committed_ = 0.0;
+  double u_pi_raw_ = 0.0;
+  double u_mid_cmd_ = 0.0;
+  double u_post_raw_ = 0.0;
+  double u_post_feasible_ = 0.0;
+  double u_mid_applied_ = 0.0;
+  double d_star_dot_cmd_ = 0.0;
+  double u_escape_raw_ = 0.0;
+  double u_escape_feasible_ = 0.0;
+  double u_escape_committed_ = 0.0;
+  double u_post_committed_ = 0.0;
+  double u_total_committed_ = 0.0;
+  // Physical base contribution after the final HQP rail command is known.
+  // ``u_base_`` remains the shaped shadow reference for telemetry and for
+  // forming the common slow chain; this value is used only for the final
+  // task/posture attribution and anti-windup update.
+  double u_base_committed_ = 0.0;
+  double u_base_raw_ = 0.0;
+  double rail_task_projection_ = 0.0;
+  double u_base_ = 0.0;
+  double u_feasible_ = 0.0;
+  double e_d_ = 0.0;
+  double V_d_proxy_ = 0.0;
+  double j4_design_slack_ = 0.0;
+  double sigma_slack_ = 0.0;
+  double rail_box_lo_ = 0.0;
+  double rail_box_hi_ = 0.0;
+  uint32_t rail_bind_lo_ = 0;
+  uint32_t rail_bind_hi_ = 0;
+  double rail_task_vel_used_ = 0.0;
+  double rail_h1_ = 0.0;
+  double rail_h2_ = 0.0;
+  double rail_qdot_prev_tel_ = 0.0;
+  double rail_qdot_prev2_tel_ = 0.0;
+  Vec8 qdot_prev_tel_ = Vec8::Zero();
+  Vec8 qdot_prev2_tel_ = Vec8::Zero();
+  double q_hat_ = 0.0;
+  double v_hat_ = 0.0;
+  bool obs_init_ = false;
+  double last_sample_t_ = -1.0;
+
+  double last_slack_ = 0.0;
+  bool slack_hold_latched_ = false;
+  double secondary_alpha_ = 1.0;
+  double task_progress_alpha_ = 1.0;
+  double task_progress_scale_used_ = 1.0;
+  Vec8 rail_preview_arm_ = Vec8::Zero();
+  double rail_preview_residual_ = 0.0;
+  bool task_paused_ = false;
+  uint32_t task_pause_reason_ = 0;
+  double sat_scale_ = 1.0;
+  double last_sigma_ = 0.08;
+  double quiet_s_ = 0.0;
+  double cmd_quiet_s_ = 0.0;
+  bool quiescent_ = false;
+  bool hold_d_prev_ = false;
+  bool enabled_ = true;
+  Vec6 last_tcp_est_ = Vec6::Zero();
+
+  int rail_mode_ = 0;
+  int locked_style_ = 0;
+  double rail_q_ref_ = 0.0;
+  bool has_rail_ref_ = false;
+  bool plan_drives_rail_ = false;
+  bool direct_ptp_ = false;
+  bool arm_suppress_ = false;
+  bool center_suppress_ = false;
+  double ns_enter_t_ = 1e9;
+  bool ns_homotopy_open_ = false;
+  bool manip_active_ = false;
+  bool rail_ext_active_ = true;
+  int rail_ext_mode_ = 0;
+  double y_rail_target_ = 0.0;
+  bool has_y_target_ = false;
+
+  double d_star_ = 0.0;
+  double d_pref_ = 0.0;
+  double d_star_ref_ = 0.0;
+  bool d_star_ref_init_ = false;
+  double psi_cmd_ = 0.0;
+  double psi_star_ = 0.0;
+  double homotopy_s_ = 0.0;
+  bool planned_ = false;
+  double d0_ = 0.0;
+  double psi0_ = 0.0;
+
+  double press_z_mark_ = std::numeric_limits<double>::quiet_NaN();
+  double press_stall_s_ = 0.0;
+  double nudge_cool_s_ = 0.0;
+
+  bool escape_active_ = false;
+  int escape_dir_ = 0;
+  double escape_sign_ = 0.0;
+  double last_e_mid_ = 0.0;
+  double last_v_escape_ = 0.0;
+  double last_v_ff_ = 0.0;
+  double last_ext_w_ = 0.0;
+  bool last_limit_sat_ = false;
+  double last_d_star_reg_ = 1.0;
+
+  double dwell_s_ = 0.0;
+  double dwell_scale_ = 1.0;
+  bool sigma_row_active_ = false;
+  Vec8 sigma_grad_ = Vec8::Zero();
+  int sigma_tick_ = 0;
+  bool box_t_init_ = false;
+  double box_last_t_ = 0.0;
+  double box_h1_ = 0.005;
+
+  Mat6x8 last_lock_J_ = Mat6x8::Zero();
+  Vec6 last_lock_v_ = Vec6::Zero();
+  Vec8 last_lo_box_ = Vec8::Constant(-1e20);
+  Vec8 last_hi_box_ = Vec8::Constant(1e20);
+  Vec8 last_qdot_qp_ = Vec8::Zero();
+  uint32_t qp1_status_ = kQpNotRun;
+  uint32_t qp2_status_ = kQpNotRun;
+  uint32_t qp1_iter_ = 0;
+  uint32_t qp2_iter_ = 0;
+  double qp1_ms_ = 0.0;
+  double qp2_ms_ = 0.0;
+  double assembly_ms_ = 0.0;
+  double fallback_ms_ = 0.0;
+  double kinematics_ms_ = 0.0;
+  double collision_ms_ = 0.0;
+  double qp_total_ms_ = 0.0;
+  uint32_t n_cbf_active_ = 0;
+  TaskWeightState task_weight_;
+  bool pending_valid_ = false;
+  uint64_t pending_seq_ = 0;
+  uint64_t pending_epoch_ = 0;
+  bool pending_cartesian_ = false;
+  bool have_cartesian_identity_ = false;
+  bool cartesian_epoch_retired_ = false;
+  uint64_t last_cartesian_sequence_ = 0;
+  uint64_t last_cartesian_epoch_ = 0;
+  CartesianConstraints cartesian_;
+  int qp_constraint_count_ = 0;
+  HistorySnap pending_;
+  HistorySnap committed_snap_;
+};
+
+}  // namespace wbc_rt

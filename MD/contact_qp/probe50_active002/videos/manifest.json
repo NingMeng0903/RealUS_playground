@@ -1,0 +1,111 @@
+{
+  "resampling": "30 fps previous-source-frame hold using original H5 image timestamps; no delay adjustment",
+  "limits": "Independent re-teaching; not identical paths or spatial/pixel registration. H5s already contact-segment cropped.",
+  "single_playback": "1x actual elapsed time; MP4 final quantization <=1/30 s",
+  "normalized_playback": "Each clip 0-100% elapsed. Individual columns time-warped, not 1x.",
+  "sources": {
+    "baseline": {
+      "input": "/media/camp/EXT_DRIVE/ICRA_2027/icra 2027_contact/real_characterization/baseline_probe50/002/RH_Per_L_DtP.h5",
+      "source_frames": 889,
+      "height": 726,
+      "width": 664,
+      "source_duration_s": 29.583458368,
+      "source_clock": "ultrasound/timestamp_ns",
+      "original_crop_box": [
+        753,
+        1417,
+        154,
+        880
+      ],
+      "original_hflip": false,
+      "export_crop": null,
+      "export_flip": false,
+      "intensity_adjustment": false
+    },
+    "shadow": {
+      "input": "/media/camp/EXT_DRIVE/ICRA_2027/icra 2027_contact/real_characterization/shadow_probe50/001/RH_Per_L_DtP.h5",
+      "source_frames": 891,
+      "height": 726,
+      "width": 664,
+      "source_duration_s": 29.647852115,
+      "source_clock": "ultrasound/timestamp_ns",
+      "original_crop_box": [
+        753,
+        1417,
+        154,
+        880
+      ],
+      "original_hflip": false,
+      "export_crop": null,
+      "export_flip": false,
+      "intensity_adjustment": false
+    },
+    "active": {
+      "input": "/media/camp/EXT_DRIVE/ICRA_2027/icra 2027_contact/real_characterization/active_probe50/002/RH_Per_L_DtP.h5",
+      "source_frames": 919,
+      "height": 726,
+      "width": 664,
+      "source_duration_s": 30.601255511,
+      "source_clock": "ultrasound/timestamp_ns",
+      "original_crop_box": [
+        753,
+        1417,
+        154,
+        880
+      ],
+      "original_hflip": false,
+      "export_crop": null,
+      "export_flip": false,
+      "intensity_adjustment": false
+    }
+  },
+  "outputs": [
+    {
+      "file": "baseline_raw_gray_1x.mp4",
+      "frames": 888,
+      "fps": 30,
+      "duration_s": 29.6,
+      "bytes": 18942876,
+      "codec": "H.264 / yuv420p",
+      "validation": "bundled ffmpeg complete decode, exit 0"
+    },
+    {
+      "file": "shadow_raw_gray_1x.mp4",
+      "frames": 890,
+      "fps": 30,
+      "duration_s": 29.666666666666668,
+      "bytes": 18289710,
+      "codec": "H.264 / yuv420p",
+      "validation": "bundled ffmpeg complete decode, exit 0"
+    },
+    {
+      "file": "active_raw_gray_1x.mp4",
+      "frames": 919,
+      "fps": 30,
+      "duration_s": 30.633333333333333,
+      "bytes": 20962221,
+      "codec": "H.264 / yuv420p",
+      "validation": "bundled ffmpeg complete decode, exit 0"
+    },
+    {
+      "file": "comparison_normalized_elapsed.mp4",
+      "frames": 919,
+      "fps": 30,
+      "duration_s": 30.633333333333333,
+      "bytes": 55593429,
+      "codec": "H.264 / yuv420p",
+      "validation": "bundled ffmpeg complete decode, exit 0"
+    },
+    {
+      "file": "comparison_elapsed_1x.mp4",
+      "frames": 919,
+      "fps": 30,
+      "duration_s": 30.633333333333333,
+      "bytes": 55626598,
+      "codec": "H.264 / yuv420p",
+      "validation": "bundled ffmpeg complete decode, exit 0"
+    }
+  ],
+  "ffmpeg": "/home/camp/.local/lib/python3.10/site-packages/imageio_ffmpeg/binaries/ffmpeg-linux-x86_64-v7.0.2",
+  "ffprobe": "not installed; complete ffmpeg decode used instead"
+}

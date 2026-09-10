@@ -21,6 +21,7 @@ from scipy.spatial.transform import Rotation as Rsc
 
 from peirastic.realman8dof.force.fce import kikuuwe_step
 from peirastic.realman8dof.force.protocol import ForceOutput
+from peirastic.realman8dof.force.nominal_transaction import check_measurement_id, finite_twist
 from peirastic.realman8dof.force.tff import SELECTION_TOOL_Z_FORCE
 
 _THETA_MAX_RAD = math.radians(150.0)
@@ -174,6 +175,8 @@ class TorqueTilt:
         self.reset()
 
     def reset(self) -> None:
+        self._pending_command = None
+        self._last_measurement_id = getattr(self, "_last_measurement_id", -1)
         self._w = 0.0
         self._was_contact = False
         self.tau_y = 0.0
@@ -187,6 +190,7 @@ class TorqueTilt:
         self.tilt_stalled = False
         self.tilt_stop_reason = "no_contact"
         self.align_z = 1.0
+        self.measured_pose_euler = None
         self.n_world = np.array([0.0, 0.0, 1.0], dtype=float)
         self._have_normal = False
         self.cop_x = float("nan")
@@ -197,6 +201,50 @@ class TorqueTilt:
         self.on_tube = False
         self._cop_x_watch = float("nan")
         self._cop_stall_t = 0.0
+
+    def prepare(self, f_ext, f_des, *, measurement_id: int, **kwargs) -> float:
+        """Advance contact/CoP/pose observations once; defer command integration."""
+        if self._pending_command is not None:
+            raise RuntimeError("tilt proposal must be committed or aborted first")
+        seq = check_measurement_id(measurement_id, self._last_measurement_id)
+        before = (self._w, self.omega_y, self.theta_tilt, self.stuck)
+        was_contact = self._was_contact
+        self._last_measurement_id = seq
+        try:
+            proposed = self.update(f_ext, f_des, **kwargs)
+            after = (self._w, self.omega_y, self.theta_tilt, self.stuck)
+            self._proposal_telemetry = self.telemetry()
+        finally:
+            self._w, self.omega_y, self.theta_tilt, self.stuck = before
+        # A contact rising edge establishes a new angle origin as an observed
+        # event, even when the candidate's command integration is rejected.
+        if self._was_contact and not was_contact:
+            self.theta_tilt = 0.0
+        self._pending_command = (after, self.theta_tilt, float(kwargs["dt_s"]))
+        return proposed
+
+    def commit_applied(self, omega_y: float) -> None:
+        if self._pending_command is None:
+            raise RuntimeError("no tilt proposal to commit")
+        omega = float(omega_y)
+        if not math.isfinite(omega):
+            raise ValueError("accepted omega_y must be finite")
+        after, origin, dt = self._pending_command
+        if omega == after[0]:
+            self._w, self.omega_y, self.theta_tilt, self.stuck = after
+        else:
+            self._w = self.omega_y = omega
+            # An externally accepted action has already passed admission. Do
+            # not hide an angle excursion by clipping its command history;
+            # the next proposal's existing angle guard sees the full integral.
+            self.theta_tilt = origin + omega * dt
+            self.stuck = abs(omega) <= 1e-12
+        self._pending_command = None
+
+    def abort(self) -> None:
+        if self._pending_command is None:
+            raise RuntimeError("no tilt proposal to abort")
+        self._pending_command = None
 
     def telemetry(self) -> dict:
         return {
@@ -233,7 +281,7 @@ class TorqueTilt:
         self.on_face = bool(self.cop_valid and self.cop_r <= cfg.r_face_m)
         self.on_tube = bool(self.cop_valid and self.cop_r <= tube)
 
-    def _update_stall(self, dt: float) -> None:
+    def _update_stall(self, dt: float, *, measurement_fresh=True) -> None:
         cfg = self.cfg
         stall_s = float(cfg.cop_stall_s)
         if stall_s <= 0.0 or not self.engaged or not self.cop_valid:
@@ -243,7 +291,7 @@ class TorqueTilt:
                 self._cop_x_watch = float(self.cop_x)
             return
         cop_x = float(self.cop_x)
-        improved = (
+        improved = measurement_fresh and (
             abs(cop_x) <= float(cfg.cop_stall_m)
             or (
                 math.isfinite(self._cop_x_watch)
@@ -284,7 +332,10 @@ class TorqueTilt:
         pose: np.ndarray | None = None,
         slack_norm: float | None = None,
         euler_order: str = "xyz",
+        measurement_fresh: bool = True,
     ) -> float:
+        if self._pending_command is not None:
+            raise RuntimeError("cannot update while a tilt proposal is pending")
         cfg = self.cfg
         wrench = np.asarray(f_ext, dtype=float).reshape(6)
         desired = np.asarray(f_des, dtype=float).reshape(6)
@@ -293,8 +344,8 @@ class TorqueTilt:
             raise ValueError("torque_tilt requires a finite compensated TCP wrench")
         if not math.isfinite(dt) or dt <= 0.0:
             raise ValueError("torque_tilt requires a finite positive dt_s")
-        self.tau_y = float(wrench[cfg.axis])
-        self.tau_error_y = float(desired[cfg.axis] - wrench[cfg.axis])
+        if measurement_fresh:self.tau_y = float(wrench[cfg.axis])
+        self.tau_error_y = float(desired[cfg.axis] - self.tau_y)
         normal_sign = 1.0 if desired[2] >= 0.0 else -1.0
         in_contact = (
             bool(contact)
@@ -308,10 +359,11 @@ class TorqueTilt:
             self.tilt_stalled = False
         self._was_contact = bool(in_contact)
         self.engaged = bool(cfg.enabled and (in_contact or not cfg.contact_only))
-        self._update_cop(wrench)
+        if measurement_fresh:self._update_cop(wrench)
 
         self.align_z = 1.0
         if pose is not None:
+            self.measured_pose_euler = np.asarray(pose, dtype=float).reshape(6)[3:].copy()
             rot = rotation_from_pose(pose, euler_order=euler_order)
             self.align_z = float(abs(rot[2, 2]))
             if self.engaged and self.on_tube:
@@ -336,7 +388,7 @@ class TorqueTilt:
         at_pos = self.theta_tilt >= cfg.theta_max_rad
         at_neg = self.theta_tilt <= -cfg.theta_max_rad
         self.tilt_capped = bool(self.engaged and (at_pos or at_neg))
-        self._update_stall(dt)
+        self._update_stall(dt,measurement_fresh=measurement_fresh)
 
         target = 0.0
         self.tilt_stop_reason = ""
@@ -419,6 +471,43 @@ class LegacyForceWithTilt:
 
     def update(self, **kwargs) -> ForceOutput:
         zout = self.z_law.update(**kwargs)
+        return self._combine(zout, kwargs)
+
+    def prepare(self, *, measurement_id: int | None=None,control_step_id=None,
+                source_sample_id=None,source_t_s=None,**kwargs) -> ForceOutput:
+        zout = self.z_law.prepare(measurement_id=measurement_id,control_step_id=control_step_id,
+            source_sample_id=source_sample_id,source_t_s=source_t_s,**kwargs)
+        try:
+            return self._combine(zout, kwargs, measurement_id=measurement_id if control_step_id is None else control_step_id)
+        except Exception:
+            self.z_law.abort()
+            if self.tilt._pending_command is not None:
+                self.tilt.abort()
+            raise
+
+    def commit_applied(
+        self, final_force_twist, *, final_full_twist=None, accepted_normal_z=None,
+    ) -> None:
+        final = finite_twist(final_force_twist, "accepted force twist")
+        if self.tilt._pending_command is None:
+            raise RuntimeError("no tilt proposal to commit")
+        if accepted_normal_z is None:
+            accepted_normal_z = (
+                self._pending_normal_z
+                if np.array_equal(final[:3], self._pending_force[:3])
+                else float(final[:3] @ self._pending_normal_direction)
+            )
+        self.z_law.commit_applied(
+            final, final_full_twist=final_full_twist,
+            accepted_normal_z=accepted_normal_z,
+        )
+        self.tilt.commit_applied(final[self.tilt.cfg.axis])
+
+    def abort(self) -> None:
+        self.z_law.abort()
+        self.tilt.abort()
+
+    def _combine(self, zout, kwargs, *, measurement_id=None) -> ForceOutput:
         contact = kwargs.get("contact")
         if contact is None and self.controller is not None:
             contact = bool(getattr(self.controller, "contact_present", False))
@@ -426,7 +515,9 @@ class LegacyForceWithTilt:
         if dt_s is None:
             dt_s = kwargs.get("dt_s", 0.005)
         euler = str(kwargs.get("euler_order") or "xyz")
-        wy = self.tilt.update(
+        tilt_step = self.tilt.update if measurement_id is None else self.tilt.prepare
+        sequence = {} if measurement_id is None else {"measurement_id": measurement_id}
+        wy = tilt_step(
             kwargs["f_ext"],
             kwargs["f_des"],
             dt_s=float(dt_s),
@@ -434,6 +525,8 @@ class LegacyForceWithTilt:
             pose=kwargs.get("pose"),
             slack_norm=kwargs.get("slack_norm"),
             euler_order=euler,
+            measurement_fresh=kwargs.get('measurement_fresh',True),
+            **sequence,
         )
         velocity = np.asarray(zout.v_force, dtype=float).reshape(6).copy()
         velocity[self.tilt.cfg.axis] = wy
@@ -445,8 +538,19 @@ class LegacyForceWithTilt:
                 n_world=self.tilt.n_world,
                 v_force_z=float(zout.v_force_z),
             )
+        if measurement_id is not None:
+            self._pending_force = velocity.copy()
+            self._pending_normal_z = float(zout.v_force_z)
+            self._pending_normal_direction = np.array([0.0, 0.0, 1.0])
+            if self.tilt.needs_normal_retract and kwargs.get("pose") is not None:
+                self._pending_normal_direction = remap_force_along_world_normal(
+                    np.zeros(6), rotation=rotation, n_world=self.tilt.n_world,
+                    v_force_z=1.0,
+                )[:3]
         telemetry = dict(zout.telemetry or {})
-        telemetry.update(self.tilt.telemetry())
+        telemetry.update(
+            self.tilt.telemetry() if measurement_id is None else self.tilt._proposal_telemetry
+        )
         return ForceOutput(
             v_force=velocity,
             v_force_z=float(zout.v_force_z),

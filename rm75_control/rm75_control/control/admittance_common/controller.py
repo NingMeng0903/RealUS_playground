@@ -540,7 +540,8 @@ class AdmittanceController:
         self._init_hp_filter()
 
     def _init_hp_filter(self) -> None:
-        fs = 1.0 / self.dt if self.dt > 0 else 100.0
+        filter_dt=getattr(self,'_source_period_s',self.dt)
+        fs = 1.0 / filter_dt if filter_dt > 0 else 100.0
         wn = min(
             max(self.cfg.var_damping_omega_c_hz / (0.5 * fs), 1e-3),
             0.99,
@@ -555,6 +556,21 @@ class AdmittanceController:
         self._is_energy_alpha = (
             float(min(1.0, self.dt / 0.2)) if self.dt > 0 else 0.05
         )
+
+    def configure_source_period(self, period_s: float, *, variable_dt=False) -> None:
+        """Declare a new measurement epoch before its first control step."""
+        period=float(period_s)
+        if period==getattr(self,'_source_period_s',self.dt) and bool(variable_dt)==getattr(self,'_variable_source_dt',False):return
+        if (not np.isfinite(period) or period<=0 or getattr(self,'_measurement_updates',0)
+                or self.cfg.var_damping_omega_c_hz*2*period>=1):
+            raise ValueError('source period requires a fresh controller and representable HP cutoff')
+        self._source_period_s=period
+        self._variable_source_dt=bool(variable_dt)
+        self._init_hp_filter()
+        self._variable_hp=None
+        if variable_dt:
+            from .variable_step_filter import VariableHighpass2
+            self._variable_hp=VariableHighpass2(self.cfg.var_damping_omega_c_hz,period)
 
     def set_time_scale(self, scale: float) -> None:
         self.time_scale = float(np.clip(scale, 0.0, 1.0))
@@ -687,6 +703,7 @@ class AdmittanceController:
         self.contact_episode_release_s = 0.0
         self._lat_soften_hold_s = 0.0
         self._hp_zi.fill(0.0)
+        if getattr(self,'_variable_hp',None) is not None:self._variable_hp.reset(0.)
         self._ke_estimator.reset()
         self.ke_est = self._ke_estimator.ke_est
         self.adaptive_bd = self._ke_estimator.bd
@@ -1305,7 +1322,21 @@ class AdmittanceController:
         feedback_age_s: float | None = None,
         feedback_freshness: bool | float | None = None,
         feedback_fresh: bool | float | None = None,
+        measurement_fresh: bool = True,
+        source_dt_s: float | None = None,
+        velocity_measurement_fresh: bool | None = None,
+        velocity_dt_s: float | None = None,
     ) -> np.ndarray:
+        if source_dt_s is not None and (not np.isfinite(source_dt_s) or source_dt_s<=0):
+            raise ValueError('source_dt_s must be positive and finite')
+        if velocity_dt_s is not None and (not np.isfinite(velocity_dt_s) or velocity_dt_s<=0):
+            raise ValueError('velocity_dt_s must be positive and finite')
+        self._measurement_fresh=bool(measurement_fresh)
+        self._source_dt_s=source_dt_s
+        if measurement_fresh:
+            self._measurement_updates=getattr(self,'_measurement_updates',0)+1
+            if source_dt_s is not None and self._measurement_updates==1:
+                self._episode_filter_seed_pending=True
         # Use the measured wall-clock period for force/proxy dynamics and
         # safety timers.  Trajectory governor scaling remains a reference-path
         # concern and does not alter physical-time integration.
@@ -1499,11 +1530,11 @@ class AdmittanceController:
             if v_tcp_z_actual is None
             else normal_sign * float(v_tcp_z_actual)
         )
-        if v_tcp_press is not None and math.isfinite(v_tcp_press):
+        if v_tcp_press is not None and math.isfinite(v_tcp_press) and velocity_measurement_fresh is not False:
             if self._v_tcp_z_prev is not None and dt_flow > 0.0:
                 self._a_tcp_z_actual = (
                     v_tcp_press - float(self._v_tcp_z_prev)
-                ) / dt_flow
+                ) / (dt_flow if velocity_dt_s is None else velocity_dt_s)
             self._v_tcp_z_prev = float(v_tcp_press)
         # Historical timer kept for telemetry only.  Safety press limit
         # latches on contact *loss* and clears after confirmed contact at
@@ -1562,7 +1593,7 @@ class AdmittanceController:
             self._first_contact_slow_latched or self._recontact_slow_latched
         )
         self.recontact_detached_seen = bool(self._recontact_detached_seen)
-        self._update_instability_index(raw_z)
+        if measurement_fresh:self._update_instability_index(raw_z,source_dt_s=source_dt_s)
 
         if cfg.ke_schedule.enabled:
             mass_z, _ = self._update_ke_schedule(
@@ -1618,6 +1649,9 @@ class AdmittanceController:
                     and normal_sign * f_ext_z
                     >= float(cfg.adaptive_ke.contact_force_n)
                 ),
+                measurement_fresh=measurement_fresh,
+                source_dt_s=source_dt_s,
+                control_dt_s=dt_flow if source_dt_s is not None else None,
             )
             self.zeta_eff = self._ke_estimator.zeta_eff
             self.ke_cap_n_m = float(self._ke_estimator.ke_for_cap)
@@ -1635,9 +1669,9 @@ class AdmittanceController:
         force_normal_filtered = normal_sign * f_ext_z
         force_normal_raw = normal_sign * raw_z
         force_normal_desired = abs(float(f_des_z))
-        self.force_dot_z = float(
-            self._force_barrier.update_fdot(force_normal_raw, dt_flow)
-        )
+        if measurement_fresh:
+            self.force_dot_z = float(self._force_barrier.update_fdot(
+                force_normal_raw,dt_flow if source_dt_s is None else source_dt_s))
         energy_available_j = None
         if cfg.bidirectional_flow.mode == "active":
             energy_available_j = max(
@@ -2074,6 +2108,8 @@ class AdmittanceController:
             float(self.u_sent_z),
             dt_flow,
             in_contact=bool(physical_contact),
+            measurement_fresh=measurement_fresh,
+            source_dt_s=source_dt_s,
         )
         self.tdpa_e_obs_j = float(self._tdpa.e_obs_j)
         self.tdpa_alpha = float(self._tdpa.alpha)
@@ -2107,28 +2143,33 @@ class AdmittanceController:
         self.f_des_z_eff = float(f_eff)
         return float(f_eff)
 
-    def _update_instability_index(self, f_z: float) -> None:
+    def _update_instability_index(self, f_z: float, *, source_dt_s=None) -> None:
         cfg = self.cfg
         if not cfg.var_damping_enabled:
             self.instability_index = 0.0
             return
         if self._episode_filter_seed_pending:
             self._hp_zi = lfilter_zi(self._hp_b, self._hp_a) * float(f_z)
+            if getattr(self,'_variable_hp',None) is not None:self._variable_hp.reset(float(f_z))
             self._f_dc = float(f_z)
             self._p_hi = 0.0
             self._p_ac = 0.0
             self.instability_index = 0.0
             self._episode_filter_seed_pending = False
-        filtered, self._hp_zi = lfilter(
-            self._hp_b,
-            self._hp_a,
-            np.asarray([f_z], dtype=np.float64),
-            zi=self._hp_zi,
-        )
-        high_pass = float(filtered[0])
-        self._f_dc += cfg.var_damping_dc_alpha * (f_z - self._f_dc)
+        if getattr(self,'_variable_hp',None) is not None:
+            if source_dt_s is None:raise ValueError('variable HP requires actual source interval')
+            high_pass=self._variable_hp.update(f_z,float(source_dt_s))
+        else:
+            filtered, self._hp_zi = lfilter(
+                self._hp_b,self._hp_a,np.asarray([f_z],dtype=np.float64),zi=self._hp_zi)
+            high_pass=float(filtered[0])
+        ratio=1. if source_dt_s is None else source_dt_s/self.dt
+        dc_alpha=(cfg.var_damping_dc_alpha if source_dt_s is None else
+                  1.-(1.-cfg.var_damping_dc_alpha)**ratio)
+        self._f_dc += dc_alpha * (f_z - self._f_dc)
         f_ac = f_z - self._f_dc
         alpha = self._is_energy_alpha
+        if source_dt_s is not None:alpha=1.-(1.-alpha)**ratio
         self._p_hi += alpha * (
             high_pass * high_pass - self._p_hi
         )
@@ -2142,10 +2183,12 @@ class AdmittanceController:
             / max(cfg.var_damping_f_max_n, 1e-6),
             1.0,
         )
-        self.instability_index = (
-            i_omega * i_rms
-            + cfg.var_damping_lambda * self.instability_index
-        )
+        if source_dt_s is None:
+            self.instability_index = i_omega*i_rms+cfg.var_damping_lambda*self.instability_index
+        else:
+            decay=cfg.var_damping_lambda**ratio
+            gain=(1.-decay)/(1.-cfg.var_damping_lambda) if cfg.var_damping_lambda!=1 else ratio
+            self.instability_index=gain*i_omega*i_rms+decay*self.instability_index
 
     def _admittance_z(
         self,
@@ -2239,6 +2282,8 @@ class AdmittanceController:
             instability_index=self.instability_index,
             force_pred_n=force_pred_n,
             overforce_escape=overforce_escape,
+            measurement_fresh=getattr(self,'_measurement_fresh',True),
+            source_dt_s=getattr(self,'_source_dt_s',None),
         )
         self.force_fast_z = float(self._fast_retract_guard.fast_force_n)
         self.retract_guard_armed = bool(self._fast_retract_guard.armed)

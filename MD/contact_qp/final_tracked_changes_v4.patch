@@ -1,0 +1,1413 @@
+diff --git a/peirastic/api/arm.py b/peirastic/api/arm.py
+index 1227e726..ffe57f28 100644
+--- a/peirastic/api/arm.py
++++ b/peirastic/api/arm.py
+@@ -1022,6 +1022,7 @@ class _ForceMixin(_ClientMixin):
+         *,
+         reference: str | None = None,
+         path_spec: dict[str, Any] | None = None,
++        contact_qp: dict[str, Any] | str | None = None,
+         scan_contact_n: float | None = None,
+         scan_contact_s: float | None = None,
+         speed_m_s: float | None = None,
+@@ -1044,6 +1045,12 @@ class _ForceMixin(_ClientMixin):
+         existing force law approaches. Path time and duration start after
+         that controller confirms contact, without restarting the force law.
+         """
++        if contact_qp is not None and self.client is not None:
++            from peirastic.contact_qp.runtime_config import load_study_config
++            study_mode = load_study_config(contact_qp).get("mode", "baseline")
++            self.client.require_capability(
++                "contact_qp.active_v1" if study_mode == "active" else "contact_qp.recording_v1"
++            )
+         bad = self._check_tail(r, connect)
+         if bad is not None:
+             return bad
+@@ -1062,6 +1069,7 @@ class _ForceMixin(_ClientMixin):
+         payload = HfpcPayload(
+             reference=kind,
+             path_spec=path_spec,
++            contact_qp=contact_qp,
+             scan_contact_n=scan_contact_n,
+             scan_contact_s=scan_contact_s,
+             poses=arr,
+diff --git a/peirastic/api/payloads.py b/peirastic/api/payloads.py
+index 2dbb48b0..11edeb8b 100644
+--- a/peirastic/api/payloads.py
++++ b/peirastic/api/payloads.py
+@@ -150,6 +150,7 @@ class HfpcPayload:
+ 
+     reference: str = "polyline"
+     path_spec: dict[str, Any] | None = None
++    contact_qp: dict[str, Any] | str | None = None
+     scan_contact_n: float | None = None
+     scan_contact_s: float | None = None
+     poses: list[list[float]] | None = None
+@@ -173,14 +174,19 @@ class HfpcPayload:
+ 
+     def to_json(self) -> dict[str, Any]:
+         law = str(self.law or "tff").lower()
+-        if law not in ("tff", "admittance", "fce"):
++        if law not in ("tff", "admittance", "fce", "contact_qp"):
+             raise ValueError(
+-                f"hfpc law must be 'tff', 'admittance', or 'fce', got {self.law!r}"
++                f"hfpc law must be 'tff', 'admittance', 'fce', or 'contact_qp', got {self.law!r}"
+             )
++        if (law=="contact_qp" or self.contact_qp is not None) and self.reference!="icra_path":
++            raise ValueError("contact_qp requires reference=icra_path")
++        if law=="contact_qp" and self.contact_qp is None:
++            raise ValueError("contact_qp requires explicit study configuration")
+         out = _dump(
+             {
+                 "reference": self.reference,
+                 "path_spec": self.path_spec,
++                "contact_qp": self.contact_qp,
+                 "scan_contact_n": self.scan_contact_n,
+                 "scan_contact_s": self.scan_contact_s,
+                 "poses": self.poses,
+diff --git a/peirastic/core/ipc.py b/peirastic/core/ipc.py
+index e25f2200..7c8497bb 100644
+--- a/peirastic/core/ipc.py
++++ b/peirastic/core/ipc.py
+@@ -343,6 +343,10 @@ class CommandClient:
+         close_attached_shm(self._ctl_shm)
+         close_attached_shm(self._pay_shm)
+ 
++    def require_capability(self, capability: str) -> None:
++        from peirastic.core.capabilities import require_capability
++        require_capability(self, capability)
++
+     def set_mode(self, req: ModeRequest) -> int:
+         blob = json.dumps(req.to_json(), separators=(",", ":")).encode("utf-8")
+         if len(blob) > PAYLOAD_MAX:
+diff --git a/peirastic/realman8dof/daemon.py b/peirastic/realman8dof/daemon.py
+index 46bf1491..be4cdd48 100644
+--- a/peirastic/realman8dof/daemon.py
++++ b/peirastic/realman8dof/daemon.py
+@@ -268,10 +268,21 @@ class ControllerService:
+             self.force_observer_error = str(exc)
+             self.panel.event("WARN", f"force observer off: {exc}")
+ 
++        # Advertise only handlers actually imported by this service instance.
++        from peirastic.realman8dof.modes.contact_qp import wrap_study_phase
++        from peirastic.realman8dof.modes.contact_active import ContactQpOuter
++        from peirastic.core.capabilities import CapabilityAdvertisement
++        self._capabilities = CapabilityAdvertisement(
++            self.hub, {"contact_qp.recording_v1", "contact_qp.active_v1"}
++        )
++
+     def close(self) -> None:
+         if getattr(self, "_closed", False):
+             return
+         self._closed = True
++        capabilities = getattr(self, "_capabilities", None)
++        if capabilities is not None:
++            capabilities.close()
+         # Signal handlers otherwise retain this service (and its native QPs)
+         # until interpreter teardown. Do not overwrite a newer owner's handler.
+         for signum, previous in getattr(self, "_previous_signals", {}).items():
+@@ -965,10 +976,15 @@ class ControllerService:
+                     setattr(phase, key, getattr(compiled, key))
+             else:
+                 phase = compiled
++            active_contact = bool(getattr(compiled.outer, "contact_qp_enabled", False))
++            if active_contact:
++                phase.wait_until = compiled.wait_until
++                phase.max_duration_s = compiled.max_duration_s
++                phase.require_arrival = True
+             self._live = phase
+             self.mode = req.mode
+             self._mode_t0 = 0.0
+-            self._finite_duration = compiled.duration_s if velocity_loop else None
++            self._finite_duration = compiled.duration_s if velocity_loop and not active_contact else None
+             self.hub.clear_stop()
+             if commanded:
+                 self.panel.event("MODE", MODE_LABEL[self.mode])
+@@ -1088,7 +1104,9 @@ class ControllerService:
+                     self._pending_install_seq = install_seq
+                     self.hub.request_stop()
+                     return
+-                if not velocity_loop or not is_swappable(parsed_req.mode):
++                if (not velocity_loop or not is_swappable(parsed_req.mode)
++                        or parsed_req.payload.get("contact_qp") is not None
++                        or getattr(proxy, "contact_qp_enabled", False)):
+                     self._pending = parsed_req
+                     self._pending_commanded = True
+                     self._pending_install_seq = install_seq
+@@ -1308,6 +1326,11 @@ class ControllerService:
+                     rail,
+                     robot=getattr(sess, "robot", None),
+                 )
++            # File drain follows the coordinated stop, never the 200 Hz callback.
++            import sys
++            recorder = sys.modules.get("peirastic.realman8dof.modes.contact_recording")
++            if recorder is not None:
++                recorder.drain_study_records()
+             if self.estop.tripped:
+                 if rail is not None and getattr(rail, "enabled", False):
+                     try:
+@@ -1382,7 +1405,7 @@ class ControllerService:
+                     done_seq=self._cmd_seq,
+                     err_code=1,
+                 )
+-            elif not velocity_loop:
++            elif not velocity_loop or (active_contact and getattr(compiled.outer, "arrival_confirmed", False)):
+                 self.hub.publish(
+                     status=Status.DONE,
+                     mode=self.mode,
+diff --git a/peirastic/realman8dof/force/config.py b/peirastic/realman8dof/force/config.py
+index f8af7928..a6720f2a 100644
+--- a/peirastic/realman8dof/force/config.py
++++ b/peirastic/realman8dof/force/config.py
+@@ -37,6 +37,7 @@ _SKIP_PAYLOAD = {
+     "mask_force_from_path",
+     "qp_aux",
+     "law",
++    "contact_qp",
+     "source",
+     "v",
+     "r",
+diff --git a/peirastic/realman8dof/force/legacy.py b/peirastic/realman8dof/force/legacy.py
+index ea49264f..f6b739f9 100644
+--- a/peirastic/realman8dof/force/legacy.py
++++ b/peirastic/realman8dof/force/legacy.py
+@@ -5,6 +5,10 @@ from __future__ import annotations
+ import numpy as np
+ 
+ from peirastic.realman8dof.force.protocol import ForceOutput
++from peirastic.realman8dof.force.nominal_transaction import (
++    NominalCommandTransaction,
++    finite_twist,
++)
+ 
+ 
+ class LegacyForceLaw:
+@@ -16,15 +20,51 @@ class LegacyForceLaw:
+ 
+     def __init__(self, controller) -> None:
+         self.controller = controller
++        self._transaction = NominalCommandTransaction(controller)
+ 
+     def reset(self, *, pose: np.ndarray, f_ext: np.ndarray) -> None:
+         del f_ext
++        self._transaction.reset()
+         if hasattr(self.controller, "reset"):
+             self.controller.reset()
+         seed = np.zeros(6, dtype=float)
+         if hasattr(self.controller, "begin_hybrid_episode"):
+             self.controller.begin_hybrid_episode(seed)
+ 
++    def prepare(self, *, measurement_id: int | None=None,control_step_id=None,
++                source_sample_id=None,source_t_s=None,**kwargs) -> ForceOutput:
++        """Consume one fresh sample and return a speculative clamped output."""
++        for name in ("path_twist", "f_ext_raw"):
++            if kwargs.get(name) is not None:
++                finite_twist(kwargs[name], name)
++        return self._transaction.prepare(
++            measurement_id, lambda: self.update(**kwargs),
++            **{name: kwargs[name] for name in ("pose", "f_des", "f_ext", "dt_s")},
++            dt_actual=kwargs.get("dt_actual"),
++            control_step_id=control_step_id,source_sample_id=source_sample_id,source_t_s=source_t_s,
++            measurement_fresh=kwargs.get('measurement_fresh',True),
++        )
++
++    def commit_applied(
++        self, final_force_twist: np.ndarray, *,
++        final_full_twist: np.ndarray | None = None,
++        accepted_normal_z: float | None = None,
++    ) -> None:
++        """Commit the final accepted tool-frame force contribution.
++
++        ``final_full_twist`` also carries the final motion contribution for the
++        controller's command-delay history. This records software acceptance;
++        it makes no assertion about measured motion or transport atomicity.
++        """
++        force = finite_twist(final_force_twist, "accepted force twist")
++        self._transaction.commit_applied(
++            force[2] if accepted_normal_z is None else accepted_normal_z,
++            final_full_twist=final_full_twist,
++        )
++
++    def abort(self) -> None:
++        self._transaction.abort()
++
+     def update(
+         self,
+         *,
+@@ -39,8 +79,14 @@ class LegacyForceLaw:
+         sensor_age_s: float | None = None,
+         feedback_age_s: float | None = None,
+         v_tcp_z_actual: float | None = None,
++        measurement_fresh: bool = True,
++        source_dt_s: float | None = None,
++        velocity_measurement_fresh: bool | None = None,
++        velocity_dt_s: float | None = None,
+         **_kwargs,
+     ) -> ForceOutput:
++        if self._transaction.pending is not None:
++            raise RuntimeError("cannot update while a nominal proposal is pending")
+         pose_d = np.asarray(pose, dtype=float).reshape(6).copy()
+         dt_use = float(dt_actual) if dt_actual is not None else float(dt_s)
+         cmd = self.controller.compute_velocity_command(
+@@ -55,6 +101,10 @@ class LegacyForceLaw:
+             sensor_age_s=sensor_age_s,
+             feedback_age_s=feedback_age_s,
+             v_tcp_z_actual=v_tcp_z_actual,
++            measurement_fresh=measurement_fresh,
++            source_dt_s=source_dt_s,
++            velocity_measurement_fresh=velocity_measurement_fresh,
++            velocity_dt_s=velocity_dt_s,
+         )
+         v = np.asarray(cmd, dtype=float).reshape(6)
+         # R1: emit the clamped command.  v_force_z is the pre-clamp admittance
+diff --git a/peirastic/realman8dof/force/torque_tilt.py b/peirastic/realman8dof/force/torque_tilt.py
+index 54a86130..488b87ae 100644
+--- a/peirastic/realman8dof/force/torque_tilt.py
++++ b/peirastic/realman8dof/force/torque_tilt.py
+@@ -21,6 +21,7 @@ from scipy.spatial.transform import Rotation as Rsc
+ 
+ from peirastic.realman8dof.force.fce import kikuuwe_step
+ from peirastic.realman8dof.force.protocol import ForceOutput
++from peirastic.realman8dof.force.nominal_transaction import check_measurement_id, finite_twist
+ from peirastic.realman8dof.force.tff import SELECTION_TOOL_Z_FORCE
+ 
+ _THETA_MAX_RAD = math.radians(150.0)
+@@ -174,6 +175,8 @@ class TorqueTilt:
+         self.reset()
+ 
+     def reset(self) -> None:
++        self._pending_command = None
++        self._last_measurement_id = getattr(self, "_last_measurement_id", -1)
+         self._w = 0.0
+         self._was_contact = False
+         self.tau_y = 0.0
+@@ -187,6 +190,7 @@ class TorqueTilt:
+         self.tilt_stalled = False
+         self.tilt_stop_reason = "no_contact"
+         self.align_z = 1.0
++        self.measured_pose_euler = None
+         self.n_world = np.array([0.0, 0.0, 1.0], dtype=float)
+         self._have_normal = False
+         self.cop_x = float("nan")
+@@ -198,6 +202,50 @@ class TorqueTilt:
+         self._cop_x_watch = float("nan")
+         self._cop_stall_t = 0.0
+ 
++    def prepare(self, f_ext, f_des, *, measurement_id: int, **kwargs) -> float:
++        """Advance contact/CoP/pose observations once; defer command integration."""
++        if self._pending_command is not None:
++            raise RuntimeError("tilt proposal must be committed or aborted first")
++        seq = check_measurement_id(measurement_id, self._last_measurement_id)
++        before = (self._w, self.omega_y, self.theta_tilt, self.stuck)
++        was_contact = self._was_contact
++        self._last_measurement_id = seq
++        try:
++            proposed = self.update(f_ext, f_des, **kwargs)
++            after = (self._w, self.omega_y, self.theta_tilt, self.stuck)
++            self._proposal_telemetry = self.telemetry()
++        finally:
++            self._w, self.omega_y, self.theta_tilt, self.stuck = before
++        # A contact rising edge establishes a new angle origin as an observed
++        # event, even when the candidate's command integration is rejected.
++        if self._was_contact and not was_contact:
++            self.theta_tilt = 0.0
++        self._pending_command = (after, self.theta_tilt, float(kwargs["dt_s"]))
++        return proposed
++
++    def commit_applied(self, omega_y: float) -> None:
++        if self._pending_command is None:
++            raise RuntimeError("no tilt proposal to commit")
++        omega = float(omega_y)
++        if not math.isfinite(omega):
++            raise ValueError("accepted omega_y must be finite")
++        after, origin, dt = self._pending_command
++        if omega == after[0]:
++            self._w, self.omega_y, self.theta_tilt, self.stuck = after
++        else:
++            self._w = self.omega_y = omega
++            # An externally accepted action has already passed admission. Do
++            # not hide an angle excursion by clipping its command history;
++            # the next proposal's existing angle guard sees the full integral.
++            self.theta_tilt = origin + omega * dt
++            self.stuck = abs(omega) <= 1e-12
++        self._pending_command = None
++
++    def abort(self) -> None:
++        if self._pending_command is None:
++            raise RuntimeError("no tilt proposal to abort")
++        self._pending_command = None
++
+     def telemetry(self) -> dict:
+         return {
+             "tau_y": float(self.tau_y),
+@@ -233,7 +281,7 @@ class TorqueTilt:
+         self.on_face = bool(self.cop_valid and self.cop_r <= cfg.r_face_m)
+         self.on_tube = bool(self.cop_valid and self.cop_r <= tube)
+ 
+-    def _update_stall(self, dt: float) -> None:
++    def _update_stall(self, dt: float, *, measurement_fresh=True) -> None:
+         cfg = self.cfg
+         stall_s = float(cfg.cop_stall_s)
+         if stall_s <= 0.0 or not self.engaged or not self.cop_valid:
+@@ -243,7 +291,7 @@ class TorqueTilt:
+                 self._cop_x_watch = float(self.cop_x)
+             return
+         cop_x = float(self.cop_x)
+-        improved = (
++        improved = measurement_fresh and (
+             abs(cop_x) <= float(cfg.cop_stall_m)
+             or (
+                 math.isfinite(self._cop_x_watch)
+@@ -284,7 +332,10 @@ class TorqueTilt:
+         pose: np.ndarray | None = None,
+         slack_norm: float | None = None,
+         euler_order: str = "xyz",
++        measurement_fresh: bool = True,
+     ) -> float:
++        if self._pending_command is not None:
++            raise RuntimeError("cannot update while a tilt proposal is pending")
+         cfg = self.cfg
+         wrench = np.asarray(f_ext, dtype=float).reshape(6)
+         desired = np.asarray(f_des, dtype=float).reshape(6)
+@@ -293,8 +344,8 @@ class TorqueTilt:
+             raise ValueError("torque_tilt requires a finite compensated TCP wrench")
+         if not math.isfinite(dt) or dt <= 0.0:
+             raise ValueError("torque_tilt requires a finite positive dt_s")
+-        self.tau_y = float(wrench[cfg.axis])
+-        self.tau_error_y = float(desired[cfg.axis] - wrench[cfg.axis])
++        if measurement_fresh:self.tau_y = float(wrench[cfg.axis])
++        self.tau_error_y = float(desired[cfg.axis] - self.tau_y)
+         normal_sign = 1.0 if desired[2] >= 0.0 else -1.0
+         in_contact = (
+             bool(contact)
+@@ -308,10 +359,11 @@ class TorqueTilt:
+             self.tilt_stalled = False
+         self._was_contact = bool(in_contact)
+         self.engaged = bool(cfg.enabled and (in_contact or not cfg.contact_only))
+-        self._update_cop(wrench)
++        if measurement_fresh:self._update_cop(wrench)
+ 
+         self.align_z = 1.0
+         if pose is not None:
++            self.measured_pose_euler = np.asarray(pose, dtype=float).reshape(6)[3:].copy()
+             rot = rotation_from_pose(pose, euler_order=euler_order)
+             self.align_z = float(abs(rot[2, 2]))
+             if self.engaged and self.on_tube:
+@@ -336,7 +388,7 @@ class TorqueTilt:
+         at_pos = self.theta_tilt >= cfg.theta_max_rad
+         at_neg = self.theta_tilt <= -cfg.theta_max_rad
+         self.tilt_capped = bool(self.engaged and (at_pos or at_neg))
+-        self._update_stall(dt)
++        self._update_stall(dt,measurement_fresh=measurement_fresh)
+ 
+         target = 0.0
+         self.tilt_stop_reason = ""
+@@ -419,6 +471,43 @@ class LegacyForceWithTilt:
+ 
+     def update(self, **kwargs) -> ForceOutput:
+         zout = self.z_law.update(**kwargs)
++        return self._combine(zout, kwargs)
++
++    def prepare(self, *, measurement_id: int | None=None,control_step_id=None,
++                source_sample_id=None,source_t_s=None,**kwargs) -> ForceOutput:
++        zout = self.z_law.prepare(measurement_id=measurement_id,control_step_id=control_step_id,
++            source_sample_id=source_sample_id,source_t_s=source_t_s,**kwargs)
++        try:
++            return self._combine(zout, kwargs, measurement_id=measurement_id if control_step_id is None else control_step_id)
++        except Exception:
++            self.z_law.abort()
++            if self.tilt._pending_command is not None:
++                self.tilt.abort()
++            raise
++
++    def commit_applied(
++        self, final_force_twist, *, final_full_twist=None, accepted_normal_z=None,
++    ) -> None:
++        final = finite_twist(final_force_twist, "accepted force twist")
++        if self.tilt._pending_command is None:
++            raise RuntimeError("no tilt proposal to commit")
++        if accepted_normal_z is None:
++            accepted_normal_z = (
++                self._pending_normal_z
++                if np.array_equal(final[:3], self._pending_force[:3])
++                else float(final[:3] @ self._pending_normal_direction)
++            )
++        self.z_law.commit_applied(
++            final, final_full_twist=final_full_twist,
++            accepted_normal_z=accepted_normal_z,
++        )
++        self.tilt.commit_applied(final[self.tilt.cfg.axis])
++
++    def abort(self) -> None:
++        self.z_law.abort()
++        self.tilt.abort()
++
++    def _combine(self, zout, kwargs, *, measurement_id=None) -> ForceOutput:
+         contact = kwargs.get("contact")
+         if contact is None and self.controller is not None:
+             contact = bool(getattr(self.controller, "contact_present", False))
+@@ -426,7 +515,9 @@ class LegacyForceWithTilt:
+         if dt_s is None:
+             dt_s = kwargs.get("dt_s", 0.005)
+         euler = str(kwargs.get("euler_order") or "xyz")
+-        wy = self.tilt.update(
++        tilt_step = self.tilt.update if measurement_id is None else self.tilt.prepare
++        sequence = {} if measurement_id is None else {"measurement_id": measurement_id}
++        wy = tilt_step(
+             kwargs["f_ext"],
+             kwargs["f_des"],
+             dt_s=float(dt_s),
+@@ -434,6 +525,8 @@ class LegacyForceWithTilt:
+             pose=kwargs.get("pose"),
+             slack_norm=kwargs.get("slack_norm"),
+             euler_order=euler,
++            measurement_fresh=kwargs.get('measurement_fresh',True),
++            **sequence,
+         )
+         velocity = np.asarray(zout.v_force, dtype=float).reshape(6).copy()
+         velocity[self.tilt.cfg.axis] = wy
+@@ -445,8 +538,19 @@ class LegacyForceWithTilt:
+                 n_world=self.tilt.n_world,
+                 v_force_z=float(zout.v_force_z),
+             )
++        if measurement_id is not None:
++            self._pending_force = velocity.copy()
++            self._pending_normal_z = float(zout.v_force_z)
++            self._pending_normal_direction = np.array([0.0, 0.0, 1.0])
++            if self.tilt.needs_normal_retract and kwargs.get("pose") is not None:
++                self._pending_normal_direction = remap_force_along_world_normal(
++                    np.zeros(6), rotation=rotation, n_world=self.tilt.n_world,
++                    v_force_z=1.0,
++                )[:3]
+         telemetry = dict(zout.telemetry or {})
+-        telemetry.update(self.tilt.telemetry())
++        telemetry.update(
++            self.tilt.telemetry() if measurement_id is None else self.tilt._proposal_telemetry
++        )
+         return ForceOutput(
+             v_force=velocity,
+             v_force_z=float(zout.v_force_z),
+diff --git a/peirastic/realman8dof/modes/track.py b/peirastic/realman8dof/modes/track.py
+index 80e314d5..3f631aba 100644
+--- a/peirastic/realman8dof/modes/track.py
++++ b/peirastic/realman8dof/modes/track.py
+@@ -368,6 +368,9 @@ def build_track_hybrid_phase(
+     use_tff_split: bool = False,
+     payload: dict | None = None,
+ ) -> Phase:
++    from .contact_qp import wrap_study_phase
++    if dict(payload or {}).get("contact_qp") is not None and not use_tff_split:
++        raise ValueError("contact_qp study requires the existing TFF split")
+     gated_reference, gate = _contact_gated_reference(reference, payload)
+     if not use_tff_split:
+         controller, f_des, _raw = _hybrid_controller(dt, payload)
+@@ -400,7 +403,7 @@ def build_track_hybrid_phase(
+     phase.label = label
+     if gate is not None:
+         _bind_contact_gate(phase, gate, duration_s=duration_s)
+-    return phase
++    return wrap_study_phase(phase,payload or {},ctx)
+ 
+ 
+ def wrap_admittance(reference, controller, desired_force) -> AdmittanceOuterLoop:
+diff --git a/peirastic/realman8dof/session.py b/peirastic/realman8dof/session.py
+index 029c347e..6f416586 100644
+--- a/peirastic/realman8dof/session.py
++++ b/peirastic/realman8dof/session.py
+@@ -363,6 +363,8 @@ def compile_request(
+         )
+     if req.mode == Mode.TRACK_HYBRID:
+         kind = str(payload.get("reference", "hold"))
++        if (payload.get("law")=="contact_qp" or payload.get("contact_qp") is not None) and kind!="icra_path":
++            raise ValueError("contact_qp study requires reference=icra_path")
+         if kind in ("pad", "twist", "servo"):
+             return _finish_phase(
+                 ctx,
+@@ -533,6 +535,16 @@ class ProxyOuter:
+         feedback_age_s=None,
+         feedback_fresh_tick=None,
+         feedback_velocity_valid=None,
++        slack_norm=None,
++        measured_twist_base=None,
++        measured_twist_valid=None,
++        measured_twist_fresh=None,
++        measured_twist_metadata=None,
++        measurement_time_s=None,
++        measurement_id=None,
++        wrench_source_time_s=None,
++        wrench_source_wall_time_ns=None,
++        wrench_source_id=None,
+         **kwargs,
+     ):
+         import inspect
+@@ -548,6 +560,16 @@ class ProxyOuter:
+             "feedback_age_s": feedback_age_s,
+             "feedback_fresh_tick": feedback_fresh_tick,
+             "feedback_velocity_valid": feedback_velocity_valid,
++            "slack_norm": slack_norm,
++            "measured_twist_base": measured_twist_base,
++            "measured_twist_valid": measured_twist_valid,
++            "measured_twist_fresh": measured_twist_fresh,
++            "measured_twist_metadata": measured_twist_metadata,
++            "measurement_time_s": measurement_time_s,
++            "measurement_id": measurement_id,
++            "wrench_source_time_s": wrench_source_time_s,
++            "wrench_source_wall_time_ns": wrench_source_wall_time_ns,
++            "wrench_source_id": wrench_source_id,
+         }
+         extra.update(kwargs)
+         kw = {
+diff --git a/rm75_control/rm75_control/control/admittance_common/adaptive_ke.py b/rm75_control/rm75_control/control/admittance_common/adaptive_ke.py
+index 64708a04..e4c3d805 100644
+--- a/rm75_control/rm75_control/control/admittance_common/adaptive_ke.py
++++ b/rm75_control/rm75_control/control/admittance_common/adaptive_ke.py
+@@ -224,13 +224,13 @@ class EnvironmentStiffnessEstimator:
+         lo = self.cfg.bd_min if self.cfg.bd_min > 0.0 else 0.0
+         return float(np.clip(bd, lo, self.cfg.bd_max))
+ 
+-    def _slew_ke(self, ke_target: float) -> float:
+-        max_dke = self.cfg.ke_slew_max * self.dt
++    def _slew_ke(self, ke_target: float, dt_s=None) -> float:
++        max_dke = self.cfg.ke_slew_max * (self.dt if dt_s is None else dt_s)
+         delta = float(np.clip(ke_target - self.ke_est, -max_dke, max_dke))
+         return self.ke_est + delta
+ 
+-    def _slew_damping(self, bd_target: float) -> float:
+-        max_dbd = self.cfg.bd_slew_max * self.dt
++    def _slew_damping(self, bd_target: float, dt_s=None) -> float:
++        max_dbd = self.cfg.bd_slew_max * (self.dt if dt_s is None else dt_s)
+         delta = float(np.clip(bd_target - self.bd, -max_dbd, max_dbd))
+         return self.bd + delta
+ 
+@@ -253,10 +253,11 @@ class EnvironmentStiffnessEstimator:
+         *,
+         v_force_z: float,
+         euler_order: str = "xyz",
++        dt_s: float | None = None,
+     ) -> float:
+         if self.cfg.displacement_source == "pose" and self._contact_ref_pose is not None:
+             return self.tool_z_displacement_m(pose, self._contact_ref_pose, euler_order=euler_order)
+-        self._x_adm += float(v_force_z) * self.dt
++        self._x_adm += float(v_force_z) * (self.dt if dt_s is None else dt_s)
+         return self._x_adm
+ 
+     def _f_err_gate_eff_n(self, f_des_z: float) -> float:
+@@ -303,6 +304,9 @@ class EnvironmentStiffnessEstimator:
+         euler_order: str = "xyz",
+         allow_impact_init: bool = True,
+         allow_idle_decay: bool = True,
++        measurement_fresh: bool = True,
++        source_dt_s: float | None = None,
++        control_dt_s: float | None = None,
+     ) -> tuple[float, float]:
+         """Return (ke_est, bd) after one tick.
+ 
+@@ -320,12 +324,13 @@ class EnvironmentStiffnessEstimator:
+         a low-force flight from being misclassified as quiet soft tissue.
+         """
+         cfg = self.cfg
++        dt=self.dt if control_dt_s is None else control_dt_s
+         self._mass_z = max(mass_z, 1e-3)
+         if not cfg.enabled:
+             return self.ke_est, self.bd
+ 
+         # Peak-hold envelope of |f_err| (~0.3 s release).
+-        self._f_err_env = max(abs(f_err_z), self._f_err_env * (1.0 - self.dt / 0.3))
++        self._f_err_env = max(abs(f_err_z), self._f_err_env * (1.0 - dt / 0.3))
+ 
+         # Contact rising edge.  Production YAML leaves ke_impact_initial=0
+         # and estimates Ke from the first ΔF/Δz window; a positive
+@@ -358,19 +363,19 @@ class EnvironmentStiffnessEstimator:
+             self._contact_ticks = 0
+             self.ke_confident = False
+             tau = max(float(cfg.ke_detach_decay_s), 1e-3)
+-            self.ke_est += (self.dt / tau) * (float(cfg.ke_initial) - self.ke_est)
++            self.ke_est += (dt / tau) * (float(cfg.ke_initial) - self.ke_est)
+             self.ke_est = float(np.clip(self.ke_est, cfg.ke_min, cfg.ke_max))
+             bd_target = self._critical_bd(mass_z)
+-            self.bd = self._slew_damping(bd_target)
++            self.bd = self._slew_damping(bd_target,control_dt_s)
+             return self.ke_est, self.bd
+ 
+         self._in_contact = True
+-        self._contact_ticks += 1
++        self._contact_ticks += 1 if control_dt_s is None else dt/self.dt
+         if self._contact_ref_pose is None:
+             self._contact_ref_pose = np.asarray(pose, dtype=float).copy()
+ 
+-        x = self._normal_displacement_m(pose, v_force_z=v_force_z, euler_order=euler_order)
+-        if not self.ke_confident:
++        x = self._normal_displacement_m(pose, v_force_z=v_force_z, euler_order=euler_order,dt_s=control_dt_s)
++        if measurement_fresh and not self.ke_confident:
+             dx_imp = x - self._impact_x0
+             df_imp = float(f_ext_z) - self._impact_f0
+             lateral_blocked = (
+@@ -401,7 +406,7 @@ class EnvironmentStiffnessEstimator:
+         learned = False
+         if self._contact_ticks <= max(cfg.settle_ticks, 0):
+             gated = True
+-        elif self._have_prev:
++        elif measurement_fresh and self._have_prev:
+             df = f_ext_z - self._last_f_z
+             dx = x - self._last_x
+             gated = not self._should_update_ke(
+@@ -413,8 +418,9 @@ class EnvironmentStiffnessEstimator:
+                 lam = (
+                     cfg.ke_forgetting_inc if ke_inst > self.ke_est else cfg.ke_forgetting
+                 )
++                if source_dt_s is not None:lam=lam**(source_dt_s/self.dt)
+                 ke_target = lam * self.ke_est + (1.0 - lam) * ke_inst
+-                self.ke_est = self._slew_ke(ke_target)
++                self.ke_est = self._slew_ke(ke_target,source_dt_s)
+                 learned = True
+                 self.ke_confident = True
+ 
+@@ -433,18 +439,19 @@ class EnvironmentStiffnessEstimator:
+             and self._f_err_env <= f_err_gate_n
+             and allow_idle_decay
+         ):
+-            self.ke_est += (self.dt / cfg.ke_idle_decay_s) * (
++            self.ke_est += (dt / cfg.ke_idle_decay_s) * (
+                 max(float(cfg.ke_initial), float(cfg.ke_soft_floor)) - self.ke_est
+             )
+             self.ke_est = float(np.clip(self.ke_est, cfg.ke_min, cfg.ke_max))
+ 
+         self._update_gated = gated
+-        self._last_f_z = f_ext_z
+-        self._last_x = x
+-        self._have_prev = True
++        if measurement_fresh:
++            self._last_f_z = f_ext_z
++            self._last_x = x
++            self._have_prev = True
+ 
+         bd_target = self._critical_bd(mass_z)
+-        self.bd = self._slew_damping(bd_target)
++        self.bd = self._slew_damping(bd_target,control_dt_s)
+         return self.ke_est, self.bd
+ 
+     @property
+diff --git a/rm75_control/rm75_control/control/admittance_common/controller.py b/rm75_control/rm75_control/control/admittance_common/controller.py
+index 72e78d9c..5df042c7 100644
+--- a/rm75_control/rm75_control/control/admittance_common/controller.py
++++ b/rm75_control/rm75_control/control/admittance_common/controller.py
+@@ -540,7 +540,8 @@ class AdmittanceController:
+         self._init_hp_filter()
+ 
+     def _init_hp_filter(self) -> None:
+-        fs = 1.0 / self.dt if self.dt > 0 else 100.0
++        filter_dt=getattr(self,'_source_period_s',self.dt)
++        fs = 1.0 / filter_dt if filter_dt > 0 else 100.0
+         wn = min(
+             max(self.cfg.var_damping_omega_c_hz / (0.5 * fs), 1e-3),
+             0.99,
+@@ -556,6 +557,16 @@ class AdmittanceController:
+             float(min(1.0, self.dt / 0.2)) if self.dt > 0 else 0.05
+         )
+ 
++    def configure_source_period(self, period_s: float) -> None:
++        """Declare a new measurement epoch before its first control step."""
++        period=float(period_s)
++        if period==getattr(self,'_source_period_s',self.dt):return
++        if (not np.isfinite(period) or period<=0 or getattr(self,'_measurement_updates',0)
++                or self.cfg.var_damping_omega_c_hz*2*period>=1):
++            raise ValueError('source period requires a fresh controller and representable HP cutoff')
++        self._source_period_s=period
++        self._init_hp_filter()
++
+     def set_time_scale(self, scale: float) -> None:
+         self.time_scale = float(np.clip(scale, 0.0, 1.0))
+ 
+@@ -1305,7 +1316,21 @@ class AdmittanceController:
+         feedback_age_s: float | None = None,
+         feedback_freshness: bool | float | None = None,
+         feedback_fresh: bool | float | None = None,
++        measurement_fresh: bool = True,
++        source_dt_s: float | None = None,
++        velocity_measurement_fresh: bool | None = None,
++        velocity_dt_s: float | None = None,
+     ) -> np.ndarray:
++        if source_dt_s is not None and (not np.isfinite(source_dt_s) or source_dt_s<=0):
++            raise ValueError('source_dt_s must be positive and finite')
++        if velocity_dt_s is not None and (not np.isfinite(velocity_dt_s) or velocity_dt_s<=0):
++            raise ValueError('velocity_dt_s must be positive and finite')
++        self._measurement_fresh=bool(measurement_fresh)
++        self._source_dt_s=source_dt_s
++        if measurement_fresh:
++            self._measurement_updates=getattr(self,'_measurement_updates',0)+1
++            if source_dt_s is not None and self._measurement_updates==1:
++                self._episode_filter_seed_pending=True
+         # Use the measured wall-clock period for force/proxy dynamics and
+         # safety timers.  Trajectory governor scaling remains a reference-path
+         # concern and does not alter physical-time integration.
+@@ -1499,11 +1524,11 @@ class AdmittanceController:
+             if v_tcp_z_actual is None
+             else normal_sign * float(v_tcp_z_actual)
+         )
+-        if v_tcp_press is not None and math.isfinite(v_tcp_press):
++        if v_tcp_press is not None and math.isfinite(v_tcp_press) and velocity_measurement_fresh is not False:
+             if self._v_tcp_z_prev is not None and dt_flow > 0.0:
+                 self._a_tcp_z_actual = (
+                     v_tcp_press - float(self._v_tcp_z_prev)
+-                ) / dt_flow
++                ) / (dt_flow if velocity_dt_s is None else velocity_dt_s)
+             self._v_tcp_z_prev = float(v_tcp_press)
+         # Historical timer kept for telemetry only.  Safety press limit
+         # latches on contact *loss* and clears after confirmed contact at
+@@ -1562,7 +1587,7 @@ class AdmittanceController:
+             self._first_contact_slow_latched or self._recontact_slow_latched
+         )
+         self.recontact_detached_seen = bool(self._recontact_detached_seen)
+-        self._update_instability_index(raw_z)
++        if measurement_fresh:self._update_instability_index(raw_z,source_dt_s=source_dt_s)
+ 
+         if cfg.ke_schedule.enabled:
+             mass_z, _ = self._update_ke_schedule(
+@@ -1618,6 +1643,9 @@ class AdmittanceController:
+                     and normal_sign * f_ext_z
+                     >= float(cfg.adaptive_ke.contact_force_n)
+                 ),
++                measurement_fresh=measurement_fresh,
++                source_dt_s=source_dt_s,
++                control_dt_s=dt_flow if source_dt_s is not None else None,
+             )
+             self.zeta_eff = self._ke_estimator.zeta_eff
+             self.ke_cap_n_m = float(self._ke_estimator.ke_for_cap)
+@@ -1635,9 +1663,9 @@ class AdmittanceController:
+         force_normal_filtered = normal_sign * f_ext_z
+         force_normal_raw = normal_sign * raw_z
+         force_normal_desired = abs(float(f_des_z))
+-        self.force_dot_z = float(
+-            self._force_barrier.update_fdot(force_normal_raw, dt_flow)
+-        )
++        if measurement_fresh:
++            self.force_dot_z = float(self._force_barrier.update_fdot(
++                force_normal_raw,dt_flow if source_dt_s is None else source_dt_s))
+         energy_available_j = None
+         if cfg.bidirectional_flow.mode == "active":
+             energy_available_j = max(
+@@ -2074,6 +2102,8 @@ class AdmittanceController:
+             float(self.u_sent_z),
+             dt_flow,
+             in_contact=bool(physical_contact),
++            measurement_fresh=measurement_fresh,
++            source_dt_s=source_dt_s,
+         )
+         self.tdpa_e_obs_j = float(self._tdpa.e_obs_j)
+         self.tdpa_alpha = float(self._tdpa.alpha)
+@@ -2107,7 +2137,7 @@ class AdmittanceController:
+         self.f_des_z_eff = float(f_eff)
+         return float(f_eff)
+ 
+-    def _update_instability_index(self, f_z: float) -> None:
++    def _update_instability_index(self, f_z: float, *, source_dt_s=None) -> None:
+         cfg = self.cfg
+         if not cfg.var_damping_enabled:
+             self.instability_index = 0.0
+@@ -2126,9 +2156,13 @@ class AdmittanceController:
+             zi=self._hp_zi,
+         )
+         high_pass = float(filtered[0])
+-        self._f_dc += cfg.var_damping_dc_alpha * (f_z - self._f_dc)
++        ratio=1. if source_dt_s is None else source_dt_s/self.dt
++        dc_alpha=(cfg.var_damping_dc_alpha if source_dt_s is None else
++                  1.-(1.-cfg.var_damping_dc_alpha)**ratio)
++        self._f_dc += dc_alpha * (f_z - self._f_dc)
+         f_ac = f_z - self._f_dc
+         alpha = self._is_energy_alpha
++        if source_dt_s is not None:alpha=1.-(1.-alpha)**ratio
+         self._p_hi += alpha * (
+             high_pass * high_pass - self._p_hi
+         )
+@@ -2142,10 +2176,12 @@ class AdmittanceController:
+             / max(cfg.var_damping_f_max_n, 1e-6),
+             1.0,
+         )
+-        self.instability_index = (
+-            i_omega * i_rms
+-            + cfg.var_damping_lambda * self.instability_index
+-        )
++        if source_dt_s is None:
++            self.instability_index = i_omega*i_rms+cfg.var_damping_lambda*self.instability_index
++        else:
++            decay=cfg.var_damping_lambda**ratio
++            gain=(1.-decay)/(1.-cfg.var_damping_lambda) if cfg.var_damping_lambda!=1 else ratio
++            self.instability_index=gain*i_omega*i_rms+decay*self.instability_index
+ 
+     def _admittance_z(
+         self,
+@@ -2239,6 +2275,8 @@ class AdmittanceController:
+             instability_index=self.instability_index,
+             force_pred_n=force_pred_n,
+             overforce_escape=overforce_escape,
++            measurement_fresh=getattr(self,'_measurement_fresh',True),
++            source_dt_s=getattr(self,'_source_dt_s',None),
+         )
+         self.force_fast_z = float(self._fast_retract_guard.fast_force_n)
+         self.retract_guard_armed = bool(self._fast_retract_guard.armed)
+diff --git a/rm75_control/rm75_control/control/admittance_common/fast_retract_guard.py b/rm75_control/rm75_control/control/admittance_common/fast_retract_guard.py
+index ace61fc5..7b367480 100644
+--- a/rm75_control/rm75_control/control/admittance_common/fast_retract_guard.py
++++ b/rm75_control/rm75_control/control/admittance_common/fast_retract_guard.py
+@@ -95,6 +95,8 @@ class FastRetractGuard:
+         instability_index: float,
+         force_pred_n: float | None = None,
+         overforce_escape: bool = False,
++        measurement_fresh: bool = True,
++        source_dt_s: float | None = None,
+     ) -> bool:
+         cfg = self.cfg
+         dt = max(float(dt_s), 0.0)
+@@ -126,7 +128,8 @@ class FastRetractGuard:
+             self._hold_timer_s = 0.0
+             return False
+ 
+-        fast_force = self._update_fast_force(float(raw_force_n), dt)
++        fast_force = (self._update_fast_force(float(raw_force_n),dt if source_dt_s is None else source_dt_s)
++                      if measurement_fresh else self.fast_force_n)
+         target = abs(float(desired_force_n))
+         stop_margin = max(
+             float(cfg.stop_margin_n),
+diff --git a/rm75_control/rm75_control/control/admittance_common/observer.py b/rm75_control/rm75_control/control/admittance_common/observer.py
+index 44efe868..50a9ee59 100644
+--- a/rm75_control/rm75_control/control/admittance_common/observer.py
++++ b/rm75_control/rm75_control/control/admittance_common/observer.py
+@@ -110,6 +110,24 @@ class CompensatedForceObserver:
+         self.leftover_valid = False
+         self.leftover_tau_s = 2.0
+         self._leftover_contact = False
++        self._signed_last = np.zeros(6,dtype=float)
++
++    def configure_source_period(self, period_s: float | None) -> None:
++        """Rebind between modes; preserve sample history and steady residual.
++
++        Must be called at a serialized mode boundary, never concurrently with
++        update. None restores the original observer sampling coefficients.
++        """
++        period=1./self.cfg.poll_hz if period_s is None else float(period_s)
++        if period==getattr(self,'_source_period_s',1./self.cfg.poll_hz):return
++        if not np.isfinite(period) or period<=0:
++            raise ValueError('source period requires a positive finite duration')
++        wn=float(self.cfg.causal_fc_hz)*2*period
++        if not 0<wn<1:raise ValueError('source rate cannot represent the configured observer cutoff')
++        self._lpf_b,self._lpf_a=butter(int(self.cfg.causal_order),wn,btype='low')
++        self._lpf_zi_unit=lfilter_zi(self._lpf_b,self._lpf_a)
++        self._lpf_zi=(np.outer(self._lpf_zi_unit,self.f_ext_raw_last) if self._n_updates else None)
++        self._source_period_s=period
+ 
+     def _file_signature(self) -> tuple[int, int]:
+         st = Path(self.cfg.phi_path).stat()
+@@ -128,6 +146,8 @@ class CompensatedForceObserver:
+         contact: bool,
+         still: bool,
+         dt_s: float,
++        measurement_fresh: bool = True,
++        source_dt_s: float | None = None,
+     ) -> None:
+         """Slow air/still TCP leftover. Freeze on contact; never subtract here."""
+         wrench = np.asarray(wrench_tcp, dtype=float).reshape(6)
+@@ -139,9 +159,9 @@ class CompensatedForceObserver:
+         if contact:
+             return
+         self.leftover_frozen = False
+-        if not still or not np.isfinite(wrench).all():
++        if not measurement_fresh or not still or not np.isfinite(wrench).all():
+             return
+-        dt = max(float(dt_s), 1e-4)
++        dt = max(float(dt_s if source_dt_s is None else source_dt_s), 1e-4)
+         alpha = dt / (float(self.leftover_tau_s) + dt)
+         if not self.leftover_valid:
+             self.leftover_tcp = wrench.copy()
+@@ -210,6 +230,7 @@ class CompensatedForceObserver:
+         rail_locked: bool = True,
+         sensor_age_s: float | None = None,
+         wall_time_ns: int | None = None,
++        measurement_fresh: bool = True,
+     ) -> tuple[np.ndarray, np.ndarray]:
+         """Causal link_7-frame external wrench (before ``wrench_link7_to_tcp``).
+ 
+@@ -217,6 +238,9 @@ class CompensatedForceObserver:
+         ``now - total_t0``. Control output is gravity-only unless mode is
+         ``apply`` and gates pass. ``observe`` stores a dynamic candidate only.
+         """
++        if not measurement_fresh:
++            if not self._n_updates:raise ValueError('held observation requires an initial source sample')
++            return self._signed_last.copy(),self._f_ext_last.copy()
+         self.last_t_s = float(t_s)
+         try:
+             wall_ns = int(wall_time_ns or 0)
+@@ -228,6 +252,7 @@ class CompensatedForceObserver:
+         self._n_updates += 1
+ 
+         signed = wrench_sensor_to_link7(force_raw, self.contract)
++        self._signed_last = signed.copy()
+         use_dyn = bool(self.cfg.use_dynamic_kinematics)
+         use_rot = bool(self.cfg.use_rotational_inertia)
+         mode = str(self.cfg.dynamic_kinematics_mode)
+diff --git a/rm75_control/rm75_control/control/admittance_common/tdpa.py b/rm75_control/rm75_control/control/admittance_common/tdpa.py
+index 7780a2ee..a6614454 100644
+--- a/rm75_control/rm75_control/control/admittance_common/tdpa.py
++++ b/rm75_control/rm75_control/control/admittance_common/tdpa.py
+@@ -119,6 +119,8 @@ class TimeDomainPassivityObserver:
+         dt_s: float,
+         *,
+         in_contact: bool = False,
++        measurement_fresh: bool = True,
++        source_dt_s: float | None = None,
+     ) -> None:
+         """Accumulate F_meas × v_cmd on this tick; leak only E>0.
+ 
+@@ -132,8 +134,8 @@ class TimeDomainPassivityObserver:
+         f = float(f_meas_n)
+         gate = max(float(self.cfg.v_bias_gate_m_s), 0.0)
+         tau_b = max(float(self.cfg.bias_lpf_s), 1e-3)
+-        if dt > 0.0 and abs(v) <= gate and not in_contact:
+-            alpha_b = 1.0 - math.exp(-dt / tau_b)
++        if measurement_fresh and dt > 0.0 and abs(v) <= gate and not in_contact:
++            alpha_b = 1.0 - math.exp(-(dt if source_dt_s is None else source_dt_s) / tau_b)
+             self.f_bias_n += alpha_b * (f - self.f_bias_n)
+         fe = f - float(self.f_bias_n)
+         self.f_comp_n = fe
+diff --git a/rm75_control/rm75_control/control/joint_admittance_8dof/loop.py b/rm75_control/rm75_control/control/joint_admittance_8dof/loop.py
+index 9ef018bb..bc96f2c0 100644
+--- a/rm75_control/rm75_control/control/joint_admittance_8dof/loop.py
++++ b/rm75_control/rm75_control/control/joint_admittance_8dof/loop.py
+@@ -5704,6 +5704,127 @@ def _rail_execution_velocity_estimate(
+     )
+ 
+ 
++class _FullMeasuredTwistTracker:
++    """Raw measurement derivative/FK, separate from rail execution prediction.
++
++    Rail speed is a difference of two accepted encoder samples. Arm speed is
++    SDK feedback, or a difference of measured arm positions. Independent
++    source times and derivative intervals remain visible; this asynchronous
++    diagnostic is not a verified, wrench-aligned physical power port.
++    """
++
++    def __init__(self):
++        self.arm_previous = None
++        self.arm_velocity = None
++        self.rail_previous = None
++        self.rail_velocity = None
++        self.last_pair = None
++
++    def update(self, snap, rail_feedback, kin, *, now_s, freshness_s, max_skew_s):
++        metadata = {"port_verified": False, "reason": "unavailable"}
++        result = dict(measured_twist_base=None, measured_twist_valid=False,
++                      measured_twist_fresh=False, measurement_time_s=None,
++                      measurement_id=int(getattr(snap, "seq", 0)),
++                      measured_twist_metadata=metadata)
++
++        def unavailable(reason):
++            metadata["reason"] = reason
++            return result
++
++        try:
++            now, budget, skew_budget = float(now_s), float(freshness_s), float(max_skew_s)
++            arm_t = float(snap.t_s)
++            arm_seq = int(snap.seq)
++            arm_q = np.deg2rad(np.asarray(snap.q_deg, dtype=float).reshape(7))
++            if not bool(snap.ok) or not np.isfinite(arm_q).all():
++                return unavailable("arm_invalid")
++            if not all(math.isfinite(v) for v in (now, budget, skew_budget, arm_t)):
++                return unavailable("time_invalid")
++            if budget <= 0 or skew_budget < 0 or arm_t <= 0 or not 0 <= now - arm_t <= budget:
++                return unavailable("arm_stale_or_future")
++            metadata["arm_position_time_s"] = arm_t
++            previous = self.arm_previous
++            arm_new = previous is None or arm_t > previous[1]
++            if not arm_new and arm_t != previous[1]:
++                return unavailable("arm_out_of_order")
++            if not arm_new and not np.array_equal(arm_q, previous[2]):
++                return unavailable("arm_identity_changed")
++            arm_speed = arm_qdot_rad_s_from_snap(snap)
++            arm_start = arm_t
++            arm_source = "sdk_joint_speed"
++            if arm_speed is None:
++                arm_source = "measured_joint_difference"
++                if arm_new and previous is not None and 1e-6 < arm_t - previous[1] <= budget:
++                    arm_start = previous[1]
++                    delta = (arm_q - previous[2] + np.pi) % (2.0 * np.pi) - np.pi
++                    arm_speed = delta / (arm_t - arm_start)
++                elif not arm_new and self.arm_velocity is not None:
++                    arm_speed, arm_start = self.arm_velocity
++            if arm_new:
++                self.arm_previous = (arm_seq, arm_t, arm_q.copy())
++                self.arm_velocity = None if arm_speed is None else (arm_speed.copy(), arm_start)
++                self._arm_velocity_source=arm_source
++            elif self.arm_velocity is not None:
++                arm_speed,arm_start=self.arm_velocity
++                arm_source=self._arm_velocity_source
++            # Even if arm derivative startup is incomplete, seed the raw rail
++            # history below; neither source may be replaced by a command.
++            if rail_feedback is None or not bool(rail_feedback.valid):
++                return unavailable("rail_invalid_or_unavailable")
++            rail_t = float(rail_feedback.sample_mono_s)
++            rail_seq = int(rail_feedback.motion_seq)
++            rail_q = float(rail_feedback.position_m)
++            metadata["rail_position_time_s"] = rail_t
++            if not all(math.isfinite(v) for v in (rail_t, rail_q)):
++                return unavailable("rail_nonfinite")
++            if rail_t <= 0 or not 0 <= now - rail_t <= budget:
++                return unavailable("rail_stale_or_future")
++            previous = self.rail_previous
++            rail_new = previous is None or (rail_seq > previous[0] and rail_t > previous[1])
++            if not rail_new and (rail_seq, rail_t) != previous[:2]:
++                return unavailable("rail_out_of_order")
++            if not rail_new and rail_q != previous[2]:
++                return unavailable("rail_identity_changed")
++            if rail_new:
++                self.rail_velocity = None
++                if previous is not None and 1e-6 < rail_t - previous[1] <= budget:
++                    self.rail_velocity = ((rail_q - previous[2]) / (rail_t - previous[1]),
++                                          previous[1], rail_t)
++                self.rail_previous = (rail_seq, rail_t, rail_q)
++            if arm_speed is None or self.rail_velocity is None:
++                return unavailable("derivative_startup_or_gap")
++            rail_speed, rail_start, rail_end = self.rail_velocity
++            arm_time = 0.5 * (arm_start + arm_t)
++            rail_time = 0.5 * (rail_start + rail_end)
++            skew = abs(arm_time - rail_time)
++            pose_skew = abs(arm_t - rail_t)
++            metadata.update(arm_velocity_interval_s=(arm_start, arm_t),
++                            rail_velocity_interval_s=(rail_start, rail_end),
++                            arm_velocity_source=arm_source,
++                            rail_velocity_source="raw_encoder_difference",
++                            arm_sequence=arm_seq, rail_sequence=rail_seq,
++                            time_skew_s=skew, pose_time_skew_s=pose_skew,
++                            max_time_skew_s=skew_budget)
++            if now - min(arm_start, rail_start) > budget:
++                return unavailable("derivative_interval_stale")
++            if max(skew, pose_skew) > skew_budget:
++                return unavailable("measurement_time_skew")
++            raw_q = np.concatenate(([rail_q], arm_q))
++            raw_qdot = np.concatenate(([rail_speed], arm_speed))
++            twist = np.asarray(kin.jacobian(raw_q), dtype=float) @ raw_qdot
++            if twist.shape != (6,) or not np.isfinite(twist).all():
++                return unavailable("measured_fk_invalid")
++            pair = (arm_t, rail_seq, rail_t)
++            result.update(measured_twist_base=twist.copy(), measured_twist_valid=True,
++                          measured_twist_fresh=pair != self.last_pair,
++                          measurement_time_s=min(arm_time, rail_time))
++            self.last_pair = pair
++            metadata["reason"] = ""
++            return result
++        except (AttributeError, TypeError, ValueError, OverflowError, RuntimeError):
++            return unavailable("measurement_fields_unavailable")
++
++
+ def _qdot_meas_8dof(
+     q_new: np.ndarray,
+     last_q: np.ndarray | None,
+@@ -6307,6 +6428,13 @@ def run_joint_admittance_phases(
+                         phase.outer.begin_hybrid_episode(applied_twist, pose_pin)
+ 
+                     obs = phase.force_observer if phase.force_observer is not None else force_observer
++                    # Rebind only at the stopped phase boundary. Held source samples
++                    # retain observer state while command integration runs every tick.
++                    source_owner = getattr(phase.outer, "publication_owner", None)
++                    if obs is not None and hasattr(obs, "configure_source_period"):
++                        obs.configure_source_period(
++                            source_owner.source_clock.period_s if source_owner is not None else None
++                        )
+                     phase_t0 = time.perf_counter()
+                     next_tick = phase_t0
+                     last_tick_time = phase_t0
+@@ -6335,6 +6463,7 @@ def run_joint_admittance_phases(
+                     # sensor transport age is a separate diagnostic.
+                     last_feedback_velocity_t = last_feedback_t
+                     twist_achieved_base = np.full(6, np.nan)
++                    full_measured_tracker = _FullMeasuredTwistTracker()
+                     qdot_meas = None
+                     v_tcp_z_actual = 0.0
+                     last_v_tcp_z = None
+@@ -6345,9 +6474,11 @@ def run_joint_admittance_phases(
+                     rail_reject_streak_s = 0.0
+                     sensor_stale_streak_s = 0.0
+                     rail_coast_active = False
++                    study_termination_reason = ''
+                     wd.arm()
+                     while True:
+                         if stop_check is not None and stop_check():
++                            study_termination_reason = 'stop_requested'
+                             phase_stopped = True
+                             break
+                         if wd.fired or fault_epoch[0] > 0:
+@@ -6386,6 +6517,7 @@ def run_joint_admittance_phases(
+                         ):
+                             break
+                         if phase.max_duration_s is not None and t_wall >= phase.max_duration_s:
++                            study_termination_reason = 'max_duration_reached'
+                             break
+     
+                         feedback_fresh_tick = False
+@@ -6569,6 +6701,15 @@ def run_joint_admittance_phases(
+                             _wait_until(next_tick)
+                             continue
+ 
++                        # Capture the actual child before callbacks can swap the proxy.
++                        publication_owner = getattr(phase.outer, "publication_owner", None)
++                        active_source = None
++                        if publication_owner is not None:
++                            active_source = publication_owner.prepare_source(
++                                f"{id(obs)}:{getattr(state_bus, 'session_id', 'direct')}",
++                                float(getattr(snap, "t_s", float("nan"))),
++                                int(getattr(snap, "wall_time_ns", 0)), now_s=time.monotonic(),
++                            )
+                         f_ext = np.zeros(6)
+                         f_ext_raw = None
+                         if obs is not None:
+@@ -6580,6 +6721,12 @@ def run_joint_admittance_phases(
+                                 str(getattr(getattr(inner, "rail_mode", None), "value", ""))
+                                 == "locked"
+                             )
++                            observer_kwargs = {}
++                            if active_source is not None:
++                                # Preserve the shared observer watermark on hot entry.
++                                observer_kwargs["measurement_fresh"] = bool(
++                                    active_source.fresh and snap_t_obs != getattr(obs, "last_t_s", None)
++                                )
+                             _signed, f_ext = obs.update(
+                                 snap_t_obs,
+                                 pose_l7,
+@@ -6589,6 +6736,7 @@ def run_joint_admittance_phases(
+                                 rail_locked=rail_locked_now,
+                                 sensor_age_s=sensor_age_s,
+                                 wall_time_ns=getattr(snap, "wall_time_ns", 0),
++                                **observer_kwargs,
+                             )
+                             f_ext_raw = getattr(obs, "f_ext_raw_last", None)
+                             f_ext = inner.kin.wrench_link7_to_tcp(f_ext)
+@@ -6604,6 +6752,13 @@ def run_joint_admittance_phases(
+                             except Exception:
+                                 pass
+                         sample_kwargs: dict = {}
++                        # Source timestamps identify wrench samples; relay seq
++                        # can advance while repeating the same physical sample.
++                        study_source = dict(wrench_source_time_s=float(getattr(snap,"t_s",float("nan"))),
++                            wrench_source_wall_time_ns=int(getattr(snap,"wall_time_ns",0)),
++                            wrench_source_id=f"{id(obs)}:{getattr(state_bus,'session_id','direct')}")
++                        for key,value in study_source.items():
++                            if key in sample_params:sample_kwargs[key]=value
+                         if "q_meas" in sample_params:
+                             sample_kwargs["q_meas"] = q_meas
+                         if "f_ext_raw" in sample_params and f_ext_raw is not None:
+@@ -6623,6 +6778,31 @@ def run_joint_admittance_phases(
+                             sample_kwargs["feedback_velocity_valid"] = (
+                                 feedback_velocity_valid
+                             )
++                        # Existing scalar feedback uses the rail execution
++                        # predictor. The full measured channel must instead
++                        # use raw encoder samples, with joint source metadata.
++                        try:
++                            raw_rail_feedback = (
++                                rail_bridge.execution_feedback
++                                if rail_bridge is not None and getattr(rail_bridge, "enabled", False)
++                                else None
++                            )
++                        except Exception:
++                            raw_rail_feedback = None
++                        if publication_owner is not None:
++                            publication_owner.observe_measured_port(
++                                snap, raw_rail_feedback, f_ext_raw, inner.kin,
++                                now_s=time.monotonic(), source_id=study_source['wrench_source_id'],
++                            )
++                        full_measurement = full_measured_tracker.update(
++                            snap, raw_rail_feedback, inner.kin,
++                            now_s=time.monotonic(),
++                            freshness_s=float(inner.cfg.feedback_timeout_s),
++                            max_skew_s=min(float(inner.cfg.feedback_timeout_s), 0.020),
++                        )
++                        for key, value in full_measurement.items():
++                            if key in sample_params:
++                                sample_kwargs[key] = value
+                         if "slack_norm" in sample_params:
+                             sample_kwargs["slack_norm"] = float(
+                                 getattr(inner, "last_slack_norm", 0.0) or 0.0
+@@ -6636,7 +6816,7 @@ def run_joint_admittance_phases(
+                             if obs is not None
+                             else None
+                         )
+-                        if callable(leftover_fn):
++                        if callable(leftover_fn) and (active_source is None or active_source.fresh):
+                             ctrl = getattr(phase.outer, "controller", None)
+                             if ctrl is None:
+                                 ctrl = getattr(
+@@ -6787,6 +6967,12 @@ def run_joint_admittance_phases(
+                                 inner, step, q_meas, phase, reason,
+                             ),
+                         )
++                        if publication_owner is not None and str(getattr(step, "fallback_reason", "")) == "native_timeout_coast":
++                            publication_owner.publication_abort("native_timeout", definitely_not_sent=True)
++                            phase_stopped = True
++                            stop_reason = "contact_qp_native_timeout"
++                            _fault_stop(stop_reason)
++                            break
+                         if str(getattr(step, "fallback_reason", "")) == "native_timeout_coast":
+                             native = getattr(inner, "_native", None)
+                             wait_s = float(
+@@ -6969,6 +7155,15 @@ def run_joint_admittance_phases(
+                             meas_m=rail_meas_pub,
+                             lead_max_m=float(inner.cfg.resync_err_rail_m),
+                         )
++                        if publication_owner is not None and (
++                            rail_coast_active or (rail_bridge is not None and getattr(rail_bridge, "enabled", False)
++                            and not callable(getattr(rail_bridge, "reserve_target_m", None)))
++                        ):
++                            publication_owner.publication_abort("rail_transaction_unavailable", definitely_not_sent=True)
++                            phase_stopped = True
++                            stop_reason = "contact_qp_rail_transaction_unavailable"
++                            _fault_stop(stop_reason)
++                            break
+                         if rail_coast_active:
+                             qdot0_pub = 0.0
+                             step.v_r_ref = 0.0
+@@ -7001,6 +7196,30 @@ def run_joint_admittance_phases(
+                             if callable(abort_pub):
+                                 abort_pub()
+                             break
++                        final_tool = None
++                        proposal_id = None
++                        if publication_owner is not None:
++                            proposal_id = publication_owner.pending_id
++                            final_qdot = np.asarray(step.qdot, dtype=float).copy()
++                            # Final payload model includes the last Python rail correction.
++                            final_qdot[0] = (float(rail_pub_m) - float(q_prev[0])) / float(inner.cfg.dt)
++                            if rail_coast_active: final_qdot[0] = 0.0
++                            final_base = inner.kin.jacobian(q_meas) @ final_qdot
++                            rotation = publication_owner.pending_rotation_base_tcp
++                            final_tool = np.r_[rotation.T @ final_base[:3], rotation.T @ final_base[3:]]
++                            if not publication_owner.publication_review(
++                                proposal_id, final_tool, now_s=time.monotonic(),
++                                facts={"rail_target_m": float(rail_pub_m), "rail_coast": bool(rail_coast_active)},
++                            ):
++                                abort_reservation = getattr(rail_bridge, "abort_reservation", None)
++                                if callable(abort_reservation): abort_reservation()
++                                publication_owner.publication_abort("final_review_rejected", definitely_not_sent=True)
++                                phase_stopped = True
++                                stop_reason = "contact_qp_final_review_rejected"
++                                abort_pub = getattr(inner, "abort_publication", None)
++                                if callable(abort_pub): abort_pub()
++                                _fault_stop(stop_reason)
++                                break
+                         if rail_bridge is not None:
+                             step.rail_fa24_write_mono_ns = int(
+                                 getattr(rail_bridge, "last_fa24_write_mono_ns", 0) or 0
+@@ -7009,6 +7228,8 @@ def run_joint_admittance_phases(
+                                 getattr(rail_bridge, "last_encoder_sample_mono_ns", 0)
+                                 or 0
+                             )
++                        if publication_owner is not None:
++                            publication_owner.publication_started(proposal_id)
+                         try:
+                             step.arm_send_mono_ns = time.monotonic_ns()
+                             _send_joint_canfd_cmd(
+@@ -7025,6 +7246,8 @@ def run_joint_admittance_phases(
+                                 except Exception:
+                                     pass
+                             phase_stopped = True
++                            if publication_owner is not None:
++                                publication_owner.publication_abort("arm_send_unknown", facts={"arm": "unknown", "rail": "not_committed"})
+                             stop_reason = (
+                                 "arm_send_fault:"
+                                 f"{type(exc).__name__}:{exc}"
+@@ -7043,6 +7266,8 @@ def run_joint_admittance_phases(
+                             if callable(commit) and not commit():
+                                 phase_stopped = True
+                                 stop_reason = "PARTIAL_ARM:rail_commit_failed"
++                                if publication_owner is not None:
++                                    publication_owner.publication_abort("partial_publish", facts={"arm": "sent", "rail": "failed_or_unknown"})
+                                 abort_pub = getattr(inner, "abort_publication", None)
+                                 if callable(abort_pub):
+                                     abort_pub()
+@@ -7051,6 +7276,12 @@ def run_joint_admittance_phases(
+                         commit_pub = getattr(inner, "commit_publication", None)
+                         if callable(commit_pub):
+                             commit_pub(step.qdot)
++                        if publication_owner is not None:
++                            if rail_coast_active:
++                                publication_owner.publication_abort("rail_coast_partial", facts={"arm": "sent", "rail": "holding"})
++                            else:
++                                publication_owner.publication_commit(proposal_id, final_tool, now_s=time.monotonic(),
++                                    facts={"arm": "sent", "rail": "sent" if rail_bridge is not None and rail_bridge.enabled else "disabled"})
+                         if not wd.fired:
+                             wd.beat()
+                         step.tick_send_ms = (
+@@ -7078,10 +7309,20 @@ def run_joint_admittance_phases(
+                             scale *= float(np.clip(t_wall / ramp_s, 0.0, 1.0))
+                         if path_reference_should_freeze(step):
+                             scale = 0.0
+-                        t_ref += reference_time_step(dt_wall_actual, scale)
++                        if publication_owner is not None:
++                            t_ref = publication_owner.reference_time_s
++                            scale = 1.0
++                        else:
++                            t_ref += reference_time_step(dt_wall_actual, scale)
+                         step.accepted_reference_lag_s = max(0.0, t_wall - t_ref)
+     
+                         if phase.on_tick is not None:
++                            if getattr(phase.outer,'contact_study_enabled',False):
++                                step.study_rail_target_m=float(rail_pub_m) if rail_bridge is not None and rail_bridge.enabled and not rail_coast_active else None
++                                step.study_rail_velocity_m_s=float(qdot0_pub) if rail_bridge is not None and rail_bridge.enabled else None
++                                step.study_rail_coast=bool(rail_coast_active)
++                                step.study_rail_target_modified=bool(step.study_rail_target_m is not None and
++                                    step.study_rail_target_m!=float(step.q_send[0]))
+                             phase.on_tick(t_ref, step, q_meas)
+     
+                         dq_deg = np.abs(rad2deg(step.q_send - q_prev))
+@@ -7167,6 +7408,8 @@ def run_joint_admittance_phases(
+                                 ),
+                             ):
+                                 phase_arrived = True
++                                if publication_owner is not None:
++                                    publication_owner.arrival_confirmed = True
+                                 break
+                             phase_arrived = False
+     
+@@ -7174,6 +7417,11 @@ def run_joint_admittance_phases(
+                         next_tick += dt
+                         _wait_until(next_tick)
+ 
++                    if getattr(phase.outer, 'contact_study_enabled', False):
++                        study_reason = stop_reason or study_termination_reason or (
++                            f'arrival_timeout:{phase.label or phase_idx}'
++                            if phase.require_arrival and not phase_arrived else 'phase_complete')
++                        phase.outer.record_stop(study_reason)
+                     if phase.on_exit is not None:
+                         phase.on_exit()
+ 
+@@ -7207,10 +7455,33 @@ def run_joint_admittance_phases(
+                             flush=True,
+                         )
+                         break
++            except Exception as exc:
++                active_owner = getattr(getattr(locals().get("phase"), "outer", None), "publication_owner", None)
++                if active_owner is None:
++                    raise
++                stop_reason = f"contact_qp_exception:{type(exc).__name__}:{exc}"
++                phase_stopped = True
++                # Stop FIRST: logging or proposal cleanup must never postpone it.
++                _fault_stop(stop_reason)
++                abort_inner = getattr(inner, "abort_publication", None)
++                if callable(abort_inner):
++                    try: abort_inner()
++                    except Exception: pass
++                try: active_owner.publication_abort(stop_reason)
++                except Exception: pass
+             except KeyboardInterrupt:
++                active_owner = getattr(getattr(locals().get("phase"), "outer", None), "publication_owner", None)
++                if active_owner is not None:
++                    stop_reason = "contact_qp_interrupted"
++                    _fault_stop(stop_reason)
+                 if verbose:
+                     print("\nStopped.", flush=True)
+         finally:
++            current_phase=locals().get("phase")
++            current_outer=getattr(current_phase,"outer",None)
++            if bool(getattr(current_outer,"contact_study_enabled",False)):
++                current_outer.record_stop(locals().get("stop_reason") or "runner_exit")
++                current_outer.close(wait=False)
+             inner.set_direct_joint_ptp(False)
+             inner.set_plan_drives_rail(False)
+             wd.stop()

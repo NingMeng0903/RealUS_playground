@@ -1,0 +1,21 @@
+{
+  "peirastic/contact_qp/port_alignment.py": "919638abfa10cd60b9d811650735e053af305f77d18757400767eb2f9ff064b8",
+  "peirastic/contact_qp/types.py": "9b7ee4727050c9514c5a9e045611d6d0a0c7f4c42dd754fe3481a095ec7fbe9e",
+  "peirastic/contact_qp/coverage.py": "8318cf1ea4c5f940ae817ede06836067c7500864cab0be55d5f38dc1a6a85d79",
+  "peirastic/contact_qp/runtime_energy.py": "1f7f4523146cbb239082dd11069fe462373b53b1ade4c68fbd50f4e285c351fb",
+  "peirastic/contact_qp/__init__.py": "7d2834ba59ec7671faca1e7f9fa62a7a228ed4c91fd1267fc4aa1f72530131e7",
+  "peirastic/contact_qp/geometry.py": "8c0311f6320401cb0e19e790252bf732a53ee3cfb4b89a6daa7e3a44800181f7",
+  "peirastic/contact_qp/runtime_source.py": "21388d61f17cccc7c46233d4eeeecce74214b75050bff70e99ed04472bc4d483",
+  "peirastic/contact_qp/energy.py": "9eadea531c1da46c01de79a10597a04d5eaba4dab5d933dcdfb727ad6ec16452",
+  "peirastic/contact_qp/reference.py": "dd9e9c6d0804adc1476daa07ac5bfe14fba91a91b4e961fbd0558771d2bdc1e0",
+  "peirastic/contact_qp/port_constraint.py": "e3ccfd9348fd0380b8894e5083de50481cee3a3bf1fa969683e5fd89308f2368",
+  "peirastic/contact_qp/qp.py": "0ae49a6815640c412e29e8fe8acdcbc4682c841a0cd0e4e557b388d99780cd05",
+  "peirastic/contact_qp/features.py": "dbb19874406f6b753211563378221b9c5bb15e088a64c79844979b4b1004de2b",
+  "peirastic/contact_qp/repair_policy.py": "9b65ffb9a8a937c8e34509d063371bac1d9c89d7a7d1fea9056bb5a06e83399f",
+  "peirastic/contact_qp/history.py": "dbaa4bc6a49644bd50cfaaaf753ac91d2d0ab185e3bee14eaa1a8c64758d8672",
+  "peirastic/contact_qp/plant.py": "ba1a02b90665308dfdbf7ef4b6bec1237951a3491398c3fd1c2804978eca71f2",
+  "peirastic/contact_qp/evaluation.py": "8668101ae99b2b1d0fc0cdd74268a8f46c6aa63141ea684dc4bdfb210617f12c",
+  "peirastic/contact_qp/runtime_config.py": "8d197ac8a4d1add1e959ce1e38b340757cc09e888a29e6cb7ca028b56b5c5832",
+  "peirastic/apps/contact_qp_experiment.py": "5b147ccdcaa1fec65f8c7418d1df4ed2e7885efc964914d62de17d8d1a31d5f5",
+  "analysis_artifacts/contact_qp_v8/compare.py": "9bd624bfa83a2a93738c6e9ff8b034affc8f32abc29b5551f27001f46692a7c6"
+}

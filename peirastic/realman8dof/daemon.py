@@ -268,10 +268,23 @@ class ControllerService:
             self.force_observer_error = str(exc)
             self.panel.event("WARN", f"force observer off: {exc}")
 
+        # Advertise only handlers actually imported by this service instance.
+        from peirastic.realman8dof.modes.contact_qp import wrap_study_phase
+        from peirastic.realman8dof.modes.contact_active import ContactQpOuter
+        from peirastic.core.capabilities import CapabilityAdvertisement, SOURCE_TIMEBASE_CAPABILITY, DIFFERENTIAL_REPAIR_CAPABILITY
+        from peirastic.contact_qp.repair_policy import DifferentialRepairConfig
+        from rm75_control.control.admittance_common.variable_step_filter import VariableLowpass1, VariableHighpass2
+        self._capabilities = CapabilityAdvertisement(
+            self.hub, {"contact_qp.recording_v1", "contact_qp.active_v1", SOURCE_TIMEBASE_CAPABILITY, DIFFERENTIAL_REPAIR_CAPABILITY}
+        )
+
     def close(self) -> None:
         if getattr(self, "_closed", False):
             return
         self._closed = True
+        capabilities = getattr(self, "_capabilities", None)
+        if capabilities is not None:
+            capabilities.close()
         # Signal handlers otherwise retain this service (and its native QPs)
         # until interpreter teardown. Do not overwrite a newer owner's handler.
         for signum, previous in getattr(self, "_previous_signals", {}).items():
@@ -965,10 +978,15 @@ class ControllerService:
                     setattr(phase, key, getattr(compiled, key))
             else:
                 phase = compiled
+            active_contact = bool(getattr(compiled.outer, "contact_qp_enabled", False))
+            if active_contact:
+                phase.wait_until = compiled.wait_until
+                phase.max_duration_s = compiled.max_duration_s
+                phase.require_arrival = True
             self._live = phase
             self.mode = req.mode
             self._mode_t0 = 0.0
-            self._finite_duration = compiled.duration_s if velocity_loop else None
+            self._finite_duration = compiled.duration_s if velocity_loop and not active_contact else None
             self.hub.clear_stop()
             if commanded:
                 self.panel.event("MODE", MODE_LABEL[self.mode])
@@ -1088,7 +1106,9 @@ class ControllerService:
                     self._pending_install_seq = install_seq
                     self.hub.request_stop()
                     return
-                if not velocity_loop or not is_swappable(parsed_req.mode):
+                if (not velocity_loop or not is_swappable(parsed_req.mode)
+                        or parsed_req.payload.get("contact_qp") is not None
+                        or getattr(proxy, "contact_qp_enabled", False)):
                     self._pending = parsed_req
                     self._pending_commanded = True
                     self._pending_install_seq = install_seq
@@ -1308,6 +1328,11 @@ class ControllerService:
                     rail,
                     robot=getattr(sess, "robot", None),
                 )
+            # File drain follows the coordinated stop, never the 200 Hz callback.
+            import sys
+            recorder = sys.modules.get("peirastic.realman8dof.modes.contact_recording")
+            if recorder is not None:
+                recorder.drain_study_records()
             if self.estop.tripped:
                 if rail is not None and getattr(rail, "enabled", False):
                     try:
@@ -1382,7 +1407,7 @@ class ControllerService:
                     done_seq=self._cmd_seq,
                     err_code=1,
                 )
-            elif not velocity_loop:
+            elif not velocity_loop or (active_contact and getattr(compiled.outer, "arrival_confirmed", False)):
                 self.hub.publish(
                     status=Status.DONE,
                     mode=self.mode,

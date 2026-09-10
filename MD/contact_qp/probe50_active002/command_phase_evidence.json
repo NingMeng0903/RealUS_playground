@@ -1,0 +1,43 @@
+{
+  "independent_review": "GPT-6 ultra independently confirmed descriptive conclusion; not an efficacy pass",
+  "phases": {
+    "seek": {
+      "control_samples": 1233,
+      "low_quality_snapshot_count": 603,
+      "qp_alpha_mean": 0.8318587267748414,
+      "reference_credit_factor_mean": 0.7464525740913184,
+      "max_added_normal_mm_s": 1.9977762348057093e-06,
+      "max_added_rocking_deg_s": 2.3231395234116688e-07
+    },
+    "scan": {
+      "control_samples": 6153,
+      "low_quality_snapshot_count": 0,
+      "qp_alpha_mean": 0.9997562164797621,
+      "reference_credit_factor_mean": 0.9746055316200447,
+      "max_added_normal_mm_s": 0.00030900936414703095,
+      "max_added_rocking_deg_s": 0.00021569489655866203
+    }
+  },
+  "scan_slow_decisions": [
+    {
+      "control_id": 4917,
+      "alpha": 0.25,
+      "quality": [
+        0.9927837352720347,
+        0.9914323132194479,
+        0.995451473900173
+      ],
+      "feature_age_at_ingress_s": 0.3024448093492538
+    },
+    {
+      "control_id": 6715,
+      "alpha": 0.24999999997652936,
+      "quality": [
+        0.9951156217737777,
+        0.9922514391835922,
+        0.993807597425856
+      ],
+      "feature_age_at_ingress_s": 0.30287778237834573
+    }
+  ]
+}

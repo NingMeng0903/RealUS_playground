@@ -224,13 +224,13 @@ class EnvironmentStiffnessEstimator:
         lo = self.cfg.bd_min if self.cfg.bd_min > 0.0 else 0.0
         return float(np.clip(bd, lo, self.cfg.bd_max))
 
-    def _slew_ke(self, ke_target: float) -> float:
-        max_dke = self.cfg.ke_slew_max * self.dt
+    def _slew_ke(self, ke_target: float, dt_s=None) -> float:
+        max_dke = self.cfg.ke_slew_max * (self.dt if dt_s is None else dt_s)
         delta = float(np.clip(ke_target - self.ke_est, -max_dke, max_dke))
         return self.ke_est + delta
 
-    def _slew_damping(self, bd_target: float) -> float:
-        max_dbd = self.cfg.bd_slew_max * self.dt
+    def _slew_damping(self, bd_target: float, dt_s=None) -> float:
+        max_dbd = self.cfg.bd_slew_max * (self.dt if dt_s is None else dt_s)
         delta = float(np.clip(bd_target - self.bd, -max_dbd, max_dbd))
         return self.bd + delta
 
@@ -253,10 +253,11 @@ class EnvironmentStiffnessEstimator:
         *,
         v_force_z: float,
         euler_order: str = "xyz",
+        dt_s: float | None = None,
     ) -> float:
         if self.cfg.displacement_source == "pose" and self._contact_ref_pose is not None:
             return self.tool_z_displacement_m(pose, self._contact_ref_pose, euler_order=euler_order)
-        self._x_adm += float(v_force_z) * self.dt
+        self._x_adm += float(v_force_z) * (self.dt if dt_s is None else dt_s)
         return self._x_adm
 
     def _f_err_gate_eff_n(self, f_des_z: float) -> float:
@@ -303,6 +304,9 @@ class EnvironmentStiffnessEstimator:
         euler_order: str = "xyz",
         allow_impact_init: bool = True,
         allow_idle_decay: bool = True,
+        measurement_fresh: bool = True,
+        source_dt_s: float | None = None,
+        control_dt_s: float | None = None,
     ) -> tuple[float, float]:
         """Return (ke_est, bd) after one tick.
 
@@ -320,12 +324,13 @@ class EnvironmentStiffnessEstimator:
         a low-force flight from being misclassified as quiet soft tissue.
         """
         cfg = self.cfg
+        dt=self.dt if control_dt_s is None else control_dt_s
         self._mass_z = max(mass_z, 1e-3)
         if not cfg.enabled:
             return self.ke_est, self.bd
 
         # Peak-hold envelope of |f_err| (~0.3 s release).
-        self._f_err_env = max(abs(f_err_z), self._f_err_env * (1.0 - self.dt / 0.3))
+        self._f_err_env = max(abs(f_err_z), self._f_err_env * (1.0 - dt / 0.3))
 
         # Contact rising edge.  Production YAML leaves ke_impact_initial=0
         # and estimates Ke from the first ΔF/Δz window; a positive
@@ -358,19 +363,19 @@ class EnvironmentStiffnessEstimator:
             self._contact_ticks = 0
             self.ke_confident = False
             tau = max(float(cfg.ke_detach_decay_s), 1e-3)
-            self.ke_est += (self.dt / tau) * (float(cfg.ke_initial) - self.ke_est)
+            self.ke_est += (dt / tau) * (float(cfg.ke_initial) - self.ke_est)
             self.ke_est = float(np.clip(self.ke_est, cfg.ke_min, cfg.ke_max))
             bd_target = self._critical_bd(mass_z)
-            self.bd = self._slew_damping(bd_target)
+            self.bd = self._slew_damping(bd_target,control_dt_s)
             return self.ke_est, self.bd
 
         self._in_contact = True
-        self._contact_ticks += 1
+        self._contact_ticks += 1 if control_dt_s is None else dt/self.dt
         if self._contact_ref_pose is None:
             self._contact_ref_pose = np.asarray(pose, dtype=float).copy()
 
-        x = self._normal_displacement_m(pose, v_force_z=v_force_z, euler_order=euler_order)
-        if not self.ke_confident:
+        x = self._normal_displacement_m(pose, v_force_z=v_force_z, euler_order=euler_order,dt_s=control_dt_s)
+        if measurement_fresh and not self.ke_confident:
             dx_imp = x - self._impact_x0
             df_imp = float(f_ext_z) - self._impact_f0
             lateral_blocked = (
@@ -401,7 +406,7 @@ class EnvironmentStiffnessEstimator:
         learned = False
         if self._contact_ticks <= max(cfg.settle_ticks, 0):
             gated = True
-        elif self._have_prev:
+        elif measurement_fresh and self._have_prev:
             df = f_ext_z - self._last_f_z
             dx = x - self._last_x
             gated = not self._should_update_ke(
@@ -413,8 +418,9 @@ class EnvironmentStiffnessEstimator:
                 lam = (
                     cfg.ke_forgetting_inc if ke_inst > self.ke_est else cfg.ke_forgetting
                 )
+                if source_dt_s is not None:lam=lam**(source_dt_s/self.dt)
                 ke_target = lam * self.ke_est + (1.0 - lam) * ke_inst
-                self.ke_est = self._slew_ke(ke_target)
+                self.ke_est = self._slew_ke(ke_target,source_dt_s)
                 learned = True
                 self.ke_confident = True
 
@@ -433,18 +439,19 @@ class EnvironmentStiffnessEstimator:
             and self._f_err_env <= f_err_gate_n
             and allow_idle_decay
         ):
-            self.ke_est += (self.dt / cfg.ke_idle_decay_s) * (
+            self.ke_est += (dt / cfg.ke_idle_decay_s) * (
                 max(float(cfg.ke_initial), float(cfg.ke_soft_floor)) - self.ke_est
             )
             self.ke_est = float(np.clip(self.ke_est, cfg.ke_min, cfg.ke_max))
 
         self._update_gated = gated
-        self._last_f_z = f_ext_z
-        self._last_x = x
-        self._have_prev = True
+        if measurement_fresh:
+            self._last_f_z = f_ext_z
+            self._last_x = x
+            self._have_prev = True
 
         bd_target = self._critical_bd(mass_z)
-        self.bd = self._slew_damping(bd_target)
+        self.bd = self._slew_damping(bd_target,control_dt_s)
         return self.ke_est, self.bd
 
     @property

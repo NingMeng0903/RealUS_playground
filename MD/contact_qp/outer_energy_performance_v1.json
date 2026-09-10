@@ -1,0 +1,45 @@
+{
+  "scope": "isolated outer solve, no robot I/O, no image decoding; not full 5ms-loop certification",
+  "runs": {
+    "no_energy": {
+      "samples": 1200,
+      "p50_ms": 0.3831295,
+      "p99_ms": 0.52496817,
+      "max_ms": 0.672345,
+      "over_5ms": 0,
+      "failures": {},
+      "alpha_range": [
+        0.5499999999999999,
+        0.55
+      ]
+    },
+    "energy_inactive": {
+      "samples": 1200,
+      "p50_ms": 0.595483,
+      "p99_ms": 0.8583068699999997,
+      "max_ms": 1.373406,
+      "over_5ms": 0,
+      "failures": {},
+      "alpha_range": [
+        0.55,
+        0.55
+      ]
+    },
+    "energy_active": {
+      "samples": 1200,
+      "p50_ms": 0.6236999999999999,
+      "p99_ms": 0.69620723,
+      "max_ms": 0.7512719999999999,
+      "over_5ms": 0,
+      "failures": {},
+      "alpha_range": [
+        0.15527453936163496,
+        0.1560207367362335
+      ]
+    }
+  },
+  "source_sha256": {
+    "peirastic/contact_qp/qp.py": "91ad7b6f13bf690d7b8a8713b45f25f5ae9ef63b8cbf431d61fb1ba3a9306d31",
+    "peirastic/contact_qp/port_constraint.py": "7036f9bc6e46731e87efdfce404ee967da38c0bf0728ce95b0164ed1d8ec2d2a"
+  }
+}

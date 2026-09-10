@@ -1,0 +1,1436 @@
+diff --git a/rm75_control/native/wbc_rt/CMakeLists.txt b/rm75_control/native/wbc_rt/CMakeLists.txt
+index 577545d2..b73de226 100644
+--- a/rm75_control/native/wbc_rt/CMakeLists.txt
++++ b/rm75_control/native/wbc_rt/CMakeLists.txt
+@@ -46,6 +46,7 @@ add_custom_command(
+     "${CMAKE_CURRENT_SOURCE_DIR}/gen_build_id.py"
+     "${CMAKE_CURRENT_SOURCE_DIR}/../../rm75_control/control/joint_admittance_8dof/wbc_rt/build_id.py"
+     "${CMAKE_CURRENT_SOURCE_DIR}/include/wbc_rt/protocol.hpp"
++    "${CMAKE_CURRENT_SOURCE_DIR}/include/wbc_rt/cartesian.hpp"
+     "${CMAKE_CURRENT_SOURCE_DIR}/include/wbc_rt/inner.hpp"
+     "${CMAKE_CURRENT_SOURCE_DIR}/include/wbc_rt/types.hpp"
+     "${CMAKE_CURRENT_SOURCE_DIR}/include/wbc_rt/notification.hpp"
+diff --git a/rm75_control/native/wbc_rt/gen_build_id.py b/rm75_control/native/wbc_rt/gen_build_id.py
+index 1696ddd8..32e05c2f 100644
+--- a/rm75_control/native/wbc_rt/gen_build_id.py
++++ b/rm75_control/native/wbc_rt/gen_build_id.py
+@@ -11,6 +11,7 @@ _NATIVE = Path(__file__).resolve().parent
+ _PKG = _NATIVE.parents[1] / "rm75_control" / "control" / "joint_admittance_8dof" / "wbc_rt"
+ _SOURCES = (
+     _NATIVE / "include" / "wbc_rt" / "protocol.hpp",
++    _NATIVE / "include" / "wbc_rt" / "cartesian.hpp",
+     _NATIVE / "include" / "wbc_rt" / "inner.hpp",
+     _NATIVE / "include" / "wbc_rt" / "types.hpp",
+     _NATIVE / "include" / "wbc_rt" / "notification.hpp",
+diff --git a/rm75_control/native/wbc_rt/include/wbc_rt/inner.hpp b/rm75_control/native/wbc_rt/include/wbc_rt/inner.hpp
+index eb9de47c..c5badc29 100644
+--- a/rm75_control/native/wbc_rt/include/wbc_rt/inner.hpp
++++ b/rm75_control/native/wbc_rt/include/wbc_rt/inner.hpp
+@@ -16,6 +16,7 @@
+ #include "wbc_rt/kinematics.hpp"
+ #include "wbc_rt/posture.hpp"
+ #include "wbc_rt/protocol.hpp"
++#include "wbc_rt/cartesian.hpp"
+ #include "wbc_rt/task_weight.hpp"
+ 
+ namespace wbc_rt {
+@@ -141,6 +142,9 @@ inline bool obb_separates_above(const Obb& a, const Obb& b, double threshold) {
+ }  // namespace collision_broadphase
+ 
+ struct TickIn {
++  uint64_t request_seq = 0;
++  uint64_t commit_seq = 0;
++  CartesianConstraints cartesian;
+   Vec6 v_cmd = Vec6::Zero();
+   Vec8 q_meas = Vec8::Zero();
+   Vec8 qdot_ff = Vec8::Zero();
+@@ -161,6 +165,12 @@ struct TickIn {
+ };
+ 
+ struct TickOut {
++  uint64_t cartesian_sequence = 0;
++  uint64_t cartesian_stop_epoch = 0;
++  uint32_t cartesian_valid = 0;
++  double cartesian_command_residual = std::numeric_limits<double>::infinity();
++  double cartesian_predicted_residual = std::numeric_limits<double>::infinity();
++  Vec6 v_tcp_commanded = Vec6::Zero();
+   Vec8 q_cmd = Vec8::Zero();
+   Vec8 qdot = Vec8::Zero();
+   Vec6 v_recv = Vec6::Zero();
+@@ -351,7 +361,7 @@ class InnerLoop {
+   };
+   HistorySnap capture_history() const;
+   void restore_history(const HistorySnap& s);
+-  void handle_pending_flags(uint32_t flags);
++  bool handle_pending_flags(const TickIn& in);
+   void apply_velocity_box(const Vec8& q_geom, const Vec8& q_cmd, const Vec8& q_meas,
+                           double dt, double h1, double h2, bool rail_locked,
+                           double rail_pin, bool has_pin, bool lead_exempt,
+@@ -562,6 +572,15 @@ class InnerLoop {
+   uint32_t n_cbf_active_ = 0;
+   TaskWeightState task_weight_;
+   bool pending_valid_ = false;
++  uint64_t pending_seq_ = 0;
++  uint64_t pending_epoch_ = 0;
++  bool pending_cartesian_ = false;
++  bool have_cartesian_identity_ = false;
++  bool cartesian_epoch_retired_ = false;
++  uint64_t last_cartesian_sequence_ = 0;
++  uint64_t last_cartesian_epoch_ = 0;
++  CartesianConstraints cartesian_;
++  int qp_constraint_count_ = 0;
+   HistorySnap pending_;
+   HistorySnap committed_snap_;
+ };
+diff --git a/rm75_control/native/wbc_rt/include/wbc_rt/protocol.hpp b/rm75_control/native/wbc_rt/include/wbc_rt/protocol.hpp
+index 07baec85..6056bdb6 100644
+--- a/rm75_control/native/wbc_rt/include/wbc_rt/protocol.hpp
++++ b/rm75_control/native/wbc_rt/include/wbc_rt/protocol.hpp
+@@ -6,10 +6,10 @@
+ namespace wbc_rt {
+ 
+ static constexpr uint32_t kMagic = 0x57424331u;  // 'WBC1'
+-// v8 appends real-time stage timing telemetry. Existing fields keep their
+-// order so readers can migrate by version rather than by heuristic size
+-// checks.
+-static constexpr uint32_t kVersion = 8;
++// v9 appends explicit Cartesian certificates and 64-bit pending commit IDs.
++// Existing offsets remain stable; peer versions must still match exactly.
++static constexpr uint32_t kVersion = 9;
++static constexpr uint32_t kMaxCartesianRows = 96;
+ 
+ enum Cmd : uint32_t {
+   kCmdNone = 0,
+@@ -44,6 +44,7 @@ enum InFlag : uint32_t {
+   kInCommitPrev = 1u << 12,
+   kInAbortPrev = 1u << 13,
+   kInAutoCommit = 1u << 14,
++  kInHasCartesianConstraints = 1u << 15,
+ };
+ 
+ enum CtrlFlag : uint32_t {
+@@ -122,6 +123,14 @@ struct WbcIn {
+   // Effective interval until the next rail command refresh.  This may be
+   // slower than the ARM/WBC tick (for example 1/60 s versus 5 ms).
+   double rail_refresh_dt;
++  uint64_t commit_seq;
++  uint64_t cartesian_sequence;
++  uint64_t cartesian_stop_epoch;
++  double cartesian_valid_until;
++  uint32_t cartesian_count;
++  double cartesian_A[kMaxCartesianRows][6];
++  double cartesian_lower[kMaxCartesianRows];
++  double cartesian_upper[kMaxCartesianRows];
+ };
+ 
+ struct WbcOut {
+@@ -240,11 +249,17 @@ struct WbcOut {
+   double collision_ms;
+   double qp_total_ms;
+   double ipc_wait_ms;
++  uint64_t cartesian_sequence;
++  uint64_t cartesian_stop_epoch;
++  uint32_t cartesian_valid;
++  double cartesian_command_residual;
++  double cartesian_predicted_residual;
++  double v_tcp_commanded[6];
+ };
+ #pragma pack(pop)
+ 
+-static_assert(sizeof(WbcIn) == 616, "WbcIn layout drift");
+-static_assert(sizeof(WbcOut) == 1472, "WbcOut layout drift");
++static_assert(sizeof(WbcIn) == 6796, "WbcIn layout drift");
++static_assert(sizeof(WbcOut) == 1556, "WbcOut layout drift");
+ 
+ inline void clear_in(WbcIn* s) {
+   std::memset(s, 0, sizeof(WbcIn));
+diff --git a/rm75_control/native/wbc_rt/src/inner.cpp b/rm75_control/native/wbc_rt/src/inner.cpp
+index 72e080b0..386b926d 100644
+--- a/rm75_control/native/wbc_rt/src/inner.cpp
++++ b/rm75_control/native/wbc_rt/src/inner.cpp
+@@ -382,6 +382,7 @@ InnerLoop::InnerLoop(const Config& cfg)
+   }
+   qp1_ = std::make_unique<proxsuite::proxqp::dense::QP<double>>(kNVar, kNEq1, kNIn);
+   qp2_ = std::make_unique<proxsuite::proxqp::dense::QP<double>>(kNVar, kNEq2, kNIn);
++  qp_constraint_count_ = kNIn;
+   qp1_->settings.eps_abs = cfg.eps_abs;
+   qp2_->settings.eps_abs = cfg.eps_abs;
+   // Keep ProxQP's infeasibility tests tighter than the certificate we expose
+@@ -463,15 +464,18 @@ void InnerLoop::restore_history(const HistorySnap& s) {
+   last_qdot_qp_ = s.last_qdot_qp;
+ }
+ 
+-void InnerLoop::handle_pending_flags(uint32_t flags) {
+-  if (flags & kInAbortPrev) {
++bool InnerLoop::handle_pending_flags(const TickIn& in) {
++  if (in.flags & kInAbortPrev) {
+     pending_valid_ = false;
+-    return;
++    return true;
+   }
+-  if ((flags & kInCommitPrev) && pending_valid_) {
++  if ((in.flags & kInCommitPrev) && pending_valid_) {
++    if (in.commit_seq != pending_seq_ || (pending_cartesian_ &&
++        (!in.cartesian.enabled || in.cartesian.stop_epoch != pending_epoch_))) return false;
+     restore_history(pending_);
+     pending_valid_ = false;
+   }
++  return true;
+ }
+ 
+ void InnerLoop::enable() { enabled_ = true; }
+@@ -498,6 +502,8 @@ void InnerLoop::note_rail_bind(double old_lo, double old_hi, const Vec8& lo, con
+ }
+ 
+ void InnerLoop::stop() {
++  if (have_cartesian_identity_) cartesian_epoch_retired_ = true;
++  pending_valid_ = false;
+   enabled_ = false;
+   quiescent_ = true;
+   quiet_s_ = kQuietHold;
+@@ -531,6 +537,7 @@ void InnerLoop::stop() {
+ }
+ 
+ void InnerLoop::reset(const Vec8& q0) {
++  if (have_cartesian_identity_) cartesian_epoch_retired_ = true;
+   q_cmd_ = q0;
+   qdot_prev_.setZero();
+   qdot_seen_.setZero();
+@@ -1045,9 +1052,29 @@ bool InnerLoop::solve_hqp(const Mat6x8& J, const Vec6& v_cmd, const Vec8& q_geom
+     return false;
+   }
+ 
+-  MatX C = MatX::Zero(kNIn, kNVar);
+-  VecX lo = VecX::Constant(kNIn, -1e20);
+-  VecX hi = VecX::Constant(kNIn, 1e20);
++  const int constraint_count = kNIn + (cartesian_.enabled ? 2 * cartesian_.count : 0);
++  if (constraint_count != qp_constraint_count_) {
++    const auto settings1 = qp1_->settings;
++    const auto settings2 = qp2_->settings;
++    qp1_ = std::make_unique<proxsuite::proxqp::dense::QP<double>>(kNVar, kNEq1, constraint_count);
++    qp2_ = std::make_unique<proxsuite::proxqp::dense::QP<double>>(kNVar, kNEq2, constraint_count);
++    qp1_->settings = settings1;
++    qp2_->settings = settings2;
++    qp1_inited_ = qp2_inited_ = qp1_last_ok_ = qp2_last_ok_ = false;
++    qp_constraint_count_ = constraint_count;
++  }
++  qp1_->settings.eps_abs = qp2_->settings.eps_abs = cartesian_.enabled ? 1.0e-9 : cfg_.eps_abs;
++  MatX C = MatX::Zero(constraint_count, kNVar);
++  VecX lo = VecX::Constant(constraint_count, -1e20);
++  VecX hi = VecX::Constant(constraint_count, 1e20);
++  append_cartesian_rows(cartesian_, J, rail_exec, &C, &lo, &hi, kNIn);
++  if (cartesian_.enabled && (!C.allFinite() || lo.array().isNaN().any() || hi.array().isNaN().any())) {
++    qp1_status_ = kQpFailed;
++    *qdot = Vec8::Zero();
++    *residual = b_task;
++    *slack = residual->norm();
++    return false;
++  }
+   C.block(0, 0, kNv, kNv) = Mat8::Identity();
+   lo.head<kNv>() = lo_box;
+   hi.head<kNv>() = hi_box;
+@@ -1331,7 +1358,39 @@ TickOut InnerLoop::step(const TickIn& in) {
+   const auto t0 = std::chrono::steady_clock::now();
+   step_t0_ = t0;
+   TickOut out;
+-  handle_pending_flags(in.flags);
++  out.cartesian_sequence = in.cartesian.sequence;
++  out.cartesian_stop_epoch = in.cartesian.stop_epoch;
++  const auto clock_now = []() {
++    return std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count();
++  };
++  // A transport-confirmed preceding publication is an independent fact.
++  // Apply it before deciding whether this NEW proposal can be admitted.
++  if (!handle_pending_flags(in)) {
++    out.q_cmd = q_cmd_;
++    out.status = kStatusFail;
++    out.flags |= kOutFailed;
++    return out;
++  }
++  const bool stale_identity = in.cartesian.enabled && have_cartesian_identity_ &&
++      (in.cartesian.stop_epoch < last_cartesian_epoch_ ||
++       (cartesian_epoch_retired_ && in.cartesian.stop_epoch <= last_cartesian_epoch_) ||
++       (in.cartesian.stop_epoch == last_cartesian_epoch_ && in.cartesian.sequence <= last_cartesian_sequence_));
++  if (in.cartesian.enabled && (!in.cartesian.valid(clock_now()) || stale_identity ||
++      !enabled_ || (in.flags & (kInAutoCommit | kInStale)) ||
++      !(in.flags & kInHasRailV) || !std::isfinite(in.rail_v) || direct_ptp_)) {
++    pending_valid_ = false;
++    out.q_cmd = q_cmd_;
++    out.status = kStatusFail;
++    out.flags |= kOutFailed;
++    return out;
++  }
++  cartesian_ = in.cartesian;
++  if (cartesian_.enabled) {
++    have_cartesian_identity_ = true;
++    last_cartesian_epoch_ = cartesian_.stop_epoch;
++    last_cartesian_sequence_ = cartesian_.sequence;
++    cartesian_epoch_retired_ = false;
++  }
+   Vec6 twist = in.v_cmd;
+   if (!enabled_ || (in.flags & kInStale)) {
+     twist.setZero();
+@@ -1450,6 +1509,9 @@ TickOut InnerLoop::step(const TickIn& in) {
+     if (!(in.flags & kInAutoCommit)) {
+       pending_ = capture_history();
+       pending_valid_ = true;
++      pending_seq_ = in.request_seq;
++      pending_epoch_ = in.cartesian.stop_epoch;
++      pending_cartesian_ = in.cartesian.enabled;
+       restore_history(committed_snap_);
+       out.q_cmd = cand_q;
+       out.qdot = cand_qd;
+@@ -1980,6 +2042,17 @@ TickOut InnerLoop::step(const TickIn& in) {
+     }
+   }
+   uint32_t publication_pause_reason = 0;
++  out.v_tcp_commanded = J * qdot;
++  if (cartesian_.enabled) {
++    const Vec6 predicted = J.rightCols<7>() * qdot.tail<7>() + J.col(0) * rail_exec;
++    out.cartesian_command_residual = cartesian_.violation(out.v_tcp_commanded);
++    out.cartesian_predicted_residual = cartesian_.violation(predicted);
++    const bool certified = cartesian_.valid(clock_now()) &&
++        out.cartesian_command_residual <= kCartesianTolerance &&
++        out.cartesian_predicted_residual <= kCartesianTolerance;
++    out.cartesian_valid = (published_ok && certified) ? 1u : 0u;
++    if (!certified) published_ok = false;
++  }
+   if (published_ok) {
+     dq_prev_ = q_cmd_ - q_prev;
+     have_dq_prev_ = true;
+@@ -2176,17 +2249,25 @@ TickOut InnerLoop::step(const TickIn& in) {
+   if (out.rail_limited) out.flags |= kOutRailLimited;
+   if (out.wall_active) out.flags |= kOutWallActive;
+   if (out.secondary_suppressed) out.flags |= kOutSecSuppressed;
++  if (cartesian_.enabled && !cartesian_.valid(clock_now())) {
++    published_ok = false;
++    out.cartesian_valid = 0;
++  }
+   out.status = published_ok ? kStatusOk : kStatusFail;
+   const Vec8 cand_q = out.q_cmd;
+   const Vec8 cand_qd = out.qdot;
+   if (published_ok && !(in.flags & kInAutoCommit)) {
+     pending_ = capture_history();
+     pending_valid_ = true;
++    pending_seq_ = in.request_seq;
++    pending_epoch_ = in.cartesian.stop_epoch;
++    pending_cartesian_ = in.cartesian.enabled;
+     restore_history(committed_snap_);
+     out.q_cmd = cand_q;
+     out.qdot = cand_qd;
+   } else if (!published_ok) {
+     pending_valid_ = false;
++    if (cartesian_.enabled) restore_history(committed_snap_);
+   }
+   return out;
+ }
+diff --git a/rm75_control/native/wbc_rt/src/main.cpp b/rm75_control/native/wbc_rt/src/main.cpp
+index c625475a..e349f30e 100644
+--- a/rm75_control/native/wbc_rt/src/main.cpp
++++ b/rm75_control/native/wbc_rt/src/main.cpp
+@@ -629,6 +629,18 @@ int main(int argc, char** argv) {
+         loop.set_rail_ext_mode(in->cmd_f[0] > 0.5 ? 1 : 0);
+       } else if (cmd == wbc_rt::kCmdStep) {
+         wbc_rt::TickIn tin;
++        tin.request_seq = in->seq;
++        tin.commit_seq = in->commit_seq;
++        tin.cartesian.enabled = (in->flags & wbc_rt::kInHasCartesianConstraints) != 0;
++        tin.cartesian.count = in->cartesian_count;
++        tin.cartesian.sequence = in->cartesian_sequence;
++        tin.cartesian.stop_epoch = in->cartesian_stop_epoch;
++        tin.cartesian.valid_until = in->cartesian_valid_until;
++        for (uint32_t row = 0; row < std::min(in->cartesian_count, wbc_rt::kMaxCartesianRows); ++row) {
++          for (int col = 0; col < 6; ++col) tin.cartesian.A(row, col) = in->cartesian_A[row][col];
++          tin.cartesian.lower[row] = in->cartesian_lower[row];
++          tin.cartesian.upper[row] = in->cartesian_upper[row];
++        }
+         for (int i = 0; i < 6; ++i) {
+           tin.v_cmd[i] = in->v_cmd[i];
+           tin.pose_d[i] = in->pose_d[i];
+@@ -653,6 +665,12 @@ int main(int argc, char** argv) {
+           for (int i = 0; i < wbc_rt::kNv; ++i) tin.posture_q[i] = in->cmd_f[3 + i];
+         }
+         const auto tout = loop.step(tin);
++        out->cartesian_sequence = tout.cartesian_sequence;
++        out->cartesian_stop_epoch = tout.cartesian_stop_epoch;
++        out->cartesian_valid = tout.cartesian_valid;
++        out->cartesian_command_residual = tout.cartesian_command_residual;
++        out->cartesian_predicted_residual = tout.cartesian_predicted_residual;
++        for (int i = 0; i < 6; ++i) out->v_tcp_commanded[i] = tout.v_tcp_commanded[i];
+         for (int i = 0; i < 8; ++i) {
+           out->q_cmd[i] = tout.q_cmd[i];
+           out->qdot[i] = tout.qdot[i];
+diff --git a/rm75_control/native/wbc_rt/test_native_contract.py b/rm75_control/native/wbc_rt/test_native_contract.py
+index c95a2b6a..c1340574 100644
+--- a/rm75_control/native/wbc_rt/test_native_contract.py
++++ b/rm75_control/native/wbc_rt/test_native_contract.py
+@@ -1,4 +1,4 @@
+-"""Offline checks for the native v8 HQP/rail contract.
++"""Offline checks for the native v9 HQP/rail contract.
+ 
+ The dynamic checks use the named-SHM client with an offline kinematic input
+ stream; they do not connect to hardware.  They cover the ABI and the
+@@ -25,10 +25,10 @@ PROTO = (ROOT / "include/wbc_rt/protocol.hpp").read_text(encoding="utf-8")
+ BIN = ROOT / "build/wbc_rt"
+ 
+ 
+-def test_native_v8_protocol_sizes() -> None:
+-    assert "kVersion = 8" in PROTO
+-    assert "static_assert(sizeof(WbcIn) == 616" in PROTO
+-    assert "static_assert(sizeof(WbcOut) == 1472" in PROTO
++def test_native_v9_protocol_sizes() -> None:
++    assert "kVersion = 9" in PROTO
++    assert "static_assert(sizeof(WbcIn) == 6796" in PROTO
++    assert "static_assert(sizeof(WbcOut) == 1556" in PROTO
+     for field in (
+         "rail_refresh_dt",
+         "task_progress_alpha",
+@@ -46,9 +46,9 @@ def test_native_v8_protocol_sizes() -> None:
+     if not BIN.exists():
+         pytest.skip("native binary not built")
+     sizes = subprocess.check_output([str(BIN), "--sizes"], text=True).split()
+-    assert sizes == ["616", "1472"]
++    assert sizes == ["6796", "1556"]
+     info = subprocess.check_output([str(BIN), "--protocol-info"], text=True)
+-    assert "version 8 in 616 out 1472" in info
++    assert "version 9 in 6796 out 1556" in info
+ 
+ 
+ def test_residual_qp1_layout_contract() -> None:
+diff --git a/rm75_control/rm75_control/control/joint_admittance_8dof/hw/rail_servo.py b/rm75_control/rm75_control/control/joint_admittance_8dof/hw/rail_servo.py
+index 271e1c9f..5f001de1 100644
+--- a/rm75_control/rm75_control/control/joint_admittance_8dof/hw/rail_servo.py
++++ b/rm75_control/rm75_control/control/joint_admittance_8dof/hw/rail_servo.py
+@@ -784,6 +784,11 @@ class RailServoBridge:
+         self._command_mode = RailCommandMode.POSITION
+         self._command_seq = 0
+         self._command_written_seq = 0
++        self._publication_epoch = 0
++        self._candidate_sequence = 0
++        self._command_epoch = 0
++        self._strict_publication = False
++        self._write_inflight = None
+         self._commanded_m = float("nan")
+         self._measured_m = float("nan")
+         self._measured_speed_rpm = 0  # drive monitor 0x1000 (drive frame)
+@@ -1185,6 +1190,9 @@ class RailServoBridge:
+         v_ff_m_s: float | None = None,
+         *,
+         mode: RailCommandMode | str | None = None,
++        candidate_sequence: int | None = None,
++        stop_epoch: int | None = None,
++        valid_until_s: float | None = None,
+     ) -> bool:
+         """Validate a rail command without exposing it to the Modbus worker."""
+         raw_v = float("nan") if v_ff_m_s is None else float(v_ff_m_s)
+@@ -1216,6 +1224,14 @@ class RailServoBridge:
+                 or self._abort.is_set()
+             ):
+                 return False
++            strict = candidate_sequence is not None
++            if strict:
++                if (type(candidate_sequence) is not int or candidate_sequence <= self._candidate_sequence
++                        or type(stop_epoch) is not int or stop_epoch != self._publication_epoch
++                        or valid_until_s is None or not math.isfinite(valid_until_s)
++                        or time.monotonic() > valid_until_s):
++                    return False
++                self._strict_publication = True
+             self._reserved = {
+                 "target_m": snapped,
+                 "command_mode": command_mode,
+@@ -1223,10 +1239,32 @@ class RailServoBridge:
+                     raw_v if math.isfinite(raw_v) else 0.0
+                 ),
+                 "rx_mono": time.monotonic(),
++                "candidate_sequence": candidate_sequence,
++                "stop_epoch": stop_epoch,
++                "valid_until_s": valid_until_s,
+             }
+         return True
+ 
+-    def commit_reservation(self) -> bool:
++    @property
++    def reserved_publication(self):
++        with self._lock:
++            return None if not self._reserved else dict(self._reserved)
++
++    @property
++    def publication_epoch(self):
++        with self._lock:
++            return self._publication_epoch
++
++    def fence_publications(self, stop_epoch: int) -> None:
++        """Fence queued software commands; an I/O already started remains in flight."""
++        with self._lock:
++            if type(stop_epoch) is not int or stop_epoch < self._publication_epoch:
++                raise ValueError("rail stop epoch cannot move backward")
++            self._publication_epoch = stop_epoch
++            self._strict_publication = True
++            self._reserved = None
++
++    def commit_reservation(self, *, candidate_sequence=None, stop_epoch=None) -> bool:
+         with self._lock:
+             # Recheck states that can change while the arm frame is in flight.
+             if (
+@@ -1241,12 +1279,22 @@ class RailServoBridge:
+             reserved = getattr(self, "_reserved", None)
+             if not reserved:
+                 return False
++            candidate = reserved.get("candidate_sequence")
++            if candidate is not None and (
++                    candidate != candidate_sequence or reserved["stop_epoch"] != stop_epoch
++                    or stop_epoch != self._publication_epoch or candidate <= self._candidate_sequence
++                    or time.monotonic() > reserved["valid_until_s"]):
++                self._reserved = None
++                return False
+             self._apply_target_locked(
+                 float(reserved["target_m"]),
+                 reserved["command_mode"],
+                 float(reserved["v_ff"]),
+                 float(reserved["rx_mono"]),
+             )
++            if candidate is not None:
++                self._candidate_sequence = candidate
++            self._command_epoch = self._publication_epoch
+             self._reserved = None
+         return True
+ 
+@@ -1260,6 +1308,7 @@ class RailServoBridge:
+             # Holding changes rail ownership; an older reservation must not
+             # reopen follow after FA24 has been zeroed.
+             self._reserved = None
++            self._publication_epoch = int(getattr(self, "_publication_epoch", 0))+1
+             meas = float(self._measured_m)
+             if self._encoder_sane(meas):
+                 self._target_m = meas
+@@ -1280,6 +1329,30 @@ class RailServoBridge:
+             self._last_hold_drift_log_mono = 0.0
+         self.kill_motion()
+ 
++    def _write_velocity_fenced(self, rpm, *, deadband, command_seq, command_epoch):
++        """The lock marks the transition from queued to in-flight device I/O.
++
++        It is not held during blocking Modbus. A stop after this marker cannot
++        retract the write, and the in-flight fact remains observable until reply.
++        """
++        with self._lock:
++            strict = bool(getattr(self, "_strict_publication", False))
++            allowed = (not strict or (command_epoch == self._publication_epoch
++                       and bool(self._armed) and bool(self._follow_enabled)
++                       and not self._panic and not self._stop.is_set() and not self._abort.is_set()))
++            actual_rpm = rpm if allowed else 0
++            self._write_inflight = dict(command_seq=command_seq, stop_epoch=command_epoch,
++                                        rpm=actual_rpm, started_s=time.monotonic(), state="started")
++        try:
++            result = self._drive.set_velocity_rpm(actual_rpm, deadband=deadband if allowed else 0)
++        except Exception:
++            with self._lock:
++                self._write_inflight["state"] = "unknown"
++            raise
++        with self._lock:
++            self._write_inflight.update(state="published", finished_s=time.monotonic(), rpm=result)
++        return result
++
+     def hold_or_settle_after_task(self) -> bool:
+         """Task-end: always snap-hold (FA24=0). Never re-open follow."""
+         if not self.enabled or self._drive is None:
+@@ -2664,6 +2737,7 @@ class RailServoBridge:
+                     target = float(self._target_m)
+                     target_v_ff = float(self._target_v_ff_m_s)
+                     processed_command_seq = int(self._command_seq)
++                    processed_command_epoch = int(self._command_epoch)
+                     command_mode = RailCommandMode(self._command_mode)
+                     follow = bool(self._follow_enabled)
+                     panic = bool(self._panic)
+@@ -3298,7 +3372,8 @@ class RailServoBridge:
+                 )
+                 write_seq_before = int(getattr(self._drive, "velocity_write_seq", 0))
+                 t_write0 = time.monotonic()
+-                rpm_cmd = self._drive.set_velocity_rpm(rpm, deadband=rpm_deadband)
++                rpm_cmd = self._write_velocity_fenced(rpm, deadband=rpm_deadband,
++                    command_seq=processed_command_seq, command_epoch=processed_command_epoch)
+                 t_write_ms = (time.monotonic() - t_write0) * 1000.0
+                 wrote = int(getattr(self._drive, "velocity_write_seq", 0)) > write_seq_before
+                 if wrote:
+diff --git a/rm75_control/rm75_control/control/joint_admittance_8dof/loop.py b/rm75_control/rm75_control/control/joint_admittance_8dof/loop.py
+index 9ef018bb..cfe0e301 100644
+--- a/rm75_control/rm75_control/control/joint_admittance_8dof/loop.py
++++ b/rm75_control/rm75_control/control/joint_admittance_8dof/loop.py
+@@ -220,6 +220,13 @@ class JointIkStep:
+     slack_norm: float
+     n_cbf_active: int
+     follow_err_rad: float
++    cartesian_constraints_sequence: int = 0
++    native_request_seq: int = 0
++    cartesian_constraints_stop_epoch: int = 0
++    cartesian_constraints_valid: bool = False
++    cartesian_command_residual: float = float("inf")
++    cartesian_predicted_residual: float = float("inf")
++    v_tcp_commanded: np.ndarray = field(default_factory=lambda: np.full(6, np.nan))
+     cart_err_mm: float = 0.0
+     qdot_ff_norm: float = 0.0
+     vel_clamped: bool = False
+@@ -1267,6 +1274,9 @@ class JointIkController:
+         """Advance committed history after both transports accept."""
+         pending = getattr(self, "_pending_pub", None)
+         if self._native is not None:
++            confirm = getattr(self._native, "confirm_publication", None)
++            if callable(confirm) and not confirm(qdot):
++                return
+             if getattr(self._native, "_inflight_seq", 0):
+                 # A timeout hold has no acknowledged candidate. Reading SHM
+                 # here races the solver and can commit an unpublished pose.
+@@ -1840,6 +1850,7 @@ class JointIkController:
+         contact_active: bool = False,
+         task_rotation_base: np.ndarray | None = None,
+         task_safety_rows: tuple = (),
++        cartesian_constraints=None,
+         path_twist: np.ndarray | None = None,
+         feedback_twist: np.ndarray | None = None,
+         v_force_z: float | None = None,
+@@ -1868,6 +1879,7 @@ class JointIkController:
+                 contact_active=contact_active,
+                 task_rotation_base=task_rotation_base,
+                 task_safety_rows=task_safety_rows,
++                cartesian_constraints=cartesian_constraints,
+                 path_twist=path_twist,
+                 feedback_twist=feedback_twist,
+                 v_force_z=v_force_z,
+@@ -1880,6 +1892,8 @@ class JointIkController:
+                 auto_commit=auto_commit,
+                 abort_prev=abort_prev,
+             )
++        if cartesian_constraints is not None:
++            raise RuntimeError("Cartesian certificates require the native backend; Python admission is unavailable")
+         del f_ext_z, f_des_z, task_safety_rows
+         path_twist_arr = (
+             np.asarray(path_twist, dtype=float).reshape(6)
+@@ -5704,6 +5718,123 @@ def _rail_execution_velocity_estimate(
+     )
+ 
+ 
++class _FullMeasuredTwistTracker:
++    """Raw measurement derivative/FK, separate from rail execution prediction.
++
++    Rail speed is a difference of two accepted encoder samples. Arm speed is
++    SDK feedback, or a difference of measured arm positions. Independent
++    source times and derivative intervals remain visible; this asynchronous
++    diagnostic is not a verified, wrench-aligned physical power port.
++    """
++
++    def __init__(self):
++        self.arm_previous = None
++        self.arm_velocity = None
++        self.rail_previous = None
++        self.rail_velocity = None
++        self.last_pair = None
++
++    def update(self, snap, rail_feedback, kin, *, now_s, freshness_s, max_skew_s):
++        metadata = {"port_verified": False, "reason": "unavailable"}
++        result = dict(measured_twist_base=None, measured_twist_valid=False,
++                      measured_twist_fresh=False, measurement_time_s=None,
++                      measurement_id=int(getattr(snap, "seq", 0)),
++                      measured_twist_metadata=metadata)
++
++        def unavailable(reason):
++            metadata["reason"] = reason
++            return result
++
++        try:
++            now, budget, skew_budget = float(now_s), float(freshness_s), float(max_skew_s)
++            arm_t = float(snap.t_s)
++            arm_seq = int(snap.seq)
++            arm_q = np.deg2rad(np.asarray(snap.q_deg, dtype=float).reshape(7))
++            if not bool(snap.ok) or not np.isfinite(arm_q).all():
++                return unavailable("arm_invalid")
++            if not all(math.isfinite(v) for v in (now, budget, skew_budget, arm_t)):
++                return unavailable("time_invalid")
++            if budget <= 0 or skew_budget < 0 or arm_t <= 0 or not 0 <= now - arm_t <= budget:
++                return unavailable("arm_stale_or_future")
++            metadata["arm_position_time_s"] = arm_t
++            previous = self.arm_previous
++            arm_new = previous is None or (arm_seq > previous[0] and arm_t > previous[1])
++            if not arm_new and (arm_seq, arm_t) != previous[:2]:
++                return unavailable("arm_out_of_order")
++            if not arm_new and not np.array_equal(arm_q, previous[2]):
++                return unavailable("arm_identity_changed")
++            arm_speed = arm_qdot_rad_s_from_snap(snap)
++            arm_start = arm_t
++            arm_source = "sdk_joint_speed"
++            if arm_speed is None:
++                arm_source = "measured_joint_difference"
++                if arm_new and previous is not None and 1e-6 < arm_t - previous[1] <= budget:
++                    arm_start = previous[1]
++                    delta = (arm_q - previous[2] + np.pi) % (2.0 * np.pi) - np.pi
++                    arm_speed = delta / (arm_t - arm_start)
++                elif not arm_new and self.arm_velocity is not None:
++                    arm_speed, arm_start = self.arm_velocity
++            if arm_new:
++                self.arm_previous = (arm_seq, arm_t, arm_q.copy())
++                self.arm_velocity = None if arm_speed is None else (arm_speed.copy(), arm_start)
++            # Even if arm derivative startup is incomplete, seed the raw rail
++            # history below; neither source may be replaced by a command.
++            if rail_feedback is None or not bool(rail_feedback.valid):
++                return unavailable("rail_invalid_or_unavailable")
++            rail_t = float(rail_feedback.sample_mono_s)
++            rail_seq = int(rail_feedback.motion_seq)
++            rail_q = float(rail_feedback.position_m)
++            metadata["rail_position_time_s"] = rail_t
++            if not all(math.isfinite(v) for v in (rail_t, rail_q)):
++                return unavailable("rail_nonfinite")
++            if rail_t <= 0 or not 0 <= now - rail_t <= budget:
++                return unavailable("rail_stale_or_future")
++            previous = self.rail_previous
++            rail_new = previous is None or (rail_seq > previous[0] and rail_t > previous[1])
++            if not rail_new and (rail_seq, rail_t) != previous[:2]:
++                return unavailable("rail_out_of_order")
++            if not rail_new and rail_q != previous[2]:
++                return unavailable("rail_identity_changed")
++            if rail_new:
++                self.rail_velocity = None
++                if previous is not None and 1e-6 < rail_t - previous[1] <= budget:
++                    self.rail_velocity = ((rail_q - previous[2]) / (rail_t - previous[1]),
++                                          previous[1], rail_t)
++                self.rail_previous = (rail_seq, rail_t, rail_q)
++            if arm_speed is None or self.rail_velocity is None:
++                return unavailable("derivative_startup_or_gap")
++            rail_speed, rail_start, rail_end = self.rail_velocity
++            arm_time = 0.5 * (arm_start + arm_t)
++            rail_time = 0.5 * (rail_start + rail_end)
++            skew = abs(arm_time - rail_time)
++            pose_skew = abs(arm_t - rail_t)
++            metadata.update(arm_velocity_interval_s=(arm_start, arm_t),
++                            rail_velocity_interval_s=(rail_start, rail_end),
++                            arm_velocity_source=arm_source,
++                            rail_velocity_source="raw_encoder_difference",
++                            arm_sequence=arm_seq, rail_sequence=rail_seq,
++                            time_skew_s=skew, pose_time_skew_s=pose_skew,
++                            max_time_skew_s=skew_budget)
++            if now - min(arm_start, rail_start) > budget:
++                return unavailable("derivative_interval_stale")
++            if max(skew, pose_skew) > skew_budget:
++                return unavailable("measurement_time_skew")
++            raw_q = np.concatenate(([rail_q], arm_q))
++            raw_qdot = np.concatenate(([rail_speed], arm_speed))
++            twist = np.asarray(kin.jacobian(raw_q), dtype=float) @ raw_qdot
++            if twist.shape != (6,) or not np.isfinite(twist).all():
++                return unavailable("measured_fk_invalid")
++            pair = (arm_seq, arm_t, rail_seq, rail_t)
++            result.update(measured_twist_base=twist.copy(), measured_twist_valid=True,
++                          measured_twist_fresh=pair != self.last_pair,
++                          measurement_time_s=min(arm_time, rail_time))
++            self.last_pair = pair
++            metadata["reason"] = ""
++            return result
++        except (AttributeError, TypeError, ValueError, OverflowError, RuntimeError):
++            return unavailable("measurement_fields_unavailable")
++
++
+ def _qdot_meas_8dof(
+     q_new: np.ndarray,
+     last_q: np.ndarray | None,
+@@ -6225,9 +6356,14 @@ def run_joint_admittance_phases(
+             gc_frozen = True
+ 
+         fault_epoch = [0]
++        active_contact_outer = [None]
+ 
+         def _watchdog_trip() -> None:
+             fault_epoch[0] += 1
++            if active_contact_outer[0] is not None and rail_bridge is not None:
++                # Fence the software queue immediately; bookkeeping is kept on
++                # the control thread. Already-started I/O remains an exposure.
++                rail_bridge.fence_publications(max(time.monotonic_ns(), rail_bridge.publication_epoch+1))
+ 
+         wd = Watchdog(watchdog_timeout_s, _watchdog_trip)
+         wd.start()
+@@ -6235,6 +6371,17 @@ def run_joint_admittance_phases(
+         def _fault_stop(reason: str) -> None:
+             """Stop both axes without publishing another trajectory target."""
+ 
++            fault_epoch[0] += 1
++            contact_outer = active_contact_outer[0]
++            if contact_outer is not None and not getattr(contact_outer, "_runner_stop_latched", False):
++                contact_outer._runner_stop_latched = True
++                contact_outer.publication_abort(reason)
++                if rail_bridge is not None:
++                    contact_outer.execution.stop_epoch = max(contact_outer.execution.stop_epoch, rail_bridge.publication_epoch)
++                epoch = contact_outer.execution.stop(now_s=time.monotonic(),
++                    wrench_environment=getattr(contact_outer, "pending_wrench_environment", np.zeros(6)))
++                if rail_bridge is not None:
++                    rail_bridge.fence_publications(epoch)
+             if verbose:
+                 print(f"  QPIK SAFETY STOP: {reason}", flush=True)
+             if rail_bridge is not None and getattr(rail_bridge, "enabled", False):
+@@ -6261,6 +6408,7 @@ def run_joint_admittance_phases(
+             rail_feedback_ready = False
+             try:
+                 for phase_idx, phase in enumerate(phases):
++                    active_contact_outer[0] = phase.outer if bool(getattr(phase.outer, "contact_qp_enabled", False)) else None
+                     if stop_check is not None and stop_check():
+                         phase_stopped = True
+                         if verbose:
+@@ -6306,6 +6454,14 @@ def run_joint_admittance_phases(
+                         inner.begin_hybrid_episode(q_meas, applied_qdot)
+                         phase.outer.begin_hybrid_episode(applied_twist, pose_pin)
+ 
++                    if active_contact_outer[0] is not None:
++                        if canfd_proxy is not None or robot is None or rail_bridge is None or not rail_bridge.enabled:
++                            raise RuntimeError("contact_qp requires direct arm transport and versioned rail adapter")
++                        epoch = max(time.monotonic_ns(), rail_bridge.publication_epoch+1)
++                        phase.outer.execution.stop_epoch = epoch
++                        rail_bridge.fence_publications(epoch)
++                        phase.outer._runner_stop_latched = False
++
+                     obs = phase.force_observer if phase.force_observer is not None else force_observer
+                     phase_t0 = time.perf_counter()
+                     next_tick = phase_t0
+@@ -6335,6 +6491,7 @@ def run_joint_admittance_phases(
+                     # sensor transport age is a separate diagnostic.
+                     last_feedback_velocity_t = last_feedback_t
+                     twist_achieved_base = np.full(6, np.nan)
++                    full_measured_tracker = _FullMeasuredTwistTracker()
+                     qdot_meas = None
+                     v_tcp_z_actual = 0.0
+                     last_v_tcp_z = None
+@@ -6623,10 +6780,33 @@ def run_joint_admittance_phases(
+                             sample_kwargs["feedback_velocity_valid"] = (
+                                 feedback_velocity_valid
+                             )
++                        # Existing scalar feedback uses the rail execution
++                        # predictor. The full measured channel must instead
++                        # use raw encoder samples, with joint source metadata.
++                        try:
++                            raw_rail_feedback = (
++                                rail_bridge.execution_feedback
++                                if rail_bridge is not None and getattr(rail_bridge, "enabled", False)
++                                else None
++                            )
++                        except Exception:
++                            raw_rail_feedback = None
++                        full_measurement = full_measured_tracker.update(
++                            snap, raw_rail_feedback, inner.kin,
++                            now_s=time.monotonic(),
++                            freshness_s=float(inner.cfg.feedback_timeout_s),
++                            max_skew_s=min(float(inner.cfg.feedback_timeout_s), 0.020),
++                        )
++                        for key, value in full_measurement.items():
++                            if key in sample_params:
++                                sample_kwargs[key] = value
+                         if "slack_norm" in sample_params:
+                             sample_kwargs["slack_norm"] = float(
+                                 getattr(inner, "last_slack_norm", 0.0) or 0.0
+                             )
++                        if "wrench_environment_tool" in sample_params:
++                            sample_kwargs["wrench_environment_tool"] = phase.outer.environment_wrench_from_control(
++                                f_ext_raw if f_ext_raw is not None else f_ext)
+                         twist = np.asarray(
+                             phase.outer.sample(t_ref, pose_pin, f_ext, **sample_kwargs),
+                             dtype=float,
+@@ -6751,7 +6931,10 @@ def run_joint_admittance_phases(
+                             rail_refresh_dt_s=(1.0 / max(float(rail_bridge.config.poll_hz), 1.0)
+                                                if rail_bridge is not None else dt),
+                             dt_wall_s=dt_wall_actual,
++                            cartesian_constraints=getattr(phase.outer, "cartesian_constraints", None),
+                         )
++                        native_q_send = np.asarray(step.q_send, dtype=float).copy()
++                        native_qdot = np.asarray(step.qdot, dtype=float).copy()
+                         step.rail_goal_err_m = float(step.q_send[0]) - float(
+                             q_meas[0]
+                         )
+@@ -6950,107 +7133,130 @@ def run_joint_admittance_phases(
+                             _fault_stop(stop_reason)
+                             break
+                         _t_send0 = time.perf_counter()
+-                        qdot0_pub = _qpik_rail_v_ff_m_s(
+-                            float(np.asarray(step.qdot, dtype=float).reshape(-1)[0])
+-                        )
+-                        rail_meas_pub = float("nan")
+-                        if rail_bridge is not None and getattr(rail_bridge, "enabled", False):
++                        if active_contact_outer[0] is not None:
++                            from .hw.contact_publication import publish_contact_candidate
++                            def contact_publication_gate():
++                                if wd.fired or fault_epoch[0] > 0 or (stop_check is not None and stop_check()):
++                                    raise RuntimeError("contact_qp_stop_fence_before_send")
++                                final_snap = async_obs.read()
++                                final_time = float(getattr(final_snap, "t_s", 0.))
++                                age = time.monotonic()-final_time
++                                if not math.isfinite(age) or age < 0 or age > float(inner.cfg.feedback_timeout_s):
++                                    raise RuntimeError("contact_qp_feedback_stale_before_send")
+                             try:
+-                                rail_meas_pub = float(rail_bridge.measured_m)
+-                            except Exception:
+-                                rail_meas_pub = float("nan")
+-                        rail_pub_m = _wall_clock_rail_target(
+-                            float(step.q_send[0]),
+-                            qdot0_pub,
+-                            dt_wall_actual,
+-                            float(inner.cfg.dt),
+-                            soft_lo=float(inner.limits.q_lower[0]),
+-                            soft_hi=float(inner.limits.q_upper[0]),
+-                            meas_m=rail_meas_pub,
+-                            lead_max_m=float(inner.cfg.resync_err_rail_m),
+-                        )
+-                        if rail_coast_active:
+-                            qdot0_pub = 0.0
+-                            step.v_r_ref = 0.0
+-                            if rail_bridge is not None and getattr(
+-                                rail_bridge, "enabled", False
+-                            ):
+-                                try:
+-                                    rail_bridge.hold_current()
+-                                except Exception:
+-                                    pass
+-                            rail_ok, rail_reason = True, ""
++                                final_command = publish_contact_candidate(
++                                    phase.outer, inner, step, rail_bridge,
++                                    native_q_send=native_q_send, native_qdot=native_qdot,
++                                    send_arm=lambda q: _send_joint_canfd_cmd(robot, q, follow, None),
++                                    publication_gate=contact_publication_gate)
++                                rail_pub_m = final_command.rail_target_m
++                            except Exception as exc:
++                                phase_stopped = True
++                                stop_reason = "contact_qp_publication:"+str(exc)
++                                _fault_stop(stop_reason)
++                                break
+                         else:
+-                            step.rail_target_publish_mono_ns = time.monotonic_ns()
+-                            rail_mode = None
+-                            if bool(inner._direct_joint_ptp) and bool(
+-                                inner._plan_drives_rail
+-                            ):
+-                                rail_mode = RailCommandMode.TRACKED_POSITION
+-                            rail_ok, rail_reason = _reserve_rail_target(
+-                                rail_bridge,
+-                                float(rail_pub_m),
+-                                _fault_stop,
+-                                v_ff_m_s=qdot0_pub,
+-                                mode=rail_mode,
++                            qdot0_pub = _qpik_rail_v_ff_m_s(
++                                float(np.asarray(step.qdot, dtype=float).reshape(-1)[0])
+                             )
+-                        if not rail_ok:
+-                            phase_stopped = True
+-                            stop_reason = rail_reason
+-                            abort_pub = getattr(inner, "abort_publication", None)
+-                            if callable(abort_pub):
+-                                abort_pub()
+-                            break
+-                        if rail_bridge is not None:
+-                            step.rail_fa24_write_mono_ns = int(
+-                                getattr(rail_bridge, "last_fa24_write_mono_ns", 0) or 0
+-                            )
+-                            step.rail_encoder_sample_mono_ns = int(
+-                                getattr(rail_bridge, "last_encoder_sample_mono_ns", 0)
+-                                or 0
+-                            )
+-                        try:
+-                            step.arm_send_mono_ns = time.monotonic_ns()
+-                            _send_joint_canfd_cmd(
+-                                robot,
+-                                rad2deg(arm_q_from_full(step.q_send)),
+-                                follow,
+-                                canfd_proxy,
+-                            )
+-                        except Exception as exc:
+-                            abort = getattr(rail_bridge, "abort_reservation", None)
+-                            if callable(abort):
++                            rail_meas_pub = float("nan")
++                            if rail_bridge is not None and getattr(rail_bridge, "enabled", False):
+                                 try:
+-                                    abort()
++                                    rail_meas_pub = float(rail_bridge.measured_m)
+                                 except Exception:
+-                                    pass
+-                            phase_stopped = True
+-                            stop_reason = (
+-                                "arm_send_fault:"
+-                                f"{type(exc).__name__}:{exc}"
++                                    rail_meas_pub = float("nan")
++                            rail_pub_m = _wall_clock_rail_target(
++                                float(step.q_send[0]),
++                                qdot0_pub,
++                                dt_wall_actual,
++                                float(inner.cfg.dt),
++                                soft_lo=float(inner.limits.q_lower[0]),
++                                soft_hi=float(inner.limits.q_upper[0]),
++                                meas_m=rail_meas_pub,
++                                lead_max_m=float(inner.cfg.resync_err_rail_m),
+                             )
+-                            abort_pub = getattr(inner, "abort_publication", None)
+-                            if callable(abort_pub):
+-                                abort_pub()
+-                            _fault_stop(stop_reason)
+-                            break
+-                        if (
+-                            rail_bridge is not None
+-                            and getattr(rail_bridge, "enabled", False)
+-                            and not rail_coast_active
+-                        ):
+-                            commit = getattr(rail_bridge, "commit_reservation", None)
+-                            if callable(commit) and not commit():
++                            if rail_coast_active:
++                                qdot0_pub = 0.0
++                                step.v_r_ref = 0.0
++                                if rail_bridge is not None and getattr(
++                                    rail_bridge, "enabled", False
++                                ):
++                                    try:
++                                        rail_bridge.hold_current()
++                                    except Exception:
++                                        pass
++                                rail_ok, rail_reason = True, ""
++                            else:
++                                step.rail_target_publish_mono_ns = time.monotonic_ns()
++                                rail_mode = None
++                                if bool(inner._direct_joint_ptp) and bool(
++                                    inner._plan_drives_rail
++                                ):
++                                    rail_mode = RailCommandMode.TRACKED_POSITION
++                                rail_ok, rail_reason = _reserve_rail_target(
++                                    rail_bridge,
++                                    float(rail_pub_m),
++                                    _fault_stop,
++                                    v_ff_m_s=qdot0_pub,
++                                    mode=rail_mode,
++                                )
++                            if not rail_ok:
+                                 phase_stopped = True
+-                                stop_reason = "PARTIAL_ARM:rail_commit_failed"
++                                stop_reason = rail_reason
++                                abort_pub = getattr(inner, "abort_publication", None)
++                                if callable(abort_pub):
++                                    abort_pub()
++                                break
++                            if rail_bridge is not None:
++                                step.rail_fa24_write_mono_ns = int(
++                                    getattr(rail_bridge, "last_fa24_write_mono_ns", 0) or 0
++                                )
++                                step.rail_encoder_sample_mono_ns = int(
++                                    getattr(rail_bridge, "last_encoder_sample_mono_ns", 0)
++                                    or 0
++                                )
++                            try:
++                                step.arm_send_mono_ns = time.monotonic_ns()
++                                _send_joint_canfd_cmd(
++                                    robot,
++                                    rad2deg(arm_q_from_full(step.q_send)),
++                                    follow,
++                                    canfd_proxy,
++                                )
++                            except Exception as exc:
++                                abort = getattr(rail_bridge, "abort_reservation", None)
++                                if callable(abort):
++                                    try:
++                                        abort()
++                                    except Exception:
++                                        pass
++                                phase_stopped = True
++                                stop_reason = (
++                                    "arm_send_fault:"
++                                    f"{type(exc).__name__}:{exc}"
++                                )
+                                 abort_pub = getattr(inner, "abort_publication", None)
+                                 if callable(abort_pub):
+                                     abort_pub()
+                                 _fault_stop(stop_reason)
+                                 break
+-                        commit_pub = getattr(inner, "commit_publication", None)
+-                        if callable(commit_pub):
+-                            commit_pub(step.qdot)
++                            if (
++                                rail_bridge is not None
++                                and getattr(rail_bridge, "enabled", False)
++                                and not rail_coast_active
++                            ):
++                                commit = getattr(rail_bridge, "commit_reservation", None)
++                                if callable(commit) and not commit():
++                                    phase_stopped = True
++                                    stop_reason = "PARTIAL_ARM:rail_commit_failed"
++                                    abort_pub = getattr(inner, "abort_publication", None)
++                                    if callable(abort_pub):
++                                        abort_pub()
++                                    _fault_stop(stop_reason)
++                                    break
++                            commit_pub = getattr(inner, "commit_publication", None)
++                            if callable(commit_pub):
++                                commit_pub(step.qdot)
+                         if not wd.fired:
+                             wd.beat()
+                         step.tick_send_ms = (
+@@ -7065,20 +7271,26 @@ def run_joint_admittance_phases(
+                             joint_err_deg = _joint_plan_err_deg(
+                                 phase.outer, t_ref, q_meas
+                             )
+-                        raw_scale = _reference_governor_scale(
+-                            phase,
+-                            outer_err_mm=outer_err_mm,
+-                            joint_err_deg=joint_err_deg,
+-                            physical_saturated=bool(step.physical_saturated),
+-                        )
+-                        scale = gov_filter.update(raw_scale, control_dt)
+-                        # Soft-start ramp: first ~0.3s cannot command near-vmax.
+-                        ramp_s = float(getattr(phase, "soft_start_ramp_s", 0.0) or 0.0)
+-                        if ramp_s > 1e-6 and step.controller_mode != "direct_joint_ptp":
+-                            scale *= float(np.clip(t_wall / ramp_s, 0.0, 1.0))
+-                        if path_reference_should_freeze(step):
+-                            scale = 0.0
+-                        t_ref += reference_time_step(dt_wall_actual, scale)
++                        if active_contact_outer[0] is not None:
++                            # The new outer owns its candidate/committed clock
++                            # and feedforward. The old governor has no second vote.
++                            t_ref = float(phase.outer.reference_s)
++                            raw_scale = scale = float(phase.outer.pending_result.alpha)
++                        else:
++                            raw_scale = _reference_governor_scale(
++                                phase,
++                                outer_err_mm=outer_err_mm,
++                                joint_err_deg=joint_err_deg,
++                                physical_saturated=bool(step.physical_saturated),
++                            )
++                            scale = gov_filter.update(raw_scale, control_dt)
++                            # Soft-start ramp: first ~0.3s cannot command near-vmax.
++                            ramp_s = float(getattr(phase, "soft_start_ramp_s", 0.0) or 0.0)
++                            if ramp_s > 1e-6 and step.controller_mode != "direct_joint_ptp":
++                                scale *= float(np.clip(t_wall / ramp_s, 0.0, 1.0))
++                            if path_reference_should_freeze(step):
++                                scale = 0.0
++                            t_ref += reference_time_step(dt_wall_actual, scale)
+                         step.accepted_reference_lag_s = max(0.0, t_wall - t_ref)
+     
+                         if phase.on_tick is not None:
+@@ -7211,6 +7423,12 @@ def run_joint_admittance_phases(
+                 if verbose:
+                     print("\nStopped.", flush=True)
+         finally:
++            if active_contact_outer[0] is not None:
++                _fault_stop(stop_reason or "contact_qp_phase_exit")
++                if log_csv is not None:
++                    save_contact_log = getattr(active_contact_outer[0], "save_execution_log", None)
++                    if callable(save_contact_log):
++                        save_contact_log(str(log_csv)+".contact_qp.json")
+             inner.set_direct_joint_ptp(False)
+             inner.set_plan_drives_rail(False)
+             wd.stop()
+diff --git a/rm75_control/rm75_control/control/joint_admittance_8dof/wbc_rt/build_id.py b/rm75_control/rm75_control/control/joint_admittance_8dof/wbc_rt/build_id.py
+index 5ae315c4..74187339 100644
+--- a/rm75_control/rm75_control/control/joint_admittance_8dof/wbc_rt/build_id.py
++++ b/rm75_control/rm75_control/control/joint_admittance_8dof/wbc_rt/build_id.py
+@@ -11,6 +11,7 @@ _PROTOCOL_PY = Path(__file__).resolve().parent / "protocol.py"
+ 
+ _HASH_SOURCES = (
+     _NATIVE / "include" / "wbc_rt" / "protocol.hpp",
++    _NATIVE / "include" / "wbc_rt" / "cartesian.hpp",
+     _NATIVE / "include" / "wbc_rt" / "inner.hpp",
+     _NATIVE / "include" / "wbc_rt" / "types.hpp",
+     _NATIVE / "include" / "wbc_rt" / "notification.hpp",
+diff --git a/rm75_control/rm75_control/control/joint_admittance_8dof/wbc_rt/client.py b/rm75_control/rm75_control/control/joint_admittance_8dof/wbc_rt/client.py
+index d1e507f6..effc872b 100644
+--- a/rm75_control/rm75_control/control/joint_admittance_8dof/wbc_rt/client.py
++++ b/rm75_control/rm75_control/control/joint_admittance_8dof/wbc_rt/client.py
+@@ -90,6 +90,9 @@ class NativeWbcClient:
+         self._seq = 0
+         self._started = False
+         self._pending_commit_seq = 0
++        self._prepared_commit_seq = 0
++        self._prepared_certificate = None
++        self._last_candidate_certified = False
+         self._abort_next = False
+         self._fault_latched = False
+         self._published_q_cmd = None
+@@ -104,6 +107,7 @@ class NativeWbcClient:
+         self._last_wait_reason = ""
+         self._timeout_streak = 0
+         self._inflight_seq = 0
++        self._inflight_certificate = None
+         self._inflight_t0 = 0.0
+         # One missed 20-ms wakeup can hold. Bound the age of that request,
+         # not the number of subsequent 5-ms polls of the same SHM slot.
+@@ -242,6 +246,29 @@ class NativeWbcClient:
+     def abort_pending(self) -> None:
+         self._abort_next = True
+         self._pending_commit_seq = 0
++        self._prepared_commit_seq = 0
++        self._prepared_certificate = None
++
++    def confirm_publication(self, qdot=None) -> bool:
++        """Arm one exact native history commit only after transport acceptance."""
++        if not self._last_candidate_certified:
++            return True  # Legacy callers retain their existing publication flow.
++        if not self._prepared_commit_seq or self._inflight_seq or self._prepared_certificate is None:
++            return False
++        if time.monotonic() >= self._prepared_certificate.valid_until_s:
++            self.abort_pending()
++            return False
++        if qdot is None or self._published_qdot is None:
++            return False
++        applied = np.asarray(qdot, dtype=float)
++        if applied.shape != (8,) or not np.isfinite(applied).all() or not np.allclose(
++                applied, self._published_qdot, rtol=0., atol=1e-12):
++            self.abort_pending()
++            return False
++        self._pending_commit_seq = self._prepared_commit_seq
++        self._prepared_commit_seq = 0
++        self._prepared_certificate = None
++        return True
+ 
+     def _wait_seq(self, seq: int, *, timeout_s: float | None = None) -> bool:
+         t0 = time.monotonic()
+@@ -401,6 +428,7 @@ class NativeWbcClient:
+         self._command(P.CMD_ENABLE)
+ 
+     def stop(self) -> None:
++        self.abort_pending()
+         self._command(P.CMD_STOP)
+ 
+     def reset(self, q0) -> None:
+@@ -410,6 +438,9 @@ class NativeWbcClient:
+         self._timeout_streak = 0
+         self._pending_commit_seq = 0
+         self._abort_next = False
++        self._prepared_commit_seq = 0
++        self._prepared_certificate = None
++        self._last_candidate_certified = False
+         self._inflight_seq = 0
+         self._inflight_t0 = 0.0
+         self._soft_miss_seq = 0
+@@ -610,6 +641,13 @@ class NativeWbcClient:
+                 self._last_wait_reason = "request_age"
+                 return self._timeout_step(twist)
+             if int(self._out["seq"][0]) == seq:
++                if self._inflight_certificate is not None or kwargs.get("cartesian_constraints") is not None:
++                    # A caller has already left this proposal on a soft miss.
++                    # Never bind its late reply to a new candidate or kwargs.
++                    self._inflight_seq = 0
++                    self._inflight_certificate = None
++                    self.abort_pending()
++                    return self._coast_step(twist)
+                 self._last_wait_s = time.monotonic() - self._inflight_t0
+                 self._last_wait_reason = ""
+                 self._last_reply_seq = seq
+@@ -619,6 +657,18 @@ class NativeWbcClient:
+             self._last_wait_s = time.monotonic() - self._inflight_t0
+             self._last_wait_reason = "deadline"
+             return self._deadline_miss_step(twist)
++        from .cartesian import validate_cartesian_constraints
++        certificate = validate_cartesian_constraints(kwargs.get("cartesian_constraints"), now_s=time.monotonic())
++        if certificate is not None:
++            if bool(kwargs.get("auto_commit", True)):
++                raise ValueError("Cartesian certificate mode requires auto_commit=False")
++            rail_execution = kwargs.get("rail_exec_vel_m_s")
++            if rail_execution is None or not np.isfinite(float(rail_execution)):
++                raise ValueError("Cartesian certificate requires an explicit finite rail execution estimate")
++        if self._prepared_commit_seq:
++            # Preparing another candidate is not evidence of publication of
++            # the preceding one. Discard its native proposal without commit.
++            self.abort_pending()
+         rec = self._in[0]
+         rec["seq"] = np.uint64(0)
+         rec["magic"] = P.WBC_MAGIC
+@@ -635,6 +685,20 @@ class NativeWbcClient:
+         rec["rail_q"] = float(np.asarray(q_meas, dtype=float).reshape(-1)[0])
+         rec["cmd_f"][:] = 0.0
+         flags = 0
++        rec["cartesian_count"] = 0
++        rec["cartesian_sequence"] = 0
++        rec["cartesian_stop_epoch"] = 0
++        rec["cartesian_valid_until"] = 0.
++        if certificate is not None:
++            flags |= P.IN_HAS_CARTESIAN_CONSTRAINTS
++            n = len(certificate.A)
++            rec["cartesian_count"] = n
++            rec["cartesian_sequence"] = certificate.sequence
++            rec["cartesian_stop_epoch"] = certificate.stop_epoch
++            rec["cartesian_valid_until"] = certificate.valid_until_s
++            rec["cartesian_A"][:n] = certificate.A
++            rec["cartesian_lower"][:n] = certificate.lower
++            rec["cartesian_upper"][:n] = certificate.upper
+         if kwargs.get("contact_active"):
+             flags |= P.IN_CONTACT
+         if kwargs.get("command_stale"):
+@@ -679,13 +743,15 @@ class NativeWbcClient:
+             self._pending_commit_seq = 0
+         elif commit_prev is not False:
+             flags |= P.IN_COMMIT_PREV
+-        rec["cmd_u"][0] = np.uint32(int(commit_prev or self._pending_commit_seq or 0))
++        rec["commit_seq"] = np.uint64(int(commit_prev or self._pending_commit_seq or 0))
++        rec["cmd_u"][0] = np.uint32(int(rec["commit_seq"]) & 0xffffffff)
+         rec["flags"] = np.uint32(flags)
+         seq = self._next_seq()
+         rec["cmd_seq"] = np.uint64(seq)
+         self._request_schedstat = self._read_native_schedstat()
+         self._request_thread_cpu_s = time.thread_time()
+         self._inflight_seq = seq
++        self._inflight_certificate = certificate
+         self._inflight_t0 = time.monotonic()
+         rec["t_mono"] = self._inflight_t0
+         rec["seq"] = np.uint64(seq)
+@@ -707,8 +773,27 @@ class NativeWbcClient:
+         )
+ 
+     def _accept_ok_step(self, twist, seq, *, q_meas, qdot_ff=None, **kwargs) -> JointIkStep:
++        o = self._out[0].copy()
++        certificate = self._inflight_certificate
++        if int(o["magic"]) != P.WBC_MAGIC or int(o["version"]) != P.WBC_VERSION or int(o["seq"]) != seq:
++            self.abort_pending()
++            return self._timeout_step(twist)
++        if certificate is not None and (
++            time.monotonic() >= certificate.valid_until_s or not bool(o["cartesian_valid"])
++            or int(o["cartesian_sequence"]) != certificate.sequence
++            or int(o["cartesian_stop_epoch"]) != certificate.stop_epoch
++            or not np.isfinite(float(o["cartesian_command_residual"]))
++            or not np.isfinite(float(o["cartesian_predicted_residual"]))
++            or float(o["cartesian_command_residual"]) > 1e-8
++            or float(o["cartesian_predicted_residual"]) > 1e-8
++        ):
++            self._inflight_seq = 0
++            self._inflight_certificate = None
++            self.abort_pending()
++            return self._coast_step(twist)
+         self._timeout_streak = 0
+         self._inflight_seq = 0
++        self._inflight_certificate = None
+         self._soft_miss_seq = 0
+         self._coast_warn_age_s = -1.0
+         o = self._out[0].copy()
+@@ -718,6 +803,7 @@ class NativeWbcClient:
+         self._last_completed_assembly_ms = float(o["assembly_ms"])
+         self._last_completed_n_cbf = int(o["n_cbf_active"])
+         auto_commit = bool(kwargs.get("auto_commit", True))
++        self._last_candidate_certified = certificate is not None
+         q_cmd = np.asarray(o["q_cmd"], dtype=float).copy()
+         qdot = np.asarray(o["qdot"], dtype=float).copy()
+         self._published_q_cmd = q_cmd.copy()
+@@ -731,7 +817,12 @@ class NativeWbcClient:
+                 if callable(record):
+                     record(qdot)
+         elif native_status == P.STATUS_OK:
+-            self._pending_commit_seq = seq
++            if certificate is None:
++                self._pending_commit_seq = seq
++            else:
++                self._pending_commit_seq = 0
++                self._prepared_commit_seq = seq
++                self._prepared_certificate = certificate
+         v_recv = np.asarray(o["v_cmd_received"], dtype=float).copy()
+         v_feas = np.asarray(o["v_cmd_feasible"], dtype=float).copy()
+         v_tcp = np.asarray(o["v_tcp_estimated"], dtype=float).copy()
+@@ -754,6 +845,13 @@ class NativeWbcClient:
+         qdot_prev_used = np.asarray(o["qdot_prev"], dtype=float).copy()
+         qdot_prev2_used = np.asarray(o["qdot_prev2"], dtype=float).copy()
+         step = JointIkStep(
++            native_request_seq=int(seq),
++            cartesian_constraints_sequence=int(o["cartesian_sequence"]),
++            cartesian_constraints_stop_epoch=int(o["cartesian_stop_epoch"]),
++            cartesian_constraints_valid=bool(o["cartesian_valid"]),
++            cartesian_command_residual=float(o["cartesian_command_residual"]),
++            cartesian_predicted_residual=float(o["cartesian_predicted_residual"]),
++            v_tcp_commanded=np.asarray(o["v_tcp_commanded"], dtype=float).copy(),
+             q_send=q_cmd,
+             qdot=qdot,
+             twist_base=v_recv,
+diff --git a/rm75_control/rm75_control/control/joint_admittance_8dof/wbc_rt/protocol.py b/rm75_control/rm75_control/control/joint_admittance_8dof/wbc_rt/protocol.py
+index d21a792f..aa2d96ac 100644
+--- a/rm75_control/rm75_control/control/joint_admittance_8dof/wbc_rt/protocol.py
++++ b/rm75_control/rm75_control/control/joint_admittance_8dof/wbc_rt/protocol.py
+@@ -8,7 +8,8 @@ from __future__ import annotations
+ import numpy as np
+ 
+ WBC_MAGIC = 0x57424331
+-WBC_VERSION = 8
++WBC_VERSION = 9
++MAX_CARTESIAN_ROWS = 96
+ DEFAULT_IN_NAME = "rm75_wbc_in"
+ DEFAULT_OUT_NAME = "rm75_wbc_out"
+ 
+@@ -42,6 +43,7 @@ IN_HAS_QSTAR = 1 << 11
+ IN_COMMIT_PREV = 1 << 12
+ IN_ABORT_PREV = 1 << 13
+ IN_AUTO_COMMIT = 1 << 14
++IN_HAS_CARTESIAN_CONSTRAINTS = 1 << 15
+ 
+ FLAG_PLAN_DRIVES_RAIL = 1 << 0
+ FLAG_DIRECT_PTP = 1 << 1
+@@ -103,6 +105,14 @@ WBC_IN_DTYPE = np.dtype(
+         ("cmd_f", "<f8", (16,)),
+         ("cmd_u", "<u4", (8,)),
+         ("rail_refresh_dt", "<f8"),
++        ("commit_seq", "<u8"),
++        ("cartesian_sequence", "<u8"),
++        ("cartesian_stop_epoch", "<u8"),
++        ("cartesian_valid_until", "<f8"),
++        ("cartesian_count", "<u4"),
++        ("cartesian_A", "<f8", (MAX_CARTESIAN_ROWS, 6)),
++        ("cartesian_lower", "<f8", (MAX_CARTESIAN_ROWS,)),
++        ("cartesian_upper", "<f8", (MAX_CARTESIAN_ROWS,)),
+     ],
+     align=False,
+ )
+@@ -222,6 +232,12 @@ WBC_OUT_DTYPE = np.dtype(
+         ("collision_ms", "<f8"),
+         ("qp_total_ms", "<f8"),
+         ("ipc_wait_ms", "<f8"),
++        ("cartesian_sequence", "<u8"),
++        ("cartesian_stop_epoch", "<u8"),
++        ("cartesian_valid", "<u4"),
++        ("cartesian_command_residual", "<f8"),
++        ("cartesian_predicted_residual", "<f8"),
++        ("v_tcp_commanded", "<f8", (6,)),
+ 
+     ],
+     align=False,
+@@ -230,8 +246,8 @@ WBC_OUT_DTYPE = np.dtype(
+ WBC_IN_SIZE = int(WBC_IN_DTYPE.itemsize)
+ WBC_OUT_SIZE = int(WBC_OUT_DTYPE.itemsize)
+ # Packed C++ layouts in native/wbc_rt/include/wbc_rt/protocol.hpp.
+-assert WBC_IN_SIZE == 616, WBC_IN_SIZE
+-assert WBC_OUT_SIZE == 1472, WBC_OUT_SIZE
++assert WBC_IN_SIZE == 6796, WBC_IN_SIZE
++assert WBC_OUT_SIZE == 1556, WBC_OUT_SIZE
+ 
+ 
+ def view_in(buf) -> np.ndarray:
+diff --git a/rm75_control/tests/test_rail_reservation.py b/rm75_control/tests/test_rail_reservation.py
+index 183780e4..c7bfb4bb 100644
+--- a/rm75_control/tests/test_rail_reservation.py
++++ b/rm75_control/tests/test_rail_reservation.py
+@@ -72,3 +72,39 @@ def test_new_tracking_session_discards_old_reservation() -> None:
+     assert bridge.commit_reservation() is False
+     assert bridge._reserved is None  # noqa: SLF001
+     assert bridge._target_m == pytest.approx(0.40)  # noqa: SLF001
++
++
++def test_certified_reservation_rechecks_epoch_identity_and_expiry(monkeypatch):
++    from rm75_control.control.joint_admittance_8dof.hw import rail_servo
++    clock = [1.]
++    monkeypatch.setattr(rail_servo.time, "monotonic", lambda: clock[0])
++    for fault in ("identity", "epoch", "expiry"):
++        bridge = _ready_bridge()
++        bridge.fence_publications(8)
++        assert bridge.reserve_target_m(.46, .03, candidate_sequence=4, stop_epoch=8, valid_until_s=1.01)
++        assert bridge.reserved_publication["target_m"] == .46
++        if fault == "epoch":
++            bridge.fence_publications(9)
++        if fault == "expiry":
++            clock[0] = 1.02
++        assert not bridge.commit_reservation(candidate_sequence=5 if fault == "identity" else 4, stop_epoch=8)
++        assert not bridge._follow_enabled
++        clock[0] = 1.
++
++
++def test_stop_fence_blocks_queued_rpm_but_retains_already_inflight_fact():
++    bridge = _ready_bridge()
++    writes = []
++    class Drive:
++        def set_velocity_rpm(self, rpm, **kwargs):
++            writes.append(rpm)
++            bridge.fence_publications(9)  # Stop races after the I/O start marker.
++            return rpm
++    bridge._drive = Drive()
++    bridge.fence_publications(8)
++    bridge._follow_enabled = True
++    bridge._write_velocity_fenced(100, deadband=0, command_seq=4, command_epoch=8)
++    assert writes == [100]
++    assert bridge._write_inflight["state"] == "published" and bridge._write_inflight["stop_epoch"] == 8
++    bridge._write_velocity_fenced(120, deadband=0, command_seq=5, command_epoch=8)
++    assert writes == [100, 0]  # Old software queue cannot resume after the fence.

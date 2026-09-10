@@ -1,0 +1,23 @@
+{
+  "mode": "baseline",
+  "configuration_valid": true,
+  "command_authority": "unchanged_baseline",
+  "calibration_status": "unverified",
+  "missing_active_calibration": [
+    "geometry.half_length_m",
+    "geometry.T_tcp_face",
+    "geometry.image_x_sign",
+    "geometry.calibration_version",
+    "geometry.face_normal_convention",
+    "geometry.verified=true",
+    "feature.config",
+    "feature.window_version",
+    "feature.registration_version",
+    "feature.quality_policy_version",
+    "feature.c_min",
+    "feature.verified=true",
+    "feature_endpoint"
+  ],
+  "physical_port_assurance": "unverified",
+  "hardware_connected": false
+}

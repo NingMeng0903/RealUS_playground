@@ -1,0 +1,35 @@
+{
+  "image_computation_included": false,
+  "interval_diagnostics_enabled": false,
+  "mechanical_row_counts": {
+    "0": {
+      "ticks": 4000,
+      "warmup_ticks": 10,
+      "cold_first_ms": 3.4149468410760164,
+      "median_ms": 0.39560755249112844,
+      "p95_ms": 0.45462158741429437,
+      "p99_ms": 0.5153943412005901,
+      "maximum_ms": 1.0244669392704964,
+      "over_5ms": 0,
+      "failures": 0,
+      "statuses": {
+        "repair": 4010
+      }
+    },
+    "96": {
+      "ticks": 4000,
+      "warmup_ticks": 10,
+      "cold_first_ms": 0.77048409730196,
+      "median_ms": 0.5252358969300985,
+      "p95_ms": 0.578289304394275,
+      "p99_ms": 0.6659418554045258,
+      "maximum_ms": 0.7437779568135738,
+      "over_5ms": 0,
+      "failures": 0,
+      "statuses": {
+        "repair": 4010
+      }
+    }
+  },
+  "note": "Software timing on shared host; not a hard realtime or hardware safety certificate."
+}
