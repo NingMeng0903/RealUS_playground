@@ -1,0 +1,197 @@
+{
+  "assurance": "detached software fixture, no hardware or physical certification",
+  "warmup": "400 production nominal.update calls at 4 N / 5 ms, zero path, no internal-state or gain patch",
+  "profile_sha256": "8170c6fcad4a28aab12dc9eb71bfc36649ce2280dfef85ca711a25b5e6b6903c",
+  "results": [
+    {
+      "label": "r3_warm_static_image",
+      "warm": 400,
+      "images": true,
+      "pose_integrated": false,
+      "successes": 200,
+      "warm_contact": true,
+      "contact_present": true,
+      "final_energy": {
+        "balance_j": 0.5080477971857582,
+        "reserved_j": 0.010434599349803923,
+        "available_j": 0.4476131978359543,
+        "raw_available_j": 0.4476131978359543,
+        "command_budget_enforced": true,
+        "energy_constraint_enabled": true,
+        "settlement_port": "logical_final_model",
+        "wrench_convention": "negative_control_raw_tcp_v1",
+        "max_command_interval_s": 0.05,
+        "latched_reason": null,
+        "logical_epoch_expiry_s": 11.045,
+        "physical_certified": false,
+        "actual_tail": "unknown",
+        "predicted_recovery_credited_j": 0.0
+      },
+      "nominal_warm_last_twist": [
+        0.0,
+        0.0,
+        -1.0201944379152276e-24,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "label": "r3_cold_static_image",
+      "warm": 0,
+      "images": true,
+      "pose_integrated": false,
+      "successes": 11,
+      "warm_contact": false,
+      "failure": "outer QP: task_infeasible: relative_baseline_rows_conflict_with_mechanical_admission",
+      "nominal": [
+        0.0,
+        0.0005463226456297043,
+        -0.009482225603748336,
+        0.0,
+        -0.00507946717294485,
+        0.0
+      ],
+      "previous": [
+        0.0,
+        0.00041867261352560026,
+        -0.004571483735833136,
+        0.0,
+        -0.007640004700204445,
+        0.0
+      ],
+      "contact_present": true,
+      "final_energy": {
+        "balance_j": 0.5990290387060656,
+        "reserved_j": 0.0,
+        "available_j": 0.5490290387060656,
+        "raw_available_j": 0.5490290387060656,
+        "command_budget_enforced": true,
+        "energy_constraint_enabled": true,
+        "settlement_port": "logical_final_model",
+        "wrench_convention": "negative_control_raw_tcp_v1",
+        "max_command_interval_s": 0.05,
+        "latched_reason": null,
+        "logical_epoch_expiry_s": 10.100000000000001,
+        "physical_certified": false,
+        "actual_tail": "unknown",
+        "predicted_recovery_credited_j": 0.0
+      },
+      "nominal_warm_last_twist": null
+    },
+    {
+      "label": "r2_cold_static_image",
+      "warm": 0,
+      "images": true,
+      "pose_integrated": false,
+      "successes": 11,
+      "warm_contact": false,
+      "failure": "outer QP: task_infeasible: relative_baseline_rows_conflict_with_mechanical_admission",
+      "nominal": [
+        0.0,
+        0.0005463226456297043,
+        -0.009463622063141781,
+        0.0,
+        -0.004581099250139952,
+        0.0
+      ],
+      "previous": [
+        0.0,
+        0.00041867261352560026,
+        -0.004559081375636492,
+        0.0,
+        -0.00713088766533905,
+        0.0
+      ],
+      "contact_present": true,
+      "final_energy": null,
+      "nominal_warm_last_twist": null
+    },
+    {
+      "label": "r3_cold_static_noimage",
+      "warm": 0,
+      "images": false,
+      "pose_integrated": false,
+      "successes": 10,
+      "warm_contact": false,
+      "failure": "outer QP: task_infeasible: relative_baseline_rows_conflict_with_mechanical_admission",
+      "nominal": [
+        0.0,
+        1.0443649423028112e-05,
+        -0.0059999975495725515,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "previous": [
+        0.0,
+        2.0243036543796835e-06,
+        -0.0009999987777582068,
+        0.0,
+        4.845732903945812e-27,
+        0.0
+      ],
+      "contact_present": true,
+      "final_energy": {
+        "balance_j": 0.5989579669106744,
+        "reserved_j": 0.0,
+        "available_j": 0.5489579669106743,
+        "raw_available_j": 0.5489579669106743,
+        "command_budget_enforced": true,
+        "energy_constraint_enabled": true,
+        "settlement_port": "logical_final_model",
+        "wrench_convention": "negative_control_raw_tcp_v1",
+        "max_command_interval_s": 0.05,
+        "latched_reason": null,
+        "logical_epoch_expiry_s": 10.095,
+        "physical_certified": false,
+        "actual_tail": "unknown",
+        "predicted_recovery_credited_j": 0.0
+      },
+      "nominal_warm_last_twist": null
+    },
+    {
+      "label": "r3_cold_kinematic_image",
+      "warm": 0,
+      "images": true,
+      "pose_integrated": true,
+      "successes": 11,
+      "warm_contact": false,
+      "failure": "outer QP: task_infeasible: relative_baseline_rows_conflict_with_mechanical_admission",
+      "nominal": [
+        -4.3054397421094027e-07,
+        0.0004740416442869377,
+        -0.009482225596530332,
+        0.0,
+        -0.005079467249678053,
+        0.0
+      ],
+      "previous": [
+        -5.161841575917949e-07,
+        0.00036850171508742696,
+        -0.004571483714638334,
+        0.0,
+        -0.007640004778592678,
+        0.0
+      ],
+      "contact_present": true,
+      "final_energy": {
+        "balance_j": 0.5990296623785474,
+        "reserved_j": 0.0,
+        "available_j": 0.5490296623785473,
+        "raw_available_j": 0.5490296623785473,
+        "command_budget_enforced": true,
+        "energy_constraint_enabled": true,
+        "settlement_port": "logical_final_model",
+        "wrench_convention": "negative_control_raw_tcp_v1",
+        "max_command_interval_s": 0.05,
+        "latched_reason": null,
+        "logical_epoch_expiry_s": 10.100000000000001,
+        "physical_certified": false,
+        "actual_tail": "unknown",
+        "predicted_recovery_credited_j": 0.0
+      },
+      "nominal_warm_last_twist": null
+    }
+  ]
+}

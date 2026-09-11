@@ -1,0 +1,22 @@
+{
+  "agent": "fusion_medium",
+  "production_frozen": true,
+  "runs": [
+    {
+      "command": "env PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 PYTHONNOUSERSITE=1 PYTHONPATH=/media/camp/EXT_DRIVE/RealUS_playground:/media/camp/EXT_DRIVE/RealUS_playground/rm75_control:/media/camp/EXT_DRIVE/envs/rm75/lib/python3.10/site-packages/cmeel.prefix/lib/python3.10/site-packages LD_LIBRARY_PATH=/media/camp/EXT_DRIVE/envs/rm75/lib/python3.10/site-packages/cmeel.prefix/lib OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 /media/camp/EXT_DRIVE/envs/rm75/bin/python -m pytest peirastic/tests/test_contact_qp_command_budget.py peirastic/tests/test_contact_qp_command_budget_active.py peirastic/tests/test_contact_qp_confidence_balance.py peirastic/tests/test_contact_qp_differential_repair.py peirastic/tests/test_contact_qp_repair_episode.py peirastic/tests/test_contact_qp_runtime_energy.py peirastic/tests/test_contact_qp_active.py -q",
+      "result": "99 passed in 1.75s",
+      "exit_code": 0
+    },
+    {
+      "command": "env PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 PYTHONNOUSERSITE=1 PYTHONPATH=/media/camp/EXT_DRIVE/RealUS_playground:/media/camp/EXT_DRIVE/RealUS_playground/rm75_control:/media/camp/EXT_DRIVE/envs/rm75/lib/python3.10/site-packages/cmeel.prefix/lib/python3.10/site-packages LD_LIBRARY_PATH=/media/camp/EXT_DRIVE/envs/rm75/lib/python3.10/site-packages/cmeel.prefix/lib OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 /media/camp/EXT_DRIVE/envs/rm75/bin/python -m pytest peirastic/tests/test_contact_qp_runtime_config.py -q",
+      "result": "14 passed in 0.14s",
+      "exit_code": 0,
+      "change": "Test fixture declares logical contract; missing-field regression rejects each absent field. Invalid-field cases overlay the valid contract to preserve their intended coverage."
+    }
+  ],
+  "notes": [
+    "Full-suite peirastic_final.xml failure artifact is preserved unchanged.",
+    "No production source changes after parent freeze.",
+    "residual_progress_gain remains a historical r2 field; v8r3 does not use alpha/slack cross-cost."
+  ]
+}

@@ -1,0 +1,184 @@
+{
+  "schema": "command_budget_long_sequence_decimal_oracle_v1",
+  "scope": "Pure offline logical command-model API check; no hardware, measured work, closed-loop control, or physical passivity claim.",
+  "source_sha256": {
+    "analysis_artifacts/contact_qp_v8r3/command_budget_long_sequence.py": "73944729a089bd23226bc98c53f9af5d63ee466bec26cf6119c0331e4bb45369",
+    "peirastic/contact_qp/command_budget.py": "28db7b23f3ac6c3affc2eec080b31ffff743cd6bcbcaada60870578b5e5da74f",
+    "peirastic/contact_qp/port_constraint.py": "e3ccfd9348fd0380b8894e5083de50481cee3a3bf1fa969683e5fd89308f2368",
+    "peirastic/contact_qp/types.py": "9b7ee4727050c9514c5a9e045611d6d0a0c7f4c42dd754fe3481a095ec7fbe9e"
+  },
+  "source_sha256_end": {
+    "analysis_artifacts/contact_qp_v8r3/command_budget_long_sequence.py": "73944729a089bd23226bc98c53f9af5d63ee466bec26cf6119c0331e4bb45369",
+    "peirastic/contact_qp/command_budget.py": "28db7b23f3ac6c3affc2eec080b31ffff743cd6bcbcaada60870578b5e5da74f",
+    "peirastic/contact_qp/port_constraint.py": "e3ccfd9348fd0380b8894e5083de50481cee3a3bf1fa969683e5fd89308f2368",
+    "peirastic/contact_qp/types.py": "9b7ee4727050c9514c5a9e045611d6d0a0c7f4c42dd754fe3481a095ec7fbe9e"
+  },
+  "source_unchanged_during_run": true,
+  "seed": 20260911,
+  "rng": "numpy.default_rng / PCG64",
+  "steps": 100000,
+  "elapsed_wall_s": 34.569005254999865,
+  "simulated_time_s": 322.4264445152391,
+  "command": "/media/camp/EXT_DRIVE/envs/rm75/bin/python analysis_artifacts/contact_qp_v8r3/command_budget_long_sequence.py",
+  "relevant_environment": {
+    "PYTHONPATH": "/media/camp/EXT_DRIVE/RealUS_playground:/media/camp/EXT_DRIVE/RealUS_playground/rm75_control:/media/camp/EXT_DRIVE/envs/rm75/lib/python3.10/site-packages/cmeel.prefix/lib/python3.10/site-packages",
+    "LD_LIBRARY_PATH": "/media/camp/EXT_DRIVE/envs/rm75/lib/python3.10/site-packages/cmeel.prefix/lib",
+    "PYTHONNOUSERSITE": "1",
+    "PYTHONDONTWRITEBYTECODE": "1",
+    "OPENBLAS_NUM_THREADS": "1",
+    "OMP_NUM_THREADS": "1"
+  },
+  "python": "3.10.20",
+  "numpy": "2.2.6",
+  "config": {
+    "initial_j": 0.08,
+    "capacity_j": 0.12,
+    "stopping_reserve_j": 0.002,
+    "max_command_interval_s": 0.05,
+    "settlement_port": "logical_final_model",
+    "wrench_convention": "negative_control_raw_tcp_v1"
+  },
+  "oracle": "50-digit Decimal arithmetic from exact floating-point inputs; scalar six-axis product; chronological committed-pair intervals, upper capacity clipping, independent old+pending liabilities. Uncommitted snapshots/pairs earn no work.",
+  "input_trace_sha256": "7857476a8d20163663e3300b3c99c1e5a37d94e4a0fda2dfcbb4f68c1a46daa3",
+  "checkpoints": 594120,
+  "maximum_absolute_error_j": {
+    "balance_j": 9.298117831235686e-16,
+    "reserved_j": 3.469446951953614e-18,
+    "raw_available_j": 9.298117831235686e-16,
+    "available_j": 9.298117831235686e-16
+  },
+  "minimum_observed_j": {
+    "balance_j": 0.002000000000915636,
+    "reserved_j": 0.0,
+    "raw_available_j": 2.5020769581716684e-13,
+    "available_j": 2.5020769581716684e-13
+  },
+  "maximum_reserved_j": 0.011322604524935663,
+  "final": {
+    "balance_j": 0.12,
+    "reserved_j": 0.0,
+    "available_j": 0.118,
+    "raw_available_j": 0.118,
+    "command_budget_enforced": true,
+    "energy_constraint_enabled": true,
+    "settlement_port": "logical_final_model",
+    "wrench_convention": "negative_control_raw_tcp_v1",
+    "max_command_interval_s": 0.05,
+    "latched_reason": "logical_output_stopped_actual_tail_unknown",
+    "logical_epoch_expiry_s": null,
+    "physical_certified": false,
+    "actual_tail": "unknown",
+    "predicted_recovery_credited_j": 0.0
+  },
+  "work_input_to_logical_tank_j": 1.9743083545642142,
+  "work_output_from_logical_tank_j": -1.9743083545642142,
+  "positive_input_work_j": 3.1143083545544976,
+  "negative_input_work_j": -1.1399999999902837,
+  "axis_input_work_j": {
+    "Fx_vx": 0.23922263063428442,
+    "Fy_vy": 0.2388373141395511,
+    "Fz_vz": 0.37557831370038447,
+    "Mx_wx": 0.37754632744853567,
+    "My_wy": 0.3710377621559185,
+    "Mz_wz": 0.37208600648554
+  },
+  "normal_only_counterfactual_final_balance_j": 0.12,
+  "capacity_discarded_j": 1.9343083545642141,
+  "cap_clipping_partitions": 65376,
+  "known_no_send_steps": 5882,
+  "committed_steps": 94118,
+  "changed_uncommitted_wrench_snapshots": 100000,
+  "positive_power_pending_steps": 35000,
+  "pending_and_old_power_opposite_sign_steps": 10,
+  "scaled_spend_candidates": 52104,
+  "candidate_generation": "Random six-axis directions; spend requests scaled to 75% of min(public snapshot, oracle) available / 50ms, zero spend below 1e-12 J; no change to the balance oracle.",
+  "max_successful_pair_actual_logical_hold_s": 0.009981033125395555,
+  "event_counts": {
+    "logical_reservation": 100000,
+    "logical_publication_started": 94118,
+    "logical_epoch_commit": 94118,
+    "logical_epoch_work": 499996,
+    "logical_candidate_not_sent": 5882,
+    "logical_output_stop": 1
+  },
+  "maximum_events_buffered_with_per_step_drain": 8,
+  "sparse_checkpoints": [
+    {
+      "step": 10000,
+      "time_s": 33.12526035455938,
+      "balance_j": 0.12,
+      "available_j": 0.118,
+      "cap_discarded_j": 0.19326464844356384
+    },
+    {
+      "step": 20000,
+      "time_s": 65.5410917964402,
+      "balance_j": 0.12,
+      "available_j": 0.118,
+      "cap_discarded_j": 0.3860961594986797
+    },
+    {
+      "step": 30000,
+      "time_s": 97.92633571394884,
+      "balance_j": 0.12,
+      "available_j": 0.118,
+      "cap_discarded_j": 0.5745120454393561
+    },
+    {
+      "step": 40000,
+      "time_s": 130.15156350838024,
+      "balance_j": 0.12,
+      "available_j": 0.118,
+      "cap_discarded_j": 0.7692362139998548
+    },
+    {
+      "step": 50000,
+      "time_s": 162.39946746825404,
+      "balance_j": 0.12,
+      "available_j": 0.118,
+      "cap_discarded_j": 0.9594100448013173
+    },
+    {
+      "step": 60000,
+      "time_s": 194.53163345203487,
+      "balance_j": 0.12,
+      "available_j": 0.118,
+      "cap_discarded_j": 1.1507347585716035
+    },
+    {
+      "step": 70000,
+      "time_s": 226.74650824880482,
+      "balance_j": 0.12,
+      "available_j": 0.118,
+      "cap_discarded_j": 1.345556091100259
+    },
+    {
+      "step": 80000,
+      "time_s": 258.95929693024334,
+      "balance_j": 0.12,
+      "available_j": 0.118,
+      "cap_discarded_j": 1.5435080169844153
+    },
+    {
+      "step": 90000,
+      "time_s": 291.22976050620116,
+      "balance_j": 0.12,
+      "available_j": 0.118,
+      "cap_discarded_j": 1.7388939107556687
+    },
+    {
+      "step": 100000,
+      "time_s": 323.42044451523907,
+      "balance_j": 0.12,
+      "available_j": 0.118,
+      "cap_discarded_j": 1.934260852756347
+    }
+  ],
+  "limitations": [
+    "This integrates frozen body-frame command-model pairs, not changing measured body frames.",
+    "Output ends at logical stop; real actuator stopping/tail energy remains unknown.",
+    "All publications in commit branches are assumed dual_success; no device is contacted.",
+    "This long normal-path run does not replace separate invalid-input/expiry/partial-publication unit tests."
+  ],
+  "passed": true
+}

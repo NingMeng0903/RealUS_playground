@@ -1,0 +1,16 @@
+{
+  "mode": "active",
+  "configuration_valid": true,
+  "command_authority": "outer_qp_original_ik",
+  "calibration_status": "declared",
+  "missing_active_calibration": [],
+  "physical_port_assurance": "unverified",
+  "hardware_connected": false,
+  "command_energy_budget_enabled": true,
+  "differential_repair_revision": "v8r3_confidence_balance",
+  "settlement_port": "logical_final_model",
+  "physical_w_checked": false,
+  "allocation_policy": "differential_repair_v8",
+  "force_limit_assurance": "measured_policy_not_prediction",
+  "nominal_profile": "icra_contact_payload (original tool-axis 4 N, 0.010 m/s normal and seek limits)"
+}

@@ -16,7 +16,9 @@ def active_config():
         source=dict(period_s=.005,jitter_fraction=.1,max_age_s=.02),
         force_axis_monotonicity_confirmed=True,physical_w_checked=True,
         energy_constraint_enabled=True,
-        energy=dict(initial_j=.2,capacity_j=1.,stopping_reserve_j=.01))
+        energy=dict(initial_j=.2,capacity_j=1.,stopping_reserve_j=.01,
+            settlement_port='logical_final_model',wrench_convention='negative_control_raw_tcp_v1',
+            max_command_interval_s=.05))
 
 
 @pytest.mark.parametrize('qp',[{'force_target_n':5},{'unknown':1},{'slack_weight':float('nan')},{'max_velocity':[1,2]}])
@@ -41,9 +43,15 @@ def test_feature_overrides_and_active_ignored_limits_match_runtime():
     dict(initial_j=.2,capacity_j=1,stopping_reserve_j=0,measurement_bounds={'unknown':1}),
 ])
 def test_active_bad_energy_rejected_without_transport(energy):
-    config=active_config();config['energy']=energy
+    config=active_config();config['energy'].update(energy)
     with pytest.raises((ValueError,TypeError)):validate_study_config(config)
 
 
 def test_baseline_does_not_interpret_unused_qp_or_energy():
     assert validate_study_config(dict(mode='baseline',qp={'unknown':1},energy={'unknown':1}))['configuration_valid']
+
+
+@pytest.mark.parametrize('field',['settlement_port','wrench_convention','max_command_interval_s'])
+def test_enabled_energy_requires_each_explicit_logical_contract_field(field):
+    config=active_config();del config['energy'][field]
+    with pytest.raises((ValueError,TypeError)):validate_study_config(config)

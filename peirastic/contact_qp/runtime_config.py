@@ -65,17 +65,29 @@ def _validate_effective_tasks(config, mode, feature):
     if mode!='active':return
     enabled=config.get('energy_constraint_enabled',False)
     if type(enabled) is not bool:raise ValueError('energy_constraint_enabled must be boolean')
-    if enabled and config.get('physical_w_checked') is not True:
-        raise ValueError('command energy needs checked environment-on-tool wrench semantics')
     energy=config.get('energy') or {}
     if not isinstance(energy,dict):raise ValueError('energy must be a mapping')
     if not energy:
         if enabled:raise ValueError('enabled command energy requires an explicit single-tank configuration')
         return
     allowed={'initial_j','capacity_j','stopping_reserve_j','measurement_bounds','constraint',
-             'max_measurement_age_s','max_rail_interval_s'}
+             'max_measurement_age_s','max_rail_interval_s','settlement_port','wrench_convention',
+             'max_command_interval_s'}
     unknown=set(energy)-allowed
     if unknown:raise ValueError('unknown energy fields: '+', '.join(sorted(unknown)))
+    if enabled:
+        from peirastic.contact_qp.command_budget import CommandBudget
+        CommandBudget(energy['initial_j'],energy['capacity_j'],energy['stopping_reserve_j'],
+            settlement_port=energy.get('settlement_port'),wrench_convention=energy.get('wrench_convention'),
+            max_command_interval_s=energy.get('max_command_interval_s'),constraint=energy.get('constraint'))
+        from peirastic.contact_qp.energy import PortBounds
+        from peirastic.contact_qp.port_alignment import MeasuredPortAligner
+        bounds=PortBounds(**dict(energy.get('measurement_bounds') or {}),verified=False)
+        MeasuredPortAligner(calibration_version=bounds.calibration_version,
+            max_source_interval_s=bounds.max_sample_interval_s,
+            max_rail_interval_s=energy.get('max_rail_interval_s',bounds.max_sample_interval_s),
+            max_wait_s=energy.get('max_measurement_age_s',config['source']['max_age_s']))
+        return
     from peirastic.contact_qp.energy import EnergyLedger,PortBounds
     from peirastic.contact_qp.port_constraint import PortEnergyConstraint
     from peirastic.contact_qp.runtime_energy import RuntimeEnergy
@@ -147,5 +159,8 @@ def validate_study_config(source):
                 missing_active_calibration=missing,
                 physical_port_assurance='unverified',hardware_connected=False,
                 command_energy_budget_enabled=bool(config.get('energy_constraint_enabled',False)),
+                differential_repair_revision=((config.get('qp') or {}).get('differential_repair') or {}).get('revision','v8r2_bounded_episode'),
+                settlement_port=(config.get('energy') or {}).get('settlement_port'),
+                physical_w_checked=config.get('physical_w_checked') is True,
                 allocation_policy=(config.get('qp') or {}).get('allocation_policy','legacy_v7'),
                 force_limit_assurance='measured_policy_not_prediction' if (config.get('qp') or {}).get('allocation_policy')=='differential_repair_v8' else 'legacy')

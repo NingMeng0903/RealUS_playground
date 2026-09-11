@@ -1,0 +1,2718 @@
+{
+  "schema": "archived_five_state_command_matrix_v1",
+  "scope": "Static counterfactual QP commands at five archived active003 states; no motion, physical energy, acoustic benefit or closed-loop force claim.",
+  "reconstruction": "Reuse frozen state IDs and reconstruction from review_669beac6/single_state_policy_check.py. Log timestamp replaces unlogged solve time; measured angle is zero; preserve recorded nominal, previous outer command and actual slew interval.",
+  "repair_allowance": "A fresh solver is created for every policy/budget cell. Full initial episode allowance; this does not reconstruct episode history.",
+  "energy_model": {
+    "wrench": "W_model = -physical_wrench_candidate_tool, full six-dimensional already-compensated TCP/tool wrench",
+    "hold_s": 0.05,
+    "available_j": [
+      null,
+      1e-05,
+      0.001,
+      0.2
+    ],
+    "uncertainty_and_tracking_bounds": "zero; nominal algebra only, not conservative physical bounds",
+    "damping": "none",
+    "assurance": "command_model",
+    "physical_w_checked": false,
+    "limitation": "Budget snapshots only. No runtime ledger, final IK publication, dwell/stop accounting, or positive physical credit is simulated."
+  },
+  "source_sha256": {
+    "analysis_artifacts/contact_qp_v8r3/five_state_energy_policy_check.py": "cd1293e06ebf68fe1c6094289e32016381ea6f69eff862929fc8681a7613225b",
+    "analysis_artifacts/review_669beac6/single_state_policy_check.py": "b7ae41806a36ebc606b9ddbcd88b570cbf91643ffe7234df1033511befeeab25",
+    "peirastic/contact_qp/qp.py": "b882677d20ec2eaa691ec5946c7031738e5ff321e4fe1851d34cdcfbdba68dd8",
+    "peirastic/contact_qp/repair_policy.py": "7785cd4d31c7bbb42579344df82b9d5de43089b9719772ffe9aa8644b654198e",
+    "peirastic/contact_qp/repair_episode.py": "159a4d3401f13ccca3f088f3f43b0dabd3519ea66f50592d1ac95fe7deb8c489",
+    "peirastic/contact_qp/port_constraint.py": "e3ccfd9348fd0380b8894e5083de50481cee3a3bf1fa969683e5fd89308f2368"
+  },
+  "input_sha256": {
+    "/media/camp/EXT_DRIVE/ICRA_2027/icra 2027_contact/real_characterization/active_probe50/003/attempts/RH_Per_L_DtP/001/contact_qp.jsonl": "561c44508a0c5f0c49bb31906ca4f05d300ed0529ca2cd252d8bc90b4e517689",
+    "/media/camp/EXT_DRIVE/ICRA_2027/icra 2027_contact/real_characterization/active_probe50/003/attempts/RH_Per_L_PtD/001/contact_qp.jsonl": "958f05b39f9636ac96d3304b174e9e4a91232f60702b5a6a1a706ba744a04dce"
+  },
+  "points": [
+    {
+      "scan": "RH_Per_L_DtP",
+      "control_id": 1452,
+      "elapsed_s": 0.015154902124777436,
+      "force_n": 4.101890620897497,
+      "quality": [
+        0.6598992528153697,
+        0.9511897141313989,
+        0.995750324864004
+      ],
+      "nominal_twist_tool": [
+        -0.00032040820956532923,
+        4.520957752495028e-05,
+        0.00016282170190810396,
+        0.00010393374572283365,
+        -0.005919032796024357,
+        -3.8126107478921685e-05
+      ],
+      "wrench_command_model_tool": [
+        -0.5784715187255924,
+        -1.510659232844176,
+        -4.143226659967288,
+        -0.11000601096203366,
+        0.0037711271076368556,
+        -0.03874878029098188
+      ],
+      "variants": {
+        "legacy_v7": {
+          "off": {
+            "status": "repair",
+            "success": true,
+            "reason": null,
+            "budget_j": null,
+            "repair_episode": null,
+            "force_gate": 1.0,
+            "twist_tool": [
+              -0.000278324369348899,
+              3.927155040824996e-05,
+              0.0001628217009735382,
+              9.028262500395892e-05,
+              -0.00591903277318162,
+              -3.311845484294813e-05
+            ],
+            "vn_mm_s": 0.1628217009735382,
+            "omega_deg_s": -0.3391355967029223,
+            "added_vn_mm_s": -9.345657657044287e-10,
+            "added_omega_deg_s": 1.30879243697071e-09,
+            "alpha": 0.868655549514409,
+            "visual_slack_mm_s": [
+              0.09568515900372265,
+              0.0
+            ],
+            "left_local_mm_s": 0.2545667089578533,
+            "right_local_mm_s": 0.07107669298922308,
+            "differential_request_mm_s": 0.0,
+            "differential_shortfall_mm_s": 0.0,
+            "model_output_power_w": 0.0006039001785190298,
+            "model_output_work_50ms_j": 3.0195008925951495e-05,
+            "command_energy_margin_w": null,
+            "active_hard_rows": [
+              "force_priority_left_endpoint",
+              "force_priority_right_endpoint"
+            ]
+          },
+          "1e-05J": {
+            "status": "repair",
+            "success": true,
+            "reason": null,
+            "budget_j": 1e-05,
+            "repair_episode": null,
+            "force_gate": 1.0,
+            "twist_tool": [
+              -0.0002806426252899483,
+              3.9598656170713816e-05,
+              6.184805758282373e-05,
+              9.103461891767398e-05,
+              -0.009957978584445443,
+              -3.3394309432604254e-05
+            ],
+            "vn_mm_s": 0.06184805758282373,
+            "omega_deg_s": -0.5705501453703817,
+            "added_vn_mm_s": -0.10097364432528023,
+            "added_omega_deg_s": -0.23141454735866698,
+            "alpha": 0.8758908695587808,
+            "visual_slack_mm_s": [
+              0.13405514231984786,
+              0.0
+            ],
+            "left_local_mm_s": 0.21619672564172812,
+            "right_local_mm_s": -0.09250061047608067,
+            "differential_request_mm_s": 0.0,
+            "differential_shortfall_mm_s": 0.0,
+            "model_output_power_w": 0.00020000000043072299,
+            "model_output_work_50ms_j": 1.000000002153615e-05,
+            "command_energy_margin_w": -4.3072297573228113e-13,
+            "active_hard_rows": [
+              "force_priority_right_endpoint"
+            ]
+          },
+          "0.001J": {
+            "status": "repair",
+            "success": true,
+            "reason": null,
+            "budget_j": 0.001,
+            "repair_episode": null,
+            "force_gate": 1.0,
+            "twist_tool": [
+              -0.000278324369348899,
+              3.927155040824996e-05,
+              0.0001628217009735382,
+              9.028262500395892e-05,
+              -0.00591903277318162,
+              -3.311845484294813e-05
+            ],
+            "vn_mm_s": 0.1628217009735382,
+            "omega_deg_s": -0.3391355967029223,
+            "added_vn_mm_s": -9.345657657044287e-10,
+            "added_omega_deg_s": 1.30879243697071e-09,
+            "alpha": 0.868655549514409,
+            "visual_slack_mm_s": [
+              0.09568515900372265,
+              0.0
+            ],
+            "left_local_mm_s": 0.2545667089578533,
+            "right_local_mm_s": 0.07107669298922308,
+            "differential_request_mm_s": 0.0,
+            "differential_shortfall_mm_s": 0.0,
+            "model_output_power_w": 0.0006039001785190298,
+            "model_output_work_50ms_j": 3.0195008925951495e-05,
+            "command_energy_margin_w": 0.01939609982148097,
+            "active_hard_rows": [
+              "force_priority_left_endpoint",
+              "force_priority_right_endpoint"
+            ]
+          },
+          "0.2J": {
+            "status": "repair",
+            "success": true,
+            "reason": null,
+            "budget_j": 0.2,
+            "repair_episode": null,
+            "force_gate": 1.0,
+            "twist_tool": [
+              -0.000278324369348899,
+              3.927155040824996e-05,
+              0.0001628217009735382,
+              9.028262500395892e-05,
+              -0.00591903277318162,
+              -3.311845484294813e-05
+            ],
+            "vn_mm_s": 0.1628217009735382,
+            "omega_deg_s": -0.3391355967029223,
+            "added_vn_mm_s": -9.345657657044287e-10,
+            "added_omega_deg_s": 1.30879243697071e-09,
+            "alpha": 0.868655549514409,
+            "visual_slack_mm_s": [
+              0.09568515900372265,
+              0.0
+            ],
+            "left_local_mm_s": 0.2545667089578533,
+            "right_local_mm_s": 0.07107669298922308,
+            "differential_request_mm_s": 0.0,
+            "differential_shortfall_mm_s": 0.0,
+            "model_output_power_w": 0.0006039001785190298,
+            "model_output_work_50ms_j": 3.0195008925951495e-05,
+            "command_energy_margin_w": 3.999396099821481,
+            "active_hard_rows": [
+              "force_priority_left_endpoint",
+              "force_priority_right_endpoint"
+            ]
+          }
+        },
+        "v8r2_bounded_episode": {
+          "off": {
+            "status": "repair",
+            "success": true,
+            "reason": null,
+            "budget_j": null,
+            "repair_episode": {
+              "angle_reference_reset": false,
+              "repair_allowed": true,
+              "armed": true,
+              "exhausted": false,
+              "reason": "bad_window",
+              "permission_elapsed_s": 0.0,
+              "measured_angle_travel_rad": 0.0,
+              "remaining_permission_s": 2.0,
+              "remaining_angle_travel_rad": 0.05235987755982989,
+              "healthy_confirmation_count": 0,
+              "healthy_resets": 0,
+              "assurance": "measurement_policy_not_execution_or_angle_certificate"
+            },
+            "force_gate": 0.796218758205006,
+            "twist_tool": [
+              -0.000276088966009669,
+              3.895613514251269e-05,
+              0.00014506696379883437,
+              8.955750674758623e-05,
+              -0.008395886429184731,
+              -3.285245907434456e-05
+            ],
+            "vn_mm_s": 0.14506696379883438,
+            "omega_deg_s": -0.4810488576634484,
+            "added_vn_mm_s": -0.017754738109269592,
+            "added_omega_deg_s": -0.14191325965173368,
+            "alpha": 0.8616788139861197,
+            "visual_slack_mm_s": [
+              0.0036739039161520423,
+              0.0
+            ],
+            "left_local_mm_s": 0.2752032034511977,
+            "right_local_mm_s": 0.014930724146470998,
+            "differential_request_mm_s": 0.2788771073673497,
+            "differential_shortfall_mm_s": 0.01860462806262304,
+            "model_output_power_w": 0.0005404259799058667,
+            "model_output_work_50ms_j": 2.702129899529334e-05,
+            "command_energy_margin_w": null,
+            "active_hard_rows": []
+          },
+          "1e-05J": {
+            "status": "repair",
+            "success": true,
+            "reason": null,
+            "budget_j": 1e-05,
+            "repair_episode": {
+              "angle_reference_reset": false,
+              "repair_allowed": true,
+              "armed": true,
+              "exhausted": false,
+              "reason": "bad_window",
+              "permission_elapsed_s": 0.0,
+              "measured_angle_travel_rad": 0.0,
+              "remaining_permission_s": 2.0,
+              "remaining_angle_travel_rad": 0.05235987755982989,
+              "healthy_confirmation_count": 0,
+              "healthy_resets": 0,
+              "assurance": "measurement_policy_not_execution_or_angle_certificate"
+            },
+            "force_gate": 0.796218758205006,
+            "twist_tool": [
+              -0.0002800732473156795,
+              3.9518316975586366e-05,
+              6.139617922634128e-05,
+              9.084992456893018e-05,
+              -0.010403977846745868,
+              -3.3326557841992535e-05
+            ],
+            "vn_mm_s": 0.06139617922634128,
+            "omega_deg_s": -0.5961040207661442,
+            "added_vn_mm_s": -0.10142552268176268,
+            "added_omega_deg_s": -0.2569684227544295,
+            "alpha": 0.8741138302780419,
+            "visual_slack_mm_s": [
+              0.0562192715164475,
+              0.0
+            ],
+            "left_local_mm_s": 0.22265783585090224,
+            "right_local_mm_s": -0.0998654773982197,
+            "differential_request_mm_s": 0.2788771073673497,
+            "differential_shortfall_mm_s": 0.0,
+            "model_output_power_w": 0.00019999999748270198,
+            "model_output_work_50ms_j": 9.9999998741351e-06,
+            "command_energy_margin_w": 2.5172980290966845e-12,
+            "active_hard_rows": []
+          },
+          "0.001J": {
+            "status": "repair",
+            "success": true,
+            "reason": null,
+            "budget_j": 0.001,
+            "repair_episode": {
+              "angle_reference_reset": false,
+              "repair_allowed": true,
+              "armed": true,
+              "exhausted": false,
+              "reason": "bad_window",
+              "permission_elapsed_s": 0.0,
+              "measured_angle_travel_rad": 0.0,
+              "remaining_permission_s": 2.0,
+              "remaining_angle_travel_rad": 0.05235987755982989,
+              "healthy_confirmation_count": 0,
+              "healthy_resets": 0,
+              "assurance": "measurement_policy_not_execution_or_angle_certificate"
+            },
+            "force_gate": 0.796218758205006,
+            "twist_tool": [
+              -0.000276088966009669,
+              3.895613514251269e-05,
+              0.00014506696379883437,
+              8.955750674758623e-05,
+              -0.008395886429184731,
+              -3.285245907434456e-05
+            ],
+            "vn_mm_s": 0.14506696379883438,
+            "omega_deg_s": -0.4810488576634484,
+            "added_vn_mm_s": -0.017754738109269592,
+            "added_omega_deg_s": -0.14191325965173368,
+            "alpha": 0.8616788139861197,
+            "visual_slack_mm_s": [
+              0.0036739039161520423,
+              0.0
+            ],
+            "left_local_mm_s": 0.2752032034511977,
+            "right_local_mm_s": 0.014930724146470998,
+            "differential_request_mm_s": 0.2788771073673497,
+            "differential_shortfall_mm_s": 0.01860462806262304,
+            "model_output_power_w": 0.0005404259799058667,
+            "model_output_work_50ms_j": 2.702129899529334e-05,
+            "command_energy_margin_w": 0.019459574020094135,
+            "active_hard_rows": []
+          },
+          "0.2J": {
+            "status": "repair",
+            "success": true,
+            "reason": null,
+            "budget_j": 0.2,
+            "repair_episode": {
+              "angle_reference_reset": false,
+              "repair_allowed": true,
+              "armed": true,
+              "exhausted": false,
+              "reason": "bad_window",
+              "permission_elapsed_s": 0.0,
+              "measured_angle_travel_rad": 0.0,
+              "remaining_permission_s": 2.0,
+              "remaining_angle_travel_rad": 0.05235987755982989,
+              "healthy_confirmation_count": 0,
+              "healthy_resets": 0,
+              "assurance": "measurement_policy_not_execution_or_angle_certificate"
+            },
+            "force_gate": 0.796218758205006,
+            "twist_tool": [
+              -0.000276088966009669,
+              3.895613514251269e-05,
+              0.00014506696379883437,
+              8.955750674758623e-05,
+              -0.008395886429184731,
+              -3.285245907434456e-05
+            ],
+            "vn_mm_s": 0.14506696379883438,
+            "omega_deg_s": -0.4810488576634484,
+            "added_vn_mm_s": -0.017754738109269592,
+            "added_omega_deg_s": -0.14191325965173368,
+            "alpha": 0.8616788139861197,
+            "visual_slack_mm_s": [
+              0.0036739039161520423,
+              0.0
+            ],
+            "left_local_mm_s": 0.2752032034511977,
+            "right_local_mm_s": 0.014930724146470998,
+            "differential_request_mm_s": 0.2788771073673497,
+            "differential_shortfall_mm_s": 0.01860462806262304,
+            "model_output_power_w": 0.0005404259799058667,
+            "model_output_work_50ms_j": 2.702129899529334e-05,
+            "command_energy_margin_w": 3.999459574020094,
+            "active_hard_rows": []
+          }
+        },
+        "v8r3_confidence_balance": {
+          "off": {
+            "status": "repair",
+            "success": true,
+            "reason": null,
+            "budget_j": null,
+            "repair_episode": {
+              "angle_reference_reset": false,
+              "repair_allowed": true,
+              "armed": true,
+              "exhausted": false,
+              "reason": "bad_window_or_imbalanced",
+              "permission_elapsed_s": 0.0,
+              "measured_angle_travel_rad": 0.0,
+              "remaining_permission_s": 2.0,
+              "remaining_angle_travel_rad": 0.05235987755982989,
+              "healthy_confirmation_count": 0,
+              "healthy_resets": 0,
+              "assurance": "measurement_policy_not_execution_or_angle_certificate"
+            },
+            "force_gate": 0.796218758205006,
+            "twist_tool": [
+              -0.000278324369348899,
+              3.927155040824996e-05,
+              0.00010183207267323409,
+              9.028262500395892e-05,
+              -0.01195009067098388,
+              -3.311845484294813e-05
+            ],
+            "vn_mm_s": 0.10183207267323409,
+            "omega_deg_s": -0.6846897602460343,
+            "added_vn_mm_s": -0.06098962923486988,
+            "added_omega_deg_s": -0.3455541622343196,
+            "alpha": 0.868655549514409,
+            "visual_slack_mm_s": [
+              0.0,
+              0.0
+            ],
+            "left_local_mm_s": 0.2870584780734842,
+            "right_local_mm_s": -0.0833943327270161,
+            "differential_request_mm_s": 0.4173089949064068,
+            "differential_shortfall_mm_s": 0.04685618410590653,
+            "model_output_power_w": 0.0003739502104898438,
+            "model_output_work_50ms_j": 1.8697510524492192e-05,
+            "command_energy_margin_w": null,
+            "active_hard_rows": []
+          },
+          "1e-05J": {
+            "status": "repair",
+            "success": true,
+            "reason": null,
+            "budget_j": 1e-05,
+            "repair_episode": {
+              "angle_reference_reset": false,
+              "repair_allowed": true,
+              "armed": true,
+              "exhausted": false,
+              "reason": "bad_window_or_imbalanced",
+              "permission_elapsed_s": 0.0,
+              "measured_angle_travel_rad": 0.0,
+              "remaining_permission_s": 2.0,
+              "remaining_angle_travel_rad": 0.05235987755982989,
+              "healthy_confirmation_count": 0,
+              "healthy_resets": 0,
+              "assurance": "measurement_policy_not_execution_or_angle_certificate"
+            },
+            "force_gate": 0.796218758205006,
+            "twist_tool": [
+              -0.0002792723320151833,
+              3.94053078787913e-05,
+              5.9495659408110775e-05,
+              9.05901243369067e-05,
+              -0.012421035979929954,
+              -3.323125509407089e-05
+            ],
+            "vn_mm_s": 0.059495659408110774,
+            "omega_deg_s": -0.711672938830129,
+            "added_vn_mm_s": -0.10332604249999318,
+            "added_omega_deg_s": -0.37253734081841433,
+            "alpha": 0.87161415868229,
+            "visual_slack_mm_s": [
+              0.026855390270324683,
+              0.0
+            ],
+            "left_local_mm_s": 0.25202171709702503,
+            "right_local_mm_s": -0.13303039828080354,
+            "differential_request_mm_s": 0.4173089949064068,
+            "differential_shortfall_mm_s": 0.03225687952857826,
+            "model_output_power_w": 0.0001999999974405912,
+            "model_output_work_50ms_j": 9.99999987202956e-06,
+            "command_energy_margin_w": 2.559408820946782e-12,
+            "active_hard_rows": []
+          },
+          "0.001J": {
+            "status": "repair",
+            "success": true,
+            "reason": null,
+            "budget_j": 0.001,
+            "repair_episode": {
+              "angle_reference_reset": false,
+              "repair_allowed": true,
+              "armed": true,
+              "exhausted": false,
+              "reason": "bad_window_or_imbalanced",
+              "permission_elapsed_s": 0.0,
+              "measured_angle_travel_rad": 0.0,
+              "remaining_permission_s": 2.0,
+              "remaining_angle_travel_rad": 0.05235987755982989,
+              "healthy_confirmation_count": 0,
+              "healthy_resets": 0,
+              "assurance": "measurement_policy_not_execution_or_angle_certificate"
+            },
+            "force_gate": 0.796218758205006,
+            "twist_tool": [
+              -0.000278324369348899,
+              3.927155040824996e-05,
+              0.00010183214885418704,
+              9.028262500395892e-05,
+              -0.011950086840923933,
+              -3.311845484294813e-05
+            ],
+            "vn_mm_s": 0.10183214885418704,
+            "omega_deg_s": -0.6846895407997642,
+            "added_vn_mm_s": -0.06098955305391692,
+            "added_omega_deg_s": -0.3455539427880494,
+            "alpha": 0.868655549514409,
+            "visual_slack_mm_s": [
+              0.0,
+              0.0
+            ],
+            "left_local_mm_s": 0.28705849488850804,
+            "right_local_mm_s": -0.08339419718013395,
+            "differential_request_mm_s": 0.4173089949064068,
+            "differential_shortfall_mm_s": 0.04685630283776486,
+            "model_output_power_w": 0.0003739505116811562,
+            "model_output_work_50ms_j": 1.8697525584057813e-05,
+            "command_energy_margin_w": 0.019626049488318843,
+            "active_hard_rows": []
+          },
+          "0.2J": {
+            "status": "repair",
+            "success": true,
+            "reason": null,
+            "budget_j": 0.2,
+            "repair_episode": {
+              "angle_reference_reset": false,
+              "repair_allowed": true,
+              "armed": true,
+              "exhausted": false,
+              "reason": "bad_window_or_imbalanced",
+              "permission_elapsed_s": 0.0,
+              "measured_angle_travel_rad": 0.0,
+              "remaining_permission_s": 2.0,
+              "remaining_angle_travel_rad": 0.05235987755982989,
+              "healthy_confirmation_count": 0,
+              "healthy_resets": 0,
+              "assurance": "measurement_policy_not_execution_or_angle_certificate"
+            },
+            "force_gate": 0.796218758205006,
+            "twist_tool": [
+              -0.000278324369348899,
+              3.927155040824996e-05,
+              0.00010183214885418704,
+              9.028262500395892e-05,
+              -0.011950086840923933,
+              -3.311845484294813e-05
+            ],
+            "vn_mm_s": 0.10183214885418704,
+            "omega_deg_s": -0.6846895407997642,
+            "added_vn_mm_s": -0.06098955305391692,
+            "added_omega_deg_s": -0.3455539427880494,
+            "alpha": 0.868655549514409,
+            "visual_slack_mm_s": [
+              0.0,
+              0.0
+            ],
+            "left_local_mm_s": 0.28705849488850804,
+            "right_local_mm_s": -0.08339419718013395,
+            "differential_request_mm_s": 0.4173089949064068,
+            "differential_shortfall_mm_s": 0.04685630283776486,
+            "model_output_power_w": 0.0003739505116811562,
+            "model_output_work_50ms_j": 1.8697525584057813e-05,
+            "command_energy_margin_w": 3.999626049488319,
+            "active_hard_rows": []
+          }
+        }
+      },
+      "v7_saved_max_abs_error": 0.0
+    },
+    {
+      "scan": "RH_Per_L_DtP",
+      "control_id": 1528,
+      "elapsed_s": 0.3973796139471233,
+      "force_n": 3.8506398782960507,
+      "quality": [
+        0.6947812589771845,
+        0.9541291186969112,
+        0.9961652736600255
+      ],
+      "nominal_twist_tool": [
+        -0.00016404643058770072,
+        0.003166585075177545,
+        -0.0008202862833276128,
+        -0.0003305862361570809,
+        -0.018871612281233446,
+        0.000741626772821374
+      ],
+      "wrench_command_model_tool": [
+        -0.12489481555258775,
+        -1.7233629802772736,
+        -3.797471045765876,
+        -0.07456569465893759,
+        -0.047858479143822394,
+        -0.02328975992843823
+      ],
+      "variants": {
+        "legacy_v7": {
+          "off": {
+            "status": "repair",
+            "success": true,
+            "reason": null,
+            "budget_j": null,
+            "repair_episode": null,
+            "force_gate": 1.0,
+            "twist_tool": [
+              -0.00014786446912295892,
+              0.0028542249861602145,
+              -0.000366005091925428,
+              -0.00029797636031215656,
+              -0.030700364508867723,
+              0.0006684708021853627
+            ],
+            "vn_mm_s": -0.366005091925428,
+            "omega_deg_s": -1.759001315871343,
+            "added_vn_mm_s": 0.4542811914021848,
+            "added_omega_deg_s": -0.6777375795494149,
+            "alpha": 0.9013574302911104,
+            "visual_slack_mm_s": [
+              0.1531962945950173,
+              0.0
+            ],
+            "left_local_mm_s": 0.10985055796202167,
+            "right_local_mm_s": -0.8418607418128778,
+            "differential_request_mm_s": 0.0,
+            "differential_shortfall_mm_s": 0.0,
+            "model_output_power_w": 0.002034581389391402,
+            "model_output_work_50ms_j": 0.00010172906946957011,
+            "command_energy_margin_w": null,
+            "active_hard_rows": [
+              "aperture_right_endpoint"
+            ]
+          },
+          "1e-05J": {
+            "status": "repair",
+            "success": true,
+            "reason": null,
+            "budget_j": 1e-05,
+            "repair_episode": null,
+            "force_gate": 1.0,
+            "twist_tool": [
+              -9.999349448980796e-05,
+              0.0019301724891660872,
+              -0.00042362591865066336,
+              -0.0002015068103899227,
+              -0.0313569245368897,
+              0.0004520540456499763
+            ],
+            "vn_mm_s": -0.42362591865066335,
+            "omega_deg_s": -1.7966194344739934,
+            "added_vn_mm_s": 0.3966603646769495,
+            "added_omega_deg_s": -0.7153556981520653,
+            "alpha": 0.609543859818093,
+            "visual_slack_mm_s": [
+              0.200640440885912,
+              0.0
+            ],
+            "left_local_mm_s": 0.06240641167112697,
+            "right_local_mm_s": -0.9096582489724538,
+            "differential_request_mm_s": 0.0,
+            "differential_shortfall_mm_s": 0.0,
+            "model_output_power_w": 0.00019999999995533102,
+            "model_output_work_50ms_j": 9.999999997766551e-06,
+            "command_energy_margin_w": 4.466899398113122e-14,
+            "active_hard_rows": [
+              "acceleration_4"
+            ]
+          },
+          "0.001J": {
+            "status": "repair",
+            "success": true,
+            "reason": null,
+            "budget_j": 0.001,
+            "repair_episode": null,
+            "force_gate": 1.0,
+            "twist_tool": [
+              -0.00014786446912295892,
+              0.0028542249861602145,
+              -0.00036600509192542797,
+              -0.00029797636031215656,
+              -0.030700364508867723,
+              0.0006684708021853627
+            ],
+            "vn_mm_s": -0.36600509192542796,
+            "omega_deg_s": -1.759001315871343,
+            "added_vn_mm_s": 0.45428119140218487,
+            "added_omega_deg_s": -0.6777375795494149,
+            "alpha": 0.9013574302911104,
+            "visual_slack_mm_s": [
+              0.15319629459501724,
+              0.0
+            ],
+            "left_local_mm_s": 0.10985055796202173,
+            "right_local_mm_s": -0.8418607418128777,
+            "differential_request_mm_s": 0.0,
+            "differential_shortfall_mm_s": 0.0,
+            "model_output_power_w": 0.002034581389391403,
+            "model_output_work_50ms_j": 0.00010172906946957015,
+            "command_energy_margin_w": 0.0179654186106086,
+            "active_hard_rows": [
+              "aperture_right_endpoint"
+            ]
+          },
+          "0.2J": {
+            "status": "repair",
+            "success": true,
+            "reason": null,
+            "budget_j": 0.2,
+            "repair_episode": null,
+            "force_gate": 1.0,
+            "twist_tool": [
+              -0.00014786446912295892,
+              0.0028542249861602145,
+              -0.00036600509192542797,
+              -0.00029797636031215656,
+              -0.030700364508867723,
+              0.0006684708021853627
+            ],
+            "vn_mm_s": -0.36600509192542796,
+            "omega_deg_s": -1.759001315871343,
+            "added_vn_mm_s": 0.45428119140218487,
+            "added_omega_deg_s": -0.6777375795494149,
+            "alpha": 0.9013574302911104,
+            "visual_slack_mm_s": [
+              0.15319629459501724,
+              0.0
+            ],
+            "left_local_mm_s": 0.10985055796202173,
+            "right_local_mm_s": -0.8418607418128777,
+            "differential_request_mm_s": 0.0,
+            "differential_shortfall_mm_s": 0.0,
+            "model_output_power_w": 0.002034581389391403,
+            "model_output_work_50ms_j": 0.00010172906946957015,
+            "command_energy_margin_w": 3.9979654186106086,
+            "active_hard_rows": [
+              "aperture_right_endpoint"
+            ]
+          }
+        },
+        "v8r2_bounded_episode": {
+          "off": {
+            "status": "repair",
+            "success": true,
+            "reason": null,
+            "budget_j": null,
+            "repair_episode": {
+              "angle_reference_reset": false,
+              "repair_allowed": true,
+              "armed": true,
+              "exhausted": false,
+              "reason": "bad_window",
+              "permission_elapsed_s": 0.0,
+              "measured_angle_travel_rad": 0.0,
+              "remaining_permission_s": 2.0,
+              "remaining_angle_travel_rad": 0.05235987755982989,
+              "healthy_confirmation_count": 0,
+              "healthy_resets": 0,
+              "assurance": "measurement_policy_not_execution_or_angle_certificate"
+            },
+            "force_gate": 1.0,
+            "twist_tool": [
+              -0.00014786446912295117,
+              0.0028542249861600653,
+              -0.00036596325821113815,
+              -0.000297976360312141,
+              -0.030693693405084328,
+              0.0006684708021853277
+            ],
+            "vn_mm_s": -0.3659632582111381,
+            "omega_deg_s": -1.7586190897798606,
+            "added_vn_mm_s": 0.45432302511647465,
+            "added_omega_deg_s": -0.6773553534579326,
+            "alpha": 0.9013574302910632,
+            "visual_slack_mm_s": [
+              0.15325786298937003,
+              0.0
+            ],
+            "left_local_mm_s": 0.10978898956766896,
+            "right_local_mm_s": -0.8417155059899453,
+            "differential_request_mm_s": 0.26304685255703897,
+            "differential_shortfall_mm_s": 0.0,
+            "model_output_power_w": 0.002035059520591183,
+            "model_output_work_50ms_j": 0.00010175297602955916,
+            "command_energy_margin_w": null,
+            "active_hard_rows": []
+          },
+          "1e-05J": {
+            "status": "repair",
+            "success": true,
+            "reason": null,
+            "budget_j": 1e-05,
+            "repair_episode": {
+              "angle_reference_reset": false,
+              "repair_allowed": true,
+              "armed": true,
+              "exhausted": false,
+              "reason": "bad_window",
+              "permission_elapsed_s": 0.0,
+              "measured_angle_travel_rad": 0.0,
+              "remaining_permission_s": 2.0,
+              "remaining_angle_travel_rad": 0.05235987755982989,
+              "healthy_confirmation_count": 0,
+              "healthy_resets": 0,
+              "assurance": "measurement_policy_not_execution_or_angle_certificate"
+            },
+            "force_gate": 1.0,
+            "twist_tool": [
+              -9.9657614159517e-05,
+              0.0019236889976500893,
+              -0.00042069861653404046,
+              -0.00020082994461605432,
+              -0.03135692442267236,
+              0.00045053558624482206
+            ],
+            "vn_mm_s": -0.42069861653404045,
+            "omega_deg_s": -1.7966194279298215,
+            "added_vn_mm_s": 0.3995876667935724,
+            "added_omega_deg_s": -0.7153556916078936,
+            "alpha": 0.6074963886900248,
+            "visual_slack_mm_s": [
+              0.19771314053965788,
+              0.0
+            ],
+            "left_local_mm_s": 0.06533371201738108,
+            "right_local_mm_s": -0.906730945085462,
+            "differential_request_mm_s": 0.26304685255703897,
+            "differential_shortfall_mm_s": 0.0,
+            "model_output_power_w": 0.00019999999731358368,
+            "model_output_work_50ms_j": 9.999999865679185e-06,
+            "command_energy_margin_w": 2.6864163291898807e-12,
+            "active_hard_rows": [
+              "acceleration_4"
+            ]
+          },
+          "0.001J": {
+            "status": "repair",
+            "success": true,
+            "reason": null,
+            "budget_j": 0.001,
+            "repair_episode": {
+              "angle_reference_reset": false,
+              "repair_allowed": true,
+              "armed": true,
+              "exhausted": false,
+              "reason": "bad_window",
+              "permission_elapsed_s": 0.0,
+              "measured_angle_travel_rad": 0.0,
+              "remaining_permission_s": 2.0,
+              "remaining_angle_travel_rad": 0.05235987755982989,
+              "healthy_confirmation_count": 0,
+              "healthy_resets": 0,
+              "assurance": "measurement_policy_not_execution_or_angle_certificate"
+            },
+            "force_gate": 1.0,
+            "twist_tool": [
+              -0.00014786446912299714,
+              0.002854224986160952,
+              -0.0003660050930502623,
+              -0.0002979763603122336,
+              -0.03070036468822218,
+              0.0006684708021855354
+            ],
+            "vn_mm_s": -0.3660050930502623,
+            "omega_deg_s": -1.7590013261475965,
+            "added_vn_mm_s": 0.45428119027735053,
+            "added_omega_deg_s": -0.6777375898256685,
+            "alpha": 0.9013574302913433,
+            "visual_slack_mm_s": [
+              0.15319629293985745,
+              0.0
+            ],
+            "left_local_mm_s": 0.10985055961718151,
+            "right_local_mm_s": -0.8418607457177062,
+            "differential_request_mm_s": 0.26304685255703897,
+            "differential_shortfall_mm_s": 0.0,
+            "model_output_power_w": 0.00203458137653751,
+            "model_output_work_50ms_j": 0.00010172906882687552,
+            "command_energy_margin_w": 0.01796541862346249,
+            "active_hard_rows": [
+              "aperture_right_endpoint"
+            ]
+          },
+          "0.2J": {
+            "status": "repair",
+            "success": true,
+            "reason": null,
+            "budget_j": 0.2,
+            "repair_episode": {
+              "angle_reference_reset": false,
+              "repair_allowed": true,
+              "armed": true,
+              "exhausted": false,
+              "reason": "bad_window",
+              "permission_elapsed_s": 0.0,
+              "measured_angle_travel_rad": 0.0,
+              "remaining_permission_s": 2.0,
+              "remaining_angle_travel_rad": 0.05235987755982989,
+              "healthy_confirmation_count": 0,
+              "healthy_resets": 0,
+              "assurance": "measurement_policy_not_execution_or_angle_certificate"
+            },
+            "force_gate": 1.0,
+            "twist_tool": [
+              -0.00014786446912299714,
+              0.002854224986160952,
+              -0.0003660050930502623,
+              -0.0002979763603122336,
+              -0.03070036468822218,
+              0.0006684708021855354
+            ],
+            "vn_mm_s": -0.3660050930502623,
+            "omega_deg_s": -1.7590013261475965,
+            "added_vn_mm_s": 0.45428119027735053,
+            "added_omega_deg_s": -0.6777375898256685,
+            "alpha": 0.9013574302913433,
+            "visual_slack_mm_s": [
+              0.15319629293985745,
+              0.0
+            ],
+            "left_local_mm_s": 0.10985055961718151,
+            "right_local_mm_s": -0.8418607457177062,
+            "differential_request_mm_s": 0.26304685255703897,
+            "differential_shortfall_mm_s": 0.0,
+            "model_output_power_w": 0.00203458137653751,
+            "model_output_work_50ms_j": 0.00010172906882687552,
+            "command_energy_margin_w": 3.9979654186234623,
+            "active_hard_rows": [
+              "aperture_right_endpoint"
+            ]
+          }
+        },
+        "v8r3_confidence_balance": {
+          "off": {
+            "status": "repair",
+            "success": true,
+            "reason": null,
+            "budget_j": null,
+            "repair_episode": {
+              "angle_reference_reset": false,
+              "repair_allowed": true,
+              "armed": true,
+              "exhausted": false,
+              "reason": "bad_window_or_imbalanced",
+              "permission_elapsed_s": 0.0,
+              "measured_angle_travel_rad": 0.0,
+              "remaining_permission_s": 2.0,
+              "remaining_angle_travel_rad": 0.05235987755982989,
+              "healthy_confirmation_count": 0,
+              "healthy_resets": 0,
+              "assurance": "measurement_policy_not_execution_or_angle_certificate"
+            },
+            "force_gate": 1.0,
+            "twist_tool": [
+              -0.00014786446912295892,
+              0.0028542249861602145,
+              -0.00036592942079869946,
+              -0.00029797636031215656,
+              -0.03068829745741343,
+              0.0006684708021853627
+            ],
+            "vn_mm_s": -0.36592942079869945,
+            "omega_deg_s": -1.7583099247518448,
+            "added_vn_mm_s": 0.4543568625289134,
+            "added_omega_deg_s": -0.6770461884299167,
+            "alpha": 0.9013574302911104,
+            "visual_slack_mm_s": [
+              0.15330766276583027,
+              0.0
+            ],
+            "left_local_mm_s": 0.10973918979120871,
+            "right_local_mm_s": -0.8415980313886077,
+            "differential_request_mm_s": 0.4475200326285356,
+            "differential_shortfall_mm_s": 0.0,
+            "model_output_power_w": 0.0020354462590345076,
+            "model_output_work_50ms_j": 0.00010177231295172538,
+            "command_energy_margin_w": null,
+            "active_hard_rows": []
+          },
+          "1e-05J": {
+            "status": "repair",
+            "success": true,
+            "reason": null,
+            "budget_j": 1e-05,
+            "repair_episode": {
+              "angle_reference_reset": false,
+              "repair_allowed": true,
+              "armed": true,
+              "exhausted": false,
+              "reason": "bad_window_or_imbalanced",
+              "permission_elapsed_s": 0.0,
+              "measured_angle_travel_rad": 0.0,
+              "remaining_permission_s": 2.0,
+              "remaining_angle_travel_rad": 0.05235987755982989,
+              "healthy_confirmation_count": 0,
+              "healthy_resets": 0,
+              "assurance": "measurement_policy_not_execution_or_angle_certificate"
+            },
+            "force_gate": 1.0,
+            "twist_tool": [
+              -9.999349436877274e-05,
+              0.0019301724868297464,
+              -0.0004236259181847443,
+              -0.0002015068101460126,
+              -0.03135692450573004,
+              0.00045205404510279603
+            ],
+            "vn_mm_s": -0.42362591818474427,
+            "omega_deg_s": -1.7966194326886764,
+            "added_vn_mm_s": 0.39666036514286857,
+            "added_omega_deg_s": -0.7153556963667483,
+            "alpha": 0.6095438590802822,
+            "visual_slack_mm_s": [
+              0.2006404409029676,
+              0.0
+            ],
+            "left_local_mm_s": 0.06240641165407138,
+            "right_local_mm_s": -0.9096582480235601,
+            "differential_request_mm_s": 0.4475200326285356,
+            "differential_shortfall_mm_s": 0.0,
+            "model_output_power_w": 0.00019999999921009663,
+            "model_output_work_50ms_j": 9.999999960504831e-06,
+            "command_energy_margin_w": 7.899033803351191e-13,
+            "active_hard_rows": [
+              "acceleration_4"
+            ]
+          },
+          "0.001J": {
+            "status": "repair",
+            "success": true,
+            "reason": null,
+            "budget_j": 0.001,
+            "repair_episode": {
+              "angle_reference_reset": false,
+              "repair_allowed": true,
+              "armed": true,
+              "exhausted": false,
+              "reason": "bad_window_or_imbalanced",
+              "permission_elapsed_s": 0.0,
+              "measured_angle_travel_rad": 0.0,
+              "remaining_permission_s": 2.0,
+              "remaining_angle_travel_rad": 0.05235987755982989,
+              "healthy_confirmation_count": 0,
+              "healthy_resets": 0,
+              "assurance": "measurement_policy_not_execution_or_angle_certificate"
+            },
+            "force_gate": 1.0,
+            "twist_tool": [
+              -0.00014786446912295892,
+              0.0028542249861602145,
+              -0.00036600509219158296,
+              -0.00029797636031215656,
+              -0.03070036455129152,
+              0.0006684708021853627
+            ],
+            "vn_mm_s": -0.36600509219158295,
+            "omega_deg_s": -1.7590013183020474,
+            "added_vn_mm_s": 0.4542811911360299,
+            "added_omega_deg_s": -0.6777375819801195,
+            "alpha": 0.9013574302911104,
+            "visual_slack_mm_s": [
+              0.1531962942036034,
+              0.0
+            ],
+            "left_local_mm_s": 0.10985055835343557,
+            "right_local_mm_s": -0.8418607427366016,
+            "differential_request_mm_s": 0.4475200326285356,
+            "differential_shortfall_mm_s": 0.0,
+            "model_output_power_w": 0.0020345813863503486,
+            "model_output_work_50ms_j": 0.00010172906931751744,
+            "command_energy_margin_w": 0.017965418613649652,
+            "active_hard_rows": [
+              "aperture_right_endpoint"
+            ]
+          },
+          "0.2J": {
+            "status": "repair",
+            "success": true,
+            "reason": null,
+            "budget_j": 0.2,
+            "repair_episode": {
+              "angle_reference_reset": false,
+              "repair_allowed": true,
+              "armed": true,
+              "exhausted": false,
+              "reason": "bad_window_or_imbalanced",
+              "permission_elapsed_s": 0.0,
+              "measured_angle_travel_rad": 0.0,
+              "remaining_permission_s": 2.0,
+              "remaining_angle_travel_rad": 0.05235987755982989,
+              "healthy_confirmation_count": 0,
+              "healthy_resets": 0,
+              "assurance": "measurement_policy_not_execution_or_angle_certificate"
+            },
+            "force_gate": 1.0,
+            "twist_tool": [
+              -0.00014786446912295892,
+              0.0028542249861602145,
+              -0.00036600509219158296,
+              -0.00029797636031215656,
+              -0.03070036455129152,
+              0.0006684708021853627
+            ],
+            "vn_mm_s": -0.36600509219158295,
+            "omega_deg_s": -1.7590013183020474,
+            "added_vn_mm_s": 0.4542811911360299,
+            "added_omega_deg_s": -0.6777375819801195,
+            "alpha": 0.9013574302911104,
+            "visual_slack_mm_s": [
+              0.1531962942036034,
+              0.0
+            ],
+            "left_local_mm_s": 0.10985055835343557,
+            "right_local_mm_s": -0.8418607427366016,
+            "differential_request_mm_s": 0.4475200326285356,
+            "differential_shortfall_mm_s": 0.0,
+            "model_output_power_w": 0.0020345813863503486,
+            "model_output_work_50ms_j": 0.00010172906931751744,
+            "command_energy_margin_w": 3.9979654186136497,
+            "active_hard_rows": [
+              "aperture_right_endpoint"
+            ]
+          }
+        }
+      },
+      "v7_saved_max_abs_error": 0.0
+    },
+    {
+      "scan": "RH_Per_L_PtD",
+      "control_id": 5641,
+      "elapsed_s": 22.783509023021907,
+      "force_n": 3.640201324493997,
+      "quality": [
+        0.41557716418166835,
+        0.6363928674467738,
+        0.9796364956361513
+      ],
+      "nominal_twist_tool": [
+        0.00010339321985183566,
+        -0.00420847711107813,
+        0.004453005011889321,
+        0.0007313327458362395,
+        -0.014692321473833116,
+        -0.0005319592792238186
+      ],
+      "wrench_command_model_tool": [
+        0.12653929447624845,
+        -0.44514043730021785,
+        -3.7106670386564042,
+        -0.07964775512240027,
+        -0.04062228944279829,
+        -0.03795697629331043
+      ],
+      "variants": {
+        "legacy_v7": {
+          "off": {
+            "status": "repair",
+            "success": true,
+            "reason": null,
+            "budget_j": null,
+            "repair_episode": null,
+            "force_gate": 1.0,
+            "twist_tool": [
+              6.61306747457349e-05,
+              -0.0026917570746553816,
+              0.004453005115534583,
+              0.00046776305076007274,
+              -0.014692318712040851,
+              -0.0003402430654808682
+            ],
+            "vn_mm_s": 4.453005115534583,
+            "omega_deg_s": -0.8418078534610263,
+            "added_vn_mm_s": 1.0364526251138706e-07,
+            "added_omega_deg_s": 1.5823904069747962e-07,
+            "alpha": 0.6396035914202242,
+            "visual_slack_mm_s": [
+              0.0,
+              0.0
+            ],
+            "left_local_mm_s": 4.6807360555712165,
+            "right_local_mm_s": 4.22527417549795,
+            "differential_request_mm_s": 0.0,
+            "differential_shortfall_mm_s": 0.0,
+            "model_output_power_w": 0.014744547310584376,
+            "model_output_work_50ms_j": 0.0007372273655292189,
+            "command_energy_margin_w": null,
+            "active_hard_rows": [
+              "force_priority_left_endpoint",
+              "force_priority_right_endpoint"
+            ]
+          },
+          "1e-05J": {
+            "status": "task_infeasible",
+            "success": false,
+            "reason": "energy_budget_infeasible",
+            "budget_j": 1e-05,
+            "repair_episode": null,
+            "force_gate": 1.0
+          },
+          "0.001J": {
+            "status": "repair",
+            "success": true,
+            "reason": null,
+            "budget_j": 0.001,
+            "repair_episode": null,
+            "force_gate": 1.0,
+            "twist_tool": [
+              6.61306747457349e-05,
+              -0.0026917570746553816,
+              0.004453005115534583,
+              0.00046776305076007274,
+              -0.014692318712040865,
+              -0.0003402430654808682
+            ],
+            "vn_mm_s": 4.453005115534583,
+            "omega_deg_s": -0.841807853461027,
+            "added_vn_mm_s": 1.0364526251138706e-07,
+            "added_omega_deg_s": 1.5823903990234094e-07,
+            "alpha": 0.6396035914202242,
+            "visual_slack_mm_s": [
+              0.0,
+              0.0
+            ],
+            "left_local_mm_s": 4.6807360555712165,
+            "right_local_mm_s": 4.22527417549795,
+            "differential_request_mm_s": 0.0,
+            "differential_shortfall_mm_s": 0.0,
+            "model_output_power_w": 0.014744547310584376,
+            "model_output_work_50ms_j": 0.0007372273655292189,
+            "command_energy_margin_w": 0.005255452689415624,
+            "active_hard_rows": [
+              "force_priority_left_endpoint",
+              "force_priority_right_endpoint"
+            ]
+          },
+          "0.2J": {
+            "status": "repair",
+            "success": true,
+            "reason": null,
+            "budget_j": 0.2,
+            "repair_episode": null,
+            "force_gate": 1.0,
+            "twist_tool": [
+              6.61306747457349e-05,
+              -0.0026917570746553816,
+              0.004453005115534583,
+              0.00046776305076007274,
+              -0.014692318712040865,
+              -0.0003402430654808682
+            ],
+            "vn_mm_s": 4.453005115534583,
+            "omega_deg_s": -0.841807853461027,
+            "added_vn_mm_s": 1.0364526251138706e-07,
+            "added_omega_deg_s": 1.5823903990234094e-07,
+            "alpha": 0.6396035914202242,
+            "visual_slack_mm_s": [
+              0.0,
+              0.0
+            ],
+            "left_local_mm_s": 4.6807360555712165,
+            "right_local_mm_s": 4.22527417549795,
+            "differential_request_mm_s": 0.0,
+            "differential_shortfall_mm_s": 0.0,
+            "model_output_power_w": 0.014744547310584376,
+            "model_output_work_50ms_j": 0.0007372273655292189,
+            "command_energy_margin_w": 3.9852554526894157,
+            "active_hard_rows": [
+              "force_priority_left_endpoint",
+              "force_priority_right_endpoint"
+            ]
+          }
+        },
+        "v8r2_bounded_episode": {
+          "off": {
+            "status": "repair",
+            "success": true,
+            "reason": null,
+            "budget_j": null,
+            "repair_episode": {
+              "angle_reference_reset": false,
+              "repair_allowed": true,
+              "armed": true,
+              "exhausted": false,
+              "reason": "bad_window",
+              "permission_elapsed_s": 0.0,
+              "measured_angle_travel_rad": 0.0,
+              "remaining_permission_s": 2.0,
+              "remaining_angle_travel_rad": 0.05235987755982989,
+              "healthy_confirmation_count": 0,
+              "healthy_resets": 0,
+              "assurance": "measurement_policy_not_execution_or_angle_certificate"
+            },
+            "force_gate": 1.0,
+            "twist_tool": [
+              5.708245574958511e-05,
+              -0.002323461913755209,
+              0.004453005011889321,
+              0.00040376215347817646,
+              -0.023473868099480957,
+              -0.0002936898769608798
+            ],
+            "vn_mm_s": 4.453005011889321,
+            "omega_deg_s": -1.3449535709470377,
+            "added_vn_mm_s": 0.0,
+            "added_omega_deg_s": -0.5031455592469707,
+            "alpha": 0.5520908994940412,
+            "visual_slack_mm_s": [
+              0.0,
+              0.0
+            ],
+            "left_local_mm_s": 4.816849967431276,
+            "right_local_mm_s": 4.089160056347366,
+            "differential_request_mm_s": 0.9610570895458292,
+            "differential_shortfall_mm_s": 0.23336717846191957,
+            "model_output_power_w": 0.014549577799723903,
+            "model_output_work_50ms_j": 0.0007274788899861951,
+            "command_energy_margin_w": null,
+            "active_hard_rows": [
+              "acceleration_4"
+            ]
+          },
+          "1e-05J": {
+            "status": "task_infeasible",
+            "success": false,
+            "reason": "energy_budget_infeasible",
+            "budget_j": 1e-05,
+            "repair_episode": {
+              "angle_reference_reset": false,
+              "repair_allowed": true,
+              "armed": true,
+              "exhausted": false,
+              "reason": "bad_window",
+              "permission_elapsed_s": 0.0,
+              "measured_angle_travel_rad": 0.0,
+              "remaining_permission_s": 2.0,
+              "remaining_angle_travel_rad": 0.05235987755982989,
+              "healthy_confirmation_count": 0,
+              "healthy_resets": 0,
+              "assurance": "measurement_policy_not_execution_or_angle_certificate"
+            },
+            "force_gate": 1.0
+          },
+          "0.001J": {
+            "status": "repair",
+            "success": true,
+            "reason": null,
+            "budget_j": 0.001,
+            "repair_episode": {
+              "angle_reference_reset": false,
+              "repair_allowed": true,
+              "armed": true,
+              "exhausted": false,
+              "reason": "bad_window",
+              "permission_elapsed_s": 0.0,
+              "measured_angle_travel_rad": 0.0,
+              "remaining_permission_s": 2.0,
+              "remaining_angle_travel_rad": 0.05235987755982989,
+              "healthy_confirmation_count": 0,
+              "healthy_resets": 0,
+              "assurance": "measurement_policy_not_execution_or_angle_certificate"
+            },
+            "force_gate": 1.0,
+            "twist_tool": [
+              5.708245574958511e-05,
+              -0.002323461913755209,
+              0.004453005011889321,
+              0.00040376215347817646,
+              -0.023473868099480957,
+              -0.0002936898769608798
+            ],
+            "vn_mm_s": 4.453005011889321,
+            "omega_deg_s": -1.3449535709470377,
+            "added_vn_mm_s": 0.0,
+            "added_omega_deg_s": -0.5031455592469707,
+            "alpha": 0.5520908994940412,
+            "visual_slack_mm_s": [
+              0.0,
+              0.0
+            ],
+            "left_local_mm_s": 4.816849967431276,
+            "right_local_mm_s": 4.089160056347366,
+            "differential_request_mm_s": 0.9610570895458292,
+            "differential_shortfall_mm_s": 0.23336717846191957,
+            "model_output_power_w": 0.014549577799723903,
+            "model_output_work_50ms_j": 0.0007274788899861951,
+            "command_energy_margin_w": 0.005450422200276098,
+            "active_hard_rows": [
+              "acceleration_4"
+            ]
+          },
+          "0.2J": {
+            "status": "repair",
+            "success": true,
+            "reason": null,
+            "budget_j": 0.2,
+            "repair_episode": {
+              "angle_reference_reset": false,
+              "repair_allowed": true,
+              "armed": true,
+              "exhausted": false,
+              "reason": "bad_window",
+              "permission_elapsed_s": 0.0,
+              "measured_angle_travel_rad": 0.0,
+              "remaining_permission_s": 2.0,
+              "remaining_angle_travel_rad": 0.05235987755982989,
+              "healthy_confirmation_count": 0,
+              "healthy_resets": 0,
+              "assurance": "measurement_policy_not_execution_or_angle_certificate"
+            },
+            "force_gate": 1.0,
+            "twist_tool": [
+              5.708245574958511e-05,
+              -0.002323461913755209,
+              0.004453005011889321,
+              0.00040376215347817646,
+              -0.023473868099480957,
+              -0.0002936898769608798
+            ],
+            "vn_mm_s": 4.453005011889321,
+            "omega_deg_s": -1.3449535709470377,
+            "added_vn_mm_s": 0.0,
+            "added_omega_deg_s": -0.5031455592469707,
+            "alpha": 0.5520908994940412,
+            "visual_slack_mm_s": [
+              0.0,
+              0.0
+            ],
+            "left_local_mm_s": 4.816849967431276,
+            "right_local_mm_s": 4.089160056347366,
+            "differential_request_mm_s": 0.9610570895458292,
+            "differential_shortfall_mm_s": 0.23336717846191957,
+            "model_output_power_w": 0.014549577799723903,
+            "model_output_work_50ms_j": 0.0007274788899861951,
+            "command_energy_margin_w": 3.9854504222002762,
+            "active_hard_rows": [
+              "acceleration_4"
+            ]
+          }
+        },
+        "v8r3_confidence_balance": {
+          "off": {
+            "status": "repair",
+            "success": true,
+            "reason": null,
+            "budget_j": null,
+            "repair_episode": {
+              "angle_reference_reset": false,
+              "repair_allowed": true,
+              "armed": true,
+              "exhausted": false,
+              "reason": "bad_window_or_imbalanced",
+              "permission_elapsed_s": 0.0,
+              "measured_angle_travel_rad": 0.0,
+              "remaining_permission_s": 2.0,
+              "remaining_angle_travel_rad": 0.05235987755982989,
+              "healthy_confirmation_count": 0,
+              "healthy_resets": 0,
+              "assurance": "measurement_policy_not_execution_or_angle_certificate"
+            },
+            "force_gate": 1.0,
+            "twist_tool": [
+              6.613067474574419e-05,
+              -0.0026917570746557594,
+              0.004453005011889321,
+              0.00046776305076013844,
+              -0.023473868099211686,
+              -0.000340243065480916
+            ],
+            "vn_mm_s": 4.453005011889321,
+            "omega_deg_s": -1.3449535709316096,
+            "added_vn_mm_s": 0.0,
+            "added_omega_deg_s": -0.5031455592315427,
+            "alpha": 0.639603591420314,
+            "visual_slack_mm_s": [
+              0.0,
+              0.0
+            ],
+            "left_local_mm_s": 4.8168499674271015,
+            "right_local_mm_s": 4.089160056351539,
+            "differential_request_mm_s": 1.0312429587877399,
+            "differential_shortfall_mm_s": 0.30355304771217756,
+            "model_output_power_w": 0.01438782028502927,
+            "model_output_work_50ms_j": 0.0007193910142514635,
+            "command_energy_margin_w": null,
+            "active_hard_rows": [
+              "acceleration_4"
+            ]
+          },
+          "1e-05J": {
+            "status": "task_infeasible",
+            "success": false,
+            "reason": "energy_budget_infeasible",
+            "budget_j": 1e-05,
+            "repair_episode": {
+              "angle_reference_reset": false,
+              "repair_allowed": true,
+              "armed": true,
+              "exhausted": false,
+              "reason": "bad_window_or_imbalanced",
+              "permission_elapsed_s": 0.0,
+              "measured_angle_travel_rad": 0.0,
+              "remaining_permission_s": 2.0,
+              "remaining_angle_travel_rad": 0.05235987755982989,
+              "healthy_confirmation_count": 0,
+              "healthy_resets": 0,
+              "assurance": "measurement_policy_not_execution_or_angle_certificate"
+            },
+            "force_gate": 1.0
+          },
+          "0.001J": {
+            "status": "repair",
+            "success": true,
+            "reason": null,
+            "budget_j": 0.001,
+            "repair_episode": {
+              "angle_reference_reset": false,
+              "repair_allowed": true,
+              "armed": true,
+              "exhausted": false,
+              "reason": "bad_window_or_imbalanced",
+              "permission_elapsed_s": 0.0,
+              "measured_angle_travel_rad": 0.0,
+              "remaining_permission_s": 2.0,
+              "remaining_angle_travel_rad": 0.05235987755982989,
+              "healthy_confirmation_count": 0,
+              "healthy_resets": 0,
+              "assurance": "measurement_policy_not_execution_or_angle_certificate"
+            },
+            "force_gate": 1.0,
+            "twist_tool": [
+              6.613067474574419e-05,
+              -0.0026917570746557594,
+              0.004453005011889321,
+              0.00046776305076013844,
+              -0.023473868099211686,
+              -0.000340243065480916
+            ],
+            "vn_mm_s": 4.453005011889321,
+            "omega_deg_s": -1.3449535709316096,
+            "added_vn_mm_s": 0.0,
+            "added_omega_deg_s": -0.5031455592315427,
+            "alpha": 0.639603591420314,
+            "visual_slack_mm_s": [
+              0.0,
+              0.0
+            ],
+            "left_local_mm_s": 4.8168499674271015,
+            "right_local_mm_s": 4.089160056351539,
+            "differential_request_mm_s": 1.0312429587877399,
+            "differential_shortfall_mm_s": 0.30355304771217756,
+            "model_output_power_w": 0.01438782028502927,
+            "model_output_work_50ms_j": 0.0007193910142514635,
+            "command_energy_margin_w": 0.00561217971497073,
+            "active_hard_rows": [
+              "acceleration_4"
+            ]
+          },
+          "0.2J": {
+            "status": "repair",
+            "success": true,
+            "reason": null,
+            "budget_j": 0.2,
+            "repair_episode": {
+              "angle_reference_reset": false,
+              "repair_allowed": true,
+              "armed": true,
+              "exhausted": false,
+              "reason": "bad_window_or_imbalanced",
+              "permission_elapsed_s": 0.0,
+              "measured_angle_travel_rad": 0.0,
+              "remaining_permission_s": 2.0,
+              "remaining_angle_travel_rad": 0.05235987755982989,
+              "healthy_confirmation_count": 0,
+              "healthy_resets": 0,
+              "assurance": "measurement_policy_not_execution_or_angle_certificate"
+            },
+            "force_gate": 1.0,
+            "twist_tool": [
+              6.613067474574419e-05,
+              -0.0026917570746557594,
+              0.004453005011889321,
+              0.00046776305076013844,
+              -0.023473868099211686,
+              -0.000340243065480916
+            ],
+            "vn_mm_s": 4.453005011889321,
+            "omega_deg_s": -1.3449535709316096,
+            "added_vn_mm_s": 0.0,
+            "added_omega_deg_s": -0.5031455592315427,
+            "alpha": 0.639603591420314,
+            "visual_slack_mm_s": [
+              0.0,
+              0.0
+            ],
+            "left_local_mm_s": 4.8168499674271015,
+            "right_local_mm_s": 4.089160056351539,
+            "differential_request_mm_s": 1.0312429587877399,
+            "differential_shortfall_mm_s": 0.30355304771217756,
+            "model_output_power_w": 0.01438782028502927,
+            "model_output_work_50ms_j": 0.0007193910142514635,
+            "command_energy_margin_w": 3.9856121797149706,
+            "active_hard_rows": [
+              "acceleration_4"
+            ]
+          }
+        }
+      },
+      "v7_saved_max_abs_error": 0.0
+    },
+    {
+      "scan": "RH_Per_L_PtD",
+      "control_id": 5791,
+      "elapsed_s": 23.553361162077636,
+      "force_n": 3.9793333462841716,
+      "quality": [
+        0.49777769034389907,
+        0.7570683692804695,
+        0.9911715868427792
+      ],
+      "nominal_twist_tool": [
+        -0.0003779908835422969,
+        -0.004478771981301466,
+        -0.0002528660294072229,
+        0.0012401245838160062,
+        -0.0201431705964792,
+        7.650238863095816e-05
+      ],
+      "wrench_command_model_tool": [
+        -0.4215382750989596,
+        -0.7770003566250441,
+        -3.8553621886139338,
+        -0.10990837244708729,
+        -0.010461230207568574,
+        -0.06427841488971077
+      ],
+      "variants": {
+        "legacy_v7": {
+          "off": {
+            "status": "repair",
+            "success": true,
+            "reason": null,
+            "budget_j": null,
+            "repair_episode": null,
+            "force_gate": 1.0,
+            "twist_tool": [
+              -0.00027089343555501265,
+              -0.0032097862194777533,
+              0.00015530762912721504,
+              0.0008887558500827084,
+              -0.030825814107145744,
+              5.48267055813424e-05
+            ],
+            "vn_mm_s": 0.15530762912721505,
+            "omega_deg_s": -1.7661890483942853,
+            "added_vn_mm_s": 0.40817365853443793,
+            "added_omega_deg_s": -0.6120703872040099,
+            "alpha": 0.7166665846974054,
+            "visual_slack_mm_s": [
+              0.12244802635227837,
+              0.0
+            ],
+            "left_local_mm_s": 0.6331077477879741,
+            "right_local_mm_s": -0.3224924895335441,
+            "differential_request_mm_s": 0.0,
+            "differential_shortfall_mm_s": 0.0,
+            "model_output_power_w": -0.002230699882840272,
+            "model_output_work_50ms_j": -0.0001115349941420136,
+            "command_energy_margin_w": null,
+            "active_hard_rows": []
+          },
+          "1e-05J": {
+            "status": "repair",
+            "success": true,
+            "reason": null,
+            "budget_j": 1e-05,
+            "repair_episode": null,
+            "force_gate": 1.0,
+            "twist_tool": [
+              -0.00027089343555501265,
+              -0.0032097862194777533,
+              0.00015529907151134778,
+              0.0008887558500827084,
+              -0.030826269143805242,
+              5.48267055813424e-05
+            ],
+            "vn_mm_s": 0.15529907151134778,
+            "omega_deg_s": -1.766215120074398,
+            "added_vn_mm_s": 0.4081651009185706,
+            "added_omega_deg_s": -0.6120964588841229,
+            "alpha": 0.7166665846974054,
+            "visual_slack_mm_s": [
+              0.12244953089992337,
+              0.0
+            ],
+            "left_local_mm_s": 0.633106243240329,
+            "right_local_mm_s": -0.32250810021763354,
+            "differential_request_mm_s": 0.0,
+            "differential_shortfall_mm_s": 0.0,
+            "model_output_power_w": -0.002230737635792159,
+            "model_output_work_50ms_j": -0.00011153688178960795,
+            "command_energy_margin_w": 0.002430737635792159,
+            "active_hard_rows": [
+              "acceleration_4"
+            ]
+          },
+          "0.001J": {
+            "status": "repair",
+            "success": true,
+            "reason": null,
+            "budget_j": 0.001,
+            "repair_episode": null,
+            "force_gate": 1.0,
+            "twist_tool": [
+              -0.00027089343555501265,
+              -0.0032097862194777533,
+              0.00015529907695347567,
+              0.0008887558500827084,
+              -0.03082626885431516,
+              5.48267055813424e-05
+            ],
+            "vn_mm_s": 0.15529907695347567,
+            "omega_deg_s": -1.7662151034878382,
+            "added_vn_mm_s": 0.4081651063606986,
+            "added_omega_deg_s": -0.612096442297563,
+            "alpha": 0.7166665846974054,
+            "visual_slack_mm_s": [
+              0.12244952994489185,
+              0.0
+            ],
+            "left_local_mm_s": 0.6331062441953605,
+            "right_local_mm_s": -0.3225080902884094,
+            "differential_request_mm_s": 0.0,
+            "differential_shortfall_mm_s": 0.0,
+            "model_output_power_w": -0.0022307376117823626,
+            "model_output_work_50ms_j": -0.00011153688058911814,
+            "command_energy_margin_w": 0.02223073761178236,
+            "active_hard_rows": [
+              "acceleration_4"
+            ]
+          },
+          "0.2J": {
+            "status": "repair",
+            "success": true,
+            "reason": null,
+            "budget_j": 0.2,
+            "repair_episode": null,
+            "force_gate": 1.0,
+            "twist_tool": [
+              -0.00027089343555501265,
+              -0.0032097862194777533,
+              0.00015529907695347567,
+              0.0008887558500827084,
+              -0.03082626885431516,
+              5.48267055813424e-05
+            ],
+            "vn_mm_s": 0.15529907695347567,
+            "omega_deg_s": -1.7662151034878382,
+            "added_vn_mm_s": 0.4081651063606986,
+            "added_omega_deg_s": -0.612096442297563,
+            "alpha": 0.7166665846974054,
+            "visual_slack_mm_s": [
+              0.12244952994489185,
+              0.0
+            ],
+            "left_local_mm_s": 0.6331062441953605,
+            "right_local_mm_s": -0.3225080902884094,
+            "differential_request_mm_s": 0.0,
+            "differential_shortfall_mm_s": 0.0,
+            "model_output_power_w": -0.0022307376117823626,
+            "model_output_work_50ms_j": -0.00011153688058911814,
+            "command_energy_margin_w": 4.002230737611782,
+            "active_hard_rows": [
+              "acceleration_4"
+            ]
+          }
+        },
+        "v8r2_bounded_episode": {
+          "off": {
+            "status": "repair",
+            "success": true,
+            "reason": null,
+            "budget_j": null,
+            "repair_episode": {
+              "angle_reference_reset": false,
+              "repair_allowed": true,
+              "armed": true,
+              "exhausted": false,
+              "reason": "bad_window",
+              "permission_elapsed_s": 0.0,
+              "measured_angle_travel_rad": 0.0,
+              "remaining_permission_s": 2.0,
+              "remaining_angle_travel_rad": 0.05235987755982989,
+              "healthy_confirmation_count": 0,
+              "healthy_resets": 0,
+              "assurance": "measurement_policy_not_execution_or_angle_certificate"
+            },
+            "force_gate": 1.0,
+            "twist_tool": [
+              -0.00027089030250401525,
+              -0.0032097490963045924,
+              0.0001553229688645501,
+              0.0008887455710687603,
+              -0.03082500351530299,
+              5.4826071476406445e-05
+            ],
+            "vn_mm_s": 0.1553229688645501,
+            "omega_deg_s": -1.7661426049027877,
+            "added_vn_mm_s": 0.408188998271773,
+            "added_omega_deg_s": -0.6120239437125125,
+            "alpha": 0.7166582960027998,
+            "visual_slack_mm_s": [
+              0.12244525078850596,
+              0.0
+            ],
+            "left_local_mm_s": 0.6331105233517464,
+            "right_local_mm_s": -0.32246458562264635,
+            "differential_request_mm_s": 0.7555557741402524,
+            "differential_shortfall_mm_s": 0.0,
+            "model_output_power_w": -0.0022306032678983505,
+            "model_output_work_50ms_j": -0.00011153016339491753,
+            "command_energy_margin_w": null,
+            "active_hard_rows": []
+          },
+          "1e-05J": {
+            "status": "repair",
+            "success": true,
+            "reason": null,
+            "budget_j": 1e-05,
+            "repair_episode": {
+              "angle_reference_reset": false,
+              "repair_allowed": true,
+              "armed": true,
+              "exhausted": false,
+              "reason": "bad_window",
+              "permission_elapsed_s": 0.0,
+              "measured_angle_travel_rad": 0.0,
+              "remaining_permission_s": 2.0,
+              "remaining_angle_travel_rad": 0.05235987755982989,
+              "healthy_confirmation_count": 0,
+              "healthy_resets": 0,
+              "assurance": "measurement_policy_not_execution_or_angle_certificate"
+            },
+            "force_gate": 1.0,
+            "twist_tool": [
+              -0.00027089343555499867,
+              -0.0032097862194775876,
+              0.00015529907346974422,
+              0.0008887558500826625,
+              -0.030826269038117138,
+              5.482670558133958e-05
+            ],
+            "vn_mm_s": 0.15529907346974423,
+            "omega_deg_s": -1.7662151140189157,
+            "added_vn_mm_s": 0.40816510287696706,
+            "added_omega_deg_s": -0.6120964528286406,
+            "alpha": 0.7166665846973684,
+            "visual_slack_mm_s": [
+              0.12244953057969254,
+              0.0
+            ],
+            "left_local_mm_s": 0.6331062435605599,
+            "right_local_mm_s": -0.3225080966210715,
+            "differential_request_mm_s": 0.7555557741402524,
+            "differential_shortfall_mm_s": 0.0,
+            "model_output_power_w": -0.0022307376271360744,
+            "model_output_work_50ms_j": -0.00011153688135680373,
+            "command_energy_margin_w": 0.0024307376271360745,
+            "active_hard_rows": [
+              "acceleration_4"
+            ]
+          },
+          "0.001J": {
+            "status": "repair",
+            "success": true,
+            "reason": null,
+            "budget_j": 0.001,
+            "repair_episode": {
+              "angle_reference_reset": false,
+              "repair_allowed": true,
+              "armed": true,
+              "exhausted": false,
+              "reason": "bad_window",
+              "permission_elapsed_s": 0.0,
+              "measured_angle_travel_rad": 0.0,
+              "remaining_permission_s": 2.0,
+              "remaining_angle_travel_rad": 0.05235987755982989,
+              "healthy_confirmation_count": 0,
+              "healthy_resets": 0,
+              "assurance": "measurement_policy_not_execution_or_angle_certificate"
+            },
+            "force_gate": 1.0,
+            "twist_tool": [
+              -0.0002708934294441807,
+              -0.0032097861470711847,
+              0.000155299077368575,
+              0.0008887558300340955,
+              -0.03082626883223248,
+              5.482670434455797e-05
+            ],
+            "vn_mm_s": 0.155299077368575,
+            "omega_deg_s": -1.766215102222594,
+            "added_vn_mm_s": 0.40816510677579787,
+            "added_omega_deg_s": -0.6120964410323186,
+            "alpha": 0.7166665685307935,
+            "visual_slack_mm_s": [
+              0.12244952987207401,
+              0.0
+            ],
+            "left_local_mm_s": 0.6331062442681784,
+            "right_local_mm_s": -0.3225080895310286,
+            "differential_request_mm_s": 0.7555557741402524,
+            "differential_shortfall_mm_s": 0.0,
+            "model_output_power_w": -0.0022307375533981216,
+            "model_output_work_50ms_j": -0.00011153687766990608,
+            "command_energy_margin_w": 0.022230737553398123,
+            "active_hard_rows": [
+              "acceleration_4"
+            ]
+          },
+          "0.2J": {
+            "status": "repair",
+            "success": true,
+            "reason": null,
+            "budget_j": 0.2,
+            "repair_episode": {
+              "angle_reference_reset": false,
+              "repair_allowed": true,
+              "armed": true,
+              "exhausted": false,
+              "reason": "bad_window",
+              "permission_elapsed_s": 0.0,
+              "measured_angle_travel_rad": 0.0,
+              "remaining_permission_s": 2.0,
+              "remaining_angle_travel_rad": 0.05235987755982989,
+              "healthy_confirmation_count": 0,
+              "healthy_resets": 0,
+              "assurance": "measurement_policy_not_execution_or_angle_certificate"
+            },
+            "force_gate": 1.0,
+            "twist_tool": [
+              -0.0002708934294441808,
+              -0.003209786147071186,
+              0.00015529907736857503,
+              0.0008887558300340959,
+              -0.03082626883223249,
+              5.4826704344558e-05
+            ],
+            "vn_mm_s": 0.15529907736857504,
+            "omega_deg_s": -1.7662151022225945,
+            "added_vn_mm_s": 0.40816510677579787,
+            "added_omega_deg_s": -0.6120964410323193,
+            "alpha": 0.7166665685307938,
+            "visual_slack_mm_s": [
+              0.12244952987207379,
+              0.0
+            ],
+            "left_local_mm_s": 0.6331062442681786,
+            "right_local_mm_s": -0.3225080895310287,
+            "differential_request_mm_s": 0.7555557741402524,
+            "differential_shortfall_mm_s": 0.0,
+            "model_output_power_w": -0.0022307375533981225,
+            "model_output_work_50ms_j": -0.00011153687766990612,
+            "command_energy_margin_w": 4.002230737553398,
+            "active_hard_rows": [
+              "acceleration_4"
+            ]
+          }
+        },
+        "v8r3_confidence_balance": {
+          "off": {
+            "status": "repair",
+            "success": true,
+            "reason": null,
+            "budget_j": null,
+            "repair_episode": {
+              "angle_reference_reset": false,
+              "repair_allowed": true,
+              "armed": true,
+              "exhausted": false,
+              "reason": "bad_window_or_imbalanced",
+              "permission_elapsed_s": 0.0,
+              "measured_angle_travel_rad": 0.0,
+              "remaining_permission_s": 2.0,
+              "remaining_angle_travel_rad": 0.05235987755982989,
+              "healthy_confirmation_count": 0,
+              "healthy_resets": 0,
+              "assurance": "measurement_policy_not_execution_or_angle_certificate"
+            },
+            "force_gate": 1.0,
+            "twist_tool": [
+              -0.00027089343555501265,
+              -0.0032097862194777533,
+              0.00015529927692339637,
+              0.0008887558500827084,
+              -0.03082625790698869,
+              5.48267055813424e-05
+            ],
+            "vn_mm_s": 0.15529927692339637,
+            "omega_deg_s": -1.7662144762522345,
+            "added_vn_mm_s": 0.4081653063306192,
+            "added_omega_deg_s": -0.6120958150619592,
+            "alpha": 0.7166665846974054,
+            "visual_slack_mm_s": [
+              0.12244949965853141,
+              0.0
+            ],
+            "left_local_mm_s": 0.6331062744817211,
+            "right_local_mm_s": -0.32250772063492844,
+            "differential_request_mm_s": 0.8742086588864002,
+            "differential_shortfall_mm_s": 0.0,
+            "model_output_power_w": -0.002230736726303389,
+            "model_output_work_50ms_j": -0.00011153683631516946,
+            "command_energy_margin_w": null,
+            "active_hard_rows": []
+          },
+          "1e-05J": {
+            "status": "repair",
+            "success": true,
+            "reason": null,
+            "budget_j": 1e-05,
+            "repair_episode": {
+              "angle_reference_reset": false,
+              "repair_allowed": true,
+              "armed": true,
+              "exhausted": false,
+              "reason": "bad_window_or_imbalanced",
+              "permission_elapsed_s": 0.0,
+              "measured_angle_travel_rad": 0.0,
+              "remaining_permission_s": 2.0,
+              "remaining_angle_travel_rad": 0.05235987755982989,
+              "healthy_confirmation_count": 0,
+              "healthy_resets": 0,
+              "assurance": "measurement_policy_not_execution_or_angle_certificate"
+            },
+            "force_gate": 1.0,
+            "twist_tool": [
+              -0.00027089343555501265,
+              -0.0032097862194777533,
+              0.00015529907223438996,
+              0.0008887558500827084,
+              -0.03082626910536392,
+              5.48267055813424e-05
+            ],
+            "vn_mm_s": 0.15529907223438996,
+            "omega_deg_s": -1.7662151178718726,
+            "added_vn_mm_s": 0.4081651016416128,
+            "added_omega_deg_s": -0.6120964566815973,
+            "alpha": 0.7166665846974054,
+            "visual_slack_mm_s": [
+              0.12244953077272173,
+              0.0
+            ],
+            "left_local_mm_s": 0.6331062433675307,
+            "right_local_mm_s": -0.3225080988987508,
+            "differential_request_mm_s": 0.8742086588864002,
+            "differential_shortfall_mm_s": 0.0,
+            "model_output_power_w": -0.002230737632602426,
+            "model_output_work_50ms_j": -0.00011153688163012131,
+            "command_energy_margin_w": 0.0024307376326024263,
+            "active_hard_rows": [
+              "acceleration_4"
+            ]
+          },
+          "0.001J": {
+            "status": "repair",
+            "success": true,
+            "reason": null,
+            "budget_j": 0.001,
+            "repair_episode": {
+              "angle_reference_reset": false,
+              "repair_allowed": true,
+              "armed": true,
+              "exhausted": false,
+              "reason": "bad_window_or_imbalanced",
+              "permission_elapsed_s": 0.0,
+              "measured_angle_travel_rad": 0.0,
+              "remaining_permission_s": 2.0,
+              "remaining_angle_travel_rad": 0.05235987755982989,
+              "healthy_confirmation_count": 0,
+              "healthy_resets": 0,
+              "assurance": "measurement_policy_not_execution_or_angle_certificate"
+            },
+            "force_gate": 1.0,
+            "twist_tool": [
+              -0.00027089343555501265,
+              -0.0032097862194777533,
+              0.00015529907353444846,
+              0.0008887558500827084,
+              -0.030826269036164956,
+              5.48267055813424e-05
+            ],
+            "vn_mm_s": 0.15529907353444847,
+            "omega_deg_s": -1.766215113907064,
+            "added_vn_mm_s": 0.40816510294167135,
+            "added_omega_deg_s": -0.6120964527167888,
+            "alpha": 0.7166665846974054,
+            "visual_slack_mm_s": [
+              0.12244953054524711,
+              0.0
+            ],
+            "left_local_mm_s": 0.6331062435950053,
+            "right_local_mm_s": -0.32250809652610846,
+            "differential_request_mm_s": 0.8742086588864002,
+            "differential_shortfall_mm_s": 0.0,
+            "model_output_power_w": -0.0022307376268663236,
+            "model_output_work_50ms_j": -0.00011153688134331618,
+            "command_energy_margin_w": 0.022230737626866323,
+            "active_hard_rows": [
+              "acceleration_4"
+            ]
+          },
+          "0.2J": {
+            "status": "repair",
+            "success": true,
+            "reason": null,
+            "budget_j": 0.2,
+            "repair_episode": {
+              "angle_reference_reset": false,
+              "repair_allowed": true,
+              "armed": true,
+              "exhausted": false,
+              "reason": "bad_window_or_imbalanced",
+              "permission_elapsed_s": 0.0,
+              "measured_angle_travel_rad": 0.0,
+              "remaining_permission_s": 2.0,
+              "remaining_angle_travel_rad": 0.05235987755982989,
+              "healthy_confirmation_count": 0,
+              "healthy_resets": 0,
+              "assurance": "measurement_policy_not_execution_or_angle_certificate"
+            },
+            "force_gate": 1.0,
+            "twist_tool": [
+              -0.00027089343555501265,
+              -0.0032097862194777533,
+              0.00015529907353444846,
+              0.0008887558500827084,
+              -0.030826269036164956,
+              5.48267055813424e-05
+            ],
+            "vn_mm_s": 0.15529907353444847,
+            "omega_deg_s": -1.766215113907064,
+            "added_vn_mm_s": 0.40816510294167135,
+            "added_omega_deg_s": -0.6120964527167888,
+            "alpha": 0.7166665846974054,
+            "visual_slack_mm_s": [
+              0.12244953054524711,
+              0.0
+            ],
+            "left_local_mm_s": 0.6331062435950053,
+            "right_local_mm_s": -0.32250809652610846,
+            "differential_request_mm_s": 0.8742086588864002,
+            "differential_shortfall_mm_s": 0.0,
+            "model_output_power_w": -0.0022307376268663236,
+            "model_output_work_50ms_j": -0.00011153688134331618,
+            "command_energy_margin_w": 4.002230737626866,
+            "active_hard_rows": [
+              "acceleration_4"
+            ]
+          }
+        }
+      },
+      "v7_saved_max_abs_error": 0.0
+    },
+    {
+      "scan": "RH_Per_L_PtD",
+      "control_id": 7288,
+      "elapsed_s": 31.274014868075028,
+      "force_n": 3.8906570654096377,
+      "quality": [
+        0.82768886744635,
+        0.9795807968218309,
+        0.9965501593041624
+      ],
+      "nominal_twist_tool": [
+        -0.00026934750701470926,
+        -0.004115432211049615,
+        0.0003037052184901255,
+        1.416841913994712e-06,
+        0.0,
+        0.0008621274915315885
+      ],
+      "wrench_command_model_tool": [
+        -0.04321598038678243,
+        0.2034095228212404,
+        -3.9543937652286454,
+        -0.056470334039318344,
+        -0.03426485024312386,
+        -0.01398198773821423
+      ],
+      "variants": {
+        "legacy_v7": {
+          "off": {
+            "status": "nominal",
+            "success": true,
+            "reason": null,
+            "budget_j": null,
+            "repair_episode": null,
+            "force_gate": 1.0,
+            "twist_tool": [
+              -0.00026934750701470926,
+              -0.004115432211049615,
+              0.0003037052184901255,
+              1.416841913994712e-06,
+              0.0,
+              0.0008621274915315885
+            ],
+            "vn_mm_s": 0.3037052184901255,
+            "omega_deg_s": 0.0,
+            "added_vn_mm_s": 0.0,
+            "added_omega_deg_s": 0.0,
+            "alpha": 1.0,
+            "visual_slack_mm_s": [
+              0.0,
+              0.0
+            ],
+            "left_local_mm_s": 0.3037052184901255,
+            "right_local_mm_s": 0.3037052184901255,
+            "differential_request_mm_s": 0.0,
+            "differential_shortfall_mm_s": 0.0,
+            "model_output_power_w": 0.0020385822736886804,
+            "model_output_work_50ms_j": 0.00010192911368443402,
+            "command_energy_margin_w": null,
+            "active_hard_rows": [
+              "progress_range",
+              "force_priority_left_endpoint",
+              "force_priority_right_endpoint"
+            ]
+          },
+          "1e-05J": {
+            "status": "task_infeasible",
+            "success": false,
+            "reason": "energy_budget_infeasible",
+            "budget_j": 1e-05,
+            "repair_episode": null,
+            "force_gate": 1.0
+          },
+          "0.001J": {
+            "status": "nominal",
+            "success": true,
+            "reason": null,
+            "budget_j": 0.001,
+            "repair_episode": null,
+            "force_gate": 1.0,
+            "twist_tool": [
+              -0.00026934750701470926,
+              -0.004115432211049615,
+              0.0003037052184901255,
+              1.416841913994712e-06,
+              0.0,
+              0.0008621274915315885
+            ],
+            "vn_mm_s": 0.3037052184901255,
+            "omega_deg_s": 0.0,
+            "added_vn_mm_s": 0.0,
+            "added_omega_deg_s": 0.0,
+            "alpha": 1.0,
+            "visual_slack_mm_s": [
+              0.0,
+              0.0
+            ],
+            "left_local_mm_s": 0.3037052184901255,
+            "right_local_mm_s": 0.3037052184901255,
+            "differential_request_mm_s": 0.0,
+            "differential_shortfall_mm_s": 0.0,
+            "model_output_power_w": 0.0020385822736886804,
+            "model_output_work_50ms_j": 0.00010192911368443402,
+            "command_energy_margin_w": 0.01796141772631132,
+            "active_hard_rows": [
+              "progress_range",
+              "force_priority_left_endpoint",
+              "force_priority_right_endpoint"
+            ]
+          },
+          "0.2J": {
+            "status": "nominal",
+            "success": true,
+            "reason": null,
+            "budget_j": 0.2,
+            "repair_episode": null,
+            "force_gate": 1.0,
+            "twist_tool": [
+              -0.00026934750701470926,
+              -0.004115432211049615,
+              0.0003037052184901255,
+              1.416841913994712e-06,
+              0.0,
+              0.0008621274915315885
+            ],
+            "vn_mm_s": 0.3037052184901255,
+            "omega_deg_s": 0.0,
+            "added_vn_mm_s": 0.0,
+            "added_omega_deg_s": 0.0,
+            "alpha": 1.0,
+            "visual_slack_mm_s": [
+              0.0,
+              0.0
+            ],
+            "left_local_mm_s": 0.3037052184901255,
+            "right_local_mm_s": 0.3037052184901255,
+            "differential_request_mm_s": 0.0,
+            "differential_shortfall_mm_s": 0.0,
+            "model_output_power_w": 0.0020385822736886804,
+            "model_output_work_50ms_j": 0.00010192911368443402,
+            "command_energy_margin_w": 3.9979614177263114,
+            "active_hard_rows": [
+              "progress_range",
+              "force_priority_left_endpoint",
+              "force_priority_right_endpoint"
+            ]
+          }
+        },
+        "v8r2_bounded_episode": {
+          "off": {
+            "status": "nominal",
+            "success": true,
+            "reason": null,
+            "budget_j": null,
+            "repair_episode": {
+              "angle_reference_reset": false,
+              "repair_allowed": false,
+              "armed": false,
+              "exhausted": false,
+              "reason": "awaiting_healthy_confirmation",
+              "permission_elapsed_s": 0.0,
+              "measured_angle_travel_rad": 0.0,
+              "remaining_permission_s": 2.0,
+              "remaining_angle_travel_rad": 0.05235987755982989,
+              "healthy_confirmation_count": 1,
+              "healthy_resets": 0,
+              "assurance": "measurement_policy_not_execution_or_angle_certificate"
+            },
+            "force_gate": 1.0,
+            "twist_tool": [
+              -0.00026934750701470926,
+              -0.004115432211049615,
+              0.0003037052184901255,
+              1.416841913994712e-06,
+              0.0,
+              0.0008621274915315885
+            ],
+            "vn_mm_s": 0.3037052184901255,
+            "omega_deg_s": 0.0,
+            "added_vn_mm_s": 0.0,
+            "added_omega_deg_s": 0.0,
+            "alpha": 1.0,
+            "visual_slack_mm_s": [
+              0.0,
+              0.0
+            ],
+            "left_local_mm_s": 0.3037052184901255,
+            "right_local_mm_s": 0.3037052184901255,
+            "differential_request_mm_s": 0.0,
+            "differential_shortfall_mm_s": 0.0,
+            "model_output_power_w": 0.0020385822736886804,
+            "model_output_work_50ms_j": 0.00010192911368443402,
+            "command_energy_margin_w": null,
+            "active_hard_rows": [
+              "progress_range"
+            ]
+          },
+          "1e-05J": {
+            "status": "repair",
+            "success": true,
+            "reason": null,
+            "budget_j": 1e-05,
+            "repair_episode": {
+              "angle_reference_reset": false,
+              "repair_allowed": false,
+              "armed": false,
+              "exhausted": false,
+              "reason": "awaiting_healthy_confirmation",
+              "permission_elapsed_s": 0.0,
+              "measured_angle_travel_rad": 0.0,
+              "remaining_permission_s": 2.0,
+              "remaining_angle_travel_rad": 0.05235987755982989,
+              "healthy_confirmation_count": 1,
+              "healthy_resets": 0,
+              "assurance": "measurement_policy_not_execution_or_angle_certificate"
+            },
+            "force_gate": 1.0,
+            "twist_tool": [
+              -0.0002523457453892596,
+              -0.00385565777239427,
+              -9.362956986547724e-05,
+              1.3274079751041306e-06,
+              -0.006259834147985419,
+              0.0008077082534839668
+            ],
+            "vn_mm_s": -0.09362956986547724,
+            "omega_deg_s": -0.3586620771314361,
+            "added_vn_mm_s": -0.39733478835560276,
+            "added_omega_deg_s": -0.3586620771314361,
+            "alpha": 0.9368779692305778,
+            "visual_slack_mm_s": [
+              0.0,
+              0.0
+            ],
+            "left_local_mm_s": 0.0033978594282967527,
+            "right_local_mm_s": -0.19065699915925124,
+            "differential_request_mm_s": 0.0,
+            "differential_shortfall_mm_s": 0.0,
+            "model_output_power_w": 0.00019999999798472645,
+            "model_output_work_50ms_j": 9.999999899236323e-06,
+            "command_energy_margin_w": 2.0152735545880124e-12,
+            "active_hard_rows": []
+          },
+          "0.001J": {
+            "status": "nominal",
+            "success": true,
+            "reason": null,
+            "budget_j": 0.001,
+            "repair_episode": {
+              "angle_reference_reset": false,
+              "repair_allowed": false,
+              "armed": false,
+              "exhausted": false,
+              "reason": "awaiting_healthy_confirmation",
+              "permission_elapsed_s": 0.0,
+              "measured_angle_travel_rad": 0.0,
+              "remaining_permission_s": 2.0,
+              "remaining_angle_travel_rad": 0.05235987755982989,
+              "healthy_confirmation_count": 1,
+              "healthy_resets": 0,
+              "assurance": "measurement_policy_not_execution_or_angle_certificate"
+            },
+            "force_gate": 1.0,
+            "twist_tool": [
+              -0.00026934750701470926,
+              -0.004115432211049615,
+              0.0003037052184901255,
+              1.416841913994712e-06,
+              0.0,
+              0.0008621274915315885
+            ],
+            "vn_mm_s": 0.3037052184901255,
+            "omega_deg_s": 0.0,
+            "added_vn_mm_s": 0.0,
+            "added_omega_deg_s": 0.0,
+            "alpha": 1.0,
+            "visual_slack_mm_s": [
+              0.0,
+              0.0
+            ],
+            "left_local_mm_s": 0.3037052184901255,
+            "right_local_mm_s": 0.3037052184901255,
+            "differential_request_mm_s": 0.0,
+            "differential_shortfall_mm_s": 0.0,
+            "model_output_power_w": 0.0020385822736886804,
+            "model_output_work_50ms_j": 0.00010192911368443402,
+            "command_energy_margin_w": 0.01796141772631132,
+            "active_hard_rows": [
+              "progress_range"
+            ]
+          },
+          "0.2J": {
+            "status": "nominal",
+            "success": true,
+            "reason": null,
+            "budget_j": 0.2,
+            "repair_episode": {
+              "angle_reference_reset": false,
+              "repair_allowed": false,
+              "armed": false,
+              "exhausted": false,
+              "reason": "awaiting_healthy_confirmation",
+              "permission_elapsed_s": 0.0,
+              "measured_angle_travel_rad": 0.0,
+              "remaining_permission_s": 2.0,
+              "remaining_angle_travel_rad": 0.05235987755982989,
+              "healthy_confirmation_count": 1,
+              "healthy_resets": 0,
+              "assurance": "measurement_policy_not_execution_or_angle_certificate"
+            },
+            "force_gate": 1.0,
+            "twist_tool": [
+              -0.00026934750701470926,
+              -0.004115432211049615,
+              0.0003037052184901255,
+              1.416841913994712e-06,
+              0.0,
+              0.0008621274915315885
+            ],
+            "vn_mm_s": 0.3037052184901255,
+            "omega_deg_s": 0.0,
+            "added_vn_mm_s": 0.0,
+            "added_omega_deg_s": 0.0,
+            "alpha": 1.0,
+            "visual_slack_mm_s": [
+              0.0,
+              0.0
+            ],
+            "left_local_mm_s": 0.3037052184901255,
+            "right_local_mm_s": 0.3037052184901255,
+            "differential_request_mm_s": 0.0,
+            "differential_shortfall_mm_s": 0.0,
+            "model_output_power_w": 0.0020385822736886804,
+            "model_output_work_50ms_j": 0.00010192911368443402,
+            "command_energy_margin_w": 3.9979614177263114,
+            "active_hard_rows": [
+              "progress_range"
+            ]
+          }
+        },
+        "v8r3_confidence_balance": {
+          "off": {
+            "status": "repair",
+            "success": true,
+            "reason": null,
+            "budget_j": null,
+            "repair_episode": {
+              "angle_reference_reset": false,
+              "repair_allowed": true,
+              "armed": true,
+              "exhausted": false,
+              "reason": "bad_window_or_imbalanced",
+              "permission_elapsed_s": 0.0,
+              "measured_angle_travel_rad": 0.0,
+              "remaining_permission_s": 2.0,
+              "remaining_angle_travel_rad": 0.05235987755982989,
+              "healthy_confirmation_count": 0,
+              "healthy_resets": 0,
+              "assurance": "measurement_policy_not_execution_or_angle_certificate"
+            },
+            "force_gate": 1.0,
+            "twist_tool": [
+              -0.00026934750701470926,
+              -0.004115432211049615,
+              0.0003037052184901259,
+              1.416841913994712e-06,
+              -0.004212946672470648,
+              0.0008621274915315885
+            ],
+            "vn_mm_s": 0.3037052184901259,
+            "omega_deg_s": -0.24138406364625212,
+            "added_vn_mm_s": 3.7947076036992655e-16,
+            "added_omega_deg_s": -0.24138406364625212,
+            "alpha": 1.0,
+            "visual_slack_mm_s": [
+              0.0,
+              0.0
+            ],
+            "left_local_mm_s": 0.3690058919134209,
+            "right_local_mm_s": 0.23840454506683081,
+            "differential_request_mm_s": 0.15302509301736086,
+            "differential_shortfall_mm_s": 0.022423746170770774,
+            "model_output_power_w": 0.001894226286874208,
+            "model_output_work_50ms_j": 9.47113143437104e-05,
+            "command_energy_margin_w": null,
+            "active_hard_rows": [
+              "progress_range"
+            ]
+          },
+          "1e-05J": {
+            "status": "repair",
+            "success": true,
+            "reason": null,
+            "budget_j": 1e-05,
+            "repair_episode": {
+              "angle_reference_reset": false,
+              "repair_allowed": true,
+              "armed": true,
+              "exhausted": false,
+              "reason": "bad_window_or_imbalanced",
+              "permission_elapsed_s": 0.0,
+              "measured_angle_travel_rad": 0.0,
+              "remaining_permission_s": 2.0,
+              "remaining_angle_travel_rad": 0.05235987755982989,
+              "healthy_confirmation_count": 0,
+              "healthy_resets": 0,
+              "assurance": "measurement_policy_not_execution_or_angle_certificate"
+            },
+            "force_gate": 1.0,
+            "twist_tool": [
+              -0.00025234574540754717,
+              -0.00385565777267369,
+              -9.362956943821584e-05,
+              1.327407975200328e-06,
+              -0.0062598341412543656,
+              0.0008077082535425015
+            ],
+            "vn_mm_s": -0.09362956943821583,
+            "omega_deg_s": -0.35866207674577516,
+            "added_vn_mm_s": -0.3973347879283413,
+            "added_omega_deg_s": -0.35866207674577516,
+            "alpha": 0.9368779692984734,
+            "visual_slack_mm_s": [
+              0.0,
+              0.0
+            ],
+            "left_local_mm_s": 0.0033978597512268308,
+            "right_local_mm_s": -0.19065699862765853,
+            "differential_request_mm_s": 0.15302509301736086,
+            "differential_shortfall_mm_s": 0.0,
+            "model_output_power_w": 0.000199999999961795,
+            "model_output_work_50ms_j": 9.99999999808975e-06,
+            "command_energy_margin_w": 3.8205007733826957e-14,
+            "active_hard_rows": []
+          },
+          "0.001J": {
+            "status": "repair",
+            "success": true,
+            "reason": null,
+            "budget_j": 0.001,
+            "repair_episode": {
+              "angle_reference_reset": false,
+              "repair_allowed": true,
+              "armed": true,
+              "exhausted": false,
+              "reason": "bad_window_or_imbalanced",
+              "permission_elapsed_s": 0.0,
+              "measured_angle_travel_rad": 0.0,
+              "remaining_permission_s": 2.0,
+              "remaining_angle_travel_rad": 0.05235987755982989,
+              "healthy_confirmation_count": 0,
+              "healthy_resets": 0,
+              "assurance": "measurement_policy_not_execution_or_angle_certificate"
+            },
+            "force_gate": 1.0,
+            "twist_tool": [
+              -0.00026934750701470926,
+              -0.004115432211049615,
+              0.0003037052184901259,
+              1.416841913994712e-06,
+              -0.004212946672470648,
+              0.0008621274915315885
+            ],
+            "vn_mm_s": 0.3037052184901259,
+            "omega_deg_s": -0.24138406364625212,
+            "added_vn_mm_s": 3.7947076036992655e-16,
+            "added_omega_deg_s": -0.24138406364625212,
+            "alpha": 1.0,
+            "visual_slack_mm_s": [
+              0.0,
+              0.0
+            ],
+            "left_local_mm_s": 0.3690058919134209,
+            "right_local_mm_s": 0.23840454506683081,
+            "differential_request_mm_s": 0.15302509301736086,
+            "differential_shortfall_mm_s": 0.022423746170770774,
+            "model_output_power_w": 0.001894226286874208,
+            "model_output_work_50ms_j": 9.47113143437104e-05,
+            "command_energy_margin_w": 0.018105773713125793,
+            "active_hard_rows": [
+              "progress_range"
+            ]
+          },
+          "0.2J": {
+            "status": "repair",
+            "success": true,
+            "reason": null,
+            "budget_j": 0.2,
+            "repair_episode": {
+              "angle_reference_reset": false,
+              "repair_allowed": true,
+              "armed": true,
+              "exhausted": false,
+              "reason": "bad_window_or_imbalanced",
+              "permission_elapsed_s": 0.0,
+              "measured_angle_travel_rad": 0.0,
+              "remaining_permission_s": 2.0,
+              "remaining_angle_travel_rad": 0.05235987755982989,
+              "healthy_confirmation_count": 0,
+              "healthy_resets": 0,
+              "assurance": "measurement_policy_not_execution_or_angle_certificate"
+            },
+            "force_gate": 1.0,
+            "twist_tool": [
+              -0.00026934750701470926,
+              -0.004115432211049615,
+              0.0003037052184901259,
+              1.416841913994712e-06,
+              -0.004212946672470648,
+              0.0008621274915315885
+            ],
+            "vn_mm_s": 0.3037052184901259,
+            "omega_deg_s": -0.24138406364625212,
+            "added_vn_mm_s": 3.7947076036992655e-16,
+            "added_omega_deg_s": -0.24138406364625212,
+            "alpha": 1.0,
+            "visual_slack_mm_s": [
+              0.0,
+              0.0
+            ],
+            "left_local_mm_s": 0.3690058919134209,
+            "right_local_mm_s": 0.23840454506683081,
+            "differential_request_mm_s": 0.15302509301736086,
+            "differential_shortfall_mm_s": 0.022423746170770774,
+            "model_output_power_w": 0.001894226286874208,
+            "model_output_work_50ms_j": 9.47113143437104e-05,
+            "command_energy_margin_w": 3.998105773713126,
+            "active_hard_rows": [
+              "progress_range"
+            ]
+          }
+        }
+      },
+      "v7_saved_max_abs_error": 0.0
+    }
+  ],
+  "source_sha256_end": {
+    "analysis_artifacts/contact_qp_v8r3/five_state_energy_policy_check.py": "cd1293e06ebf68fe1c6094289e32016381ea6f69eff862929fc8681a7613225b",
+    "analysis_artifacts/review_669beac6/single_state_policy_check.py": "b7ae41806a36ebc606b9ddbcd88b570cbf91643ffe7234df1033511befeeab25",
+    "peirastic/contact_qp/qp.py": "b882677d20ec2eaa691ec5946c7031738e5ff321e4fe1851d34cdcfbdba68dd8",
+    "peirastic/contact_qp/repair_policy.py": "7785cd4d31c7bbb42579344df82b9d5de43089b9719772ffe9aa8644b654198e",
+    "peirastic/contact_qp/repair_episode.py": "159a4d3401f13ccca3f088f3f43b0dabd3519ea66f50592d1ac95fe7deb8c489",
+    "peirastic/contact_qp/port_constraint.py": "e3ccfd9348fd0380b8894e5083de50481cee3a3bf1fa969683e5fd89308f2368"
+  },
+  "source_unchanged_during_run": true
+}

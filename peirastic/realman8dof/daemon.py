@@ -271,11 +271,13 @@ class ControllerService:
         # Advertise only handlers actually imported by this service instance.
         from peirastic.realman8dof.modes.contact_qp import wrap_study_phase
         from peirastic.realman8dof.modes.contact_active import ContactQpOuter
-        from peirastic.core.capabilities import CapabilityAdvertisement, SOURCE_TIMEBASE_CAPABILITY, DIFFERENTIAL_REPAIR_CAPABILITY
+        from peirastic.core.capabilities import (CapabilityAdvertisement, SOURCE_TIMEBASE_CAPABILITY,
+            DIFFERENTIAL_REPAIR_CAPABILITY, CONFIDENCE_BALANCE_CAPABILITY, LOGICAL_COMMAND_BUDGET_CAPABILITY)
         from peirastic.contact_qp.repair_policy import DifferentialRepairConfig
         from rm75_control.control.admittance_common.variable_step_filter import VariableLowpass1, VariableHighpass2
         self._capabilities = CapabilityAdvertisement(
-            self.hub, {"contact_qp.recording_v1", "contact_qp.active_v1", SOURCE_TIMEBASE_CAPABILITY, DIFFERENTIAL_REPAIR_CAPABILITY}
+            self.hub, {"contact_qp.recording_v1", "contact_qp.active_v1", SOURCE_TIMEBASE_CAPABILITY,
+                DIFFERENTIAL_REPAIR_CAPABILITY, CONFIDENCE_BALANCE_CAPABILITY, LOGICAL_COMMAND_BUDGET_CAPABILITY}
         )
 
     def close(self) -> None:

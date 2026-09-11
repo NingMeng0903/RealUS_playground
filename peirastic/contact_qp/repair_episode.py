@@ -20,7 +20,7 @@ class RepairEpisode:
         self.last_time=None;self.last_angle=None;self.previous_permission=False
         self.last_frame=None;self.last_image_time=None;self.version=None;self.healthy_count=0;self.resets=0
 
-    def update(self,*,now_s,measured_angle,observation,image_valid,c_min,force_gate,execution_enabled,angle_reference_reset=False):
+    def update(self,*,now_s,measured_angle,observation,image_valid,c_min,force_gate,execution_enabled,angle_reference_reset=False,balance_deadband=None):
         now=float(now_s);angle=float(measured_angle)
         if not math.isfinite(now) or not math.isfinite(angle):
             self.healthy_count=0
@@ -45,6 +45,8 @@ class RepairEpisode:
             self.version=version
             new_frame=(self.last_frame is None or changed or (observation.frame_seq>self.last_frame[1] and observation.effective_time_s>self.last_image_time))
             good=all(observation.quality[i]>=c_min for i in (0,2))
+            if balance_deadband is not None:
+                good=good and abs(float(observation.quality[2]-observation.quality[0]))<=balance_deadband
             if not good:self.healthy_count=0
             elif new_frame:self.healthy_count=min(self.healthy_frames,self.healthy_count+1)
             elif frame!=self.last_frame:self.healthy_count=0
@@ -55,7 +57,7 @@ class RepairEpisode:
                 self.previous_permission=False;self.healthy_count=0;self.resets+=1
                 reason='three_distinct_healthy_frames_reset'
             elif good:reason='awaiting_healthy_confirmation'
-            else:reason='bad_window'
+            else:reason='bad_window_or_imbalanced' if balance_deadband is not None else 'bad_window'
         else:self.healthy_count=0
         if image_valid and not good and execution_enabled and force_gate>0. and not self.armed:
             self.armed=True

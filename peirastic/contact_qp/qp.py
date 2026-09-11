@@ -141,8 +141,8 @@ class QpInput:
         if not isinstance(self.mechanical, TwistConstraints) or self.mechanical.frame != "tcp_tool":
             raise ValueError("QP mechanical rows must be expressed at TCP in tool components")
         if self.energy is not None and (not isinstance(self.energy, PortEnergyConstraint)
-                or self.energy.hold_s != float(self.dt_s)):
-            raise ValueError("energy hold must match the complete execution interval")
+                or self.energy.hold_s < float(self.dt_s)):
+            raise ValueError("energy hold must cover the complete execution interval")
         if self.observation is not None and not isinstance(self.observation, ContactObservation):
             raise ValueError("invalid contact observation")
         for name in ("nominal_twist", "path_twist", "previous_twist"):
@@ -369,12 +369,15 @@ class ContactQp:
         start = time.perf_counter()
         cfg, mech = self.config, data.mechanical
         v8=cfg.allocation_policy=="differential_repair_v8"
+        balance_policy=v8 and cfg.differential_repair.revision=='v8r3_confidence_balance'
         force_gate=cfg.differential_repair.force_gate(data.force_n) if v8 else 1.
         compute_intervals = cfg.compute_interval_diagnostics if interval_diagnostics is None else bool(interval_diagnostics)
         diagnostics = {"quality_policy_version": cfg.quality_policy_version,
                        "acoustic_derivative_certified": False, "port_verified": False,
                        "command_slew_dt_s": data.acceleration_dt_s, "command_hold_s": data.dt_s,
-                       "allocation_policy":cfg.allocation_policy,"repair_force_gate":force_gate}
+                       "allocation_policy":cfg.allocation_policy,"repair_force_gate":force_gate,
+                       "differential_repair_revision":cfg.differential_repair.revision,
+                       "balance_deadband":cfg.differential_repair.balance_deadband if balance_policy else None}
 
         def failure(status, reason):
             diagnostics.update(reason=reason, total_time_s=time.perf_counter() - start)
@@ -488,7 +491,8 @@ class ContactQp:
             try:
                 episode=self.repair_episode.update(now_s=data.now_s,measured_angle=data.measured_angle,
                     observation=observation,image_valid=image_valid,c_min=cfg.c_min,force_gate=force_gate,
-                    execution_enabled=data.repair_execution_enabled,angle_reference_reset=data.repair_angle_reference_reset)
+                    execution_enabled=data.repair_execution_enabled,angle_reference_reset=data.repair_angle_reference_reset,
+                    balance_deadband=cfg.differential_repair.balance_deadband if balance_policy else None)
             except ValueError as exc:
                 return failure(ContactStatus.CERTIFICATE_INVALID,str(exc))
             diagnostics['repair_episode']=episode
@@ -502,9 +506,12 @@ class ContactQp:
         requests=np.where(visual_window_active,requests,0.)
         differential_enabled = v8 and visual_enabled and repair_allowed
         differential_deficit = gamma*deficit if differential_enabled else np.zeros(2)
-        differential_requested = cfg.repair_speed_m_s*force_gate*abs(float(differential_deficit[0]-differential_deficit[1]))
+        differential_imbalance=float(differential_deficit[0]-differential_deficit[1])
+        if balance_policy:
+            differential_imbalance=cfg.differential_repair.confidence_imbalance(quality,gamma) if differential_enabled else 0.
+        differential_requested = cfg.repair_speed_m_s*force_gate*abs(differential_imbalance)
         differential_row=(visual[0]-visual[1]).copy();differential_row[[0,1,3,5]]=0.
-        differential_sign=float(np.sign(differential_deficit[0]-differential_deficit[1]))
+        differential_sign=float(np.sign(differential_imbalance))
         diagnostics.update(image_valid=image_valid, acquisition_loss=loss, alpha_preferred=alpha_preferred,
                            visual_rows_active=visual_enabled,visual_window_active=visual_window_active, visual_requests_m_s=requests if visual_enabled else np.zeros(2),
                            gamma_effective=gamma, quality=quality)
@@ -553,7 +560,8 @@ class ContactQp:
                     scaled_basis=scaled_basis,visual_rows=visual,endpoint_rows=endpoint,
                     nominal_twist=data.nominal_twist,deficits=differential_deficit,
                     repair_speed=cfg.repair_speed_m_s,normal_scale=cfg.normal_scale_m_s,
-                    force_n=data.force_n,alpha_preferred=alpha_preferred,progress_weight=cfg.progress_weight)
+                    force_n=data.force_n,alpha_preferred=alpha_preferred,progress_weight=cfg.progress_weight,
+                    differential_imbalance=differential_imbalance)
                 hessian+=ph;gradient+=pg
                 constraints=np.concatenate((constraints,pr,np.eye(8)[5:]))
                 lo=np.r_[lo,np.full(len(pr),-math.inf),np.zeros(3)]

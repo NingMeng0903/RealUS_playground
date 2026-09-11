@@ -1,0 +1,563 @@
+{
+  "schema": "archived_command_model_work_v1",
+  "git_head": "669beac6668f659aaa05f92c5425ca0235f0523b",
+  "method": {
+    "wrench": "W_model=-W_control_raw_tcp; physical_wrench_candidate_tool preferred, control_wrench_tool fallback explicitly counted",
+    "velocity": "successful publication.final_command_model_tool matched to control_sample by control_id",
+    "power": "P_model=-W_model dot V = W_control dot V; force and velocity are held together in their publication TCP/body axes on each interval",
+    "time": "[successful publication.record_monotonic_s_i, successful publication.record_monotonic_s_i+1); include only matched control h_ref_s>0; no terminal tail extrapolation; no timestamp sorting",
+    "frame": "both vectors are the original paired TCP/tool components; never pair a new-frame force with an old-frame velocity; physical rotation, force evolution and execution are not reconstructed",
+    "positive_work": "integral max(sum of six paired power components,0), not sum of independently clipped axis powers",
+    "max_prefix": "max(0, prefix sum of signed work), initial zero included",
+    "max_drawup": "max(prefix - prior running minimum), supplementary finite-capacity reference with lost recovered credit",
+    "interval_thresholds_s": {
+      "short_lt": 0.0025,
+      "long_gt": 0.01,
+      "also_reported_long_gt": 0.015
+    },
+    "limitations": [
+      "Command-model calculation only, not measured physical work or passivity certification.",
+      "record_monotonic_s is logging time after reported publication success, not actual actuator execution onset.",
+      "Compensated force and final command are sampled at different moments within the same control transaction and held as a model.",
+      "No conservative wrench/tracking/hold-error bounds, damping charge, stopping reserve, or command pipeline overlap are included.",
+      "Unknown terminal hold duration is excluded; no confirmed physical stop is inferred from a stop log.",
+      "The current changed calibration files are not re-applied; archived compensated wrench values are used verbatim."
+    ]
+  },
+  "scans": [
+    {
+      "scan": "RH_Per_C_DtP",
+      "source": "/media/camp/EXT_DRIVE/ICRA_2027/icra 2027_contact/real_characterization/active_probe50/003/attempts/RH_Per_C_DtP/001/contact_qp.jsonl",
+      "sha256": "e38d0526d65d04669009461d86287706ee98418fd22fc7e6fc1ab8d4b0322963",
+      "intervals": {
+        "n": 6643,
+        "duration_s": 33.872454511001706,
+        "spacing_s": {
+          "min": 0.003726273775100708,
+          "p50": 0.00498662912286818,
+          "p95": 0.006245039450004694,
+          "p99": 0.00787805864587426,
+          "max": 0.010014186147600412
+        },
+        "maxactualhold_s": 0.010014186147600412,
+        "max_hold_interval": {
+          "cid": 6937,
+          "t": 1117913.636960802,
+          "end": 1117913.646974988,
+          "dt": 0.010014186147600412,
+          "power": 0.00618734460753817,
+          "hold_model": 0.004999218974262476,
+          "next_control_id": 6938
+        },
+        "short_lt_2_5ms": 0,
+        "ordinary_2_5_to_10ms": 6642,
+        "long_gt_10ms": 1,
+        "long_gt_15ms": 0,
+        "longer_than_per_sample_command_hold_model": 3778,
+        "fraction_short_lt_2_5ms": 0.0,
+        "fraction_long_gt_10ms": 0.0001505343971097396
+      },
+      "work": {
+        "net_work_j": 0.3251072213972921,
+        "positive_total_port_work_j": 0.3265281802196913,
+        "negative_total_port_work_j": -0.0014209588223992467,
+        "max_net_work_prefix_j": 0.3251072213972916,
+        "max_net_work_prefix_end_s": 1117915.863965856,
+        "max_net_work_drawup_from_running_min_j": 0.325483976734177,
+        "max_drawup_end_s": 1117915.863965856,
+        "axis_signed_work_j": {
+          "Fx_vx": 0.010900202898856947,
+          "Fy_vy": 0.40727361540132606,
+          "Fz_vz": -0.08790428181834892,
+          "Mx_wx": -7.022110535719744e-05,
+          "My_wy": -0.005114122185707413,
+          "Mz_wz": 2.2028206522497088e-05
+        },
+        "axis_positive_work_j": {
+          "Fx_vx": 0.012788238372685386,
+          "Fy_vy": 0.40735102355433733,
+          "Fz_vz": 0.0020901005092469815,
+          "Mx_wx": 0.000561187399672679,
+          "My_wy": 7.845117095167579e-05,
+          "Mz_wz": 0.00014036483075869776
+        },
+        "axis_negative_work_j": {
+          "Fx_vx": -0.0018880354738284417,
+          "Fy_vy": -7.740815301128442e-05,
+          "Fz_vz": -0.08999438232759582,
+          "Mx_wx": -0.0006314085050298772,
+          "My_wy": -0.0051925733566590936,
+          "Mz_wz": -0.00011833662423620073
+        },
+        "total_port_power_w": {
+          "min": -0.008601072191680699,
+          "p50": 0.00965354204427455,
+          "p95": 0.01696454248508723,
+          "p99": 0.01963218191251856,
+          "max": 0.024769696444764847
+        },
+        "maximum_positive_interval_work_j": 0.00016019225727135076
+      },
+      "coverage": {
+        "control_samples": 7378,
+        "scan_control_samples_h_ref_gt_zero": 6644,
+        "all_publication_records": 7378,
+        "successful_publications": 7378,
+        "failed_or_unknown_publication_records": 0,
+        "scan_controls_without_success_publication": 0,
+        "scan_controls_without_success_publication_fraction": 0.0,
+        "unknown_scan_control_ids": [],
+        "successful_publications_without_matching_control": 0,
+        "duplicate_control_ids": 0,
+        "duplicate_success_control_ids": {},
+        "dropped_records_max": 0,
+        "terminal_scan_publications_without_next_endpoint": [
+          {
+            "control_id": 7378,
+            "record_monotonic_s": 1117915.863965856,
+            "reason": "no_next_success_publication; stop is not a confirmed zero-velocity transition"
+          }
+        ],
+        "terminal_unknown_duration_fraction_of_scan_controls": 0.00015051173991571343,
+        "excluded": {
+          "not_scan_h_ref": 734
+        },
+        "force_sources": {
+          "physical_wrench_candidate_tool": 6643
+        },
+        "abort_reasons": {
+          "phase_complete": 1
+        }
+      }
+    },
+    {
+      "scan": "RH_Per_C_PtD",
+      "source": "/media/camp/EXT_DRIVE/ICRA_2027/icra 2027_contact/real_characterization/active_probe50/003/attempts/RH_Per_C_PtD/001/contact_qp.jsonl",
+      "sha256": "ab4d5951cc57c537142ee2de7b73a1b1b187dcdcc3324c30409eb7e29d391c3c",
+      "intervals": {
+        "n": 6718,
+        "duration_s": 34.35397809208371,
+        "spacing_s": {
+          "min": 0.0037597690243273973,
+          "p50": 0.005014111986383796,
+          "p95": 0.006028069288004189,
+          "p99": 0.007812875895760954,
+          "max": 0.010241244919598103
+        },
+        "maxactualhold_s": 0.010241244919598103,
+        "max_hold_interval": {
+          "cid": 3379,
+          "t": 1118054.216462515,
+          "end": 1118054.22670376,
+          "dt": 0.010241244919598103,
+          "power": -0.0003315058216800408,
+          "hold_model": 0.00486135995015502,
+          "next_control_id": 3380
+        },
+        "short_lt_2_5ms": 0,
+        "ordinary_2_5_to_10ms": 6717,
+        "long_gt_10ms": 1,
+        "long_gt_15ms": 0,
+        "longer_than_per_sample_command_hold_model": 4013,
+        "fraction_short_lt_2_5ms": 0.0,
+        "fraction_long_gt_10ms": 0.00014885382554331647
+      },
+      "work": {
+        "net_work_j": 0.04746531160192427,
+        "positive_total_port_work_j": 0.061934179043721484,
+        "negative_total_port_work_j": -0.014468867441797215,
+        "max_net_work_prefix_j": 0.04746531160192439,
+        "max_net_work_prefix_end_s": 1118075.487529722,
+        "max_net_work_drawup_from_running_min_j": 0.04858491778759156,
+        "max_drawup_end_s": 1118075.487529722,
+        "axis_signed_work_j": {
+          "Fx_vx": -0.0006009741560555444,
+          "Fy_vy": -0.04218000041543314,
+          "Fz_vz": 0.09602834687992148,
+          "Mx_wx": 6.651332615913252e-05,
+          "My_wy": -0.005847499768173475,
+          "Mz_wz": -1.074264494326294e-06
+        },
+        "axis_positive_work_j": {
+          "Fx_vx": 0.0020699694435452067,
+          "Fy_vy": 0.002899145334052907,
+          "Fz_vz": 0.09682423177249155,
+          "Mx_wx": 0.0005689433499296148,
+          "My_wy": 3.112033081215105e-05,
+          "Mz_wz": 0.00025171986795180854
+        },
+        "axis_negative_work_j": {
+          "Fx_vx": -0.0026709435996007634,
+          "Fy_vy": -0.04507914574948596,
+          "Fz_vz": -0.0007958848925701357,
+          "Mx_wx": -0.0005024300237704849,
+          "My_wy": -0.005878620098985628,
+          "Mz_wz": -0.000252794132446135
+        },
+        "total_port_power_w": {
+          "min": -0.010148749535651544,
+          "p50": 0.0009665612757036855,
+          "p95": 0.0063282555884716435,
+          "p99": 0.008989887659473008,
+          "max": 0.015466693544720791
+        },
+        "maximum_positive_interval_work_j": 0.00011138238509823143
+      },
+      "coverage": {
+        "control_samples": 7506,
+        "scan_control_samples_h_ref_gt_zero": 6719,
+        "all_publication_records": 7506,
+        "successful_publications": 7506,
+        "failed_or_unknown_publication_records": 0,
+        "scan_controls_without_success_publication": 0,
+        "scan_controls_without_success_publication_fraction": 0.0,
+        "unknown_scan_control_ids": [],
+        "successful_publications_without_matching_control": 0,
+        "duplicate_control_ids": 0,
+        "duplicate_success_control_ids": {},
+        "dropped_records_max": 0,
+        "terminal_scan_publications_without_next_endpoint": [
+          {
+            "control_id": 7506,
+            "record_monotonic_s": 1118075.487529722,
+            "reason": "no_next_success_publication; stop is not a confirmed zero-velocity transition"
+          }
+        ],
+        "terminal_unknown_duration_fraction_of_scan_controls": 0.0001488316713796696,
+        "excluded": {
+          "not_scan_h_ref": 787
+        },
+        "force_sources": {
+          "physical_wrench_candidate_tool": 6718
+        },
+        "abort_reasons": {
+          "phase_complete": 1
+        }
+      }
+    },
+    {
+      "scan": "RH_Per_L_DtP",
+      "source": "/media/camp/EXT_DRIVE/ICRA_2027/icra 2027_contact/real_characterization/active_probe50/003/attempts/RH_Per_L_DtP/001/contact_qp.jsonl",
+      "sha256": "561c44508a0c5f0c49bb31906ca4f05d300ed0529ca2cd252d8bc90b4e517689",
+      "intervals": {
+        "n": 6572,
+        "duration_s": 33.12196237896569,
+        "spacing_s": {
+          "min": 0.0036708940751850605,
+          "p50": 0.004931389587000012,
+          "p95": 0.006160142703447491,
+          "p99": 0.007662547209765762,
+          "max": 0.009769337950274348
+        },
+        "maxactualhold_s": 0.009769337950274348,
+        "max_hold_interval": {
+          "cid": 3435,
+          "t": 1117835.806999184,
+          "end": 1117835.816768522,
+          "dt": 0.009769337950274348,
+          "power": 0.00231047685583061,
+          "hold_model": 0.005,
+          "next_control_id": 3436
+        },
+        "short_lt_2_5ms": 0,
+        "ordinary_2_5_to_10ms": 6572,
+        "long_gt_10ms": 0,
+        "long_gt_15ms": 0,
+        "longer_than_per_sample_command_hold_model": 3444,
+        "fraction_short_lt_2_5ms": 0.0,
+        "fraction_long_gt_10ms": 0.0
+      },
+      "work": {
+        "net_work_j": 0.31567756304951705,
+        "positive_total_port_work_j": 0.3197823922069747,
+        "negative_total_port_work_j": -0.004104829157457644,
+        "max_net_work_prefix_j": 0.3165991954239633,
+        "max_net_work_prefix_end_s": 1117858.529997641,
+        "max_net_work_drawup_from_running_min_j": 0.3165991954239633,
+        "max_drawup_end_s": 1117858.529997641,
+        "axis_signed_work_j": {
+          "Fx_vx": 0.0037963993987570324,
+          "Fy_vy": 0.40383402301401,
+          "Fz_vz": -0.087669930026501,
+          "Mx_wx": -8.974201642978383e-05,
+          "My_wy": -0.004195375763663665,
+          "Mz_wz": 2.1884433426850336e-06
+        },
+        "axis_positive_work_j": {
+          "Fx_vx": 0.004045717685264908,
+          "Fy_vy": 0.4039241351613112,
+          "Fz_vz": 0.003984715333157437,
+          "Mx_wx": 0.0005874125606111364,
+          "My_wy": 8.033354635791359e-05,
+          "Mz_wz": 0.00011355895811774137
+        },
+        "axis_negative_work_j": {
+          "Fx_vx": -0.00024931828650788,
+          "Fy_vy": -9.011214730117277e-05,
+          "Fz_vz": -0.09165464535965845,
+          "Mx_wx": -0.0006771545770409176,
+          "My_wy": -0.004275709310021575,
+          "Mz_wz": -0.00011137051477505638
+        },
+        "total_port_power_w": {
+          "min": -0.01627536486099707,
+          "p50": 0.010180542759329763,
+          "p95": 0.01554210012146144,
+          "p99": 0.01791583225530979,
+          "max": 0.026386152644006657
+        },
+        "maximum_positive_interval_work_j": 0.00015397231403216203
+      },
+      "coverage": {
+        "control_samples": 8021,
+        "scan_control_samples_h_ref_gt_zero": 6573,
+        "all_publication_records": 8021,
+        "successful_publications": 8021,
+        "failed_or_unknown_publication_records": 0,
+        "scan_controls_without_success_publication": 0,
+        "scan_controls_without_success_publication_fraction": 0.0,
+        "unknown_scan_control_ids": [],
+        "successful_publications_without_matching_control": 0,
+        "duplicate_control_ids": 0,
+        "duplicate_success_control_ids": {},
+        "dropped_records_max": 0,
+        "terminal_scan_publications_without_next_endpoint": [
+          {
+            "control_id": 8021,
+            "record_monotonic_s": 1117858.836589057,
+            "reason": "no_next_success_publication; stop is not a confirmed zero-velocity transition"
+          }
+        ],
+        "terminal_unknown_duration_fraction_of_scan_controls": 0.00015213753232922562,
+        "excluded": {
+          "not_scan_h_ref": 1448
+        },
+        "force_sources": {
+          "physical_wrench_candidate_tool": 6572
+        },
+        "abort_reasons": {
+          "phase_complete": 1
+        }
+      }
+    },
+    {
+      "scan": "RH_Per_L_PtD",
+      "source": "/media/camp/EXT_DRIVE/ICRA_2027/icra 2027_contact/real_characterization/active_probe50/003/attempts/RH_Per_L_PtD/001/contact_qp.jsonl",
+      "sha256": "958f05b39f9636ac96d3304b174e9e4a91232f60702b5a6a1a706ba744a04dce",
+      "intervals": {
+        "n": 7117,
+        "duration_s": 36.07491873810068,
+        "spacing_s": {
+          "min": 0.003775223158299923,
+          "p50": 0.004985556937754154,
+          "p95": 0.006005866918712854,
+          "p99": 0.007517220843583349,
+          "max": 0.010260357987135649
+        },
+        "maxactualhold_s": 0.010260357987135649,
+        "max_hold_interval": {
+          "cid": 5260,
+          "t": 1118008.46362943,
+          "end": 1118008.473889788,
+          "dt": 0.010260357987135649,
+          "power": -0.0028544405363322227,
+          "hold_model": 0.005,
+          "next_control_id": 5261
+        },
+        "short_lt_2_5ms": 0,
+        "ordinary_2_5_to_10ms": 7115,
+        "long_gt_10ms": 2,
+        "long_gt_15ms": 0,
+        "longer_than_per_sample_command_hold_model": 4067,
+        "fraction_short_lt_2_5ms": 0.0,
+        "fraction_long_gt_10ms": 0.0002810172825628776
+      },
+      "work": {
+        "net_work_j": 0.08319636709505505,
+        "positive_total_port_work_j": 0.09270459948798776,
+        "negative_total_port_work_j": -0.009508232392932718,
+        "max_net_work_prefix_j": 0.08319636709505493,
+        "max_net_work_prefix_end_s": 1118023.726339312,
+        "max_net_work_drawup_from_running_min_j": 0.08424795171589886,
+        "max_drawup_end_s": 1118023.726339312,
+        "axis_signed_work_j": {
+          "Fx_vx": -0.0008006613644745023,
+          "Fy_vy": 0.004768697632420898,
+          "Fz_vz": 0.08265697246571628,
+          "Mx_wx": 5.028016237241877e-05,
+          "My_wy": -0.0034996638252498538,
+          "Mz_wz": 2.0742024269760984e-05
+        },
+        "axis_positive_work_j": {
+          "Fx_vx": 0.0008834151550182097,
+          "Fy_vy": 0.0323491963310016,
+          "Fz_vz": 0.08393158315374467,
+          "Mx_wx": 0.0006273347106498501,
+          "My_wy": 6.820577409640773e-05,
+          "Mz_wz": 0.00030466879672075737
+        },
+        "axis_negative_work_j": {
+          "Fx_vx": -0.0016840765194927074,
+          "Fy_vy": -0.02758049869858075,
+          "Fz_vz": -0.0012746106880283175,
+          "Mx_wx": -0.0005770545482774318,
+          "My_wy": -0.0035678695993462605,
+          "Mz_wz": -0.00028392677245099617
+        },
+        "total_port_power_w": {
+          "min": -0.011143939847506246,
+          "p50": 0.002052463243990195,
+          "p95": 0.007708373592424629,
+          "p99": 0.011603282569958857,
+          "max": 0.019295051549215746
+        },
+        "maximum_positive_interval_work_j": 0.0001045693677441283
+      },
+      "coverage": {
+        "control_samples": 8232,
+        "scan_control_samples_h_ref_gt_zero": 7118,
+        "all_publication_records": 8232,
+        "successful_publications": 8232,
+        "failed_or_unknown_publication_records": 0,
+        "scan_controls_without_success_publication": 0,
+        "scan_controls_without_success_publication_fraction": 0.0,
+        "unknown_scan_control_ids": [],
+        "successful_publications_without_matching_control": 0,
+        "duplicate_control_ids": 0,
+        "duplicate_success_control_ids": {},
+        "dropped_records_max": 0,
+        "terminal_scan_publications_without_next_endpoint": [
+          {
+            "control_id": 8232,
+            "record_monotonic_s": 1118023.726339312,
+            "reason": "no_next_success_publication; stop is not a confirmed zero-velocity transition"
+          }
+        ],
+        "terminal_unknown_duration_fraction_of_scan_controls": 0.00014048890137679124,
+        "excluded": {
+          "not_scan_h_ref": 1114
+        },
+        "force_sources": {
+          "physical_wrench_candidate_tool": 7117
+        },
+        "abort_reasons": {
+          "phase_complete": 1
+        }
+      }
+    },
+    {
+      "scan": "RH_Per_S_DtP",
+      "source": "/media/camp/EXT_DRIVE/ICRA_2027/icra 2027_contact/real_characterization/active_probe50/003/attempts/RH_Per_S_DtP/001/contact_qp.jsonl",
+      "sha256": "ef566048c38cc37c052c326b0718cc487c65ebb3dec4ec0be1092a1b3f50027f",
+      "intervals": {
+        "n": 6820,
+        "duration_s": 34.72034406894818,
+        "spacing_s": {
+          "min": 0.0036447651218622923,
+          "p50": 0.004995323019102216,
+          "p95": 0.006150432582944631,
+          "p99": 0.007682797773741171,
+          "max": 0.010397552978247404
+        },
+        "maxactualhold_s": 0.010397552978247404,
+        "max_hold_interval": {
+          "cid": 1631,
+          "t": 1117939.501690888,
+          "end": 1117939.512088441,
+          "dt": 0.010397552978247404,
+          "power": 0.014125781261958884,
+          "hold_model": 0.005,
+          "next_control_id": 1632
+        },
+        "short_lt_2_5ms": 0,
+        "ordinary_2_5_to_10ms": 6819,
+        "long_gt_10ms": 1,
+        "long_gt_15ms": 0,
+        "longer_than_per_sample_command_hold_model": 3867,
+        "fraction_short_lt_2_5ms": 0.0,
+        "fraction_long_gt_10ms": 0.0001466275659824047
+      },
+      "work": {
+        "net_work_j": 0.37712993394953365,
+        "positive_total_port_work_j": 0.37887644983473195,
+        "negative_total_port_work_j": -0.0017465158851982718,
+        "max_net_work_prefix_j": 0.37769158345650783,
+        "max_net_work_prefix_end_s": 1117972.570207561,
+        "max_net_work_drawup_from_running_min_j": 0.3776918316935039,
+        "max_drawup_end_s": 1117972.570207561,
+        "axis_signed_work_j": {
+          "Fx_vx": 0.025617620601949272,
+          "Fy_vy": 0.43989309299417634,
+          "Fz_vz": -0.08246831873227643,
+          "Mx_wx": -5.795022039548305e-05,
+          "My_wy": -0.005837692091419911,
+          "Mz_wz": -1.6818602498767366e-05
+        },
+        "axis_positive_work_j": {
+          "Fx_vx": 0.025949069977052003,
+          "Fy_vy": 0.43991417172216324,
+          "Fz_vz": 0.005369793219101989,
+          "Mx_wx": 0.0007046039430030345,
+          "My_wy": 3.677149007687014e-05,
+          "Mz_wz": 0.00016885104050434074
+        },
+        "axis_negative_work_j": {
+          "Fx_vx": -0.00033144937510276373,
+          "Fy_vy": -2.1078727986952798e-05,
+          "Fz_vz": -0.0878381119513784,
+          "Mx_wx": -0.0007625541633985161,
+          "My_wy": -0.005874463581496777,
+          "Mz_wz": -0.00018566964300310824
+        },
+        "total_port_power_w": {
+          "min": -0.01142842064467671,
+          "p50": 0.011251308630666257,
+          "p95": 0.016998290733352798,
+          "p99": 0.01958526757873975,
+          "max": 0.02613501963492488
+        },
+        "maximum_positive_interval_work_j": 0.0001622850899783865
+      },
+      "coverage": {
+        "control_samples": 8183,
+        "scan_control_samples_h_ref_gt_zero": 6821,
+        "all_publication_records": 8183,
+        "successful_publications": 8183,
+        "failed_or_unknown_publication_records": 0,
+        "scan_controls_without_success_publication": 0,
+        "scan_controls_without_success_publication_fraction": 0.0,
+        "unknown_scan_control_ids": [],
+        "successful_publications_without_matching_control": 0,
+        "duplicate_control_ids": 0,
+        "duplicate_success_control_ids": {},
+        "dropped_records_max": 0,
+        "terminal_scan_publications_without_next_endpoint": [
+          {
+            "control_id": 8183,
+            "record_monotonic_s": 1117972.856729455,
+            "reason": "no_next_success_publication; stop is not a confirmed zero-velocity transition"
+          }
+        ],
+        "terminal_unknown_duration_fraction_of_scan_controls": 0.00014660606949127694,
+        "excluded": {
+          "not_scan_h_ref": 1362
+        },
+        "force_sources": {
+          "physical_wrench_candidate_tool": 6820
+        },
+        "abort_reasons": {
+          "phase_complete": 1
+        }
+      }
+    }
+  ],
+  "aggregate": {
+    "scan_count": 5,
+    "duration_s": 172.14365778909996,
+    "net_work_j": 1.148576397093322,
+    "positive_total_port_work_j": 1.1798258007931073,
+    "largest_per_scan_max_net_work_prefix_j": 0.37769158345650783,
+    "largest_per_scan_max_net_work_drawup_j": 0.3776918316935039,
+    "largest_observed_hold_s": 0.010397552978247404
+  }
+}

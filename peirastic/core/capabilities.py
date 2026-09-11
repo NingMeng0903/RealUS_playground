@@ -12,6 +12,8 @@ from realus_clock import header_path
 
 SOURCE_TIMEBASE_CAPABILITY='contact_qp.source_timebase_bilinear_v1'
 DIFFERENTIAL_REPAIR_CAPABILITY='contact_qp.differential_repair_v8_r2'
+CONFIDENCE_BALANCE_CAPABILITY='contact_qp.confidence_balance_v8_r3'
+LOGICAL_COMMAND_BUDGET_CAPABILITY='contact_qp.logical_command_budget_v1'
 
 
 def study_capabilities(config):
@@ -21,6 +23,10 @@ def study_capabilities(config):
         required.append(SOURCE_TIMEBASE_CAPABILITY)
     if active and (config.get('qp') or {}).get('allocation_policy')=='differential_repair_v8':
         required.append(DIFFERENTIAL_REPAIR_CAPABILITY)
+        if ((config.get('qp') or {}).get('differential_repair') or {}).get('revision')=='v8r3_confidence_balance':
+            required.append(CONFIDENCE_BALANCE_CAPABILITY)
+    if active and config.get('energy_constraint_enabled') is True:
+        required.append(LOGICAL_COMMAND_BUDGET_CAPABILITY)
     return tuple(required)
 
 

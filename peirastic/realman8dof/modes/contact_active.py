@@ -78,17 +78,29 @@ class ContactQpOuter:
         energy=config.get('energy') or {}
         enabled=config.get('energy_constraint_enabled',False)
         if type(enabled) is not bool:raise ValueError('energy_constraint_enabled must be boolean')
-        if enabled and config.get('physical_w_checked') is not True:
-            raise ValueError('command energy needs checked environment-on-tool wrench semantics')
         self.energy=None
-        if energy:
+        self.command_budget=None
+        if enabled and energy:
+            from peirastic.contact_qp.command_budget import CommandBudget
+            self.command_budget=CommandBudget(energy['initial_j'],energy['capacity_j'],energy['stopping_reserve_j'],
+                settlement_port=energy.get('settlement_port'),wrench_convention=energy.get('wrench_convention'),
+                max_command_interval_s=energy.get('max_command_interval_s'),constraint=energy.get('constraint'))
+        elif energy:
             bounds=PortBounds(**dict(energy.get('measurement_bounds') or {}),verified=False)
             ledger=EnergyLedger(energy['initial_j'],energy['capacity_j'],energy['stopping_reserve_j'],bounds)
-            self.energy=RuntimeEnergy(ledger,command_budget_enforced=enabled,
+            self.energy=RuntimeEnergy(ledger,command_budget_enforced=False,
                                       max_measurement_age_s=energy.get('max_measurement_age_s',self.source_clock.max_age_s))
         elif enabled:raise ValueError('enabled command energy requires an explicit single-tank configuration')
         self._energy_parameters=dict(energy.get('constraint') or {})
         self._port_aligner=None
+        if self.command_budget is not None:
+            from peirastic.contact_qp.port_alignment import MeasuredPortAligner
+            bounds=PortBounds(**dict(energy.get('measurement_bounds') or {}),verified=False)
+            self._port_aligner=MeasuredPortAligner(calibration_version=bounds.calibration_version,
+                max_source_interval_s=bounds.max_sample_interval_s,
+                max_rail_interval_s=energy.get('max_rail_interval_s',bounds.max_sample_interval_s),
+                max_wait_s=energy.get('max_measurement_age_s',self.source_clock.max_age_s),
+                euler_order=self.controller.cfg.euler_order)
         if self.energy is not None:
             from peirastic.contact_qp.port_alignment import MeasuredPortAligner
             self.energy.bind_dissipation(self._energy_parameters)
@@ -132,20 +144,36 @@ class ContactQpOuter:
 
     def observe_measured_port(self, snap, raw_rail_feedback, wrench_tcp, kin, *, now_s, source_id):
         """Measurement-only ingress, independent of the current command proposal."""
-        if self.energy is None:return
+        if self._port_aligner is None:return
+        command_budget=self.__dict__.get('command_budget')
+        if command_budget is not None:wrench_tcp=command_budget.wrench_from_control(wrench_tcp)
         intervals=self._port_aligner.update(source_id=source_id,
             source_t_s=getattr(snap,'t_s',float('nan')),
             arm_q_rad=np.deg2rad(np.asarray(getattr(snap,'q_deg',[]),dtype=float)),
             wrench_tcp=wrench_tcp,source_valid=bool(getattr(snap,'ok',False)),
             rail_feedback=raw_rail_feedback,kin=kin,now_s=now_s)
         for interval,provenance in intervals:
-            self.energy.observe_interval(interval,now_s=now_s,
-                physical_w_checked=self._physical_w_checked,provenance=provenance)
+            if command_budget is not None:
+                self.sink.emit('nonspendable_measured_port',start_s=interval.start_s,end_s=interval.end_s,
+                    wrench_start=interval.wrench_start,wrench_end=interval.wrench_end,
+                    velocity_start=interval.velocity_start,velocity_end=interval.velocity_end,
+                    provenance=provenance,settlement_port='diagnostic_only',
+                    physical_w_checked=self._physical_w_checked,physical_certified=False,
+                    wrench_convention=command_budget.wrench_convention,budget_balance_changed=False)
+            else:
+                self.energy.observe_interval(interval,now_s=now_s,
+                    physical_w_checked=self._physical_w_checked,provenance=provenance)
         for event in self._port_aligner.drain_events():
             self.sink.emit('port_alignment',facts=event)
+        if self.energy is None:return
         events=self.energy.drain_events()
         if events['runtime'] or events['ledger']:
             self.sink.emit('energy_measurement',**events)
+
+    def _drain_command_energy(self):
+        if self.command_budget is not None:
+            events=self.command_budget.drain_events()
+            if events:self.sink.emit('logical_command_energy',events=events,**self.command_budget.facts)
 
     def sample(self,t_s,current_pose,f_ext,*,contact=None,f_ext_raw=None,dt_actual=None,
                sensor_age_s=None,feedback_age_s=None,feedback_fresh_tick=None,
@@ -219,7 +247,10 @@ class ContactQpOuter:
             if not image_valid:observation=None
             self.pending_wrench_environment=None if f_ext_raw is None else np.asarray(f_ext_raw,dtype=float).copy()
             energy_snapshot=None
-            if self.energy is not None:
+            if self.command_budget is not None:
+                energy_snapshot=self.command_budget.snapshot(now_s=now,wrench_control_raw=f_ext_raw,
+                    rotation_base_tcp=self.pending_rotation_base_tcp)
+            elif self.energy is not None:
                 # Completed measured intervals enter through observe_measured_port;
                 # this mixed-time diagnostic twist is never relabeled as aligned.
                 energy_snapshot=self.energy.snapshot(now_s=now,hold_s=dt,
@@ -251,7 +282,9 @@ class ContactQpOuter:
                 control_wrench_tool=f_ext,physical_wrench_candidate_tool=f_ext_raw,
                 measured_twist_base=measured_twist_base,measured_twist_metadata=metadata,
                 measured_twist_valid=measured_twist_valid,measurement_time_s=measurement_time_s,
-                energy=None if self.energy is None else self.energy.facts,physical_certified=False)
+                energy=(self.command_budget.facts if self.command_budget is not None else
+                        None if self.energy is None else self.energy.facts),physical_certified=False)
+            self._drain_command_energy()
             return self.pending_result.qp_twist.copy()
         except Exception:
             self.publication_abort('outer_prepare_failed',definitely_not_sent=True)
@@ -270,9 +303,11 @@ class ContactQpOuter:
         if not np.isfinite(final).all() or not np.isfinite(now_s):return rejected('nonfinite_payload_or_time')
         if now_s<result.created_time_s:return rejected('review_time_reversed')
         if now_s>=result.hard_constraints.valid_until_s:return rejected('certificate_expired')
-        if self.energy is not None and self.energy.command_budget_enforced:
-            if not self.energy.reserve(candidate_id,result.energy_certificate,final,now_s=now_s):return rejected('energy_reservation_rejected')
+        if self.command_budget is not None:
+            if now_s-self._source_step.source_t_s>self.source_clock.max_age_s:return rejected('wrench_source_expired')
+            if not self.command_budget.reserve(candidate_id,result.energy_certificate,final,now_s=now_s):return rejected('energy_reservation_rejected')
             self._reserved_id=candidate_id
+            self._drain_command_energy()
         self.sink.emit('publication_review',control_id=candidate_id,final_command_model_tool=final,
             task_hard_violation=result.hard_constraints.violation(final),task_certificate=False,
             physical_certified=False,facts=facts or {})
@@ -280,11 +315,21 @@ class ContactQpOuter:
 
     def publication_started(self,candidate_id):
         if candidate_id!=self._pending_id:raise RuntimeError('orphan publication start')
-        if self._reserved_id is not None:self.energy.publication_started(candidate_id)
+        if self._reserved_id is not None:self.command_budget.publication_started(candidate_id)
 
     def publication_commit(self,candidate_id,final_tool,*,now_s,facts=None):
         if candidate_id!=self._pending_id or not self._nominal_pending:raise RuntimeError('orphan outer commit')
         final=np.asarray(final_tool,dtype=float).reshape(6)
+        self.sink.emit('publication_transport_result',control_id=candidate_id,publication_time_s=now_s,
+            final_command_model_tool=final,facts=facts or {},logical_commit=False)
+        if self.command_budget is not None:
+            if not self.pending_result.created_time_s<=now_s<self.pending_result.hard_constraints.valid_until_s:
+                self.command_budget.fail('commit_task_certificate_expired',now_s=now_s)
+                raise ValueError('commit task certificate expired')
+            self.command_budget.commit(candidate_id,final,now_s=now_s,
+                rotation_base_tcp=self.pending_rotation_base_tcp,
+                dual_success=bool(facts and facts.get('arm')=='sent' and facts.get('rail') in ('sent','disabled')))
+            self._drain_command_energy()
         path=self.pending_basis[:,2];denom=float(path @ path)
         alpha=0. if denom<=1e-28 else float(np.clip(path @ final/denom,0.,self.pending_result.alpha))
         # These are command integrators. The rail-compensated payload model
@@ -317,11 +362,12 @@ class ContactQpOuter:
         if self.nominal.tilt._pending_command is not None:
             self.nominal.tilt.abort()
         self._nominal_pending=False
-        if self._reserved_id is not None:
-            self.energy.reject_new_only(self._reserved_id,definitely_not_sent=definitely_not_sent)
+        if self.command_budget is not None:
+            self.command_budget.reject_new_only(self._reserved_id,definitely_not_sent=definitely_not_sent,now_s=time.monotonic())
             self._reserved_id=None
         self.sink.emit('publication_aborted',control_id=self._pending_id,reason=reason,
                        reference_s=self.reference_time_s,facts=facts or {})
+        self._drain_command_energy()
 
     def arrived(self,pose):
         if not self.reference.exhaustion_reason(self.reference_time_s):return False
@@ -333,6 +379,8 @@ class ContactQpOuter:
         if self._stop_recorded:return
         self._stop_recorded=True
         self.publication_abort(reason)
+        if self.command_budget is not None:self.command_budget.stop(now_s=time.monotonic())
+        self._drain_command_energy()
         self.sink.emit('stop',reason=reason,reference_s=self.reference_time_s,physical_execution='unconfirmed')
 
     def close(self,*,wait=True):

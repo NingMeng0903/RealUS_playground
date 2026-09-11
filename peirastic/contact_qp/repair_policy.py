@@ -13,6 +13,7 @@ import numpy as np
 @dataclass(frozen=True)
 class DifferentialRepairConfig:
     revision: str = "v8r2_bounded_episode"
+    balance_deadband: float = 0.10
     max_permission_s: float = 2.0
     max_angle_travel_rad: float = math.radians(3.)
     healthy_frames: int = 3
@@ -24,7 +25,9 @@ class DifferentialRepairConfig:
     hard_stop_n: float = 6.0
 
     def __post_init__(self):
-        if self.revision!='v8r2_bounded_episode':raise ValueError('unsupported differential repair revision')
+        if self.revision not in ('v8r2_bounded_episode','v8r3_confidence_balance'):raise ValueError('unsupported differential repair revision')
+        if isinstance(self.balance_deadband,(bool,np.bool_)) or not math.isfinite(self.balance_deadband) or not 0 <= self.balance_deadband < 1:
+            raise ValueError('balance_deadband must be finite in [0, 1)')
         from .repair_episode import RepairEpisode
         RepairEpisode(max_permission_s=self.max_permission_s,max_angle_travel_rad=self.max_angle_travel_rad,healthy_frames=self.healthy_frames)
         for name in ('differential_weight','residual_progress_gain','loading_weight'):
@@ -39,8 +42,19 @@ class DifferentialRepairConfig:
         if not math.isfinite(force_n):raise ValueError('finite measured force required')
         return float(np.clip((self.soft_force_n-force_n)/(self.soft_force_n-self.nominal_force_n),0.,1.))
 
+    def confidence_imbalance(self,quality,gamma):
+        """Coarse shallow-confidence direction cue, not an acoustic derivative.
+
+        A common consistency multiplier cannot reverse the image direction.
+        The deadband is an engineering setting requiring image calibration.
+        """
+        difference=float(quality[1]-quality[0])
+        error=math.copysign(max(abs(difference)-self.balance_deadband,0.),difference)/(1.-self.balance_deadband)
+        return error*float(np.min(gamma))
+
     def terms(self,*,scaled_basis,visual_rows,endpoint_rows,nominal_twist,deficits,
-              repair_speed,normal_scale,force_n,alpha_preferred,progress_weight):
+              repair_speed,normal_scale,force_n,alpha_preferred,progress_weight,
+              differential_imbalance=None):
         """Eight normalized variables: base five, differential slack, two loads.
 
         Output matrices are additive costs and upper-bound inequalities. Added
@@ -48,7 +62,8 @@ class DifferentialRepairConfig:
         slacks represent endpoint speed divided by normal_scale.
         """
         gate=self.force_gate(force_n)
-        imbalance=float(deficits[0]-deficits[1]);sign=float(np.sign(imbalance))
+        imbalance=float(deficits[0]-deficits[1]) if differential_imbalance is None else float(differential_imbalance)
+        sign=float(np.sign(imbalance))
         requested=repair_speed*gate*abs(imbalance)
         # Remove b(alpha): total normal/rocking contribution, not its nominal
         # increment. Common translation cancels for a calibrated flat aperture.
@@ -59,9 +74,9 @@ class DifferentialRepairConfig:
         rows=[-a];upper=[-requested/normal_scale]
         h=np.zeros((8,8));g=np.zeros(8)
         h[5,5]=self.differential_weight
-        # Replace the original independent alpha quadratic with this convex
-        # coupled task. The separate differential cost remains even at alpha=0.
-        if requested>0.:
+        # Historical r2 couples alpha to residual. R3 keeps alpha independent,
+        # so stopping path progress cannot manufacture a visual shortfall.
+        if requested>0. and self.revision=='v8r2_bounded_episode':
             alpha=np.zeros(8);alpha[2]=1.;alpha[5]=self.residual_progress_gain
             h+=progress_weight*np.outer(alpha,alpha);h[2,2]-=progress_weight
             g-=progress_weight*alpha_preferred*alpha;g[2]+=progress_weight*alpha_preferred
