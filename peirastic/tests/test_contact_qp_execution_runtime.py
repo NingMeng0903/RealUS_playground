@@ -110,6 +110,18 @@ def test_observer_to_qp_age_expiry_defers_after_nominal_measurement(monkeypatch)
     assert active.command_budget.active.expires_s==pytest.approx(10.05)
 
 
+def test_unleased_gap_starts_epoch_instead_of_stopping(monkeypatch):
+    active,pose,clock,sink=fixture(monkeypatch)
+    active.take_source_epoch_reset()
+    active.prepare_source('A',10.000,10000000,now_s=clock[0])
+    clock[0]=10.030
+    step=active.prepare_source('A',10.029,10029000,now_s=clock[0])
+    assert not step.gap_recovered
+    assert step.source_t_s==pytest.approx(10.029)
+    assert active.take_source_epoch_reset()
+    assert any(r['event']=='source_epoch_reset' for r in sink.records)
+
+
 def test_original_dual_lease_admits_gap_and_raw_6n_still_stops(monkeypatch):
     active,pose,clock,sink=fixture(monkeypatch)
     commit(active,sample(active,pose,clock),clock)

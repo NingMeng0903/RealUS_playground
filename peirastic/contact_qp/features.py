@@ -133,7 +133,10 @@ def random_walk_confidence(image, config=None):
     unknown = np.arange(w, (h-1)*w)
     top = np.arange(w)
     rhs = -np.asarray(lap[unknown][:, top].sum(axis=1)).ravel()
-    interior = np.asarray(spsolve(lap[unknown][:, unknown].tocsc(), rhs)).ravel()
+    # SuperLU COLAMD is ~2x slower on this 2-D grid; MMD_AT_PLUS_A matches
+    # it to ~1e-12 and keeps the 100x145 paper grid affordable off-thread.
+    interior = np.asarray(spsolve(lap[unknown][:, unknown].tocsc(), rhs,
+                                  permc_spec="MMD_AT_PLUS_A")).ravel()
     if not np.isfinite(interior).all() or interior.min() < -1e-6 or interior.max() > 1+1e-6:
         raise RuntimeError("random-walk linear solve violated probability bounds")
     result = np.zeros((h, w), dtype=float)

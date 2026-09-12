@@ -20,9 +20,9 @@ SCAN_ORDER = tuple((shape, direction) for direction in ("DtP", "PtD") for shape 
 SCAN_FORCE_AXES = [0.0, 0.0, 1.0, 0.0, 1.0, 0.0]
 TILT_PROFILE = dict(mass=0.051, damping=0.22, coulomb_nm=0.025,
                     vmax_rad_s=0.28, a_max=3.0)
-PEAK_RANGE_M = (0.010, 0.015)
-# Stored amplitude is pre-normalization. New C/S peaks use PEAK_RANGE_M;
-# old 20 mm specs and the legacy L placeholder (0.02) still load.
+PEAK_RANGE_M = (0.008, 0.010)
+# Stored amplitude is pre-normalization. New C/S peaks use PEAK_RANGE_M
+# (8–10 mm); old 20 mm specs and the legacy L placeholder (0.02) still load.
 AMPLITUDE_LOAD_MAX_M = 0.020
 
 

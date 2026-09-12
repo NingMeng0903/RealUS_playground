@@ -49,6 +49,7 @@ feature:
     already_aligned: false
   config:
     algorithm_version: randomwalk_welleweerd2020_v3
+    # Paper 100x145. Half-res changes L/C/R decisions on recorded frames.
     width: 145
     height: 100
     attenuation: 2.0

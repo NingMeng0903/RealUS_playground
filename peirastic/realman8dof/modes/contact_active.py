@@ -138,7 +138,7 @@ class ContactQpOuter:
         self._reference_resume_after_s=None
         self.features=feature_receiver or FeatureReceiver(config['feature_endpoint'])
         self.reference_time_s=0.;self._control_time_s=0.;self._control_id=0;self.arrival_confirmed=False
-        self._source_step=None;self._source_prepared=False;self._angle_origin=None
+        self._source_step=None;self._source_prepared=False;self._source_epoch_reset=False;self._angle_origin=None
         self._last_velocity_time=None;self._previous=np.zeros(6);self._previous_rotation=None;self.pending_result=None
         self._pending_id=None;self._nominal_pending=False;self._reserved_id=None;self._stop_recorded=False
         self._dispatch_time_s=None;self._review_time_s=None
@@ -174,11 +174,20 @@ class ContactQpOuter:
         self.reference.set_origin(pose0,t_s=t_s or 0.)
         self.reference_time_s=self.reference.origin_s;self._control_time_s=self.reference_time_s
         self._angle_origin=Rotation.from_euler(self.controller.cfg.euler_order,np.asarray(pose0)[3:]).as_matrix()
+        self.source_clock.begin_epoch()
+        self._source_epoch_reset=True
 
     def begin_hybrid_episode(self,applied_twist_base,current_pose):
         self.baseline.begin_hybrid_episode(applied_twist_base,current_pose)
         if self._rocking is not None:
             self._rocking.seed(np.asarray(applied_twist_base)[3:],time.monotonic())
+        self.source_clock.begin_epoch()
+        self._source_epoch_reset=True
+
+    def take_source_epoch_reset(self):
+        flag=self._source_epoch_reset
+        self._source_epoch_reset=False
+        return flag
 
     def prepare_source(self,source_id,source_t_s,wall_time_ns,*,now_s):
         previous=self.source_clock.last
@@ -195,13 +204,19 @@ class ContactQpOuter:
                 self._publication_rejection_reason='awaiting_fresh_force'
                 self._deferred_source_t_s=source_t_s
                 raise ProposalDeferred('awaiting_fresh_force')
-            if (source_id==previous.source_id and source_t_s-previous.source_t_s>
-                    self.source_clock.max_interval_s and budget is not None and
-                    budget.active is not None and not budget.latched_reason and
-                    budget.pending is None and not budget.started):
-                old=budget.active
-                context=SourceGapContext(source_id,previous.source_t_s,source_t_s,
-                    old.command_id,old.committed_s,old.expires_s,now_s,budget.max_command_interval_s)
+            if (source_id==previous.source_id and self.source_clock.max_interval_s is not None
+                    and source_t_s-previous.source_t_s>self.source_clock.max_interval_s):
+                old=None if budget is None else budget.active
+                live=(old is not None and not budget.latched_reason and budget.pending is None
+                      and not budget.started and old.committed_s<source_t_s<=now_s<old.expires_s)
+                if live:
+                    context=SourceGapContext(source_id,previous.source_t_s,source_t_s,
+                        old.command_id,old.committed_s,old.expires_s,now_s,budget.max_command_interval_s)
+                elif self._continuous_execution:
+                    self.source_clock.begin_epoch()
+                    self._source_epoch_reset=True
+                    self.sink.emit('source_epoch_reset',previous_source_t_s=previous.source_t_s,
+                                   source_t_s=source_t_s,reason='unleased_or_expired_gap')
         self._source_step=self.source_clock.observe(source_id,source_t_s,wall_time_ns,
             now_s=now_s,gap_context=context)
         self._source_prepared=True

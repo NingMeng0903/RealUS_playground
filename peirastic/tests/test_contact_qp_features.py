@@ -19,6 +19,31 @@ def observation(**kwargs):
     return ContactObservation(**base)
 
 
+def test_grid_factorization_order_matches_default_superlu():
+    from scipy.sparse.linalg import spsolve
+    from peirastic.contact_qp.features import random_walk_confidence
+    cfg = FeatureConfig(width=24, height=32, algorithm_version='randomwalk_welleweerd2020_v3')
+    im = np.random.default_rng(11).integers(20, 220, (32, 24)).astype(float)
+    a = random_walk_confidence(im, cfg)
+    # The public helper now uses MMD_AT_PLUS_A; COLAMD must stay interchangeable.
+    from peirastic.contact_qp import features as feat
+    old = feat.spsolve
+    calls = []
+    def wrapped(A, b, **kwargs):
+        calls.append(kwargs.get('permc_spec'))
+        colamd = old(A, b, permc_spec='COLAMD')
+        chosen = old(A, b, **kwargs)
+        np.testing.assert_allclose(chosen, colamd, atol=1e-11)
+        return chosen
+    feat.spsolve = wrapped
+    try:
+        b = random_walk_confidence(im, cfg)
+    finally:
+        feat.spsolve = old
+    np.testing.assert_allclose(a, b, atol=1e-11)
+    assert calls and calls[-1] == 'MMD_AT_PLUS_A'
+
+
 def test_uniform_graph_has_analytic_harmonic_solution():
     cfg = FeatureConfig(width=24, height=32, attenuation=0, contrast=0)
     c = random_walk_confidence(np.full((32, 24), 80.), cfg)

@@ -14,7 +14,8 @@ init_cbox:
 capture_backend: ffmpeg
 frame_width: 1920
 frame_height: 1080
-publish_rate: 60.0
+# Machine B-mode is 30 Hz. Requesting 60 from the HDMI card drops to ~20 under load.
+publish_rate: 30.0
 compressed_quality: 80
 time_offset: 0.0
 video_device_path: /dev/v4l/by-id/usb-eEver_HDMI_Capture_20000130041415-video-index0

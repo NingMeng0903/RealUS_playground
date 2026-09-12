@@ -95,7 +95,11 @@ def main(argv=None):
     parser.add_argument("--calibration-version", default=None)
     parser.add_argument("--image-x-sign", type=int, choices=(-1, 1), default=None)
     parser.add_argument("--max-frames", type=int, default=0)
+    parser.add_argument("--max-hz", type=float, default=20.0,
+                        help="Latest-only publish cap after a finished frame; 0 disables.")
     args = parser.parse_args(argv)
+    if isinstance(args.max_hz, bool) or not np.isfinite(args.max_hz) or args.max_hz < 0:
+        raise SystemExit("max-hz must be a finite nonnegative rate")
     from rm75_control.control.admittance_common.cpu_resources import prepare_background_cpus
     background_cpus = prepare_background_cpus()
     import zmq
@@ -104,8 +108,9 @@ def main(argv=None):
     overrides = {k: v for k, v in dict(effective_delay_s=args.delay_s,
                  calibration_version=args.calibration_version, image_x_sign=args.image_x_sign).items() if v is not None}
     extractor = FeatureExtractor(replace(config, **overrides))
+    min_period = 0. if args.max_hz == 0 else 1. / float(args.max_hz)
     LOG.info("feature window_version=%s", extractor.config.window_version)
-    LOG.info("confidence worker CPUs=%s", background_cpus)
+    LOG.info("confidence worker CPUs=%s max_hz=%s", background_cpus, args.max_hz)
     latest = LatestObservation()
     context = zmq.Context()
     sub = context.socket(zmq.SUB); pub = context.socket(zmq.PUB)
@@ -114,14 +119,22 @@ def main(argv=None):
     sub.setsockopt(zmq.LINGER, 0); pub.setsockopt(zmq.LINGER, 0)
     sub.connect(args.input); pub.bind(args.output)
     count = 0
+    last_done = 0.
     try:
         while not args.max_frames or count < args.max_frames:
             if not sub.poll(100):
                 continue
             parts = sub.recv_multipart()
-            # CONFLATE is incompatible with multipart; explicitly drain queued frames.
-            for _ in range(64):
-                if not sub.poll(0):
+            # CONFLATE is incompatible with multipart; keep only the newest frame.
+            while True:
+                for _ in range(64):
+                    if not sub.poll(0):
+                        break
+                    parts = sub.recv_multipart()
+                else:
+                    continue
+                remain = last_done + min_period - time.monotonic()
+                if remain <= 0 or not sub.poll(max(1, int(remain * 1000))):
                     break
                 parts = sub.recv_multipart()
             received = time.monotonic()
@@ -132,6 +145,7 @@ def main(argv=None):
                     continue
                 blob=encode_feature_payload(obs,extractor.last_features,time.perf_counter()-start)
                 pub.send_multipart([OUTPUT_TOPIC, blob], flags=zmq.NOBLOCK)
+                last_done = time.monotonic()
                 count += 1
                 if count == 1:
                     LOG.info("publishing confidence registration_version=%s quality=%s valid=%s",

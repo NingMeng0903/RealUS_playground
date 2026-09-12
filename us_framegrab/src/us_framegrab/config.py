@@ -55,7 +55,7 @@ class FrameGrabConfig:
     capture_backend: str = "ffmpeg"
     frame_width: int = 1920
     frame_height: int = 1080
-    publish_rate: float = 60.0
+    publish_rate: float = 30.0
     compressed_quality: int = 80
     time_offset: float = 0.0
     video_device_path: str = ""
@@ -135,7 +135,7 @@ def load_config(path: Path | None = None) -> FrameGrabConfig:
         capture_backend=str(payload.get("capture_backend", "ffmpeg")).strip() or "ffmpeg",
         frame_width=int(payload.get("frame_width", 1920)),
         frame_height=int(payload.get("frame_height", 1080)),
-        publish_rate=float(payload.get("publish_rate", 60.0)),
+        publish_rate=float(payload.get("publish_rate", 30.0)),
         compressed_quality=int(payload.get("compressed_quality", 80)),
         time_offset=float(payload.get("time_offset", 0.0)),
         video_device_path=str(payload.get("video_device_path", "") or "").strip(),

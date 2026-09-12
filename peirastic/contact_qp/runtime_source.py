@@ -82,6 +82,11 @@ class SourceClock:
             raise ValueError('recovery interval requires lease gap policy')
         self.last=None;self.last_now=None;self.source_updates=0
 
+    def begin_epoch(self):
+        """Drop the previous ingress watermark. The next sample starts a new run."""
+        self.last=None
+        self.last_now=None
+
     def _admit_gap(self,context,source_id,t,now,delta):
         if self.gap_policy!='lease_fresh_foh_v1' or not isinstance(context,SourceGapContext):
             raise ValueError('source interval exceeds declared maximum; lease gap context required')

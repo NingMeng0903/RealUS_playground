@@ -6793,6 +6793,18 @@ def run_joint_admittance_phases(
                                 next_tick += dt
                                 _wait_until(next_tick)
                                 continue
+                            if (obs is not None and hasattr(publication_owner, "take_source_epoch_reset")
+                                    and publication_owner.take_source_epoch_reset()
+                                    and hasattr(obs, "configure_source_period")):
+                                clock = publication_owner.source_clock
+                                obs.configure_source_period(
+                                    clock.period_s,
+                                    variable_dt=clock.timebase=="variable_step_bilinear_v1",
+                                    max_interval_s=clock.max_interval_s,
+                                    new_epoch=True,
+                                    gap_policy=clock.gap_policy,
+                                    max_recovery_interval_s=clock.max_recovery_interval_s,
+                                )
                         f_ext = np.zeros(6)
                         f_ext_raw = None
                         if obs is not None:

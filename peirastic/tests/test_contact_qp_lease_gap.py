@@ -56,6 +56,13 @@ def test_ingress_rejected_recovery_leaves_watermarks_unchanged(change,stamp,now)
     assert c.last is previous and c.last_now==last_now and c.source_updates==1
 
 
+def test_begin_epoch_accepts_a_later_first_sample():
+    c=clock(**RECOVERY)
+    c.begin_epoch()
+    step=c.observe('A',2.,3,now_s=2.001)
+    assert step.fresh and not step.gap_recovered and step.source_dt_s==pytest.approx(.005)
+
+
 def test_ingress_default_strict_and_held_epoch_guards():
     with pytest.raises(ValueError,match='maximum'):clock().observe('A',1.03,2,now_s=1.031)
     c=clock(**RECOVERY)
