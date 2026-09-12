@@ -1,0 +1,74 @@
+[
+  {
+    "case": 0,
+    "file": "/media/camp/PEI_T7/icra 2027_contact/uncalibrated/yuhan_L/attempts/RH_Per_S_DtP/001/contact_qp.jsonl",
+    "samples": 3090,
+    "failures": [],
+    "retried": 16,
+    "max_attempt_s": 0.0006510800012620166,
+    "max_outer_iterations": 34
+  },
+  {
+    "case": 1,
+    "file": "/media/camp/PEI_T7/icra 2027_contact/uncalibrated/yuhan_L/attempts/RH_Per_S_PtD/001/contact_qp.jsonl",
+    "samples": 3554,
+    "failures": [],
+    "retried": 2,
+    "max_attempt_s": 0.00046468100117635913,
+    "max_outer_iterations": 30
+  },
+  {
+    "case": 2,
+    "file": "/media/camp/PEI_T7/icra 2027_contact/uncalibrated/yuhan_L/attempts/RH_Per_S_PtD/004/contact_qp.jsonl",
+    "samples": 2137,
+    "failures": [],
+    "retried": 4,
+    "max_attempt_s": 0.0008673310003359802,
+    "max_outer_iterations": 30
+  },
+  {
+    "case": 3,
+    "file": "/media/camp/PEI_T7/icra 2027_contact/uncalibrated/yuhan_L/attempts/RH_Per_S_PtD/005/contact_qp.jsonl",
+    "samples": 1843,
+    "failures": [],
+    "retried": 4,
+    "max_attempt_s": 0.0008466830004181247,
+    "max_outer_iterations": 30
+  },
+  {
+    "case": 4,
+    "file": "/media/camp/PEI_T7/icra 2027_contact/uncalibrated/yuhan_L/attempts/RH_Per_S_PtD/006/contact_qp.jsonl",
+    "samples": 1933,
+    "failures": [],
+    "retried": 2,
+    "max_attempt_s": 0.0009026510015246458,
+    "max_outer_iterations": 30
+  },
+  {
+    "case": 5,
+    "file": "/media/camp/PEI_T7/icra 2027_contact/uncalibrated/zhongyao2/attempts/LH_Per_L_PtD/001/contact_qp.jsonl",
+    "samples": 2308,
+    "failures": [],
+    "retried": 1,
+    "max_attempt_s": 0.00042956000106642023,
+    "max_outer_iterations": 30
+  },
+  {
+    "case": 6,
+    "file": "/media/camp/PEI_T7/icra 2027_contact/uncalibrated/zhongyao2/attempts/RH_Per_S_DtP/001/contact_qp.jsonl",
+    "samples": 4478,
+    "failures": [],
+    "retried": 23,
+    "max_attempt_s": 0.0009068330000445712,
+    "max_outer_iterations": 129
+  },
+  {
+    "case": 7,
+    "file": "/media/camp/PEI_T7/icra 2027_contact/uncalibrated/zhongyao2/attempts/RH_Per_S_DtP/002/contact_qp.jsonl",
+    "samples": 1647,
+    "failures": [],
+    "retried": 61,
+    "max_attempt_s": 0.0007286680011020508,
+    "max_outer_iterations": 51
+  }
+]

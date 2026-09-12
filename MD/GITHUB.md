@@ -47,7 +47,7 @@ git push -u origin main
 cd /media/camp/EXT_DRIVE/RealUS_playground
 git status
 git add .
-git commit -m "大修正备份，带wnergytankymal"
+git commit -m "号称修正了ck之外，\(c_k\)、\(v_z=v_F+c_k\omega_y\)、联合动态耗散、联合力增长约束及物理端口证明留待后续阶段，用来扫描测试"
 git push origin main
 
 

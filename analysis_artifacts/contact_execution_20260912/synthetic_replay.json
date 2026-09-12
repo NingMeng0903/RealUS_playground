@@ -1,0 +1,73 @@
+{
+  "mode": "offline_numeric_only",
+  "rejections": 1,
+  "results": [
+    {
+      "control_id": 1,
+      "success": true,
+      "status": "nominal",
+      "mode": "exact_input_rebuild",
+      "diagnostics": {
+        "quality_policy_version": "synthetic_quality_policy_v1_unverified_hardware",
+        "acoustic_derivative_certified": false,
+        "port_verified": false,
+        "command_slew_dt_s": 0.005,
+        "command_hold_s": 0.005,
+        "allocation_policy": "legacy_v7",
+        "repair_force_gate": 1.0,
+        "differential_repair_revision": "v8r2_bounded_episode",
+        "balance_deadband": null,
+        "solver_policy": "bounded_retry_v1",
+        "solver_deadline_s": null,
+        "online_failure_diagnostics": true,
+        "omega_interval_mechanical": null,
+        "omega_interval_force_priority": null,
+        "omega_interval_complete": null,
+        "force_sign_reliable": false,
+        "interval_diagnostics_computed": false,
+        "nominal_subspace_residual": 0.0,
+        "image_valid": true,
+        "acquisition_loss": 0.0,
+        "alpha_target": 1.0,
+        "alpha_preferred": 1.0,
+        "quality_objective": "confidence_balance_v1",
+        "visual_rows_active": true,
+        "visual_window_active": [
+          true,
+          true
+        ],
+        "visual_requests_m_s": [
+          -0.0024000000000000002,
+          -0.0024000000000000002
+        ],
+        "gamma_effective": [
+          1.0,
+          1.0
+        ],
+        "quality": [
+          0.8,
+          0.8
+        ],
+        "transparent": true,
+        "iterations": 0,
+        "solver_status": "exact_nominal_optimum",
+        "active_hard_rows": [
+          "progress_range"
+        ],
+        "max_hard_violation": 0.0,
+        "visual_residual_m_s": [
+          0.0024000000000000002,
+          0.0024000000000000002
+        ],
+        "aperture_added_velocity_m_s": [
+          0.0,
+          0.0
+        ],
+        "solver_time_s": 0.0,
+        "total_time_s": 0.0004204340002615936
+      },
+      "original_reason": "solver_deadline_exceeded",
+      "live_deadline_replayed": false
+    }
+  ]
+}

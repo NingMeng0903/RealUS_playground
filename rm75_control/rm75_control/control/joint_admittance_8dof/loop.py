@@ -220,6 +220,10 @@ class JointIkStep:
     slack_norm: float
     n_cbf_active: int
     follow_err_rad: float
+    rocking_policy_tier: int = 0
+    rocking_limited: bool = False
+    rocking_lower_rad_s: float = -float("inf")
+    rocking_upper_rad_s: float = float("inf")
     cart_err_mm: float = 0.0
     qdot_ff_norm: float = 0.0
     vel_clamped: bool = False
@@ -914,6 +918,7 @@ class JointIkController:
         publication_rejected = False
         if certify:
             candidate = (q_final - np.asarray(q_prev, dtype=float)) / max(dt_int, 1e-12)
+            self.core.relax_rocking_for_final_qdot(candidate)
             hard, lock = self.core.validate_final_qdot(candidate)
             tol = max(10.0 * float(self.cfg.qp.eps_abs), 1e-5)
             if not np.isfinite([hard, lock]).all() or max(hard, lock) > tol:
@@ -1547,6 +1552,10 @@ class JointIkController:
         if q_send is None and pending.get("q_cmd") is not None:
             send_q = pending["q_cmd"]
         return JointIkStep(
+            rocking_policy_tier=int(getattr(self.core, "last_rocking_policy_tier", 0)),
+            rocking_limited=bool(getattr(self.core, "last_rocking_limited", False)),
+            rocking_lower_rad_s=float(getattr(self.core, "last_rocking_lower_rad_s", -float("inf"))),
+            rocking_upper_rad_s=float(getattr(self.core, "last_rocking_upper_rad_s", float("inf"))),
             q_send=np.asarray(send_q, dtype=float).copy(),
             qdot=np.asarray(qdot, dtype=float).copy(),
             twist_base=np.asarray(twist_base, dtype=float).copy(),
@@ -1840,6 +1849,8 @@ class JointIkController:
         contact_active: bool = False,
         task_rotation_base: np.ndarray | None = None,
         task_safety_rows: tuple = (),
+        rocking_axis_base=None,
+        rocking_bounds=None,
         path_twist: np.ndarray | None = None,
         feedback_twist: np.ndarray | None = None,
         v_force_z: float | None = None,
@@ -1868,6 +1879,8 @@ class JointIkController:
                 contact_active=contact_active,
                 task_rotation_base=task_rotation_base,
                 task_safety_rows=task_safety_rows,
+                rocking_axis_base=rocking_axis_base,
+                rocking_bounds=rocking_bounds,
                 path_twist=path_twist,
                 feedback_twist=feedback_twist,
                 v_force_z=v_force_z,
@@ -2525,6 +2538,8 @@ class JointIkController:
             twist_base,
             dt,
             secondary_qdot=sec_filt,
+            rocking_axis_base=rocking_axis_base,
+            rocking_bounds=rocking_bounds,
             q_meas=q_state,
             resync_err=resync_vec,
             rail_locked=locked_hold,
@@ -2714,6 +2729,9 @@ class JointIkController:
             if rail_only:
                 qdot_out[1:] = 0.0
 
+        rocking_before_rewrite = {name:getattr(self.core,name) for name in
+            ('last_rocking_policy_tier','last_rocking_limited','last_rocking_lower_rad_s','last_rocking_upper_rad_s')}
+        self.core.relax_rocking_for_final_qdot(qdot_out)
         final_hard_violation, final_task_lock_violation = (
             self.core.validate_final_qdot(qdot_out)
         )
@@ -2732,6 +2750,7 @@ class JointIkController:
             # A limiter/lead rewrite is not allowed to break QP1.  If this
             # tick already has a certified QP command, publish that instead
             # of stopping; stop only when no certified command exists.
+            for name,value in rocking_before_rewrite.items():setattr(self.core,name,value)
             hard_qp, lock_qp = self.core.validate_final_qdot(qdot_certified)
             if (
                 np.isfinite(hard_qp)
@@ -6239,6 +6258,8 @@ def run_joint_admittance_phases(
     realtime: bool = False,
     watchdog_timeout_s: float = 0.1,
     on_step=None,
+    on_force_sample=None,
+    on_control_state=None,
     log_csv: str | None = None,
     verbose: bool = True,
     state_bus=None,
@@ -6353,9 +6374,27 @@ def run_joint_admittance_phases(
         wd = Watchdog(watchdog_timeout_s, _watchdog_trip)
         wd.start()
 
+        fault_notifications = queue.SimpleQueue()
+        def _notify_faults():
+            while True:
+                reason = fault_notifications.get()
+                if reason is None: return
+                try: on_control_state("fault", reason)
+                except Exception: pass
+        if on_control_state is not None:
+            notification_thread = threading.Thread(target=_notify_faults, daemon=True,
+                                                   name="control-fault-status")
+            notification_thread.start()
+            def _close_fault_notifications():
+                fault_notifications.put_nowait(None)
+                notification_thread.join(timeout=.1)
+            runtime_resources.callback(_close_fault_notifications)
+
         def _fault_stop(reason: str) -> None:
             """Stop both axes without publishing another trajectory target."""
 
+            if on_control_state is not None:
+                fault_notifications.put_nowait(reason)
             if verbose:
                 print(f"  QPIK SAFETY STOP: {reason}", flush=True)
             if rail_bridge is not None and getattr(rail_bridge, "enabled", False):
@@ -6371,6 +6410,21 @@ def run_joint_admittance_phases(
                     robot.rm_set_arm_slow_stop()
                 except Exception:
                     pass
+
+        def _recover_unsent(owner, reason):
+            if wd.fired or fault_epoch[0] or (stop_check is not None and stop_check()):
+                return False
+            abort_rail = getattr(rail_bridge, "abort_reservation", None)
+            if callable(abort_rail): abort_rail()
+            abort_inner = getattr(inner, "abort_publication", None)
+            if callable(abort_inner): abort_inner()
+            owner._publication_rejection_reason = reason
+            owner.publication_abort(reason, definitely_not_sent=True)
+            if wd.fired or fault_epoch[0] or (stop_check is not None and stop_check()):
+                return False
+            if not owner.retry_unsent_publication(): return False
+            if on_control_state is not None: on_control_state("recovering", reason)
+            return True
 
         try:
             pose_rm = _pose0_rm
@@ -6437,6 +6491,8 @@ def run_joint_admittance_phases(
                             variable_dt=bool(source_owner is not None and source_owner.source_clock.timebase=="variable_step_bilinear_v1"),
                             max_interval_s=source_owner.source_clock.max_interval_s if source_owner is not None else None,
                             new_epoch=source_owner is not None,
+                            gap_policy=source_owner.source_clock.gap_policy if source_owner is not None else "strict_v1",
+                            max_recovery_interval_s=source_owner.source_clock.max_recovery_interval_s if source_owner is not None else None,
                         )
                     phase_t0 = time.perf_counter()
                     next_tick = phase_t0
@@ -6716,11 +6772,20 @@ def run_joint_admittance_phases(
                                 next_tick += dt
                                 _wait_until(next_tick)
                                 continue
-                            active_source = publication_owner.prepare_source(
-                                f"{id(obs)}:{getattr(state_bus, 'session_id', 'direct')}",
-                                float(getattr(snap, "t_s", float("nan"))),
-                                int(getattr(snap, "wall_time_ns", 0)), now_s=time.monotonic(),
-                            )
+                            try:
+                                active_source = publication_owner.prepare_source(
+                                    f"{id(obs)}:{getattr(state_bus, 'session_id', 'direct')}",
+                                    float(getattr(snap, "t_s", float("nan"))),
+                                    int(getattr(snap, "wall_time_ns", 0)), now_s=time.monotonic(),
+                                )
+                            except Exception as exc:
+                                from peirastic.contact_qp.execution import ProposalDeferred
+                                if not isinstance(exc, ProposalDeferred) or not _recover_unsent(publication_owner, str(exc)):
+                                    raise
+                                ticks += 1
+                                next_tick += dt
+                                _wait_until(next_tick)
+                                continue
                         f_ext = np.zeros(6)
                         f_ext_raw = None
                         if obs is not None:
@@ -6738,6 +6803,8 @@ def run_joint_admittance_phases(
                                 observer_kwargs["measurement_fresh"] = bool(
                                     active_source.fresh and snap_t_obs != getattr(obs, "last_t_s", None)
                                 )
+                                observer_kwargs["source_id"] = active_source.source_id
+                                observer_kwargs["gap_context"] = active_source.gap_context
                                 if publication_owner.source_clock.timebase=="variable_step_bilinear_v1":
                                     observer_kwargs["source_dt_s"]=active_source.source_dt_s
                             _signed, f_ext = obs.update(
@@ -6760,6 +6827,8 @@ def run_joint_admittance_phases(
                             if f_ext_raw is not None:
                                 f_ext_raw = inner.kin.wrench_link7_to_tcp(f_ext_raw)
     
+                        if on_force_sample is not None:
+                            on_force_sample(f_ext)
                         q_prev = inner.q_cmd.copy()
                         sample_params = getattr(phase.outer, "_sample_params", None)
                         if sample_params is None:
@@ -6824,10 +6893,20 @@ def run_joint_admittance_phases(
                             sample_kwargs["slack_norm"] = float(
                                 getattr(inner, "last_slack_norm", 0.0) or 0.0
                             )
-                        twist = np.asarray(
-                            phase.outer.sample(t_ref, pose_pin, f_ext, **sample_kwargs),
-                            dtype=float,
-                        )
+                        try:
+                            twist = np.asarray(
+                                phase.outer.sample(t_ref, pose_pin, f_ext, **sample_kwargs),
+                                dtype=float,
+                            )
+                        except Exception as exc:
+                            if publication_owner is None: raise
+                            from peirastic.contact_qp.execution import ProposalDeferred
+                            if not isinstance(exc, ProposalDeferred) or not _recover_unsent(publication_owner, str(exc)):
+                                raise
+                            ticks += 1
+                            next_tick += dt
+                            _wait_until(next_tick)
+                            continue
                         leftover_fn = (
                             getattr(obs, "update_leftover", None)
                             if obs is not None
@@ -6910,6 +6989,9 @@ def run_joint_admittance_phases(
                             else float("nan")
                         )
                         _t_inner0 = time.perf_counter()
+                        rocking_kwargs = {}
+                        if publication_owner is not None:
+                            rocking_kwargs = publication_owner.rocking_constraints()
                         step = inner.update(
                             twist,
                             control_dt,
@@ -6948,6 +7030,7 @@ def run_joint_admittance_phases(
                             rail_refresh_dt_s=(1.0 / max(float(rail_bridge.config.poll_hz), 1.0)
                                                if rail_bridge is not None else dt),
                             dt_wall_s=dt_wall_actual,
+                            **rocking_kwargs,
                         )
                         step.rail_goal_err_m = float(step.q_send[0]) - float(
                             q_meas[0]
@@ -6985,7 +7068,11 @@ def run_joint_admittance_phases(
                             ),
                         )
                         if publication_owner is not None and str(getattr(step, "fallback_reason", "")) == "native_timeout_coast":
-                            publication_owner.publication_abort("native_timeout", definitely_not_sent=True)
+                            if _recover_unsent(publication_owner, "native_timeout"):
+                                ticks += 1
+                                next_tick += dt
+                                _wait_until(next_tick)
+                                continue
                             phase_stopped = True
                             stop_reason = "contact_qp_native_timeout"
                             _fault_stop(stop_reason)
@@ -7226,7 +7313,12 @@ def run_joint_admittance_phases(
                             final_tool = np.r_[rotation.T @ final_base[:3], rotation.T @ final_base[3:]]
                             if not publication_owner.publication_review(
                                 proposal_id, final_tool, now_s=time.monotonic(),
-                                facts={"rail_target_m": float(rail_pub_m), "rail_coast": bool(rail_coast_active)},
+                                facts={"rail_target_m": float(rail_pub_m), "rail_coast": bool(rail_coast_active),
+                                    "rocking_policy_tier": step.rocking_policy_tier,
+                                    "rocking_limited": step.rocking_limited,
+                                    "rocking_lower_rad_s": step.rocking_lower_rad_s,
+                                    "rocking_upper_rad_s": step.rocking_upper_rad_s,
+                                    "rocking_tolerance_rad_s": max(10.0*float(getattr(getattr(inner.cfg,"qp",None),"eps_abs",1e-6)),1e-5)},
                             ):
                                 abort_reservation = getattr(rail_bridge, "abort_reservation", None)
                                 if callable(abort_reservation): abort_reservation()
@@ -7234,7 +7326,10 @@ def run_joint_admittance_phases(
                                 abort_pub = getattr(inner, "abort_publication", None)
                                 if callable(abort_pub): abort_pub()
                                 retry_unsent = getattr(publication_owner, "retry_unsent_publication", None)
-                                if callable(retry_unsent) and retry_unsent():
+                                if (not wd.fired and not fault_epoch[0] and
+                                        not (stop_check is not None and stop_check()) and
+                                        callable(retry_unsent) and retry_unsent()):
+                                    if on_control_state is not None: on_control_state("recovering", publication_owner._publication_rejection_reason)
                                     # No transport succeeded. Preserve committed history,
                                     # watchdog age and reference; recompute next paced tick.
                                     ticks += 1
@@ -7261,7 +7356,10 @@ def run_joint_admittance_phases(
                                 abort_pub = getattr(inner, "abort_publication", None)
                                 if callable(abort_pub): abort_pub()
                                 retry_unsent = getattr(publication_owner, "retry_unsent_publication", None)
-                                if callable(retry_unsent) and retry_unsent():
+                                if (not wd.fired and not fault_epoch[0] and
+                                        not (stop_check is not None and stop_check()) and
+                                        callable(retry_unsent) and retry_unsent()):
+                                    if on_control_state is not None: on_control_state("recovering", publication_owner._publication_rejection_reason)
                                     ticks += 1
                                     next_tick += dt
                                     _wait_until(next_tick)

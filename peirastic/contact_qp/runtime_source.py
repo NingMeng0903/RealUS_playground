@@ -1,6 +1,7 @@
 """Ingress identity and elapsed-time checks; no hardware or controller state."""
 from dataclasses import dataclass
 import math
+from numbers import Real
 
 
 def _positive(value,name,zero=False):
@@ -91,12 +92,15 @@ class SourceClock:
         if type(context.lease_id) is not int or context.lease_id<=0:
             raise ValueError('source gap requires a committed command lease identity')
         for name in ('previous_source_t_s','source_t_s','lease_committed_s','lease_expires_s','admitted_at_s','max_gap_s'):
-            _positive(getattr(context,name),'source gap '+name,True)
+            value=getattr(context,name)
+            if not isinstance(value,Real):raise ValueError('source gap '+name+' must be numeric')
+            _positive(value,'source gap '+name,True)
         if context.admitted_at_s!=now:
             raise ValueError('source gap admission timestamp mismatch')
         if not context.lease_committed_s<t<=now<context.lease_expires_s:
             raise ValueError('source gap original command lease inactive or expired')
-        if (context.max_gap_s!=self.max_recovery_interval_s or delta>context.max_gap_s+1e-12):
+        if (context.max_gap_s!=self.max_recovery_interval_s or delta>context.max_gap_s+1e-12 or
+                context.lease_expires_s-context.lease_committed_s>context.max_gap_s+1e-12):
             raise ValueError('source gap exceeds command-lease interval budget')
 
     def observe(self,source_id,source_t_s,wall_time_ns,*,now_s,gap_context=None):

@@ -96,6 +96,8 @@ class QpConfig:
             object.__setattr__(self, name, positive(getattr(self, name), name))
         if not math.isfinite(self.c_min) or not 0 < self.c_min < 1 or not self.quality_policy_version:
             raise ValueError("explicit policy version and c_min in (0,1) required")
+        if policy.quality_objective=='deficit_only_v1' and policy.balance_deadband>=self.c_min:
+            raise ValueError('deficit objective needs balance_deadband < c_min')
         if isinstance(self.max_iterations, bool) or not isinstance(self.max_iterations, int) or self.max_iterations < 1:
             raise ValueError("positive integer max_iterations required")
         if isinstance(self.inner_iterations, bool) or not isinstance(self.inner_iterations, int) or self.inner_iterations < 1:
@@ -135,8 +137,11 @@ class QpInput:
     acceleration_dt_s: float | None = None
     repair_execution_enabled: bool = True
     repair_angle_reference_reset: bool = False
+    alpha_preferred: float | None = None
 
     def __post_init__(self):
+        if self.alpha_preferred is not None and (not math.isfinite(self.alpha_preferred) or not .25 <= self.alpha_preferred <= 1.):
+            raise ValueError('quality alpha preference must be in [0.25,1]')
         if type(self.repair_angle_reference_reset) is not bool:raise ValueError("repair_angle_reference_reset must be bool")
         if type(self.repair_execution_enabled) is not bool:raise ValueError("repair_execution_enabled must be bool")
         if self.schema_version != SCHEMA_VERSION or not isinstance(self.geometry, ProbeGeometry):
@@ -338,6 +343,7 @@ class ContactQp:
         self._solver_shape = None
         self._numeric_attempts = []
         self._numeric_deferred_reason = None
+        self._numeric_backend_version = None
 
     @staticmethod
     def _deadline_expired(deadline_s):
@@ -371,6 +377,7 @@ class ContactQp:
         checks fence late results; publication must independently check its age.
         """
         import proxsuite
+        self._numeric_backend_version = proxsuite.__version__
         shape = (len(gradient), 0, len(c))
         primary_precondition = self.config.solver_preconditioning or energy_active
         specs = (("cached_primary", 30, primary_precondition, 1e-5),
@@ -516,10 +523,14 @@ class ContactQp:
                        "online_failure_diagnostics": not online}
 
         def failure(status, reason):
-            diagnostics.update(reason=reason, total_time_s=time.perf_counter() - start)
+            from .numeric_record import encode, SCHEMA
+            diagnostics.update(reason=reason, total_time_s=time.perf_counter() - start,
+                replay_input=dict(schema=SCHEMA, payload=encode(dict(qp_input=asdict(data),
+                    qp_config=asdict(cfg), numeric_problem=diagnostics.get('numeric_problem')))))
             if status == ContactStatus.DEFERRED:
                 diagnostics.update(retryable=True, qp_input=asdict(data),
-                                   qp_config=asdict(cfg), numeric_attempts=self._numeric_attempts)
+                                   qp_config=asdict(cfg), numeric_attempts=self._numeric_attempts,
+                                   solver_backend_version=self._numeric_backend_version)
             return QpResult(None, 0., np.zeros(2), TwistConstraints(valid_until_s=data.now_s), status, diagnostics)
 
         if self._deadline_expired(deadline_s):
@@ -627,6 +638,8 @@ class ContactQp:
         margin = np.maximum(quality - cfg.c_min, 0.) / (1. - cfg.c_min)
         loss = float(np.max(deficit)) if image_valid else 1.
         alpha_preferred = 1. - .75 * loss if cfg.enable_progress_loss else 1.
+        alpha_target=alpha_preferred
+        if data.alpha_preferred is not None: alpha_preferred=data.alpha_preferred
         gamma = data.gamma if cfg.enable_consistency else np.ones(2)
         episode=None;repair_allowed=True
         if v8:
@@ -643,6 +656,8 @@ class ContactQp:
         requests = (force_gate if repair_allowed else 0.) * gamma * cfg.repair_speed_m_s * deficit - cfg.keep_speed_m_s * margin
         visual = window_rows(data.geometry, cfg.lateral_windows)[[0, 2]]
         visual_enabled = image_valid and cfg.enable_visual and (not v8 or force_gate>0.)
+        if cfg.differential_repair.quality_objective=='deficit_only_v1' and not np.any(deficit>0.):
+            visual_enabled=False
         visual_window_active=np.full(2,visual_enabled,dtype=bool)
         if v8 and not repair_allowed:visual_window_active &= quality>=cfg.c_min
         visual_enabled=bool(visual_window_active.any())
@@ -651,12 +666,13 @@ class ContactQp:
         differential_deficit = gamma*deficit if differential_enabled else np.zeros(2)
         differential_imbalance=float(differential_deficit[0]-differential_deficit[1])
         if balance_policy:
-            differential_imbalance=cfg.differential_repair.confidence_imbalance(quality,gamma) if differential_enabled else 0.
+            differential_imbalance=cfg.differential_repair.confidence_imbalance(quality,gamma,c_min=cfg.c_min) if differential_enabled else 0.
         differential_requested = cfg.repair_speed_m_s*force_gate*abs(differential_imbalance)
         differential_row=(visual[0]-visual[1]).copy();differential_row[[0,1,3,5]]=0.
         differential_sign=float(np.sign(differential_imbalance))
         differential_nominal=differential_sign*float(differential_row @ data.nominal_twist)
-        diagnostics.update(image_valid=image_valid, acquisition_loss=loss, alpha_preferred=alpha_preferred,
+        diagnostics.update(image_valid=image_valid, acquisition_loss=loss, alpha_target=alpha_target, alpha_preferred=alpha_preferred,
+                           quality_objective=cfg.differential_repair.quality_objective,
                            visual_rows_active=visual_enabled,visual_window_active=visual_window_active, visual_requests_m_s=requests if visual_enabled else np.zeros(2),
                            gamma_effective=gamma, quality=quality)
         x_nominal = np.r_[nominal_y / scales[:3], 0., 0.]
@@ -730,6 +746,7 @@ class ContactQp:
             diagnostics.update(transparent=False, iterations=iterations, solver_status=solver_status)
             if cfg.solver_policy == "bounded_retry_v1":
                 diagnostics['numeric_attempts'] = self._numeric_attempts
+                diagnostics['solver_backend_version'] = self._numeric_backend_version
             if not solved or not np.isfinite(x).all() or _violation(constraints, lo, hi, x) > cfg.feasibility_tolerance:
                 if online or self._numeric_deferred_reason is not None:
                     diagnostics['numeric_problem'] = dict(H=hessian, g=gradient, C=constraints, l=lo, u=hi)

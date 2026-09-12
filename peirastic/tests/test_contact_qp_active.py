@@ -95,13 +95,15 @@ def test_runner_actual_publication_block_preserves_device_facts(failure):
         events.append('arm_send')
         if failure=='arm':raise TimeoutError('test unknown')
     env=dict(time=__import__('time'),np=np,publication_owner=Owner(),rail_bridge=rail,rail_coast_active=False,
-        step=NS(qdot=np.zeros(8),q_send=np.zeros(8)),q_prev=np.zeros(8),q_meas=np.zeros(8),
+        step=NS(qdot=np.zeros(8),q_send=np.zeros(8),rocking_policy_tier=0,
+            rocking_limited=False,rocking_lower_rad_s=-np.inf,rocking_upper_rad_s=np.inf),q_prev=np.zeros(8),q_meas=np.zeros(8),
         inner=NS(cfg=NS(dt=.005,resync_err_rail_m=.01),limits=NS(q_lower=np.full(8,-1),q_upper=np.ones(8)),
                  kin=NS(jacobian=lambda q:np.eye(6,8)),_direct_joint_ptp=False,_plan_drives_rail=False,
                  abort_publication=lambda:events.append('inner_abort'),commit_publication=lambda q:events.append('inner_commit')),
         dt_wall_actual=.005,_qpik_rail_v_ff_m_s=lambda x:x,_wall_clock_rail_target=lambda x,*a,**kw:x,
         _reserve_rail_target=lambda *a,**k:(True,''),_fault_stop=lambda reason:events.append(('stop',reason)),
         _send_joint_canfd_cmd=send,robot=None,rad2deg=lambda x:x,arm_q_from_full=lambda x:x[1:],follow=True,canfd_proxy=None)
+    env.setdefault('wd',NS(fired=False));env.update(fault_epoch=[0],stop_check=None,on_control_state=None)
     module=ast.Module(body=[ast.For(target=ast.Name(id='_once',ctx=ast.Store()),iter=ast.Tuple(elts=[ast.Constant(1)],ctx=ast.Load()),body=target,orelse=[])],type_ignores=[])
     exec(compile(ast.fix_missing_locations(module),'<production publication>','exec'),env)
     if failure=='none':

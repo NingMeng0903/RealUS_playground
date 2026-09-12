@@ -274,7 +274,8 @@ class ControllerService:
         from peirastic.core.capabilities import (CapabilityAdvertisement, SOURCE_TIMEBASE_CAPABILITY,
             DIFFERENTIAL_REPAIR_CAPABILITY, CONFIDENCE_BALANCE_CAPABILITY, LOGICAL_COMMAND_BUDGET_CAPABILITY,
             CONTINUOUS_VISUAL_CAPABILITY, NOMINAL_TASK_POWER_CAPABILITY,
-            TRANSIENT_FEEDBACK_CAPABILITY, PAUSE_VISUAL_FEEDBACK_CAPABILITY)
+            TRANSIENT_FEEDBACK_CAPABILITY, PAUSE_VISUAL_FEEDBACK_CAPABILITY,
+            CONTINUOUS_EXECUTION_CAPABILITY, SOURCE_GAP_CAPABILITY)
         from peirastic.contact_qp.repair_policy import DifferentialRepairConfig
         from peirastic.contact_qp.command_budget import CommandBudget
         from rm75_control.control.admittance_common.variable_step_filter import VariableLowpass1, VariableHighpass2
@@ -282,7 +283,8 @@ class ControllerService:
             self.hub, {"contact_qp.recording_v1", "contact_qp.active_v1", SOURCE_TIMEBASE_CAPABILITY,
                 DIFFERENTIAL_REPAIR_CAPABILITY, CONFIDENCE_BALANCE_CAPABILITY, LOGICAL_COMMAND_BUDGET_CAPABILITY,
                 CONTINUOUS_VISUAL_CAPABILITY, NOMINAL_TASK_POWER_CAPABILITY,
-                TRANSIENT_FEEDBACK_CAPABILITY, PAUSE_VISUAL_FEEDBACK_CAPABILITY}
+                TRANSIENT_FEEDBACK_CAPABILITY, PAUSE_VISUAL_FEEDBACK_CAPABILITY,
+                CONTINUOUS_EXECUTION_CAPABILITY, SOURCE_GAP_CAPABILITY}
         )
 
     def close(self) -> None:
@@ -1154,9 +1156,18 @@ class ControllerService:
                     return True
                 return False
 
+            fault_status_mode = self.mode
+            def _on_control_state(state, reason):
+                # Status heartbeat is telemetry, not the command watchdog.
+                if state == "fault":
+                    self.hub.publish(status=Status.ERROR, mode=fault_status_mode,
+                        msg="controller_fault:"+str(reason), err_code=1)
+                else:
+                    self._publish_tick_status(mode=self.mode, ticks=self.ticks,
+                        msg=f"{phase.label}:recovering {reason}")
+
             def _on_step(label, t_phase, step, pose, f_ext, t_wall=float("nan")) -> None:
                 del label
-                self._publish_force_sample(f_ext)
                 t_ref = float(t_phase)
                 polled = self.hub.poll()
                 if polled is not None:
@@ -1263,7 +1274,8 @@ class ControllerService:
                 contact_gate = getattr(phase.outer, "contact_gate", None)
                 if contact_gate is not None:
                     controller = phase.outer.controller
-                    stage = "tracking" if contact_gate.started else "approach"
+                    stage = ("endpoint_convergence" if getattr(phase.outer,"_endpoint_started_s",None) is not None
+                             else "tracking" if contact_gate.started else "approach")
                     contact = int(bool(controller.contact_present))
                     vz_cmd = float(getattr(controller, "v_force_cmd_z", float("nan")))
                     msg = (f"{phase.label}:{stage} t={contact_gate.elapsed_s:.2f} "
@@ -1320,6 +1332,8 @@ class ControllerService:
                 log_csv=self.log_csv,
                 verbose=False,
                 on_step=_on_step,
+                on_force_sample=self._publish_force_sample,
+                on_control_state=_on_control_state,
                 preserve_controller_state=bool(
                     getattr(self, "_runner_started", False)
                 ),

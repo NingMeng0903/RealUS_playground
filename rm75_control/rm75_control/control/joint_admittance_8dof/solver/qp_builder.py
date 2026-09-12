@@ -753,6 +753,37 @@ class QpIkController:
         self._qdot_prev_seen = np.asarray(self.qdot_prev, dtype=float).copy()
         self.qdot_prev = applied
 
+    def relax_rocking_for_final_qdot(self, qdot: np.ndarray, tolerance: float | None = None) -> int:
+        """Admit a mechanical rewrite by relaxing only the task envelope.
+
+        This does not certify the candidate: the original velocity, CBF and
+        QP1 lock checks must still pass in ``validate_final_qdot`` afterwards.
+        It neither changes qdot nor commits any command history.
+        """
+        from ..rocking_envelope import rocking_interval
+        tier = int(getattr(self, "last_rocking_policy_tier", 0))
+        row = getattr(self, "_last_rocking_row", None)
+        candidate = np.asarray(qdot, dtype=float).reshape(-1)
+        if row is None or tier not in (1, 2, 3):
+            return tier
+        if candidate.size != self.kin.nv or not np.isfinite(candidate).all():
+            return tier  # The unmodified hard validator rejects malformed data.
+        tol = (max(10. * float(getattr(self.cfg, "eps_abs", 1e-6)), 1e-5)
+               if tolerance is None else float(tolerance))
+        if not np.isfinite(tol) or tol < 0.:
+            raise ValueError("rocking admission tolerance must be finite and nonnegative")
+        omega = float(row @ candidate) + self._last_rocking_offset
+        while tier < 4:
+            lower, upper = rocking_interval(self._last_rocking_limits, tier)
+            if lower <= upper and lower - tol <= omega <= upper + tol:
+                break
+            tier += 1
+        self.last_rocking_policy_tier = tier
+        self.last_rocking_limited = tier > 1
+        self.last_rocking_lower_rad_s, self.last_rocking_upper_rad_s = rocking_interval(
+            self._last_rocking_limits, tier)
+        return tier
+
     def validate_final_qdot(self, qdot: np.ndarray) -> tuple[float, float]:
         """Certify a post-QP command against P0 and the QP1 task lock.
 
@@ -780,6 +811,11 @@ class QpIkController:
                     )
                 ),
             )
+        rocking_row = getattr(self, "_last_rocking_row", None)
+        if rocking_row is not None and getattr(self, "last_rocking_policy_tier", 0) in (1, 2, 3):
+            omega = float(rocking_row @ qdot_arr) + self._last_rocking_offset
+            hard = max(hard, self.last_rocking_lower_rad_s - omega,
+                       omega - self.last_rocking_upper_rad_s)
         lock_jac = (
             self.last_lock_jacobian
             if self.last_lock_jacobian.size
@@ -1039,8 +1075,20 @@ class QpIkController:
         rail_open_travel: bool = False,
         arm_qdot_pref: np.ndarray | None = None,
         commit_history: bool = True,
+        rocking_axis_base=None,
+        rocking_bounds=None,
     ) -> IkStepResult:
         t_total = time.perf_counter()
+        from ..rocking_envelope import validate_rocking, rocking_interval
+        rocking_axis, rocking_limits = validate_rocking(rocking_axis_base, rocking_bounds)
+        self.last_rocking_policy_tier = 0
+        self.last_rocking_limited = False
+        self.last_rocking_lower_rad_s = -float("inf")
+        self.last_rocking_upper_rad_s = float("inf")
+        self._last_rocking_row = None
+        self._last_rocking_limits = rocking_limits
+        self._last_rocking_offset = 0.
+
         q_prev = np.asarray(q_prev, dtype=float).reshape(-1)
         nv = self.kin.nv
         if q_prev.size != nv:
@@ -1368,6 +1416,35 @@ class QpIkController:
             max_pref_rows=MAX_PREF_ROWS,
         )
 
+        # Fixed task-y restriction. It has no preference slack and is relaxed
+        # before any original joint or collision hard row may be changed.
+        rocking_row_index = len(lo)
+        C_hard = np.vstack((C_hard, np.zeros((1, C_hard.shape[1]))))
+        lo = np.r_[lo, -np.inf]; hi = np.r_[hi, np.inf]
+        if rocking_axis is not None:
+            self._last_rocking_row = rocking_axis @ J_task[3:, :]
+            self._last_rocking_offset = float(rocking_axis @ rail_exec_contrib[3:])
+
+        def set_rocking_tier(tier):
+            self.last_rocking_policy_tier = tier
+            self.last_rocking_limited = tier > 1
+            lower, upper = rocking_interval(rocking_limits, tier)
+            self.last_rocking_lower_rad_s = lower
+            self.last_rocking_upper_rad_s = upper
+            C_hard[rocking_row_index] = 0.
+            lo[rocking_row_index] = -np.inf; hi[rocking_row_index] = np.inf
+            if tier in (0, 4):
+                return True
+            if lower > upper:
+                return False
+            row = self._last_rocking_row
+            C_hard[rocking_row_index, :nv] = row
+            lo[rocking_row_index] = lower - self._last_rocking_offset
+            hi[rocking_row_index] = upper - self._last_rocking_offset
+            possible_lo = float(row @ np.where(row >= 0., lo_box, hi_box))
+            possible_hi = float(row @ np.where(row >= 0., hi_box, lo_box))
+            return lo[rocking_row_index] <= possible_hi + 1e-12 and hi[rocking_row_index] >= possible_lo - 1e-12
+
         H1, g1, A1 = cpp_kernel.setup_qp1(
             nv, n_task, n_pref, w_task_mat, J_task,
             use_native=bool(getattr(self.cfg, "use_cpp_kernel", True)),
@@ -1398,7 +1475,13 @@ class QpIkController:
                 x = None
             return x, raw
 
-        x1, raw_qp1 = _attempt_qp1(lo, hi)
+        x1 = None; raw_qp1 = "not_run"
+        for tier in (range(1, 5) if rocking_axis is not None else (0,)):
+            if not set_rocking_tier(tier):
+                continue
+            x1, raw_qp1 = _attempt_qp1(lo, hi)
+            if x1 is not None:
+                break
         self.last_qp1_status = raw_qp1
         self.last_qp1_solve_ms = float(getattr(self.backend, "last_solve_ms", 0.0))
         self.last_qp1_iter = int(getattr(self.backend, "last_iter", 0) or 0)

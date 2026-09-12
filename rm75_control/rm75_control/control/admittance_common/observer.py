@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import hashlib
 from collections import deque
-from dataclasses import dataclass, field, replace
+from dataclasses import dataclass, field, replace, is_dataclass
 from pathlib import Path
+from numbers import Real
 
 import numpy as np
 import yaml
@@ -112,11 +113,25 @@ class CompensatedForceObserver:
         self._leftover_contact = False
         self._signed_last = np.zeros(6,dtype=float)
 
-    def configure_source_period(self, period_s: float | None, *, variable_dt=False, max_interval_s=None, new_epoch=False) -> None:
+    def configure_source_period(self, period_s: float | None, *, variable_dt=False, max_interval_s=None, new_epoch=False,
+                                gap_policy='strict_v1',max_recovery_interval_s=None) -> None:
         """Rebind at a stopped mode boundary; preserve the measured LP state."""
         period=1./self.cfg.poll_hz if period_s is None else float(period_s)
+        if gap_policy not in ('strict_v1','lease_fresh_foh_v1'):
+            raise ValueError('unsupported observer source gap policy')
+        if gap_policy=='lease_fresh_foh_v1':
+            if (not variable_dt or max_interval_s is None or max_recovery_interval_s is None or
+                    isinstance(max_recovery_interval_s,bool) or not np.isfinite(max_recovery_interval_s) or
+                    max_recovery_interval_s<max_interval_s):
+                raise ValueError('observer lease recovery requires a declared command interval budget')
+        elif max_recovery_interval_s is not None:
+            raise ValueError('observer recovery interval requires lease gap policy')
+        self._source_gap_policy=gap_policy
+        self._max_recovery_interval_s=max_recovery_interval_s
         self._max_source_interval_s=max_interval_s
-        if variable_dt and new_epoch:self._variable_epoch_first=True
+        if variable_dt and new_epoch:
+            self._variable_epoch_first=True
+            self._source_epoch_id=None
         previous_period=getattr(self,'_source_period_s',1./self.cfg.poll_hz)
         previous_variable=getattr(self,'_variable_source_dt',False)
         if period==previous_period and bool(variable_dt)==previous_variable:return
@@ -139,6 +154,41 @@ class CompensatedForceObserver:
             from .variable_step_filter import VariableLowpass1
             self._variable_lpf=VariableLowpass1(self.cfg.causal_fc_hz,period,
                                                self._f_ext_last,self.f_ext_raw_last)
+
+    def _validate_gap_context(self,context,source_id,t_s,previous_source_t,interval,sensor_age_s):
+        """Independently check this observer's actual consumed sample history."""
+        if (getattr(self,'_source_gap_policy','strict_v1')!='lease_fresh_foh_v1' or
+                not is_dataclass(context) or
+                not getattr(getattr(type(context),'__dataclass_params__',None),'frozen',False)):
+            raise ValueError('observer recovery requires an immutable lease gap context')
+        fields=('policy','source_id','previous_source_t_s','source_t_s','lease_id',
+                'lease_committed_s','lease_expires_s','admitted_at_s','max_gap_s')
+        if not all(hasattr(context,name) for name in fields):
+            raise ValueError('incomplete observer source gap context')
+        if (context.policy!='lease_fresh_foh_v1' or context.source_id!=source_id or
+                source_id!=getattr(self,'_source_epoch_id',None) or not source_id or
+                context.previous_source_t_s!=previous_source_t or context.source_t_s!=float(t_s)):
+            raise ValueError('observer gap context watermark or source epoch mismatch')
+        if getattr(self,'_variable_epoch_first',False) or self._variable_lpf is None:
+            raise ValueError('observer recovery requires preserved same-epoch filter history')
+        if type(context.lease_id) is not int or context.lease_id<=0:
+            raise ValueError('observer gap requires a committed lease identity')
+        for name in ('previous_source_t_s','source_t_s','lease_committed_s','lease_expires_s','admitted_at_s','max_gap_s'):
+            value=getattr(context,name)
+            if not isinstance(value,Real) or isinstance(value,bool) or not np.isfinite(value) or value<0:
+                raise ValueError('invalid observer gap context timestamp or budget')
+        if (sensor_age_s is None or isinstance(sensor_age_s,bool) or not np.isfinite(sensor_age_s) or
+                not 0<=sensor_age_s<=.015):
+            raise ValueError('observer gap requires a currently fresh force sample')
+        if not context.lease_committed_s<float(t_s)<=context.admitted_at_s<context.lease_expires_s:
+            raise ValueError('observer gap original command lease inactive or expired')
+        if (context.admitted_at_s-float(t_s)>.015 or
+                float(t_s)+sensor_age_s>=context.lease_expires_s):
+            raise ValueError('observer gap current age or original lease expired')
+        if (context.max_gap_s!=self._max_recovery_interval_s or
+                interval>context.max_gap_s+1e-12 or
+                context.lease_expires_s-context.lease_committed_s>context.max_gap_s+1e-12):
+            raise ValueError('observer gap exceeds command-lease interval budget')
 
     def _file_signature(self) -> tuple[int, int]:
         st = Path(self.cfg.phi_path).stat()
@@ -243,6 +293,8 @@ class CompensatedForceObserver:
         wall_time_ns: int | None = None,
         measurement_fresh: bool = True,
         source_dt_s: float | None = None,
+        source_id: str | None = None,
+        gap_context=None,
     ) -> tuple[np.ndarray, np.ndarray]:
         """Causal link_7-frame external wrench (before ``wrench_link7_to_tcp``).
 
@@ -251,25 +303,39 @@ class CompensatedForceObserver:
         ``apply`` and gates pass. ``observe`` stores a dynamic candidate only.
         """
         if not measurement_fresh:
+            if gap_context is not None:raise ValueError('held observation cannot recover a source gap')
             if not self._n_updates:raise ValueError('held observation requires an initial source sample')
             return self._signed_last.copy(),self._f_ext_last.copy()
         previous_source_t=self.last_t_s
-        variable_interval=None
+        variable_interval=None;gap_recovered=False
         if getattr(self,'_variable_source_dt',False):
             variable_interval=(float(t_s)-previous_source_t if np.isfinite(previous_source_t) else self._source_period_s)
             if not np.isfinite(variable_interval) or variable_interval<=0:
                 raise ValueError('observer source interval must be positive and finite')
             if self._max_source_interval_s is not None and variable_interval>self._max_source_interval_s+1e-12:
-                if not getattr(self,'_variable_epoch_first',False):
+                if gap_context is not None:
+                    self._validate_gap_context(gap_context,source_id,t_s,previous_source_t,variable_interval,sensor_age_s)
+                    gap_recovered=True
+                elif not getattr(self,'_variable_epoch_first',False):
                     raise ValueError('observer source interval exceeds declared maximum')
-                # Only the explicitly entered stopped/new-phase measurement epoch
-                # may seed a current valid sample. Do not interpolate the old gap.
-                self._variable_lpf=None
-                self.source_filter_epoch_reset=dict(reason='new_active_epoch_after_history_gap',
-                    previous_source_t_s=previous_source_t,source_t_s=float(t_s),gap_s=variable_interval,
-                    interpolation_performed=False,steady_current_measurement_seed=True)
-                variable_interval=self._source_period_s
+                else:
+                    # Only a stopped/new-phase epoch may seed a current sample.
+                    self._variable_lpf=None
+                    self.source_filter_epoch_reset=dict(reason='new_active_epoch_after_history_gap',
+                        previous_source_t_s=previous_source_t,source_t_s=float(t_s),gap_s=variable_interval,
+                        interpolation_performed=False,steady_current_measurement_seed=True)
+                    variable_interval=self._source_period_s
+            if gap_context is not None and not gap_recovered:
+                raise ValueError('observer gap context requires a fresh recovery interval')
             self._variable_epoch_first=False
+        elif gap_context is not None:
+            raise ValueError('observer gap recovery requires variable source timebase')
+        if source_id is not None:
+            if not isinstance(source_id,str) or not source_id:raise ValueError('invalid observer source identity')
+            previous_epoch=getattr(self,'_source_epoch_id',None)
+            if previous_epoch is not None and source_id!=previous_epoch:
+                raise ValueError('observer source epoch changed without explicit rebind')
+            self._source_epoch_id=source_id
         self.last_t_s = float(t_s)
         try:
             wall_ns = int(wall_time_ns or 0)
@@ -306,7 +372,8 @@ class CompensatedForceObserver:
             from .variable_step_filter import VariableLowpass1
             if self._variable_lpf is None:
                 self._variable_lpf=VariableLowpass1(self.cfg.causal_fc_hz,self._source_period_s,residual,residual)
-            f_ext_filt=self._variable_lpf.update(residual,variable_interval)
+            f_ext_filt=(self._variable_lpf.update_foh(residual,variable_interval) if gap_recovered else
+                        self._variable_lpf.update(residual,variable_interval))
         else:
             if self._lpf_zi is None:
                 self._lpf_zi = np.outer(self._lpf_zi_unit, residual)

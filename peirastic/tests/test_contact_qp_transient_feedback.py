@@ -204,7 +204,8 @@ def test_production_retry_branch_aborts_every_proposal_and_paces_without_send(fa
     rail=NS(enabled=True,measured_m=0.,reserve_target_m=lambda *a,**k:True,
             commit_reservation=lambda:events.append('rail_commit'),abort_reservation=lambda:events.append('rail_abort'))
     env=dict(time=__import__('time'),np=np,publication_owner=Owner(),rail_bridge=rail,rail_coast_active=False,
-        step=NS(qdot=np.zeros(8),q_send=np.zeros(8)),q_prev=np.zeros(8),q_meas=np.zeros(8),
+        step=NS(qdot=np.zeros(8),q_send=np.zeros(8),rocking_policy_tier=0,
+            rocking_limited=False,rocking_lower_rad_s=-np.inf,rocking_upper_rad_s=np.inf),q_prev=np.zeros(8),q_meas=np.zeros(8),
         inner=NS(cfg=NS(dt=.005,resync_err_rail_m=.01),limits=NS(q_lower=np.full(8,-1),q_upper=np.ones(8)),
             kin=NS(jacobian=lambda q:np.eye(6,8)),_direct_joint_ptp=False,_plan_drives_rail=False,
             abort_publication=lambda:events.append('inner_abort'),commit_publication=lambda q:events.append('inner_commit')),
@@ -213,6 +214,7 @@ def test_production_retry_branch_aborts_every_proposal_and_paces_without_send(fa
         _send_joint_canfd_cmd=lambda *a:events.append('arm_send'),robot=None,rad2deg=lambda x:x,
         arm_q_from_full=lambda x:x[1:],follow=True,canfd_proxy=None,ticks=9,next_tick=10.,dt=.005,
         wd=NS(fired=False,beat=lambda:events.append('heartbeat')),_wait_until=lambda t:events.append(('wait',t)))
+    env.setdefault('wd',NS(fired=False));env.update(fault_epoch=[0],stop_check=None,on_control_state=None)
     module=ast.Module(body=[ast.For(target=ast.Name(id='_once',ctx=ast.Store()),iter=ast.Tuple(elts=[ast.Constant(1)],ctx=ast.Load()),body=target,orelse=[])],type_ignores=[])
     exec(compile(ast.fix_missing_locations(module),'<production no-send retry>','exec'),env)
     assert events==['rail_abort',('outer_abort',{'definitely_not_sent':True}),'inner_abort','retry',('wait',10.005)]

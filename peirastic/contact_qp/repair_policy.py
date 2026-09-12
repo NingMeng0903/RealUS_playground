@@ -14,6 +14,7 @@ import numpy as np
 class DifferentialRepairConfig:
     revision: str = "v8r2_bounded_episode"
     permission_mode: str = "bounded_episode"
+    quality_objective: str = "confidence_balance_v1"
     balance_deadband: float = 0.10
     max_permission_s: float = 2.0
     max_angle_travel_rad: float = math.radians(3.)
@@ -26,6 +27,10 @@ class DifferentialRepairConfig:
     hard_stop_n: float = 6.0
 
     def __post_init__(self):
+        if self.quality_objective not in ('confidence_balance_v1','deficit_only_v1'):
+            raise ValueError('unknown visual quality objective')
+        if self.quality_objective=='deficit_only_v1' and self.permission_mode!='continuous':
+            raise ValueError('deficit objective requires continuous repair')
         if self.revision not in ('v8r2_bounded_episode','v8r3_confidence_balance'):raise ValueError('unsupported differential repair revision')
         if self.permission_mode not in ('bounded_episode','continuous'):
             raise ValueError('permission_mode must be bounded_episode or continuous')
@@ -48,14 +53,21 @@ class DifferentialRepairConfig:
         if not math.isfinite(force_n):raise ValueError('finite measured force required')
         return float(np.clip((self.soft_force_n-force_n)/(self.soft_force_n-self.nominal_force_n),0.,1.))
 
-    def confidence_imbalance(self,quality,gamma):
+    def confidence_imbalance(self,quality,gamma,*,c_min=None):
         """Coarse shallow-confidence direction cue, not an acoustic derivative.
 
         A common consistency multiplier cannot reverse the image direction.
         The deadband is an engineering setting requiring image calibration.
         """
+        denominator=1.-self.balance_deadband
         difference=float(quality[1]-quality[0])
-        error=math.copysign(max(abs(difference)-self.balance_deadband,0.),difference)/(1.-self.balance_deadband)
+        if self.quality_objective=='deficit_only_v1':
+            if c_min is None or not self.balance_deadband < c_min < 1.:
+                raise ValueError('deficit objective requires deadband < c_min < 1')
+            deficit=np.maximum(c_min-np.asarray(quality),0.)
+            difference=float(deficit[0]-deficit[1])
+            denominator=c_min-self.balance_deadband
+        error=math.copysign(max(abs(difference)-self.balance_deadband,0.),difference)/denominator
         return error*float(np.min(gamma))
 
     def terms(self,*,scaled_basis,visual_rows,endpoint_rows,nominal_twist,deficits,

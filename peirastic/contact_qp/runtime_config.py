@@ -12,6 +12,18 @@ def load_study_config(source):
     return dict(source)
 
 
+def source_settings(config):
+    """Bind the recovery interval to the existing lease, without a second knob."""
+    source=dict(config.get('source') or {})
+    if source.get('gap_policy')=='lease_fresh_foh_v1':
+        if 'max_recovery_interval_s' in source:
+            raise ValueError('recovery interval is derived from energy.max_command_interval_s')
+        if config.get('energy_constraint_enabled') is not True:
+            raise ValueError('gap recovery requires a committed command budget')
+        source['max_recovery_interval_s']=(config.get('energy') or {}).get('max_command_interval_s')
+    return source
+
+
 def calibrated_geometry(config):
     from peirastic.contact_qp.types import ProbeGeometry
     raw=dict(config.get('geometry') or {})
@@ -129,6 +141,16 @@ def validate_study_config(source):
     config=load_study_config(source)
     mode=config.get('mode','baseline')
     if mode not in ('baseline','shadow','active'):raise ValueError('invalid study mode')
+    from .execution import EXECUTION_POLICY
+    execution=config.get('execution_policy','legacy_v1')
+    if execution not in ('legacy_v1',EXECUTION_POLICY):raise ValueError('unknown execution policy')
+    if execution==EXECUTION_POLICY:
+        qp=config.get('qp') or {}
+        if (mode!='active' or not config.get('energy_constraint_enabled') or
+                (config.get('source') or {}).get('gap_policy')!='lease_fresh_foh_v1' or
+                qp.get('solver_policy')!='bounded_retry_v1' or
+                (qp.get('differential_repair') or {}).get('quality_objective')!='deficit_only_v1'):
+            raise ValueError('continuous visual repair recovery needs active command budget, lease gap, bounded solver and deficit objective')
     missing=[]
     geometry=config.get('geometry') or {}
     for key in ('half_length_m','T_tcp_face','image_x_sign','calibration_version','face_normal_convention'):
@@ -181,11 +203,11 @@ def validate_study_config(source):
             missing.append('force_axis_monotonicity_confirmed=true')
         if not any(key.startswith('source.') for key in missing):
             from peirastic.contact_qp.runtime_source import SourceClock
-            SourceClock(**source)
+            SourceClock(**source_settings(config))
     if mode=='active' and missing:
         raise ValueError('active calibration missing: '+', '.join(missing))
     _validate_effective_tasks(config,mode,feature)
-    return dict(mode=mode,configuration_valid=True,
+    return dict(mode=mode,configuration_valid=True,execution_policy=execution,
                 command_authority='unchanged_baseline' if mode!='active' else 'outer_qp_original_ik',
                 calibration_status='unverified' if missing else 'declared',
                 missing_active_calibration=missing,

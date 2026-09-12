@@ -508,7 +508,7 @@ int main(int argc, char** argv) {
     } else if (a == "--protocol-info") {
       std::cout << "version " << wbc_rt::kVersion
                 << " in " << sizeof(wbc_rt::WbcIn)
-                << " out " << sizeof(wbc_rt::WbcOut) << "\n";
+                << " out " << sizeof(wbc_rt::WbcOut) << " capabilities rocking_interval_v1\n";
       return 0;
     } else if (a == "--hash") {
       std::cout << WBC_SRC_HASH << "\n";

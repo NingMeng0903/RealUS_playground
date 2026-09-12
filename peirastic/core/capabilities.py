@@ -10,6 +10,8 @@ import uuid
 from realus_clock import header_path
 
 
+CONTINUOUS_EXECUTION_CAPABILITY='contact_qp.continuous_recovery_v1'
+SOURCE_GAP_CAPABILITY='contact_qp.lease_fresh_foh_v1'
 SOURCE_TIMEBASE_CAPABILITY='contact_qp.source_timebase_bilinear_v1'
 DIFFERENTIAL_REPAIR_CAPABILITY='contact_qp.differential_repair_v8_r2'
 CONFIDENCE_BALANCE_CAPABILITY='contact_qp.confidence_balance_v8_r3'
@@ -23,6 +25,10 @@ PAUSE_VISUAL_FEEDBACK_CAPABILITY='contact_qp.pause_visual_feedback_v1'
 def study_capabilities(config):
     active=config.get('mode','baseline')=='active'
     required=['contact_qp.active_v1' if active else 'contact_qp.recording_v1']
+    if active and config.get('execution_policy')=='continuous_recovery_v1':
+        required.append(CONTINUOUS_EXECUTION_CAPABILITY)
+    if active and (config.get('source') or {}).get('gap_policy')=='lease_fresh_foh_v1':
+        required.append(SOURCE_GAP_CAPABILITY)
     if active and (config.get('source') or {}).get('timebase')=='variable_step_bilinear_v1':
         required.append(SOURCE_TIMEBASE_CAPABILITY)
     if active and (config.get('qp') or {}).get('allocation_policy')=='differential_repair_v8':

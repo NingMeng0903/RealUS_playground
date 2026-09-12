@@ -1368,6 +1368,8 @@ TickOut InnerLoop::step(const TickIn& in) {
   rocking_axis_base_ = in.rocking_axis_base;
   rocking_bounds_ = in.rocking_bounds;
   rocking_policy_tier_ = 0;
+  rocking_lower_ = -std::numeric_limits<double>::infinity();
+  rocking_upper_ = std::numeric_limits<double>::infinity();
   if (rocking_enabled_ && (!rocking_axis_base_.allFinite() ||
       std::abs(rocking_axis_base_.squaredNorm() - 1.) > 1e-8 ||
       !rocking_bounds_.allFinite() || rocking_bounds_[0] > rocking_bounds_[1])) {

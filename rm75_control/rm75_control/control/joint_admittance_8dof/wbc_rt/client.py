@@ -368,12 +368,9 @@ class NativeWbcClient:
         rec["cmd"] = np.uint32(cmd)
         rec["magic"] = P.WBC_MAGIC
         rec["version"] = P.WBC_VERSION
-        from ..rocking_envelope import validate_rocking
-        rocking_axis, rocking_bounds = validate_rocking(
-            kwargs.get("rocking_axis_base"), kwargs.get("rocking_bounds"))
-        rec["rocking_enabled"] = int(rocking_axis is not None)
-        rec["rocking_axis_base"][:] = 0. if rocking_axis is None else rocking_axis
-        rec["rocking_bounds"][:] = 0. if rocking_bounds is None else rocking_bounds
+        rec["rocking_enabled"] = 0
+        rec["rocking_axis_base"][:] = 0.
+        rec["rocking_bounds"][:] = 0.
         rec["cmd_f"][:] = 0.0
         rec["cmd_u"][:] = 0
         if cmd_f is not None:
@@ -610,21 +607,41 @@ class NativeWbcClient:
             return self._timeout_step(twist)
         if self._inflight_seq:
             seq = int(self._inflight_seq)
+            # Completion/abort does not grant an expired request a new lease.
             age = time.monotonic() - self._inflight_t0
             if age >= self._inflight_limit_s:
                 self._last_wait_s = age
                 self._last_wait_reason = "request_age"
                 return self._timeout_step(twist)
-            if int(self._out["seq"][0]) == seq:
+            reply_ready = int(self._out["seq"][0]) == seq
+            abort_previous = bool(self._abort_next) or bool(kwargs.get("abort_prev", False))
+            if reply_ready and abort_previous:
+                # This proposal belongs to an aborted outer transaction. Its
+                # source/frame/envelope must never be paired with this tick's
+                # inputs, even when the native reply arrived during the hold.
+                # Keep the abort intent until the fresh request carries it to
+                # native, which owns rollback of the previous proposal.
+                self._abort_next = True
+                self._inflight_seq = 0
+                self._soft_miss_seq = 0
+                self._timeout_streak = 0
+                self._coast_warn_age_s = -1.0
+                self._pending_commit_seq = 0
+                self._published_q_cmd = None
+                self._published_qdot = None
+            else:
+                # An unfinished request retains its original age deadline;
+                # aborting it is not permission to overwrite the SHM slot.
+                if reply_ready:
+                    self._last_wait_s = time.monotonic() - self._inflight_t0
+                    self._last_wait_reason = ""
+                    self._last_reply_seq = seq
+                    return self._accept_ok_step(
+                        twist, seq, q_meas=q_meas, qdot_ff=qdot_ff, **kwargs
+                    )
                 self._last_wait_s = time.monotonic() - self._inflight_t0
-                self._last_wait_reason = ""
-                self._last_reply_seq = seq
-                return self._accept_ok_step(
-                    twist, seq, q_meas=q_meas, qdot_ff=qdot_ff, **kwargs
-                )
-            self._last_wait_s = time.monotonic() - self._inflight_t0
-            self._last_wait_reason = "deadline"
-            return self._deadline_miss_step(twist)
+                self._last_wait_reason = "deadline"
+                return self._deadline_miss_step(twist)
         rec = self._in[0]
         rec["seq"] = np.uint64(0)
         rec["magic"] = P.WBC_MAGIC

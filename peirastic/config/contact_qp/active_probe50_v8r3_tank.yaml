@@ -11,6 +11,7 @@
 # Requires nominal_task_power_v1 and pause_visual_feedback_v1 in addition to v8r3 handlers.
 # Missing/stale images pause visual correction after valid feedback; fresh force baseline continues.
 mode: active
+execution_policy: continuous_recovery_v1
 log_path: null
 feature_endpoint: tcp://127.0.0.1:17361
 geometry:
@@ -78,6 +79,7 @@ feature:
 source:
   period_s: 0.005
   timebase: variable_step_bilinear_v1
+  gap_policy: lease_fresh_foh_v1
   max_interval_s: 0.015
   max_age_s: 0.015
   jitter_fraction: 0.5
@@ -107,10 +109,12 @@ energy:
     bounds_version: logical_nominal_task_power_v1
 
 qp:
+  solver_policy: bounded_retry_v1
   allocation_policy: differential_repair_v8
   differential_repair:
     revision: v8r3_confidence_balance
     permission_mode: continuous
+    quality_objective: deficit_only_v1
     # Successful recorded L/C late-half imbalance max .016576; this is a trial threshold.
     balance_deadband: 0.03
     differential_weight: 10.0

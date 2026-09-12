@@ -1,0 +1,64 @@
+{
+  "mode": "legacy_open_loop_reconstruction",
+  "cases": [
+    {
+      "case": 0,
+      "path": "/media/camp/PEI_T7/icra 2027_contact/uncalibrated/yuhan_L/attempts/RH_Per_S_DtP/001/contact_qp.jsonl",
+      "inputs": 3090,
+      "retries": 18,
+      "refusals": []
+    },
+    {
+      "case": 1,
+      "path": "/media/camp/PEI_T7/icra 2027_contact/uncalibrated/yuhan_L/attempts/RH_Per_S_PtD/001/contact_qp.jsonl",
+      "inputs": 3554,
+      "retries": 4,
+      "refusals": []
+    },
+    {
+      "case": 2,
+      "path": "/media/camp/PEI_T7/icra 2027_contact/uncalibrated/yuhan_L/attempts/RH_Per_S_PtD/004/contact_qp.jsonl",
+      "inputs": 2137,
+      "retries": 6,
+      "refusals": []
+    },
+    {
+      "case": 3,
+      "path": "/media/camp/PEI_T7/icra 2027_contact/uncalibrated/yuhan_L/attempts/RH_Per_S_PtD/005/contact_qp.jsonl",
+      "inputs": 1843,
+      "retries": 6,
+      "refusals": []
+    },
+    {
+      "case": 4,
+      "path": "/media/camp/PEI_T7/icra 2027_contact/uncalibrated/yuhan_L/attempts/RH_Per_S_PtD/006/contact_qp.jsonl",
+      "inputs": 1933,
+      "retries": 3,
+      "refusals": []
+    },
+    {
+      "case": 5,
+      "path": "/media/camp/PEI_T7/icra 2027_contact/uncalibrated/zhongyao2/attempts/LH_Per_L_PtD/001/contact_qp.jsonl",
+      "inputs": 2308,
+      "retries": 2,
+      "refusals": []
+    },
+    {
+      "case": 6,
+      "path": "/media/camp/PEI_T7/icra 2027_contact/uncalibrated/zhongyao2/attempts/RH_Per_S_DtP/001/contact_qp.jsonl",
+      "inputs": 4478,
+      "retries": 23,
+      "refusals": []
+    },
+    {
+      "case": 7,
+      "path": "/media/camp/PEI_T7/icra 2027_contact/uncalibrated/zhongyao2/attempts/RH_Per_S_DtP/002/contact_qp.jsonl",
+      "inputs": 1647,
+      "retries": 52,
+      "refusals": []
+    }
+  ],
+  "inputs": 20990,
+  "refusals": 0,
+  "caveat": "Unlogged failed wrench uses previous row; unlogged success angle is zero. No physical/closed-loop claim."
+}

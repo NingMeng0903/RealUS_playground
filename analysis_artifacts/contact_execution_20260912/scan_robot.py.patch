@@ -1,0 +1,49 @@
+--- /media/camp/EXT_DRIVE/ICRA_YM/script/scan_robot.py
++++ /media/camp/EXT_DRIVE/ICRA_YM/script/scan_robot.py
+@@ -110,6 +110,8 @@
+         self._standoff_target = None
+         self._air_motion = False
+         self._calibration_apex = None
++        self._recovering_message = None
++        self._endpoint_notice = False
+ 
+     def mark(self, name):
+         self.stages[name] = get_clock().now_ns()
+@@ -124,6 +126,17 @@
+             raise RuntimeError(f"Controller stopped: {snap.get('msg')}. Recover manually.")
+         if self.expected_seq is not None and int(snap["cmd_seq"]) != self.expected_seq:
+             raise RuntimeError("Control taken by another command.")
++        message = str(snap.get("msg", ""))
++        recovering = ":recovering " in message
++        if recovering and message != getattr(self, "_recovering_message", None):
++            print("[RECOVERING] " + message + "; current recording continues.", flush=True)
++            self._recovering_message = message
++        elif not recovering and getattr(self, "_recovering_message", None) is not None:
++            print("[RESUMED] Fresh control publication resumed.", flush=True)
++            self._recovering_message = None
++        if ":endpoint_convergence" in message and not getattr(self, "_endpoint_notice", False):
++            print("[ENDPOINT] Reference complete; waiting for measured arrival.", flush=True)
++            self._endpoint_notice = True
+         if self._recording is not None:
+             self._recording.poll()
+         if self._air_motion or self._standoff_target is not None:
+@@ -288,6 +301,7 @@
+         self.mark("prepare_begin")
+         if not self.air_verified or abs(self._fz()) >= RELEASE_N:
+             self.withdraw()
++        self._endpoint_notice = False
+         ref = ForearmReference(spec)
+         target = lift_pose(ref.sample(0).pose_d, 0.03)
+         self._air_motion = True
+@@ -342,9 +356,9 @@
+                 snap = self.status()
+                 now = time.monotonic()
+                 message = str(snap["msg"])
+-                if message.startswith(("icra_scan:approach", "icra_scan:tracking")) and "scan_gate=4.0" not in message:
++                if message.startswith(("icra_scan:approach", "icra_scan:tracking", "icra_scan:endpoint_convergence")) and "scan_gate=4.0" not in message:
+                     raise RuntimeError("Restart the updated controller; scan gate missing.")
+-                if "icra_scan:tracking" in message and tracking_started is None:
++                if any(stage in message for stage in ("icra_scan:tracking", "icra_scan:endpoint_convergence")) and tracking_started is None:
+                     tracking_started = now
+                     self.mark("tracking_observed")
+                     print("[SCAN] Running.", flush=True)

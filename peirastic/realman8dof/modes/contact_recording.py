@@ -18,6 +18,7 @@ import subprocess
 import atexit
 from threading import Lock
 from dataclasses import asdict,is_dataclass
+from collections.abc import Mapping
 import numpy as np
 
 _OPEN_SINKS=set()
@@ -38,7 +39,7 @@ def json_value(value):
     if isinstance(value,np.ndarray):return json_value(value.tolist())
     if isinstance(value,np.generic):return json_value(value.item())
     if isinstance(value,float):return value if math.isfinite(value) else None
-    if isinstance(value,dict):return {str(k):json_value(v) for k,v in value.items()}
+    if isinstance(value,Mapping):return {str(k):json_value(v) for k,v in value.items()}
     if isinstance(value,(list,tuple)):return [json_value(v) for v in value]
     if value is None or isinstance(value,(str,int,bool)):return value
     return str(value)
@@ -49,12 +50,19 @@ def study_fingerprints(baseline,config):
     root=Path(__file__).resolve().parents[2]
     sources={}
     for relative in ('realman8dof/modes/contact_qp.py','realman8dof/modes/contact_recording.py',
-            'contact_qp/qp.py','contact_qp/port_constraint.py','realman8dof/force/legacy.py',
+            'realman8dof/modes/contact_active.py','contact_qp/runtime_source.py','contact_qp/runtime_config.py',
+            'contact_qp/execution.py','contact_qp/rocking_smoothing.py','contact_qp/repair_policy.py',
+            'contact_qp/command_budget.py','contact_qp/qp.py','contact_qp/port_constraint.py','realman8dof/force/legacy.py',
             'realman8dof/force/torque_tilt.py','realman8dof/force/nominal_transaction.py','configs/force.yaml'):
         path=root/relative
         if path.is_file():sources[relative]=hashlib.sha256(path.read_bytes()).hexdigest()
     shared_controller=root.parent/'rm75_control/rm75_control/control/admittance_common/controller.py'
     sources['rm75_control/admittance_common/controller.py']=hashlib.sha256(shared_controller.read_bytes()).hexdigest()
+    for relative in ('admittance_common/observer.py','admittance_common/variable_step_filter.py',
+                     'joint_admittance_8dof/loop.py','joint_admittance_8dof/wbc_rt/client.py',
+                     'joint_admittance_8dof/wbc_rt/protocol.py'):
+        path=shared_controller.parent.parent/relative
+        if path.is_file():sources['rm75_control/'+relative]=hashlib.sha256(path.read_bytes()).hexdigest()
     controller=getattr(baseline,'controller',None)
     effective=json_value(dict(force=getattr(controller,'cfg',None),study=config))
     encoded=json.dumps(effective,sort_keys=True,separators=(',',':'),allow_nan=False).encode()
