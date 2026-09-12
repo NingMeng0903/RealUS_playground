@@ -9,7 +9,7 @@ static constexpr uint32_t kMagic = 0x57424331u;  // 'WBC1'
 // v8 appends real-time stage timing telemetry. Existing fields keep their
 // order so readers can migrate by version rather than by heuristic size
 // checks.
-static constexpr uint32_t kVersion = 8;
+static constexpr uint32_t kVersion = 9;
 
 enum Cmd : uint32_t {
   kCmdNone = 0,
@@ -122,6 +122,9 @@ struct WbcIn {
   // Effective interval until the next rail command refresh.  This may be
   // slower than the ARM/WBC tick (for example 1/60 s versus 5 ms).
   double rail_refresh_dt;
+  double rocking_axis_base[3];
+  double rocking_bounds[6];
+  uint32_t rocking_enabled;
 };
 
 struct WbcOut {
@@ -240,11 +243,15 @@ struct WbcOut {
   double collision_ms;
   double qp_total_ms;
   double ipc_wait_ms;
+  uint32_t rocking_policy_tier;
+  uint32_t rocking_limited;
+  double rocking_lower_rad_s;
+  double rocking_upper_rad_s;
 };
 #pragma pack(pop)
 
-static_assert(sizeof(WbcIn) == 616, "WbcIn layout drift");
-static_assert(sizeof(WbcOut) == 1472, "WbcOut layout drift");
+static_assert(sizeof(WbcIn) == 692, "WbcIn layout drift");
+static_assert(sizeof(WbcOut) == 1496, "WbcOut layout drift");
 
 inline void clear_in(WbcIn* s) {
   std::memset(s, 0, sizeof(WbcIn));

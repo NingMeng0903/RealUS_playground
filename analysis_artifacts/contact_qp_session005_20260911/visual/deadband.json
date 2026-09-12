@@ -1,0 +1,287 @@
+{
+  "method": "Deduplicated feature source_id/frame_seq, one statistic per image, not repeated 200Hz controls. Consecutive frames may remain temporally correlated; not an IID noise estimate or physical image calibration. Baseline chosen as late halves of completed L_DtP/C_DtP with stable high confidence and no side band in sampled panels; other early segments shown for comparison.",
+  "baseline": {
+    "unique_frames": 713,
+    "abs_imbalance_p50_p95_p99_max": [
+      0.0019606426533561594,
+      0.006641804090437551,
+      0.012500428680715289,
+      0.016575778883969106
+    ],
+    "trigger_fractions": {
+      "0.01": 0.02244039270687237,
+      "0.02": 0.0,
+      "0.03": 0.0,
+      "0.05": 0.0,
+      "0.1": 0.0
+    }
+  },
+  "attempts": [
+    {
+      "attempt": "attempts/RH_Per_L_DtP/003",
+      "segments": {
+        "early2to8": {
+          "unique_frames": 123,
+          "abs_imbalance_p50_p95_p99_max": [
+            0.0007564781389199915,
+            0.0031756558679936755,
+            0.004151748267576352,
+            0.004296949005204276
+          ],
+          "signed_median": 0.0002541225912147116,
+          "consecutive_abs_change_p50_p95_p99_max": [
+            0.00036200722907459015,
+            0.0014174339610007467,
+            0.0019067998396455487,
+            0.002047273154539675
+          ],
+          "robust_change_sigma": 0.00038786939614107025,
+          "trigger_fractions": {
+            "0.01": 0.0,
+            "0.02": 0.0,
+            "0.03": 0.0,
+            "0.05": 0.0,
+            "0.1": 0.0
+          }
+        },
+        "latehalf": {
+          "unique_frames": 353,
+          "abs_imbalance_p50_p95_p99_max": [
+            0.0023047816665666687,
+            0.009236513928013897,
+            0.01373235883311809,
+            0.016575778883969106
+          ],
+          "signed_median": 0.0014044932162466939,
+          "consecutive_abs_change_p50_p95_p99_max": [
+            0.0004889375645358851,
+            0.002237757077660346,
+            0.003115357549084091,
+            0.004304134761879186
+          ],
+          "robust_change_sigma": 0.0005032686737041948,
+          "trigger_fractions": {
+            "0.01": 0.0453257790368272,
+            "0.02": 0.0,
+            "0.03": 0.0,
+            "0.05": 0.0,
+            "0.1": 0.0
+          }
+        }
+      }
+    },
+    {
+      "attempt": "attempts/RH_Per_C_DtP/002",
+      "segments": {
+        "early2to8": {
+          "unique_frames": 123,
+          "abs_imbalance_p50_p95_p99_max": [
+            0.0009390265988745705,
+            0.0024451371496868823,
+            0.002837221950211857,
+            0.003147791068818573
+          ],
+          "signed_median": 0.0006190360356197466,
+          "consecutive_abs_change_p50_p95_p99_max": [
+            0.0002747968580928961,
+            0.001211989942536984,
+            0.0016936733832120297,
+            0.0023294197731218436
+          ],
+          "robust_change_sigma": 0.0002935325288801668,
+          "trigger_fractions": {
+            "0.01": 0.0,
+            "0.02": 0.0,
+            "0.03": 0.0,
+            "0.05": 0.0,
+            "0.1": 0.0
+          }
+        },
+        "latehalf": {
+          "unique_frames": 360,
+          "abs_imbalance_p50_p95_p99_max": [
+            0.0017132130284057134,
+            0.0042151646120082995,
+            0.004813357712154423,
+            0.005903562245439531
+          ],
+          "signed_median": 0.0016874404718459357,
+          "consecutive_abs_change_p50_p95_p99_max": [
+            0.000429478467513289,
+            0.002145412765520481,
+            0.0028137213223255156,
+            0.003454436757871826
+          ],
+          "robust_change_sigma": 0.0004507804097313738,
+          "trigger_fractions": {
+            "0.01": 0.0,
+            "0.02": 0.0,
+            "0.03": 0.0,
+            "0.05": 0.0,
+            "0.1": 0.0
+          }
+        }
+      }
+    },
+    {
+      "attempt": "attempts/RH_Per_S_DtP/001",
+      "segments": {
+        "early2to8": {
+          "unique_frames": 123,
+          "abs_imbalance_p50_p95_p99_max": [
+            0.000988447130298331,
+            0.003556900826276541,
+            0.004555062568555019,
+            0.005588265021609917
+          ],
+          "signed_median": 0.0008940587097445718,
+          "consecutive_abs_change_p50_p95_p99_max": [
+            0.0003464314801822077,
+            0.0017841201173449265,
+            0.0022803267983477274,
+            0.0024665736250093495
+          ],
+          "robust_change_sigma": 0.0003631836988299502,
+          "trigger_fractions": {
+            "0.01": 0.0,
+            "0.02": 0.0,
+            "0.03": 0.0,
+            "0.05": 0.0,
+            "0.1": 0.0
+          }
+        },
+        "latehalf": {
+          "unique_frames": 377,
+          "abs_imbalance_p50_p95_p99_max": [
+            0.003956678694956306,
+            0.1557250604975638,
+            0.1785683420555337,
+            0.1985267649893192
+          ],
+          "signed_median": -0.0010404548200803054,
+          "consecutive_abs_change_p50_p95_p99_max": [
+            0.0008883176417188721,
+            0.027116667453724486,
+            0.043192236413800156,
+            0.05238739481168708
+          ],
+          "robust_change_sigma": 0.0009419668693633203,
+          "trigger_fractions": {
+            "0.01": 0.35013262599469497,
+            "0.02": 0.26790450928381965,
+            "0.03": 0.246684350132626,
+            "0.05": 0.21485411140583555,
+            "0.1": 0.17771883289124668
+          }
+        }
+      }
+    },
+    {
+      "attempt": "attempts/RH_Per_L_PtD/002",
+      "segments": {
+        "early2to8": {
+          "unique_frames": 122,
+          "abs_imbalance_p50_p95_p99_max": [
+            0.002153576464920759,
+            0.004635449755307225,
+            0.005325917504823568,
+            0.00549585467833702
+          ],
+          "signed_median": 0.0017501816651545044,
+          "consecutive_abs_change_p50_p95_p99_max": [
+            0.00040306741609785757,
+            0.0018333708523703418,
+            0.002699892054455221,
+            0.003160226148188894
+          ],
+          "robust_change_sigma": 0.0004164535499659075,
+          "trigger_fractions": {
+            "0.01": 0.0,
+            "0.02": 0.0,
+            "0.03": 0.0,
+            "0.05": 0.0,
+            "0.1": 0.0
+          }
+        },
+        "latehalf": {
+          "unique_frames": 374,
+          "abs_imbalance_p50_p95_p99_max": [
+            0.22167260220394197,
+            0.4099034048200961,
+            0.4373521512312475,
+            0.4512194027904505
+          ],
+          "signed_median": 0.22167260220394197,
+          "consecutive_abs_change_p50_p95_p99_max": [
+            0.013722655201250045,
+            0.05140150413041184,
+            0.07635858599010753,
+            0.09312046775072369
+          ],
+          "robust_change_sigma": 0.014538951177089376,
+          "trigger_fractions": {
+            "0.01": 0.7887700534759359,
+            "0.02": 0.7780748663101604,
+            "0.03": 0.7700534759358288,
+            "0.05": 0.7433155080213903,
+            "0.1": 0.7165775401069518
+          }
+        }
+      }
+    },
+    {
+      "attempt": "attempts/RH_Per_C_PtD/004",
+      "segments": {
+        "early2to8": {
+          "unique_frames": 123,
+          "abs_imbalance_p50_p95_p99_max": [
+            0.0015019689264192948,
+            0.004251539231217616,
+            0.004550144917410324,
+            0.004625374587429842
+          ],
+          "signed_median": 0.0014702585369177346,
+          "consecutive_abs_change_p50_p95_p99_max": [
+            0.0005612136418640112,
+            0.0020777938236347373,
+            0.0025851659782040273,
+            0.0035439284152732897
+          ],
+          "robust_change_sigma": 0.0005894361874529344,
+          "trigger_fractions": {
+            "0.01": 0.0,
+            "0.02": 0.0,
+            "0.03": 0.0,
+            "0.05": 0.0,
+            "0.1": 0.0
+          }
+        },
+        "latehalf": {
+          "unique_frames": 371,
+          "abs_imbalance_p50_p95_p99_max": [
+            0.15640659428165182,
+            0.33808517100908775,
+            0.36837728852953444,
+            0.40125966028519633
+          ],
+          "signed_median": 0.15640659428165182,
+          "consecutive_abs_change_p50_p95_p99_max": [
+            0.010487879357258756,
+            0.044958223809666416,
+            0.061610733400354306,
+            0.07697859380796745
+          ],
+          "robust_change_sigma": 0.010882455398764165,
+          "trigger_fractions": {
+            "0.01": 0.8005390835579514,
+            "0.02": 0.7735849056603774,
+            "0.03": 0.7439353099730458,
+            "0.05": 0.6684636118598383,
+            "0.1": 0.5660377358490566
+          }
+        }
+      }
+    }
+  ],
+  "recommendation": "0.03 initial engineering balance deadband for controlled replay/test: larger than baseline maximum .0166 and about 2.4x baseline p99, while exposing S observed .0975 imbalance. Keep ROI and registration unchanged. This setting is empirical, not calibrated ground truth."
+}

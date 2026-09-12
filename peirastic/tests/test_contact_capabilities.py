@@ -17,7 +17,8 @@ def test_capability_rejects_old_or_stale_service_without_command():
         client.require_capability('contact_qp.recording_v1')
         with pytest.raises(RuntimeError):client.require_capability('contact_qp.active_v1')
         hub._ctl[0]['t_mono']=time.monotonic()-1
-        with pytest.raises(RuntimeError):client.require_capability('contact_qp.recording_v1')
+        with pytest.raises(RuntimeError, match='Controller unresponsive'):
+            client.require_capability('contact_qp.recording_v1')
         hub._ctl[0]['t_mono']=time.monotonic()
         path=capability_path(hub.ctl_name)
         payload=json.loads(path.read_text());payload['header_identity']=[0,0]
@@ -27,3 +28,35 @@ def test_capability_rejects_old_or_stale_service_without_command():
     finally:
         if advertisement:advertisement.close()
         client.close();hub.close()
+
+
+def test_new_task_source_and_pause_visual_require_updated_running_handler():
+    from pathlib import Path
+    from peirastic.contact_qp.runtime_config import load_study_config
+    from peirastic.core.capabilities import (study_capabilities,NOMINAL_TASK_POWER_CAPABILITY,
+        PAUSE_VISUAL_FEEDBACK_CAPABILITY,TRANSIENT_FEEDBACK_CAPABILITY)
+    config=load_study_config(Path(__file__).parents[1]/'config/contact_qp/active_probe50_v8r3_tank.yaml')
+    needed=set(study_capabilities(config))
+    new={NOMINAL_TASK_POWER_CAPABILITY,PAUSE_VISUAL_FEEDBACK_CAPABILITY}
+    assert new<=needed
+    assert TRANSIENT_FEEDBACK_CAPABILITY not in needed
+    hub=CommandHub(prefix='taskpower_'+uuid.uuid4().hex+'_')
+    client=CommandClient(prefix=hub.ctl_name.removesuffix('peirastic_ctl_v2'))
+    advertisement=CapabilityAdvertisement(hub,needed-new)
+    try:
+        for capability in new:
+            with pytest.raises(RuntimeError,match='restart Window A'):client.require_capability(capability)
+        assert client.snapshot()['cmd_seq']==0
+        advertisement.close();advertisement=CapabilityAdvertisement(hub,needed)
+        for capability in needed:client.require_capability(capability)
+        assert client.snapshot()['cmd_seq']==0
+    finally:advertisement.close();client.close();hub.close()
+
+
+def test_legacy_profile_does_not_require_new_handlers():
+    from peirastic.tests.test_contact_qp_runtime_config import active_config
+    from peirastic.core.capabilities import (study_capabilities,NOMINAL_TASK_POWER_CAPABILITY,
+        PAUSE_VISUAL_FEEDBACK_CAPABILITY,TRANSIENT_FEEDBACK_CAPABILITY)
+    required=set(study_capabilities(active_config()))
+    assert not required.intersection({NOMINAL_TASK_POWER_CAPABILITY,PAUSE_VISUAL_FEEDBACK_CAPABILITY,
+        TRANSIENT_FEEDBACK_CAPABILITY})

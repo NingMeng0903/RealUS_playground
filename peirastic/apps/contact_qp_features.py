@@ -64,7 +64,8 @@ def process_parts(parts, extractor, received_s):
     source = ":".join(identities)
     obs, _ = extractor.extract(im, frame_seq=int(metadata["frame_index"]), source_id=source,
                                 capture_time_s=float(capture_ns)*1e-9, received_time_s=received_s,
-                                crop_box=metadata.get("crop_box"), hflip=metadata.get("hflip", False))
+                                crop_box=metadata.get("crop_box"), hflip=metadata.get("hflip", False),
+                                registration_source_id=metadata["source_id"])
     return obs
 
 
@@ -95,6 +96,8 @@ def main(argv=None):
     parser.add_argument("--image-x-sign", type=int, choices=(-1, 1), default=None)
     parser.add_argument("--max-frames", type=int, default=0)
     args = parser.parse_args(argv)
+    from rm75_control.control.admittance_common.cpu_resources import prepare_background_cpus
+    background_cpus = prepare_background_cpus()
     import zmq
     logging.basicConfig(level=logging.INFO)
     config = load_feature_config(args.feature_config) if args.feature_config else FeatureConfig()
@@ -102,6 +105,7 @@ def main(argv=None):
                  calibration_version=args.calibration_version, image_x_sign=args.image_x_sign).items() if v is not None}
     extractor = FeatureExtractor(replace(config, **overrides))
     LOG.info("feature window_version=%s", extractor.config.window_version)
+    LOG.info("confidence worker CPUs=%s", background_cpus)
     latest = LatestObservation()
     context = zmq.Context()
     sub = context.socket(zmq.SUB); pub = context.socket(zmq.PUB)
@@ -129,6 +133,9 @@ def main(argv=None):
                 blob=encode_feature_payload(obs,extractor.last_features,time.perf_counter()-start)
                 pub.send_multipart([OUTPUT_TOPIC, blob], flags=zmq.NOBLOCK)
                 count += 1
+                if count == 1:
+                    LOG.info("publishing confidence registration_version=%s quality=%s valid=%s",
+                             obs.registration_version, obs.quality.tolist(), obs.valid.tolist())
             except (ValueError, RuntimeError, KeyError, zmq.Again) as exc:
                 LOG.warning("feature frame dropped: %s", exc)
     except KeyboardInterrupt:

@@ -25,18 +25,22 @@ class PortEnergyConstraint:
     assurance: str = 'command_model'
     bounds_version: str = 'unverified'
     frame: str = 'tcp_tool'
+    task_power_w: float = 0.
 
     def __post_init__(self):
-        if self.frame != 'tcp_tool' or self.assurance not in ('command_model', 'declared_bound', 'monitor'):
+        if self.frame != 'tcp_tool' or self.assurance not in ('command_model', 'two_port_command_model', 'declared_bound', 'monitor'):
             raise ValueError('explicit TCP/tool energy frame and assurance required')
         if not self.bounds_version or (self.assurance == 'declared_bound' and self.bounds_version == 'unverified'):
             raise ValueError('declared bounds require an explicit version')
-        for name in ('available_j', 'hold_s', 'beta'):
+        for name in ('available_j', 'hold_s', 'beta', 'task_power_w'):
             if isinstance(getattr(self, name), (bool, np.bool_)):
                 raise ValueError(name+' must be numeric, not boolean')
         object.__setattr__(self, 'available_j', positive(self.available_j, 'available_j', zero=True))
         object.__setattr__(self, 'hold_s', positive(self.hold_s, 'hold_s'))
         object.__setattr__(self, 'beta', positive(self.beta, 'beta'))
+        object.__setattr__(self, 'task_power_w', positive(self.task_power_w, 'task_power_w', zero=True))
+        if self.task_power_w and self.assurance != 'two_port_command_model':
+            raise ValueError('task power requires explicit two_port_command_model assurance')
         if self.beta > 1.:
             raise ValueError('beta must be at most one')
         for name in ('wrench_environment', 'wrench_error', 'wrench_rate', 'tracking_error'):
@@ -58,7 +62,7 @@ class PortEnergyConstraint:
             with np.errstate(over='raise', invalid='raise', divide='raise'):
                 quantities=np.r_[self.uncertainty, self.damping_coefficient,
                     self.tracking_contact_error, self.tracking_cost_w,
-                    self.beta*self.available_j/self.hold_s]
+                    self.task_power_w+self.beta*self.available_j/self.hold_s]
             if not np.isfinite(quantities).all():
                 raise ValueError('nonfinite derived power bounds')
         except FloatingPointError as exc:
@@ -94,7 +98,8 @@ class PortEnergyConstraint:
         return result if math.isfinite(result) else -math.inf
 
     def margin_power_w(self, velocity):
-        return self.lower_power_w(velocity)+self.beta*self.available_j/self.hold_s
+        # Task authorization changes affordability, never the external port work.
+        return self.lower_power_w(velocity)+self.task_power_w+self.beta*self.available_j/self.hold_s
 
     def margin_work_j(self, velocity):
         return self.hold_s*self.margin_power_w(velocity)

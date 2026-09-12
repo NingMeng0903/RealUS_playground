@@ -1,0 +1,3734 @@
+[
+  {
+    "relative": "HAOHAO/LH_Per_C_DtP.h5",
+    "size": 11414896,
+    "mtime_ns": 1789031070510000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "HAOHAO/LH_Per_C_PtD.h5",
+    "size": 11701016,
+    "mtime_ns": 1789031136600000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "HAOHAO/LH_Per_L_DtP.h5",
+    "size": 11011448,
+    "mtime_ns": 1789031034090000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "HAOHAO/LH_Per_L_PtD.h5",
+    "size": 11204904,
+    "mtime_ns": 1789031115720000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "HAOHAO/LH_Per_S_DtP.h5",
+    "size": 12106152,
+    "mtime_ns": 1789031098080000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "HAOHAO/LH_Per_S_PtD.h5",
+    "size": 12956944,
+    "mtime_ns": 1789031159170000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "HAOHAO/LH_paths.json",
+    "size": 27043,
+    "mtime_ns": 1789031005150000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "HAOHAO/LH_preview.png",
+    "size": 108204,
+    "mtime_ns": 1789031005150000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "HAOHAO/RH_Per_C_DtP.h5",
+    "size": 10748816,
+    "mtime_ns": 1789030808440000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "HAOHAO/RH_Per_C_PtD.h5",
+    "size": 11001376,
+    "mtime_ns": 1789030874250000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "HAOHAO/RH_Per_L_DtP.h5",
+    "size": 10848920,
+    "mtime_ns": 1789030788040000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "HAOHAO/RH_Per_L_PtD.h5",
+    "size": 10851720,
+    "mtime_ns": 1789030849900000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "HAOHAO/RH_Per_S_DtP.h5",
+    "size": 11851256,
+    "mtime_ns": 1789030829770000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "HAOHAO/RH_Per_S_PtD.h5",
+    "size": 12480936,
+    "mtime_ns": 1789030896540000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "HAOHAO/RH_paths.json",
+    "size": 27053,
+    "mtime_ns": 1789030746960000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "HAOHAO/RH_preview.png",
+    "size": 107368,
+    "mtime_ns": 1789030746960000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "HAOHAO/attempts/LH_Per_C_DtP/001/failure.json",
+    "size": 176,
+    "mtime_ns": 1789031036270000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "HAOHAO/attempts/LH_Per_C_DtP/002/recorder.log",
+    "size": 918,
+    "mtime_ns": 1789031070290000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "HAOHAO/attempts/LH_Per_C_DtP/002/result.json",
+    "size": 677,
+    "mtime_ns": 1789031070540000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "HAOHAO/attempts/LH_Per_C_PtD/001/recorder.log",
+    "size": 798,
+    "mtime_ns": 1789031136390000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "HAOHAO/attempts/LH_Per_C_PtD/001/result.json",
+    "size": 675,
+    "mtime_ns": 1789031136640000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "HAOHAO/attempts/LH_Per_L_DtP/001/recorder.log",
+    "size": 858,
+    "mtime_ns": 1789031033900000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "HAOHAO/attempts/LH_Per_L_DtP/001/result.json",
+    "size": 677,
+    "mtime_ns": 1789031034120000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "HAOHAO/attempts/LH_Per_L_PtD/001/recorder.log",
+    "size": 772,
+    "mtime_ns": 1789031115480000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "HAOHAO/attempts/LH_Per_L_PtD/001/result.json",
+    "size": 677,
+    "mtime_ns": 1789031115750000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "HAOHAO/attempts/LH_Per_S_DtP/001/recorder.log",
+    "size": 942,
+    "mtime_ns": 1789031097860000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "HAOHAO/attempts/LH_Per_S_DtP/001/result.json",
+    "size": 677,
+    "mtime_ns": 1789031098120000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "HAOHAO/attempts/LH_Per_S_PtD/001/recorder.log",
+    "size": 858,
+    "mtime_ns": 1789031158940000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "HAOHAO/attempts/LH_Per_S_PtD/001/result.json",
+    "size": 677,
+    "mtime_ns": 1789031159210000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "HAOHAO/attempts/RH_Per_C_DtP/001/recorder.log",
+    "size": 763,
+    "mtime_ns": 1789030808230000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "HAOHAO/attempts/RH_Per_C_DtP/001/result.json",
+    "size": 677,
+    "mtime_ns": 1789030808470000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "HAOHAO/attempts/RH_Per_C_PtD/001/recorder.log",
+    "size": 943,
+    "mtime_ns": 1789030874050000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "HAOHAO/attempts/RH_Per_C_PtD/001/result.json",
+    "size": 675,
+    "mtime_ns": 1789030874280000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "HAOHAO/attempts/RH_Per_L_DtP/001/failure.json",
+    "size": 176,
+    "mtime_ns": 1789030753980000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "HAOHAO/attempts/RH_Per_L_DtP/002/recorder.log",
+    "size": 1039,
+    "mtime_ns": 1789030787820000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "HAOHAO/attempts/RH_Per_L_DtP/002/result.json",
+    "size": 677,
+    "mtime_ns": 1789030788080000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "HAOHAO/attempts/RH_Per_L_PtD/001/recorder.log",
+    "size": 823,
+    "mtime_ns": 1789030849690000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "HAOHAO/attempts/RH_Per_L_PtD/001/result.json",
+    "size": 677,
+    "mtime_ns": 1789030849930000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "HAOHAO/attempts/RH_Per_S_DtP/001/recorder.log",
+    "size": 832,
+    "mtime_ns": 1789030829570000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "HAOHAO/attempts/RH_Per_S_DtP/001/result.json",
+    "size": 675,
+    "mtime_ns": 1789030829810000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "HAOHAO/attempts/RH_Per_S_PtD/001/recorder.log",
+    "size": 797,
+    "mtime_ns": 1789030896310000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "HAOHAO/attempts/RH_Per_S_PtD/001/result.json",
+    "size": 677,
+    "mtime_ns": 1789030896760000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "HAOHAO/session.json",
+    "size": 152684,
+    "mtime_ns": 1789031159230000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "chenwei/LH_Per_C_DtP.h5",
+    "size": 10152416,
+    "mtime_ns": 1788954139740000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "chenwei/LH_Per_C_PtD.h5",
+    "size": 10434640,
+    "mtime_ns": 1788954207880000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "chenwei/LH_Per_L_DtP.h5",
+    "size": 9809456,
+    "mtime_ns": 1788954121680000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "chenwei/LH_Per_L_PtD.h5",
+    "size": 9836184,
+    "mtime_ns": 1788954188630000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "chenwei/LH_Per_S_DtP.h5",
+    "size": 10884160,
+    "mtime_ns": 1788954168170000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "chenwei/LH_Per_S_PtD.h5",
+    "size": 11549376,
+    "mtime_ns": 1788954231320000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "chenwei/LH_paths.json",
+    "size": 27076,
+    "mtime_ns": 1788954097220000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "chenwei/LH_preview.png",
+    "size": 109813,
+    "mtime_ns": 1788954097220000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "chenwei/RH_Per_C_DtP.h5",
+    "size": 12728808,
+    "mtime_ns": 1788953842970000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "chenwei/RH_Per_C_PtD.h5",
+    "size": 12490432,
+    "mtime_ns": 1788953949270000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "chenwei/RH_Per_L_DtP.h5",
+    "size": 12944448,
+    "mtime_ns": 1788953818300000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "chenwei/RH_Per_L_PtD.h5",
+    "size": 11957976,
+    "mtime_ns": 1788953899050000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "chenwei/RH_Per_S_DtP.h5",
+    "size": 13816728,
+    "mtime_ns": 1788953874770000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "chenwei/RH_Per_S_PtD.h5",
+    "size": 13034288,
+    "mtime_ns": 1788953975530000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "chenwei/RH_paths.json",
+    "size": 27026,
+    "mtime_ns": 1788953771700000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "chenwei/RH_preview.png",
+    "size": 106778,
+    "mtime_ns": 1788953771690000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "chenwei/attempts/LH_Per_C_DtP/001/recorder.log",
+    "size": 736,
+    "mtime_ns": 1788954139550000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "chenwei/attempts/LH_Per_C_DtP/001/result.json",
+    "size": 677,
+    "mtime_ns": 1788954139780000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "chenwei/attempts/LH_Per_C_PtD/001/recorder.log",
+    "size": 826,
+    "mtime_ns": 1788954207680000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "chenwei/attempts/LH_Per_C_PtD/001/result.json",
+    "size": 677,
+    "mtime_ns": 1788954207910000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "chenwei/attempts/LH_Per_L_DtP/001/recorder.log",
+    "size": 772,
+    "mtime_ns": 1788954121490000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "chenwei/attempts/LH_Per_L_DtP/001/result.json",
+    "size": 677,
+    "mtime_ns": 1788954121710000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "chenwei/attempts/LH_Per_L_PtD/001/recorder.log",
+    "size": 857,
+    "mtime_ns": 1788954188440000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "chenwei/attempts/LH_Per_L_PtD/001/result.json",
+    "size": 677,
+    "mtime_ns": 1788954188660000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "chenwei/attempts/LH_Per_S_DtP/001/recorder.log",
+    "size": 858,
+    "mtime_ns": 1788954167970000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "chenwei/attempts/LH_Per_S_DtP/001/result.json",
+    "size": 677,
+    "mtime_ns": 1788954168210000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "chenwei/attempts/LH_Per_S_PtD/001/recorder.log",
+    "size": 918,
+    "mtime_ns": 1788954231140000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "chenwei/attempts/LH_Per_S_PtD/001/result.json",
+    "size": 677,
+    "mtime_ns": 1788954231360000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "chenwei/attempts/RH_Per_C_DtP/001/recorder.log",
+    "size": 823,
+    "mtime_ns": 1788953842730000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "chenwei/attempts/RH_Per_C_DtP/001/result.json",
+    "size": 677,
+    "mtime_ns": 1788953843010000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "chenwei/attempts/RH_Per_C_PtD/001/failure.json",
+    "size": 176,
+    "mtime_ns": 1788953914210000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "chenwei/attempts/RH_Per_C_PtD/002/recorder.log",
+    "size": 944,
+    "mtime_ns": 1788953949050000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "chenwei/attempts/RH_Per_C_PtD/002/result.json",
+    "size": 677,
+    "mtime_ns": 1788953949310000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "chenwei/attempts/RH_Per_L_DtP/001/failure.json",
+    "size": 176,
+    "mtime_ns": 1788953779300000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "chenwei/attempts/RH_Per_L_DtP/002/recorder.log",
+    "size": 1037,
+    "mtime_ns": 1788953818070000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "chenwei/attempts/RH_Per_L_DtP/002/result.json",
+    "size": 677,
+    "mtime_ns": 1788953818340000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "chenwei/attempts/RH_Per_L_PtD/001/recorder.log",
+    "size": 943,
+    "mtime_ns": 1788953898820000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "chenwei/attempts/RH_Per_L_PtD/001/result.json",
+    "size": 677,
+    "mtime_ns": 1788953899080000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "chenwei/attempts/RH_Per_S_DtP/001/recorder.log",
+    "size": 858,
+    "mtime_ns": 1788953874540000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "chenwei/attempts/RH_Per_S_DtP/001/result.json",
+    "size": 675,
+    "mtime_ns": 1788953874840000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "chenwei/attempts/RH_Per_S_PtD/001/recorder.log",
+    "size": 832,
+    "mtime_ns": 1788953975300000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "chenwei/attempts/RH_Per_S_PtD/001/result.json",
+    "size": 677,
+    "mtime_ns": 1788953975570000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "chenwei/session.json",
+    "size": 152700,
+    "mtime_ns": 1788954231380000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "dianye/LH_Per_C_DtP.h5",
+    "size": 11223272,
+    "mtime_ns": 1788953180930000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "dianye/LH_Per_C_PtD.h5",
+    "size": 11823944,
+    "mtime_ns": 1788953259010000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "dianye/LH_Per_L_DtP.h5",
+    "size": 10863728,
+    "mtime_ns": 1788953157610000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "dianye/LH_Per_L_PtD.h5",
+    "size": 10759984,
+    "mtime_ns": 1788953226560000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "dianye/LH_Per_S_DtP.h5",
+    "size": 12259888,
+    "mtime_ns": 1788953206280000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "dianye/LH_Per_S_PtD.h5",
+    "size": 12758536,
+    "mtime_ns": 1788953282650000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "dianye/LH_paths.json",
+    "size": 27017,
+    "mtime_ns": 1788953130780000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "dianye/LH_preview.png",
+    "size": 108832,
+    "mtime_ns": 1788953130780000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "dianye/RH_Per_C_DtP.h5",
+    "size": 12311816,
+    "mtime_ns": 1788952903710000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "dianye/RH_Per_C_PtD.h5",
+    "size": 12883328,
+    "mtime_ns": 1788952973060000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "dianye/RH_Per_L_DtP.h5",
+    "size": 12414080,
+    "mtime_ns": 1788952879690000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "dianye/RH_Per_L_PtD.h5",
+    "size": 12891584,
+    "mtime_ns": 1788952951870000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "dianye/RH_Per_S_DtP.h5",
+    "size": 14333896,
+    "mtime_ns": 1788952926700000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "dianye/RH_Per_S_PtD.h5",
+    "size": 13793720,
+    "mtime_ns": 1788952994580000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "dianye/RH_paths.json",
+    "size": 27009,
+    "mtime_ns": 1788952851700000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "dianye/RH_preview.png",
+    "size": 107391,
+    "mtime_ns": 1788952851700000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "dianye/attempts/LH_Per_C_DtP/001/recorder.log",
+    "size": 832,
+    "mtime_ns": 1788953180720000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "dianye/attempts/LH_Per_C_DtP/001/result.json",
+    "size": 677,
+    "mtime_ns": 1788953180970000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "dianye/attempts/LH_Per_C_PtD/001/failure.json",
+    "size": 176,
+    "mtime_ns": 1788953228090000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "dianye/attempts/LH_Per_C_PtD/002/recorder.log",
+    "size": 798,
+    "mtime_ns": 1788953258800000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "dianye/attempts/LH_Per_C_PtD/002/result.json",
+    "size": 677,
+    "mtime_ns": 1788953259050000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "dianye/attempts/LH_Per_L_DtP/001/recorder.log",
+    "size": 796,
+    "mtime_ns": 1788953157410000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "dianye/attempts/LH_Per_L_DtP/001/result.json",
+    "size": 677,
+    "mtime_ns": 1788953157650000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "dianye/attempts/LH_Per_L_PtD/001/recorder.log",
+    "size": 772,
+    "mtime_ns": 1788953226350000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "dianye/attempts/LH_Per_L_PtD/001/result.json",
+    "size": 675,
+    "mtime_ns": 1788953226600000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "dianye/attempts/LH_Per_S_DtP/001/recorder.log",
+    "size": 883,
+    "mtime_ns": 1788953206050000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "dianye/attempts/LH_Per_S_DtP/001/result.json",
+    "size": 677,
+    "mtime_ns": 1788953206310000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "dianye/attempts/LH_Per_S_PtD/001/recorder.log",
+    "size": 857,
+    "mtime_ns": 1788953282420000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "dianye/attempts/LH_Per_S_PtD/001/result.json",
+    "size": 677,
+    "mtime_ns": 1788953282690000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "dianye/attempts/RH_Per_C_DtP/001/recorder.log",
+    "size": 919,
+    "mtime_ns": 1788952903470000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "dianye/attempts/RH_Per_C_DtP/001/result.json",
+    "size": 677,
+    "mtime_ns": 1788952903750000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "dianye/attempts/RH_Per_C_PtD/001/recorder.log",
+    "size": 822,
+    "mtime_ns": 1788952972830000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "dianye/attempts/RH_Per_C_PtD/001/result.json",
+    "size": 677,
+    "mtime_ns": 1788952973100000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "dianye/attempts/RH_Per_L_DtP/001/recorder.log",
+    "size": 736,
+    "mtime_ns": 1788952879460000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "dianye/attempts/RH_Per_L_DtP/001/result.json",
+    "size": 677,
+    "mtime_ns": 1788952879730000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "dianye/attempts/RH_Per_L_PtD/001/recorder.log",
+    "size": 978,
+    "mtime_ns": 1788952951660000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "dianye/attempts/RH_Per_L_PtD/001/result.json",
+    "size": 677,
+    "mtime_ns": 1788952951910000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "dianye/attempts/RH_Per_S_DtP/001/recorder.log",
+    "size": 832,
+    "mtime_ns": 1788952926460000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "dianye/attempts/RH_Per_S_DtP/001/result.json",
+    "size": 677,
+    "mtime_ns": 1788952926740000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "dianye/attempts/RH_Per_S_PtD/001/recorder.log",
+    "size": 858,
+    "mtime_ns": 1788952994340000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "dianye/attempts/RH_Per_S_PtD/001/result.json",
+    "size": 677,
+    "mtime_ns": 1788952994620000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "dianye/session.json",
+    "size": 152298,
+    "mtime_ns": 1788953282710000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yameng_1/LH_Per_C_DtP.h5",
+    "size": 11213104,
+    "mtime_ns": 1788936528380000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "yameng_1/LH_Per_C_PtD.h5",
+    "size": 11328456,
+    "mtime_ns": 1788936604750000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "yameng_1/LH_Per_L_DtP.h5",
+    "size": 10741864,
+    "mtime_ns": 1788936505720000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "yameng_1/LH_Per_L_PtD.h5",
+    "size": 10736184,
+    "mtime_ns": 1788936581700000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "yameng_1/LH_Per_S_DtP.h5",
+    "size": 12053136,
+    "mtime_ns": 1788936551360000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "yameng_1/LH_Per_S_PtD.h5",
+    "size": 12457168,
+    "mtime_ns": 1788936627230000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "yameng_1/LH_paths.json",
+    "size": 27014,
+    "mtime_ns": 1788936479570000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yameng_1/LH_preview.png",
+    "size": 111148,
+    "mtime_ns": 1788936479570000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yameng_1/RH_Per_C_DtP.h5",
+    "size": 11767216,
+    "mtime_ns": 1788936276950000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "yameng_1/RH_Per_C_PtD.h5",
+    "size": 12192288,
+    "mtime_ns": 1788936342170000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "yameng_1/RH_Per_L_DtP.h5",
+    "size": 11853704,
+    "mtime_ns": 1788936253740000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "yameng_1/RH_Per_L_PtD.h5",
+    "size": 11872496,
+    "mtime_ns": 1788936320230000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "yameng_1/RH_Per_S_DtP.h5",
+    "size": 14089872,
+    "mtime_ns": 1788936301050000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "yameng_1/RH_Per_S_PtD.h5",
+    "size": 13589184,
+    "mtime_ns": 1788936366850000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "yameng_1/RH_paths.json",
+    "size": 26962,
+    "mtime_ns": 1788936224680000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yameng_1/RH_preview.png",
+    "size": 108712,
+    "mtime_ns": 1788936224680000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yameng_1/attempts/LH_Per_C_DtP/001/recorder.log",
+    "size": 858,
+    "mtime_ns": 1788936528180000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yameng_1/attempts/LH_Per_C_DtP/001/result.json",
+    "size": 677,
+    "mtime_ns": 1788936528420000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yameng_1/attempts/LH_Per_C_PtD/001/recorder.log",
+    "size": 824,
+    "mtime_ns": 1788936604540000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yameng_1/attempts/LH_Per_C_PtD/001/result.json",
+    "size": 675,
+    "mtime_ns": 1788936604790000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yameng_1/attempts/LH_Per_L_DtP/001/recorder.log",
+    "size": 797,
+    "mtime_ns": 1788936505520000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yameng_1/attempts/LH_Per_L_DtP/001/result.json",
+    "size": 677,
+    "mtime_ns": 1788936505760000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yameng_1/attempts/LH_Per_L_PtD/001/failure.json",
+    "size": 176,
+    "mtime_ns": 1788936552490000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yameng_1/attempts/LH_Per_L_PtD/002/recorder.log",
+    "size": 737,
+    "mtime_ns": 1788936581490000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yameng_1/attempts/LH_Per_L_PtD/002/result.json",
+    "size": 675,
+    "mtime_ns": 1788936581730000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yameng_1/attempts/LH_Per_S_DtP/001/recorder.log",
+    "size": 857,
+    "mtime_ns": 1788936551130000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yameng_1/attempts/LH_Per_S_DtP/001/result.json",
+    "size": 677,
+    "mtime_ns": 1788936551390000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yameng_1/attempts/LH_Per_S_PtD/001/recorder.log",
+    "size": 858,
+    "mtime_ns": 1788936627000000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yameng_1/attempts/LH_Per_S_PtD/001/result.json",
+    "size": 677,
+    "mtime_ns": 1788936627270000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yameng_1/attempts/RH_Per_C_DtP/001/recorder.log",
+    "size": 797,
+    "mtime_ns": 1788936276710000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yameng_1/attempts/RH_Per_C_DtP/001/result.json",
+    "size": 677,
+    "mtime_ns": 1788936276980000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yameng_1/attempts/RH_Per_C_PtD/001/recorder.log",
+    "size": 857,
+    "mtime_ns": 1788936341940000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yameng_1/attempts/RH_Per_C_PtD/001/result.json",
+    "size": 677,
+    "mtime_ns": 1788936342220000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yameng_1/attempts/RH_Per_L_DtP/001/recorder.log",
+    "size": 822,
+    "mtime_ns": 1788936253500000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yameng_1/attempts/RH_Per_L_DtP/001/result.json",
+    "size": 677,
+    "mtime_ns": 1788936253770000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yameng_1/attempts/RH_Per_L_PtD/001/recorder.log",
+    "size": 857,
+    "mtime_ns": 1788936320010000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yameng_1/attempts/RH_Per_L_PtD/001/result.json",
+    "size": 677,
+    "mtime_ns": 1788936320270000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yameng_1/attempts/RH_Per_S_DtP/001/recorder.log",
+    "size": 823,
+    "mtime_ns": 1788936300800000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yameng_1/attempts/RH_Per_S_DtP/001/result.json",
+    "size": 677,
+    "mtime_ns": 1788936301090000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yameng_1/attempts/RH_Per_S_PtD/001/recorder.log",
+    "size": 832,
+    "mtime_ns": 1788936366610000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yameng_1/attempts/RH_Per_S_PtD/001/result.json",
+    "size": 677,
+    "mtime_ns": 1788936366890000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yameng_1/session.json",
+    "size": 152185,
+    "mtime_ns": 1788936627300000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yameng_2/LH_Per_C_DtP.h5",
+    "size": 10533808,
+    "mtime_ns": 1788952599320000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "yameng_2/LH_Per_C_PtD.h5",
+    "size": 10461152,
+    "mtime_ns": 1788952664500000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "yameng_2/LH_Per_L_DtP.h5",
+    "size": 9724508,
+    "mtime_ns": 1788952579340000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "yameng_2/LH_Per_L_PtD.h5",
+    "size": 9875732,
+    "mtime_ns": 1788952644260000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "yameng_2/LH_Per_S_DtP.h5",
+    "size": 10504336,
+    "mtime_ns": 1788952620720000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "yameng_2/LH_Per_S_PtD.h5",
+    "size": 10890272,
+    "mtime_ns": 1788952685730000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "yameng_2/LH_paths.json",
+    "size": 27071,
+    "mtime_ns": 1788952553980000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yameng_2/LH_preview.png",
+    "size": 107235,
+    "mtime_ns": 1788952553980000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yameng_2/RH_Per_C_DtP.h5",
+    "size": 10176960,
+    "mtime_ns": 1788952280800000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "yameng_2/RH_Per_C_PtD.h5",
+    "size": 9990840,
+    "mtime_ns": 1788952365870000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "yameng_2/RH_Per_L_DtP.h5",
+    "size": 10004720,
+    "mtime_ns": 1788952250990000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "yameng_2/RH_Per_L_PtD.h5",
+    "size": 9863040,
+    "mtime_ns": 1788952340970000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "yameng_2/RH_Per_S_DtP.h5",
+    "size": 11410888,
+    "mtime_ns": 1788952304660000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "yameng_2/RH_Per_S_PtD.h5",
+    "size": 11118192,
+    "mtime_ns": 1788952396980000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "yameng_2/RH_paths.json",
+    "size": 27074,
+    "mtime_ns": 1788952220290000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yameng_2/RH_preview.png",
+    "size": 108514,
+    "mtime_ns": 1788952220290000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yameng_2/attempts/LH_Per_C_DtP/001/recorder.log",
+    "size": 771,
+    "mtime_ns": 1788952599120000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yameng_2/attempts/LH_Per_C_DtP/001/result.json",
+    "size": 677,
+    "mtime_ns": 1788952599360000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yameng_2/attempts/LH_Per_C_PtD/001/recorder.log",
+    "size": 858,
+    "mtime_ns": 1788952664300000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yameng_2/attempts/LH_Per_C_PtD/001/result.json",
+    "size": 677,
+    "mtime_ns": 1788952664540000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yameng_2/attempts/LH_Per_L_DtP/001/recorder.log",
+    "size": 799,
+    "mtime_ns": 1788952579150000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yameng_2/attempts/LH_Per_L_DtP/001/result.json",
+    "size": 677,
+    "mtime_ns": 1788952579370000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yameng_2/attempts/LH_Per_L_PtD/001/failure.json",
+    "size": 176,
+    "mtime_ns": 1788952621990000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yameng_2/attempts/LH_Per_L_PtD/002/recorder.log",
+    "size": 798,
+    "mtime_ns": 1788952644070000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yameng_2/attempts/LH_Per_L_PtD/002/result.json",
+    "size": 675,
+    "mtime_ns": 1788952644290000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yameng_2/attempts/LH_Per_S_DtP/001/recorder.log",
+    "size": 831,
+    "mtime_ns": 1788952620510000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yameng_2/attempts/LH_Per_S_DtP/001/result.json",
+    "size": 677,
+    "mtime_ns": 1788952620750000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yameng_2/attempts/LH_Per_S_PtD/001/recorder.log",
+    "size": 858,
+    "mtime_ns": 1788952685530000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yameng_2/attempts/LH_Per_S_PtD/001/result.json",
+    "size": 677,
+    "mtime_ns": 1788952685780000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yameng_2/attempts/RH_Per_C_DtP/001/recorder.log",
+    "size": 1038,
+    "mtime_ns": 1788952280590000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yameng_2/attempts/RH_Per_C_DtP/001/result.json",
+    "size": 677,
+    "mtime_ns": 1788952280830000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yameng_2/attempts/RH_Per_C_PtD/001/recorder.log",
+    "size": 884,
+    "mtime_ns": 1788952365680000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yameng_2/attempts/RH_Per_C_PtD/001/result.json",
+    "size": 677,
+    "mtime_ns": 1788952365910000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yameng_2/attempts/RH_Per_L_DtP/001/recorder.log",
+    "size": 918,
+    "mtime_ns": 1788952250770000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yameng_2/attempts/RH_Per_L_DtP/001/result.json",
+    "size": 677,
+    "mtime_ns": 1788952251020000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yameng_2/attempts/RH_Per_L_PtD/001/failure.json",
+    "size": 176,
+    "mtime_ns": 1788952307780000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yameng_2/attempts/RH_Per_L_PtD/002/recorder.log",
+    "size": 892,
+    "mtime_ns": 1788952340800000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yameng_2/attempts/RH_Per_L_PtD/002/result.json",
+    "size": 677,
+    "mtime_ns": 1788952341000000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yameng_2/attempts/RH_Per_S_DtP/001/recorder.log",
+    "size": 857,
+    "mtime_ns": 1788952304440000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yameng_2/attempts/RH_Per_S_DtP/001/result.json",
+    "size": 677,
+    "mtime_ns": 1788952304700000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yameng_2/attempts/RH_Per_S_PtD/001/recorder.log",
+    "size": 1003,
+    "mtime_ns": 1788952396770000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yameng_2/attempts/RH_Per_S_PtD/001/result.json",
+    "size": 677,
+    "mtime_ns": 1788952397030000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yameng_2/session.json",
+    "size": 152779,
+    "mtime_ns": 1788952685800000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yangming/LH_Per_C_DtP.h5",
+    "size": 53252224,
+    "mtime_ns": 1789139883610000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "yangming/LH_Per_C_PtD.h5",
+    "size": 54754232,
+    "mtime_ns": 1789140015190000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "yangming/LH_Per_L_DtP.h5",
+    "size": 50720072,
+    "mtime_ns": 1789139839770000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "yangming/LH_Per_L_PtD.h5",
+    "size": 50395744,
+    "mtime_ns": 1789139971990000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "yangming/LH_Per_S_DtP.h5",
+    "size": 59022384,
+    "mtime_ns": 1789139933030000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "yangming/LH_Per_S_PtD.h5",
+    "size": 57335240,
+    "mtime_ns": 1789140059890000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "yangming/LH_paths.json",
+    "size": 27039,
+    "mtime_ns": 1789139791740000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yangming/LH_preview.png",
+    "size": 105998,
+    "mtime_ns": 1789139791730000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yangming/RH_Per_C_DtP.h5",
+    "size": 58994624,
+    "mtime_ns": 1789139411370000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "yangming/RH_Per_C_PtD.h5",
+    "size": 61454512,
+    "mtime_ns": 1789139553590000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "yangming/RH_Per_L_DtP.h5",
+    "size": 51938736,
+    "mtime_ns": 1789139294100000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "yangming/RH_Per_L_PtD.h5",
+    "size": 50197672,
+    "mtime_ns": 1789139500080000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "yangming/RH_Per_S_DtP.h5",
+    "size": 60870952,
+    "mtime_ns": 1789139457430000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "yangming/RH_Per_S_PtD.h5",
+    "size": 69560504,
+    "mtime_ns": 1789139622130000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "yangming/RH_paths.json",
+    "size": 26998,
+    "mtime_ns": 1789139247020000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yangming/RH_preview.png",
+    "size": 108820,
+    "mtime_ns": 1789139247020000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yangming/attempts/LH_Per_C_DtP/001/contact_qp.jsonl",
+    "size": 87824046,
+    "mtime_ns": 1789139879600000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yangming/attempts/LH_Per_C_DtP/001/raw.h5",
+    "size": 67433504,
+    "mtime_ns": 1789139883050000000,
+    "kind": "raw",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "yangming/attempts/LH_Per_C_DtP/001/recorder.log",
+    "size": 1426,
+    "mtime_ns": 1789139882980000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yangming/attempts/LH_Per_C_DtP/001/result.json",
+    "size": 677,
+    "mtime_ns": 1789139883740000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yangming/attempts/LH_Per_C_PtD/001/contact_qp.jsonl",
+    "size": 88029812,
+    "mtime_ns": 1789140011170000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yangming/attempts/LH_Per_C_PtD/001/raw.h5",
+    "size": 67342688,
+    "mtime_ns": 1789140014630000000,
+    "kind": "raw",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "yangming/attempts/LH_Per_C_PtD/001/recorder.log",
+    "size": 1462,
+    "mtime_ns": 1789140014550000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yangming/attempts/LH_Per_C_PtD/001/result.json",
+    "size": 679,
+    "mtime_ns": 1789140015620000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yangming/attempts/LH_Per_L_DtP/001/contact_qp.jsonl",
+    "size": 86233759,
+    "mtime_ns": 1789139835740000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yangming/attempts/LH_Per_L_DtP/001/raw.h5",
+    "size": 66763864,
+    "mtime_ns": 1789139839230000000,
+    "kind": "raw",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "yangming/attempts/LH_Per_L_DtP/001/recorder.log",
+    "size": 1400,
+    "mtime_ns": 1789139839130000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yangming/attempts/LH_Per_L_DtP/001/result.json",
+    "size": 679,
+    "mtime_ns": 1789139840070000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yangming/attempts/LH_Per_L_PtD/001/contact_qp.jsonl",
+    "size": 83981661,
+    "mtime_ns": 1789139967980000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yangming/attempts/LH_Per_L_PtD/001/raw.h5",
+    "size": 63002640,
+    "mtime_ns": 1789139971440000000,
+    "kind": "raw",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "yangming/attempts/LH_Per_L_PtD/001/recorder.log",
+    "size": 1400,
+    "mtime_ns": 1789139971370000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yangming/attempts/LH_Per_L_PtD/001/result.json",
+    "size": 679,
+    "mtime_ns": 1789139972110000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yangming/attempts/LH_Per_S_DtP/001/contact_qp.jsonl",
+    "size": 98194054,
+    "mtime_ns": 1789139928940000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yangming/attempts/LH_Per_S_DtP/001/raw.h5",
+    "size": 72929848,
+    "mtime_ns": 1789139932410000000,
+    "kind": "raw",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "yangming/attempts/LH_Per_S_DtP/001/recorder.log",
+    "size": 1583,
+    "mtime_ns": 1789139932340000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yangming/attempts/LH_Per_S_DtP/001/result.json",
+    "size": 679,
+    "mtime_ns": 1789139933170000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yangming/attempts/LH_Per_S_PtD/001/contact_qp.jsonl",
+    "size": 93739789,
+    "mtime_ns": 1789140055870000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yangming/attempts/LH_Per_S_PtD/001/raw.h5",
+    "size": 71186048,
+    "mtime_ns": 1789140059300000000,
+    "kind": "raw",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "yangming/attempts/LH_Per_S_PtD/001/recorder.log",
+    "size": 1521,
+    "mtime_ns": 1789140059270000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yangming/attempts/LH_Per_S_PtD/001/result.json",
+    "size": 679,
+    "mtime_ns": 1789140060240000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yangming/attempts/RH_Per_C_DtP/001/contact_qp.jsonl",
+    "size": 47036755,
+    "mtime_ns": 1789139319200000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yangming/attempts/RH_Per_C_DtP/001/failure.json",
+    "size": 4316,
+    "mtime_ns": 1789139319210000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yangming/attempts/RH_Per_C_DtP/001/raw.h5",
+    "size": 30895768,
+    "mtime_ns": 1789139319150000000,
+    "kind": "raw",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "yangming/attempts/RH_Per_C_DtP/001/recorder.log",
+    "size": 919,
+    "mtime_ns": 1789139319150000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yangming/attempts/RH_Per_C_DtP/002/failure.json",
+    "size": 4188,
+    "mtime_ns": 1789139328460000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yangming/attempts/RH_Per_C_DtP/003/contact_qp.jsonl",
+    "size": 46026436,
+    "mtime_ns": 1789139357370000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yangming/attempts/RH_Per_C_DtP/003/failure.json",
+    "size": 4316,
+    "mtime_ns": 1789139357480000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yangming/attempts/RH_Per_C_DtP/003/raw.h5",
+    "size": 30426144,
+    "mtime_ns": 1789139357420000000,
+    "kind": "raw",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "yangming/attempts/RH_Per_C_DtP/003/recorder.log",
+    "size": 884,
+    "mtime_ns": 1789139357420000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yangming/attempts/RH_Per_C_DtP/004/contact_qp.jsonl",
+    "size": 100597090,
+    "mtime_ns": 1789139407010000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yangming/attempts/RH_Per_C_DtP/004/raw.h5",
+    "size": 73883336,
+    "mtime_ns": 1789139410730000000,
+    "kind": "raw",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "yangming/attempts/RH_Per_C_DtP/004/recorder.log",
+    "size": 1583,
+    "mtime_ns": 1789139410660000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yangming/attempts/RH_Per_C_DtP/004/result.json",
+    "size": 679,
+    "mtime_ns": 1789139411510000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yangming/attempts/RH_Per_C_PtD/001/contact_qp.jsonl",
+    "size": 121442822,
+    "mtime_ns": 1789139549460000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yangming/attempts/RH_Per_C_PtD/001/raw.h5",
+    "size": 89314288,
+    "mtime_ns": 1789139552940000000,
+    "kind": "raw",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "yangming/attempts/RH_Per_C_PtD/001/recorder.log",
+    "size": 1767,
+    "mtime_ns": 1789139552860000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yangming/attempts/RH_Per_C_PtD/001/result.json",
+    "size": 679,
+    "mtime_ns": 1789139553730000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yangming/attempts/RH_Per_L_DtP/001/contact_qp.jsonl",
+    "size": 86462770,
+    "mtime_ns": 1789139290070000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yangming/attempts/RH_Per_L_DtP/001/raw.h5",
+    "size": 64637904,
+    "mtime_ns": 1789139293520000000,
+    "kind": "raw",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "yangming/attempts/RH_Per_L_DtP/001/recorder.log",
+    "size": 1400,
+    "mtime_ns": 1789139293440000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yangming/attempts/RH_Per_L_DtP/001/result.json",
+    "size": 679,
+    "mtime_ns": 1789139294220000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yangming/attempts/RH_Per_L_PtD/001/contact_qp.jsonl",
+    "size": 97438188,
+    "mtime_ns": 1789139496120000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yangming/attempts/RH_Per_L_PtD/001/raw.h5",
+    "size": 72864992,
+    "mtime_ns": 1789139499570000000,
+    "kind": "raw",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "yangming/attempts/RH_Per_L_PtD/001/recorder.log",
+    "size": 1522,
+    "mtime_ns": 1789139499500000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yangming/attempts/RH_Per_L_PtD/001/result.json",
+    "size": 679,
+    "mtime_ns": 1789139500200000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yangming/attempts/RH_Per_S_DtP/001/contact_qp.jsonl",
+    "size": 102611994,
+    "mtime_ns": 1789139453350000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yangming/attempts/RH_Per_S_DtP/001/raw.h5",
+    "size": 74936216,
+    "mtime_ns": 1789139456790000000,
+    "kind": "raw",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "yangming/attempts/RH_Per_S_DtP/001/recorder.log",
+    "size": 1583,
+    "mtime_ns": 1789139456730000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yangming/attempts/RH_Per_S_DtP/001/result.json",
+    "size": 679,
+    "mtime_ns": 1789139457580000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yangming/attempts/RH_Per_S_PtD/001/failure.json",
+    "size": 4188,
+    "mtime_ns": 1789139554910000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yangming/attempts/RH_Per_S_PtD/002/failure.json",
+    "size": 4188,
+    "mtime_ns": 1789139561680000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yangming/attempts/RH_Per_S_PtD/003/contact_qp.jsonl",
+    "size": 128418931,
+    "mtime_ns": 1789139617930000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yangming/attempts/RH_Per_S_PtD/003/raw.h5",
+    "size": 93413280,
+    "mtime_ns": 1789139621400000000,
+    "kind": "raw",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "yangming/attempts/RH_Per_S_PtD/003/recorder.log",
+    "size": 1887,
+    "mtime_ns": 1789139621330000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yangming/attempts/RH_Per_S_PtD/003/result.json",
+    "size": 679,
+    "mtime_ns": 1789139622300000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yangming/session.json",
+    "size": 299908,
+    "mtime_ns": 1789140060270000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yuhan_L/RH_Per_C_DtP.h5",
+    "size": 58534392,
+    "mtime_ns": 1789142478360000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "yuhan_L/RH_Per_C_PtD.h5",
+    "size": 56157792,
+    "mtime_ns": 1789142766350000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "yuhan_L/RH_Per_L_DtP.h5",
+    "size": 53956768,
+    "mtime_ns": 1789142424860000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "yuhan_L/RH_Per_L_PtD.h5",
+    "size": 56246168,
+    "mtime_ns": 1789142723410000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "yuhan_L/RH_Per_S_DtP.h5",
+    "size": 70683152,
+    "mtime_ns": 1789142617440000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "yuhan_L/RH_Per_S_PtD.h5",
+    "size": 67106864,
+    "mtime_ns": 1789142956990000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "yuhan_L/RH_paths.json",
+    "size": 27033,
+    "mtime_ns": 1789142362070000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yuhan_L/RH_preview.png",
+    "size": 110688,
+    "mtime_ns": 1789142362070000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yuhan_L/attempts/RH_Per_C_DtP/001/contact_qp.jsonl",
+    "size": 91847857,
+    "mtime_ns": 1789142474300000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yuhan_L/attempts/RH_Per_C_DtP/001/raw.h5",
+    "size": 77355192,
+    "mtime_ns": 1789142477760000000,
+    "kind": "raw",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "yuhan_L/attempts/RH_Per_C_DtP/001/recorder.log",
+    "size": 1580,
+    "mtime_ns": 1789142477690000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yuhan_L/attempts/RH_Per_C_DtP/001/result.json",
+    "size": 679,
+    "mtime_ns": 1789142478500000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yuhan_L/attempts/RH_Per_C_PtD/001/contact_qp.jsonl",
+    "size": 80324449,
+    "mtime_ns": 1789142761830000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yuhan_L/attempts/RH_Per_C_PtD/001/raw.h5",
+    "size": 69441168,
+    "mtime_ns": 1789142765570000000,
+    "kind": "raw",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "yuhan_L/attempts/RH_Per_C_PtD/001/recorder.log",
+    "size": 1518,
+    "mtime_ns": 1789142765490000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yuhan_L/attempts/RH_Per_C_PtD/001/result.json",
+    "size": 677,
+    "mtime_ns": 1789142766780000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yuhan_L/attempts/RH_Per_L_DtP/001/contact_qp.jsonl",
+    "size": 8904861,
+    "mtime_ns": 1789142377500000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yuhan_L/attempts/RH_Per_L_DtP/001/failure.json",
+    "size": 4295,
+    "mtime_ns": 1789142377630000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yuhan_L/attempts/RH_Per_L_DtP/001/raw.h5",
+    "size": 6728416,
+    "mtime_ns": 1789142377570000000,
+    "kind": "raw",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "yuhan_L/attempts/RH_Per_L_DtP/001/recorder.log",
+    "size": 521,
+    "mtime_ns": 1789142377570000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yuhan_L/attempts/RH_Per_L_DtP/002/contact_qp.jsonl",
+    "size": 78201844,
+    "mtime_ns": 1789142420670000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yuhan_L/attempts/RH_Per_L_DtP/002/raw.h5",
+    "size": 68581056,
+    "mtime_ns": 1789142424160000000,
+    "kind": "raw",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "yuhan_L/attempts/RH_Per_L_DtP/002/recorder.log",
+    "size": 1458,
+    "mtime_ns": 1789142424070000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yuhan_L/attempts/RH_Per_L_DtP/002/result.json",
+    "size": 679,
+    "mtime_ns": 1789142425320000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yuhan_L/attempts/RH_Per_L_PtD/001/contact_qp.jsonl",
+    "size": 15025681,
+    "mtime_ns": 1789142628220000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yuhan_L/attempts/RH_Per_L_PtD/001/failure.json",
+    "size": 4316,
+    "mtime_ns": 1789142628330000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yuhan_L/attempts/RH_Per_L_PtD/001/raw.h5",
+    "size": 10907632,
+    "mtime_ns": 1789142628270000000,
+    "kind": "raw",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "yuhan_L/attempts/RH_Per_L_PtD/001/recorder.log",
+    "size": 615,
+    "mtime_ns": 1789142628270000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yuhan_L/attempts/RH_Per_L_PtD/002/failure.json",
+    "size": 4188,
+    "mtime_ns": 1789142638990000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yuhan_L/attempts/RH_Per_L_PtD/003/contact_qp.jsonl",
+    "size": 57766616,
+    "mtime_ns": 1789142672390000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yuhan_L/attempts/RH_Per_L_PtD/003/failure.json",
+    "size": 4316,
+    "mtime_ns": 1789142672400000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yuhan_L/attempts/RH_Per_L_PtD/003/raw.h5",
+    "size": 47316968,
+    "mtime_ns": 1789142672340000000,
+    "kind": "raw",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "yuhan_L/attempts/RH_Per_L_PtD/003/recorder.log",
+    "size": 1096,
+    "mtime_ns": 1789142672340000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yuhan_L/attempts/RH_Per_L_PtD/004/contact_qp.jsonl",
+    "size": 78482524,
+    "mtime_ns": 1789142719400000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yuhan_L/attempts/RH_Per_L_PtD/004/raw.h5",
+    "size": 70896864,
+    "mtime_ns": 1789142722860000000,
+    "kind": "raw",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "yuhan_L/attempts/RH_Per_L_PtD/004/recorder.log",
+    "size": 1457,
+    "mtime_ns": 1789142722800000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yuhan_L/attempts/RH_Per_L_PtD/004/result.json",
+    "size": 677,
+    "mtime_ns": 1789142723550000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yuhan_L/attempts/RH_Per_S_DtP/001/contact_qp.jsonl",
+    "size": 48092300,
+    "mtime_ns": 1789142504630000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yuhan_L/attempts/RH_Per_S_DtP/001/failure.json",
+    "size": 4316,
+    "mtime_ns": 1789142504690000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yuhan_L/attempts/RH_Per_S_DtP/001/raw.h5",
+    "size": 37876760,
+    "mtime_ns": 1789142504630000000,
+    "kind": "raw",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "yuhan_L/attempts/RH_Per_S_DtP/001/recorder.log",
+    "size": 976,
+    "mtime_ns": 1789142504630000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yuhan_L/attempts/RH_Per_S_DtP/002/contact_qp.jsonl",
+    "size": 66214796,
+    "mtime_ns": 1789142544030000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yuhan_L/attempts/RH_Per_S_DtP/002/failure.json",
+    "size": 4316,
+    "mtime_ns": 1789142544130000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yuhan_L/attempts/RH_Per_S_DtP/002/raw.h5",
+    "size": 52857968,
+    "mtime_ns": 1789142544060000000,
+    "kind": "raw",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "yuhan_L/attempts/RH_Per_S_DtP/002/recorder.log",
+    "size": 1216,
+    "mtime_ns": 1789142544060000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yuhan_L/attempts/RH_Per_S_DtP/003/contact_qp.jsonl",
+    "size": 19038899,
+    "mtime_ns": 1789142562200000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yuhan_L/attempts/RH_Per_S_DtP/003/failure.json",
+    "size": 4316,
+    "mtime_ns": 1789142562310000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yuhan_L/attempts/RH_Per_S_DtP/003/raw.h5",
+    "size": 14118064,
+    "mtime_ns": 1789142562250000000,
+    "kind": "raw",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "yuhan_L/attempts/RH_Per_S_DtP/003/recorder.log",
+    "size": 675,
+    "mtime_ns": 1789142562250000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yuhan_L/attempts/RH_Per_S_DtP/004/contact_qp.jsonl",
+    "size": 103265678,
+    "mtime_ns": 1789142613240000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yuhan_L/attempts/RH_Per_S_DtP/004/raw.h5",
+    "size": 85226192,
+    "mtime_ns": 1789142616690000000,
+    "kind": "raw",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "yuhan_L/attempts/RH_Per_S_DtP/004/recorder.log",
+    "size": 1763,
+    "mtime_ns": 1789142616630000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yuhan_L/attempts/RH_Per_S_DtP/004/result.json",
+    "size": 679,
+    "mtime_ns": 1789142617610000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yuhan_L/attempts/RH_Per_S_PtD/001/contact_qp.jsonl",
+    "size": 55971258,
+    "mtime_ns": 1789142796910000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yuhan_L/attempts/RH_Per_S_PtD/001/failure.json",
+    "size": 4316,
+    "mtime_ns": 1789142796980000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yuhan_L/attempts/RH_Per_S_PtD/001/raw.h5",
+    "size": 45496064,
+    "mtime_ns": 1789142796930000000,
+    "kind": "raw",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "yuhan_L/attempts/RH_Per_S_PtD/001/recorder.log",
+    "size": 1096,
+    "mtime_ns": 1789142796930000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yuhan_L/attempts/RH_Per_S_PtD/002/failure.json",
+    "size": 4188,
+    "mtime_ns": 1789142802800000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yuhan_L/attempts/RH_Per_S_PtD/003/contact_qp.jsonl",
+    "size": 36371241,
+    "mtime_ns": 1789142837000000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yuhan_L/attempts/RH_Per_S_PtD/003/failure.json",
+    "size": 4316,
+    "mtime_ns": 1789142837060000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yuhan_L/attempts/RH_Per_S_PtD/003/raw.h5",
+    "size": 29387416,
+    "mtime_ns": 1789142837000000000,
+    "kind": "raw",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "yuhan_L/attempts/RH_Per_S_PtD/003/recorder.log",
+    "size": 855,
+    "mtime_ns": 1789142837000000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yuhan_L/attempts/RH_Per_S_PtD/004/contact_qp.jsonl",
+    "size": 33716441,
+    "mtime_ns": 1789142860850000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yuhan_L/attempts/RH_Per_S_PtD/004/failure.json",
+    "size": 4316,
+    "mtime_ns": 1789142860950000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yuhan_L/attempts/RH_Per_S_PtD/004/raw.h5",
+    "size": 27330976,
+    "mtime_ns": 1789142860900000000,
+    "kind": "raw",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "yuhan_L/attempts/RH_Per_S_PtD/004/recorder.log",
+    "size": 820,
+    "mtime_ns": 1789142860900000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yuhan_L/attempts/RH_Per_S_PtD/005/contact_qp.jsonl",
+    "size": 29057573,
+    "mtime_ns": 1789142881910000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yuhan_L/attempts/RH_Per_S_PtD/005/failure.json",
+    "size": 4316,
+    "mtime_ns": 1789142881930000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yuhan_L/attempts/RH_Per_S_PtD/005/raw.h5",
+    "size": 23800576,
+    "mtime_ns": 1789142881880000000,
+    "kind": "raw",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "yuhan_L/attempts/RH_Per_S_PtD/005/recorder.log",
+    "size": 759,
+    "mtime_ns": 1789142881880000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yuhan_L/attempts/RH_Per_S_PtD/006/contact_qp.jsonl",
+    "size": 30475521,
+    "mtime_ns": 1789142905690000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yuhan_L/attempts/RH_Per_S_PtD/006/failure.json",
+    "size": 4316,
+    "mtime_ns": 1789142905740000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yuhan_L/attempts/RH_Per_S_PtD/006/raw.h5",
+    "size": 24717496,
+    "mtime_ns": 1789142905680000000,
+    "kind": "raw",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "yuhan_L/attempts/RH_Per_S_PtD/006/recorder.log",
+    "size": 759,
+    "mtime_ns": 1789142905680000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yuhan_L/attempts/RH_Per_S_PtD/007/contact_qp.jsonl",
+    "size": 92231532,
+    "mtime_ns": 1789142952570000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yuhan_L/attempts/RH_Per_S_PtD/007/raw.h5",
+    "size": 80969512,
+    "mtime_ns": 1789142956290000000,
+    "kind": "raw",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "yuhan_L/attempts/RH_Per_S_PtD/007/recorder.log",
+    "size": 1640,
+    "mtime_ns": 1789142956220000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yuhan_L/attempts/RH_Per_S_PtD/007/result.json",
+    "size": 679,
+    "mtime_ns": 1789142957150000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yuhan_L/session.json",
+    "size": 210483,
+    "mtime_ns": 1789142957160000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yuhan_R/RH_Per_C_DtP.h5",
+    "size": 61685152,
+    "mtime_ns": 1789141893530000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "yuhan_R/RH_Per_C_PtD.h5",
+    "size": 66736872,
+    "mtime_ns": 1789142060190000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "yuhan_R/RH_Per_L_DtP.h5",
+    "size": 59626848,
+    "mtime_ns": 1789141837210000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "yuhan_R/RH_Per_L_PtD.h5",
+    "size": 61642040,
+    "mtime_ns": 1789142008520000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "yuhan_R/RH_Per_S_DtP.h5",
+    "size": 79766720,
+    "mtime_ns": 1789141949810000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "yuhan_R/RH_Per_S_PtD.h5",
+    "size": 71205680,
+    "mtime_ns": 1789142115690000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "yuhan_R/RH_paths.json",
+    "size": 27006,
+    "mtime_ns": 1789141786530000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yuhan_R/RH_preview.png",
+    "size": 108541,
+    "mtime_ns": 1789141786530000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yuhan_R/attempts/RH_Per_C_DtP/001/contact_qp.jsonl",
+    "size": 102041332,
+    "mtime_ns": 1789141889450000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yuhan_R/attempts/RH_Per_C_DtP/001/raw.h5",
+    "size": 78447520,
+    "mtime_ns": 1789141892900000000,
+    "kind": "raw",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "yuhan_R/attempts/RH_Per_C_DtP/001/recorder.log",
+    "size": 1642,
+    "mtime_ns": 1789141892830000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yuhan_R/attempts/RH_Per_C_DtP/001/result.json",
+    "size": 679,
+    "mtime_ns": 1789141893680000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yuhan_R/attempts/RH_Per_C_PtD/001/contact_qp.jsonl",
+    "size": 108260456,
+    "mtime_ns": 1789142056070000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yuhan_R/attempts/RH_Per_C_PtD/001/raw.h5",
+    "size": 82771736,
+    "mtime_ns": 1789142059520000000,
+    "kind": "raw",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "yuhan_R/attempts/RH_Per_C_PtD/001/recorder.log",
+    "size": 1704,
+    "mtime_ns": 1789142059460000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yuhan_R/attempts/RH_Per_C_PtD/001/result.json",
+    "size": 679,
+    "mtime_ns": 1789142060350000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yuhan_R/attempts/RH_Per_L_DtP/001/contact_qp.jsonl",
+    "size": 91907554,
+    "mtime_ns": 1789141833130000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yuhan_R/attempts/RH_Per_L_DtP/001/raw.h5",
+    "size": 72905224,
+    "mtime_ns": 1789141836590000000,
+    "kind": "raw",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "yuhan_R/attempts/RH_Per_L_DtP/001/recorder.log",
+    "size": 1520,
+    "mtime_ns": 1789141836530000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yuhan_R/attempts/RH_Per_L_DtP/001/result.json",
+    "size": 679,
+    "mtime_ns": 1789141837350000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yuhan_R/attempts/RH_Per_L_PtD/001/failure.json",
+    "size": 4188,
+    "mtime_ns": 1789141955420000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yuhan_R/attempts/RH_Per_L_PtD/002/contact_qp.jsonl",
+    "size": 98073264,
+    "mtime_ns": 1789142004440000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yuhan_R/attempts/RH_Per_L_PtD/002/raw.h5",
+    "size": 77657808,
+    "mtime_ns": 1789142007890000000,
+    "kind": "raw",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "yuhan_R/attempts/RH_Per_L_PtD/002/recorder.log",
+    "size": 1581,
+    "mtime_ns": 1789142007820000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yuhan_R/attempts/RH_Per_L_PtD/002/result.json",
+    "size": 675,
+    "mtime_ns": 1789142008670000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yuhan_R/attempts/RH_Per_S_DtP/001/contact_qp.jsonl",
+    "size": 121986241,
+    "mtime_ns": 1789141945500000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yuhan_R/attempts/RH_Per_S_DtP/001/raw.h5",
+    "size": 92531624,
+    "mtime_ns": 1789141948960000000,
+    "kind": "raw",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "yuhan_R/attempts/RH_Per_S_DtP/001/recorder.log",
+    "size": 1888,
+    "mtime_ns": 1789141948900000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yuhan_R/attempts/RH_Per_S_DtP/001/result.json",
+    "size": 679,
+    "mtime_ns": 1789141950000000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yuhan_R/attempts/RH_Per_S_PtD/001/contact_qp.jsonl",
+    "size": 115509922,
+    "mtime_ns": 1789142111500000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yuhan_R/attempts/RH_Per_S_PtD/001/raw.h5",
+    "size": 89114168,
+    "mtime_ns": 1789142114970000000,
+    "kind": "raw",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "yuhan_R/attempts/RH_Per_S_PtD/001/recorder.log",
+    "size": 1764,
+    "mtime_ns": 1789142114900000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yuhan_R/attempts/RH_Per_S_PtD/001/result.json",
+    "size": 679,
+    "mtime_ns": 1789142115860000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "yuhan_R/session.json",
+    "size": 144191,
+    "mtime_ns": 1789142184120000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongkai/LH_Per_C_DtP.h5",
+    "size": 13692368,
+    "mtime_ns": 1788956143330000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "zhongkai/LH_Per_C_PtD.h5",
+    "size": 14763888,
+    "mtime_ns": 1788956211760000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "zhongkai/LH_Per_L_DtP.h5",
+    "size": 13118904,
+    "mtime_ns": 1788956119380000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "zhongkai/LH_Per_L_PtD.h5",
+    "size": 14255632,
+    "mtime_ns": 1788956186620000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "zhongkai/LH_Per_S_DtP.h5",
+    "size": 14088368,
+    "mtime_ns": 1788956166740000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "zhongkai/LH_Per_S_PtD.h5",
+    "size": 14924904,
+    "mtime_ns": 1788956248420000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "zhongkai/LH_paths.json",
+    "size": 26913,
+    "mtime_ns": 1788956070950000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongkai/LH_preview.png",
+    "size": 104263,
+    "mtime_ns": 1788956070950000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongkai/RH_Per_C_DtP.h5",
+    "size": 11758552,
+    "mtime_ns": 1788955690430000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "zhongkai/RH_Per_C_PtD.h5",
+    "size": 11569064,
+    "mtime_ns": 1788955780380000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "zhongkai/RH_Per_L_DtP.h5",
+    "size": 11747224,
+    "mtime_ns": 1788955662750000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "zhongkai/RH_Per_L_PtD.h5",
+    "size": 11645096,
+    "mtime_ns": 1788955751730000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "zhongkai/RH_Per_S_DtP.h5",
+    "size": 13176680,
+    "mtime_ns": 1788955731810000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "zhongkai/RH_Per_S_PtD.h5",
+    "size": 12467968,
+    "mtime_ns": 1788955804300000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "zhongkai/RH_paths.json",
+    "size": 26996,
+    "mtime_ns": 1788955629070000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongkai/RH_preview.png",
+    "size": 108672,
+    "mtime_ns": 1788955629070000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongkai/attempts/LH_Per_C_DtP/001/recorder.log",
+    "size": 825,
+    "mtime_ns": 1788956143080000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongkai/attempts/LH_Per_C_DtP/001/result.json",
+    "size": 677,
+    "mtime_ns": 1788956143370000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongkai/attempts/LH_Per_C_PtD/001/recorder.log",
+    "size": 822,
+    "mtime_ns": 1788956211520000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongkai/attempts/LH_Per_C_PtD/001/result.json",
+    "size": 677,
+    "mtime_ns": 1788956211800000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongkai/attempts/LH_Per_L_DtP/001/recorder.log",
+    "size": 1099,
+    "mtime_ns": 1788956119140000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongkai/attempts/LH_Per_L_DtP/001/result.json",
+    "size": 677,
+    "mtime_ns": 1788956119420000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongkai/attempts/LH_Per_L_PtD/001/recorder.log",
+    "size": 823,
+    "mtime_ns": 1788956186380000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongkai/attempts/LH_Per_L_PtD/001/result.json",
+    "size": 677,
+    "mtime_ns": 1788956186670000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongkai/attempts/LH_Per_S_DtP/001/recorder.log",
+    "size": 859,
+    "mtime_ns": 1788956166500000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongkai/attempts/LH_Per_S_DtP/001/result.json",
+    "size": 677,
+    "mtime_ns": 1788956166780000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongkai/attempts/LH_Per_S_PtD/001/failure.json",
+    "size": 176,
+    "mtime_ns": 1788956212700000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongkai/attempts/LH_Per_S_PtD/002/recorder.log",
+    "size": 919,
+    "mtime_ns": 1788956248160000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongkai/attempts/LH_Per_S_PtD/002/result.json",
+    "size": 677,
+    "mtime_ns": 1788956248460000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongkai/attempts/RH_Per_C_DtP/001/recorder.log",
+    "size": 859,
+    "mtime_ns": 1788955690210000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongkai/attempts/RH_Per_C_DtP/001/result.json",
+    "size": 677,
+    "mtime_ns": 1788955690470000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongkai/attempts/RH_Per_C_PtD/001/recorder.log",
+    "size": 822,
+    "mtime_ns": 1788955780150000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongkai/attempts/RH_Per_C_PtD/001/result.json",
+    "size": 677,
+    "mtime_ns": 1788955780420000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongkai/attempts/RH_Per_L_DtP/001/recorder.log",
+    "size": 763,
+    "mtime_ns": 1788955662530000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongkai/attempts/RH_Per_L_DtP/001/result.json",
+    "size": 677,
+    "mtime_ns": 1788955662790000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongkai/attempts/RH_Per_L_PtD/001/recorder.log",
+    "size": 858,
+    "mtime_ns": 1788955751510000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongkai/attempts/RH_Per_L_PtD/001/result.json",
+    "size": 677,
+    "mtime_ns": 1788955751760000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongkai/attempts/RH_Per_S_DtP/001/recorder.log",
+    "size": 1398,
+    "mtime_ns": 1788955731570000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongkai/attempts/RH_Per_S_DtP/001/result.json",
+    "size": 677,
+    "mtime_ns": 1788955731850000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongkai/attempts/RH_Per_S_PtD/001/recorder.log",
+    "size": 858,
+    "mtime_ns": 1788955804090000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongkai/attempts/RH_Per_S_PtD/001/result.json",
+    "size": 677,
+    "mtime_ns": 1788955804340000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongkai/session.json",
+    "size": 152064,
+    "mtime_ns": 1788956248480000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongyao/LH_Per_C_DtP.h5",
+    "size": 12748440,
+    "mtime_ns": 1788954794370000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "zhongyao/LH_Per_L_DtP.h5",
+    "size": 12363200,
+    "mtime_ns": 1788954773610000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "zhongyao/LH_paths.json",
+    "size": 27016,
+    "mtime_ns": 1788954744750000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongyao/LH_preview.png",
+    "size": 107720,
+    "mtime_ns": 1788954744750000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongyao/RH_Per_C_DtP.h5",
+    "size": 15185640,
+    "mtime_ns": 1788954455520000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "zhongyao/RH_Per_C_PtD.h5",
+    "size": 15127960,
+    "mtime_ns": 1788954528530000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "zhongyao/RH_Per_L_DtP.h5",
+    "size": 15355352,
+    "mtime_ns": 1788954427850000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "zhongyao/RH_Per_L_PtD.h5",
+    "size": 15440560,
+    "mtime_ns": 1788954503770000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "zhongyao/RH_Per_S_DtP.h5",
+    "size": 15893176,
+    "mtime_ns": 1788954483970000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "zhongyao/RH_Per_S_PtD.h5",
+    "size": 15848208,
+    "mtime_ns": 1788954554700000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "zhongyao/RH_paths.json",
+    "size": 26935,
+    "mtime_ns": 1788954396870000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongyao/RH_preview.png",
+    "size": 105505,
+    "mtime_ns": 1788954396870000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongyao/attempts/LH_Per_C_DtP/001/recorder.log",
+    "size": 832,
+    "mtime_ns": 1788954794140000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongyao/attempts/LH_Per_C_DtP/001/result.json",
+    "size": 675,
+    "mtime_ns": 1788954794410000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongyao/attempts/LH_Per_L_DtP/001/recorder.log",
+    "size": 858,
+    "mtime_ns": 1788954773390000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongyao/attempts/LH_Per_L_DtP/001/result.json",
+    "size": 677,
+    "mtime_ns": 1788954773640000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongyao/attempts/LH_Per_S_DtP/001/failure.json",
+    "size": 164,
+    "mtime_ns": 1788954795870000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongyao/attempts/LH_Per_S_DtP/002/failure.json",
+    "size": 170,
+    "mtime_ns": 1788954802790000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongyao/attempts/LH_Per_S_DtP/003/failure.json",
+    "size": 170,
+    "mtime_ns": 1788954805770000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongyao/attempts/LH_Per_S_DtP/004/failure.json",
+    "size": 170,
+    "mtime_ns": 1788954814860000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongyao/attempts/LH_Per_S_DtP/005/failure.json",
+    "size": 170,
+    "mtime_ns": 1788954817210000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongyao/attempts/LH_Per_S_DtP/006/failure.json",
+    "size": 170,
+    "mtime_ns": 1788954817570000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongyao/attempts/LH_Per_S_DtP/007/failure.json",
+    "size": 170,
+    "mtime_ns": 1788954818030000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongyao/attempts/LH_Per_S_DtP/008/failure.json",
+    "size": 170,
+    "mtime_ns": 1788954828880000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongyao/attempts/LH_Per_S_DtP/009/failure.json",
+    "size": 170,
+    "mtime_ns": 1788954829360000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongyao/attempts/LH_Per_S_DtP/010/failure.json",
+    "size": 170,
+    "mtime_ns": 1788954829680000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongyao/attempts/LH_Per_S_DtP/011/failure.json",
+    "size": 170,
+    "mtime_ns": 1788954829870000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongyao/attempts/LH_Per_S_DtP/012/failure.json",
+    "size": 170,
+    "mtime_ns": 1788954830070000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongyao/attempts/LH_Per_S_DtP/013/failure.json",
+    "size": 170,
+    "mtime_ns": 1788954830380000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongyao/attempts/LH_Per_S_DtP/014/failure.json",
+    "size": 170,
+    "mtime_ns": 1788954830600000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongyao/attempts/LH_Per_S_DtP/015/failure.json",
+    "size": 170,
+    "mtime_ns": 1788954830900000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongyao/attempts/LH_Per_S_DtP/016/failure.json",
+    "size": 170,
+    "mtime_ns": 1788954831040000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongyao/attempts/RH_Per_C_DtP/001/recorder.log",
+    "size": 882,
+    "mtime_ns": 1788954455270000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongyao/attempts/RH_Per_C_DtP/001/result.json",
+    "size": 677,
+    "mtime_ns": 1788954455570000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongyao/attempts/RH_Per_C_PtD/001/recorder.log",
+    "size": 857,
+    "mtime_ns": 1788954528280000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongyao/attempts/RH_Per_C_PtD/001/result.json",
+    "size": 677,
+    "mtime_ns": 1788954528570000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongyao/attempts/RH_Per_L_DtP/001/recorder.log",
+    "size": 857,
+    "mtime_ns": 1788954427590000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongyao/attempts/RH_Per_L_DtP/001/result.json",
+    "size": 677,
+    "mtime_ns": 1788954427900000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongyao/attempts/RH_Per_L_PtD/001/recorder.log",
+    "size": 831,
+    "mtime_ns": 1788954503520000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongyao/attempts/RH_Per_L_PtD/001/result.json",
+    "size": 677,
+    "mtime_ns": 1788954503810000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongyao/attempts/RH_Per_S_DtP/001/recorder.log",
+    "size": 850,
+    "mtime_ns": 1788954483710000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongyao/attempts/RH_Per_S_DtP/001/result.json",
+    "size": 677,
+    "mtime_ns": 1788954484020000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongyao/attempts/RH_Per_S_PtD/001/recorder.log",
+    "size": 858,
+    "mtime_ns": 1788954554440000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongyao/attempts/RH_Per_S_PtD/001/result.json",
+    "size": 677,
+    "mtime_ns": 1788954554750000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongyao/session.json",
+    "size": 134730,
+    "mtime_ns": 1788954834910000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongyao2/LH_Per_C_DtP.h5",
+    "size": 66456528,
+    "mtime_ns": 1789141238150000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "zhongyao2/LH_Per_C_PtD.h5",
+    "size": 55993144,
+    "mtime_ns": 1789141402480000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "zhongyao2/LH_Per_L_DtP.h5",
+    "size": 52926592,
+    "mtime_ns": 1789141187100000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "zhongyao2/LH_Per_L_PtD.h5",
+    "size": 53938440,
+    "mtime_ns": 1789141357410000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "zhongyao2/LH_Per_S_DtP.h5",
+    "size": 59951800,
+    "mtime_ns": 1789141283790000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "zhongyao2/LH_Per_S_PtD.h5",
+    "size": 64524584,
+    "mtime_ns": 1789141451970000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "zhongyao2/LH_paths.json",
+    "size": 27073,
+    "mtime_ns": 1789141138860000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongyao2/LH_preview.png",
+    "size": 107373,
+    "mtime_ns": 1789141138860000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongyao2/RH_Per_C_DtP.h5",
+    "size": 48168008,
+    "mtime_ns": 1789140771590000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "zhongyao2/RH_Per_C_PtD.h5",
+    "size": 58598832,
+    "mtime_ns": 1789140957170000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "zhongyao2/RH_Per_L_DtP.h5",
+    "size": 45339552,
+    "mtime_ns": 1789140729480000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "zhongyao2/RH_Per_L_PtD.h5",
+    "size": 45351104,
+    "mtime_ns": 1789140910760000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "zhongyao2/RH_Per_S_DtP.h5",
+    "size": 55573888,
+    "mtime_ns": 1789140874140000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "zhongyao2/RH_Per_S_PtD.h5",
+    "size": 54382464,
+    "mtime_ns": 1789141002170000000,
+    "kind": "contact_segment",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "zhongyao2/RH_paths.json",
+    "size": 27055,
+    "mtime_ns": 1789140688600000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongyao2/RH_preview.png",
+    "size": 111882,
+    "mtime_ns": 1789140688600000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongyao2/attempts/LH_Per_C_DtP/001/contact_qp.jsonl",
+    "size": 102648891,
+    "mtime_ns": 1789141233990000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongyao2/attempts/LH_Per_C_DtP/001/raw.h5",
+    "size": 79845824,
+    "mtime_ns": 1789141237460000000,
+    "kind": "raw",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "zhongyao2/attempts/LH_Per_C_DtP/001/recorder.log",
+    "size": 1644,
+    "mtime_ns": 1789141237380000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongyao2/attempts/LH_Per_C_DtP/001/result.json",
+    "size": 679,
+    "mtime_ns": 1789141238330000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongyao2/attempts/LH_Per_C_PtD/001/contact_qp.jsonl",
+    "size": 87865430,
+    "mtime_ns": 1789141398420000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongyao2/attempts/LH_Per_C_PtD/001/raw.h5",
+    "size": 68645384,
+    "mtime_ns": 1789141401890000000,
+    "kind": "raw",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "zhongyao2/attempts/LH_Per_C_PtD/001/recorder.log",
+    "size": 1459,
+    "mtime_ns": 1789141401810000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongyao2/attempts/LH_Per_C_PtD/001/result.json",
+    "size": 679,
+    "mtime_ns": 1789141402620000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongyao2/attempts/LH_Per_L_DtP/001/contact_qp.jsonl",
+    "size": 87922643,
+    "mtime_ns": 1789141183070000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongyao2/attempts/LH_Per_L_DtP/001/raw.h5",
+    "size": 69576168,
+    "mtime_ns": 1789141186530000000,
+    "kind": "raw",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "zhongyao2/attempts/LH_Per_L_DtP/001/recorder.log",
+    "size": 1461,
+    "mtime_ns": 1789141186460000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongyao2/attempts/LH_Per_L_DtP/001/result.json",
+    "size": 679,
+    "mtime_ns": 1789141187230000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongyao2/attempts/LH_Per_L_PtD/001/contact_qp.jsonl",
+    "size": 36222752,
+    "mtime_ns": 1789141304890000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongyao2/attempts/LH_Per_L_PtD/001/failure.json",
+    "size": 4316,
+    "mtime_ns": 1789141304960000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongyao2/attempts/LH_Per_L_PtD/001/raw.h5",
+    "size": 25407472,
+    "mtime_ns": 1789141304900000000,
+    "kind": "raw",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "zhongyao2/attempts/LH_Per_L_PtD/001/recorder.log",
+    "size": 798,
+    "mtime_ns": 1789141304900000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongyao2/attempts/LH_Per_L_PtD/002/contact_qp.jsonl",
+    "size": 87982391,
+    "mtime_ns": 1789141353400000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongyao2/attempts/LH_Per_L_PtD/002/raw.h5",
+    "size": 69674960,
+    "mtime_ns": 1789141356840000000,
+    "kind": "raw",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "zhongyao2/attempts/LH_Per_L_PtD/002/recorder.log",
+    "size": 1460,
+    "mtime_ns": 1789141356780000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongyao2/attempts/LH_Per_L_PtD/002/result.json",
+    "size": 679,
+    "mtime_ns": 1789141357540000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongyao2/attempts/LH_Per_S_DtP/001/contact_qp.jsonl",
+    "size": 93880487,
+    "mtime_ns": 1789141279680000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongyao2/attempts/LH_Per_S_DtP/001/raw.h5",
+    "size": 73069640,
+    "mtime_ns": 1789141283130000000,
+    "kind": "raw",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "zhongyao2/attempts/LH_Per_S_DtP/001/recorder.log",
+    "size": 1519,
+    "mtime_ns": 1789141283060000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongyao2/attempts/LH_Per_S_DtP/001/result.json",
+    "size": 679,
+    "mtime_ns": 1789141283940000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongyao2/attempts/LH_Per_S_PtD/001/contact_qp.jsonl",
+    "size": 104908657,
+    "mtime_ns": 1789141447770000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongyao2/attempts/LH_Per_S_PtD/001/raw.h5",
+    "size": 80201632,
+    "mtime_ns": 1789141451240000000,
+    "kind": "raw",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "zhongyao2/attempts/LH_Per_S_PtD/001/recorder.log",
+    "size": 1642,
+    "mtime_ns": 1789141451170000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongyao2/attempts/LH_Per_S_PtD/001/result.json",
+    "size": 679,
+    "mtime_ns": 1789141452120000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongyao2/attempts/RH_Per_C_DtP/001/contact_qp.jsonl",
+    "size": 83532607,
+    "mtime_ns": 1789140767610000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongyao2/attempts/RH_Per_C_DtP/001/raw.h5",
+    "size": 64833672,
+    "mtime_ns": 1789140771050000000,
+    "kind": "raw",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "zhongyao2/attempts/RH_Per_C_DtP/001/recorder.log",
+    "size": 1399,
+    "mtime_ns": 1789140770980000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongyao2/attempts/RH_Per_C_DtP/001/result.json",
+    "size": 679,
+    "mtime_ns": 1789140771760000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongyao2/attempts/RH_Per_C_PtD/001/contact_qp.jsonl",
+    "size": 97384550,
+    "mtime_ns": 1789140953120000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongyao2/attempts/RH_Per_C_PtD/001/raw.h5",
+    "size": 75542192,
+    "mtime_ns": 1789140956560000000,
+    "kind": "raw",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "zhongyao2/attempts/RH_Per_C_PtD/001/recorder.log",
+    "size": 1583,
+    "mtime_ns": 1789140956490000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongyao2/attempts/RH_Per_C_PtD/001/result.json",
+    "size": 679,
+    "mtime_ns": 1789140957320000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongyao2/attempts/RH_Per_L_DtP/001/contact_qp.jsonl",
+    "size": 76973806,
+    "mtime_ns": 1789140725600000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongyao2/attempts/RH_Per_L_DtP/001/raw.h5",
+    "size": 60605432,
+    "mtime_ns": 1789140728970000000,
+    "kind": "raw",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "zhongyao2/attempts/RH_Per_L_DtP/001/recorder.log",
+    "size": 1279,
+    "mtime_ns": 1789140728940000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongyao2/attempts/RH_Per_L_DtP/001/result.json",
+    "size": 679,
+    "mtime_ns": 1789140729590000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongyao2/attempts/RH_Per_L_PtD/001/contact_qp.jsonl",
+    "size": 77196941,
+    "mtime_ns": 1789140906820000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongyao2/attempts/RH_Per_L_PtD/001/raw.h5",
+    "size": 59848568,
+    "mtime_ns": 1789140910280000000,
+    "kind": "raw",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "zhongyao2/attempts/RH_Per_L_PtD/001/recorder.log",
+    "size": 1280,
+    "mtime_ns": 1789140910210000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongyao2/attempts/RH_Per_L_PtD/001/result.json",
+    "size": 679,
+    "mtime_ns": 1789140910870000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongyao2/attempts/RH_Per_S_DtP/001/contact_qp.jsonl",
+    "size": 70264934,
+    "mtime_ns": 1789140802400000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongyao2/attempts/RH_Per_S_DtP/001/failure.json",
+    "size": 4316,
+    "mtime_ns": 1789140802470000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongyao2/attempts/RH_Per_S_DtP/001/raw.h5",
+    "size": 49495904,
+    "mtime_ns": 1789140802410000000,
+    "kind": "raw",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "zhongyao2/attempts/RH_Per_S_DtP/001/recorder.log",
+    "size": 1158,
+    "mtime_ns": 1789140802410000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongyao2/attempts/RH_Per_S_DtP/002/contact_qp.jsonl",
+    "size": 25824402,
+    "mtime_ns": 1789140825840000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongyao2/attempts/RH_Per_S_DtP/002/failure.json",
+    "size": 4316,
+    "mtime_ns": 1789140825850000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongyao2/attempts/RH_Per_S_DtP/002/raw.h5",
+    "size": 17820448,
+    "mtime_ns": 1789140825790000000,
+    "kind": "raw",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "zhongyao2/attempts/RH_Per_S_DtP/002/recorder.log",
+    "size": 677,
+    "mtime_ns": 1789140825790000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongyao2/attempts/RH_Per_S_DtP/003/contact_qp.jsonl",
+    "size": 96542343,
+    "mtime_ns": 1789140870080000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongyao2/attempts/RH_Per_S_DtP/003/raw.h5",
+    "size": 73084192,
+    "mtime_ns": 1789140873530000000,
+    "kind": "raw",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "zhongyao2/attempts/RH_Per_S_DtP/003/recorder.log",
+    "size": 1521,
+    "mtime_ns": 1789140873460000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongyao2/attempts/RH_Per_S_DtP/003/result.json",
+    "size": 679,
+    "mtime_ns": 1789140874270000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongyao2/attempts/RH_Per_S_PtD/001/contact_qp.jsonl",
+    "size": 88471328,
+    "mtime_ns": 1789140998120000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongyao2/attempts/RH_Per_S_PtD/001/raw.h5",
+    "size": 67753560,
+    "mtime_ns": 1789141001570000000,
+    "kind": "raw",
+    "complete": true,
+    "schema": "realus_icra_v1"
+  },
+  {
+    "relative": "zhongyao2/attempts/RH_Per_S_PtD/001/recorder.log",
+    "size": 1400,
+    "mtime_ns": 1789141001500000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongyao2/attempts/RH_Per_S_PtD/001/result.json",
+    "size": 679,
+    "mtime_ns": 1789141002300000000,
+    "kind": "metadata"
+  },
+  {
+    "relative": "zhongyao2/session.json",
+    "size": 289460,
+    "mtime_ns": 1789141452150000000,
+    "kind": "metadata"
+  }
+]

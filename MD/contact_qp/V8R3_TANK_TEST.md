@@ -1,6 +1,10 @@
 # V8r3：confidence 差分融合与单一命令端口能量罐
 
+当前验证入口见 [Session 005 反馈修正与完整命令](SESSION005_FEEDBACK_FIX_20260911.md)：持续视觉、图像丢帧暂停视觉、名义任务供能及 0.10/0.15/0.05 J 罐配置。本文保留此前单端口有限预算版本的推导与实验记录；下文的 episode、0.10 死区和单端口能量公式均不是当前试验配置。
+
 本次从 `669beac6668f659aaa05f92c5425ca0235f0523b` 修改。原 force calibration 文件的用户改动保留；没有连接或启动机器人。论文逐项核查见 [端口审核](ENERGY_PORT_REVIEW_20260911.md)。本文区分控制策略、模型内证明和需要真机验证的性能。
+
+2026-09-11 故障修订见 [启动/停止事故核查](STOP_INCIDENT_20260911.md)：已撤销独立串口停止进程，恢复 `669beac` 的地轨和内环代码；保留本版本能量罐及融合，只修正外环数值预条件和过期心跳的错误提示。此前异常后的长时间停止停滞尚未捕获现场栈，软件回归不表示该停滞已获真机验收。下面是用户手动启动命令，本次修订未自动启动设备；先在无人接触状态核验启动、停止，再进行仿体短轨迹。
 
 ## 1. 差分到底解决什么
 
@@ -111,6 +115,8 @@ W_j^TV_j+\beta E_{avail}/h\ge0,\qquad0<\beta\le1,
 
 ## 6. 冻结配置与实际测试
 
+2026-09-11 Session 003 的后续修正与当前完整启动命令见 [confidence 接入和发布时序修正](SESSION003_FIX_20260911.md)。当前使用 `scripts/run_icra_tank.sh`，其 record 入口会先检查有效 confidence；下面保留早期手动入口作为历史记录。
+
 配置：`peirastic/config/contact_qp/active_probe50_v8r3_tank.yaml`。旧 `active_probe50.yaml` 仍是 V7，`active_probe50_v8.yaml` 仍是 V8r2，不能用它们的名字代替本次版本。
 
 先离线检查配置，不连接设备：
@@ -148,9 +154,10 @@ env PYTHONNOUSERSITE=1 OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 \
 cd /media/camp/EXT_DRIVE/ICRA_YM/script
 bash run.sh check
 bash run.sh record --force-profile icra --speed-m-s 0.005 --keep-raw \
-  --contact-qp-config /media/camp/EXT_DRIVE/RealUS_playground/peirastic/config/contact_qp/active_probe50_v8r3_tank.yaml \
-  --data-root '/media/camp/EXT_DRIVE/ICRA_2027/icra 2027_contact/real_characterization/active_probe50_v8r3_tank'
+  --contact-qp-config /media/camp/EXT_DRIVE/RealUS_playground/peirastic/config/contact_qp/active_probe50_v8r3_tank.yaml
 ```
+
+按用户当前要求省略 `--data-root`，使用录制脚本原默认目录 `/media/camp/yameng/icra 2027/uncalibrated/NNN/`。
 
 首轮使用可重复的仿体/原短直线轨迹，完成一条后在下一条提示输入 `q`，保留成功与失败 attempts。比较同一路径的 baseline 与新版，检查四件事：
 

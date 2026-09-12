@@ -1,0 +1,1815 @@
+[
+  {
+    "file": "yuhan_L/attempts/RH_Per_S_DtP/001/contact_qp.jsonl",
+    "failure": {
+      "schema": "contact_study_v1",
+      "session_id": "12e92653a19f4ac98038c7dbb90d64ff",
+      "event": "qp_prepare_rejected",
+      "record_monotonic_s": 18418.512958206,
+      "dropped_records": 0,
+      "control_id": 3090,
+      "nominal_twist_tool": [
+        0.0025836767689492415,
+        -0.003985288006619211,
+        -0.001525308710350155,
+        0.003910106394939104,
+        -0.000824511629987569,
+        0.0015871176460903658
+      ],
+      "path_twist_tool": [
+        0.0025836767689492415,
+        -0.003985288006619211,
+        0.0,
+        0.003910106394939104,
+        0.0,
+        0.0015871176460903658
+      ],
+      "previous_twist_tool": [
+        0.0024273364526877805,
+        -0.0040454903399440864,
+        -0.0009551832068440113,
+        0.003820872209554168,
+        -0.011210048299073062,
+        0.0016144280245242745
+      ],
+      "force_n": 4.270895309467668,
+      "control_actual_dt_s": 0.0062801150015729945,
+      "command_hold_model_s": 0.005,
+      "measured_angle_rad": 0.4853399640997356,
+      "diagnostics": {
+        "quality_policy_version": "welleweerd_toproi_v3_initial_unverified",
+        "acoustic_derivative_certified": false,
+        "port_verified": false,
+        "command_slew_dt_s": 0.0062801150015729945,
+        "command_hold_s": 0.005,
+        "allocation_policy": "differential_repair_v8",
+        "repair_force_gate": 0.45820938106466436,
+        "differential_repair_revision": "v8r3_confidence_balance",
+        "balance_deadband": 0.03,
+        "omega_interval_mechanical": null,
+        "omega_interval_force_priority": null,
+        "omega_interval_complete": null,
+        "force_sign_reliable": true,
+        "interval_diagnostics_computed": false,
+        "nominal_subspace_residual": 0.0,
+        "repair_episode": "{'permission_mode': 'continuous', 'repair_allowed': True, 'armed': True, 'exhausted': False, 'reason': 'continuous_visual_feedback', 'angle_reference_reset': False, 'permission_elapsed_s': None, 'measured_angle_travel_rad': None, 'remaining_permission_s': None, 'remaining_angle_travel_rad': None, 'healthy_confirmation_count': 0, 'healthy_resets': 0, 'assurance': 'task_availability_not_execution_or_angle_certificate'}",
+        "repair_permission_mode": "continuous",
+        "image_valid": true,
+        "acquisition_loss": 0.0,
+        "alpha_preferred": 1.0,
+        "visual_rows_active": true,
+        "visual_window_active": [
+          true,
+          true
+        ],
+        "visual_requests_m_s": [
+          -4.5269227279836075e-05,
+          -0.001991751242139253
+        ],
+        "gamma_effective": [
+          1.0,
+          1.0
+        ],
+        "quality": [
+          0.8022634613639918,
+          0.8995875621069627
+        ],
+        "differential_sign": 1.0,
+        "differential_request_m_s": 6.360522583952942e-05,
+        "differential_reference": "total_velocity",
+        "differential_row": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -0.031000000000000003,
+          0.0
+        ],
+        "force_limit_assurance": "measured_policy_not_prediction",
+        "soft_force_n": 4.5,
+        "hard_force_supervisor_n": 6.0,
+        "energy_auxiliary_variables": 0,
+        "transparent": false,
+        "iterations": 19303,
+        "solver_status": "QPSolverOutput.PROXQP_MAX_ITER_REACHED",
+        "reason": "solver_status_or_residual",
+        "total_time_s": 0.03744858599748113
+      }
+    },
+    "last_logged_control_id": 3089,
+    "wrench_approximation": true,
+    "config_max_velocity": [
+      0.22,
+      0.22,
+      0.01,
+      0.6,
+      0.28,
+      0.6
+    ],
+    "config_max_acceleration": [
+      1.0,
+      1.0,
+      0.8,
+      2.0,
+      2.0,
+      2.0
+    ],
+    "direct": {
+      "success": true,
+      "diagnostics": {
+        "quality_policy_version": "welleweerd_toproi_v3_initial_unverified",
+        "acoustic_derivative_certified": false,
+        "port_verified": false,
+        "command_slew_dt_s": 0.0062801150015729945,
+        "command_hold_s": 0.005,
+        "allocation_policy": "differential_repair_v8",
+        "repair_force_gate": 0.45820938106466436,
+        "differential_repair_revision": "v8r3_confidence_balance",
+        "balance_deadband": 0.03,
+        "omega_interval_mechanical": null,
+        "omega_interval_force_priority": null,
+        "omega_interval_complete": null,
+        "force_sign_reliable": true,
+        "interval_diagnostics_computed": false,
+        "nominal_subspace_residual": 0.0,
+        "repair_episode": "{'permission_mode': 'continuous', 'repair_allowed': True, 'armed': True, 'exhausted': False, 'reason': 'continuous_visual_feedback', 'angle_reference_reset': False, 'permission_elapsed_s': None, 'measured_angle_travel_rad': None, 'remaining_permission_s': None, 'remaining_angle_travel_rad': None, 'healthy_confirmation_count': 0, 'healthy_resets': 0, 'assurance': 'task_availability_not_execution_or_angle_certificate'}",
+        "repair_permission_mode": "continuous",
+        "image_valid": true,
+        "acquisition_loss": 0.0,
+        "alpha_preferred": 1.0,
+        "visual_rows_active": true,
+        "visual_window_active": [
+          true,
+          true
+        ],
+        "visual_requests_m_s": [
+          -4.5269227279836075e-05,
+          -0.001991751242139253
+        ],
+        "gamma_effective": [
+          1.0,
+          1.0
+        ],
+        "quality": [
+          0.8022634613639918,
+          0.8995875621069627
+        ],
+        "differential_sign": 1.0,
+        "differential_request_m_s": 6.360522583952942e-05,
+        "differential_reference": "total_velocity",
+        "differential_row": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -0.031000000000000003,
+          0.0
+        ],
+        "force_limit_assurance": "measured_policy_not_prediction",
+        "soft_force_n": 4.5,
+        "hard_force_supervisor_n": 6.0,
+        "energy_auxiliary_variables": 0,
+        "transparent": false,
+        "iterations": 16,
+        "solver_status": "QPSolverOutput.PROXQP_SOLVED",
+        "energy_assurance": "two_port_command_model",
+        "energy_bounds_version": "logical_nominal_task_power_v1",
+        "energy_lower_power_w": -0.0010467296130268898,
+        "energy_margin_power_w": 1.9926019977476892,
+        "energy_margin_work_j": 0.09963009988738447,
+        "active_hard_rows": [
+          "progress_range",
+          "aperture_right_endpoint"
+        ],
+        "max_hard_violation": 1.3861524775227174e-15,
+        "visual_residual_m_s": [
+          4.743384504624082e-20,
+          0.0007726143340070109
+        ],
+        "aperture_added_velocity_m_s": [
+          0.00021784164504007,
+          0.0007500000000013861
+        ],
+        "solver_time_s": 0.0026627509978425223,
+        "total_time_s": 0.004027486000268254,
+        "differential_nominal_achieved_m_s": 2.5559860529614645e-05,
+        "differential_total_achieved_m_s": 0.00035549804060563066,
+        "differential_increment_achieved_m_s": 0.000329938180076016,
+        "qp_delta_omega_y_rad_s": -0.010643167099226322,
+        "differential_achieved_m_s": 0.00035549804060563066,
+        "differential_shortfall_m_s": 0.0,
+        "legacy_force_priority_replaced": true,
+        "differential_auxiliary_shortfall": 8.535262726290599e-16
+      },
+      "numeric": {
+        "dua_res": "8.71739950247595e-12",
+        "duality_gap": "3.805428194780802e-13",
+        "iter": "16",
+        "iter_ext": "13",
+        "iterative_residual": "3.1115066832475413e-12",
+        "minimal_H_eigenvalue_estimate": "0.0",
+        "mu_eq": "1e-05",
+        "mu_in": "0.0010000000000000002",
+        "mu_updates": "2",
+        "objValue": "-0.011176123229751589",
+        "pri_res": "5.545564008002657e-13",
+        "rho": "1e-05",
+        "rho_updates": "0",
+        "run_time": "0.0",
+        "setup_time": "0.0",
+        "solve_time": "0.0",
+        "sparse_backend": "SparseBackend.Automatic",
+        "status": "QPSolverOutput.PROXQP_SOLVED",
+        "violation": 5.545008896490344e-13
+      }
+    },
+    "lp": {
+      "success": true,
+      "status": 0,
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "violation": 0.0
+    }
+  },
+  {
+    "file": "yuhan_L/attempts/RH_Per_S_PtD/001/contact_qp.jsonl",
+    "failure": {
+      "schema": "contact_study_v1",
+      "session_id": "eea84bcbcb5149219741f866dfbc6f50",
+      "event": "qp_prepare_rejected",
+      "record_monotonic_s": 18710.814539699,
+      "dropped_records": 0,
+      "control_id": 3554,
+      "nominal_twist_tool": [
+        -0.000575148789259979,
+        0.005708268657404184,
+        0.0005033907393705372,
+        -0.002963917263557323,
+        0.18390478735256413,
+        0.002717380396433729
+      ],
+      "path_twist_tool": [
+        -0.000575148789259979,
+        0.005708268657404184,
+        0.0,
+        -0.002963917263557323,
+        0.0,
+        0.002717380396433729
+      ],
+      "previous_twist_tool": [
+        -0.000659340831762086,
+        0.005465906717625432,
+        0.0010324628097330081,
+        -0.001822165377711898,
+        0.18606290088653904,
+        0.0018850632401143047
+      ],
+      "force_n": 4.193130804938221,
+      "control_actual_dt_s": 0.005692452999937814,
+      "command_hold_model_s": 0.005,
+      "measured_angle_rad": -0.15391263967904653,
+      "diagnostics": {
+        "quality_policy_version": "welleweerd_toproi_v3_initial_unverified",
+        "acoustic_derivative_certified": false,
+        "port_verified": false,
+        "command_slew_dt_s": 0.005692452999937814,
+        "command_hold_s": 0.005,
+        "allocation_policy": "differential_repair_v8",
+        "repair_force_gate": 0.613738390123558,
+        "differential_repair_revision": "v8r3_confidence_balance",
+        "balance_deadband": 0.03,
+        "omega_interval_mechanical": null,
+        "omega_interval_force_priority": null,
+        "omega_interval_complete": null,
+        "force_sign_reliable": true,
+        "interval_diagnostics_computed": false,
+        "nominal_subspace_residual": 0.0,
+        "repair_episode": "{'permission_mode': 'continuous', 'repair_allowed': True, 'armed': True, 'exhausted': False, 'reason': 'continuous_visual_feedback', 'angle_reference_reset': False, 'permission_elapsed_s': None, 'measured_angle_travel_rad': None, 'remaining_permission_s': None, 'remaining_angle_travel_rad': None, 'healthy_confirmation_count': 0, 'healthy_resets': 0, 'assurance': 'task_availability_not_execution_or_angle_certificate'}",
+        "repair_permission_mode": "continuous",
+        "image_valid": true,
+        "acquisition_loss": 0.0,
+        "alpha_preferred": 1.0,
+        "visual_rows_active": true,
+        "visual_window_active": [
+          true,
+          true
+        ],
+        "visual_requests_m_s": [
+          -0.001940964513387167,
+          -0.0001207952293880288
+        ],
+        "gamma_effective": [
+          1.0,
+          1.0
+        ],
+        "quality": [
+          0.8970482256693584,
+          0.8060397614694015
+        ],
+        "differential_sign": -1.0,
+        "differential_request_m_s": 7.720254969482942e-05,
+        "differential_reference": "total_velocity",
+        "differential_row": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -0.031000000000000003,
+          0.0
+        ],
+        "force_limit_assurance": "measured_policy_not_prediction",
+        "soft_force_n": 4.5,
+        "hard_force_supervisor_n": 6.0,
+        "energy_auxiliary_variables": 0,
+        "transparent": false,
+        "iterations": 18707,
+        "solver_status": "QPSolverOutput.PROXQP_MAX_ITER_REACHED",
+        "reason": "solver_status_or_residual",
+        "total_time_s": 0.034929459001432406
+      }
+    },
+    "last_logged_control_id": 3553,
+    "wrench_approximation": true,
+    "config_max_velocity": [
+      0.22,
+      0.22,
+      0.01,
+      0.6,
+      0.28,
+      0.6
+    ],
+    "config_max_acceleration": [
+      1.0,
+      1.0,
+      0.8,
+      2.0,
+      2.0,
+      2.0
+    ],
+    "direct": {
+      "success": true,
+      "diagnostics": {
+        "quality_policy_version": "welleweerd_toproi_v3_initial_unverified",
+        "acoustic_derivative_certified": false,
+        "port_verified": false,
+        "command_slew_dt_s": 0.005692452999937814,
+        "command_hold_s": 0.005,
+        "allocation_policy": "differential_repair_v8",
+        "repair_force_gate": 0.613738390123558,
+        "differential_repair_revision": "v8r3_confidence_balance",
+        "balance_deadband": 0.03,
+        "omega_interval_mechanical": null,
+        "omega_interval_force_priority": null,
+        "omega_interval_complete": null,
+        "force_sign_reliable": true,
+        "interval_diagnostics_computed": false,
+        "nominal_subspace_residual": 0.0,
+        "repair_episode": "{'permission_mode': 'continuous', 'repair_allowed': True, 'armed': True, 'exhausted': False, 'reason': 'continuous_visual_feedback', 'angle_reference_reset': False, 'permission_elapsed_s': None, 'measured_angle_travel_rad': None, 'remaining_permission_s': None, 'remaining_angle_travel_rad': None, 'healthy_confirmation_count': 0, 'healthy_resets': 0, 'assurance': 'task_availability_not_execution_or_angle_certificate'}",
+        "repair_permission_mode": "continuous",
+        "image_valid": true,
+        "acquisition_loss": 0.0,
+        "alpha_preferred": 1.0,
+        "visual_rows_active": true,
+        "visual_window_active": [
+          true,
+          true
+        ],
+        "visual_requests_m_s": [
+          -0.001940964513387167,
+          -0.0001207952293880288
+        ],
+        "gamma_effective": [
+          1.0,
+          1.0
+        ],
+        "quality": [
+          0.8970482256693584,
+          0.8060397614694015
+        ],
+        "differential_sign": -1.0,
+        "differential_request_m_s": 7.720254969482942e-05,
+        "differential_reference": "total_velocity",
+        "differential_row": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -0.031000000000000003,
+          0.0
+        ],
+        "force_limit_assurance": "measured_policy_not_prediction",
+        "soft_force_n": 4.5,
+        "hard_force_supervisor_n": 6.0,
+        "energy_auxiliary_variables": 0,
+        "transparent": false,
+        "iterations": 18,
+        "solver_status": "QPSolverOutput.PROXQP_SOLVED",
+        "energy_assurance": "two_port_command_model",
+        "energy_bounds_version": "logical_nominal_task_power_v1",
+        "energy_lower_power_w": 0.002703172368784305,
+        "energy_margin_power_w": 1.025750731656266,
+        "energy_margin_work_j": 0.0512875365828133,
+        "active_hard_rows": [
+          "progress_range"
+        ],
+        "max_hard_violation": 0.0,
+        "visual_residual_m_s": [
+          0.0,
+          0.003573733573029217
+        ],
+        "aperture_added_velocity_m_s": [
+          5.894000077538337e-05,
+          0.0002699052614623461
+        ],
+        "solver_time_s": 0.00030776999847148545,
+        "total_time_s": 0.0010730550020525698,
+        "differential_nominal_achieved_m_s": 0.005701048407929489,
+        "differential_total_achieved_m_s": 0.005570249946303571,
+        "differential_increment_achieved_m_s": -0.00013079846162591773,
+        "qp_delta_omega_y_rad_s": -0.004219305213739255,
+        "differential_achieved_m_s": 0.005570249946303571,
+        "differential_shortfall_m_s": 0.0,
+        "legacy_force_priority_replaced": true,
+        "differential_auxiliary_shortfall": -1.606671866531509e-20
+      },
+      "numeric": {
+        "dua_res": "5.347787554756012e-10",
+        "duality_gap": "5.334985786475954e-10",
+        "iter": "18",
+        "iter_ext": "13",
+        "iterative_residual": "1.9874325974430697e-10",
+        "minimal_H_eigenvalue_estimate": "0.0",
+        "mu_eq": "0.001",
+        "mu_in": "0.1",
+        "mu_updates": "0",
+        "objValue": "-7.481067677493414",
+        "pri_res": "1.6066718665315096e-20",
+        "rho": "1e-05",
+        "rho_updates": "0",
+        "run_time": "0.0",
+        "setup_time": "0.0",
+        "solve_time": "0.0",
+        "sparse_backend": "SparseBackend.Automatic",
+        "status": "QPSolverOutput.PROXQP_SOLVED",
+        "violation": 1.606671866531509e-20
+      }
+    },
+    "lp": {
+      "success": true,
+      "status": 0,
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "violation": 0.0
+    }
+  },
+  {
+    "file": "yuhan_L/attempts/RH_Per_S_PtD/004/contact_qp.jsonl",
+    "failure": {
+      "schema": "contact_study_v1",
+      "session_id": "dc9f1fae131c4dcc807658d75e40609b",
+      "event": "qp_prepare_rejected",
+      "record_monotonic_s": 18774.741881807,
+      "dropped_records": 0,
+      "control_id": 2137,
+      "nominal_twist_tool": [
+        0.0020976990278230097,
+        0.001303670929945189,
+        -0.00017435074594709897,
+        -0.006016664916716239,
+        -0.08318012865483249,
+        0.0024204563408367534
+      ],
+      "path_twist_tool": [
+        0.0020976990278230097,
+        0.001303670929945189,
+        0.0,
+        -0.006016664916716239,
+        0.0,
+        0.0024204563408367534
+      ],
+      "previous_twist_tool": [
+        0.0016036272708061026,
+        0.0007421779500733714,
+        -0.00022064317110404241,
+        -0.005252058895375767,
+        -0.0837510650106225,
+        0.002222584176326969
+      ],
+      "force_n": 4.066016748000125,
+      "control_actual_dt_s": 0.005850125999131706,
+      "command_hold_model_s": 0.005,
+      "measured_angle_rad": -0.10800223384725659,
+      "diagnostics": {
+        "quality_policy_version": "welleweerd_toproi_v3_initial_unverified",
+        "acoustic_derivative_certified": false,
+        "port_verified": false,
+        "command_slew_dt_s": 0.005850125999131706,
+        "command_hold_s": 0.005,
+        "allocation_policy": "differential_repair_v8",
+        "repair_force_gate": 0.8679665039997495,
+        "differential_repair_revision": "v8r3_confidence_balance",
+        "balance_deadband": 0.03,
+        "omega_interval_mechanical": null,
+        "omega_interval_force_priority": null,
+        "omega_interval_complete": null,
+        "force_sign_reliable": false,
+        "interval_diagnostics_computed": false,
+        "nominal_subspace_residual": 0.0,
+        "repair_episode": "{'permission_mode': 'continuous', 'repair_allowed': True, 'armed': True, 'exhausted': False, 'reason': 'continuous_visual_feedback', 'angle_reference_reset': False, 'permission_elapsed_s': None, 'measured_angle_travel_rad': None, 'remaining_permission_s': None, 'remaining_angle_travel_rad': None, 'healthy_confirmation_count': 0, 'healthy_resets': 0, 'assurance': 'task_availability_not_execution_or_angle_certificate'}",
+        "repair_permission_mode": "continuous",
+        "image_valid": true,
+        "acquisition_loss": 0.2115116609121835,
+        "alpha_preferred": 0.8413662543158624,
+        "visual_rows_active": true,
+        "visual_window_active": [
+          true,
+          true
+        ],
+        "visual_requests_m_s": [
+          0.0003671700737542568,
+          -0.002185480984870714
+        ],
+        "gamma_effective": [
+          1.0,
+          1.0
+        ],
+        "quality": [
+          0.6307906712702532,
+          0.9092740492435357
+        ],
+        "differential_sign": 1.0,
+        "differential_request_m_s": 0.0004446912348072544,
+        "differential_reference": "total_velocity",
+        "differential_row": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -0.031000000000000003,
+          0.0
+        ],
+        "force_limit_assurance": "measured_policy_not_prediction",
+        "soft_force_n": 4.5,
+        "hard_force_supervisor_n": 6.0,
+        "energy_auxiliary_variables": 0,
+        "transparent": false,
+        "iterations": 440,
+        "solver_status": "QPSolverOutput.PROXQP_MAX_ITER_REACHED",
+        "reason": "solver_status_or_residual",
+        "total_time_s": 0.003988307998952223
+      }
+    },
+    "last_logged_control_id": 2136,
+    "wrench_approximation": true,
+    "config_max_velocity": [
+      0.22,
+      0.22,
+      0.01,
+      0.6,
+      0.28,
+      0.6
+    ],
+    "config_max_acceleration": [
+      1.0,
+      1.0,
+      0.8,
+      2.0,
+      2.0,
+      2.0
+    ],
+    "direct": {
+      "success": true,
+      "diagnostics": {
+        "quality_policy_version": "welleweerd_toproi_v3_initial_unverified",
+        "acoustic_derivative_certified": false,
+        "port_verified": false,
+        "command_slew_dt_s": 0.005850125999131706,
+        "command_hold_s": 0.005,
+        "allocation_policy": "differential_repair_v8",
+        "repair_force_gate": 0.8679665039997495,
+        "differential_repair_revision": "v8r3_confidence_balance",
+        "balance_deadband": 0.03,
+        "omega_interval_mechanical": null,
+        "omega_interval_force_priority": null,
+        "omega_interval_complete": null,
+        "force_sign_reliable": false,
+        "interval_diagnostics_computed": false,
+        "nominal_subspace_residual": 0.0,
+        "repair_episode": "{'permission_mode': 'continuous', 'repair_allowed': True, 'armed': True, 'exhausted': False, 'reason': 'continuous_visual_feedback', 'angle_reference_reset': False, 'permission_elapsed_s': None, 'measured_angle_travel_rad': None, 'remaining_permission_s': None, 'remaining_angle_travel_rad': None, 'healthy_confirmation_count': 0, 'healthy_resets': 0, 'assurance': 'task_availability_not_execution_or_angle_certificate'}",
+        "repair_permission_mode": "continuous",
+        "image_valid": true,
+        "acquisition_loss": 0.2115116609121835,
+        "alpha_preferred": 0.8413662543158624,
+        "visual_rows_active": true,
+        "visual_window_active": [
+          true,
+          true
+        ],
+        "visual_requests_m_s": [
+          0.0003671700737542568,
+          -0.002185480984870714
+        ],
+        "gamma_effective": [
+          1.0,
+          1.0
+        ],
+        "quality": [
+          0.6307906712702532,
+          0.9092740492435357
+        ],
+        "differential_sign": 1.0,
+        "differential_request_m_s": 0.0004446912348072544,
+        "differential_reference": "total_velocity",
+        "differential_row": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -0.031000000000000003,
+          0.0
+        ],
+        "force_limit_assurance": "measured_policy_not_prediction",
+        "soft_force_n": 4.5,
+        "hard_force_supervisor_n": 6.0,
+        "energy_auxiliary_variables": 0,
+        "transparent": false,
+        "iterations": 13,
+        "solver_status": "QPSolverOutput.PROXQP_SOLVED",
+        "energy_assurance": "two_port_command_model",
+        "energy_bounds_version": "logical_nominal_task_power_v1",
+        "energy_lower_power_w": 0.0008428893883889105,
+        "energy_margin_power_w": 1.09375751606516,
+        "energy_margin_work_j": 0.054687875803258006,
+        "active_hard_rows": [],
+        "max_hard_violation": 0.0,
+        "visual_residual_m_s": [
+          0.000747771174368896,
+          0.0007218382447632156
+        ],
+        "aperture_added_velocity_m_s": [
+          1.0697231945730473e-14,
+          -1.0084479367018784e-13
+        ],
+        "solver_time_s": 0.0002705160004552454,
+        "total_time_s": 0.001046248999045929,
+        "differential_nominal_achieved_m_s": 0.002578583988299807,
+        "differential_total_achieved_m_s": 0.002578583988230651,
+        "differential_increment_achieved_m_s": -6.91560524124224e-14,
+        "qp_delta_omega_y_rad_s": 2.230840512318366e-12,
+        "differential_achieved_m_s": 0.002578583988230651,
+        "differential_shortfall_m_s": 0.0,
+        "legacy_force_priority_replaced": true,
+        "differential_auxiliary_shortfall": 9.809059531872253e-11
+      },
+      "numeric": {
+        "dua_res": "2.7071730867336854e-10",
+        "duality_gap": "-7.066880414186016e-11",
+        "iter": "13",
+        "iter_ext": "11",
+        "iterative_residual": "4.492848053522726e-25",
+        "minimal_H_eigenvalue_estimate": "0.0",
+        "mu_eq": "0.001",
+        "mu_in": "0.1",
+        "mu_updates": "0",
+        "objValue": "-1.7923780023062303",
+        "pri_res": "0.0",
+        "rho": "1e-05",
+        "rho_updates": "0",
+        "run_time": "0.0",
+        "setup_time": "0.0",
+        "solve_time": "0.0",
+        "sparse_backend": "SparseBackend.Automatic",
+        "status": "QPSolverOutput.PROXQP_SOLVED",
+        "violation": 0.0
+      }
+    },
+    "lp": {
+      "success": true,
+      "status": 0,
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "violation": 0.0
+    }
+  },
+  {
+    "file": "yuhan_L/attempts/RH_Per_S_PtD/005/contact_qp.jsonl",
+    "failure": {
+      "schema": "contact_study_v1",
+      "session_id": "c4028816733243c793b1aa5f6feecd69",
+      "event": "qp_prepare_rejected",
+      "record_monotonic_s": 18795.731859461,
+      "dropped_records": 0,
+      "control_id": 1843,
+      "nominal_twist_tool": [
+        0.0034423046121626467,
+        0.0013858906620116654,
+        0.0007005195701124477,
+        -0.004908212506378043,
+        -0.06839923922460732,
+        0.0020637515362920784
+      ],
+      "path_twist_tool": [
+        0.0034423046121626467,
+        0.0013858906620116654,
+        0.0,
+        -0.004908212506378043,
+        0.0,
+        0.0020637515362920784
+      ],
+      "previous_twist_tool": [
+        0.0034489540779317853,
+        0.001510601016240225,
+        0.000898999266814586,
+        -0.004548763363561741,
+        -0.06849351784270946,
+        0.0017151209888338972
+      ],
+      "force_n": 3.972774887599688,
+      "control_actual_dt_s": 0.006284416998823872,
+      "command_hold_model_s": 0.005,
+      "measured_angle_rad": -0.034161189742780054,
+      "diagnostics": {
+        "quality_policy_version": "welleweerd_toproi_v3_initial_unverified",
+        "acoustic_derivative_certified": false,
+        "port_verified": false,
+        "command_slew_dt_s": 0.006284416998823872,
+        "command_hold_s": 0.005,
+        "allocation_policy": "differential_repair_v8",
+        "repair_force_gate": 1.0,
+        "differential_repair_revision": "v8r3_confidence_balance",
+        "balance_deadband": 0.03,
+        "omega_interval_mechanical": null,
+        "omega_interval_force_priority": null,
+        "omega_interval_complete": null,
+        "force_sign_reliable": false,
+        "interval_diagnostics_computed": false,
+        "nominal_subspace_residual": 0.0,
+        "repair_episode": "{'permission_mode': 'continuous', 'repair_allowed': True, 'armed': True, 'exhausted': False, 'reason': 'continuous_visual_feedback', 'angle_reference_reset': False, 'permission_elapsed_s': None, 'measured_angle_travel_rad': None, 'remaining_permission_s': None, 'remaining_angle_travel_rad': None, 'healthy_confirmation_count': 0, 'healthy_resets': 0, 'assurance': 'task_availability_not_execution_or_angle_certificate'}",
+        "repair_permission_mode": "continuous",
+        "image_valid": true,
+        "acquisition_loss": 0.06585772165333043,
+        "alpha_preferred": 0.9506067087600022,
+        "visual_rows_active": true,
+        "visual_window_active": [
+          true,
+          true
+        ],
+        "visual_requests_m_s": [
+          0.00013171544330666085,
+          -0.001793354028938388
+        ],
+        "gamma_effective": [
+          1.0,
+          1.0
+        ],
+        "quality": [
+          0.7473138226773357,
+          0.8896677014469194
+        ],
+        "differential_sign": 1.0,
+        "differential_request_m_s": 0.00023165748199914168,
+        "differential_reference": "total_velocity",
+        "differential_row": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -0.031000000000000003,
+          0.0
+        ],
+        "force_limit_assurance": "measured_policy_not_prediction",
+        "soft_force_n": 4.5,
+        "hard_force_supervisor_n": 6.0,
+        "energy_auxiliary_variables": 0,
+        "transparent": false,
+        "iterations": 770,
+        "solver_status": "QPSolverOutput.PROXQP_MAX_ITER_REACHED",
+        "reason": "solver_status_or_residual",
+        "total_time_s": 0.004409880999446614
+      }
+    },
+    "last_logged_control_id": 1842,
+    "wrench_approximation": true,
+    "config_max_velocity": [
+      0.22,
+      0.22,
+      0.01,
+      0.6,
+      0.28,
+      0.6
+    ],
+    "config_max_acceleration": [
+      1.0,
+      1.0,
+      0.8,
+      2.0,
+      2.0,
+      2.0
+    ],
+    "direct": {
+      "success": true,
+      "diagnostics": {
+        "quality_policy_version": "welleweerd_toproi_v3_initial_unverified",
+        "acoustic_derivative_certified": false,
+        "port_verified": false,
+        "command_slew_dt_s": 0.006284416998823872,
+        "command_hold_s": 0.005,
+        "allocation_policy": "differential_repair_v8",
+        "repair_force_gate": 1.0,
+        "differential_repair_revision": "v8r3_confidence_balance",
+        "balance_deadband": 0.03,
+        "omega_interval_mechanical": null,
+        "omega_interval_force_priority": null,
+        "omega_interval_complete": null,
+        "force_sign_reliable": false,
+        "interval_diagnostics_computed": false,
+        "nominal_subspace_residual": 0.0,
+        "repair_episode": "{'permission_mode': 'continuous', 'repair_allowed': True, 'armed': True, 'exhausted': False, 'reason': 'continuous_visual_feedback', 'angle_reference_reset': False, 'permission_elapsed_s': None, 'measured_angle_travel_rad': None, 'remaining_permission_s': None, 'remaining_angle_travel_rad': None, 'healthy_confirmation_count': 0, 'healthy_resets': 0, 'assurance': 'task_availability_not_execution_or_angle_certificate'}",
+        "repair_permission_mode": "continuous",
+        "image_valid": true,
+        "acquisition_loss": 0.06585772165333043,
+        "alpha_preferred": 0.9506067087600022,
+        "visual_rows_active": true,
+        "visual_window_active": [
+          true,
+          true
+        ],
+        "visual_requests_m_s": [
+          0.00013171544330666085,
+          -0.001793354028938388
+        ],
+        "gamma_effective": [
+          1.0,
+          1.0
+        ],
+        "quality": [
+          0.7473138226773357,
+          0.8896677014469194
+        ],
+        "differential_sign": 1.0,
+        "differential_request_m_s": 0.00023165748199914168,
+        "differential_reference": "total_velocity",
+        "differential_row": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -0.031000000000000003,
+          0.0
+        ],
+        "force_limit_assurance": "measured_policy_not_prediction",
+        "soft_force_n": 4.5,
+        "hard_force_supervisor_n": 6.0,
+        "energy_auxiliary_variables": 0,
+        "transparent": false,
+        "iterations": 78,
+        "solver_status": "QPSolverOutput.PROXQP_SOLVED",
+        "energy_assurance": "two_port_command_model",
+        "energy_bounds_version": "logical_nominal_task_power_v1",
+        "energy_lower_power_w": -0.0003576028124001635,
+        "energy_margin_power_w": 1.0782084006472346,
+        "energy_margin_work_j": 0.05391042003236173,
+        "active_hard_rows": [],
+        "max_hard_violation": 0.0,
+        "visual_residual_m_s": [
+          0.0016289923347267879,
+          0.0014336853910090234
+        ],
+        "aperture_added_velocity_m_s": [
+          -6.039435444804564e-14,
+          -6.041655890853815e-14
+        ],
+        "solver_time_s": 0.00048758100092527457,
+        "total_time_s": 0.0012270330007595476,
+        "differential_nominal_achieved_m_s": 0.0021203764159628273,
+        "differential_total_achieved_m_s": 0.0021203764159628134,
+        "differential_increment_achieved_m_s": -1.3877787807814457e-17,
+        "qp_delta_omega_y_rad_s": 4.440892098500626e-16,
+        "differential_achieved_m_s": 0.0021203764159628134,
+        "differential_shortfall_m_s": 0.0,
+        "legacy_force_priority_replaced": true,
+        "differential_auxiliary_shortfall": 4.380654821437526e-12
+      },
+      "numeric": {
+        "dua_res": "1.9964306013647883e-10",
+        "duality_gap": "-3.1667557465198115e-11",
+        "iter": "78",
+        "iter_ext": "8",
+        "iterative_residual": "5.2346977954108536e-11",
+        "minimal_H_eigenvalue_estimate": "0.0",
+        "mu_eq": "0.0001",
+        "mu_in": "0.010000000000000002",
+        "mu_updates": "1",
+        "objValue": "-1.6007809677528788",
+        "pri_res": "0.0",
+        "rho": "1e-05",
+        "rho_updates": "0",
+        "run_time": "0.0",
+        "setup_time": "0.0",
+        "solve_time": "0.0",
+        "sparse_backend": "SparseBackend.Automatic",
+        "status": "QPSolverOutput.PROXQP_SOLVED",
+        "violation": 0.0
+      }
+    },
+    "lp": {
+      "success": true,
+      "status": 0,
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "violation": 1.1102230246251565e-16
+    }
+  },
+  {
+    "file": "yuhan_L/attempts/RH_Per_S_PtD/006/contact_qp.jsonl",
+    "failure": {
+      "schema": "contact_study_v1",
+      "session_id": "35189ef1aee6433ebeecd2436f26817b",
+      "event": "qp_prepare_rejected",
+      "record_monotonic_s": 18819.541909987,
+      "dropped_records": 0,
+      "control_id": 1933,
+      "nominal_twist_tool": [
+        0.0034131492525908943,
+        0.003137960035105495,
+        -0.0030010207282354165,
+        -0.0061913301814127825,
+        -0.05989711895140292,
+        0.002004734650923359
+      ],
+      "path_twist_tool": [
+        0.0034131492525908943,
+        0.003137960035105495,
+        0.0,
+        -0.0061913301814127825,
+        0.0,
+        0.002004734650923359
+      ],
+      "previous_twist_tool": [
+        0.0031116397359968366,
+        0.00278608944126835,
+        -0.0022524180880668316,
+        -0.0053888643830794815,
+        -0.0595767106728694,
+        0.0017944445455326864
+      ],
+      "force_n": 4.335846440454344,
+      "control_actual_dt_s": 0.00750573000186705,
+      "command_hold_model_s": 0.005,
+      "measured_angle_rad": -0.044462469421484324,
+      "diagnostics": {
+        "quality_policy_version": "welleweerd_toproi_v3_initial_unverified",
+        "acoustic_derivative_certified": false,
+        "port_verified": false,
+        "command_slew_dt_s": 0.00750573000186705,
+        "command_hold_s": 0.005,
+        "allocation_policy": "differential_repair_v8",
+        "repair_force_gate": 0.3283071190913116,
+        "differential_repair_revision": "v8r3_confidence_balance",
+        "balance_deadband": 0.03,
+        "omega_interval_mechanical": null,
+        "omega_interval_force_priority": null,
+        "omega_interval_complete": null,
+        "force_sign_reliable": true,
+        "interval_diagnostics_computed": false,
+        "nominal_subspace_residual": 0.0,
+        "repair_episode": "{'permission_mode': 'continuous', 'repair_allowed': True, 'armed': True, 'exhausted': False, 'reason': 'continuous_visual_feedback', 'angle_reference_reset': False, 'permission_elapsed_s': None, 'measured_angle_travel_rad': None, 'remaining_permission_s': None, 'remaining_angle_travel_rad': None, 'healthy_confirmation_count': 0, 'healthy_resets': 0, 'assurance': 'task_availability_not_execution_or_angle_certificate'}",
+        "repair_permission_mode": "continuous",
+        "image_valid": true,
+        "acquisition_loss": 0.07114063399753581,
+        "alpha_preferred": 0.9466445245018481,
+        "visual_rows_active": true,
+        "visual_window_active": [
+          true,
+          true
+        ],
+        "visual_requests_m_s": [
+          4.6711953196120796e-05,
+          -0.0015665291576161281
+        ],
+        "gamma_effective": [
+          1.0,
+          1.0
+        ],
+        "quality": [
+          0.7430874928019714,
+          0.8783264578808064
+        ],
+        "differential_sign": 1.0,
+        "differential_request_m_s": 7.123855967254325e-05,
+        "differential_reference": "total_velocity",
+        "differential_row": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -0.031000000000000003,
+          0.0
+        ],
+        "force_limit_assurance": "measured_policy_not_prediction",
+        "soft_force_n": 4.5,
+        "hard_force_supervisor_n": 6.0,
+        "energy_auxiliary_variables": 0,
+        "transparent": false,
+        "iterations": 246,
+        "solver_status": "QPSolverOutput.PROXQP_MAX_ITER_REACHED",
+        "reason": "solver_status_or_residual",
+        "total_time_s": 0.0034187380006187595
+      }
+    },
+    "last_logged_control_id": 1932,
+    "wrench_approximation": true,
+    "config_max_velocity": [
+      0.22,
+      0.22,
+      0.01,
+      0.6,
+      0.28,
+      0.6
+    ],
+    "config_max_acceleration": [
+      1.0,
+      1.0,
+      0.8,
+      2.0,
+      2.0,
+      2.0
+    ],
+    "direct": {
+      "success": true,
+      "diagnostics": {
+        "quality_policy_version": "welleweerd_toproi_v3_initial_unverified",
+        "acoustic_derivative_certified": false,
+        "port_verified": false,
+        "command_slew_dt_s": 0.00750573000186705,
+        "command_hold_s": 0.005,
+        "allocation_policy": "differential_repair_v8",
+        "repair_force_gate": 0.3283071190913116,
+        "differential_repair_revision": "v8r3_confidence_balance",
+        "balance_deadband": 0.03,
+        "omega_interval_mechanical": null,
+        "omega_interval_force_priority": null,
+        "omega_interval_complete": null,
+        "force_sign_reliable": true,
+        "interval_diagnostics_computed": false,
+        "nominal_subspace_residual": 0.0,
+        "repair_episode": "{'permission_mode': 'continuous', 'repair_allowed': True, 'armed': True, 'exhausted': False, 'reason': 'continuous_visual_feedback', 'angle_reference_reset': False, 'permission_elapsed_s': None, 'measured_angle_travel_rad': None, 'remaining_permission_s': None, 'remaining_angle_travel_rad': None, 'healthy_confirmation_count': 0, 'healthy_resets': 0, 'assurance': 'task_availability_not_execution_or_angle_certificate'}",
+        "repair_permission_mode": "continuous",
+        "image_valid": true,
+        "acquisition_loss": 0.07114063399753581,
+        "alpha_preferred": 0.9466445245018481,
+        "visual_rows_active": true,
+        "visual_window_active": [
+          true,
+          true
+        ],
+        "visual_requests_m_s": [
+          4.6711953196120796e-05,
+          -0.0015665291576161281
+        ],
+        "gamma_effective": [
+          1.0,
+          1.0
+        ],
+        "quality": [
+          0.7430874928019714,
+          0.8783264578808064
+        ],
+        "differential_sign": 1.0,
+        "differential_request_m_s": 7.123855967254325e-05,
+        "differential_reference": "total_velocity",
+        "differential_row": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -0.031000000000000003,
+          0.0
+        ],
+        "force_limit_assurance": "measured_policy_not_prediction",
+        "soft_force_n": 4.5,
+        "hard_force_supervisor_n": 6.0,
+        "energy_auxiliary_variables": 0,
+        "transparent": false,
+        "iterations": 13,
+        "solver_status": "QPSolverOutput.PROXQP_SOLVED",
+        "energy_assurance": "two_port_command_model",
+        "energy_bounds_version": "logical_nominal_task_power_v1",
+        "energy_lower_power_w": 0.006171769758440082,
+        "energy_margin_power_w": 1.113296219640728,
+        "energy_margin_work_j": 0.0556648109820364,
+        "active_hard_rows": [
+          "aperture_left_endpoint",
+          "aperture_right_endpoint"
+        ],
+        "max_hard_violation": 0.0,
+        "visual_residual_m_s": [
+          4.0657581468206416e-20,
+          0.0
+        ],
+        "aperture_added_velocity_m_s": [
+          0.0007499999999985284,
+          0.0007499999999969106
+        ],
+        "solver_time_s": 0.0002525199997762684,
+        "total_time_s": 0.0009880430006887764,
+        "differential_nominal_achieved_m_s": 0.0018568106874934907,
+        "differential_total_achieved_m_s": 0.0018568106874924876,
+        "differential_increment_achieved_m_s": -1.0031038499835887e-15,
+        "qp_delta_omega_y_rad_s": 3.2356062273919406e-14,
+        "differential_achieved_m_s": 0.0018568106874924876,
+        "differential_shortfall_m_s": 0.0,
+        "legacy_force_priority_replaced": true,
+        "differential_auxiliary_shortfall": 6.666301832527546e-18
+      },
+      "numeric": {
+        "dua_res": "4.2997037056320123e-10",
+        "duality_gap": "2.0969714853436017e-10",
+        "iter": "13",
+        "iter_ext": "11",
+        "iterative_residual": "1.3620502159620064e-10",
+        "minimal_H_eigenvalue_estimate": "0.0",
+        "mu_eq": "1e-05",
+        "mu_in": "0.0010000000000000002",
+        "mu_updates": "2",
+        "objValue": "2.1858020471981616",
+        "pri_res": "6.269429420058259e-13",
+        "rho": "1e-05",
+        "rho_updates": "0",
+        "run_time": "0.0",
+        "setup_time": "0.0",
+        "solve_time": "0.0",
+        "sparse_backend": "SparseBackend.Automatic",
+        "status": "QPSolverOutput.PROXQP_SOLVED",
+        "violation": 6.272760089132134e-13
+      }
+    },
+    "lp": {
+      "success": true,
+      "status": 0,
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "violation": 3.3306690738754696e-16
+    }
+  },
+  {
+    "file": "zhongyao2/attempts/LH_Per_L_PtD/001/contact_qp.jsonl",
+    "failure": {
+      "schema": "contact_study_v1",
+      "session_id": "6b0becaf911e46f4ab9440cbd747fc4a",
+      "event": "qp_prepare_rejected",
+      "record_monotonic_s": 17218.751859011,
+      "dropped_records": 0,
+      "control_id": 2308,
+      "nominal_twist_tool": [
+        0.0008671702990967015,
+        0.003442762157180715,
+        -0.00048174170359021945,
+        -0.008042799731188403,
+        0.0,
+        0.00025183546978114205
+      ],
+      "path_twist_tool": [
+        0.0008671702990967015,
+        0.003442762157180715,
+        0.0,
+        -0.008042799731188403,
+        0.0,
+        0.00025183546978114205
+      ],
+      "previous_twist_tool": [
+        0.0009015426128514517,
+        0.003557545574426506,
+        -0.0005351988092209874,
+        -0.008122360291913362,
+        -0.0006475717199546205,
+        0.0002215845669142678
+      ],
+      "force_n": 4.126939487128464,
+      "control_actual_dt_s": 0.0057881290013028774,
+      "command_hold_model_s": 0.005,
+      "measured_angle_rad": -0.005239182288538763,
+      "diagnostics": {
+        "quality_policy_version": "welleweerd_toproi_v3_initial_unverified",
+        "acoustic_derivative_certified": false,
+        "port_verified": false,
+        "command_slew_dt_s": 0.0057881290013028774,
+        "command_hold_s": 0.005,
+        "allocation_policy": "differential_repair_v8",
+        "repair_force_gate": 0.7461210257430722,
+        "differential_repair_revision": "v8r3_confidence_balance",
+        "balance_deadband": 0.03,
+        "omega_interval_mechanical": null,
+        "omega_interval_force_priority": null,
+        "omega_interval_complete": null,
+        "force_sign_reliable": true,
+        "interval_diagnostics_computed": false,
+        "nominal_subspace_residual": 0.0,
+        "repair_episode": "{'permission_mode': 'continuous', 'repair_allowed': True, 'armed': True, 'exhausted': False, 'reason': 'continuous_visual_feedback', 'angle_reference_reset': False, 'permission_elapsed_s': None, 'measured_angle_travel_rad': None, 'remaining_permission_s': None, 'remaining_angle_travel_rad': None, 'healthy_confirmation_count': 0, 'healthy_resets': 0, 'assurance': 'task_availability_not_execution_or_angle_certificate'}",
+        "repair_permission_mode": "continuous",
+        "image_valid": true,
+        "acquisition_loss": 0.0,
+        "alpha_preferred": 1.0,
+        "visual_rows_active": true,
+        "visual_window_active": [
+          true,
+          true
+        ],
+        "visual_requests_m_s": [
+          -0.0018442416917882336,
+          -0.0027712692807355535
+        ],
+        "gamma_effective": [
+          1.0,
+          1.0
+        ],
+        "quality": [
+          0.8922120845894117,
+          0.9385634640367777
+        ],
+        "differential_sign": 1.0,
+        "differential_request_m_s": 2.515486186718126e-05,
+        "differential_reference": "total_velocity",
+        "differential_row": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -0.031000000000000003,
+          0.0
+        ],
+        "force_limit_assurance": "measured_policy_not_prediction",
+        "soft_force_n": 4.5,
+        "hard_force_supervisor_n": 6.0,
+        "energy_auxiliary_variables": 0,
+        "transparent": false,
+        "iterations": 207,
+        "solver_status": "QPSolverOutput.PROXQP_MAX_ITER_REACHED",
+        "reason": "solver_status_or_residual",
+        "total_time_s": 0.0027938249986618757
+      }
+    },
+    "last_logged_control_id": 2307,
+    "wrench_approximation": true,
+    "config_max_velocity": [
+      0.22,
+      0.22,
+      0.01,
+      0.6,
+      0.28,
+      0.6
+    ],
+    "config_max_acceleration": [
+      1.0,
+      1.0,
+      0.8,
+      2.0,
+      2.0,
+      2.0
+    ],
+    "direct": {
+      "success": true,
+      "diagnostics": {
+        "quality_policy_version": "welleweerd_toproi_v3_initial_unverified",
+        "acoustic_derivative_certified": false,
+        "port_verified": false,
+        "command_slew_dt_s": 0.0057881290013028774,
+        "command_hold_s": 0.005,
+        "allocation_policy": "differential_repair_v8",
+        "repair_force_gate": 0.7461210257430722,
+        "differential_repair_revision": "v8r3_confidence_balance",
+        "balance_deadband": 0.03,
+        "omega_interval_mechanical": null,
+        "omega_interval_force_priority": null,
+        "omega_interval_complete": null,
+        "force_sign_reliable": true,
+        "interval_diagnostics_computed": false,
+        "nominal_subspace_residual": 0.0,
+        "repair_episode": "{'permission_mode': 'continuous', 'repair_allowed': True, 'armed': True, 'exhausted': False, 'reason': 'continuous_visual_feedback', 'angle_reference_reset': False, 'permission_elapsed_s': None, 'measured_angle_travel_rad': None, 'remaining_permission_s': None, 'remaining_angle_travel_rad': None, 'healthy_confirmation_count': 0, 'healthy_resets': 0, 'assurance': 'task_availability_not_execution_or_angle_certificate'}",
+        "repair_permission_mode": "continuous",
+        "image_valid": true,
+        "acquisition_loss": 0.0,
+        "alpha_preferred": 1.0,
+        "visual_rows_active": true,
+        "visual_window_active": [
+          true,
+          true
+        ],
+        "visual_requests_m_s": [
+          -0.0018442416917882336,
+          -0.0027712692807355535
+        ],
+        "gamma_effective": [
+          1.0,
+          1.0
+        ],
+        "quality": [
+          0.8922120845894117,
+          0.9385634640367777
+        ],
+        "differential_sign": 1.0,
+        "differential_request_m_s": 2.515486186718126e-05,
+        "differential_reference": "total_velocity",
+        "differential_row": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -0.031000000000000003,
+          0.0
+        ],
+        "force_limit_assurance": "measured_policy_not_prediction",
+        "soft_force_n": 4.5,
+        "hard_force_supervisor_n": 6.0,
+        "energy_auxiliary_variables": 0,
+        "transparent": false,
+        "iterations": 18,
+        "solver_status": "QPSolverOutput.PROXQP_SOLVED",
+        "energy_assurance": "two_port_command_model",
+        "energy_bounds_version": "logical_nominal_task_power_v1",
+        "energy_lower_power_w": -0.004493808679598793,
+        "energy_margin_power_w": 1.0236678389379354,
+        "energy_margin_work_j": 0.05118339194689678,
+        "active_hard_rows": [
+          "progress_range"
+        ],
+        "max_hard_violation": 2.220446049250313e-16,
+        "visual_residual_m_s": [
+          0.0013651000012138762,
+          0.002272181263656301
+        ],
+        "aperture_added_velocity_m_s": [
+          -2.3458897417952346e-05,
+          8.71259694478132e-06
+        ],
+        "solver_time_s": 0.00022926100064069033,
+        "total_time_s": 0.0009476120030740276,
+        "differential_nominal_achieved_m_s": 0.0,
+        "differential_total_achieved_m_s": 1.9946326504894876e-05,
+        "differential_increment_achieved_m_s": 1.9946326504894876e-05,
+        "qp_delta_omega_y_rad_s": -0.0006434298872546733,
+        "differential_achieved_m_s": 1.9946326504894876e-05,
+        "differential_shortfall_m_s": 5.208535362286385e-06,
+        "legacy_force_priority_replaced": true,
+        "differential_auxiliary_shortfall": 0.0026042670546284753
+      },
+      "numeric": {
+        "dua_res": "2.9582836859634045e-10",
+        "duality_gap": "-4.8385298372088936e-11",
+        "iter": "18",
+        "iter_ext": "10",
+        "iterative_residual": "1.5543018208438541e-10",
+        "minimal_H_eigenvalue_estimate": "0.0",
+        "mu_eq": "0.001",
+        "mu_in": "0.1",
+        "mu_updates": "0",
+        "objValue": "-0.5868643759303566",
+        "pri_res": "6.265147220463341e-10",
+        "rho": "1e-05",
+        "rho_updates": "0",
+        "run_time": "0.0",
+        "setup_time": "0.0",
+        "solve_time": "0.0",
+        "sparse_backend": "SparseBackend.Automatic",
+        "status": "QPSolverOutput.PROXQP_SOLVED",
+        "violation": 6.265147185768871e-10
+      }
+    },
+    "lp": {
+      "success": true,
+      "status": 0,
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "violation": 0.0
+    }
+  },
+  {
+    "file": "zhongyao2/attempts/RH_Per_S_DtP/001/contact_qp.jsonl",
+    "failure": {
+      "schema": "contact_study_v1",
+      "session_id": "6a078d1764e44b1ab462165f544dbcbd",
+      "event": "qp_prepare_rejected",
+      "record_monotonic_s": 16716.295695185,
+      "dropped_records": 0,
+      "control_id": 4478,
+      "nominal_twist_tool": [
+        0.003757626796931892,
+        0.0040558856751506745,
+        -0.0022374848436707935,
+        -0.006184259224472262,
+        0.17730849638089444,
+        -0.0028291758769408435
+      ],
+      "path_twist_tool": [
+        0.003757626796931892,
+        0.0040558856751506745,
+        0.0,
+        -0.006184259224472262,
+        0.0,
+        -0.0028291758769408435
+      ],
+      "previous_twist_tool": [
+        0.00402069081042444,
+        0.004232440233983147,
+        -0.0027209109450289214,
+        -0.006322458779659409,
+        0.17582814346549752,
+        -0.002710530911603432
+      ],
+      "force_n": 4.134734508824771,
+      "control_actual_dt_s": 0.005820708000101149,
+      "command_hold_model_s": 0.005,
+      "measured_angle_rad": 0.40971591233590565,
+      "diagnostics": {
+        "quality_policy_version": "welleweerd_toproi_v3_initial_unverified",
+        "acoustic_derivative_certified": false,
+        "port_verified": false,
+        "command_slew_dt_s": 0.005820708000101149,
+        "command_hold_s": 0.005,
+        "allocation_policy": "differential_repair_v8",
+        "repair_force_gate": 0.7305309823504587,
+        "differential_repair_revision": "v8r3_confidence_balance",
+        "balance_deadband": 0.03,
+        "omega_interval_mechanical": null,
+        "omega_interval_force_priority": null,
+        "omega_interval_complete": null,
+        "force_sign_reliable": true,
+        "interval_diagnostics_computed": false,
+        "nominal_subspace_residual": 0.0,
+        "repair_episode": "{'permission_mode': 'continuous', 'repair_allowed': True, 'armed': True, 'exhausted': False, 'reason': 'continuous_visual_feedback', 'angle_reference_reset': False, 'permission_elapsed_s': None, 'measured_angle_travel_rad': None, 'remaining_permission_s': None, 'remaining_angle_travel_rad': None, 'healthy_confirmation_count': 0, 'healthy_resets': 0, 'assurance': 'task_availability_not_execution_or_angle_certificate'}",
+        "repair_permission_mode": "continuous",
+        "image_valid": true,
+        "acquisition_loss": 0.0,
+        "alpha_preferred": 1.0,
+        "visual_rows_active": true,
+        "visual_window_active": [
+          true,
+          true
+        ],
+        "visual_requests_m_s": [
+          -0.00377917140625715,
+          -0.003507100335311445
+        ],
+        "gamma_effective": [
+          1.0,
+          1.0
+        ],
+        "quality": [
+          0.9889585703128575,
+          0.9753550167655722
+        ],
+        "differential_sign": 0.0,
+        "differential_request_m_s": 0.0,
+        "differential_reference": "total_velocity",
+        "differential_row": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -0.031000000000000003,
+          0.0
+        ],
+        "force_limit_assurance": "measured_policy_not_prediction",
+        "soft_force_n": 4.5,
+        "hard_force_supervisor_n": 6.0,
+        "energy_auxiliary_variables": 0,
+        "transparent": false,
+        "iterations": 18045,
+        "solver_status": "QPSolverOutput.PROXQP_MAX_ITER_REACHED",
+        "reason": "solver_status_or_residual",
+        "total_time_s": 0.03334003700001631
+      }
+    },
+    "last_logged_control_id": 4477,
+    "wrench_approximation": true,
+    "config_max_velocity": [
+      0.22,
+      0.22,
+      0.01,
+      0.6,
+      0.28,
+      0.6
+    ],
+    "config_max_acceleration": [
+      1.0,
+      1.0,
+      0.8,
+      2.0,
+      2.0,
+      2.0
+    ],
+    "direct": {
+      "success": false,
+      "diagnostics": {
+        "quality_policy_version": "welleweerd_toproi_v3_initial_unverified",
+        "acoustic_derivative_certified": false,
+        "port_verified": false,
+        "command_slew_dt_s": 0.005820708000101149,
+        "command_hold_s": 0.005,
+        "allocation_policy": "differential_repair_v8",
+        "repair_force_gate": 0.7305309823504587,
+        "differential_repair_revision": "v8r3_confidence_balance",
+        "balance_deadband": 0.03,
+        "omega_interval_mechanical": null,
+        "omega_interval_force_priority": null,
+        "omega_interval_complete": null,
+        "force_sign_reliable": true,
+        "interval_diagnostics_computed": false,
+        "nominal_subspace_residual": 0.0,
+        "repair_episode": "{'permission_mode': 'continuous', 'repair_allowed': True, 'armed': True, 'exhausted': False, 'reason': 'continuous_visual_feedback', 'angle_reference_reset': False, 'permission_elapsed_s': None, 'measured_angle_travel_rad': None, 'remaining_permission_s': None, 'remaining_angle_travel_rad': None, 'healthy_confirmation_count': 0, 'healthy_resets': 0, 'assurance': 'task_availability_not_execution_or_angle_certificate'}",
+        "repair_permission_mode": "continuous",
+        "image_valid": true,
+        "acquisition_loss": 0.0,
+        "alpha_preferred": 1.0,
+        "visual_rows_active": true,
+        "visual_window_active": [
+          true,
+          true
+        ],
+        "visual_requests_m_s": [
+          -0.00377917140625715,
+          -0.003507100335311445
+        ],
+        "gamma_effective": [
+          1.0,
+          1.0
+        ],
+        "quality": [
+          0.9889585703128575,
+          0.9753550167655722
+        ],
+        "differential_sign": 0.0,
+        "differential_request_m_s": 0.0,
+        "differential_reference": "total_velocity",
+        "differential_row": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -0.031000000000000003,
+          0.0
+        ],
+        "force_limit_assurance": "measured_policy_not_prediction",
+        "soft_force_n": 4.5,
+        "hard_force_supervisor_n": 6.0,
+        "energy_auxiliary_variables": 0,
+        "transparent": false,
+        "iterations": 17914,
+        "solver_status": "QPSolverOutput.PROXQP_MAX_ITER_REACHED",
+        "reason": "solver_status_or_residual",
+        "total_time_s": 0.03212523700130987
+      },
+      "numeric": {
+        "dua_res": "nan",
+        "duality_gap": "nan",
+        "iter": "17914",
+        "iter_ext": "200",
+        "iterative_residual": "nan",
+        "minimal_H_eigenvalue_estimate": "0.0",
+        "mu_eq": "1.0000000000000002e-07",
+        "mu_in": "1.0000000000000004e-05",
+        "mu_updates": "4",
+        "objValue": "nan",
+        "pri_res": "0.0",
+        "rho": "1e-05",
+        "rho_updates": "0",
+        "run_time": "0.0",
+        "setup_time": "0.0",
+        "solve_time": "0.0",
+        "sparse_backend": "SparseBackend.Automatic",
+        "status": "QPSolverOutput.PROXQP_MAX_ITER_REACHED",
+        "violation": Infinity
+      }
+    },
+    "lp": {
+      "success": true,
+      "status": 0,
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "violation": 0.0
+    }
+  },
+  {
+    "file": "zhongyao2/attempts/RH_Per_S_DtP/002/contact_qp.jsonl",
+    "failure": {
+      "schema": "contact_study_v1",
+      "session_id": "3013cffa6d9d43c79185cb0ad3bc921a",
+      "event": "qp_prepare_rejected",
+      "record_monotonic_s": 16739.680701974,
+      "dropped_records": 0,
+      "control_id": 1647,
+      "nominal_twist_tool": [
+        0.003114526386565091,
+        0.003669236813081468,
+        -0.0026858570411681863,
+        -0.008477446105355599,
+        -0.06418972126132587,
+        -6.737265418592093e-05
+      ],
+      "path_twist_tool": [
+        0.003114526386565091,
+        0.003669236813081468,
+        0.0,
+        -0.008477446105355599,
+        0.0,
+        -6.737265418592093e-05
+      ],
+      "previous_twist_tool": [
+        0.0032916227472767337,
+        0.003925768780186007,
+        -0.0023719107733827624,
+        -0.008454831683477953,
+        -0.06726849113125503,
+        -0.0003351594393424655
+      ],
+      "force_n": 4.286477362847158,
+      "control_actual_dt_s": 0.00571202799983439,
+      "command_hold_model_s": 0.005,
+      "measured_angle_rad": 0.013136534177029917,
+      "diagnostics": {
+        "quality_policy_version": "welleweerd_toproi_v3_initial_unverified",
+        "acoustic_derivative_certified": false,
+        "port_verified": false,
+        "command_slew_dt_s": 0.00571202799983439,
+        "command_hold_s": 0.005,
+        "allocation_policy": "differential_repair_v8",
+        "repair_force_gate": 0.4270452743056836,
+        "differential_repair_revision": "v8r3_confidence_balance",
+        "balance_deadband": 0.03,
+        "omega_interval_mechanical": null,
+        "omega_interval_force_priority": null,
+        "omega_interval_complete": null,
+        "force_sign_reliable": true,
+        "interval_diagnostics_computed": false,
+        "nominal_subspace_residual": 0.0,
+        "repair_episode": "{'permission_mode': 'continuous', 'repair_allowed': True, 'armed': True, 'exhausted': False, 'reason': 'continuous_visual_feedback', 'angle_reference_reset': False, 'permission_elapsed_s': None, 'measured_angle_travel_rad': None, 'remaining_permission_s': None, 'remaining_angle_travel_rad': None, 'healthy_confirmation_count': 0, 'healthy_resets': 0, 'assurance': 'task_availability_not_execution_or_angle_certificate'}",
+        "repair_permission_mode": "continuous",
+        "image_valid": true,
+        "acquisition_loss": 0.0,
+        "alpha_preferred": 1.0,
+        "visual_rows_active": true,
+        "visual_window_active": [
+          true,
+          true
+        ],
+        "visual_requests_m_s": [
+          -0.0010998428386365846,
+          -0.0035338446024784386
+        ],
+        "gamma_effective": [
+          1.0,
+          1.0
+        ],
+        "quality": [
+          0.8549921419318293,
+          0.9766922301239219
+        ],
+        "differential_sign": 1.0,
+        "differential_request_m_s": 8.074245219762389e-05,
+        "differential_reference": "total_velocity",
+        "differential_row": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -0.031000000000000003,
+          0.0
+        ],
+        "force_limit_assurance": "measured_policy_not_prediction",
+        "soft_force_n": 4.5,
+        "hard_force_supervisor_n": 6.0,
+        "energy_auxiliary_variables": 0,
+        "transparent": false,
+        "iterations": 19513,
+        "solver_status": "QPSolverOutput.PROXQP_MAX_ITER_REACHED",
+        "reason": "solver_status_or_residual",
+        "total_time_s": 0.03547578800134943
+      }
+    },
+    "last_logged_control_id": 1646,
+    "wrench_approximation": true,
+    "config_max_velocity": [
+      0.22,
+      0.22,
+      0.01,
+      0.6,
+      0.28,
+      0.6
+    ],
+    "config_max_acceleration": [
+      1.0,
+      1.0,
+      0.8,
+      2.0,
+      2.0,
+      2.0
+    ],
+    "direct": {
+      "success": true,
+      "diagnostics": {
+        "quality_policy_version": "welleweerd_toproi_v3_initial_unverified",
+        "acoustic_derivative_certified": false,
+        "port_verified": false,
+        "command_slew_dt_s": 0.00571202799983439,
+        "command_hold_s": 0.005,
+        "allocation_policy": "differential_repair_v8",
+        "repair_force_gate": 0.4270452743056836,
+        "differential_repair_revision": "v8r3_confidence_balance",
+        "balance_deadband": 0.03,
+        "omega_interval_mechanical": null,
+        "omega_interval_force_priority": null,
+        "omega_interval_complete": null,
+        "force_sign_reliable": true,
+        "interval_diagnostics_computed": false,
+        "nominal_subspace_residual": 0.0,
+        "repair_episode": "{'permission_mode': 'continuous', 'repair_allowed': True, 'armed': True, 'exhausted': False, 'reason': 'continuous_visual_feedback', 'angle_reference_reset': False, 'permission_elapsed_s': None, 'measured_angle_travel_rad': None, 'remaining_permission_s': None, 'remaining_angle_travel_rad': None, 'healthy_confirmation_count': 0, 'healthy_resets': 0, 'assurance': 'task_availability_not_execution_or_angle_certificate'}",
+        "repair_permission_mode": "continuous",
+        "image_valid": true,
+        "acquisition_loss": 0.0,
+        "alpha_preferred": 1.0,
+        "visual_rows_active": true,
+        "visual_window_active": [
+          true,
+          true
+        ],
+        "visual_requests_m_s": [
+          -0.0010998428386365846,
+          -0.0035338446024784386
+        ],
+        "gamma_effective": [
+          1.0,
+          1.0
+        ],
+        "quality": [
+          0.8549921419318293,
+          0.9766922301239219
+        ],
+        "differential_sign": 1.0,
+        "differential_request_m_s": 8.074245219762389e-05,
+        "differential_reference": "total_velocity",
+        "differential_row": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -0.031000000000000003,
+          0.0
+        ],
+        "force_limit_assurance": "measured_policy_not_prediction",
+        "soft_force_n": 4.5,
+        "hard_force_supervisor_n": 6.0,
+        "energy_auxiliary_variables": 0,
+        "transparent": false,
+        "iterations": 22,
+        "solver_status": "QPSolverOutput.PROXQP_SOLVED",
+        "energy_assurance": "two_port_command_model",
+        "energy_bounds_version": "logical_nominal_task_power_v1",
+        "energy_lower_power_w": 0.0036400910815853936,
+        "energy_margin_power_w": 1.2420133534762263,
+        "energy_margin_work_j": 0.06210066767381132,
+        "active_hard_rows": [
+          "progress_range"
+        ],
+        "max_hard_violation": 0.0,
+        "visual_residual_m_s": [
+          0.0,
+          0.0
+        ],
+        "aperture_added_velocity_m_s": [
+          8.779041355390821e-05,
+          0.00034055899703213413
+        ],
+        "solver_time_s": 0.0002933530013251584,
+        "total_time_s": 0.001039646998833632,
+        "differential_nominal_achieved_m_s": 0.0019898813591011024,
+        "differential_total_achieved_m_s": 0.0021465978808576022,
+        "differential_increment_achieved_m_s": 0.00015671652175649987,
+        "qp_delta_omega_y_rad_s": -0.005055371669564518,
+        "differential_achieved_m_s": 0.0021465978808576022,
+        "differential_shortfall_m_s": 0.0,
+        "legacy_force_priority_replaced": true,
+        "differential_auxiliary_shortfall": 2.427099844504729e-17
+      },
+      "numeric": {
+        "dua_res": "1.5706742187328222e-10",
+        "duality_gap": "-1.1104073216472443e-10",
+        "iter": "22",
+        "iter_ext": "11",
+        "iterative_residual": "7.73274583220824e-11",
+        "minimal_H_eigenvalue_estimate": "0.0",
+        "mu_eq": "0.0001",
+        "mu_in": "0.010000000000000002",
+        "mu_updates": "1",
+        "objValue": "-3.8323815976779576",
+        "pri_res": "7.604361584867547e-12",
+        "rho": "1e-05",
+        "rho_updates": "0",
+        "run_time": "0.0",
+        "setup_time": "0.0",
+        "solve_time": "0.0",
+        "sparse_backend": "SparseBackend.Automatic",
+        "status": "QPSolverOutput.PROXQP_SOLVED",
+        "violation": 7.604361584867547e-12
+      }
+    },
+    "lp": {
+      "success": true,
+      "status": 0,
+      "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "violation": 0.0
+    }
+  }
+]

@@ -1,0 +1,72 @@
+FFF....                                                                  [100%]
+=================================== FAILURES ===================================
+_______ test_initial_registered_frame_requires_valid_lateral_windows[0] ________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x78986cdbbdf0>
+invalid_window = 0
+
+    @pytest.mark.parametrize('invalid_window', [0, 2])
+    def test_initial_registered_frame_requires_valid_lateral_windows(monkeypatch, invalid_window):
+        active, _, clock, _ = make_active(monkeypatch)
+        try:
+            active.config['feature']['required'] = True
+            active._image_dropout_policy = 'pause_visual'
+            flags = np.ones(3, dtype=bool)
+            flags[invalid_window] = False
+            active.features.observation = replace(image(active, clock[0]), valid=flags)
+            assert not active.features.observation.fresh(clock[0], .3)
+>           with pytest.raises(RuntimeError, match='confidence feedback'):
+E           Failed: DID NOT RAISE RuntimeError
+
+analysis_artifacts/contact_qp_session005_20260911/review/test_independent_review.py:24: Failed
+_______ test_initial_registered_frame_requires_valid_lateral_windows[2] ________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x78985979a4d0>
+invalid_window = 2
+
+    @pytest.mark.parametrize('invalid_window', [0, 2])
+    def test_initial_registered_frame_requires_valid_lateral_windows(monkeypatch, invalid_window):
+        active, _, clock, _ = make_active(monkeypatch)
+        try:
+            active.config['feature']['required'] = True
+            active._image_dropout_policy = 'pause_visual'
+            flags = np.ones(3, dtype=bool)
+            flags[invalid_window] = False
+            active.features.observation = replace(image(active, clock[0]), valid=flags)
+            assert not active.features.observation.fresh(clock[0], .3)
+>           with pytest.raises(RuntimeError, match='confidence feedback'):
+E           Failed: DID NOT RAISE RuntimeError
+
+analysis_artifacts/contact_qp_session005_20260911/review/test_independent_review.py:24: Failed
+_____________ test_invalid_lateral_frame_cannot_announce_recovery ______________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x78985978abf0>
+
+    def test_invalid_lateral_frame_cannot_announce_recovery(monkeypatch):
+        active, _, clock, sink = make_active(monkeypatch)
+        try:
+            active.config['feature']['required'] = True
+            active._image_dropout_policy = 'pause_visual'
+            active.features.observation = image(active, clock[0])
+            active._image_observation(clock[0], contact_enabled=True)
+            clock[0] += .301
+            assert active._image_observation(clock[0], contact_enabled=True)[0] is None
+            unavailable_since = active._image_unavailable_since_s
+            active.features.observation = replace(image(active, clock[0]), valid=[False, True, False])
+            try:
+                observed, reason = active._image_observation(clock[0], contact_enabled=True)
+            except RuntimeError:
+                pass
+            else:
+>               assert observed is None and reason != 'ok'
+E               AssertionError: assert (ContactObservation(frame_seq=1, source_id='synthetic', effective_time_s=10.301, received_time_s=10.301, quality=array(...='test_registration', window_version='df01cfbdc98f95dabcf7', schema_version=1, calibration_version='test_fixture_only') is None)
+
+analysis_artifacts/contact_qp_session005_20260911/review/test_independent_review.py:47: AssertionError
+----------------------------- Captured stdout call -----------------------------
+[CONTACT_QP] visual paused; stale; image age=301.0 ms; fresh-force task continues
+[CONTACT_QP] visual resumed; image age=0.0 ms
+=========================== short test summary info ============================
+FAILED analysis_artifacts/contact_qp_session005_20260911/review/test_independent_review.py::test_initial_registered_frame_requires_valid_lateral_windows[0]
+FAILED analysis_artifacts/contact_qp_session005_20260911/review/test_independent_review.py::test_initial_registered_frame_requires_valid_lateral_windows[2]
+FAILED analysis_artifacts/contact_qp_session005_20260911/review/test_independent_review.py::test_invalid_lateral_frame_cannot_announce_recovery
+3 failed, 4 passed in 0.66s

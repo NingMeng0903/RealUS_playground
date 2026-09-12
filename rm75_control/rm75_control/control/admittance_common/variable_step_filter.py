@@ -39,6 +39,28 @@ class VariableLowpass1:
         # scipy lfilter DFII state AFTER the latest input sample.
         return (float(b[1])*self.previous_input-float(a[1])*self.output)[None,:]
 
+    def update_foh(self,value,dt_s):
+        """Exact first-order-hold recovery of the same continuous LP pole.
+
+        Interpolate only between the two actual endpoint measurements. Unlike
+        a long trapezoidal step, all three weights are nonnegative, so a gap
+        cannot manufacture an overshoot above the old state and endpoints.
+        Normal ingress continues to use ``update`` and its deployed transfer.
+        """
+        dt=_step(dt_s);value=np.asarray(value,dtype=float)
+        if value.shape!=self.output.shape or not np.isfinite(value).all():
+            raise ValueError('invalid lowpass input')
+        z=self.omega*dt
+        decay=math.exp(-z)
+        # phi=(1-exp(-z))/z; stable even for short recovery intervals.
+        phi=-math.expm1(-z)/z
+        previous_weight=phi-decay
+        current_weight=1.-phi
+        result=decay*self.output+previous_weight*self.previous_input+current_weight*value
+        if not np.isfinite(result).all():raise ValueError('nonfinite lowpass state')
+        self.output=result;self.previous_input=value.copy()
+        return result.copy()
+
 
 class VariableHighpass2:
     def __init__(self,cutoff_hz,nominal_s):

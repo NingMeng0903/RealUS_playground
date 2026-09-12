@@ -368,6 +368,12 @@ class NativeWbcClient:
         rec["cmd"] = np.uint32(cmd)
         rec["magic"] = P.WBC_MAGIC
         rec["version"] = P.WBC_VERSION
+        from ..rocking_envelope import validate_rocking
+        rocking_axis, rocking_bounds = validate_rocking(
+            kwargs.get("rocking_axis_base"), kwargs.get("rocking_bounds"))
+        rec["rocking_enabled"] = int(rocking_axis is not None)
+        rec["rocking_axis_base"][:] = 0. if rocking_axis is None else rocking_axis
+        rec["rocking_bounds"][:] = 0. if rocking_bounds is None else rocking_bounds
         rec["cmd_f"][:] = 0.0
         rec["cmd_u"][:] = 0
         if cmd_f is not None:
@@ -633,6 +639,12 @@ class NativeWbcClient:
         rec["rail_refresh_dt"] = float(kwargs.get("rail_refresh_dt_s") or
                                              self.cfg.rail_refresh_dt_s)
         rec["rail_q"] = float(np.asarray(q_meas, dtype=float).reshape(-1)[0])
+        from ..rocking_envelope import validate_rocking
+        rocking_axis, rocking_bounds = validate_rocking(
+            kwargs.get("rocking_axis_base"), kwargs.get("rocking_bounds"))
+        rec["rocking_enabled"] = int(rocking_axis is not None)
+        rec["rocking_axis_base"][:] = 0. if rocking_axis is None else rocking_axis
+        rec["rocking_bounds"][:] = 0. if rocking_bounds is None else rocking_bounds
         rec["cmd_f"][:] = 0.0
         flags = 0
         if kwargs.get("contact_active"):
@@ -960,6 +972,10 @@ class NativeWbcClient:
             self.ctrl.core.last_qp1_iter = int(o["qp1_iter"])
             self.ctrl.core.last_qp2_iter = int(o["qp2_iter"])
             self.ctrl.core.last_qp2_fallback = qp2_name == "failed"
+        step.rocking_policy_tier = int(o["rocking_policy_tier"])
+        step.rocking_limited = bool(o["rocking_limited"])
+        step.rocking_lower_rad_s = float(o["rocking_lower_rad_s"])
+        step.rocking_upper_rad_s = float(o["rocking_upper_rad_s"])
         if self.ctrl.rail_ext_task is not None and np.isfinite(float(o["d_pref"])):
             self.ctrl.rail_ext_task.d_pref_m = float(o["d_pref"])
         if self.ctrl.posture_retarget is not None:

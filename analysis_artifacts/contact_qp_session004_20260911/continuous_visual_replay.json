@@ -1,0 +1,515 @@
+{
+  "method": "Continuous availability on fixed recorded frames/contact/force. Independent selected QP evaluations with recorded nominal, previous command, raw wrench and old available energy.",
+  "limits": "Measured angle not logged in old control_sample: numerical checks use zero relative angle. No measured plant replay, new trajectory, image improvement or final IK/rail publication is inferred.",
+  "attempts": [
+    {
+      "attempt": "attempts/RH_Per_C_DtP/001",
+      "samples": 6705,
+      "new_exhausted_samples": 0,
+      "new_nonzero_request_samples": 247,
+      "formerly_exhausted_with_direction_samples": 0,
+      "formerly_exhausted_with_direction_s": 0.0,
+      "numerical_checks": []
+    },
+    {
+      "attempt": "attempts/RH_Per_L_DtP/001",
+      "samples": 7605,
+      "new_exhausted_samples": 0,
+      "new_nonzero_request_samples": 4038,
+      "formerly_exhausted_with_direction_samples": 3267,
+      "formerly_exhausted_with_direction_s": 17.73474029499812,
+      "numerical_checks": [
+        {
+          "control_id": 1356,
+          "success": true,
+          "status": "repair",
+          "reason": null,
+          "request_m_s": 4.517730562821836e-06,
+          "qp_delta_wy_deg_s": -0.007126333976279933,
+          "energy_admissible": true,
+          "hard_violation": 0.0
+        },
+        {
+          "control_id": 1498,
+          "success": true,
+          "status": "repair",
+          "reason": null,
+          "request_m_s": 6.573341423152819e-05,
+          "qp_delta_wy_deg_s": -1.7033698504331156e-12,
+          "energy_admissible": true,
+          "hard_violation": 7.573965326440613e-16
+        },
+        {
+          "control_id": 1640,
+          "success": true,
+          "status": "repair",
+          "reason": null,
+          "request_m_s": 0.00019860876406887733,
+          "qp_delta_wy_deg_s": 7.128166269717905e-10,
+          "energy_admissible": true,
+          "hard_violation": 5.769080959477924e-13
+        },
+        {
+          "control_id": 1782,
+          "success": true,
+          "status": "repair",
+          "reason": null,
+          "request_m_s": 0.0006114739514967752,
+          "qp_delta_wy_deg_s": -0.6066012668727894,
+          "energy_admissible": true,
+          "hard_violation": 2.0971181388662608e-11
+        },
+        {
+          "control_id": 1924,
+          "success": true,
+          "status": "repair",
+          "reason": null,
+          "request_m_s": 0.0004338430068693405,
+          "qp_delta_wy_deg_s": -0.6254795461135754,
+          "energy_admissible": true,
+          "hard_violation": 1.1102230246251565e-16
+        },
+        {
+          "control_id": 2066,
+          "success": true,
+          "status": "repair",
+          "reason": null,
+          "request_m_s": 0.00039356740474053606,
+          "qp_delta_wy_deg_s": -0.16221979704560316,
+          "energy_admissible": true,
+          "hard_violation": 2.220446049250313e-16
+        },
+        {
+          "control_id": 2208,
+          "success": true,
+          "status": "repair",
+          "reason": null,
+          "request_m_s": 0.0004100608863654843,
+          "qp_delta_wy_deg_s": -0.5404747018165229,
+          "energy_admissible": true,
+          "hard_violation": 8.381695944942313e-16
+        },
+        {
+          "control_id": 2350,
+          "success": true,
+          "status": "repair",
+          "reason": null,
+          "request_m_s": 0.0008193238828627119,
+          "qp_delta_wy_deg_s": -0.6757313619231766,
+          "energy_admissible": true,
+          "hard_violation": 0.0
+        },
+        {
+          "control_id": 2492,
+          "success": true,
+          "status": "repair",
+          "reason": null,
+          "request_m_s": 0.0008649328703223032,
+          "qp_delta_wy_deg_s": -0.6749062914413786,
+          "energy_admissible": true,
+          "hard_violation": 4.988197355171309e-14
+        },
+        {
+          "control_id": 2634,
+          "success": true,
+          "status": "repair",
+          "reason": null,
+          "request_m_s": 0.0006803125561788391,
+          "qp_delta_wy_deg_s": -0.5993472091835518,
+          "energy_admissible": true,
+          "hard_violation": 0.0
+        },
+        {
+          "control_id": 2776,
+          "success": true,
+          "status": "repair",
+          "reason": null,
+          "request_m_s": 0.0006652905497594756,
+          "qp_delta_wy_deg_s": -0.5739891166728218,
+          "energy_admissible": true,
+          "hard_violation": 5.059321017686358e-14
+        },
+        {
+          "control_id": 2918,
+          "success": true,
+          "status": "repair",
+          "reason": null,
+          "request_m_s": 0.000377642993736829,
+          "qp_delta_wy_deg_s": -0.3509403921007049,
+          "energy_admissible": true,
+          "hard_violation": 9.377568166435424e-14
+        },
+        {
+          "control_id": 3060,
+          "success": true,
+          "status": "repair",
+          "reason": null,
+          "request_m_s": 0.000624266966590284,
+          "qp_delta_wy_deg_s": -0.70745938249465,
+          "energy_admissible": true,
+          "hard_violation": 3.874331411246601e-14
+        },
+        {
+          "control_id": 3202,
+          "success": true,
+          "status": "repair",
+          "reason": null,
+          "request_m_s": 0.0006121486442304967,
+          "qp_delta_wy_deg_s": -0.7037000762997871,
+          "energy_admissible": true,
+          "hard_violation": 0.0
+        },
+        {
+          "control_id": 3344,
+          "success": true,
+          "status": "repair",
+          "reason": null,
+          "request_m_s": 0.0002808409624289455,
+          "qp_delta_wy_deg_s": -0.4595713865184685,
+          "energy_admissible": true,
+          "hard_violation": 0.0
+        },
+        {
+          "control_id": 3486,
+          "success": true,
+          "status": "repair",
+          "reason": null,
+          "request_m_s": 7.723359754924705e-05,
+          "qp_delta_wy_deg_s": -0.11231636484062316,
+          "energy_admissible": true,
+          "hard_violation": 0.0
+        },
+        {
+          "control_id": 3628,
+          "success": true,
+          "status": "repair",
+          "reason": null,
+          "request_m_s": 2.153751700496822e-05,
+          "qp_delta_wy_deg_s": -0.031065719141028732,
+          "energy_admissible": true,
+          "hard_violation": 0.0
+        },
+        {
+          "control_id": 5186,
+          "success": true,
+          "status": "repair",
+          "reason": null,
+          "request_m_s": 0.0008695035892603007,
+          "qp_delta_wy_deg_s": 0.7670204242435703,
+          "energy_admissible": true,
+          "hard_violation": 3.682644467151164e-14
+        },
+        {
+          "control_id": 5328,
+          "success": true,
+          "status": "repair",
+          "reason": null,
+          "request_m_s": 0.0008693692153938478,
+          "qp_delta_wy_deg_s": 0.5777718917000036,
+          "energy_admissible": true,
+          "hard_violation": 5.321611207254051e-14
+        },
+        {
+          "control_id": 5470,
+          "success": true,
+          "status": "repair",
+          "reason": null,
+          "request_m_s": 0.00047470928884568356,
+          "qp_delta_wy_deg_s": 0.6579527581520545,
+          "energy_admissible": true,
+          "hard_violation": 7.289502335083853e-12
+        },
+        {
+          "control_id": 5612,
+          "success": true,
+          "status": "repair",
+          "reason": null,
+          "request_m_s": 0.0007614995818662857,
+          "qp_delta_wy_deg_s": 0.5891295842711817,
+          "energy_admissible": true,
+          "hard_violation": 3.8023403869935635e-14
+        },
+        {
+          "control_id": 5754,
+          "success": true,
+          "status": "repair",
+          "reason": null,
+          "request_m_s": 0.0005886011416361531,
+          "qp_delta_wy_deg_s": 0.5767047950555518,
+          "energy_admissible": true,
+          "hard_violation": 0.0
+        },
+        {
+          "control_id": 5896,
+          "success": true,
+          "status": "repair",
+          "reason": null,
+          "request_m_s": 7.60216387066593e-05,
+          "qp_delta_wy_deg_s": 0.11991766513194865,
+          "energy_admissible": true,
+          "hard_violation": 0.0
+        },
+        {
+          "control_id": 6812,
+          "success": true,
+          "status": "repair",
+          "reason": null,
+          "request_m_s": 7.91663078731371e-05,
+          "qp_delta_wy_deg_s": 0.11792784231509426,
+          "energy_admissible": true,
+          "hard_violation": 0.0
+        }
+      ]
+    },
+    {
+      "attempt": "attempts/RH_Per_L_DtP/002",
+      "samples": 6822,
+      "new_exhausted_samples": 0,
+      "new_nonzero_request_samples": 997,
+      "formerly_exhausted_with_direction_samples": 625,
+      "formerly_exhausted_with_direction_s": 3.4884750520013768,
+      "numerical_checks": [
+        {
+          "control_id": 4832,
+          "success": true,
+          "status": "repair",
+          "reason": null,
+          "request_m_s": 0.000408248680206431,
+          "qp_delta_wy_deg_s": 0.15185077448601092,
+          "energy_admissible": true,
+          "hard_violation": 1.1102230246251565e-16
+        },
+        {
+          "control_id": 4859,
+          "success": true,
+          "status": "repair",
+          "reason": null,
+          "request_m_s": 0.0006880735739116594,
+          "qp_delta_wy_deg_s": 0.5775632908468761,
+          "energy_admissible": true,
+          "hard_violation": 0.0
+        },
+        {
+          "control_id": 4886,
+          "success": true,
+          "status": "repair",
+          "reason": null,
+          "request_m_s": 0.0006477961724703185,
+          "qp_delta_wy_deg_s": 0.6737296393630223,
+          "energy_admissible": true,
+          "hard_violation": 1.1102230246251565e-16
+        },
+        {
+          "control_id": 4913,
+          "success": true,
+          "status": "repair",
+          "reason": null,
+          "request_m_s": 0.0006626730662606178,
+          "qp_delta_wy_deg_s": 0.5477753229439418,
+          "energy_admissible": true,
+          "hard_violation": 5.69717883980303e-14
+        },
+        {
+          "control_id": 4940,
+          "success": true,
+          "status": "repair",
+          "reason": null,
+          "request_m_s": 0.0005906714779423725,
+          "qp_delta_wy_deg_s": 0.652595620025032,
+          "energy_admissible": true,
+          "hard_violation": 4.138529796637869e-14
+        },
+        {
+          "control_id": 4967,
+          "success": true,
+          "status": "repair",
+          "reason": null,
+          "request_m_s": 0.0005110122274672085,
+          "qp_delta_wy_deg_s": 0.604363395835131,
+          "energy_admissible": true,
+          "hard_violation": 1.1102230246251565e-16
+        },
+        {
+          "control_id": 4994,
+          "success": true,
+          "status": "repair",
+          "reason": null,
+          "request_m_s": 0.0004934177301208013,
+          "qp_delta_wy_deg_s": 0.6668864038867632,
+          "energy_admissible": true,
+          "hard_violation": 1.1102230246251565e-16
+        },
+        {
+          "control_id": 5021,
+          "success": true,
+          "status": "repair",
+          "reason": null,
+          "request_m_s": 0.0005106427866199383,
+          "qp_delta_wy_deg_s": 0.6374670480895125,
+          "energy_admissible": true,
+          "hard_violation": 3.0248373250607585e-13
+        },
+        {
+          "control_id": 5049,
+          "success": true,
+          "status": "repair",
+          "reason": null,
+          "request_m_s": 0.0005784596290088229,
+          "qp_delta_wy_deg_s": 0.6469490737955023,
+          "energy_admissible": true,
+          "hard_violation": 0.0
+        },
+        {
+          "control_id": 5076,
+          "success": true,
+          "status": "repair",
+          "reason": null,
+          "request_m_s": 0.0005866022460636732,
+          "qp_delta_wy_deg_s": 0.6144533523973601,
+          "energy_admissible": true,
+          "hard_violation": 1.1102230246251565e-16
+        },
+        {
+          "control_id": 5103,
+          "success": true,
+          "status": "repair",
+          "reason": null,
+          "request_m_s": 0.0006650388987324308,
+          "qp_delta_wy_deg_s": 0.650808080867778,
+          "energy_admissible": true,
+          "hard_violation": 0.0
+        },
+        {
+          "control_id": 5130,
+          "success": true,
+          "status": "repair",
+          "reason": null,
+          "request_m_s": 0.0006280051581613276,
+          "qp_delta_wy_deg_s": 0.6124484528129365,
+          "energy_admissible": true,
+          "hard_violation": 1.1102230246251565e-16
+        },
+        {
+          "control_id": 5157,
+          "success": true,
+          "status": "repair",
+          "reason": null,
+          "request_m_s": 0.0005981353550565951,
+          "qp_delta_wy_deg_s": 0.6580133378661169,
+          "energy_admissible": true,
+          "hard_violation": 2.220446049250313e-16
+        },
+        {
+          "control_id": 5184,
+          "success": true,
+          "status": "repair",
+          "reason": null,
+          "request_m_s": 0.0005673006629431568,
+          "qp_delta_wy_deg_s": 0.6505329528874705,
+          "energy_admissible": true,
+          "hard_violation": 0.0
+        },
+        {
+          "control_id": 5211,
+          "success": true,
+          "status": "repair",
+          "reason": null,
+          "request_m_s": 0.0006412782912144814,
+          "qp_delta_wy_deg_s": 0.5784202002316912,
+          "energy_admissible": true,
+          "hard_violation": 0.0
+        },
+        {
+          "control_id": 5238,
+          "success": true,
+          "status": "repair",
+          "reason": null,
+          "request_m_s": 0.0005520204348736007,
+          "qp_delta_wy_deg_s": 0.7878722455188623,
+          "energy_admissible": true,
+          "hard_violation": 1.1102230246251565e-16
+        },
+        {
+          "control_id": 5266,
+          "success": true,
+          "status": "repair",
+          "reason": null,
+          "request_m_s": 0.000517715284289402,
+          "qp_delta_wy_deg_s": 0.5841037649973704,
+          "energy_admissible": true,
+          "hard_violation": 1.1102230246251565e-16
+        },
+        {
+          "control_id": 5293,
+          "success": true,
+          "status": "repair",
+          "reason": null,
+          "request_m_s": 0.0004029470485318416,
+          "qp_delta_wy_deg_s": 0.6253151640212722,
+          "energy_admissible": true,
+          "hard_violation": 0.0
+        },
+        {
+          "control_id": 5320,
+          "success": true,
+          "status": "repair",
+          "reason": null,
+          "request_m_s": 0.0002574082671949972,
+          "qp_delta_wy_deg_s": 0.4060396333876704,
+          "energy_admissible": true,
+          "hard_violation": 0.0
+        },
+        {
+          "control_id": 5347,
+          "success": true,
+          "status": "repair",
+          "reason": null,
+          "request_m_s": 0.00014329246486631677,
+          "qp_delta_wy_deg_s": 0.2260316659538088,
+          "energy_admissible": true,
+          "hard_violation": 0.0
+        },
+        {
+          "control_id": 5374,
+          "success": true,
+          "status": "repair",
+          "reason": null,
+          "request_m_s": 6.938664724909121e-05,
+          "qp_delta_wy_deg_s": 0.10945153051817286,
+          "energy_admissible": true,
+          "hard_violation": 0.0
+        },
+        {
+          "control_id": 5401,
+          "success": true,
+          "status": "repair",
+          "reason": null,
+          "request_m_s": 1.1718309999618095e-05,
+          "qp_delta_wy_deg_s": 0.0182208142226099,
+          "energy_admissible": true,
+          "hard_violation": 0.0
+        },
+        {
+          "control_id": 5428,
+          "success": true,
+          "status": "repair",
+          "reason": null,
+          "request_m_s": 6.521075009053331e-05,
+          "qp_delta_wy_deg_s": 0.10286441115743888,
+          "energy_admissible": true,
+          "hard_violation": 0.0
+        },
+        {
+          "control_id": 5484,
+          "success": true,
+          "status": "repair",
+          "reason": null,
+          "request_m_s": 1.2460732455592058e-05,
+          "qp_delta_wy_deg_s": 0.018064267782203214,
+          "energy_admissible": true,
+          "hard_violation": 0.0
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,289 @@
+{
+  "attempt": "/media/camp/yameng/icra 2027/uncalibrated/003/attempts/RH_Per_L_DtP/001",
+  "session_id": "fc0b4550574b46ddb0b713680dc093c2",
+  "mode": "active",
+  "revision": "v8r3_confidence_balance",
+  "control_samples": 5066,
+  "raw_ultrasound_frames": 880,
+  "null_features": 5066,
+  "image_compatible": 0,
+  "repair_reasons": {
+    "contact_execution_not_enabled": 721,
+    "image_unavailable": 4345
+  },
+  "repair_allowed": 0,
+  "max_abs_differential_request_m_s": 0.0,
+  "alpha_quantiles": [
+    0.249999996405669,
+    0.24999999999938372,
+    0.25000000002446154,
+    0.25000000103892533
+  ],
+  "last_reference_s": 5.361766261568313,
+  "expected_registration_version": "fbe3a5c9d4cb3065966a",
+  "offline_frames": [
+    {
+      "raw_frame_index": 150,
+      "capture_relative_to_scan_s": 0.51408151,
+      "crop_box": [
+        753,
+        1417,
+        154,
+        880
+      ],
+      "hflip": false,
+      "observation": {
+        "schema_version": 1,
+        "frame_seq": 5543,
+        "source_id": "realus.us_framegrab:ef99fa48b5c245768cdac9a2728b0861",
+        "effective_time_s": 7481.548291326469,
+        "received_time_s": 7481.702410508001,
+        "quality": [
+          0.5420334407237598,
+          0.7063422107713062,
+          0.8961904920930892
+        ],
+        "valid": [
+          true,
+          true,
+          true
+        ],
+        "registration_version": "e1458cf413206f2e007d",
+        "window_version": "8b51133835031ba9ee2d",
+        "calibration_version": "probe50_center_tcp_user_20260910_v1"
+      },
+      "window_matches": true,
+      "registration_matches": false,
+      "note": "Offline recomputation, not a feature received by the controller."
+    },
+    {
+      "raw_frame_index": 300,
+      "capture_relative_to_scan_s": 5.513919546,
+      "crop_box": [
+        753,
+        1417,
+        154,
+        880
+      ],
+      "hflip": false,
+      "observation": {
+        "schema_version": 1,
+        "frame_seq": 5693,
+        "source_id": "realus.us_framegrab:ef99fa48b5c245768cdac9a2728b0861",
+        "effective_time_s": 7486.548129362469,
+        "received_time_s": 7486.701502572,
+        "quality": [
+          0.6597443883770703,
+          0.8359358866171118,
+          0.9714634627400701
+        ],
+        "valid": [
+          true,
+          true,
+          true
+        ],
+        "registration_version": "e1458cf413206f2e007d",
+        "window_version": "8b51133835031ba9ee2d",
+        "calibration_version": "probe50_center_tcp_user_20260910_v1"
+      },
+      "window_matches": true,
+      "registration_matches": false,
+      "note": "Offline recomputation, not a feature received by the controller."
+    },
+    {
+      "raw_frame_index": 500,
+      "capture_relative_to_scan_s": 12.182284636,
+      "crop_box": [
+        753,
+        1417,
+        154,
+        880
+      ],
+      "hflip": false,
+      "observation": {
+        "schema_version": 1,
+        "frame_seq": 5893,
+        "source_id": "realus.us_framegrab:ef99fa48b5c245768cdac9a2728b0861",
+        "effective_time_s": 7493.216494452468,
+        "received_time_s": 7493.369971858,
+        "quality": [
+          0.6639035016959485,
+          0.897755656543602,
+          0.9657220567307329
+        ],
+        "valid": [
+          true,
+          true,
+          true
+        ],
+        "registration_version": "e1458cf413206f2e007d",
+        "window_version": "8b51133835031ba9ee2d",
+        "calibration_version": "probe50_center_tcp_user_20260910_v1"
+      },
+      "window_matches": true,
+      "registration_matches": false,
+      "note": "Offline recomputation, not a feature received by the controller."
+    },
+    {
+      "raw_frame_index": 700,
+      "capture_relative_to_scan_s": 18.846243141000002,
+      "crop_box": [
+        753,
+        1417,
+        154,
+        880
+      ],
+      "hflip": false,
+      "observation": {
+        "schema_version": 1,
+        "frame_seq": 6093,
+        "source_id": "realus.us_framegrab:ef99fa48b5c245768cdac9a2728b0861",
+        "effective_time_s": 7499.880452957469,
+        "received_time_s": 7500.033681655001,
+        "quality": [
+          0.5693267896207512,
+          0.8312948829118929,
+          0.9905820507838095
+        ],
+        "valid": [
+          true,
+          true,
+          true
+        ],
+        "registration_version": "e1458cf413206f2e007d",
+        "window_version": "8b51133835031ba9ee2d",
+        "calibration_version": "probe50_center_tcp_user_20260910_v1"
+      },
+      "window_matches": true,
+      "registration_matches": false,
+      "note": "Offline recomputation, not a feature received by the controller."
+    },
+    {
+      "raw_frame_index": 870,
+      "capture_relative_to_scan_s": 24.514319987,
+      "crop_box": [
+        753,
+        1417,
+        154,
+        880
+      ],
+      "hflip": false,
+      "observation": {
+        "schema_version": 1,
+        "frame_seq": 6263,
+        "source_id": "realus.us_framegrab:ef99fa48b5c245768cdac9a2728b0861",
+        "effective_time_s": 7505.548529803468,
+        "received_time_s": 7505.702298081001,
+        "quality": [
+          0.49600772449213737,
+          0.7380353875834658,
+          0.9889369333039073
+        ],
+        "valid": [
+          true,
+          true,
+          true
+        ],
+        "registration_version": "e1458cf413206f2e007d",
+        "window_version": "8b51133835031ba9ee2d",
+        "calibration_version": "probe50_center_tcp_user_20260910_v1"
+      },
+      "window_matches": true,
+      "registration_matches": false,
+      "note": "Offline recomputation, not a feature received by the controller."
+    }
+  ],
+  "last_candidate_source": {
+    "source_id": "126573347655152:direct",
+    "source_t_s": 7505.899251706,
+    "source_wall_time_ns": 1789131591898963222,
+    "fresh": true,
+    "source_dt_s": 0.006205531999512459,
+    "age_s": 0.00333942500037665
+  },
+  "last_candidate_events": [
+    {
+      "schema": "contact_study_v1",
+      "session_id": "fc0b4550574b46ddb0b713680dc093c2",
+      "event": "publication_review",
+      "record_monotonic_s": 7505.913572727,
+      "dropped_records": 0,
+      "control_id": 5066,
+      "final_command_model_tool": [
+        0.00014175613039042894,
+        0.0011425255683313942,
+        -2.322479804849585e-05,
+        0.00012879587703488768,
+        4.839443409032607e-10,
+        7.725462926185184e-05
+      ],
+      "task_hard_violation": 0.08549668423375392,
+      "task_certificate": false,
+      "physical_certified": false,
+      "facts": {
+        "rail_target_m": 0.2632631113207101,
+        "rail_coast": false
+      }
+    },
+    {
+      "schema": "contact_study_v1",
+      "session_id": "fc0b4550574b46ddb0b713680dc093c2",
+      "event": "publication_transport_result",
+      "record_monotonic_s": 7505.913882833,
+      "dropped_records": 0,
+      "control_id": 5066,
+      "publication_time_s": 7505.913880019,
+      "final_command_model_tool": [
+        0.00014175613039042894,
+        0.0011425255683313942,
+        -2.322479804849585e-05,
+        0.00012879587703488768,
+        4.839443409032607e-10,
+        7.725462926185184e-05
+      ],
+      "facts": {
+        "arm": "sent",
+        "rail": "sent"
+      },
+      "logical_commit": false
+    },
+    {
+      "schema": "contact_study_v1",
+      "session_id": "fc0b4550574b46ddb0b713680dc093c2",
+      "event": "publication_aborted",
+      "record_monotonic_s": 7506.081358404,
+      "dropped_records": 0,
+      "control_id": 5066,
+      "reason": "contact_qp_exception:ValueError:commit task certificate expired",
+      "reference_s": 5.361766261568313,
+      "facts": {}
+    },
+    {
+      "schema": "contact_study_v1",
+      "session_id": "fc0b4550574b46ddb0b713680dc093c2",
+      "event": "publication_aborted",
+      "record_monotonic_s": 7506.081459773,
+      "dropped_records": 0,
+      "control_id": 5066,
+      "reason": "contact_qp_exception:ValueError:commit task certificate expired",
+      "reference_s": 5.361766261568313,
+      "facts": {}
+    }
+  ],
+  "final_energy": {
+    "balance_j": 0.48822684952984013,
+    "available_j": 0.4379984018988546,
+    "energy_constraint_enabled": true,
+    "latched_reason": "commit_task_certificate_expired"
+  },
+  "stop": {
+    "schema": "contact_study_v1",
+    "session_id": "fc0b4550574b46ddb0b713680dc093c2",
+    "event": "stop",
+    "record_monotonic_s": 7506.081492987,
+    "dropped_records": 0,
+    "reason": "contact_qp_exception:ValueError:commit task certificate expired",
+    "reference_s": 5.361766261568313,
+    "physical_execution": "unconfirmed"
+  }
+}

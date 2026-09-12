@@ -13,6 +13,7 @@ import numpy as np
 @dataclass(frozen=True)
 class DifferentialRepairConfig:
     revision: str = "v8r2_bounded_episode"
+    permission_mode: str = "bounded_episode"
     balance_deadband: float = 0.10
     max_permission_s: float = 2.0
     max_angle_travel_rad: float = math.radians(3.)
@@ -26,10 +27,15 @@ class DifferentialRepairConfig:
 
     def __post_init__(self):
         if self.revision not in ('v8r2_bounded_episode','v8r3_confidence_balance'):raise ValueError('unsupported differential repair revision')
+        if self.permission_mode not in ('bounded_episode','continuous'):
+            raise ValueError('permission_mode must be bounded_episode or continuous')
+        if self.permission_mode=='continuous' and self.revision!='v8r3_confidence_balance':
+            raise ValueError('continuous repair requires v8r3_confidence_balance')
         if isinstance(self.balance_deadband,(bool,np.bool_)) or not math.isfinite(self.balance_deadband) or not 0 <= self.balance_deadband < 1:
             raise ValueError('balance_deadband must be finite in [0, 1)')
         from .repair_episode import RepairEpisode
-        RepairEpisode(max_permission_s=self.max_permission_s,max_angle_travel_rad=self.max_angle_travel_rad,healthy_frames=self.healthy_frames)
+        RepairEpisode(max_permission_s=self.max_permission_s,max_angle_travel_rad=self.max_angle_travel_rad,
+                      healthy_frames=self.healthy_frames,permission_mode=self.permission_mode)
         for name in ('differential_weight','residual_progress_gain','loading_weight'):
             value=getattr(self,name)
             if isinstance(value,(bool,np.bool_)) or not math.isfinite(value) or value<=0:
@@ -65,8 +71,10 @@ class DifferentialRepairConfig:
         imbalance=float(deficits[0]-deficits[1]) if differential_imbalance is None else float(differential_imbalance)
         sign=float(np.sign(imbalance))
         requested=repair_speed*gate*abs(imbalance)
-        # Remove b(alpha): total normal/rocking contribution, not its nominal
-        # increment. Common translation cancels for a calibrated flat aperture.
+        # Target total normal/rocking velocity. TorqueTilt commits the total
+        # accepted omega into its next nominal state; adding the same visual
+        # increment to that state every cycle would accumulate toward the cap.
+        # Common translation cancels for a calibrated flat aperture.
         row=np.asarray(visual_rows[0]-visual_rows[1],dtype=float).copy()
         row[[0,1,3,5]]=0.
         a=np.zeros(8);a[:3]=sign*(row @ scaled_basis)/normal_scale;a[2]=0.
@@ -87,5 +95,6 @@ class DifferentialRepairConfig:
             h[6+i,6+i]=self.loading_weight*(1.-gate)
         return h,g,np.asarray(rows),np.asarray(upper),dict(
             repair_force_gate=gate,differential_sign=sign,differential_request_m_s=requested,
+            differential_reference='total_velocity',
             differential_row=row,force_limit_assurance='measured_policy_not_prediction',
             soft_force_n=self.soft_force_n,hard_force_supervisor_n=self.hard_stop_n)

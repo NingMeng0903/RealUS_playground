@@ -64,7 +64,7 @@ def test_active_expired_review_and_partial_publish_freeze(monkeypatch):
     finally:active.close()
 
 
-@pytest.mark.parametrize('failure',['none','review','arm','rail'])
+@pytest.mark.parametrize('failure',['none','review','dispatch','arm','rail'])
 def test_runner_actual_publication_block_preserves_device_facts(failure):
     """Execute the production runner's final preparation/send/commit block."""
     import ast
@@ -86,7 +86,7 @@ def test_runner_actual_publication_block_preserves_device_facts(failure):
     class Owner:
         pending_id=7;pending_rotation_base_tcp=np.eye(3)
         def publication_review(self,*a,**kw):events.append('review');return failure!='review'
-        def publication_started(self,*a):events.append('started')
+        def publication_started(self,*a):events.append('started');return failure!='dispatch'
         def publication_abort(self,reason,**kw):events.append(('abort',reason,kw))
         def publication_commit(self,*a,**kw):events.append(('commit',kw['facts']))
     rail=NS(enabled=True,measured_m=0.,reserve_target_m=lambda *a,**k:True,
@@ -110,6 +110,10 @@ def test_runner_actual_publication_block_preserves_device_facts(failure):
     else:
         assert not any(isinstance(e,tuple) and e[0]=='commit' for e in events)
         if failure=='review':assert 'arm_send' not in events
+        if failure=='dispatch':
+            assert 'arm_send' not in events
+            assert 'rail_abort' in events
+            assert any(isinstance(e,tuple) and e[:2]==('abort','dispatch_rejected') for e in events)
         if failure=='arm':assert any(isinstance(e,tuple) and e[:2]==('abort','arm_send_unknown') for e in events)
         if failure=='rail':assert any(isinstance(e,tuple) and e[:2]==('abort','partial_publish') for e in events)
 

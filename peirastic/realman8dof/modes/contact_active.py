@@ -12,7 +12,7 @@ from pathlib import Path
 import numpy as np
 from scipy.spatial.transform import Rotation
 from peirastic.contact_qp.qp import ContactQp,QpConfig,QpInput
-from peirastic.contact_qp.types import ProbeGeometry,ContactStatus
+from peirastic.contact_qp.types import ProbeGeometry,ContactStatus,REQUIRED_WINDOWS
 from peirastic.contact_qp.geometry import motion_basis
 from peirastic.contact_qp.features import FeatureConfig
 from peirastic.contact_qp.reference import FiniteIntervalReference
@@ -22,6 +22,7 @@ from peirastic.contact_qp.energy import EnergyLedger,PortBounds
 from peirastic.contact_qp.runtime_energy import RuntimeEnergy
 from .contact_recording import ContactRecordSink,FeatureReceiver,clock_metadata,study_fingerprints
 
+_LATEST_IMAGE=object()
 
 class _PrepareLaw:
     """Choose the existing law's transaction entry without copying its math."""
@@ -65,6 +66,14 @@ class ContactQpOuter:
         self.geometry=geometry
         feature=config['feature'];self.feature_config=FeatureConfig(**feature['config'])
         self.registration_version=feature['registration_version']
+        self._image_dropout_grace_s=float(feature.get('dropout_grace_s',0.))
+        if not np.isfinite(self._image_dropout_grace_s) or self._image_dropout_grace_s<0:
+            raise ValueError('image dropout grace must be finite and nonnegative')
+        self._image_dropout_policy=feature.get('dropout_policy','stop')
+        if self._image_dropout_policy not in ('stop','pause_visual'):
+            raise ValueError('image dropout policy must be stop or pause_visual')
+        self._image_seen_in_contact=False;self._image_unavailable_since_s=None
+        self._image_last_notice_s=float('-inf');self._image_notice_active=False
         settings=dict(config.get('qp') or {})
         vmax=np.asarray(self.controller.cfg.max_velocity,dtype=float).copy()
         vmax[2]=min(vmax[2],self.controller.cfg.max_vz_tool_m_s)
@@ -84,7 +93,8 @@ class ContactQpOuter:
             from peirastic.contact_qp.command_budget import CommandBudget
             self.command_budget=CommandBudget(energy['initial_j'],energy['capacity_j'],energy['stopping_reserve_j'],
                 settlement_port=energy.get('settlement_port'),wrench_convention=energy.get('wrench_convention'),
-                max_command_interval_s=energy.get('max_command_interval_s'),constraint=energy.get('constraint'))
+                max_command_interval_s=energy.get('max_command_interval_s'),constraint=energy.get('constraint'),
+                task_power_source=energy.get('task_power_source','none'))
         elif energy:
             bounds=PortBounds(**dict(energy.get('measurement_bounds') or {}),verified=False)
             ledger=EnergyLedger(energy['initial_j'],energy['capacity_j'],energy['stopping_reserve_j'],bounds)
@@ -117,10 +127,20 @@ class ContactQpOuter:
         self._source_step=None;self._source_prepared=False;self._angle_origin=None
         self._last_velocity_time=None;self._previous=np.zeros(6);self._previous_rotation=None;self.pending_result=None
         self._pending_id=None;self._nominal_pending=False;self._reserved_id=None;self._stop_recorded=False
+        self._dispatch_time_s=None;self._review_time_s=None
+        self._publication_rejection_reason=None
+        self._publication_retry_source_t_s=None;self._publication_retry_count=0
         self.last_path_twist=np.zeros(6);self.last_feedback_twist=np.zeros(6)
         self.sink.emit('study_start',mode='active',command_authority='outer_qp_original_ik',
             physical_port_assurance='unverified',task_certificate=False,config=config,
             **clock_metadata(),**study_fingerprints(baseline,config))
+        if self.solver.config.differential_repair.permission_mode=='continuous':
+            print(f"[CONTACT_QP] visual=continuous; image=required; "
+                  f"image_loss={self._image_dropout_policy}; "
+                  f"tank={energy['initial_j']:.3f}/{energy['capacity_j']:.3f} J; "
+                  f"reserve={energy['stopping_reserve_j']:.3f} J; "
+                  f"task_power={energy.get('task_power_source','none')}; "
+                  f"fusion=shared_total_velocity",flush=True)
 
     def __getattr__(self,name):return getattr(self.baseline,name)
     @property
@@ -175,6 +195,98 @@ class ContactQpOuter:
             events=self.command_budget.drain_events()
             if events:self.sink.emit('logical_command_energy',events=events,**self.command_budget.facts)
 
+    def _image_observation(self,now,*,contact_enabled,observation=_LATEST_IMAGE):
+        """Unavailable feedback removes the visual task without reusing its image."""
+        if observation is _LATEST_IMAGE:observation=self.features.observation
+        expected=(self.registration_version,self.feature_config.window_version,self.feature_config.calibration_version)
+        age=None if observation is None else now-observation.effective_time_s
+        reason=('missing' if observation is None else
+                'version_mismatch' if observation.version!=expected else
+                'future_or_invalid_time' if not (np.isfinite(age) and
+                    np.isfinite(observation.received_time_s) and observation.received_time_s<=now and age>=0) else
+                'stale' if age>self.solver.config.max_image_age_s else
+                'invalid_required_windows' if not observation.valid[list(REQUIRED_WINDOWS)].all() else 'ok')
+        if reason=='ok':
+            if contact_enabled and observation.fresh(now,self.solver.config.max_image_age_s):
+                self._image_seen_in_contact=True
+            if self._image_unavailable_since_s is not None:
+                self.sink.emit('image_feedback_recovered',effective_age_s=age,
+                    unavailable_s=now-self._image_unavailable_since_s)
+                if self._image_notice_active:
+                    print(f"[CONTACT_QP] visual resumed; image age={age*1000:.1f} ms",flush=True)
+                    self._image_notice_active=False
+            self._image_unavailable_since_s=None
+            return observation,reason
+        required=self.config['feature'].get('required',False) and contact_enabled
+        if required:
+            eligible=(reason in ('missing','stale','invalid_required_windows') and self._image_seen_in_contact
+                      and (self._image_dropout_policy=='pause_visual' or self._image_dropout_grace_s>0))
+            if eligible:
+                if self._image_unavailable_since_s is None:
+                    self._image_unavailable_since_s=now
+                    self.sink.emit('image_feedback_unavailable',reason=reason,effective_age_s=age,
+                        grace_s=self._image_dropout_grace_s,policy=self._image_dropout_policy,
+                        visual_task_enabled=False,scan_quality_degraded=True)
+                    if now-self._image_last_notice_s>=1.:
+                        age_label='missing' if age is None else f'{age*1000:.1f} ms'
+                        print(f"[CONTACT_QP] visual paused; {reason}; image age={age_label}; fresh-force task continues",flush=True)
+                        self._image_last_notice_s=now;self._image_notice_active=True
+                elapsed=now-self._image_unavailable_since_s
+                if elapsed>=0 and (self._image_dropout_policy=='pause_visual' or elapsed<self._image_dropout_grace_s):
+                    return None,'transient_'+reason
+            self.sink.emit('required_image_feedback_rejected',reason=reason,effective_age_s=age,
+                unavailable_s=None if self._image_unavailable_since_s is None else now-self._image_unavailable_since_s,
+                expected_version=expected,received_feature=None if observation is None else observation.to_dict(),
+                receiver_error=getattr(self.features,'error',None))
+            raise RuntimeError('confidence feedback '+reason+'; expected registration '+self.registration_version+
+                ', received '+('none' if observation is None else observation.registration_version)+
+                '; run scripts/run_icra_tank.sh check')
+        return None,reason
+
+    def retry_unsent_publication(self):
+        """Allow fresh recomputation inside an unchanged, committed old lease.
+
+        The runner calls this only after aborting rail, outer and inner proposals.
+        No deadline, watchdog heartbeat, source timestamp or command is renewed.
+        """
+        budget=self.command_budget
+        if (self._publication_rejection_reason not in ('wrench_source_expired','dispatch_source_expired')
+                or self._nominal_pending
+                or self._dispatch_time_s is not None or budget is None
+                or budget.pending is not None or budget.started):
+            return False
+        now=time.monotonic()
+        if not np.isfinite(now) or (budget.last_time_s is not None and now<=budget.last_time_s):
+            return False
+        if not budget.advance(now) or budget.active is None or now>=budget.active.expires_s:
+            return False
+        self._publication_retry_count+=1
+        self._publication_retry_source_t_s=self._source_step.source_t_s
+        self.sink.emit('publication_fresh_retry',reason=self._publication_rejection_reason,
+            rejected_source_time_s=self._publication_retry_source_t_s,
+            retained_command_id=budget.active.command_id,retained_expiry_s=budget.active.expires_s,
+            retry_count=self._publication_retry_count,definitely_not_sent=True)
+        self._drain_command_energy()
+        return True
+
+    def waiting_for_retry_source(self,source_t_s,*,now_s):
+        """No new proposal or watchdog heartbeat until the rejected source changes."""
+        watermark=self._publication_retry_source_t_s
+        if watermark is None:return False
+        budget=self.command_budget
+        if budget is None or budget.active is None or budget.latched_reason:
+            raise RuntimeError('fresh publication retry has no valid committed lease')
+        if not np.isfinite(now_s) or now_s<budget.last_time_s:
+            raise RuntimeError('fresh publication retry clock invalid')
+        if now_s>budget.last_time_s and not budget.advance(now_s):
+            raise RuntimeError('fresh publication retry lease expired: '+str(budget.latched_reason))
+        if budget.active is None or now_s>=budget.active.expires_s:
+            raise RuntimeError('fresh publication retry lease expired')
+        if not np.isfinite(source_t_s) or source_t_s<watermark or source_t_s>now_s:
+            raise RuntimeError('fresh publication retry source reversed or invalid')
+        self._drain_command_energy()
+        return source_t_s==watermark
+
     def sample(self,t_s,current_pose,f_ext,*,contact=None,f_ext_raw=None,dt_actual=None,
                sensor_age_s=None,feedback_age_s=None,feedback_fresh_tick=None,
                feedback_velocity_valid=None,v_tcp_z_actual=None,slack_norm=None,
@@ -182,6 +294,9 @@ class ContactQpOuter:
                measured_twist_metadata=None,measurement_time_s=None,measurement_id=None,
                wrench_source_time_s=None,wrench_source_wall_time_ns=None,wrench_source_id=None):
         if self._nominal_pending:raise RuntimeError('previous outer proposal remains unresolved')
+        # Read the immutable receiver snapshot before its decision timestamp.
+        # A frame arriving during nominal computation belongs to the next tick.
+        image_snapshot=self.features.observation
         now=time.monotonic();actual_dt=float(self.baseline.dt if dt_actual is None else dt_actual)
         if not np.isfinite(actual_dt) or actual_dt <= 0: raise ValueError("invalid control interval")
         dt=min(actual_dt,float(self.baseline.dt))  # next command hold/reference grant model only
@@ -189,7 +304,13 @@ class ContactQpOuter:
             self.prepare_source(wrench_source_id,wrench_source_time_s,wrench_source_wall_time_ns,now_s=now)
         source=self._source_step;self._source_prepared=False
         if now-source.source_t_s>self.source_clock.max_age_s:raise RuntimeError('source hold age expired')
+        if self._publication_retry_source_t_s is not None:
+            if not source.fresh or source.source_t_s<=self._publication_retry_source_t_s:
+                raise RuntimeError('fresh publication retry requires a newer force source')
+            self._publication_retry_source_t_s=None
         self._control_id+=1;self._pending_id=self._control_id;self._control_time_s+=actual_dt
+        self._dispatch_time_s=None;self._review_time_s=None
+        self._publication_rejection_reason=None
         self.pending_dt=dt
         rotation=Rotation.from_euler(self.controller.cfg.euler_order,np.asarray(current_pose)[3:]).as_matrix()
         self.pending_rotation_base_tcp=rotation.copy()
@@ -241,15 +362,16 @@ class ContactQpOuter:
                 self._angle_origin=rotation.copy()
             measured_angle=float(Rotation.from_matrix(self._angle_origin.T @ rotation).as_rotvec()[1])
             path=nominal.copy();path[[2,4]]=0.;self.pending_basis=motion_basis(path)
-            observation=self.features.observation
-            expected=(self.registration_version,self.feature_config.window_version,self.feature_config.calibration_version)
-            image_valid=observation is not None and observation.version==expected
-            if not image_valid:observation=None
+            observation,image_reason=self._image_observation(now,
+                contact_enabled=self.contact_gate is None or self.contact_gate.started,
+                observation=image_snapshot)
+            image_valid=observation is not None
             self.pending_wrench_environment=None if f_ext_raw is None else np.asarray(f_ext_raw,dtype=float).copy()
             energy_snapshot=None
             if self.command_budget is not None:
                 energy_snapshot=self.command_budget.snapshot(now_s=now,wrench_control_raw=f_ext_raw,
-                    rotation_base_tcp=self.pending_rotation_base_tcp)
+                    rotation_base_tcp=self.pending_rotation_base_tcp,
+                    **({'nominal_twist_tool':nominal} if self.config.get('energy',{}).get('task_power_source','none')=='nominal_command' else {}))
             elif self.energy is not None:
                 # Completed measured intervals enter through observe_measured_port;
                 # this mixed-time diagnostic twist is never relabeled as aligned.
@@ -273,12 +395,15 @@ class ContactQpOuter:
             self.sink.emit('control_sample',control_id=self._control_id,reference_s=self.reference_time_s,
                 nominal_twist_tool=nominal,candidate_twist_tool=self.pending_result.qp_twist,
                 previous_outer_command_tool=previous,command_slew_dt_s=actual_dt,
-                repair_episode=self.pending_result.diagnostics.get("repair_episode"),
+                repair_episode=(dict(self.pending_result.diagnostics['repair_episode'])
+                    if 'repair_episode' in self.pending_result.diagnostics else None),
                 allocation_diagnostics={key:value for key,value in self.pending_result.diagnostics.items()
-                    if key.startswith("differential_") or key in ("repair_force_gate","visual_window_active")},
+                    if key.startswith("differential_") or key in ("repair_force_gate","visual_window_active",
+                        "repair_permission_mode","qp_delta_omega_y_rad_s")},
                 alpha=self.pending_result.alpha,h_ref_s=h_ref,command_hold_model_s=dt,
                 control_actual_dt_s=actual_dt,source=source.__dict__,
                 feature=None if observation is None else observation.to_dict(),image_compatible=image_valid,
+                image_feedback_status=image_reason,
                 control_wrench_tool=f_ext,physical_wrench_candidate_tool=f_ext_raw,
                 measured_twist_base=measured_twist_base,measured_twist_metadata=metadata,
                 measured_twist_valid=measured_twist_valid,measurement_time_s=measurement_time_s,
@@ -295,6 +420,7 @@ class ContactQpOuter:
         final=np.asarray(final_tool,dtype=float).reshape(6)
         result=self.pending_result
         def rejected(reason):
+            self._publication_rejection_reason=reason
             self.sink.emit('publication_review_rejected',control_id=candidate_id,reason=reason,
                 review_time_s=now_s,created_time_s=result.created_time_s,
                 valid_until_s=result.hard_constraints.valid_until_s,
@@ -302,30 +428,62 @@ class ContactQpOuter:
             return False
         if not np.isfinite(final).all() or not np.isfinite(now_s):return rejected('nonfinite_payload_or_time')
         if now_s<result.created_time_s:return rejected('review_time_reversed')
-        if now_s>=result.hard_constraints.valid_until_s:return rejected('certificate_expired')
         if self.command_budget is not None:
-            if now_s-self._source_step.source_t_s>self.source_clock.max_age_s:return rejected('wrench_source_expired')
+            # Original IK owns the final mechanical constraints; its payload
+            # does not carry the outer QP's exported task certificate. Admission
+            # uses the actual force-source deadline and the final-model budget.
+            if not 0<=now_s-self._source_step.source_t_s<self.source_clock.max_age_s:return rejected('wrench_source_expired')
             if not self.command_budget.reserve(candidate_id,result.energy_certificate,final,now_s=now_s):return rejected('energy_reservation_rejected')
             self._reserved_id=candidate_id
             self._drain_command_energy()
+        elif now_s>=result.hard_constraints.valid_until_s:return rejected('certificate_expired')
+        self._review_time_s=float(now_s)
         self.sink.emit('publication_review',control_id=candidate_id,final_command_model_tool=final,
             task_hard_violation=result.hard_constraints.violation(final),task_certificate=False,
-            physical_certified=False,facts=facts or {})
+            physical_certified=False,review_time_s=now_s,
+            dispatch_valid_until_s=self._source_step.source_t_s+self.source_clock.max_age_s,
+            exported_task_valid_until_s=result.hard_constraints.valid_until_s,facts=facts or {})
         return True
 
     def publication_started(self,candidate_id):
         if candidate_id!=self._pending_id:raise RuntimeError('orphan publication start')
-        if self._reserved_id is not None:self.command_budget.publication_started(candidate_id)
+        if self.command_budget is not None:
+            # Last gate before the first device send. A late review/logging tick
+            # must be rejected while the rail reservation is still abortable.
+            now=time.monotonic()
+            pending=self.command_budget.pending
+            valid=(self._review_time_s is not None and self._review_time_s<=now and
+                self._dispatch_time_s is None and self._reserved_id==candidate_id and
+                pending is not None and pending.command_id==candidate_id and now<pending.expires_s and
+                self.pending_result.created_time_s<=now)
+            source_age=now-self._source_step.source_t_s
+            reason=('missing_review_or_invalid_dispatch' if not valid else
+                    'dispatch_source_expired' if source_age>=self.source_clock.max_age_s else
+                    'dispatch_source_future' if not source_age>=0 else None)
+            if reason is not None:
+                self._publication_rejection_reason=reason
+                self.sink.emit('publication_dispatch_rejected',control_id=candidate_id,
+                    dispatch_time_s=now,reason=reason,
+                    source_time_s=self._source_step.source_t_s,
+                    dispatch_valid_until_s=self._source_step.source_t_s+self.source_clock.max_age_s)
+                return False
+            self.command_budget.publication_started(candidate_id)
+            self._dispatch_time_s=now
+        return True
 
     def publication_commit(self,candidate_id,final_tool,*,now_s,facts=None):
         if candidate_id!=self._pending_id or not self._nominal_pending:raise RuntimeError('orphan outer commit')
         final=np.asarray(final_tool,dtype=float).reshape(6)
         self.sink.emit('publication_transport_result',control_id=candidate_id,publication_time_s=now_s,
+            dispatch_time_s=self._dispatch_time_s,review_time_s=self._review_time_s,
             final_command_model_tool=final,facts=facts or {},logical_commit=False)
         if self.command_budget is not None:
-            if not self.pending_result.created_time_s<=now_s<self.pending_result.hard_constraints.valid_until_s:
-                self.command_budget.fail('commit_task_certificate_expired',now_s=now_s)
-                raise ValueError('commit task certificate expired')
+            if self._dispatch_time_s is None or not np.isfinite(now_s) or now_s<self._dispatch_time_s:
+                self.command_budget.fail('commit_without_valid_dispatch',now_s=now_s)
+                raise ValueError('commit without valid dispatch')
+            # Account successful transport against the reserved held-pair epoch.
+            # The force was fresh at dispatch; crossing an unrelated 10 ms
+            # outer-task diagnostic deadline after sending cannot undo a send.
             self.command_budget.commit(candidate_id,final,now_s=now_s,
                 rotation_base_tcp=self.pending_rotation_base_tcp,
                 dual_success=bool(facts and facts.get('arm')=='sent' and facts.get('rail') in ('sent','disabled')))
@@ -337,7 +495,8 @@ class ContactQpOuter:
         accepted_outer=self.pending_result.qp_twist
         force=np.zeros(6);force[[2,4]]=accepted_outer[[2,4]]
         self.nominal.commit_applied(force,final_full_twist=accepted_outer)
-        timely = np.isfinite(now_s) and self.pending_result.created_time_s <= now_s < self.pending_result.hard_constraints.valid_until_s
+        timely = self.command_budget is not None or (np.isfinite(now_s) and
+            self.pending_result.created_time_s <= now_s < self.pending_result.hard_constraints.valid_until_s)
         if not timely: alpha=0.
         if self.pending_h_ref>0:
             self.reference_time_s=self.reference.commit_time(self.reference_time_s,alpha,self.pending_dt)
@@ -350,6 +509,7 @@ class ContactQpOuter:
         self._previous=self.pending_result.qp_twist.copy()
         self._previous_rotation=self.pending_rotation_base_tcp.copy()
         self._nominal_pending=False;self._reserved_id=None
+        self._publication_retry_count=0;self._publication_retry_source_t_s=None
         self.sink.emit('publication',control_id=candidate_id,success=True,accepted_alpha=alpha,
             reference_s=self.reference_time_s,final_command_model_tool=final,
             task_certificate=False,physical_certified=False,facts=facts or {})

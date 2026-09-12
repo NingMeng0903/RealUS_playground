@@ -1,0 +1,512 @@
+                                                                                                                                                      2021 IEEE International Conference on Robotics and Automation (ICRA 2021)
+                                                                                                                                                      May 31 - June 4, 2021, Xi'an, China
+
+
+
+
+                                                                                                                                                                 An Optimization Approach for a Robust and Flexible Control in
+                                                                                                                                                                                  Collaborative Applications
+                                                                                                                                                                                                          Federico Benzi and Cristian Secchi
+2021 IEEE International Conference on Robotics and Automation (ICRA) | 978-1-7281-9077-8/21/$31.00 ©2021 IEEE | DOI: 10.1109/ICRA48506.2021.9561098
+
+
+
+
+                                                                                                                                                         Abstract— In Human-Robot Collaboration, the robot oper-                        This severely limits the flexibility of the controller, as
+                                                                                                                                                      ates in a highly dynamic environment. Thus, it is pivotal                      changing online the dynamic parameters can lead to the loss
+                                                                                                                                                      to guarantee the robust stability of the system during the                     of passivity [10] and, consequently, to a possibly unstable
+                                                                                                                                                      interaction but also a high flexibility of the robot behavior in
+                                                                                                                                                      order to ensure safety and reactivity to the variable conditions               behavior in human robot collaboration as shown in [3].
+                                                                                                                                                      of the collaborative scenario.                                                    Several strategies for implementing a variable admittance
+                                                                                                                                                      In this paper we propose a control architecture capable of                     control have been proposed (see e.g. [3], [11]) but the vari-
+                                                                                                                                                      maximizing the flexibility of the robot while guaranteeing a                   ation of the interaction dynamics needs to be appropriately
+                                                                                                                                                      stable behavior when physically interacting with the environ-                  designed, otherwise instabilities may arise.
+                                                                                                                                                      ment. This is achieved by combining an energy tank based
+                                                                                                                                                      variable admittance architecture with control barrier functions.                  In [12], an optimization framework has been proposed
+                                                                                                                                                      The proposed architecture is experimentally validated on a                     in order to implement a variable admittance controller in
+                                                                                                                                                      collaborative robot.                                                           a robust and flexible way. Here, energy tanks [10], [13]
+                                                                                                                                                                                                                                     have been exploited for disembodying passivity from a
+                                                                                                                                                                              I. I NTRODUCTION                                       specific physical behavior. The energy stored in the tank
+                                                                                                                                                         In order to implement an effective human robot collabo-                     has been exploited as a constraint to be satisfied for pas-
+                                                                                                                                                      ration, it is fundamental for the application to be flexible,                  sively implementing any desired admittance dynamics. This
+                                                                                                                                                      namely that the robot can adapt online its behavior in a                       allows to achieve the maximal flexibility while satisfying
+                                                                                                                                                      stable and efficient way. A lot of work in this direction has                  the passivity constraints, i.e. robust stability. Yet [12] does
+                                                                                                                                                      been done using different techniques such as task redundancy                   not differentiate between the interaction phase and the free
+                                                                                                                                                      [1], [2], adaptive physical interaction [3], [4] and coaching                  motion of the robot, and the admittance control is active in
+                                                                                                                                                      [5], [6] to name a few. Nevertheless, at the best of the                       both situations. In a collaborative scenario, the robot often
+                                                                                                                                                      authors’ knowledge, a control architecture that allows to                      switches between free motion and interaction and constantly
+                                                                                                                                                      address the problems of robust stability and flexibility both                  requiring the satisfaction of both the passivity constraint
+                                                                                                                                                      in free motion and during the interaction is still missing.                    and the continuous implementation of a specific admittance
+                                                                                                                                                         The behavior of a robot can be defined by specifying                        dynamics may affect the performance of the robot in free
+                                                                                                                                                      the way it physically interacts with the environment and                       motion.
+                                                                                                                                                      the set of (dynamic) constraints it has to satisfy. Adapting                      Moreover, robust stability is not enough to guarantee
+                                                                                                                                                      the interaction implies to dynamically vary the parameters                     the complete safety and the flexibility of a robot in a
+                                                                                                                                                      (e.g. stiffness, inertia) that determine the way forces are                    shared workspace: additional time-varying constraints, such
+                                                                                                                                                      exchanged with the environment. Dynamically constraining                       as obstacle and human avoidance, self collision and bounding
+                                                                                                                                                      the motion of the robot allows to dynamically shape its                        the joint position, need to be satisfied for ensuring a safe
+                                                                                                                                                      behavior.                                                                      and flexible behavior. Control barrier functions (CBFs) [14],
+                                                                                                                                                         Admittance control [7] is a very popular strategy for                       [15] have been successfully exploited in many robotics
+                                                                                                                                                      controlling the interaction, and it has been widely used in                    applications for forcing the robot to remain in a desired
+                                                                                                                                                      collaborative scenarios (see, e.g., [4], [3], [8]). It enforces the            subset of the state space, i.e. to dynamically constrain the
+                                                                                                                                                      robot to reproduce a desired passive physical behavior (e.g.                   behavior of the robot (see e.g. [16], [17], [18]). Time Varying
+                                                                                                                                                      mass-spring-damper), i.e. the admittance dynamics. Because                     CBFs [19] allow to consider time-varying constraints and
+                                                                                                                                                      of the passivity of the admittance dynamics, the behavior of                   they have been successfully exploited for enforcing safety
+                                                                                                                                                      the robot is robustly stable, i.e. stable both in free motion                  in human robot collaboration [20], [21]. Furthermore, tasks
+                                                                                                                                                      and when interacting with a poorly known environment (see                      to be executed can be encoded as CBFs as shown in [22].
+                                                                                                                                                      e.g.[9]).                                                                      The control input for satisfying the dynamic constraints
+                                                                                                                                                         When using admittance control, the interaction dynamics                     modeled by the CBFs can be found by solving a convex
+                                                                                                                                                      is determined by the choice of the parameters of the admit-                    optimization problem, which makes the CBFs amenable to
+                                                                                                                                                      tance dynamics (e.g. inertia and stiffness) and a specific set                 real-time implementation.
+                                                                                                                                                      of parameters may not be suitable for all stages of a given                       Passivity can be encoded using Control Barrier Functions
+                                                                                                                                                      application [4].                                                               [23] but no interaction controllers are available yet.
+                                                                                                                                                                                                                                        In this paper we propose a novel control architecture
+                                                                                                                                                       F. Benzi and C. Secchi are with the Department of Sciences and
+                                                                                                                                                      Methods of Engineering, University of Modena and Reggio Emilia, Italy          that merges energy tanks, for implementing a flexible and
+                                                                                                                                                      {federico.benzi,cristian.secchi}@unimore.it                                    passive interactive behavior, and control barrier functions,
+
+                                                                                                                                                      978-1-7281-9077-8/21/$31.00 ©2021 IEEE                                    3575
+
+
+                                                                                                                                                           Authorized licensed use limited to: University of Canberra. Downloaded on November 08,2022 at 08:36:01 UTC from IEEE Xplore. Restrictions apply.
+                                                                               dynamics that produces a desired velocity ẋa . By setting
+                                                                               ẋdes (t) = ẋa ≈ ẋ, the robot exactly reproduces the
+                                                                               admittance dynamics. Thus, if the admittance dynamics is
+                                                                               passive, the controlled robot behaves as a passive system
+                                                                               and, therefore, it is stable both in free motion and in contact
+                                                                               with the environment, i.e. robustly stable.
+                                                                                  Admittance dynamics model mechanical systems and they
+Fig. 1. The admittance control architecture. The input Fc represent the        can be represented by the following Euler-Lagrange model
+control force of the low level controller actuating the robot.                                                                ∂P
+                                                                                   M (xa )ẍa + C(xa , ẋa )ẋa + D(xa )ẋa +     = Fe (2)
+                                                                                                                              ∂xa
+for dynamically constraining the behavior of the robot. The                    where xa ∈ Rm is the pose and M (xa ) = M T (xa ) is the
+proposed architecture leverages control barrier functions to                   nonnegative inertia matrix, C(xa , ẋa ) represents the Coriolis
+encode a series of constraints to be satisfied and energy tanks                effects, D(xa ) is a nonnegative damping matrix and P :
+for passively implementing a variable admittance controller.                   Rm → R is a potential field active on the system (e.g. elastic
+The control input is the solution of a single convex opti-                     potential).
+mization problem that considers both the passivity constraint                  As well known (see, e.g., [9]), (2) is passive with respect to
+and the constraints due to the control barrier functions.                      the pair (ẋa (t), Fe (t)), using the following storage function:
+Using the proposed architecture it will be possible to make                                                               1
+a collaborative robot extremely flexible both during free                                  Ha (xa , ẋa ) = P (xa ) + ẋTa M (xa )ẋa            (3)
+                                                                                                                          2
+motion and during the interaction with possibly unknown                           Unfortunately, when considering a variable admittance, i.e.
+environments.                                                                  such that the physical parameters characterizing the desired
+   The contributions of this paper are:                                        dynamics are time-varying, passivity can be lost. In fact,
+   • A convex optimization problem merging the passivity                       considering the time-varying version of (2)
+     constraint and control barrier functions constraints;                                                                             ∂P
+   • A control architecture capable of maximizing the flexi-                   M (xa , t)ẍa + C(xa , ẋa , t)ẋa + D(xa , t)ẋa +         (t) = Fe
+                                                                                                                                       ∂xa
+     bility of the robot both during the interaction and during                                                                                  (4)
+     free motion;                                                              we have that (3) becomes then
+   • An experimental validation of the proposed architecture                                                               1
+     on a collaborative robot.                                                          Ha (xa , ẋa , t) = P (xa , t) + ẋTa M (xa , t)ẋa      (5)
+                                                                                                                           2
+   This paper is organized as follows: in Sec. II the main                     whence, using (4), we can write
+problem addressed in this paper is formulated. In Sec. III                                                                               ∂Ha
+energy tanks, their usage in passivity preservation and the                           Ḣa (xa , ẋa , t) = FeT ẋa − ẋTa D(xa , t)ẋa +         (6)
+                                                                                                                                          ∂t
+overall tank-based architecture are presented. In Sec. IV the
+                                                                               where the last term is sign indefinite and can introduce
+CBF-based architecture for flexible task execution is de-
+                                                                               energy into the system and, therefore, lead to a loss of
+scribed, while in Sec. V the collaborative constraint-oriented
+                                                                               passivity.
+control architecture is shown. In Sec. VI the proposed
+                                                                                  Thus, the general variable admittance controller is not
+architecture is validated onto a robotic setup, and finally in
+                                                                               suitable for implementing an interaction that is flexible and
+Sec. VII conclusions are drawn and future work is depicted.
+                                                                               passive at the same time.
+                 II. P ROBLEM F ORMULATION                                        Besides passivity, various dynamic and time-varying con-
+                                                                               straints are necessary for establishing safety and other desired
+  Consider a velocity controlled fully actuated n-DOFs                         behaviors for the robot. These constraint cannot be simply
+manipulator. The model of the robot can be described by:                       embedded in the standard admittance control architecture.
+                                                                                  We aim to develop a control architecture that allows a pas-
+                              ẋ = J(q)u                               (1)     sive implementation of a time varying admittance dynamics
+where x ∈ Rm is the pose of the end-effector and q ∈ Rn is                     as in (4) and that enforces a set of dynamic and time-varying
+the vector of joint variables. J(q) ∈ Rm×n is the Jacobian                     constraints on the robot.
+of the robot and u ∈ Rn is the joint velocity input.                                       III. E NERGY TANK A RCHITECTURE
+   Thanks to the low-level velocity controller, a desired                        In this section we show how to exploit energy tanks
+velocity profile ẋdes ∈ Rm can be reproduced by simply                        [10],[13] for reproducing a variable admittance dynamics (4)
+setting u = J + (q)ẋdes , where J + (q) denotes the pseudo-                   on the robot (1) following the approach presented in [12].
+inverse of the Jacobian J(q), such that ẋ(t) ≈ ẋdes .                          Energy tanks are energy storing elements which can be
+   The interaction with the environment is regulated by the                    represented by:
+admittance control architecture reported in Fig. 1. In order                                       (
+to enforce a desired dynamic behavior for the robot, the                                             ẋt = ut
+                                                                                                           ∂T
+                                                                                                                                        (7)
+interaction force Fe (t) ∈ Rm is integrated by the admittance                                        yt = ∂x  t
+                                                                                                                = xt (t)
+
+                                                                          3576
+
+
+     Authorized licensed use limited to: University of Canberra. Downloaded on November 08,2022 at 08:36:01 UTC from IEEE Xplore. Restrictions apply.
+where xt ∈ R is the state of the tank, while the pair (ut , yt ) ∈             the desired behavior. In fact, it is possible to guarantee the
+R×R represents the power port the tank can exchange energy                     passivity of the modulated tank by enforcing the following
+through and                                                                    constraint:
+                                    1
+                          T (xt ) = x2t                        (8)
+                                    2                                                                   T (xt ) ≥ ε ∀t ≥ 0                              (13)
+is the function representing the energy stored in the tank.
+   Energy tanks are completely disconnected from a specific                    Thus, as shown in [12], it is possible to find the best
+physical dynamics. Thus, the energy stored in the tank can                     passive implementation of any desired admittance dynamics
+be exploited for implementing any desired behavior. This can                   by solving the following optimization problem
+be achieved by interconnecting the power port of the tank
+(ut , yt ) with the power port (Fe , ẋdes ) of the implemented                   minimize   ||ẋdes − ẋa ||2
+                                                                                     ẋdes
+admittance dynamics as:                                                                       Z t                                        (14)
+                    (                                                             subject to      FeT (τ )ẋdes (τ )dτ ≥ −T (xt (0)) + ε
+                      ut (t) = AT (t)Fe (t)                                                        0
+                                                               (9)
+                      ẋdes (t) = A(t)yt (t)                                   The problem (14) allows to find the best passive approxi-
+  where A(t) ∈ Rn is defined as                                                mation of the desired behavior ẋa , taking into account the
+                                                                               amount of energy stored in the tank. The solution ẋdes is
+                                      γ(t)                                     then utilized to correctly tune the modulation matrix A(t)
+                            A(t) =                                   (10)
+                                      xt (t)                                   in (11). In this way, a passive energy balance is guaranteed
+and γ(t) ∈ Rn is the desired value for the output ẋdes (t), i.e.              even if the admittance parameters change online.
+the velocity implementing the desired admittance. In fact, if                  In [12], a discrete time version of the problem was in-
+we plug (9) into (7) we get                                                    troduced, which turns the integral constraint in (14) into
+               (                                                               a linear one. The resulting optimization problem is then
+                 ẋt = AT (t)Fe (t)                                            convex, which makes it computationally fast and simple in
+                                                           (11)
+                 ẋdes = A(t)yt (t) = γ(t)                                     formulation, thus suitable for being executed in real time and
+                                                                               embedded into a larger optimization-based framework.
+which implies that any desired port behavior can be obtained
+by an appropriate modulation of the energy exchanged with                               IV. C ONTROL BARRIER F UNCTIONS BASED
+the tank. From (7),(8) and (11) it follows that                                                           ARCHITECTURE
+
+                Ṫ = ut yt = AT (t)Fe yt = γ T Fe                    (12)         In this section we show how to exploit CBFs for enforc-
+                                                                               ing multiple time-varying dynamic constraints on a robot
+   which clearly shows that the energy needed for imple-                       described by (1). The presented framework leverages the
+menting the desired behavior is extracted from/injected into                   techniques exposed in [26], [27], where both kinematic
+the tank.                                                                      limits and desired tasks to be executed by the robot can be
+   The modulated tank (11) faces a singularity whenever                        represented as time-varying constraints on the control input.
+xt (t) = 0 because of the definition of the modulation factor                  Thus, it is possible to model tasks and physical limitations
+in (11). The singularity happens when the tank is empty and                    as constraints to be fulfilled by the controlled system and
+no behavior can be implemented using the energy stored in                      CBFs are exploited for formulating an optimization problem
+the tank [10]. In order to avoid this condition, it is necessary               for finding the best input that satisfies all the constraints, e.g.
+to initialize xt such that T (xt (0)) ≥ ε > 0 and to ensure                    that can lead to the optimal execution of all the tasks.
+that T (xt (t)) ≥ ε ∀t > 0. As shown in [12], the following                       We consider tasks whose execution can be expressed as
+result holds:                                                                  the minimization of a non negative, possibly time-varying,
+                                                                               continuously-differentiable cost function C : Rn × R → R.
+Proposition 1. If T (xt ) ≥ ε for all t ≥ 0, then the
+                                                                               Using the robot model in (1) and considering as an output
+modulated tank (11) remains passive independently of the
+                                                                               variable the time-varying task variable σ ∈ Rn , this can be
+desired output γ(t).
+                                                                               described by the following optimization problem:
+   Thus, as long as the tank is not depleted, any desired port
+behavior can be passively implemented by modulating the                                                minimize      C(σ, t)
+                                                                                                           u
+energy stored in the tank. Furthermore, as shown in [24] for                                           subject to ẋ = J(q)u                            (15)
+the single port case and in [25] for the multi-port case, any
+                                                                                                                  σ = k(x, t)
+passive dynamics can be reproduced without depleting the
+energy tank. Thus, modulated energy tanks can be used as a                     The optimization problem can be reformulated and made
+generalized admittance control since they allow to reproduce                   computationally simple using Control Barrier Functions. Let
+any physical dynamics.                                                         C ⊂ Rn be the subset where the task is considered executed,
+   In case we aim at reproducing a non passive admittance                      i.e. where C(σ, t) = 0. Consider the a control barrier
+dynamics, i.e. the time varying dynamics in (4), we can                        function h : Rn × R → R defined as h(σ, t) = −C(σ, t).
+exploit Prop. 1 for enforcing a passive implementation of                      By construction h is non negative only in the region of
+
+                                                                          3577
+
+
+     Authorized licensed use limited to: University of Canberra. Downloaded on November 08,2022 at 08:36:01 UTC from IEEE Xplore. Restrictions apply.
+satisfaction of the task, i.e. when C(σ, t) = 0. Thus,
+enforcing the non negativity of h is equivalent to enforcing
+the execution of the task σ. This can be encoded in the
+following convex optimization problem [26]:
+    minimize      ||q̇||2
+         q̇
+                   ∂h ∂h ∂σ                             (16)
+    subject to        +        J(q)q̇ + α(h(σ, t)) ≥ 0
+                   ∂t   ∂σ ∂x
+where α(·) is an extended class K function1 and where
+we have considered that the input of (1) is u = q̇. The
+formulation can easily be extended in order to enable the
+simultaneous execution of multiple tasks. Let us consider
+a set of M different tasks T1 , . . . , TM which have to be
+executed, each encoded respectively by the cost functions                           Fig. 2.   The final collaborative constrained-control architecture.
+C1 , . . . , CM . The execution of these tasks can then be
+accomplished by solving the following convex optimization
+problem:                                                                       and the tank is modulated by setting γ = J(q)q̇.
+                                                                                  Notice that, since the passivity constraint is linear, the
+   minimize      ||q̇||2 + l||δ||2                                             overall optimization problem maintains its convexity. Fur-
+       q̇,δ
+                  ∂hm   ∂hm ∂σ                                                 thermore, the passivity constraint in (18) does not present a
+   subject to         +           J(q)q̇                                       dedicated slack variable to relax it. This is due to the fact
+                   ∂t     ∂σ ∂x
+                  + α(hm (σ, t)) ≥ −δm     m ∈ {1, . . . , M }                 that the preservation of passivity is of top priority as it is
+                                                             (17)              connected to robust stability. At the same time, this choice
+in which hm (σ, t) = −Cm (σ, t) and δ = [δ1 , . . . , δM ]T is                 does not over-constrain the system during free motion, as
+the vector of slack variables corresponding to each constraint,                demonstrated in the following proposition.
+while l ≥ 0 is a scaling factor. Each δi indicates how much                    Proposition 2. If T (xt (t)) ≥ ε during the interaction, then
+the constraint corresponding to the i−th task can be relaxed,                  the passivity constraint in (18) is automatically satisfied also
+in order to guarantee the feasibility of the problem even if                   in free motion.
+conflicting constraints are active at the same time.
+                                                                               Proof. Assume that free motion starts at time t > 0. We can
+ V. C OLLABORATIVE C ONSTRAINT-O RIENTED C ONTROL
+                                                                               then subdivide the integral term of the passivity constraint
+                       A RCHITECTURE
+                                                                               in (18) in two parts:
+   In this section we propose a collaborative constraint-
+oriented control architecture that merges the flexible energy                     Z t                              Z t
+management architecture illustrated in Sec. V with the CBFs                             FeT (τ )J(q)q̇(τ )dτ +           FeT (τ )J(q)q̇(τ )dτ ≥
+                                                                                    0                               t
+based architecture for task execution shown in Sec. IV in
+                                                                                                                             ≥ −T (xt (0)) + ε (19)
+order to obtain a control strategy that guarantees a maximally
+flexible and robustly stable behavior of the robot. We will                    Since F = 0 after t, (19) reduces to
+keep the exposition of the algorithm in continuous time, but                           Z t
+the overall discussion can be easily extended to discrete time
+                                                                                           FeT (τ )J(q)q̇(τ )dτ ≥ −T (xt (0)) + ε                         (20)
+(see [12] in particular for the constraint on passivity).                                     0
+   It is possible to enforce a passive behavior of the robot
+                                                                               which is equivalent to the constraint active during the inter-
+controlled using control barrier functions by inserting the
+                                                                               action phase, thus concluding the proof.
+passivity constraint of (14) in (17) and by using the output
+of the optimization problem for modulating the matrix A(t)                        Hence, the passivity constraint is automatically satisfied
+in (11). This leads to:                                                        during free motion, meaning that the optimizer disregards
+                                                                               it completely during this phase, focusing on satisfying the
+   minimize      ||q̇||2 + l||δ||2                                             remaining M constraints in the stack.
+       q̇,δ
+                                                                               Following this procedure, we have therefore obtained a con-
+                  ∂hm      ∂hm ∂σ
+   subject to          +            J(q)q̇                                     trol architecture which is capable not only of accomplishing
+                   ∂t       ∂σ ∂x                                              concurrent constraints in a flexible way but also to guarantee
+                  + α(hm (σ, t)) ≥ −δm m ∈ {1, . . . , M }
+                  Z t                                                          a robust behavior while interacting with a poorly known
+                      FeT (τ )J(q)q̇(τ )dτ ≥ −T (xt (0)) + ε                   environment, thanks to the preservation of passivity. The
+                   0                                                           developed framework acts as a sort of ”armor”, protecting
+                                                                     (18)      the robot against unstable behaviors during the interaction,
+  1 An extended class K is a function φ : R → R such that φ is strictly        while still allowing it to implement all the encoded tasks at
+increasing and φ(0) = 0                                                        the best of its dexterity. Finally, everything is encompassed
+
+                                                                          3578
+
+
+     Authorized licensed use limited to: University of Canberra. Downloaded on November 08,2022 at 08:36:01 UTC from IEEE Xplore. Restrictions apply.
+into a single convex optimization problem, for a fast and                                          VI. E XPERIMENTS
+efficient resolution.                                                             The framework proposed in this paper has been validated
+   In the same fashion, we can insert the desired admittance                   on a Universal Robot 10e manipulator, equipped with an on-
+into our own optimization problem, by properly modifying                       board 6-axis force/torque (F/T) sensor. Both the robot and
+the previous objective function in (18) as follows:                            the sensor run with a sampling time of 2ms.
+                                                                               The robot is employed to accomplish a set of tasks, including
+   minimize      ||q̇ − q̇a ||2 + l||δ||2
+      q̇,δ                                                                     obstacle avoidance, joint control and position control of the
+                  ∂hm      ∂hm ∂σ                                              end effector, as well as the satisfaction of the passivity
+   subject to          +            J(q)q̇                                     constraint and the implementation of a variable admittance
+                   ∂t       ∂σ ∂x
+                  + α(hm (σ, t)) ≥ −δm m ∈ {1, . . . , M }                     dynamics. Each task is encoded using a specific CBF, fol-
+                  Z t                                                          lowing the formulations exposed in Sec. IV.
+                      FeT (τ )J(q)q̇(τ )dτ ≥ −T (xt (0)) + ε                   The obstacle avoidance task is encoded by the following
+                   0                                                           CBF:
+                                                              (21)
+in which q̇a = J(q)+ ẋa is the desired admittance expressed                                    hsaf e = −ξs (d2 − Dmin
+                                                                                                                      2
+                                                                                                                         )              (24)
+in the joint space. In this way, we have encompassed the                       in which ξs = 10 and Dmin is the minimum distance value
+whole variable admittance control scheme into our task                         between the obstacle and the tip of the end-effector, while
+execution architecture, allowing for a flexible interaction with               d = d(x, t) is defined as
+the environment, while still ensuring the overall passivity via
+                                                                                                          d = ||x − xobs ||2                            (25)
+the energetic constraint, as well as satisfying the other time-
+varying constraints in the stack.                                              in which xobs is the Cartesian position of the closest obstacle.
+   The implementation of the desired admittance can be                         Following the optimization-based formulation (23), for each
+enforced at the price of relaxing the tasks encoded by the                     CBF the correspondent gain ξ(.) is tuned and, after sim-
+CBFs. A possible strategy for achieving this goal is to                        ple computations, the resulting constraint is obtained and
+dynamically weight the first term in the function to optimize                  inserted into the optimization problem. For the sake of sim-
+in (21). A possible solution is to use the following metric                    plicity, we chose the function α to be the identity function,
+matrix W (t) = (1 + κkFe (t)k2 )In , where In is the identity                  such that α(hm (σ, t)) = hm (σ, t) ∀m ∈ {1, . . . , M }. In the
+matrix of order n and κ > 0 that can be used for tuning the                    case of (24), for example, the resulting constraint is
+effect of the external force. Thus, replacing kq̇ − q̇a k2 in (21)
+                                                                                          2(d − Dmin )J(q)q̇ ≥ −(hsaf e (x, t)) + δs                    (26)
+with
+           kq̇ − q̇a k2W (t) = (q̇ − q̇a )T W (t)(q̇ − q̇a )  (22)             in which δs is the dedicated slack variable. The joint control
+                                                                               task consists in maintaining the joint variables within an
+allows to penalize the deviation from the desired admittance                   upper and lower limit. For each i−th joint, a dedicated CBF
+dynamics the more, the higher the interaction force is. In free                has been implemented as:
+motion (22) reduces to the standard euclidean norm used in                                        (qi+ − qi )(qi − qi− )
+(21).                                                                               hlimi = ξl                                i ∈ {1, . . . , n}        (27)
+                                                                                                       (qi+ − qi− )
+   The final formulation of the optimization problem is as
+follows:                                                                       in which ξl = 1, while qi+ and qi− represent the real joint
+                                                                               limits of the i-th joint, in the joint space. Observe how
+   minimize      ||q̇ − q̇adm ||2W + l||δ||2                                   ensuring that hlimi ≥ 0 is equivalent to keeping the value
+      q̇,δ
+                  ∂hm      ∂hm ∂σ                                              of qi ∈ [qi+ , qi− ].
+   subject to          +            J(q)q̇                                     Finally, the position control task is encoded through the
+                   ∂t       ∂σ ∂x
+                  + α(hm (σ, t)) ≥ −δm m ∈ {1, . . . , M }                     following CBF:
+                  Z t                                                                                hpos = −ξp ||x − xgoal ||2                         (28)
+                      FeT (τ )J(q)q̇(τ )dτ ≥ −T (xt (0)) + ε
+                   0                                                           in which ξp = 5 and xgoal is the desired Cartesian position
+                                                            (23)               of the end effector.
+The overall control architecture is reported in Fig. 2, in which               Additionally, the desired admittance dynamics presents a
+we defined ẋopt = J(q)q̇ as the optimal velocity in the task                  time-varying repulsive potential P (x, t) which is centered
+space.                                                                         in the current position of the obstacle. The generated force
+   The velocity controlled robot is wrapped by the modulated                   ∂P
+                                                                                ∂x (t) grows as the robot approaches the obstacle, such
+tank that is exploited for ensuring the passivity of the                       that the human can perceive an hazardous area during the
+controlled system. The CBF-based optimizer receives as an                      interaction. The formulation of the resulting force is as
+input the desired admittance velocity ẋa and, by solving (23)                 follows
+determines the best value ẋopt for passively implementing                                (                  
+the desired admittance behavior and all the tasks that are                     ∂P                    1
+                                                                                            Krep d(p,t) − D1∗ p(t)−p   obs (t)
+                                                                                                                  d3 (p,t)     if d(p, t) < D∗
+                                                                                    (t) =
+encoded by the CBFs. The matrix A(t) is modulated by                            ∂x          0 otherwise
+setting γ = ẋopt .                                                                                                                        (29)
+
+                                                                          3579
+
+
+     Authorized licensed use limited to: University of Canberra. Downloaded on November 08,2022 at 08:36:01 UTC from IEEE Xplore. Restrictions apply.
+in which D∗ > Dmin is the activation distance for the po-
+tential. As seen before, such a behavior is non-passive, thus
+energy needs to be extracted from the tank for preserving a
+passive energy balance.
+A series of experiments have been conducted in order to
+concurrently validate each component of the architecture.
+First, the robot is moved to a desired goal using (28). Along
+the way the operator interacts with it, moving it around in
+the workspace. As soon as the interaction stops the robot
+switches to free-motion and resumes its motion towards the
+goal, unaffected by the previous interaction. Fig. 3 shows the
+evolution of (28) over time together with the intensity of the
+force acting on the system.
+Secondly, the same position control task is implemented, this
+time with the presence of a time-varying obstacle moving in
+the workspace. As visible in Fig. 4, as soon as the distance
+d approaches the minimum value Dmin = 0.25m the                                Fig. 3. Value of the CBF hpos over time and norm of the force measured
+constraint forces the robot to move away from the obstacle,                    by the F/T sensor.
+preserving the overall safety. Once the obstacle is removed
+the robot resumes its motion towards the goal.
+Finally, the passivity of the interaction is validated using
+a variable admittance control. The admittance model en-
+compasses a constant mass and damping term M (xa ) and
+D(xa ) as well as the time-varying potential in (29). In
+particular, the desired inertia is chosen as a diagonal matrix
+with elements equal to 0.75kg and 0.25kg for translations
+and rotations respectively, while the damping is a diagonal
+matrix with constant elements equal to 0.05 Nms (translations)
+and 0.025 Nms (rotations).
+During the experiment, the operator tries to guide the robot
+towards the obstacle. As the value of d drops below D∗ =
+0.5m, the operator feels the repulsive force (29) generated by
+the potential. Fig. 5 shows the evolution of the energy in the
+tank: as soon as the current value of T (xt (t)) approaches
+ε = 0.1, the constraint (13) ensures that the tank is never
+depleted by implementing a passive approximation of the
+desired behaviour.                                                             Fig. 4. Value of the CBF hpos over time and distance between the end
+                                                                               effector of the robot and the obstacle.
+Additional graphs are shown in the accompanying video, in
+which the three experiments are portrayed.
+
+          VII. C ONCLUSIONS AND F UTURE W ORK
+   In this paper we have proposed an optimization-based
+framework which combines CBFs and energy tanks for
+achieving a robust and flexible interaction, while respecting
+a set of time-varying constraints, thus guaranteeing the
+complete safety of the robotic application in a HRC scenario.
+We have formulated passivity as a constraint and inserted it,
+along other safety-relevant constraints, into a single convex
+optimization problem. Future work aims at establishing pri-
+orities among the different constraints in an optimal fashion
+and predicting the evolution of the energy in the tank.
+
+                            R EFERENCES
+ [1] H. Su, C. Yang, G. Ferrigno, and E. De Momi, “Improved hu-
+     man–robot collaborative control of redundant robot for teleoperated
+     minimally invasive surgery,” IEEE Robotics and Automation Letters,                     Fig. 5.   Evolution of the tank energy over time.
+     vol. 4, no. 2, pp. 1447–1453, 2019.
+
+                                                                          3580
+
+
+     Authorized licensed use limited to: University of Canberra. Downloaded on November 08,2022 at 08:36:01 UTC from IEEE Xplore. Restrictions apply.
+ [2] A. M. Zanchettin, N. M. Ceriani, P. Rocco, H. Ding, and B. Matthias,       [23] G. Notomista, X. Cai, J. Yamauchi, and M. Egerstedt, “Passivity-based
+     “Safety in human-robot collaborative manufacturing environments:                decentralized control of multi-robot systems with delays using control
+     Metrics and control,” IEEE Transactions on Automation Science and               barrier functions,” in 2019 International Symposium on Multi-Robot
+     Engineering, vol. 13, no. 2, pp. 882–893, 2016.                                 and Multi-Agent Systems (MRS), 2019, pp. 231–237.
+ [3] F. Ferraguti, C. T. Landi, L. Sabattini, M. Bonfè, C. Fantuzzi, and       [24] P. R. Giordano, A. Franchi, C. Secchi, and H. H. Bülthoff, “A
+     C. Secchi, “A variable admittance control strategy for stable physical          passivity-based decentralized strategy for generalized connectivity
+     human–robot interaction,” The International Journal of Robotics                 maintenance,” The International Journal of Robotics Research, vol. 32,
+     Research, vol. 38, no. 6, pp. 747–765, 2019. [Online]. Available:               no. 3, pp. 299–323, 2013.
+     https://doi.org/10.1177/0278364919840415                                   [25] G. Riggio, C. Fantuzzi, and C. Secchi, “On the use of energy tanks for
+ [4] F. Dimeas and N. Aspragathos, “Online stability in human-robot                  multi-robot interconnection,” in IROS 2018, 10 2018, pp. 3738–3743.
+     cooperation with admittance control,” IEEE Transactions on Haptics,        [26] G. Notomista and M. Egerstedt, “Constraint-driven coordinated
+     vol. 9, no. 2, pp. 267–278, 2016.                                               control of multi-robot systems,” CoRR, vol. abs/1811.02465, 2018.
+ [5] C. T. Landi, F. Ferraguti, C. Secchi, and C. Fantuzzi, “A passivity-            [Online]. Available: http://arxiv.org/abs/1811.02465
+     based strategy for manual corrections in human-robot coaching,”            [27] G. Notomista, S. Mayya, S. Hutchinson, and M. Egerstedt, “An op-
+     Electronics, vol. 8, no. 3, pp. 1–16, 2019.                                     timal task allocation strategy for heterogeneous multi-robot systems,”
+ [6] M. Karlsson, A. Robertsson, and R. Johansson, “Autonomous inter-                CoRR, vol. abs/1903.08641, 2019.
+     pretation of demonstrations for modification of dynamical movement
+     primitives,” in 2017 IEEE International Conference on Robotics and
+     Automation (ICRA), 2017, pp. 316–321.
+ [7] L. Villani and J. De Schutter, “Force control,” in Springer Handbook
+     of Robotics, B. Siciliano and O. Khatib, Eds.         Cham: Springer
+     International Publishing, 2016.
+ [8] Y. Aydin, O. Tokatli, V. Patoglu, and C. Basdogan, “Stable physical
+     human-robot interaction using fractional order admittance control,”
+     IEEE Transactions on Haptics, vol. 11, no. 3, pp. 464–475, 2018.
+ [9] C. Secchi, S. Stramigioli, and C. Fantuzzi, Control of interactive
+     robotic interfaces: A port-Hamiltonian approach. Springer Science
+     & Business Media, 2007, vol. 29.
+[10] F. Ferraguti, N. Preda, A. Manurung, M. Bonfè, O. Lambercy,
+     R. Gassert, R. Muradore, P. Fiorini, and C. Secchi, “An energy tank-
+     based interactive control architecture for autonomous and teleoperated
+     robotic surgery,” IEEE Transactions on Robotics, vol. 31, no. 5, pp.
+     1073–1088, 2015.
+[11] S. Grafakos, F. Dimeas, and N. Aspragathos, “Variable admittance
+     control in phri using emg-based arm muscles co-activation,” in 2016
+     IEEE International Conference on Systems, Man, and Cybernetics
+     (SMC), 2016, pp. 001 900–001 905.
+[12] C. Secchi and F. Ferraguti, “Energy optimization for a robust and
+     flexible interaction control,” in ICRA 2019, 05 2019, pp. 1919–1925.
+[13] M. Franken, S. Stramigioli, S. Misra, C. Secchi, and A. Macchelli, “Bi-
+     lateral telemanipulation with time delays: A two-layer approach com-
+     bining passivity and transparency,” IEEE Transactions on Robotics,
+     vol. 27, no. 4, pp. 741–756, 2011.
+[14] A. D. Ames, X. Xu, J. W. Grizzle, and P. Tabuada, “Control barrier
+     function based quadratic programs for safety critical systems,” IEEE
+     Transactions on Automatic Control, vol. 62, no. 8, pp. 3861–3876,
+     2017.
+[15] A. D. Ames, S. Coogan, M. Egerstedt, G. Notomista, K. Sreenath,
+     and P. Tabuada, “Control barrier functions: Theory and applications,”
+     in 2019 18th European Control Conference (ECC), 2019, pp. 3420–
+     3431.
+[16] G. Notomista, S. F. Ruf, and M. Egerstedt, “Persistification of robotic
+     tasks using control barrier functions,” IEEE Robotics and Automation
+     Letters, vol. 3, no. 2, pp. 758–763, 2018.
+[17] D. Zhang, G. Yang, and R. P. Khurshid, “Haptic teleoperation of
+     uavs through control barrier functions,” IEEE Transactions on Haptics,
+     vol. 13, no. 1, pp. 109–115, 2020.
+[18] J. Fu, Y. Lv, G. Wen, X. Yu, and T. Huang, “Velocity and input
+     constrained coordination of second-order multi-agent systems with
+     relative output information,” IEEE Transactions on Network Science
+     and Engineering, vol. 7, no. 3, pp. 1925–1938, 2020.
+[19] G. Notomista and M. Egerstedt, “Persistification of robotic tasks,”
+     IEEE Transactions on Control Systems Technology, pp. 1–12, 2020.
+[20] F. Ferraguti, M. Bertuletti, C. T. Landi, M. Bonfè, C. Fantuzzi, and
+     C. Secchi, “A control barrier function approach for maximizing per-
+     formance while fulfilling to iso/ts 15066 regulations,” IEEE Robotics
+     and Automation Letters, vol. 5, no. 4, pp. 5921–5928, 2020.
+[21] F. Ferraguti, C. Talignani Landi, S. Costi, M. Bonfè, S. Farsoni,
+     C. Secchi, and C. Fantuzzi, “Safety barrier functions and multi-
+     camera tracking for human-robot shared environment,” Robotics and
+     Autonomous Systems, vol. 124, p. 103388, 2020. [Online]. Available:
+     http://www.sciencedirect.com/science/article/pii/S0921889019306426
+[22] G. Notomista, S. Mayya, M. Selvaggio, M. Santos, and C. Secchi,
+     “A set-theoretic approach to multi-task execution and prioritization,”
+     2020.
+
+                                                                           3581
+
+
+      Authorized licensed use limited to: University of Canberra. Downloaded on November 08,2022 at 08:36:01 UTC from IEEE Xplore. Restrictions apply.
+

@@ -1,0 +1,900 @@
+194                                                                                          IEEE TRANSACTIONS ON ROBOTICS, VOL. 34, NO. 1, FEBRUARY 2018
+
+
+
+
+      Direct Force-Reflecting Two-Layer Approach for
+      Passive Bilateral Teleoperation With Time Delays
+                Dennis Heck           , Alessandro Saccon              , Ruud Beerens         , and Henk Nijmeijer          , Fellow, IEEE
+
+
+   Abstract—We propose a two-layer control architecture for bi-                                              I. INTRODUCTION
+lateral teleoperation with communication delays. The controller is
+                                                                                            HIS work proposes a controller for direct force reflection
+structured with an (inner) performance layer and an (outer) pas-
+sivity layer. In the performance layer, any traditional controller
+for bilateral teleoperation can be implemented. The passivity layer
+                                                                                     T      to guarantee passivity of a teleoperator in the presence
+                                                                                     of time delays. Numerous architectures have been proposed
+guarantees that, from the operator and environment perspective,                      over the past thirty years to control bilateral teleoperators with
+the overall teleoperator is passive: The amount of energy that can
+be extracted from the teleoperator is bounded from below and the
+                                                                                     communication delays (see [1]–[3] and the references therein).
+rate of increase of the stored energy in the teleoperator is bounded                 As depicted in Fig. 1, these can be classified in bilateral motion
+by (twice) the environment and operator supplied power. Passivity                    synchronization and direct force-reflection schemes.
+is ensured by modulating the performance layer outputs and by                           In bilateral motion synchronization, both the master and slave
+injecting a variable amount of damping via an energy-based logic                     controllers aim at motion synchronization. This class of archi-
+that follows the innovative principle of energy duplication and takes
+into account the detrimental effects of time delays. In contrast to the
+                                                                                     tectures is characterized by a series connection of the teleoper-
+traditional teleoperation approach, in which the master and slave                    ator components. The environment force is reflected indirectly
+controllers implement an as-stiff-as-possible coupling between the                   by creating a tight coupling between the master and slave (us-
+master and slave devices, our scheme is specifically designed for                    ing, e.g., a virtual spring and damper), thereby reflecting the
+direct force-reflecting bilateral teleoperation: The slave controller                slave dynamics to the operator. A well-known example is the
+mimics the operator action, whereas the master controller reflects
+the slave-environment interaction. We illustrate the performance of
+                                                                                     position–position architecture [4]–[6]. As the time delays in-
+the two-layer approach in a challenging experiment with a round-                     crease, guaranteeing stability while achieving position tracking
+trip communication delay of 300 ms while making and breaking                         (i.e., asymptotic tracking), requires a reduction of the coupling
+contact with a stiff aluminum environment. Finally, we also com-                     strength; this holds independently of the specific implementa-
+pare our controller with the state of the art.                                       tion, be it the use of scattering [7], wave variables [4], [8], or
+   Index Terms—Bilateral control, passivity, stability, telemanipu-                  damping injection [3], [5]. Moreover, “the lags between mas-
+lation, time delay.                                                                  ter and slave position movements cause large reaction forces to
+                                                                                     be supplied to the operator” [9]: These delay-induced forces,
+                                                                                     caused by the motion feedback terms in the master controller,
+   Manuscript received January 28, 2017; revised September 2, 2017; accepted
+October 6, 2017. Date of publication January 24, 2018; date of current version
+                                                                                     can result in very high operator efforts in free motion.
+February 5, 2018. This paper was recommended for publication by Associate               In direct force reflection, the slave controller acts as a virtual
+Editor J. Abbott and Editor T. Murphey upon evaluation of the reviewers’             operator, and the master controller acts as a virtual environment.
+comments. This work was supported by the Dutch Technology Foundation
+(STW) under Project 12157.
+                                                                                     A well-known architecture in this class is the position-force
+   The authors are with the Department of Mechanical Engineering, Dynamics           architecture [10]–[12]. When the slave is in free motion, the
+and Control group, Eindhoven University of Technology, Eindhoven 5600 MB,            scheme is unilateral, and stability is not affected by the delays.
+The Netherlands (e-mail: d.j.f.heck@tue.nl; a.saccon@tue.nl; r.beerens@tue.nl;
+h.nijmeijer@tue.nl).
+                                                                                     Furthermore, the scheme is free of delay-induced forces or the
+   This paper has supplementary downloadable material available at                   reflection of the slave dynamics. Due to these benefits, direct
+http://ieeexplore.ieee.org, provided by the author. This video accompanies           force-reflecting architectures for delayed bilateral teleoperation
+the paper "Direct Force-Reflecting Two-Layer Approach for Passive Bilateral
+Teleoperation with Time Delays" by Dennis Heck, Alessandro Saccon, Ruud
+                                                                                     seem to have more potential than bilateral motion synchroniza-
+Beerens and Henk Nijmeijer. The video shows bilateral teleoperation experi-          tion in terms of force reflection, operator effort during free mo-
+ments where the slave interacts with an aluminum cylinder. In the first experi-      tion (related to injected damping), and motion synchronization.
+ments, a PF-F controller is implemented (without our two-layer controller) with
+a 20 ms round-trip delay. The system is stable when the slave is in free-motion,
+                                                                                     This was experimentally verified in [13, Ch. 3]. However, when
+but unstable when the slave interacts with the cylinder, thereby preventing the      the slave makes contact with the environment, the architecture
+operator from keeping the slave in contact with the cylinder. In the following       switches from unilateral to bilateral. Even without delays this
+experiments, the round-trip delay is increased to 300 ms and the two-layer
+controller is enabled. With the passivity layer active, the teleoperator system is
+                                                                                     causes contact instabilities, as reported in, e.g., [9], [10], [14].
+nowstable during both free and constrained motion of the slave, thereby allow-       The contact instability manifests itself as a violent recoiling of
+ing the operator to make stable contact and feel the stiffness of the aluminum       the master device. The magnitude of this recoiling increases
+cylinder.
+   Color versions of one or more of the figures in this paper are available online
+                                                                                     with the delay and the velocity of the slave device at impact,
+at http://ieeexplore.ieee.org.                                                       and is associated with active behavior of the teleoperator [15].
+   Digital Object Identifier 10.1109/TRO.2017.2769123                                Due to the recoiling, the operator is not able to make stable
+
+
+                          1552-3098 © 2018 IEEE. Personal use is permitted, but republication/redistribution requires IEEE permission.
+                              See http://www.ieee.org/publications standards/publications/rights/index.html for more information.
+HECK et al.: DIRECT FORCE-REFLECTING TWO-LAYER APPROACH FOR PASSIVE BILATERAL TELEOPERATION WITH TIME DELAYS                                     195
+
+
+
+                                                                                 achieving passivity and performance. In the inner performance
+                                                                                 layer (PeL)—actually named TL in [23]—any existing architec-
+                                                                                 ture can be implemented. The forces computed by the PeL are
+                                                                                 then sent to the outer passivity layer (PaL). In [23], this layer
+                                                                                 enforces passivity by adapting the damping gain of the master
+                                                                                 controller to harvest energy from the operator. The harvested en-
+                                                                                 ergy is stored in two energy tanks, one for each controller, and
+                                                                                 these controllers can only use the energy stored in these tanks.
+                                                                                 The distribution of the energy over the two tanks is achieved by
+                                                                                 synchronizing the available energy. Synchronizing the energy is
+                                                                                 required since the operator is the only source of energy for the
+                                                                                 controllers. Hence, the operator provides the energy required to
+                                                                                 move both the master and slave.
+                                                                                    Synchronizing the energy appears to be natural for bilateral
+                                                                                 motion synchronization, but is not necessary for direct force
+                                                                                 reflection. In this paper, we, therefore, propose a two-layer ar-
+                                                                                 chitecture designed according to the direct force-reflection phi-
+Fig. 1. Block diagrams of two different control approaches for bilateral tele-   losophy, i.e., where the slave and master controller represent a
+operation. Arrows represent information flows. (a) Bilateral motion synchro-     duplicate of the operator and the environment, respectively. In
+nization. (b) Direct force reflection.
+                                                                                 contrast to [23], the operator only supplies the energy required
+                                                                                 to actuate the slave device because the environment supplies the
+contact. Traditional approaches to solve this problem reduce the                 energy to actuate the master device. Consequently, the novelty
+loop gain of the bilateral connection by canceling the induced                   of our approach resides in the PaL, where the master controller
+master motion [11] or reflecting a projection of the environment                 uses a duplicate of the energy transferred by the environment
+force [12]. Unfortunately, the method presented in [11] is lim-                  to the slave device and, similarly, the slave controller uses a
+ited to linear systems, whereas the method presented in [12] is,                 duplicate of the energy transferred by the operator to the master
+in our opinion, prone to distort the operator’s perception of the                device. The duplication of energy is based on the assumption
+environment due to an anisotropic scaling of the environment                     that, from the perspective of the controllers, the master and slave
+force vector.                                                                    devices are identical. Nonidentical master and slave devices can
+   A common drawback of all mentioned approaches is that a                       be virtually turned into identical devices by using a compensa-
+significant and constant amount of damping, related to a worst-                  tion, e.g., scaling, in a virtual control layer about each device.
+case situation, is injected to guarantee stability in the presence               In our Pal, by monitoring the energy flows online, the damping
+of delays. An effective and less conservative approach is to mon-                gains of both controllers are adapted when active behavior is
+itor the energy flows and adjust the control forces only when                    detected (recall that in [23] only the damping gain of the master
+necessary. By using an energy conserving filter in the wave                      controller is adapted). Moreover, when more energy is gener-
+domain, [16] was one of the first papers proposing to exploit                    ated than allowed by the designer, the control force of the PeL
+the monitoring of energy. Thereafter, the time domain passiv-                    is gradually reduced to prevent chattering.
+ity controller (TDPC) [17], [18] was proposed for architectures                     This paper extends our previous work presented in [15], which
+that do not use wave variables. TDPC continuously monitors                       contains a simulation study with a round-trip communication
+the energy flows in the teleoperator and ensures passivity by                    delay of 100 ms while the slave makes and breaks contact with
+adapting the damping gain. Ensuring passivity by modulating                      an environment having a stiffness of 50 000 N/m. In contrast
+the reference, instead of the damping gain, is the corner stone of               to [15], this paper contains proofs, experimental results with a
+the passive-set-position-modulation approach, proposed in [19].                  round trip delay of 300 ms and a comparison with the state of the
+The method is suitable to be applied in bilateral motion synchro-                art two-layer controller proposed in [23]. We stress to mention
+nization schemes for teleoperation with time delays, showing,                    that although constant delays are assumed in our analysis, the
+however, a substantial distortion of the contact forces (a factor 2)             proposed controller can also be applied in case of bounded time-
+and relative positions of master and slave devices during a con-                 varying delays, by using, e.g., a buffer to make the delay appear
+strained motion phase. Other well-known control schemes that                     constant.
+guarantee passivity in the context of bilateral motion synchro-                     We illustrate using an experimental one-DOF setup that, for
+nization are the energy bounding algorithm (EBA), introduced                     the challenging situation of having both a round-trip delay of
+in [20] and further developed in [21], and the force bounding                    300 ms and a stiff aluminum environment, stable operation with-
+approach (FBA), introduced in [22]. Both EBA and FBA were                        out a violent recoiling of the master is achieved when the pro-
+initially developed and demonstrated for haptic applications, al-                posed controller is employed. The variable damping gains are
+lowing for a passive coupling between an haptic device with a                    low when the slave is in free motion and high when the slave
+virtual environment.                                                             is in contact. This results in a minimal additional operator ef-
+   In [23], the TDPC was restructured into a two-layer approach                  fort to move the teleoperator as the velocity during contact is
+to explicitly separate the two goals of the teleoperator, i.e.,                  almost zero, while stability in the contact phase is guaranteed.
+196                                                                            IEEE TRANSACTIONS ON ROBOTICS, VOL. 34, NO. 1, FEBRUARY 2018
+
+
+
+Without the PaL, the direct force-reflecting architecture is shown        Let Ph and Pe indicate the power inflow of the PaL and Pic :=
+to perform rather poorly, as previously reported in, e.g., [9],        Fic ẋi , i ∈ {m, s}, the power ideally applied by the controller on
+[10], and [14]. Furthermore, an experimental comparison with           the master and slave, as the power outflow. Denote with Em ,diff
+the two-layer controller proposed in [23] shows that the use           and Es,diff the difference in the energy inflow and outflow of the
+of the controller proposed in this paper requires significantly        controllers. Then, the rate of change of Em ,diff and Es,diff are
+less damping during free motion and has improved transient             given by
+responses during the impact and detachment phases.                                             d
+   This article is organized as follows. Section II explains the                                 Em ,diff = Pe − Pm c                 (1a)
+                                                                                              dt
+philosophy and the key details behind the proposed control
+scheme. The explicit controller design and model of the teleop-                                 d
+                                                                                                  Es,diff = Ph − Psc .                (1b)
+erator are presented in Section III. Passivity of the teleoperator                             dt
+is proven in Section IV. Section V details the model param-               Under ideal circumstances, assuming the master and slave
+eters presents the results of the experimental implementation.         devices to start at the exact same position and velocity with
+Conclusions are drawn in Section VI.                                   no communication delays, Pm c = Pe and Psc = Ph , such that
+   Notation: The subscripts i ∈ {m, s} and j ∈ {m, s}, j = i,         Ei,diff remains identically equal to zero when Fm c = −Fe and
+denote either the master (m) or slave (s) device. For the sake of      Fsc = Fh from the PeL are applied directly (recall that, as men-
+brevity, we will often omit the explicit indication of time depen-     tioned in the introduction, the master and slave dynamics are
+dency: In particular, we will use x and xT to denote, respectively,    assumed to be identical, or made approximately so by a virtual
+x(t) and its delayed version x(t − T ). The dependency of an           layer).
+integrand on the integration variable is often also omitted.              In practice, such an ideal situation occurs rarely due to dif-
+                                                                       ferences in the master and slave dynamics and the existence of
+                II. TWO-LAYER ARCHITECTURE
+                                                                       delays, so the control forces Fm c and Fsc will in general not re-
+   The foundations of the two-layer architecture detailed in this      sult in Pm c ≡ Pe and Psc ≡ Ph . As a consequence, both Em ,diff
+paper will be illustrated by means of Fig. 2. Therein, the teleop-     and Es,diff will, if left uncontrolled, diverge from zero. Control-
+erator is highlighted by placing it into a light grey bounding box     ling Ei,diff to zero is the novelty of the proposed controller and
+while the PaL is indicated with a dark grey background color. In       is the task assigned to the proposed PaL. The PaL is identical
+the PeL, a traditional control algorithm is implemented to obtain      for both the master and slave controller, so for illustration pur-
+optimal performance without considering passivity or stability.        poses, this section focuses only on the description of the slave
+Ideally, this can be any force-reflecting algorithm, such as, e.g.,    controller, that should be seen as a virtual operator.
+a position-force controller. The PeL computes the desired forces          A positive value of Es,diff means that the slave controller
+Fm c ∈ IRn and Fsc ∈ IRn , n being the number of degrees of            applied less energy to actuate the slave than the operator ap-
+freedom, to actuate the master and slave, respectively, and these      plied to control the master, whereas a negative value of Es,diff
+forces are sent to the PaL. The PaL, illustrated in dark grey in       implies that the slave controller used more energy. The lat-
+Fig. 2, monitors the power flows between several components            ter, Es,diff < 0, is associated with undesired active behavior of
+of the teleoperator and is presented in detail below.                  the controller. In [23], to prevent active behavior, the control
+   As mentioned in the introduction, the PeL used in the pro-          force is cut off completely, such that the energy tanks have a
+posed controller plays the same role as the TL in [23]. Our            lower bound at zero. In contrast, our controller allows bounded
+proposed PaL, however, is completely different since it neither        active behavior to reduce the performance loss in such a sit-
+requires the synchronization of energy nor must the operator           uation. To guarantee boundedness of the active behavior, the
+supply the energy to move both the master and slave. In particu-       PaL requests extra power from the master device, the signal
+lar, our PaL is based on the philosophy of a direct force-reflecting   Ps,gen in Fig. 2, to increase the energy level Es,diff . The re-
+architecture: The slave and master controllers represent, respec-      quested energy is harvested by injecting a variable amount of
+tively, a virtual operator and environment. Seeing the master          damping on the master device, indicated by Fm ,harv . The vari-
+controller as a virtual environment leads to allow the PaL of the      able damping gain increases as the magnitude of Em ,harv , the
+master controller to use a duplicate of the power Pe := −Fe ẋs       amount of energy that must still be harvested from the master,
+applied by the slave on the environment, with Fe ∈ IRn the             increases.
+force applied by the slave on the environment and ẋs ∈ IRn the           In case the amount of harvested energy is insufficient to com-
+slave velocity. Similarly, seeing the slave controller as a virtual    pensate for the energy shortage in the slave controller, e.g.,
+operator leads to allow the PaL of the slave controller to use a       due to zero velocity of the master, and Es,bal , the total en-
+duplicate of the power Ph := Fh ẋm applied by the operator on        ergy balance of the slave PaL, introduced later on in (7), drops
+the master, with Fh ∈ IRn the force applied by the operator and        below a designed threshold Es,b1 < 0, the control force Fsc
+ẋm ∈ IRn the master velocity. Consequently, our PaL monitors          coming from the PeL is gradually decreased. This is done by
+the exchange of energy between the operator and the master, and        modulating Fsc with a continuous and state-dependent vari-
+the energy exchanged between the slave and the environment             able gain λs (E s,bal ) ∈ [0, 1]. Here, E s,bal is a lower bound of
+(in [23] the port between the master and master controller is          Es,bal that can be computed online and is defined later on in
+monitored and compared with the port between the slave and             (14). The gain λs (E s,bal ) is equal to one if E s,bal ≥ Es,b1 .
+slave controller).                                                     If Es,b1 > E s,bal > Es,b2 , λs (E s,bal ) monotonically decreases
+HECK et al.: DIRECT FORCE-REFLECTING TWO-LAYER APPROACH FOR PASSIVE BILATERAL TELEOPERATION WITH TIME DELAYS                                                197
+
+
+
+
+Fig. 2. Bond graph of the proposed two-layer architecture. The teleoperator is indicated with a light grey background color, the PaL with a dark grey background
+color. A half arrow indicates a bidirectional exchange of physical energy (power bond) and a full arrow represents a measurement (signal bond). The symbols E,
+e, f , and q represent, respectively, power-, effort-, flow-, and position sensors.
+
+                                                                                    The same design is used for the PaL of the master controller.
+                                                                                 The only difference is that the master controller represents the
+                                                                                 virtual environment, so the PaL of the master controller uses
+                                                                                 a duplicate of the energy applied by the environment. If there
+                                                                                 is insufficient energy to apply the PeL force Fm c , extra energy
+Fig. 3.   State-dependent variable gain λi as a function of E i , bal .          is harvested by injecting a variable amount of damping on the
+                                                                                 slave. If not enough energy can be harvested from the slave, the
+                                                                                 energy is harvested from the master and the PeL force Fm c is
+                                                                                 modulated.
+from one to zero for decreasing values of E s,bal . An example
+of such a function is illustrated in Fig. 3. In the extreme case
+                                                                                        III. SYSTEM MODELING AND CONTROLLER DESIGN
+when E s,bal ≤ Es,b2 , the variable gain λs is set to zero, such that
+the slave controller can no longer apply energy to the slave de-                   This section presents the considered teleoperator dynamics
+vice. Additionally, when E s,bal < Es,b1 the PaL recovers from                   and further detailing of the PaL illustrated in Section II.
+the energy shortage by applying a force (1 − λs )Fs,rec with a
+variable amount of damping on the slave device.                                  A. Teleoperator Model
+   The design of the bounds 0 > Es,b1 > Es,b2 affect how ag-
+                                                                                   It is assumed that gravity is compensated in the controllers,
+gressively the PaL responds to an energy shortage in the con-
+                                                                                 and that the master and slave dynamics, described in Cartesian
+troller. When E s,bal > Es,b1 , the variable gain λs equals one,
+                                                                                 space by
+such that the PeL force Fsc is applied without modification.
+A more negative value of Es,b1 allows for a wider range of                           Mm (xm )ẍm + Cm (xm , ẋm )ẋm
+temporarily active behavior. A small difference between Es,b1
+and Es,b2 implies an aggressive fluctuation of λs , while a larger                       + fm (xm , ẋm ) = Fh + Fm∗ c                                      (2)
+difference creates a more gradual fluctuation.                                                                                           ∗
+                                                                                     Ms (xm )ẍs + Cs (xs , ẋs )ẋs + fs (xs , ẋs ) = Fsc − Fe            (3)
+   Summarizing, the PaL of the slave controller monitors and
+regulates the use of a duplicate of the energy applied by the op-                hold globally. In (2) and (3), xi ∈ IRn is the end-effector
+erator in order to apply a force Fsc coming from the PeL. When                   position of device i, Mi (xi ) > 0 ∈ IRn ×n the inertia matrix,
+a mismatch between the energy delivered by the slave controller                  Ci (xi ) > 0 ∈ IRn ×n the Coriolis’ matrix, and fi (xi , ẋi ) ∈ IRn
+and the energy supplied by the operator is detected, two scenar-                 the friction force. The inputs Fh and Fe , as mentioned in
+ios are possible. In the first, when the controller uses less energy             Section II, are the operator and environment forces. The control
+than the operator, part of the excess energy is discarded, because               forces Fm∗ c and Fsc ∗
+                                                                                                        are the output of the PaL. Details about
+the slave does not need it. In the second, when the PeL force                    how they are computed are presented in the next subsection,
+requires more energy than the operator, more energy is asked                     after the introduction of the following two assumptions, used in
+from the operator by injecting a variable amount of damping on                   Section IV to prove passivity of the teleoperator.
+the master. If insufficient energy is harvested from the master,                    Assumption 1: The input forces Fh and Fe satisfy
+e.g., because the master is moving slowly, energy is harvested                      1) Fh ≤ F h and Fe ≤ F e , with F h , F e > 0;
+from the slave and the PeL force Fsc is modulated.                                  2) Fh ẋm ≤ 0, if |ẋm | > ẋam > 0; and
+198                                                                            IEEE TRANSACTIONS ON ROBOTICS, VOL. 34, NO. 1, FEBRUARY 2018
+
+
+
+
+   3) − Fe ẋs ≤ 0, if |ẋs | > ẋas > 0.                             In (7), Ti represents, depending on the value of i, Tm , or Ts , the
+   Condition 1 of Assumption 1 implies that the forces applied         delays from master to slave and from slave to master, respec-
+by the operator and environment are bounded. Boundedness               tively.
+of Fh is plausible due to the operator’s physical limitations.            Using (4) and including the effect of the delays, the evolution
+Conditions 2 and 3 allow for an active operator and environment        of the energy levels Ei,diff , presented in a simplified form in (1),
+as long as the master and slave velocities do not exceed ẋai . As     is given by
+a result, Assumption 1 allows for both passive and bounded
+active behavior as long as ẋi is smaller than an arbitrarily large          Ėm ,diff = PeT s + Pm ,gen − λm Fmc ẋm − λm Pm ,diss
+constant ẋai . It is, therefore, somehow less restrictive than the                        +(1 − λm )Fm,rec ẋm                                 (8a)
+passive operator and environment assumption that is typically
+                                                                                                              
+required to guarantee passivity or stability (see, e.g., [3] and              Ės,diff = PhT m + Ps,gen − λs Fsc ẋs − λs Ps,diss
+the references therein). Strictly speaking, however, not every                                        
+                                                                                           +(1 − λs )Fs,rec ẋs                                  (8b)
+imaginable passive system will satisfy Assumption 1 and for
+those systems our passivity result cannot be applied.                    where the dissipation Pi,diss , active for Ei,diff > 0, equals
+   Assumption 2: The control forces Fic of the PeL satisfy
+                                                                                            
+   1) Fic ≤ F ic , with F ic > 0; and                                                         0,                if Ei,diff < 0
+   2) Fic ẋi ≤ 0, if |ẋi | > ẋbi > 0.                                        Pi,diss =                                              (9)
+                                                                                              αi Ei,diff ,      if Ei,diff ≥ 0
+   Assumption 2 implies that the PeL forces Fic are bounded
+and do not inject energy in the master and slave device above
+                                                                       with αi > 0 a design parameter. The dissipation Pi,diss prevents
+a certain velocity ẋbi , which can be selected arbitrarily large to
+                                                                       that Ei,diff grows unbounded. Without Pi,diss , this could occur
+not affect stable operation. Assumption 2 can be satisfied by
+                                                                       in one of the two scenarios mentioned in Section II where the
+using a (smooth) saturation function to modify Fic whenever
+                                                                       slave uses less energy than the operator. In [24], this growth is
+Assumption 2 would be violated otherwise.
+                                                                       referred to as an energy build-up in the controller, which can
+                                                                       substantially delay the reaction of the PaL to unstable behavior.
+B. Design of the PaL Controller                                           When Ei,diff < 0, power is generated immediately by
+   As described in words in Section II, the PaL control force Fic∗                           
+                                                                                               −αi Ei,diff     if Ei,diff < 0
+applied on device i consists of the PeL force Fic , modulated by                    Pi,gen =                                       (10)
+λi ∈ [0, 1], and the harvesting and recovering forces Fj,harv and                              0               if Ei,diff ≥ 0.
+Fi,rec . Namely:
+                                                                       Note that as Pi,diss ≥ 0 and Pi,gen ≥ 0, there is a persistent at-
+           Fic∗ = λi Fic − λi Fi,harv − (1 − λi )Fi,rec .       (4)    tempt to steer Ei,diff toward zero, which is the key principle of
+                                                                       the PaL. The amount of generated power Pi,gen on the local side
+                                                          
+The harvesting and recovery forces need to satisfy λj Fj,harv  ẋj ≥   is sent to the remote side, and used as the input for the harvesting
+                                                                      dynamics:
+0 and (1 − λi )Fi,rec ẋi ≥ 0 (recall that j ∈ {m, s}, j = i). This
+work considers:                                                                                           
+                                                                                           Ėj,harv = λj Fj,harv ẋj − Pi,gen
+                                                                                                                        Ti
+                                                                                                                                                 (11)
+                     Fj,harv = −βj Ej,harv ẋj                  (5)
+                                                                       with Fj,harv given in (5). Due to the first-order dynamics (11),
+                      Fi,rec = −γi E i,bal ẋi                  (6)    Ej,harv is guaranteed to remain negative, because Pi,gen ≥ 0 and,
+                                                                                        
+                                                                       by design, λj Fj,harv ẋj ≥ 0.
+but other choices are, in principle, also possible. In (5) and           The time derivative of (7), using (8) and (11), is
+(6), the gains βj and γi are strictly positive, such that the terms
+−βj Ej,harv ≥ 0 and −(1 − λi )γi E i,bal ≥ 0 in (4) represent vari-              Ėm ,bal = PeT s − λm Fmc ẋm + λs Fs,harv
+                                                                                                                      
+                                                                                                                             ẋs
+able damping gains, which increase for decreasing values of
+                                                                                              −λm Pm ,diss + (1 − λm )Fm,rec ẋm               (12a)
+Ej,harv ≤ 0 and E i,bal , respectively. In (5), Ej,harv represents
+                                                                                                        
+the amount of energy that must still be harvested from device                     Ės,bal = PhT m − λs Fsc ẋs + λm Fm,harv ẋm
+j (see Fig. 2), as explained in Section II. Furthermore, E i,bal ,
+                                                                                                                      
+defined later on in (14), is a conservative but online available                              −λs Ps,diss + (1 − λs )Fs,rec ẋs .               (12b)
+lower bound of Ei,bal , the energy balance of the PaL controller.
+In detail, the balance Ei,bal consists of Ei,diff on the local side       Due to the delays, Ei,bal in (12) cannot be computed online
+                                                                              
+of the controller, the energy Ej,harv on the remote side of the        as λj Fj,harv ẋj at time t is not available to controller i. However,
+controller, and the energy stored in the communication channel                                    t                             t−T i
+obtained by integrating the power request −Pi,gen over the delay                      jT
+                                                                         Ej,harv = Ej,harv +                  
+                                                                                                          λj Fj,harv ẋj dτ −             Pi,gen dτ
+interval:                                                                                         t−T j                          t−T r
+
+                                           t                                                     t−T i
+                                                                                    Tj
+            Ei,bal := Ei,diff + Ej,harv −       Pi,gen dτ.       (7)             ≥ Ej,harv −               Pi,gen dτ                             (13)
+                                                                                                  t−T r
+                                           t−T i
+HECK et al.: DIRECT FORCE-REFLECTING TWO-LAYER APPROACH FOR PASSIVE BILATERAL TELEOPERATION WITH TIME DELAYS                                        199
+
+
+
+where Tr := Tm + Ts is the round-trip delay. Therefore, by                                                                             
+                                                                            t∗ , where |ẋi | = ẋi , does exist, then Ei (t∗ ) = 12 ẋi Mi (xi )ẋi ≤
+defining                                                                    1      2                                           ∗           
+                                    t                                      2 νi ẋi = E i . The first two terms of (17) at t satisfy Fh ẋm ≤ 0
+                                                                                                                                   
+                          Tj                                                and −Fe ẋs ≤ 0 due to Assumption 1, and Fic ẋi ≤ 0 due to
+    E i,bal := Ei,diff + Ej,harv −     Pi,gen dτ ≤ Ei,bal (14)
+                                      t−T r                                 Assumption 2. The last two terms on the right-hand side of (17)
+                                                                            are nonpositive by design. As a result, Ėi (t∗ ) ≤ 0, and due to
+an online available lower bound of Ei,bal is readily obtained.
+                                                                            the first-order dynamics of (17) it follows that Ei ≤ E i is an
+Differentiating with respect to time the expression for E i,bal
+                                                                            invariant set, such that Ei ≤ E i for all t ≥ t0 . Finally, the lower
+given in (14) and using (8) and (11), one obtains
+                                                                            bound of Ei at 0 follows from Mi (xi ) > 0, which completes
+                                                     
+      Ė m ,bal = PeT s − λm Fmc ẋm + λTs s Fs,harv
+                                               Ts
+                                                         ẋTs s             the proof.                                                               
+                                                                                The following theorem is one of the key results of this paper.
+                  − λm Pm ,diss + (1 − λm )Fm,rec ẋm       (15a)               Theorem 1: Given Assumptions 1 and 2, consider the teleop-
+                                                                         erator described by (2), (3), (4)–(6), (9)–(11), (15), having input
+                               
+       Ė s,bal = PhT m − λs Fsc ẋs + λTmm FmT m,harv ẋTmm                u := [Fh ; −Fe ] and output y := [ẋm ; ẋs ]. At initial time t0 , let
+                                                                            |ẋi (t0 )| ≤ ẋi and E i,bal (t0 ) > Ei,b2 , with Ei,b2 introduced in
+                                            
+                   − λs Ps,diss + (1 − λs )Fs,rec ẋs             (15b)     Section II. Then, for all t ∈ [t0 , ∞), the storage functional V ,
+                                                                            defined in (16), satisfies:
+    which is similar to the expression for Ei,bal in (12).
+    Summarizing, the teleoperator consists of the device dynam-                                         V > V > −∞                                 (19)
+ics (2)–(3) and the controller defined by (4)–(6), (9)–(11), and
+                                                                                                      dV
+(15). Its inputs are Fh and −Fe and its outputs ẋm and ẋs . It is                                      ≤ 2u y                                   (20)
+                                                                                                      dt
+assumed that Assumptions 1 and 2 hold. In the following section
+it is proven that the proposed teleoperator is passive.                     with
+
+              IV. PASSIVITY OF THE TELEOPERATOR                               V := −E m − E s − ΔE e − ΔE h + Em ,b2 + Es,b2 + H
+                                                                                                                                       (21)
+   We provide here a proof of passivity for the teleoperator                H := min(Em ,b2 − αm E m − Em ,b3 − Em ,diff (t0 ) − 2ΔE e ,
+detailed in Section III. To this end, we define the total energy of         Es,b2 − αs E s − Es,b3 − Es,diff (t0 ) − 2ΔE h ), E i given in
+the teleoperator (the light grey box in Fig. 2) to be the storage           (18), and the constant
+functional V that consists of the energy Ei := 12 ẋ   i M̄i (xi )ẋi
+of the master and slave devices, the energy Ei,bal present in the                                         1
+                                                  t                         Ei,b3 := F h ẋam + F e ẋas                                          (22)
+PaL, given by (7), and the energies Eh,com := t−T m Ph dτ and                                               αi
+             t                                                                       t                                t
+Ee,com := − t−T s Pe dτ stored in the communication channel
+due to the power duplication:                                                ΔE h :=                a
+                                                                                              F h ẋm dτ,      ΔE e :=                 F e ẋas dτ. (23)
+                                                                                          t−T m                                t−T s
+  V := Em + Es + Em ,bal + Es,bal + Eh,com + Ee,com . (16)
+                                                                            The bounds F h , F e , and ẋai are given in Assumption 1.
+The energies Em and Es satisfy:                                                 Remark 1: Due to the presence of time delays, V is a func-
+          Ėm = Fh ẋm + λm Fmc ẋm − λm Fm,harv ẋm                     tional defined in terms of the (infinite dimensional) state of
+                                                                            the teleoperator, not explicitly indicated here. Equation (20) in
+                    − (1 − λm )Fm,rec ẋm                        (17a)     Theorem 1 states that the rate of change of the energy of the
+                                                                            teleoperator is bounded from above by the power supplied by the
+           Ės = −Fe ẋs + λs Fsc
+                                            
+                                   ẋs − λs Fs,harv ẋs                     operator and environment. The factor 2 in (20) is the result of the
+                                
+                    − (1 − λs )Fs,rec ẋs .                       (17b)     power duplication. Furthermore, (19) and (20) characterize V as
+                                                                            a storage functional and allow to conclude that the teleoperator
+   Assumptions 1 and 2 imply both Ei are bounded:                           is passive as V admits   a lower bound. Note that (19) and (20)
+                                                                                                
+   Property 1: Given Assumptions 1 and 2, consider the closed-              are equivalent to uT ydτ ≥ −κ, with κ := 0.5(V (t0 ) − V ),
+loop dynamics of (2)–(3) using the controller (4). At the initial           retrieving the equivalent definition of passivity (with κ depend-
+time t0 , let |ẋi (t0 )| ≤ ẋi := max(ẋai , ẋbi ) < ∞. Then, the en-     ing on the initial conditions) found, e.g., in [3].
+ergy Ei = 12 ẋ i Mi (xi )ẋi satisfies for all t ≥ t0                         Proof: Equation (19) follows directly from Lemma 1, which
+                                            1      2
+                                                                            is presented in Appendix. To prove (20), differentiate V in (16)
+                      0 ≤ Ei ≤ E i =:         νi ẋi                 (18)   with respect to time to obtain:
+                                            2
+with νi the largest eigenvalue of Mi (xi ).                                        V̇ = Ėm + Ės + Ėm ,bal + Ės,bal + Ėh,com + Ėe,com (24)
+   Proof: At time t0 , |ẋi (t0 )| ≤ ẋi , and since Mi (xi ) ≤ νi I
+(see [25, Ch. 7]), with I the n × n identity matrix, it follows             where Ėh,com := Ph − PhT m and Ėe,com := Pe − PeT s represent
+that Ei (t0 ) ≤ E i . Suppose that a time t∗ , where |ẋi | = ẋi , does    the power present in the communication channel due to the
+not exist. Then |ẋi | < ẋi for all t ≥ t0 and it follows directly that    duplication. Then, (20) is obtained by using (12) and (17)
+                                 2
+Ei < 12 ẋi Mi (xi )ẋi ≤ 12 νi ẋi = E i for all t ≥ t0 . If such a time   in (24).                                                     
+200                                                                                   IEEE TRANSACTIONS ON ROBOTICS, VOL. 34, NO. 1, FEBRUARY 2018
+
+
+
+
+Fig. 4. One-DOF experimental setup (image adapted from [26]). Experiments
+are conducted with both a soft spring and a stiff aluminum cylinder.
+
+
+                          V. EXPERIMENTS
+   The purpose of this section is to demonstrate the effec-
+tiveness of the proposed controller when implemented on a
+physical setup. Previously, in [15], we presented illustrative
+simulation results with a round-trip communication delay of
+100 ms, whereas the slave makes and breaks contact with an en-
+vironment having a stiffness of 50 000 N/m. In the experiments              Fig. 5. Experimental results without PaL for T m = T s = 0.05 s: Positions,
+presented here, we consider a round-trip delay of 300 ms and the            forces, and the energy difference E i , diff computed by (1). In the light grey area
+                                                                            the slave is in contact with the spring.
+slave makes contact with an even stiffer environment, namely an
+aluminum cylinder. An accompanying video demonstrating the
+effectiveness of the proposed two-layer control approach over               of the inner segment are measured and transmitted to the other
+the lack of our PaL is provided in the supplementary material.              device (see, e.g., Fig. 5). Fortunately, these forces are small com-
+   Below, we first describe the employed physical setup and then            pared to the contact forces and, thus, barely affect the operator’s
+present experiments with and without our proposed controller.               perception.
+Finally, we compare our controller with the state-of-the-art two-              The proposed controller is implemented in MATLAB
+layer controller proposed in [23].                                          Simulink on a Linux-based computer. The sampling frequency
+                                                                            is 1 kHz. The velocity signal is obtained by numerical differen-
+                                                                            tiation of the position signal, in combination with a first-order
+A. Experimental Setup                                                       low-pass filter with a cut-off frequency of 80 Hz. The force sig-
+   The experimental setup consists of the one-DOF revolute                  nals are filtered with a first-order low-pass filter with a cut-off
+master and slave devices depicted in Fig. 4.                                frequency of 15 Hz.
+   Each device is actuated with a Maxon RE 35 DC servo motor,                  For the considered setup, the dynamics (2)–(3) simplify
+which drives the rotational segment of the device with a capstan            to a one-DOF mass-damper system, where the inertia Mi
+drive. The rotation of the motor is measured with an incremental            and viscous friction fi (xi , ẋi ) = bi ẋi are identified as Mm =
+encoder, having a resolution of 2.1·10−5 rad. The capstan drive             2·10−3 kg·m2 , Ms = 2.2·10−3 kg·m2 , bm = 5·10−3 N·m·s/rad
+has a reduction of 1/10 and results in a resolution of 2.1·10−6             and bs = 7·10−3 N·m·s/rad. The direct force-reflecting
+rad for the rotational segment. This rotational segment has an              position/force-force (PF-F) controller:
+operating range from −0.73 to 0.73 rad, with 0 rad being the
+                                                                                    Fm c = −FeT s                                    (25a)
+horizontal configuration. The operator or environment can in-                                                T          T       
+teract with the end-effector, which is located at 7.5 cm from the                    Fsc =      FhT m   + kp xm − xs + kd ẋm − ẋs (25b)
+                                                                                                                m            m
+
+
+point of rotation on the other side of this segment. The torque
+                                                                               is implemented in the PeL. In the experimental comparison
+applied by the motor on the end-effector, after the capstan drive,
+                                                                            presented in [13, Ch. 3], this controller is identified as the most
+is limited to 1.5 N·m.
+                                                                            suitable architecture to provide high performance in both free
+   The rotational segment is split in two concentric parts. These
+                                                                            motion and contact phases in the presence of delays. During all
+are connected by two short and thick leaf springs, having a
+                                                                            experiments, the proportional and derivative gains are selected
+known torsional stiffness of 3.5·103 N·m/rad [27]. The torque
+                                                                            as kp = 11.2 N·m/rad and kd = 0.089 N·m·s/rad. Furthermore,
+transmitted through the leaf springs is measured with two induc-
+                                                                            the delays are Tm = Ts = 50 ms, resulting in a round-trip delay
+tive sensors that measure the relative rotation between the inner
+                                                                            of Tm + Ts = 100 ms.
+and outer segment. The maximum difference in rotation is in the
+order of 100 μ m. The resolution of the torque measurements
+                                                                            B. Experimental Results Tm = Ts = 0.05 s Without the PaL
+is 5.25 ·10−4 N·m. Note that the stiff force sensor measures the
+internal force of the link and not directly the environment force              To illustrate the effectiveness of the proposed controller, we
+acting on the end-effector. Consequently, also payload forces               first present two experiments, using a round-trip delay of only
+HECK et al.: DIRECT FORCE-REFLECTING TWO-LAYER APPROACH FOR PASSIVE BILATERAL TELEOPERATION WITH TIME DELAYS                                                      201
+
+
+
+
+Fig. 6. Experimental results without PaL for T m = T s = 0.05 s: Positions,
+forces, and the energy difference E i , diff computed by (1). In the dark grey area
+the slave is in contact with the aluminum cylinder.
+
+
+100 ms, in which the PaL is not used and the PeL controller (25)
+is implemented directly.
+   In the first experiment, the slave interacts with a spring
+(the“soft spring” in the center of Fig. 4), having stiffness
+ke ≈ 2300 N/m. During the first 5 s of the results presented
+in Fig. 5, the slave is in free motion and follows the master
+with a delay Tm = 0.05 s. After 5 s the operator attempts to
+keep the slave in contact with the spring. The light grey areas
+indicate when contact between the slave and the environment
+is detected by the force sensor. When the slave makes contact
+with the environment, the master recoils (see the introduction
+and [13], [15] for more background information regarding this
+phenomenon) and the operator is not able to keep the slave
+in contact with the spring, despite carefully approaching the
+surface. The slave bounces several times, with increasing am-
+plitude, against the environment. Around 9.7 s the safety of the
+setup stops the experiment due to the high velocity of the master.
+Looking at the energy difference Ei,diff computed by (1) (not
+used in the controller, since the PaL is inactive), it is observed
+that the teleoperator generates energy.
+   The recoiling of the master becomes even more violent when
+the slave interacts with an aluminum cylinder. The results of
+this challenging task are shown in Fig. 6. The environment                            Fig. 7. Experimental results with PaL for T m = T s = 0.15 s. In the light
+                                                                                      grey area the slave is in contact with the spring (xe = −0.1 rad). In the dark
+is approached carefully by the operator, nevertheless the slave                       grey area the slave is in contact with the aluminum cylinder (xe = 0 rad).
+bounces off the cylinder. The master recoils twice before the                         (a) Positions and forces. (b) Variable damping gains and λi . (c) Energy levels.
+safety of the setup stops the experiment due to the too high
+master velocity. Again, the bouncing and recoiling are asso-
+ciated with active behavior (Ei,diff becomes negative) of the                         and contact with the aluminum cylinder (dark grey area from
+controller (25).                                                                      about 15 to 20 s) with the proposed two-layer control archi-
+                                                                                      tecture are shown in Fig. 7. To illustrate the stabilizing prop-
+                                                                                      erties and achievable performance of our controller in realistic
+C. Experimental Results Tm = Ts = 0.15 s With the PaL
+                                                                                      communication scenarios, the delay is increased compared to
+  Results for an experiment combining free motion (first 6 s),                        the experiments in the previous section to Tm = Ts = 0.15 s,
+contact with the spring (light grey area from about 6 to 11 s)                        resulting in a 300 ms round trip delay. The PaL parameters
+202                                                                           IEEE TRANSACTIONS ON ROBOTICS, VOL. 34, NO. 1, FEBRUARY 2018
+
+
+
+
+are set to αi = 5, βi = 15, γi = 20, Ei,b1 = −15 · 10−3 , and         quently, λi is almost always equal to one. When the slave makes
+Ei,b2 = −8 · 10−2 to minimally affect the response in free mo-        contact with the environment, the PaL prevents active behavior,
+tion, but rapidly react to the impact and detachment of the slave-    in particular, the dangerous recoiling of the master during the
+environment interaction. Due to a limited actuator torque, the        impact and detachment phase typically observed when employ-
+upper bound of the control forces Fic in Assumption 2 is se-          ing the standard position-force control in delayed teleoperation.
+lected as F ic = 1.5 N·m and the maximal allowed velocity is set      The prevention of this recoiling is achieved by temporarily in-
+to ẋbi = 7 rad/s. During the experiment, the operator receives vi-   creasing the variable damping gains and slightly reducing the
+sual feedback (i.e., scopes on a display) on the applied force and    force-reflection gains λi . The adaptation of the damping- and
+master velocity and the operator is instructed to satisfy the same    force-reflection gains occurs automatically as a consequence
+limits of the setup, i.e., in Assumption 1, F h = 1.5 N·m and         of the monitoring and control of the energy duplication in the
+ẋam = 7 rad/s. The environments considered here are passive.         PaL. Consequently, the performance loss during the free motion,
+    During free motion, the slave accurately follows the delayed      impact, contact, and detachment phases is rather limited. Inter-
+motion of master despite the nonideality of the force measure-        estingly, the results presented in [28] suggest that increasing the
+ment (i.e., the measured dynamics after the force sensor). Be-        damping only during the contact phase, so having low damping
+cause the measured Fe is applied to the master with a delay of        gains during free motion and high damping gains during con-
+Ts = 0.15 s, the master has a different velocity than the slave.      tact, has a positive effect on the perception of hardness of the
+Consequently, the energy levels start to deviate from zero as         environment. This could partially compensate for the negative
+shown in Fig. 7(c) (first 6 s) and the PaL becomes active. The        effect of reducing λi on the perception of the environment.
+controller gains of the PaL have been tuned such that the com-
+bined damping gains [the two lower plots of Fig. 7(b)] remain         D. Comparison With the Two-Layer Controller Presented
+smaller than 0.06 N·m·s/rad, and the resulting damping forces         in [23]
+remain significantly smaller than the forces during contact. This
+                                                                         This section presents an experimental comparison with the
+allows the operator to detect the impact with the environment
+                                                                      two-layer controller proposed in [23]. As mentioned earlier, the
+(according to the results presented in [28], having damping dur-
+                                                                      transparency layer (TL) of [23] is similar to our PeL. Hence, for
+ing free motion negatively affects the perception of hardness of
+                                                                      the comparison, we use the PF-F controller (25) in the TL.
+the environment).
+                                                                         In [23], their PaL guarantees passivity of the teleoperator by
+    After contact of the slave with the spring, a small transient
+                                                                      controlling the energy applied by both controllers, but the main
+is present in both the motion and force profiles. This transient
+                                                                      difference compared to our PaL is that a different and single
+is the start of the recoiling of the master device due to the phe-
+                                                                      energy balance is considered. To maintain this energy balance,
+nomenon described in [13]. Due to the PeL force Fm c = −FeT s ,
+                                                                      a variable damping force is applied only by the master controller
+the master is first slowed down and then pushed back, revers-
+                                                                      to harvest energy from the operator. Without going into details
+ing its velocity. The associated active behavior is detected by
+                                                                      (see [23] for more information), the energy balance is expressed
+the PaL. The variable damping gains increase and the variable
+                                                                      by two energy tanks, one for each controller, with energy levels
+force-reflection gains λi are reduced to prevent a recoiling of
+                                                                      Hi representing the maximum energy the controllers are allowed
+the master, as occurred in Fig. 5 without PaL, and damp out the
+                                                                      to apply on the master and slave devices. The energy level of
+transient. After stable contact has been achieved, the operator is
+                                                                      the master tank is controlled to a desired tank level Hd by the
+instructed to detach the slave from the spring (approximately at
+                                                                      tank level controller (TLC) by adding a damping force FTLC to
+10 s). During the detachment phase the variable damping gains
+                                                                      the master force Fm c of the TL:
+increase slightly, while simultaneously λi decreases temporarily
+to prevent the master and slave to be accelerated from the envi-                            F̄m c = Fm c + FTLC .                    (26)
+ronment due to the PeL force. Once the slave is in free motion,
+λi quickly converges back toward 1 and the variable damping           The damping force is defined as
+gains βi Ei,harv converge to zero.                                                  FTLC = − max(d(Hd − Hm ), 0)ẋm                  (27)
+    A similar response of the master, slave, and controller is ob-
+tained during contact of the slave with the aluminum cylinder.        where d is a tuning parameter and the max-operator sets the
+Compared to the contact phase with the spring, the oscillations       damping gain to zero whenever the energy of the master ex-
+following the impact have a larger amplitude, but the PaL elim-       ceeds the desired level (Hm > Hd ). Since the TLC only reg-
+inates them in about half a second. The variable damping gains        ulates Hm to Hd , and not Hs , in [23] both energy levels Hi
+and λi (λm = 0.92 and λs = 1 during steady-state contact) are         are synchronized by sending a fraction δi of Hi to the other
+quite higher compared to the constant gains proposed in, e.g.,        tank Hj .
+[10], [29], indicating that the environment is perceived stiffer         For the experiments, we performed with the controller pro-
+by the operator.                                                      posed in [23], we used Hd = 0.05 J, d = 20 N·s/J·m and
+    Summarizing, we have demonstrated experimentally that the         δi = 0.01. The experimental results are shown in Fig. 8 In par-
+proposed two-layer architecture is capable of achieving stable        ticular, Fig. 8(a) shows the same signals as Fig. 7(a) for our
+contact for a 300 ms round trip delay and that it is also robust to   proposed PaL, only the PaL control forces are denoted by F̄ic
+imperfect velocity and force measurements, and setup param-           (note that F̄sc = Fsc ). Fig. 8(b) shows the energy levels Hi of
+eters. In free motion, the damping gains are low and, conse-          the tanks, the variable damping gain d(Hd − Hm ) and TLC
+HECK et al.: DIRECT FORCE-REFLECTING TWO-LAYER APPROACH FOR PASSIVE BILATERAL TELEOPERATION WITH TIME DELAYS                                         203
+
+
+
+                                                                                       3) Higher force reflection in steady state, because with our
+                                                                                           controller λi < 1 during steady state. Both controllers
+                                                                                           reflect a similar environment stiffness, but with the
+                                                                                           controller proposed in [23] the aluminum cylinder is
+                                                                                           perceived at xm = 0 rad, whereas with our controller the
+                                                                                           aluminum cylinder is perceived at xm = 0.05 rad (this is
+                                                                                           a consequence of the scaling gains λi ).
+                                                                                       4) More damping during the detachment phase, which results
+                                                                                           in a sticky feeling when detaching (approximately at 11
+                                                                                           and 23 s). Due to the decreasing variable gains λi during
+                                                                                           the detachment phase, our controller has smaller variable
+                                                                                           damping gains and these gains converge to zero faster,
+                                                                                           without causing a sticky feeling.
+                                                                                       Summarizing, our proposed controller mainly differs from
+                                                                                    the one proposed in [23] in the use of two separate energy
+                                                                                    balances (following the direct force-reflection philosophy) in
+                                                                                    combination with variable scaling gains λi that are modified
+                                                                                    automatically when not enough energy can be harvested. This
+                                                                                    results in significantly less damping during free motion, im-
+                                                                                    proved impact, and detachment transient responses, at the cost
+                                                                                    of a reduced force reflection.
+
+
+                                                                                                            VI. CONCLUSION
+                                                                                       In this article, a two-layer control architecture is proposed for
+                                                                                    direct force-reflecting bilateral teleoperation systems subject to
+                                                                                    communication delays. In principle, any traditional controller
+                                                                                    can be implemented in the PeL, while the PaL guarantees a
+                                                                                    passive interconnection by adapting the amount of damping in-
+                                                                                    jected on the master or slave device and modulating the PeL
+                                                                                    output when necessary. According to the direct force-reflection
+                                                                                    philosophy, the design of the PaL is based on a duplication
+Fig. 8. Experimental results with two-layer controller of [23] for T m = T s =      of the power exchanged between the operator/environment and
+0.15 s. In the light grey area the slave is in contact with the spring (xe = −0.1
+rad). In the dark grey area the slave is in contact with the aluminum cylinder
+                                                                                    the teleoperator. Passivity of the teleoperator is analyzed and
+(xe = 0 rad). (a) Positions and forces. (b) Energy levels H m and H s , damping     a formal proof is provided, based on the assumption that the
+gain d(H d − H m ), and tank level control force FTLC .                             operator and environment forces are bounded by an arbitrary
+                                                                                    large constant and that they do not inject energy when their
+                                                                                    velocity is bigger than an arbitrary large speed. The experimen-
+force computed by (27). At a quick look, the response appears                       tal results illustrate the performance that can be obtained for a
+to be similar to the response obtained with our two-layer con-                      rather large, but realistic, round-trip delay of 300 ms and contact
+troller [compare Fig. 8(a) with Fig. 7(a)]. There are, however,                     with both a soft spring and a hard aluminum environment. The
+relevant differences during the free motion, impact, contact, and                   damping gains are low in free motion, whereas in contact the
+detachment phases. These differences are as follows.                                damping gains increase to stabilize the teleoperator. The force-
+   1) Significantly higher damping gains and forces during the                      reflection gains are also reduced during the impact and detach-
+       free motion phase [compare bottom plots Fig. 8(b) with                       ment phase to prevent a recoiling of the master, but their values
+       bottom plots Fig. 7(b)] and are most dominant during                         (λm = 0.92 and λs = 1 during steady-state contact with the alu-
+       velocity reversals. This is the result of using only one                     minum cylinder) are higher compared to those usually found in
+       energy balance (master and slave tanks are connected)                        the literature for any direct force-reflecting controller. Finally,
+       and injecting variable damping only on the master side                       an experimental comparison with the two-layer controller pro-
+       to prevent active behavior of both the master and slave                      posed in [23] revealed that at the cost of a reduced force reflec-
+       device.                                                                      tion, our controller requires significantly less damping during
+   2) More severe oscillations during the impact phase that                         free motion and has improved impact and detachment transient
+       damp out slower and the slave almost breaks contact                          responses.
+       after the first impact. In Fig. 7, using our controller, the                    Future work will focus, on the theoretical side, on improv-
+       oscillations are smaller and damp out faster due to the                      ing the achievable performance even further. Especially in the
+       variable scaling gains λi . Such scaling gains are absent in                 contact phase, the goal is to increase the force-reflection gains
+       the controller proposed in [23].                                             to obtain the optimal performance computed by the PeL. This
+204                                                                                     IEEE TRANSACTIONS ON ROBOTICS, VOL. 34, NO. 1, FEBRUARY 2018
+
+
+
+could be achieved by optimizing the tuning of the PeL and PaL
+parameters and by investigating (nonlinear) alternatives to gen-
+erate and harvest energy in the PaL. Further extensions should
+also make the proposed architecture applicable to time-varying
+delays and data losses in the communication. On the practical
+side, future research will investigate the effectiveness of the
+controller on a multi-DOF teleoperator and/or with different
+master and slave dynamics. For a multi-DOF teleoperator, an
+increase in the force-reflection gains could be achieved by, e.g.,
+harvesting energy from directions tangential to the direction of               Fig. 9. Relation between Λ k , k ∈ {1, 2, 3, 4} and the state-dependent, con-
+contact.                                                                       tinuously varying gains λm and λs .
+
+
+                               APPENDIX                                                  
+                                                                               since Fi,rec ẋi ≥ 0. Time integration of both sides of (33) from
+  The following Lemma states that V , presented in (16), is                    t2 to t, recalling that E i,bal (t2 ) = Ei,b2 , yields:
+bounded from below, i.e. V > V .
+   Lemma 1: Given Assumptions 1 and 2, consider the tele-                          E m ,bal (t) + E s,bal (t) + Eh,com (t) + Ee,com (t)
+operator described by (2), (3), (4)–(6), (9)–(11), and (15). At
+the initial time t0 , let |ẋi (t0 )| ≤ ẋi and E i,bal (t0 ) > Ei,b2 , with                ≥ Em ,b2 + Es,b2 + Eh,com (t2 ) + Ee,com (t2 )
+Ei,b2 introduced in Section II. Then, the storage functional V ,                                 +Em (t) − Em (t2 ) + Es (t) − Es (t2 )
+defined by (16), satisfies:
+                                                                                            ≥ Em ,b2 + Es,b2 − ΔE h − ΔE e − E m − E s
+                            V > V > −∞                                (28)
+                                                                               where for the last step the bounds (18) and (29) are used. Using
+for all time t ≥ t0 , with V defined in (21).
+                                                                               the above inequality in (16), recalling that Ei,bal ≥ E i,bal due to
+   Proof: From Assumption 1 and (23) it follows that:
+                                                                               (14) and Ei ≥ 0 due to (18), gives:
+                     Eh,com ≥ −ΔE h           ∀t ∈ T                 (29a)
+                                                                                       V ≥ Em ,b2 + Es,b2 − ΔE h − ΔE e − E m − E s
+                     Ee,com ≥ −ΔE e          ∀t ∈ T                  (29b)
+                                                                                       ∀t ∈ T2 .                                                              (34)
+   with T := [t0 , ∞). Split T in the intervals :
+       T1 := {t ∈ T |E m ,bal > Em ,b2 ∧ E s,bal > Es,b2 } (30a)                   Interval T3 : Denote an arbitrary time of entering T3 by t3 >
+                                                                               t0 , such that E s,bal (t3 ) = Es,b2 and E m ,bal (t3 ) > Em ,b2 . Since
+       T2 := {t ∈ T |E m ,bal ≤ Em ,b2 ∧ E s,bal ≤ Es,b2 } (30b)               in this region E s,bal ≤ Es,b2 and E m ,bal > Em ,b2 for all t ∈ T3 ,
+       T3 := {t ∈ T |E m ,bal > Em ,b2 ∧ E s,bal ≤ Es,b2 } (30c)               it follows that λs = 0 and λm > 0 for all t ∈ T3 , such that (15)
+                                                                               reduces to:
+       T4 := {t ∈ T |E m ,bal ≤ Em ,b2 ∧ E s,bal > Es,b2 } (30d)
+   such that T1 ∪ T2 ∪ T3 ∪ T4 = T . By hypothesis, t0 ∈ T1 .                          Ė s,bal + Ėh,com = Fh ẋm + Fs,rec
+                                                                                                                       
+                                                                                                                             ẋs
+Due to the shape of the function λi depicted in Fig. 3,                                                                      
+t ∈ Tk ⇐⇒ (λm (t), λs (t)) ∈ Λk , with k ∈ {1, 2, 3, 4} and Λk                                              + λTmm FmT m,harv ẋTmm                           (35)
+depicted in Fig. 9.
+   To prove (28), we now treat each case Tk separately.                               Ė m ,bal + Ėe,com = −Fe ẋs + (1 − λm )Fm,rec ẋm
+   Interval T1 : In this region, E i,bal > Ei,b2 . From (16), using                                             − λm Fmc ẋm − λm Pm ,diss .                 (36)
+(14), (29), and Ei ≥ 0, it follows that:
+      V > Em ,b2 + Es,b2 − ΔE h − ΔE e                ∀t ∈ T1 .       (32)     To obtain a lower bound on E s,bal + Eh,com , solve (17b) for
+                                                                               Fe ẋs and use it in (36). Solve the resulting expression for
+    Interval T2 : Denote an arbitrary time of entering T2 by t2 >              λm Fmc ẋm and use it in (17a). Then, solve the newly obtained
+t0 , such that E i,bal (t2 ) = Ei,b2 . Then, with E i,bal ≤ Ei,b2 , ∀t ∈       expression for Fh ẋm and use it in (35) to obtain:
+T2 , it follows that λi = 0, such that (15) reduces to:
+                                                                                                                                                    
+             Ė m ,bal + Ėe,com = −Fe ẋs + Fm,rec ẋm            (32a)        Ė s,bal + Ėh,com = λm Fm,harv ẋm + λTmm           FmT m,harv        ẋTmm
+              Ė s,bal + Ėh,com = Fh ẋm + Fs,rec
+                                              
+                                                    ẋs .            (32b)            + Ėm − Ės + Ė m ,bal + Ėe,com + λm Pm ,diss
+   Summing up (32a) and (32b), using (17) with λi = 0, yields:
+                                                                                      ≥ Ėm − Ės + Ė m ,bal + Ėe,com                                       (37)
+      Ė m ,bal + Ė s,bal + Ėh,com + Ėe,com = Ėm
+                                                                               since by design Pm ,diss ≥ 0 and λm Fm,harv ẋm ≥ 0. Time inte-
+          + Ės + 2Fm,rec ẋm + 2Fs,rec
+                                   
+                                         ẋs ≥ Ėm + Ės              (33)     gration of (37) from t3 to t, together with (40) of Lemma 2
+HECK et al.: DIRECT FORCE-REFLECTING TWO-LAYER APPROACH FOR PASSIVE BILATERAL TELEOPERATION WITH TIME DELAYS                                                 205
+
+
+
+(presented below), (18), (23), and (29), gives:                                Since αi > 0 and 0 ≤ Ei (t) ≤ E i due to (18), it follows that:
+  E s,bal (t) + Eh,com (t) ≥ E s,bal (t3 ) + Eh,com (t3 ) + Em (t)
+                                                                                  Ei,diff (t) + Ei (t) ≤ Ei,diff (t0 ) + Ei,b3 + (1 + αi )E i .            (45)
+     − Em (t3 ) − Es (t) + Es (t3 ) + E m ,bal (t) − E m ,bal (t3 )
+                                                                               Then, since the last two terms in (14) are nonpositive by design,
+     + Ee,com (t) − Ee,com (t3 )                                               it follows that E i,bal ≤ Ei,diff . Using this result, together with
+                                                                               (45), we finally obtain (40).                                     
+   ≥ −(1 + αm )E m − E s + Em ,b2 + Es,b2 − Em ,b3
+     − Em ,dif f (t0 ) − 2ΔE e − ΔE h .                                                                           REFERENCES
+Using this expression in (16), together with E m ,bal > Em ,b2 ,                [1] P. Hokayem and M. Spong, “Bilateral teleoperation: A historical survey,”
+Ei,bal ≥ E i,bal due to (14), and Ei ≥ 0 due to (18), results in:                   Automatica, vol. 42, pp. 2035–2057, 2006.
+                                                                                [2] C. Passenberg, A. Peer, and M. Buss, “A survey of environment-, operator-,
+                                                                                    and task-adapted controllers for teleoperation systems,” Mechatronics,
+   V > − (1 + αm )E m − E s + 2Em ,b2 + Es,b2 − Em ,b3                              vol. 20, pp. 787–801, 2010.
+                                                                                [3] E. Nuño, L. Basañez, and R. Ortega, “Passivity-based control for bilateral
+           − Em ,diff (t0 ) − 3ΔE e − ΔE h           ∀t ∈ T3 .          (38)        teleoperation: A tutorial,” Automatica, vol. 47, pp. 485–495, 2011.
+                                                                                [4] G. Niemeyer and J.-J. E. Slotine, “Stable adaptive teleoperation,” IEEE J.
+   Interval T4 : By using a similar approach as for region T3 ,                     Ocean. Eng., vol. 16, no. 1, pp. 152–162, 1991.
+the following result is obtained due to the symmetric design of                 [5] E. Nuño, L. Basañez, R. Ortega, and M. Spong, “Position tracking for non-
+the PaL:                                                                            linear teleoperators with variable time delay,” Int. J. Robot. Res., vol. 28,
+                                                                                    pp. 895–910, 2009.
+    V > − E m − (1 + αs )E s + Em ,b2 + 2Es,b2 − Es,b3                          [6] H. Wang and Y. Xie, “Task-space framework for bilateral teleoperation
+                                                                                    with time delays,” J. Dyn. Syst. Meas., Control, vol. 134, 2012, Art.
+                                                                                    no. 051010.
+            − Es,diff (t0 ) − 3ΔE h − ΔE e           ∀t ∈ T4 .          (39)    [7] R. Anderson and M. Spong, “Bilateral control of teleoperators with time
+                                                                                    delay,” IEEE Trans. Autom. Control, vol. 34, no. 5, pp. 494–501, May
+  Equation (28) follows directly from the lower bounds (31),                        1989.
+(34), (38), and (39) of regions T1 , T2 , T3 , and T4 .                        [8] D. Sun, F. Naghdy, and H. Du, “Application of wave-variable control to
+   Lemma 2: Given Assumptions 1 and 2, it follows for all                           bilateral teleoperation systems: A survey,” Annu. Rev. Control, vol. 38,
+                                                                                    pp. 12–31, 2014.
+t ≥ t0 that:                                                                    [9] D. Lawrence, “Stability and transparency in bilateral teleoperation,” IEEE
+                                                                                    Trans. Robot. Autom., vol. 9, no. 5, pp. 624–637, Oct. 1993.
+    E i,bal (t) + Ei (t) ≤ Ei,diff (t0 ) + Ei,b3 + (1 + αi )E i (40)           [10] R. Daniel and P. McAree, “Fundamental limits of performance for
+                                                                                    force reflecting teleoperation,” Int. J. Robot. Res., vol. 17, pp. 811–830,
+with the constant Ei,b3 defined in (22) and the constant E i                        1998.
+defined in (18).                                                               [11] K. Kuchenbecker and G. Niemeyer, “Induced master motion in force-
+                                                                                    reflecting teleoperation,” ASME J. Dyn. Syst., Meas. Control, vol. 128,
+   Proof: Use (17) in (8) to obtain:                                                pp. 800–810, 2006.
+       Ėm ,diff = Fh ẋm − (FeT s ) ẋTs s − λm Fm ,harv ẋm
+                                                                               [12] I. Polushin, P. Liu, and C.-H. Lung, “Stability of bilateral teleoperators
+                                                                                    with generalized projection-based force reflection algorithms,” Automat-
+                                                                                    ica, vol. 48, pp. 1005–1016, 2012.
+                    + Pm ,gen − λm Pm ,diss − Ėm                   (41a)      [13] D. Heck, “Delayed bilateral teleoperation: A direct force-reflecting con-
+                                                                                    trol approach,” Ph.D. dissertation, Dept. Mech. Eng., Eindhoven Univ.
+        Ės,diff = (FhT m ) ẋTmm − Fe ẋs − λs Fs,harv ẋs                       Technol., Eindhoven, The Netherlands, 2015.
+                                                                               [14] J. Love and W. Book, “Force reflecting teleoperation with adaptive imp-
+                    + Ps,gen − λs Ps,diss − Ės .                   (41b)           dance control,” IEEE Trans. Syst., Man Cybern., vol. 34, no. 1, pp. 159–
+                                                                                    165, Feb. 2004.
+ From Assumption 1, it follows that Fh ẋm ≤ F h ẋam and                     [15] D. Heck, A. Saccon, and H. Nijmeijer, “A 2-layer architecture for force-
+−Fe ẋs ≤ F e ẋas . Moreover, using 0 ≤ λi ≤ 1, it follows from                   reflecting bilateral teleoperation with time delays,” in Proc. Conf. Decis.
+                                                                                    Control, Osaka, Japan, Dec. 2015, pp. 1509–1514.
+(9) and (10) that Pi,gen − λi Pi,diss ≤ −αi Ei,diff . Then, together           [16] G. Niemeyer and J.-J. E. Slotine, “Towards force-reflecting teleopera-
+with Fi,harv ẋi ≥ 0, (41) can be bounded as:                                       tion over the internet,” in Proc. IEEE Int. Conf. Robot. Autom., Leuven,
+                                                                                  Belgium, 1998, pp. 1909–1915.
+         Ėi,diff ≤ −αi Ei,diff + F h ẋam + F e ẋas − Ėi .   (42)           [17] B. Hannaford and J.-H. Ryu, “Time domain passivity control of haptic
+                                                                                    interfaces,” IEEE Trans. Robot. Autom., vol. 18, no. 1, pp. 1–10, Feb.
+By adding and subtracting αi Ei and using (22), (42) can be                         2002.
+                                                                               [18] J.-H. Ryu, D.-S. Kwon, and B. Hannaford, “Stable teleoperation with
+rewritten to:                                                                       time-domain passivity control,” IEEE Trans. Robot. Autom., vol. 20, no. 2,
+                                                                                    pp. 365–373, Apr. 2004.
+   Ėi,diff + Ėi ≤ −αi (Ei,diff + Ei ) + αi Ei,b3 + αi Ei .            (43)   [19] D. Lee and K. Huang, “Passive-set-position-modulation framework for
+                                                                                    interactive robotic systems,” IEEE Trans. Robot., vol. 26, no. 2, pp. 354–
+Using the comparison Lemma (see [30, Ch. 3]), the following                         369, Apr. 2010.
+result is obtained:                                                            [20] J.-P. Kim and J. Ryu, “Energy bounding algorithm based on passivity
+                                                                                    theorem for stable haptic interaction control,” in Proc. Symp. Haptics
+     Ei,diff (t) + Ei (t) ≤ e−α i (t−t 0 ) (Ei,diff (t0 ) + Ei (t0 ))               Interfaces Virtual Environ. Teleoperator Syst., Chicago, IL, USA, 2004,
+                                            t                                      pp. 351–357.
+                                                                               [21] J. Kim and J. Ryu, “Robustly stable haptic interaction control using an
+                            + αi Ei,b3         e−α i (t−σ ) dσ                      energy-bounding algorithm,” Int. J. Robot. Res., vol. 29, pp. 666–679,
+                                             t0                                     2010.
+                                   t                                          [22] J.-P. Kim, S.-Y. Baek, and J. Ryu, “A force bounding approach for multi-
+                              +         e−α i (t−σ ) αi Ei (σ)dσ.       (44)        degree-of-freedom haptic interaction,” IEEE/ASME Trans. Mechatronics,
+                                   t0                                               vol. 20, no. 3, pp. 1193–1203, 2015.
+206                                                                                         IEEE TRANSACTIONS ON ROBOTICS, VOL. 34, NO. 1, FEBRUARY 2018
+
+
+
+[23] M. Franken, S. Stramigioli, S. Misra, C. Secchi, and A. Macchelli, “Bilat-                                Alessandro Saccon received the Laurea degree (cum
+     eral telemanipulation with time delays: A two-layer approach combining                                    laude) in computer engineering and the Ph.D. degree
+     passivity and transparency,” IEEE Trans. Robot., vol. 27, no. 4, pp. 741–                                 in control system theory from University of Padova,
+     756, Aug. 2011.                                                                                           Padova, Italy, in 2002 and 2006.
+[24] M. Franken, B. Willaert, S. Misra, and S. Stramigioli, “Bilateral telema-                                     After the completion of his Ph.D. studies, he
+     nipulation: improving the complementarity of the frequency- and time-                                     held until 2009 a Research and Development posi-
+     domain passivity approaches,” in Proc. IEEE Int. Conf. Robot. Autom.,                                     tion with University of Padova in joint collaboration
+     Shanghai, China, 2011, pp. 2104–2110.                                                                     with Ducati Corse working on control and optimiza-
+[25] M. Spong, S. Hutchinson, and M. Vidyasagar, Robot Modeling and Con-                                       tion methods for the exploration of the dynamics of
+     trol. Hoboken, NJ, USA: Wiley, 2006.                                                                      racing motorcycles for virtual prototyping studies us-
+[26] C. López Martı́nez, I. Polat, R. van de Molengraft, and M. Steinbuch,                                    ing multibody models and numerical optimal control
+     “Robust high performance bilateral teleoperation under bounded time-          methods. From 2009 until 2012, he held a Post-Doctoral Research position in
+     varying dynamics,” IEEE Trans. Control Syst. Technol., vol. 23, no. 1,        the Instituto Superior Técnico, Lisbon, Portugal, sponsored by the Portuguese
+     pp. 206–218, Jan. 2015.                                                       Science and Technology Foundation (FCT), working on motion planning, dy-
+[27] R. Hendrix, “Robotically assisted eye surgery: A haptic master console,”      namics, and control of autonomous robotic vehicles. Since 2013, he has been
+     Ph.D. dissertation, Dept. Mech. Eng., Eindhoven Univ. Technol., Eind-         an Assistant Professor of nonlinear control and robotics in the Department of
+     hoven, The Netherlands, 2011.                                                 Mechanical Engineering, Eindhoven University of Technology, Eindhoven, The
+[28] F. van Beek, D. Heck, H. Nijmeijer, W. Bergmann Tiest, and A. Kappers,        Netherlands. His areas of expertise include modeling, analysis, and control of
+     “The effect of damping on the perception of hardness,” in Proc. IEEE          multibody systems, geometric mechanics, nonlinear control theory, and numer-
+     World Haptics Conf., Evanston, IL, USA, 2015, pp. 82–87.                      ical optimal control for exploration of trajectory space of complex, and highly
+[29] B. Willaert, D. Corteville, D. Reynaerts, H. van Brussel, and E. Van-         manoeuvrable nonlinear systems. Recent work has focused on the development
+     der Poorten, “Transparency trade-offs for a 3-channel controller re-          of optimal constrained motion planning strategies for multiple autonomous
+     vealed by the bounded environment passivity method,” in Proc. 3rd Int.        robotic vehicles, robotics systems with unilateral position constraints, and con-
+     Conf. Adv. Comput.-Human Interact., St. Maarten, Dutch Antilles, 2010,        trol of mechanical systems subject to rigid contacts and impacts.
+     pp. 66–72.                                                                       Dr. Saccon’s thesis received the Claudio Maffezzoni best Ph.D. thesis award
+[30] H. Khalil, Nonlinear Systems. Englewood Cliffs, NJ, USA: Prentice-Hall,       by the Politecnico di Milano.
+     2002.
+                                                                                                              Ruud Beerens received the M.Sc. degree in mechan-
+                                                                                                              ical engineering at Eindhoven University of Technol-
+                                                                                                              ogy, Eindhoven, The Netherlands, in 2015, where he
+                                                                                                              is currently working toward the Ph.D. degree in the
+                                                                                                              Department of Mechanical Engineering. His current
+                                                                                                              research focus is on nonlinear and hybrid control de-
+                                                                                                              sign for high-performance mechatronic systems.
+                                                                                                                  His master thesis research focused on control of
+                                                                                                              bilateral teleoperation systems.
+
+                                                                                                              Henk Nijmeijer (F’00) received the M.Sc. and
+                                                                                                              Ph.D. degrees in mathematics from the University
+                                                                                                              of Groningen, Groningen, The Netherlands, in 1979
+                                                                                                              and 1983, respectively.
+                                                                                                                 From 1983 untill 2000, he was affiliated with the
+                                                                                                              Department of Applied Mathematics, University of
+                                                                                                              Twente, Enschede, The Netherlands. Since 1997, he
+                           Dennis Heck received the M.Sc. degree in mechani-                                  was also part-time affiliated with the Department
+                           cal engineering from Eindhoven University of Tech-                                 of Mechanical Engineering, Eindhoven University
+                           nology, Eindhoven, The Netherlands, and the Ph.D.                                  of Technology, Eindhoven, The Netherlands. Since
+                           degree in mechanical engineering from the Dynamics                                 2000, he has been a Full Professor at Eindhoven, and
+                           and Control Group, Eindhoven University of Tech-        chairs the Dynamics and Control section. He is appointed honorary knight of
+                           nology, in 2015, under the supervision of Prof. H.      the “golden feedback loop” (NTNU) in 2011. Since January 2015, he has been
+                           Nijmeijer and Dr. A. Saccon.                            the Scientific Director of the Dutch Institute of Systems and Control. He is a
+                              His master thesis research focused on motion and     Program Leader of the Dutch research program “Integrated Cooperative Auto-
+                           force control for cooperative manipulation under the    mated Vehicles.” Since April 2017, he has been the Director of the Graduate
+                           supervision of Prof. H. Nijmeijer. Since 2015, he has   Program Automotive Technology, Eindhoven University. He has published a
+                           been a Thermal Control Engineer in the High-Tech        large number of journal and conference papers, and several books.
+Semiconductor Industry. His research, which was supported by STW and part             Prof. Nijmeijer is or was at the editorial board of numerous journals. He is
+of the H-Haptics project, focused on the controller design for delayed bilateral   an Editor of Communications in Nonlinear Science and Numerical Simulations.
+teleoperation. His recent work involves the control of input nonaffine Peltier     He was the recipient of the IEE Heaviside premium, in 1990. Since 2011 he has
+elements and the control of complex underactuated and undersensed thermo-          been an IFAC Council Member. He is the recipient of the 2015 IEEE Control
+mechanical systems.                                                                Systems Technology Award.
+

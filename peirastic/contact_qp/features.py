@@ -258,11 +258,15 @@ class FeatureExtractor:
         self.last_features = None
 
     def extract(self, image, *, frame_seq, source_id, capture_time_s, received_time_s,
-                crop_box=None, hflip=False, already_aligned=False, clock_domain="host_monotonic"):
+                crop_box=None, hflip=False, already_aligned=False, clock_domain="host_monotonic",
+                registration_source_id=None):
         cfg = self.config
         if clock_domain not in ("host_monotonic", "offline_aligned"):
             raise ValueError("convert image time to controller clock before extraction")
-        registration = registration_revision(cfg, source_id=source_id, crop_box=crop_box, hflip=hflip,
+        # A publisher restart resets frame history, not the calibrated image geometry.
+        # Keep its instance ID in observation.source_id, outside the registration hash.
+        registration = registration_revision(cfg, source_id=source_id if registration_source_id is None else registration_source_id,
+                                             crop_box=crop_box, hflip=hflip,
                                              already_aligned=already_aligned, clock_domain=clock_domain)
         c = random_walk_confidence(image, cfg)
         q = window_quality(c, cfg)

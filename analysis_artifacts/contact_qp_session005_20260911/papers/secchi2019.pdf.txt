@@ -1,0 +1,511 @@
+2019 International Conference on Robotics and Automation (ICRA)
+Palais des congres de Montreal, Montreal, Canada, May 20-24, 2019
+
+
+
+
+            Energy Optimization for a Robust and Flexible
+                        Interaction Control
+                                            Cristian Secchi and Federica Ferraguti
+
+
+   Abstract— The possibility of adapting online the way a robot         The lack of ﬂexibility of the admittance control is due
+interacts with the environment is becoming more and more             to the embodiment of passivity. In fact, passivity comes as
+important. In this paper we introduce the tank based admit-          a byproduct of a speciﬁc admittance dynamics. Requiring
+tance controller. We show that all the admittance controllers
+can be modeled as an energy optimization problem and then            that a speciﬁc admittance dynamics remains passive is much
+we introduce a novel admittance control strategy that allows         more restrictive than requiring the passivity of the controlled
+to change online the interactive behavior while preserving a         system. Passivity constrains the way energy is exchanged
+stable interaction with the environment. The effectiveness of        and it does not depend on a speciﬁc dynamics. Thus, for
+the proposed architecture is experimentally validated.               achieving a robust interaction controller, it is sufﬁcient to
+                      I. I NTRODUCTION                               guarantee a proper ﬂow of energy.
+   The capability of interacting with highly variable and               Several strategies coping with passivity disregarding dy-
+poorly structured environments is becoming more an more              namics have been proposed in the literature [11]–[13]. In
+crucial in many robotic applications. For example, surgical          particular, the Time Domain Passivity Approach (TDPA)
+manipulators have to autonomously interact with (parts of)           monitors the energy ﬂow through a power port and reacts
+the human body whose model is time-varying and only par-             to an energy production by activating an extra dynamics,
+tially known [1]–[3], collaborative robots need to physically        a damper, to restore passivity. Such a strategy has been
+interact with humans [4]–[6] and robots in warehouses need           successfully exploited in a number of applications [14], [15].
+to manipulate many different items, with different physical             Energy tanks [1], [16] have been exploited for disem-
+characteristics, for building packages to deliver [7].               bodying passivity from any speciﬁc desired behavior. The
+   Thus, it is very important that robots can interact in a          tank, a generic energy storing element, stores the energy
+robust and ﬂexible way. Robustness allows the robot to               dissipated by a system and it allows to re-use it for planning
+remain stable even when interacting with poorly known                a passive approximation of the desired behavior. Energy
+environments while ﬂexibility allows the robot to dynami-            tanks allow to achieve the highest ﬂexibility while preserving
+cally change the interactive behavior according to the kind          a passive behavior. They have been successfully exploited
+of environment (e.g. more compliant when interacting with            in bilateral teleoperation [17]–[19], in multi-robot systems
+fragile objects).                                                    [20], [21]], in force control [22], [23] and in human-robot
+   Admittance control [8] is a very popular strategy for             collaboration [5], [24]. In [25] energy tanks have been
+interaction control. Using this technique, the controlled            exploited for reproducing a virtual coupling among robots
+robot mimics a passive physical dynamics (e.g. mass-spring-          but the passive approximation of the desired dynamics is
+damper system), i.e. the admittance dynamics. The passivity          empirically designed and the resulting behavior is not always
+embodied in the admittance dynamics makes the interaction            close to the desired one.
+robust. In fact, it is well known that a passive system can             In this paper we propose a simple robust and ﬂexible im-
+interact in a stable way with poorly known environments [9].         plementation of the admittance control. Using energy tanks
+   Flexibility is a weak point of the admittance control.            we show that the admittance control can be reformulated
+Changing online the admittance dynamics makes the con-               as an optimization problem, which in discrete time becomes
+trolled robot a hybrid system and the robust behavior due to         convex. Given any desired, possibly time-varying, admittance
+passivity is lost. Even milder changes such as the variation of      dynamics, by solving online the optimization problem it
+the parameters of the initial admittance dynamics can lead to        is possible to ﬁnd the best passive approximation of the
+a loss of passivity [1]. Several approaches for implementing         desired behavior. Using energy tanks, passivity is completely
+a variable admittance control have been proposed in the              disembodied from a speciﬁc admittance dynamics and it
+literature (see e.g. [5], [10]). Nevertheless, the ﬂexibility they   becomes just a constraint to be satisﬁed.
+allow to achieve is limited (typically variations of the initial        The proposed approach is not just a reaction to a violation
+admittance dynamics) and they signiﬁcantly complicate the            of passivity or to an excess of energy exchanged. It allows to
+control architecture.                                                plan the best passive approximation of a desired interactive
+                                                                     behavior. In other words, it makes the system aware of the
+  C. Secchi and F. Ferraguti are with the Department of              amount of energy it can exploit for planning the robust
+Sciences and Methods for Engineering (DISMI), University of
+Modena and Reggio Emilia, Italy {cristian.secchi,                    interactive behavior that is the closest (according to a user
+federica.ferraguti}@unimore.it                                       deﬁned metric) to the desired one. Furthermore, the structure
+
+978-1-5386-6027-0/19/$31.00 ©2019 IEEE                           1919
+                                                    Fe (t)                  ﬁeld (e.g. elastic) acting on the system. The model (1) is very
+           Velocity Fc (t)
+          Controller
+                                   Robot          v(t)         Env.         general and it encompasses all kinds of desired mechanical
+                                                                            interactive behaviors such as the commonly used mass-
+                                                                            spring-damper model [26].
+                                                                               It is well known, see e.g. [9], that (1) is passive with
+                                                                            respect to the pair (v(t), Fe (t)) using Ha (x, v) = P (x) +
+                vd (t)                                                      1 T
+                                                                            2 v M (x)v as an energy function. By changing the inertia,
+                                Admittance
+                                 Dynamics
+                                                                            the potential and the damping of the admittance model, it is
+                                                                            possible to change over time the desired interaction model.
+Fig. 1. The admittance control architecture. The robot block includes the   This kind of behavior can be modeled by making M (x),
+kinematic functions necessary to the implementation of the control.         P (x) and D(x) time dependent. Thus, the energy function
+                                                                            of (1) becomes:
+                                                                                                                1
+of the proposed controller is very simple independently of                             Ha (x, v, t) = P (x, t) + v T M (x, t)v          (2)
+the admittance dynamics to be implemented.                                                                      2
+   Thus, the contribution of this paper is a novel approach                 Using (1), it is easy to see that
+to admittance control, which allows to achieve an interactive
+                                                                                                 ∂P                       ∂Ha
+behavior which is robust, thanks to the passivity enforcement,                 Ḣa (x, v, t) =      ẋ + v T M (x, t)v̇ +     =
+ﬂexible, thanks to the disembodiment of passivity, and sim-                                      ∂x                        ∂t
+                                                                                                                                 ∂Ha
+ple, thanks to the convexity of the optimization problem to                                             = FeT v − v T D(x, t)v +         (3)
+be solved.                                                                                                                        ∂t
+   The paper is organized as follows: in Sec. II the main                   If we consider physically sensitive variations, we can assume
+problem addressed in the paper is stated. In Sec. III energy                that D(x, t) ≥ 0 for all t ≥ 0 and, therefore, v T D(x, t)v ≥ 0
+tanks and their use for implementing passive dynamics is                    which leads to energy dissipation. On the other hand, the
+shown and in Sec. IV the tank based admittance control                      term ∂H  a
+                                                                                   ∂t is sign indeﬁnite and, therefore, it can introduce
+is presented ﬁrst in a time-continuous setting and then in                  energy into the system destroying the passivity of the admit-
+discrete time for a practical implementation. In Sec. V                     tance dynamics.
+the proposed architecture is experimentally validated and in                   Passivity can be preserved if
+Sec. VI conclusions are drawn and future work is addressed.                                        ∂Ha
+                                                                                                          ≤ v T D(x)v                   (4)
+                   II. P ROBLEM S TATEMENT                                                           ∂t
+   In Fig. 1, a standard admittance control architecture in                 namely, if the energy produced by the variations is less than
+the task space is illustrated. Consider a velocity-controlled n             the energy dissipated. Nevertheless, (4) is conservative since
+DOFs manipulator that has to interact with the environment.                 it refers only to Ha (x, v, t) while there may be other storage
+In the admittance control architecture a desired interactive                functions that better allow to model the energy ﬂows of
+behavior, the admittance dynamics, is integrated using the                  the system in the time-variant case. Furthermore, (4) is a
+external force Fe (t) ∈ Rn for producing a velocity setpoint                scalar condition while the v(t) ∈ Rn and, therefore, (4)
+vd (t) ∈ Rn to be tracked by the robot for reproducing the                  does not provide a clear guideline on how to build a passive
+desired interactive behavior. We assume that the interaction                approximation of the desired behavior and this may lead to
+happens away from singularities. Furthermore, we make the                   unnecessary poor performance.
+common assumption that the velocity controller and the low                     We aim at building a tank based admittance controller
+level controllers of the robot are tuned in such a way that                 that clearly shows the energy available for implementing
+v(t) ≈ vd (t), where v(t) ∈ Rn is the velocity of the end-                  passively any desired, possibly time-varying, admittance
+effector of the robot. Thus, the robot will behave exactly                  dynamics and that, in case the desired behavior cannot be
+as the admittance dynamics, meaning that the force/velocity                 implemented, it ﬁnds and implements the closest passive one.
+behaviors of the admittance dynamics and of the robot are the                   III. E NERGY TANKS FOR IMPLEMENTING DESIRED
+same, i.e. (Fe (t), vd (t)) = (Fe (t), v(t)). If the admittance                                         DYNAMICS
+dynamics is passive, then the robot behaves passively and
+                                                                              An energy tank is an energy storing element that can be
+a robust interaction with poorly known environments is
+                                                                            represented by
+guaranteed [9]. More details on the standard admittance                                     
+control can be found in [8]. Let                                                               ẋt (t) = ut (t)
+                                                                                                                                  (5)
+                                          ∂P                                                   yt (t) = ∂x
+                                                                                                         ∂T
+                                                                                                            t
+                                                                                                              = xt (t)
+          M (x)ẍ + C(x, ẋ)ẋ + D(x)ẋ +     = Fe      (1)
+                                          ∂x                                where xt ∈ R is the state of the tank, (ut (t), yt (t)) ∈ R × R
+be a generic Euler-Lagrange admittance model, where x(t) ∈                  is the power port through which the tank exchanges energy
+Rn and v(t) = ẋ(t). M (x) = M T (x) > 0 is the inertia                     with the rest of the world and
+matrix, C(x, ẋ)ẋ(t) encodes the Coriolis terms, D(x) ≥ 0                                                   1
+represents damping effects and P : Rn → R is a potential                                           T (xt ) = x2t                         (6)
+                                                                                                             2
+
+                                                                        1920
+is the energy stored in the tank. The tank is not associ-             ever depleting the tank and, therefore, avoiding singularities
+ated with any speciﬁc physical dynamics, it is just stor-             in (8). Let S be a system passive with respect to the input-
+ing/releasing energy by means of (ut (t), yt (t)). The energy         output pair (uS (t), yS (t)) using the lower bounded storage
+stored in the tank can be exploited for reproducing any               function S(t). The port-behavior of S can be reproduced by
+desired port-behavior. This can be done by the following              exciting (9) with uS (t) and by setting γ(t) = yS (t) in (7)
+modulation                                                           and the following result holds.
+                     ut (t) = AT (t)u(t)
+                                                          (7)         Proposition 2 If xt (0) is chosen such that T (xt (0)) ≥
+                     y(t) = A(t)yt (t)
+                                                                      S(0) + ε, then T (xt (t)) ≥ ε for all t ≥ 0.
+where (u(t), y(t)) ∈ Rn × Rn is the input/output port and
+A(t) ∈ Rn is deﬁned as                                                The proof can be found in [20] for the single port case and
+                                                                      in [25] for the multi-port case.
+                                   γ(t)
+                         A(t) =                                (8)       This result is very intuitive. In fact, in a passive system it
+                                   xt (t)                             is possible to extract at most the initial stored energy. If the
+where γ(t) ∈ Rn is the desired value for the output y(t). In          initial energy stored in the tank is greater that the maximum
+fact, by plugging (7) in (5) we get                                   energy that can be extracted, then the tank will never deplete.
+                                                                        Thus, energy tanks can be exploited for implementing
+                   ẋt (t) = AT (t)u(t)
+                                                         (9)          any passive system as an admittance dynamics in Fig. 1.
+                   y(t) = A(t)yt (t) = γ(t)
+                                                                      This result shows that passivity can be disembodied by any
+which shows how the exchange of energy with the tank can              physical dynamics. In fact, the port-behavior of any passive
+be modulated for obtaining any desired value for the port             system can be implemented by modulating the energy ﬂow
+output y(t). The modulated tank (9) fails to implement the            of the tank, a generic energy storing element.
+desired behavior when xt = 0. This makes a lot sense, since
+when xt = 0, it means that no more energy is available in                       IV. TANK BASED ADMITTANCE CONTROL
+the tank and, therefore, nothing can be implemented using
+                                                                         Energy tanks can be exploited for implementing the admit-
+the energy stored in the tank [1]. Thus, in order to avoid
+                                                                      tance dynamics in an admittance control scheme for guaran-
+singularities in (8) it is necessary to initialize xt in such a
+                                                                      teeing ﬂexibility while ensuring passivity. The proposed tank
+way that T (xt (0)) = ε > 0 and to guarantee that T (xt (t)) ≥
+                                                                      based admittance control scheme is illustrated in Fig. 2.
+ε. If the energy requested for implementing the desired
+behavior is more than the one available in the tank, only
+                                                                                                                           Fe (t)
+an approximation of the desired output can be implemented.                       Velocity Fc (t)
+                                                                                                          Robot                         Env.
+Different heuristics for deﬁning the approximation have been                    Controller
+proposed (see e.g. [1], [16]).                                                                                            v(t)
+   If a very big amount of energy is stored in the tank,
+practically unstable behaviors may be implemented [11]. In
+order to avoid such a situation, an upper bound T̄ > ε > 0                  vd (t)             yt (t)                  ut (t)     T
+                                                                                       A(t)               Tank                   A(t)
+on the amount of energy that can be stored in the tank is set.
+This bound is application dependent and the energy stored                                                     xt (t)
+in the tank saturates at T̄ .
+                                                                                              yP (t)                    yP (t)
+   It can be easily proven that the modulation (7) implements                                            Optimize
+a passive exchange of energy.
+                                                                                                             yd (t)
+Proposition 1 If T (xt (t)) ≥ ε for all t ≥ 0, then the
+modulated tank (9) is passive independently of the desired                                               Desired
+value γ(t).                                                                                             admittance
+
+     Proof: From (5) we have that Ṫ (t) = ut (t)yt (t). Using
+(7) we have that:                                                                Fig. 2.   The tank based admittance control scheme
+
+Ṫ (xt (t)) = AT (t)u(t)yt (t) = xt (t)AT (t)u(t) = y T (t)u(t)          The input and the output of the modulated tank (9) are
+                                                            (10)      the interaction force Fe (t) and the velocity commanded
+where, since T (xt (t)) ≥ ε for all t ≥ 0, A(t) is well posed.        to the robot vd (t), respectively. The desired admittance is
+From (10) we have                                                     computed at each instant of time and provides an input
+    t
+                                                                      yd (t) to an optimizer. The optimizer, considering the state
+        uT (τ )y(τ )dτ = T (xt (t)) − T (xt (0)) ≥ −T (xt (0))        of the tank and the desired behavior, computes the best
+    0
+                                                               (11)   passive approximation yP (t) of the desired behavior yd (t).
+which proves the passivity of (9).                                    The output yP (t) is then used for modulating the energy
+  If the initial energy is sufﬁcient, it is possible to use the en-   ﬂowing into/out of the energy tank by setting γ(t) = yP (t)
+ergy of the tank for reproducing any passive behavior without         in (8).
+
+                                                                  1921
+   The implementation of a non passive time-varying dynam-          This allows to avoid unwanted perturbations due to the
+ics can deplete the tank. This would lead to a singularity          preservation of passivity.
+problem in (7) and to a loss of passivity that would make              Solving (13) can be very complex due to the presence
+the admittance control neither robust nor ﬂexible. This sit-        of the integral constraint (13b). Nevertheless, starting from
+uation can be avoided by exploiting the tank as a ﬁlter, i.e.       (13) it is possible to build a convex optimization problem in
+preventing the implementation of a desired output when it           discrete time.
+requires more than the energy available in the tank (e.g. as in     A. Discrete-time tank based admittance control
+[27] or in [24]). Nevertheless, the price to pay for passivity
+would be very high since the implemented dynamics can                  In practice, admittance control is implemented in discrete
+differ a lot from the desired one.                                  time. When discretizing passive systems (e.g. the tank dy-
+   Passivity is a constraint that needs to be satisﬁed by any,      namics in (5)) it is necessary to exploit an integration method
+possibly time-varying, dynamics in order to achieve a robust        that is fast, in order to keep the pace with the real-time
+interaction. According to Proposition 1, the implemented            constraints, and, at the same time, to keep on guaranteeing
+admittance is passive if T (xt (t)) ≥ ε. Thus, given a desired      the passivity of the discrete dynamics. Euler integration is a
+behavior yd (t), its best passive implementation yP (t) can be      widely used method for discretizing the admittance dynamics
+found by solving the following optimization problem:                since it is simple and fast. Nevertheless, Euler integration
+                                                                    does not preserve the passivity of the continuous dynamics
+                      min yP (t) − yd (t)2               (12a)    and several strategies for compensating this effect have been
+                     yP (t)
+                                                                    proposed in the literature (see e.g. [14], [28]). However, these
+                                 T (xt (t)) ≥ ε            (12b)    compensations make the discrete time admittance controller
+   Then, by setting γ(t) = yP (t) in (8) it is possible to          more complex and they can introduce unwanted spurious
+implement the best passive approximation of the desired             dynamics that can negatively affect the interaction. This is
+behavior without depleting the tank and, consequently, while        not in the spirit of this paper, where by abstracting the
+guaranteeing passivity.                                             standard admittance control, we aim at achieving simplicity,
+                                                                    besides robustness and ﬂexibility of the interaction.
+   The constraint on the energy of the tank (12b) can be
+                                                                       In this section, we will introduce a discrete version of (13)
+made dependent on the variable to optimize. This can be
+                                                                    that is able to cope with the extra energy generated by the
+done by exploiting the balance in (11) and recalling that
+                                                                    Euler integration of the tank dynamics.
+since γ(t) = yP (t), then y(t) = yP (t). Thus (12) can be
+                                                                       Using the Euler integration method for discretizing (5)
+rewritten as:
+                                                                    leads to
+                              min yP (t) − yd (t)2       (13a)                    xt (k) = xt (k − 1) + τ ut (k − 1)          (14)
+                              yP (t)
+              t                                                    where τ is the sampling time and where, with a slight abuse
+                   uT (τ )yP (τ )dτ ≥ T (xt (0)) + ε       (13b)    of notation, we denote with f (k) the value f (kτ ) for each
+               0                                                    discrete function f : Z → Rp , for p ∈ N.
+   By solving online the optimization problem in (13) it               Using (7) we can rewrite (14) as:
+is possible to ﬁnd the best passive implementation of the
+                                                                              xt (k) = xt (k − 1) + τ AT (k − 1)u(k − 1)                (15)
+desired behavior. If the desired admittance dynamics is
+passive, it turns out that (13b) is always satisﬁed and,            Considering the discrete version of (6) and using (15), we
+according to Proposition 2, the desired behavior can be             have that the energy of the tank evolves as:
+exactly implemented. When implementing a variation of the                        1         1
+dynamics as shown, e.g., in (3) the desired behavior can            T (xt (k)) = x2t (k) = (xt (k − 1) + τ AT (k − 1)u(k − 1))2
+                                                                                 2         2
+be non passive and then the best passive approximation is                                                                  (16)
+implemented.                                                        By simple computations, (16) can be rewritten as:
+   The tank based admittance control strategy abstracts and
+                                                                       T (xt (k)) =
+generalizes the standard admittance control. Using the pro-                                                         2
+
+posed architecture, it is possible to passively implement time-     = T (xt (k − 1)) + τ uT (k − 1)y(k − 1) + 2x2 (k−1)
+                                                                                                                  τ
+                                                                                                                        (uT (k − 1)y(k − 1))2
+                                                                                                                t
+
+varying behaviors achieving a ﬂexibility of the interaction                                                                                (17)
+control while preserving a robustly stable behavior. Further-       As evident from (17), the discrete integration leads to a
+more, thanks to the abstraction provided by the energy tanks,       production of energy. In fact, while the ﬁrst two terms of
+no extra machineries for passivations are needed even when          the right hand side are consistent with the passive behavior
+the admittance dynamics to implement is complex.                    of the tank, the last term, which is always positive, represents
+   The proposed architecture is not reactive, i.e. it does not      an extra injection of energy due to the discreteintegration. In
+activate an unwanted physical dynamics (e.g a damper) for           fact, when τ → 0, the last term vanishes.
+eliminating energy produced by the implementation of a                 Using (17) we can write
+non passive dynamics. The tank based admittance control
+                                                                                                    
+                                                                                                    k−1                    
+                                                                                                                           k−1
+plans the best passive approximation consistent with the               T (xt (k)) − T (xt (0)) =          τ uT (i)y(i) +         Δ(i) (18)
+energy available in the tank, i.e. with the passivity constraint.                                   i=0                    i=0
+
+
+                                                                1922
+where                                                                          Algorithm 1: Tank Based Admittance Control
+                            τ2
+                Δ(i) =             (uT (i)y(i))2 > 0                 (19)      1 Require: yd (k − 1), T (xt (k − 1)), δ(k − 1), u(k − 1)
+                          2x2t (i)                                             2 A(k − 1) = −τ uT (k − 1)
+                                                                               3 B(k − 1) = −ε − δ(k − 1) + T (xt (k − 1))
+Because of the regenerative effects due to the Euler integra-                  4 yP (k − 1) ← (25)
+tion, the result of Proposition 1 do not hold anymore. In fact,                5 A(k − 1) = P
+                                                                                              y (k−1)
+                                                                                              x (k−1)
+                                                                                                t
+from (18) we have that:                                                        6
+                                                                                                        2
+                                                                                   Δ(k − 1) = 2x2τ(k−1) (uT (k − 1)yP (k − 1))2 > 0
+                                                                                                    t
+
+  
+  k−1                                                 
+                                                      k−1                      7 δ(k) = δ(k − 1) + Δ(k − 1)
+         τ uT (i)y(i) = T (xt (k)) − T (xt (0)) −            Δ(i) ≥            8 T (xt (k)) = T (xt (k − 1)) + τ uT (k − 1)yP (k − 1) + Δ(k − 1)
+                                                                               9 xt (k) = xt (k − 1) + τ A (k − 1)u(k − 1)
+                                                                                                           T
+   i=0                                                 i=0
+                                                      
+                                                      k−1
+                                ≥ −T (xt (0)) −              Δ(i)    (20)                                         k−1
+                                                      i=0                   the tank there is always at least        i=0 Δ(i) energy left
+         k−1                                                               that compensates the regenerative effects due to the Euler
+and since i=0 Δ(i) > 0 is not constant, passivity does not                  integration.
+hold anymore.                                                                                           k−1
+                                                                               Since Δ(k) > 0, term i=0 Δ(i) grows over time and,
+  Nevertheless, if we enforce as a constraint that                          therefore, the energy available for passively implementing
+                                                                                                                              k−1
+                                        
+                                        k−1                                 the desired control action, i.e. T̄ − T (xt (0)) − i=0 Δ(i),
+                    T (xt (k)) ≥ ε +           Δ(i)                  (21)   is less and less. Thus, it is necessary to choose T̄ in such a
+                                         i=0                                way that during the application there is always a sufﬁcient
+we have that xt (k) is always different from zero preventing                amount of energy. Alternatively, it is possible to increase the
+singularities in (8). From (20) we have that                                upper bound on the energy
+                                                                                                   k−1 that can be stored in the tank
+                                                                            when T̄ − T (xt (0)) − i=0 Δ(i) is too small. This does not
+  
+  k−1
+                                                                            affect the passivity of the system and makes more energy
+         τ uT (i)y(i) =                                                     available for implementing the passive behavior.
+   i=0
+                                                                               The algorithm for implementing the tank based
+                                                                                                                           k−1admittance
+                                   
+                                   k−1
+                                                                            control is reported in Alg. 1, where δ(k) = i=0 Δ(i).
+   = T (xt (k)) − T (xt (0)) −           Δ(i) ≥ −T (xt (0))          (22)
+                                                                               The algorithm requires the desired value for the com-
+                                   i=0
+                                                                            manded velocity yd (k − 1), the current energy stored in the
+which guarantees passivity.                                                 tank T (xt (k − 1)), the amount of energy produced because
+  At time k − 1 it is necessary to choose yP (k − 1) such                   of the Euler integration δ(k − 1) and the interaction force
+that (21) is satisﬁed. Using (17) we can write                              u(k−1) (Line 1). The matrices for building the constraint are
+                                                                            computed (Lines 2-3) and the best passive approximation of
+                                                                            yd (k − 1) is computed by solving the optimization problem
+  T (xt (k)) =
+                                                                            in (25) (Line 4). The modulation matrix is computed using
+  = T (xt (k − 1)) + τ uT (k − 1)yP (k − 1) + Δ(k − 1) ≥                    yP (k − 1) (Line 5) and Δ(k − 1) is computed according to
+                                                      
+                                                      k−1                   (19) (Line 6). Finally, the energy produced because of the
+                                               ≥ε+           Δ(i)    (23)   Euler integration, the energy stored in the tank and the state
+                                                      i=0                   of the tank are updated (Lines 7-9).
+which simpliﬁes in                                                                                V. E XPERIMENTS
+                                  
+                                  k−2
+                                                                               The control architecture proposed in this paper has been
+ τ uT (k − 1)yP (k − 1) ≥ ε +            Δ(i) − T (xt (k − 1)) (24)         validated on a real robotic setup. In particular, the algorithm
+                                  i=0
+                                                                            described in Sec. IV-A has been implemented using a Univer-
+which is a linear constraint in yP (k − 1).                                 sal Robot 5 manipulator, equipped with a ATI Mini 45 6-axis
+   The new passivity condition in (24) can be used for                      force/torque (F/T) sensor at its end-effector to measure the
+building the following convex optimization problem that has                 interaction forces and torques. The robot and the sensor run
+to be solved online for implementing the discrete time tank                 with a frequency of 125 Hz, thus the considered sampling
+based admittance control.                                                   time is 8 ms. Due to space limitations, in the following we
+                                                                            will only report plots of the robot behavior along one axis.
+                 min yP (k − 1) − yd (k − 1)2                     (25a)
+               yP (k−1)                                                        Experiments have been performed in order to show that
+                A(k − 1)yP (k − 1) ≤ B(k − 1)        (25b)                  actions that could destroy the passivity of the standard
+                                                                           admittance dynamics (e.g. when implementing a variation of
+                                               k−2
+where A = −τ uT (k − 1) and B = −ε − i=0 Δ(i) +                             the dynamics as shown in (3)) can be passively implemented
+T (xt (k − 1)).                                                             by the tank based admittance controller proposed in this
+   The passivity constraint (25b) forces
+                                    k−1the energy of the                   paper. In the following experiments the energy thresholds
+tank to be greater than T (xt (0)) + i=0 Δ(i). This means                   have been selected as T̄ = 10 J and T (0) = ε = 0.1. The
+that once the desired passive output is implemented, in                     accompanying video clip shows the experimental results.
+
+                                                                        1923
+     Fig. 3.   Force along the x-axis measured by the F/T sensor.      Fig. 4. Energy produced by the standard admittance controller (blue line)
+                                                                       and by the tank based admittance controller (red line).
+
+
+   The ﬁrst experiment has been performed to provide an
+example of human-robot collaboration. The operator directly
+guides the end-effector of the admittance-controlled robot for
+performing collaborative tasks such as teach by demonstra-
+tion, manual guidance for robot programming, etc. As shown
+in [29], in this situation stability problems may arise if the
+environment (e.g. the human) the robot is interacting with
+gets too stiff. A possible solution can be to adapt the inertia
+and the damping of the admittance controller to recover the
+stability [5]. However, inertia variation in the admittance
+control can produce energy, destroying the passivity of the            Fig. 5. Velocity commanded by the standard admittance controller (blue
+system [1].                                                            line) and corrected by the tank based admittance controller (red line).
+   Since in this scenario the human operator can directly
+drive the robot by applying a force to the end-effector, we
+do not consider elastic terms in the admittance control model            A second experiment that shows the effectiveness of the
+(1). The desired inertia is chosen as a diagonal matrix with           proposed controller in the execution of an interactive task
+elements equal to 1.5 kg and 0.5 kg/m2 for the translations            with variable stiffness can be seen in the accompanying
+and rotations, respectively, while the damping is a diagonal           video.
+matrix with constant elements equal to 0.1 N s/m (transla-
+tions) and 0.05 N ms/rad (rotations). Then, we implemented                        VI. C ONCLUSIONS AND F UTURE W ORK
+a proportional inertia augmentation during the interaction                In this paper we have proposed the tank based admittance
+of the user with the admittance-controlled robot, both with            control in order to make the robot interaction robust and
+the standard admittance controller and with the tank based             ﬂexible. We have formally shown that admittance control can
+admittance controller proposed in this paper. In particular,           be modeled as an optimization problem with constraints on
+the inertia increases of 0.07 kg (translations) and 0.02 kg/m2         the energy stored in the tank. Treating passivity as an asset to
+(rotations) every 8 ms. Fig. 3 shows the interaction force             exploit rather than something to enforce using external action
+along the x-axis exerted by the user during the manual                 paves the way to a new perspective for interation control.
+guidance of the robot and measured by the F/T sensor. Fig. 4           Future work aims at exploiting tank based admittance control
+shows the energy in the system with the standard admittance            for planning a robust interaction.
+controller (blue line) and with the tank based admittance
+controller (red line). As it can be seen, the energy with the
+standard approach results in a negative energy which can
+produce an active behavior, while the passivity constraint is
+satisﬁed with the tank based approach. The active behavior
+is corrected by the tank based admittance controller which
+commands a velocity that is the best passive implementation
+of the desired admittance dynamics, as shown in Sec. IV
+where the optimization problem is proposed. Fig. 5 shows
+the velocity along the x-axis as it would be commanded
+by the standard admittance controller (blue line) and as it
+is corrected by the tank based admittance controller, while
+Fig. 6 shows the evolution over time of the energy of the
+tank.                                                                              Fig. 6.   Evolution over time of the tank energy.
+
+
+                                                                    1924
+                              R EFERENCES                                             time delays,” IEEE Transactions on Robotics, vol. 34, no. 1, pp. 194–
+                                                                                      206, Feb 2018.
+ [1] F. Ferraguti, N. Preda, A. Manurung, M. Bonfé, O. Lambercy,                [20] P. R. Giordano, A. Franchi, C. Secchi, and H. Buelthoff, “A passivity-
+     R. Gassert, R. Muradore, P. Fiorini, and C. Secchi, “An energy tank-             based decentralized strategy for generalized connectivity mainte-
+     based interactive control architecture for autonomous and teleoperated           nance,” International Journal of Robotics Research, vol. 32, no. 3,
+     robotic surgery,” IEEE Transactions on Robotics, vol. 31, no. 5, pp.             pp. 299–323, 2013.
+     1073–1088, Oct 2015.                                                        [21] L. Sabattini, C. Secchi, and C. Fantuzzi, “Achieving the desired
+ [2] A. Barthel, D. Trematerra, M. A. Nasseri, D. Zapp, C. P. Lohmann,                dynamic behavior in multi-robot systems interacting with the envi-
+     A. Knoll, and M. Maier, “Haptic interface for robot-assisted oph-                ronment,” in 2017 IEEE International Conference on Robotics and
+     thalmic surgery,” in 2015 37th Annual International Conference of                Automation (ICRA), May 2017, pp. 2097–2102.
+     the IEEE Engineering in Medicine and Biology Society (EMBC), Aug            [22] E. Shahriari, A. Kramberger, A. Gams, A. Ude, and S. Haddadin,
+     2015, pp. 4906–4909.                                                             “Adapting to contacts: Energy tanks and task energy for passivity-
+ [3] F. Ferraguti, N. Preda, M. Bonfé, and C. Secchi, “Bilateral teleop-             based dynamic movement primitives,” in 2017 IEEE-RAS 17th Inter-
+     eration of a dual arms surgical robot with passive virtual ﬁxtures               national Conference on Humanoid Robotics (Humanoids), Nov 2017,
+     generation,” in 2015 IEEE/RSJ International Conference on Intelligent            pp. 136–142.
+     Robots and Systems (IROS), Sept 2015, pp. 4223–4228.                        [23] A. Dietrich, C. Ott, and S. Stramigioli, “Passivation of projection-
+ [4] V. Villani, F. Pini, F. Leali, and C. Secchi, “Survey on humanrobot              based null space compliance control via energy tanks,” IEEE Robotics
+     collaboration in industrial settings: Safety, intuitive interfaces and           and Automation Letters, vol. 1, no. 1, pp. 184–191, Jan 2016.
+     applications,” Mechatronics, 2018, in press, available online.              [24] G. Raiola, C. A. Cardenas, T. S. Tadele, T. de Vries, and S. Stramigioli,
+ [5] C. Talignani Landi, F. Ferraguti, L. Sabattini, C. Secchi, M. Bonf, and          “Development of a safety- and energy-aware impedance controller for
+     C. Fantuzzi, “Variable admittance control preventing undesired oscil-            collaborative robots,” IEEE Robotics and Automation Letters, vol. 3,
+     lating behaviors in physical human-robot interaction,” in Proceedings            no. 2, pp. 1237–1244, April 2018.
+     of the IEEE/RSJ International Conference on Intelligent Robots and          [25] G. Riggio, C. Fantuzzi, and C. Secchi, “On the use of energy tanks
+     Systems (IROS), Vancouver, Canada, 2017.                                         for multi-robot interconnection,” in Proceedings of the 2018 IEEE/RSJ
+ [6] P. Maurice, M. E. Huber, N. Hogan, and D. Sternad, “Velocity-                    Conference on Intelligent Robots and Systems, 2018.
+     curvature patterns limit humanrobot physical interaction,” IEEE             [26] S. Farsoni, C. T. Landi, F. Ferraguti, C. Secchi, and M. Bonf,
+     Robotics and Automation Letters, vol. 3, no. 1, pp. 249–256, Jan 2018.           “Compensation of load dynamics for admittance controlled interac-
+ [7] N. Correll, K. E. Bekris, D. Berenson, O. Brock, A. Causo, K. Hauser,            tive industrial robots using a quaternion-based kalman ﬁlter,” IEEE
+     K. Okada, A. Rodriguez, J. M. Romano, and P. R. Wurman, “Analysis                Robotics and Automation Letters, vol. 2, no. 2, pp. 672–679, April
+     and observations from the ﬁrst amazon picking challenge,” IEEE                   2017.
+     Transactions on Automation Science and Engineering, vol. 15, no. 1,         [27] A. Franchi, C. Secchi, H. I. Son, H. H. Bülthoff, and P. Robuffo Gior-
+     pp. 172–188, Jan 2018.                                                           dano, “Bilateral teleoperation of groups of mobile robots with time-
+ [8] L. Villani and J. De Schutter, “Force control,” in Springer Handbook of          varying topology,” IEEE Transactions on Robotics, vol. 28, no. 5, pp.
+     Robotics, B. Siciliano and O. Khatib, Eds. Springer Berlin Heidelberg,           1019–1033, Oct 2012.
+     2008, ch. 7.                                                                [28] D. Lee and K. Huang, “On passive non-iterative varying-step nu-
+ [9] C. Secchi, S. Stramigioli, and C. Fantuzzi, Control of interactive               merical integration of mechanical systems for haptic rendering,” in
+     robotic interfaces: A port-Hamiltonian approach. Springer Science                Proceedings of the ASME Dynamic Systems and Control Conference,
+     & Business Media, 2007, vol. 29.                                                 Ann Arbor (MI), USA, Oct. 2008.
+[10] S. Grafakos, F. Dimeas, and N. Aspragathos, “Variable admittance            [29] F. Dimeas and N. Aspragathos, “Online stability in human-robot
+     control in phri using emg-based arm muscles co-activation,” in Pro-              cooperation with admittance control,” IEEE Transactions on Haptics,
+     ceedings of the IEEE International Conference on Systems, Man, and               vol. 9, no. 2, pp. 267–278, 2016.
+     Cybernetics, 2016, pp. 001 900–001 905.
+[11] D. Lee and K. Huang, “Passive-set-position-modulation framework for
+     interactive robotic systems,” IEEE Transactions on Robotics, vol. 26,
+     no. 2, pp. 354–369, April 2010.
+[12] J. Artigas, J.-H. Ryu, and C. Preusche, “Time domain passivity
+     control for position-position teleoperation architectures,” Presence:
+     Teleoperators and Virtual Environments, vol. 19, no. 5, pp. 482–497,
+     2010.
+[13] S. Park, C. Seo, J. Kim, and J. Ryu, “An energy-bounding approach to
+     rate-mode bilateral teleoperation of remote vehicles in constant time-
+     delayed environments,” in 2010 IEEE/RSJ International Conference
+     on Intelligent Robots and Systems, Oct 2010, pp. 5806–5811.
+[14] M. De Stefano, J. Artigas, and C. Secchi, “A passive integration
+     strategy for rendering rotational rigid-body dynamics on a robotic
+     simulator,” in Proceedings of the IEEE/RSJ International Conference
+     on Intelligent Robots and Systems, Sept 2017, pp. 2806–2812.
+[15] C. Ott, J. Artigas, and C. Preusche, “Subspace-oriented energy distri-
+     bution for the time domain passivity approach,” in 2011 IEEE/RSJ
+     International Conference on Intelligent Robots and Systems, Sept
+     2011, pp. 665–671.
+[16] M. Franken, S. Stramigioli, S. Misra, C. Secchi, and A. Macchelli, “Bi-
+     lateral telemanipulation with time delays: A two-layer approach com-
+     bining passivity and transparency,” IEEE Transactions on Robotics,
+     vol. 27, no. 4, pp. 741–756, Aug 2011.
+[17] C. Pacchierotti, A. Tirmizi, G. Bianchini, and D. Prattichizzo, “En-
+     hancing the performance of passive teleoperation systems via cuta-
+     neous feedback,” IEEE Transactions on Haptics, vol. 8, no. 4, pp.
+     397–409, Oct 2015.
+[18] L. Sabattini, C. Secchi, B. Capelli, and C. Fantuzzi, “Passivity preserv-
+     ing force scaling for enhanced teleoperation of multi-robot systems,”
+     IEEE Robotics and Automation Letters, vol. 3, no. 3, pp. 1925–1932,
+     2018.
+[19] D. Heck, A. Saccon, R. Beerens, and H. Nijmeijer, “Direct force-
+     reﬂecting two-layer approach for passive bilateral teleoperation with
+
+
+                                                                             1925
+

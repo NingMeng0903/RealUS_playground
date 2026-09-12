@@ -1,0 +1,66 @@
+[
+  {
+    "case": "case_00.npz",
+    "lp_success": true,
+    "minimum_row_value": -0.16411317896995764,
+    "energy_row_lower_bound": -234.34868242081214,
+    "normalized_minimum_margin": 234.18456924184218,
+    "redundant_on_other_constraints": true
+  },
+  {
+    "case": "case_01.npz",
+    "lp_success": true,
+    "minimum_row_value": 0.07257846906969712,
+    "energy_row_lower_bound": -125.70882039364396,
+    "normalized_minimum_margin": 125.78139886271366,
+    "redundant_on_other_constraints": true
+  },
+  {
+    "case": "case_02.npz",
+    "lp_success": true,
+    "minimum_row_value": -0.32627180786396853,
+    "energy_row_lower_bound": -136.14911663586722,
+    "normalized_minimum_margin": 135.82284482800324,
+    "redundant_on_other_constraints": true
+  },
+  {
+    "case": "case_03.npz",
+    "lp_success": true,
+    "minimum_row_value": -0.4341101632428619,
+    "energy_row_lower_bound": -138.54887630738514,
+    "normalized_minimum_margin": 138.1147661441423,
+    "redundant_on_other_constraints": true
+  },
+  {
+    "case": "case_04.npz",
+    "lp_success": true,
+    "minimum_row_value": 0.6759985871198897,
+    "energy_row_lower_bound": -127.89717429307072,
+    "normalized_minimum_margin": 128.5731728801906,
+    "redundant_on_other_constraints": true
+  },
+  {
+    "case": "case_05.npz",
+    "lp_success": true,
+    "minimum_row_value": -0.9263698325010287,
+    "energy_row_lower_bound": -125.46350590838061,
+    "normalized_minimum_margin": 124.53713607587959,
+    "redundant_on_other_constraints": true
+  },
+  {
+    "case": "case_06.npz",
+    "lp_success": true,
+    "minimum_row_value": 0.8843882022258259,
+    "energy_row_lower_bound": -190.8768761715053,
+    "normalized_minimum_margin": 191.76126437373114,
+    "redundant_on_other_constraints": true
+  },
+  {
+    "case": "case_07.npz",
+    "lp_success": true,
+    "minimum_row_value": 0.14938340016623075,
+    "energy_row_lower_bound": -143.9011659322076,
+    "normalized_minimum_margin": 144.05054933237383,
+    "redundant_on_other_constraints": true
+  }
+]

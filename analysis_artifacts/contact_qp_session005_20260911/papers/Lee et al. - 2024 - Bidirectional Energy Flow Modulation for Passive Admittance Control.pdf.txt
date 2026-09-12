@@ -1,0 +1,1153 @@
+IEEE TRANSACTIONS ON ROBOTICS, VOL. 40, 2024                                                                                                             3917
+
+
+
+
+     Bidirectional Energy Flow Modulation for Passive
+                    Admittance Control
+          Donghyeon Lee , Dongwoo Ko , Graduate Student Member, IEEE, Min Jun Kim , Member, IEEE,
+                                   and Wan Kyun Chung , Fellow, IEEE
+
+
+   Abstract—Admittance control is a control scheme to enable phys-                   virtual object) and its dynamic model (the desired admittance
+ical interactions of a robot, but it easily induces instability when the             model). The proxy generates the nominal motion resulting from
+robot contacts a rigid surface. In this study, a passivity analysis was              the desired admittance with the measured external wrench, and
+conducted on a robotic system with admittance control. The results
+showed that coupled stability with the environment can be ensured                    the robot realizes the desired admittance by tracking the proxy
+when the velocity error between the proxy and the real robot is                      trajectory.
+eliminated. Thus, an adaptive structure modification method is                          In the admittance control scheme, the robot usually uses a
+proposed to suppress the possible source of instability. In addition,                robust position controller to track the proxy trajectory. Several
+the energy tank method is combined with the proposed method to                       existing position controllers successfully reject the effect of
+ensure system passivity. As a proof of concept, three robot exper-
+iments were performed, and the results of the proposed method                        model uncertainties or external disturbances [2], [3]; hence, a
+were compared with those of conventional admittance control and                      robot with admittance control realizes the desired admittance
+impedance control (with friction compensation). The comparison                       robustly and accurately. Owing to their robustness, admittance
+showed that the proposed method could make the system passive                        controllers are used for robot manipulators with large joint
+while realizing the desired dynamics during the interaction.                         friction. Without an accurately calibrated friction compensation
+  Index Terms—Compliance and impedance control, force control,                       algorithm or joint torque sensors attached to each joint, the
+passivity-based control, physical human–robot interaction.                           joint friction degrades the task performance; hence, admittance
+                                                                                     control is an attractive option to realize compliant robot motion
+                             I. INTRODUCTION                                         from a practical point of view.
+                                                                                        However, admittance controllers possess a critical problem;
+      ompliant control is an effective technique to ensure flex-
+C     ible and safe robot motion. With the recent expansion of
+robotic applications, the safety and convenience of robotic ma-
+                                                                                     they can induce instability while the robot is interacting with its
+                                                                                     surroundings. There are various possible sources of instability in
+                                                                                     admittance control, but the most critical and unavoidable source
+nipulators have been highlighted, and the demand for compliant                       of instability is the noncollocation problem between the F/T
+control has increased. Admittance control is a compliant control                     sensor and the proxy dynamics [4], [5], [6]. In simple terms,
+scheme that modulates robot’s reactive motion with respect to a                      the position tracking error between the proxy and robot induces
+measured external wrench (with a force torque (F/T) sensor) [1].                     instability in the admittance controller, and the noncollocation
+In general, an admittance control scheme defines a “proxy” (a                        problem becomes severe if the contact surface is stiff [1], [4], [7].
+                                                                                     Consequently, the safety of a robotic system with an admittance
+   Manuscript received 15 May 2024; accepted 4 July 2024. Date of publication        controller can be guaranteed only when the interaction surface
+16 August 2024; date of current version 28 August 2024. This work was
+supported in part by the Industrial Strategic Technology Development Program         property is specified and the admittance parameters are tuned
+(General purpose multimode robot teaching device for difficult task where 0.1        carefully [4], [8].
+mm resolution of position and vel acc force teachings are essential) funded by the      To address the instability of robotic systems, passivity-based
+Ministry of Trade, Industry and Energy (MOTIE, Korea) under Grant 20009396
+and in part by the Basic Science Research Program through the National               approaches are widely used in robotics research. Such ap-
+Research Foundation of Korea (NRF) funded by the Ministry of Education under         proaches check the system’s passivity and reshape the con-
+Grant 2020R1I1A2074953. This article was recommended for publication by              troller if the passivity condition is violated. For example, the
+Associate Editor A. Cherubini and Editor P. R. Giordano upon evaluation of the
+reviewers’ comments. (Donghyeon Lee and Dongwoo Ko contributed equally               energy tank method and passivity-observer/passivity-controller
+to this work.) (Corresponding author: Wan Kyun Chung.)                               (PO/PC) are used for a teleoperation system [9], [10] or hi-
+   Donghyeon Lee is with the R&D Team 2 of Celloid Company Ltd., Pohang              erarchical impedance control [11], [12] to stabilize physical
+37673, South Korea (e-mail: sansoveria@gmail.com).
+   Dongwoo Ko and Wan Kyun Chung are with the Department of                          interactions. However, the passivity-based approach is difficult
+Mechanical Engineering, Pohang University of Science and Technology                  to apply to admittance control owing to its complex structure,
+(POSTECH), Pohang-si 37673, South Korea (e-mail: kdw2917@postech.ac.kr;              which interconnects the robot dynamics, proxy dynamics, and
+wkchung@postech.ac.kr).
+   Min Jun Kim is with the School of Electrical Engineering, Korea Advanced          position controller. Therefore, in many studies on admittance
+Institute of Science and Technology, Daejeon 34141, South Korea (e-mail:             control, the target system has been limited to a linear system (or
+minjun.kim@kaist.ac.kr).                                                             even a single degree-of-freedom (DOF) system) [4], [13], [14]
+   This article has supplementary downloadable material available at
+https://doi.org/10.1109/TRO.2024.3443690, provided by the authors.                   and passivity (or stability) analysis has been conducted on the
+   Digital Object Identifier 10.1109/TRO.2024.3443690                                linear system [1], [15].
+
+                          1941-0468 © 2024 IEEE. Personal use is permitted, but republication/redistribution requires IEEE permission.
+                                        See https://www.ieee.org/publications/rights/index.html for more information.
+
+
+   Authorized licensed use limited to: Technische Universitaet Muenchen. Downloaded on August 07,2026 at 08:25:14 UTC from IEEE Xplore. Restrictions apply.
+3918                                                                                                        IEEE TRANSACTIONS ON ROBOTICS, VOL. 40, 2024
+
+
+
+   In this article, an adaptive admittance control scheme is pro-               controllers, which change the admittance parameters in an adap-
+posed to enable stable physical interactions of a robot. First,                 tive manner, were recently proposed.
+passivity analysis was conducted for a system with admit-                          In [16], an adaptation rule was designed to modulate the
+tance control, and the passivity condition was derived. Next,                   desired damping according to the contact force amplitude.
+an adaptive admittance control algorithm was developed to                       Similarly, an adaptation rule was proposed in [17] to regulate
+ensure that the system always satisfied the derived passivity                   the desired inertia and damping according to the contact force
+condition. Compared with conventional admittance controllers,                   frequency so that the system can maintain stable contact on
+the proposed control structure includes additional feedback                     surfaces with different stiffness levels. Talignani et al. [18]
+connection, called bidirectional energy flow (see Section III-C                 changed the admittance parameters according to the position
+for detailed information). The bidirectional energy flow can                    tracking error between the proxy and robot based on the fact
+suppress the internal energy generation of admittance control.                  that system instability leads to position tracking error. However,
+Thus, the proposed adaptation rule modulates the bidirectional                  the above adaptation rules do not utilize an explicit criterion
+energy flow so that the system satisfies the derived passivity                  to determine the stability of the system; consequently, the gain
+condition. Finally, the energy tank method was combined with                    tuning of the algorithm depends on the user’s expertise.
+the proposed control algorithm to prevent violations of the pas-                   Therefore, the instability index was defined through frequency
+sivity condition. The proposed admittance control scheme was                    domain contact force analysis in [19], and a relevant adaptation
+validated using representative robot experiments. Along with                    rule was proposed. Similarly, an instability measure was defined
+the proposed method, the conventional admittance controller                     based on the statistical characterization of the position tracking
+and impedance controller were tested to compare their stability                 error between the proxy and robot in [5]. Further, an artificial
+and control performance. Experimental investigations showed                     neural network was utilized to build a stability observer in [20].
+that the proposed method could stabilize the robot’s physical in-               Such approaches for admittance parameter adaptation can stabi-
+teractions, although at the expense of the accuracy of the desired              lize the system selectively to secure control performance. Still,
+admittance rendering. The experimental results and analysis of                  the admittance modulation rule should be tuned manually, and
+the control structure adaptation showed that the proposed control               the desired inertia and damping can increase excessively with
+method has an intermediate property that interpolates the pros                  improper adaptation setup.
+and cons of impedance control (always passive but vulnerable                       Unlike the admittance parameter adaptation methods men-
+to disturbance) and admittance control (robust but susceptible                  tioned above, our method changes the control structure rather
+to instability).                                                                than modulating the admittance parameter to stabilize the sys-
+   In summary, our study makes the following contributions:                     tem. The proposed method degrades the control performance
+   1) A modified version of admittance control is proposed. The                 when it stabilizes the system, but the adaptation of the control
+       control structure includes bidirectional energy flow, which              structure has the maximum range: the system becomes un-
+       can suppress internal energy generation.                                 conditionally stable with maximum adaptation. Therefore, the
+   2) A bidirectional energy flow modulation rule is proposed                   proposed approach can prevent the control performance from
+       for stable interaction and accurate dynamics realization.                being excessively degraded while stabilizing the system.
+       In addition, the energy tank is designed and applied to the
+       proposed rule to ensure the passivity of the system.
+   3) The proposed method is validated through various exper-                   B. Unified (Hybrid) Admittance and Impedance Control
+       iments on real robots.                                                      Impedance control and admittance control are representative
+                                                                                control schemes to realize compliant control, but the two con-
+                         II. RELATED WORKS                                      trol methods have complementary properties [1]. In general,
+                                                                                admittance control can realize the desired admittance with high
+   In this section, previous studies that have attempted to im-
+                                                                                accuracy in a free space, but it can become unstable when it
+prove the safety of admittance control are briefly introduced and
+                                                                                contacts a stiff surface [1], [21]. In contrast, impedance control
+compared with the proposed method. The existing approaches
+                                                                                can remain stable with high desired admittance (low impedance),
+can be categorized into three groups: 1) modulation of admit-
+                                                                                but it is vulnerable to external disturbances such as joint friction
+tance parameters (desired inertia and damping), 2) integration of
+                                                                                or the effect of unmodeled dynamics, resulting in low accuracy.
+admittance controller with impedance controller and switching
+                                                                                   Considering that the two control schemes are complementary
+between them, and 3) introduction of an additional feedback
+                                                                                to each other, a hybrid controller was proposed to combine
+connection to make the system passive.
+                                                                                admittance control and impedance control [21], [22]. In [21],
+                                                                                the impedance controller and admittance controller were de-
+A. Admittance Parameter Adaptation
+                                                                                fined individually to realize the same desired dynamics, and the
+   A straightforward approach to prevent instability during robot               control inputs of the two controllers were switched repetitively
+interactions is “natural admittance control,” in which the con-                 with a constant duty cycle. In [22], the authors demonstrated that
+ditions for the admittance parameters that can guarantee system                 the resultant control input has an intermediate property between
+stability regardless of the contact property [4] are obtained.                  those of the two controllers, making it more accurate than
+However, the conditions are largely conservative and excessively                the impedance controller and more stable than the admittance
+degrade the control performance. Therefore, variable admittance                 controller.
+
+  Authorized licensed use limited to: Technische Universitaet Muenchen. Downloaded on August 07,2026 at 08:25:14 UTC from IEEE Xplore. Restrictions apply.
+LEE et al.: BIDIRECTIONAL ENERGY FLOW MODULATION FOR PASSIVE ADMITTANCE CONTROL                                                                          3919
+
+
+
+                                                                                   related to the wall-sticking effect, was addressed by using bidi-
+                                                                                   rectional energy flow in [29] (the author named the feedback
+                                                                                   connection “algebraic feedback”).
+                                                                                      Motivated by the above-mentioned studies to stabilize the
+                                                                                   admittance controller, we utilized bidirectional energy flow to
+                                                                                   design an admittance controller that remains stable during inter-
+                                                                                   actions with the surface of an arbitrary environment. The existing
+                                                                                   studies on bidirectional energy flow have focused on specific
+                                                                                   problems of admittance control, such as the wall-sticking effect
+Fig. 1. Block diagram of the passivity theorem, where τ0 is the output             and torque saturation, but our study provides a solution for the
+(driving) force induced by the corresponding input, the desired velocity q̇des .
+The feedback interconnection between two passive systems (the robotic system
+                                                                                   fundamental problem of admittance control: guaranteeing the
+and the environment) is also passive.                                              stability of the admittance controller.
+
+                                                                                                   III. PRELIMINARY INFORMATION
+   In [23], an adaptive algorithm was proposed to modulate the                        First, several notations are defined. States or model parameters
+switching duty ratio according to the estimated stiffness of the                   without a subscript are related to the real robot, and those with
+interaction surface, whereas a neural network was utilized to                      subscript “n” are related to a nominal robot. The nominal robot
+determine the proper switching duty cycle in [24]. The adap-                       will serve as a proxy and will be introduced soon. For example,
+tive algorithms can modulate the duty cycle to secure control                      q is the joint configuration angle of the real robot, and q n is
+performance while maintaining system stability. However, they                      the joint configuration angle of the nominal robot. Likewise, the
+cannot guarantee system stability. Hence, the algorithms should                    subscript “des” refers to the desired value of a state variable.
+be fine-tuned manually or trained with empirical data.                             Furthermore,   ˆ represents the estimated or measured parameter
+   Unlike the hybrid control method, the proposed adaptive con-                    of . Finally, vectors and matrices are written in bold font,
+trol method this study does not explicitly define an impedance                     whereas scalar variables are in normal font.
+controller. Instead, the adaptation algorithm changes the struc-
+ture of the admittance control to guarantee system passivity,                      A. Passivity and Robot–Environment Interaction
+making the system’s properties similar to those of an impedance-
+                                                                                      Passivity is a key concept in robotic systems that involve
+controlled system. In short, the proposed controller can be
+                                                                                   frequent interactions with humans and the environment [30].
+interpreted as a hybrid controller that blends the properties of
+                                                                                   It effectively integrates these unstructured interactions into the
+both the impedance controller and the admittance controller. In
+                                                                                   control loop by leveraging the characteristic that feedback in-
+contrast to existing adaptive methods that require manual tuning,
+                                                                                   terconnections of passive subsystems preserve the system’s pas-
+our method dynamically modulates the blending ratio of the
+                                                                                   sivity [31]. The physical interaction of a robot manipulator and
+two controllers based on the passivity condition. This approach
+                                                                                   its surroundings can be modeled as the feedback connection
+ensures system passivity and enhances overall stability without
+                                                                                   of the two systems, as shown in Fig. 1. Assuming that the
+the need for manual intervention.
+                                                                                   environment is passive, designing a passive robot system can
+                                                                                   ensure the stability of the entire physical interaction.
+                                                                                      The passivity of a dynamical system is defined using the
+C. Admittance Controllers With Bidirectional Energy Flow
+                                                                                   concept of a storage function. Here, for a physical system, the
+   The adaptive admittance control method proposed in this                         storage function can be considered a generalization of the energy
+article passifies the system by introducing an additional force                    stored in the system. The physical meaning of the passivity of
+feedback connection to the admittance controller. Such force                       a system is that the system does not generate energy internally.
+feedback to the proxy in the admittance controller is called                       The passivity of a system is connected to the input-to-output
+bidirectional energy flow, which has been utilized in recent                       stability [32].
+studies on admittance control.                                                        Definition 1 (Passivity): [31] A system Σ is considered to
+   Bidirectional energy flow was first proposed in [25] to address                 be passive if there exists a continuously differentiable scalar
+the “wall-sticking effect,” which is an innate problem in admit-                   function (called the storage function) S(x) ≥ 0 such that the
+tance control. It has been shown that the bidirectional energy                     following inequality holds true:
+flow is effective in stabilizing a system with an unmeasured
+external force (exerted on the robot at a point not equipped with                                             Ṡ(x) ≤ u y                                (1)
+a sensor) [26], [27]. Similarly, bidirectional energy flow has been
+                                                                                   where x, u, and y represent the state, input, and output of the
+used in a disturbance observer-based robust control structure to
+                                                                                   system Σ, respectively.
+address the wall-sticking effect in an electrohydraulic actuation
+system [28]. In particular, in [28], the energy tank technique was
+                                                                                   B. Admittance Controller for a Multi-DOF Rigid Joint Robot
+applied to reduce the control performance loss by modulating
+the bidirectional energy flow. Furthermore, the instability due                       The admittance controller has two key components, as shown
+to actuation torque saturation, which is a more generic problem                    in Fig. 2(a): one is the proxy, which is a virtual object used to
+
+   Authorized licensed use limited to: Technische Universitaet Muenchen. Downloaded on August 07,2026 at 08:25:14 UTC from IEEE Xplore. Restrictions apply.
+3920                                                                                                        IEEE TRANSACTIONS ON ROBOTICS, VOL. 40, 2024
+
+
+
+
+                                                                                Fig. 3. Example of a single-DOF lumped model for bidirectional energy flow.
+                                                                                (a) Without bidirectional energy flow. (b) With bidirectional energy flow.
+
+Fig. 2. Block diagrams of admittance control schemes with and without bidi-
+rectional energy flow. (a) Conventional admittance controller. (b) Admittance   matrices, respectively. When the desired dynamics is designed
+controller with bidirectional energy flow.
+                                                                                as a floating inertia such that the robot does not have the desired
+                                                                                pose and is operated by interaction, the stiffness is set to zero
+simulate the desired admittance according to the measured or                    (K = 0).
+estimated external force; the other is the position controller,                    Then, the position controller can be defined to reshape the
+which forces the robot to track the proxy so that the robot                     real robot dynamics by
+dynamics can be reshaped to the desired admittance.
+                                                                                                         τ m = ĝ(q) + τ a + τ c                             (6)
+   Usually, the proxy is defined as a single lumped body in
+the task space [1], [5], [29]. However, this causes the position                where τ a is an auxiliary control input that can help improve the
+controller to be designed in the task space, which could be                     performance and stability of the admittance control, and τ c is a
+nonlinear and complex for the multi-DOF rigid joint robot.                      compensator torque that can suppress the error between the real
+Instead of using the proxy, a nominal robot (virtual articulated                robot and nominal robot, denoted as enr = q n − q. The aux-
+body), whose kinematic parameters are the same as those of the                  iliary control input τ a is usually designed as the feed-forward
+real robot, can be defined [25], [27]. Since the nominal robot                  input in the form of force gain and inertia compensation. For lin-
+can generate the reference joint trajectory, a simple joint angle               ear systems, the proper use of a feed-forward term can increase
+tracking controller can be used as the position controller. Thus,               the position tracking bandwidth and stability margin [1], [29],
+the nominal robot will be used instead of the proxy in this article.            [33].
+   For a multi-DOF rigid joint robot, the dynamics of the real
+robot and nominal robot can be defined as follows:                              C. Bidirectional Energy Flow in Admittance Control
+                                        
+              M q̈ + C q̇ + g = J F ext + τ m + τ d                      (2)       In this section, the concept of bidirectional energy flow is
+                                                                                briefly introduced with a simple single-DOF lumped model
+                     M n q̈ n + C n q̇ n = J 
+                                             n F ext + τ v               (3)
+                                                                                example, as shown in Fig. 3. A simple PD controller was used
+where M (q) is the inertia matrix, C(q, q̇) is the Coriolis matrix,             as the position controller in the admittance controller so that the
+g(q) is the gravity vector, J (q) is the Jacobian matrix, F ext is              real robot position could follow the nominal robot position.
+the external wrench measured by the F/T sensor, τ m is the motor                   In the conventional admittance controller, the controller force
+torque exerted by the motors at each joint, τ d is the disturbance              fm does not affect the nominal robot dynamics, as shown in
+torque such as joint friction or other unmeasured external torque,              Fig. 3(a). In other words, the energy generated by the controller,
+and τ v is the driving torque that moves the nominal robot                      which varies according to the position error between the two
+internally. For simplicity, the joint dependence for parameters                 systems, is entirely transferred to the real robot through the input
+is omitted; for example, M = M (q), and M n = M n (q n ).                       and output I/O port (fm , ṗ).
+Other matrices C, C n , J , and J n can be defined similarly.                      On the other hand, when the bidirectional energy flow is
+   In this framework, the desired admittance is determined by                   added to the admittance control structure, as shown in Fig. 3(b),
+the inertia parameters, i.e., M n = M des , as well as the driving              the nominal robot dynamics is also affected by the controller,
+torque τ v . For example, simple inertia scaling of the real robot              and energy flows into the nominal plant through the I/O port
+dynamics can be considered with the estimated value as follows:                 (fbd , ṗn ). In this case, the controller exchanges energy with
+                                                                                both the real robot and the nominal robot; hence, the additional
+                       M n = λM̂ , C n = λĈ                             (4)
+                                                                                feedback connection is called bidirectional energy flow.
+where λ is the scalar value of the inertia scaling ratio. Meanwhile,               If fbd = fm , the system is considered as two masses (real and
+τ v can be designed as a task space PD controller as                            nominal robots) connected by a spring and a damper. In this case,
+                                                                                it can be easily proven that the overall system is passive with
+                      τ v = J
+                             n (Kdn − D ṗn )                           (5)
+                                                                                respect to the I/O pair ([fext , fext ] , [ṗn , ṗ] ) using the feedback
+where dn = pdes − pn is the task space error between the                       interconnections of passive subsystems [27]. Consequently, the
+nominal robot’s end-effector pose pn and the desired pose pdes ,                bidirectional energy flow can be used to suppress the energy
+and K, D are the desired (nominal) stiffness and damping                        generated internally and improve the stability of the system.
+
+  Authorized licensed use limited to: Technische Universitaet Muenchen. Downloaded on August 07,2026 at 08:25:14 UTC from IEEE Xplore. Restrictions apply.
+LEE et al.: BIDIRECTIONAL ENERGY FLOW MODULATION FOR PASSIVE ADMITTANCE CONTROL                                                                             3921
+
+
+
+
+Fig. 4.   Control diagram of the overall system with admittance control.
+                                                                                 Fig. 5. Internal energy generation with admittance control. Within the feed-
+                                                                                 back interconnection between the passive nominal system and the environment,
+                                                                                 the dynamics of the position controller and real robot induces a position error,
+   For the multi-DOF rigid robot case, the nominal robot dynam-                  which results in energy generation.
+ics (3) can be redefined by including the bidirectional energy
+flow as
+                                                                                 exerted on the real robot is assumed to be passive (does not inject
+              M n q̈ n + C n q̇ n = J 
+                                      n F ext + τ v − τ bd                 (7)
+                                                                                 energy into the system); i.e., the following inequality always
+where τ bd is the bidirectional energy flow torque for the nominal               holds true:
+robot, as shown in Fig. 2(b).
+                                                                                                                  q̇  τ d ≤ 0.                              (9)
+                       IV. PROBLEM DEFINITION
+                                                                                 For the case where the source of τ d can store energy condition
+   In the admittance control scheme, contact instability can arise               (9) can be relaxed as
+from various practical factors, such as imperfect external wrench
+measurements (due to noise or sensing bias) and discretization                                                q̇  τ d + Ṡd ≤ 0                           (10)
+errors [34]. However, this work focuses on the fundamental issue
+stemming from the inherent control structure since instability                   where Sd ≥ 0 is the storage function of the disturbance source.
+may occur even without such practical factors.                                      In this study, we assumed that there is no hysteresis in the
+   Accordingly, this article aims to design an admittance control                friction (no dynamic friction). Therefore, τ d satisfies condition
+scheme that allows stable interactions based on passivity anal-                  (9).
+ysis. The nominal robot, joint space position controller, and the
+bidirectional energy flow torque (τ bd ) are utilized in this article,                                    V. PROPOSED METHOD
+as shown in Fig. 4. More specifically, the objective of this article
+is reduced to design a proper τ m and τ bd so that there exists a                A. Energy Generation in Admittance Control
+storage function that satisfies                                                     The main idea of admittance control is to build a nominal
+                                                                               robotic system and then let the robot follow the motion of the
+                                  Fo
+           Ṡ ≤ [ṗ   , F 
+                               ]     = ṗ           
+                                         des F o + q̇ τ ext        (8)           nominal robot. In this context, the stability of the admittance
+                   des     ext    ṗ
+                                                                                 control can be checked by investigating two subproblems: 1)
+where τ ext is the measured external torque exerted on the robot                 whether the nominal system is stable, and 2) whether the error
+joint, i.e., J  F ext , and F o is the output (driving) force corre-            between the nominal robot state and the real robot state (enr )
+sponding to the input ṗdes , which would be defined later. At                   converges to zero (or is bounded) [35].
+the same time, the apparent dynamics of the robot should be as                      In free motion, i.e., F ext = 0, the two subproblems can be
+close to the desired dynamics as possible without harming the                    considered separately, and the controllers can be easily designed
+stability of the interaction. Thus, when the robot is not in contact             respectively to ensure stability, since the nominal robot and
+(an extreme case), the robot dynamics should be identical to the                 the real robot with the position controller are connected by
+desired dynamics.                                                                an open loop (gray shadowed box in Fig. 5). However, during
+   While deriving the proposed method, a mild assumption is                      contact, physical feedback interconnection with environment
+necessary; that is, the unmeasured external disturbances τ d                     is introduced (red shadowed box in Fig. 5); thus, the stability
+include only dissipative sources such as joint friction. This                    analysis becomes nontrivial.
+assumption is reasonable since it is difficult to show that the                     To analyze the stability of the interconnected system, a Lya-
+system is stable when an active component is connected to the                    punov candidate can be defined with the storage functions of
+system.                                                                          each subsystem. First, to study the energy generation inherent
+   Assumption 1 (Dissipativity of external disturbance): In the                  in the structure of the admittance control, we assume that the
+system shown in Fig. 4, the external disturbance torque (τ d )                   nominal system and the environment are passive so that there
+
+   Authorized licensed use limited to: Technische Universitaet Muenchen. Downloaded on August 07,2026 at 08:25:14 UTC from IEEE Xplore. Restrictions apply.
+3922                                                                                                        IEEE TRANSACTIONS ON ROBOTICS, VOL. 40, 2024
+
+
+
+exist storage functions Senv and Sn , satisfying the condition
+                 Ṡenv ≤ −ṗ F ext , Ṡn ≤ ṗ
+                                              n F ext .                 (11)
+In addition, the position controller is assumed to be designed to
+make the real robot asymptotically stable to the nominal robot,
+and thus, there exists a positive definite function Sr > 0 such
+that
+                          Ṡr ≤ −φ(enr , ėnr )                        (12)
+for a positive definite function φ. Then, the Lyapunov candidate
+for the total system is defined as S = Senv + Sn + Sr , and Ṡ
+can be obtained as
+   Ṡ ≤ −ṗ F ext + ṗ                                    
+                       n F ext − φ(enr , ėnr ) ≤ (ṗn − ṗ) F ext .
+                                                                (13)
+For the overall interconnected system to be stable, Ṡ should be
+                                                                                Fig. 6. Overall system structure with the proposed admittance control method.
+less than or equal to zero, but the residual right hand side of (13)            In the proposed method, the position controller includes an auxiliary controller
+is indefinite. Although it is difficult to conclude that the system             and a compensator (PID feedback controller).
+is unstable when a suitable Lyapunov candidate is not found, the
+system can be guaranteed to be stable if the condition (13) holds.
+For example, this is the case when the real robot perfectly follows
+the nominal robot, i.e., ṗn = ṗ. To this end, the bandwidth of
+the position controller must be infinite. This finding is in line
+with previous related studies’ results, which show that increas-
+ing the position controller bandwidth can enhance the stability                 Fig. 7. Overall system structure with the proposed admittance control method
+                                                                                when α = 1.
+in the admittance control [1], [7], [36]. However, the bandwidth
+of the position controller is practically limited.
+    Remark 1: Similarly, the accumulated phase lag of the posi-                    In this article, the auxiliary controller is designed to reshape
+tion controller was identified as the source of instability in [37,             the real robot dynamics to the desired admittance regardless of
+Section 5.2.1]. The phase lag may induce longer and deeper                      the compensator, which is defined as
+interactions with the environment modeled as spring, and thus,
+                                                                                    τ a = g + (λ−1 − 1)J  F ext + λ−1 J  (Kdr − D ṗ)                  (14)
+the measured interaction force Fext injects more virtual energy
+to the nominal robot than was intended. Finally, this results in a              where dr = pdes − p is the task space error between the desired
+higher velocity when leaving the spring at a greater speed than                 pose and real robot’s end-effector, and K and D are the task
+the incoming velocity.                                                          space gain matrices that are the same as those of the nominal
+                                                                                controller.
+B. Proposed Method for Passive Admittance Control                                  The compensator is a PID controller that suppresses enr , and
+   In this section, the proposed method is introduced to sup-                   it calculates the compensation torque (τ c ) as
+                                                                                                                                  
+press energy generation in the admittance control scheme and
+                                                                                           τ c = K γ ėnr + K p enr + K i enr dt            (15)
+stabilize the system in an adaptive manner. As introduced in
+Section III-C, the bidirectional energy flow is an additional feed-
+                                                                                where K γ , K p , and K i are the control gain matrices for the
+back connection that drives the nominal robot toward the real
+                                                                                PID controller.
+robot. Activating the bidirectional energy flow suppresses the
+                                                                                   With τ a and τ c , the motor torque and bidirectional energy
+energy generation inside the system but simultaneously degrades
+                                                                                flow torque are defined as follows:
+the control performance of the nominal system. Therefore, it
+should be activated to the minimum extent necessary to stabilize                                         τ m = τ a + (1 − α)τ c                           (16)
+the system while causing minimal degradation to the control
+                                                                                                         τ bd = λατ c                                     (17)
+performance.
+   The proposed admittance control method is presented in                       where α is the parameter for bidirectional energy flow mod-
+Fig. 6, where the controller consists of a nominal controller,                  ulation, which determines the activation of the bidirectional
+nominal robot, and position controller. The nominal robot (3)                   energy flow. If α = 1, the PID compensation torque (τ c ) does
+and the nominal controller (5) define the desired dynamics                      not affect the real robot at all, and the system is reduced to
+(behavior) of the robot. The position controller calculates the                 simple impedance control, as shown in Fig. 7. With the aux-
+motor input torque (τ m ) and bidirectional energy flow torque                  iliary controller defined in (14), the system shown in Fig. 7
+(τ bd ) to reduce the position tracking error (enr ) between the                is passive. Therefore, the system is guaranteed to be passive
+nominal robot and real robot. The position controller comprises                 when α = 1. However, with a large α value (close to one), the
+an auxiliary controller and a compensator.                                      system becomes vulnerable to unmeasured disturbance (τ d ),
+
+  Authorized licensed use limited to: Technische Universitaet Muenchen. Downloaded on August 07,2026 at 08:25:14 UTC from IEEE Xplore. Restrictions apply.
+LEE et al.: BIDIRECTIONAL ENERGY FLOW MODULATION FOR PASSIVE ADMITTANCE CONTROL                                                                          3923
+
+
+
+and the robot dynamics deviates from the desired dynamics;                      function is defined as follows:
+thus, the α value should be maintained as small as possible
+                                                                                                      1              1
+unless the system loses its passivity.                                                             Sr = λq̇ M q̇ +       Kdr                         (20)
+                                                                                                      2               2 dr
+   To determine the proper α value, the proposed method mon-
+                                                                                                      1                 1
+itors the inflow and outflow of energy in the system and utilizes                                 Sn = q̇  M n q̇ n +     Kdn                       (21)
+the energy tank method. By monitoring the inflow and outflow of                                       2 n               2 dn
+energy in the system, we can check whether the system generates                                     S = (1 − α)Sn + αSr .                               (22)
+energy internally. From the observed internal energy generation
+(derived in Section V-C), the α modulation rule is proposed as                  The proposed storage function (S) for the overall system is the
+            ⎧                                                                   linear combination of two storage functions: Sn and Sr . Sn
+            ⎪
+            ⎪  1          if 0 < λė             
+                                       nr τ c < ėnr τ ext                      represents the nominal system’s behavior, and Sr represents
+            ⎪
+            ⎨ ė τ                                                             the real robotic system’s behavior with the auxiliary controller.
+       α=        nr ext
+                          if 0 < ė                
+                                     nr τ ext < λėnr τ c    (18)               Thus, it can be interpreted that the property of the overall system
+            ⎪
+            ⎪  λ ė
+                      τ
+            ⎪
+            ⎩      nr   c
+                                                                                is intermediate between the properties of the nominal and real
+               0          if ė                  
+                               nr τ ext ≤ 0 or ėnr τ c ≤ 0.
+                                                                                systems. With a small α value, S becomes close to Sn , and the
+By setting the α value according to the above rule, the bidirec-                overall system resembles the nominal system’s behavior (desired
+tional energy flow can effectively suppress the internal energy                 dynamics). Conversely, when α = 1, S becomes identical to Sr ,
+generation.                                                                     and the system is reduced to a simple interconnection of the
+   However, the above α modulation rule cannot guarantee                        auxiliary controller and real robot.
+the system’s passivity completely. Therefore, the energy tank                      With the storage function candidate S, Ṡ = ∂S ∂t + α̇ ∂α should
+                                                                                                                                          ∂S
+
+method is combined with the proposed α modulation rule. In                      satisfy (8) for the proposed system to be passive. First, ∂S ∂t can
+the proposed method, an energy tank (a virtual energy reservoir)                be obtained as
+is defined to store the dissipated energy, where the tank level is                   ∂S
+denoted as T . The energy stored in the tank is used when the                           = (1 − α)Ṡn + αṠr
+                                                                                     ∂t
+system tries to generate energy internally. However, if the stored
+energy is depleted, the α value is fixed at one so that the system                         = ṗ                              
+                                                                                               des {αKdr + (1 − α)Kdn } + q̇ τ ext
+becomes passive and no longer generates energy. The detailed                                 − (1 − α)(ṗ                         
+                                                                                                         n D ṗn ) − α(ṗ D ṗ − λq̇ τ d )
+definition of the energy tank and passivity analysis of the system
+are provided in Section V-C.                                                                 + (1 − α)(ė              
+                                                                                                         nr τ ext − λαėnr τ c ).                       (23)
+   In summary, the α decision rule is proposed as
+                                                                                The detailed derivation of the right-hand side of (23) is presented
+    if T ≤ T, α = 1                                                             in Appendix A. On the right-hand side of inequality (23), each
+             ⎧                                                                  line has a specific meaning. The first line is the I/O port of
+             ⎪
+             ⎪ 1          if 0 < λė             
+                                       nr τ c < ėnr τ ext
+             ⎪
+             ⎨ ė τ
+                                                                                the system. Here, we can define the output force of the system
+    else α =     nr ext
+                          if 0 < ė                                           as F o = αKedr + (1 − α)Kedn , so that the first line of (23)
+                                     nr τ ext < λėnr τ c              (19)
+             ⎪
+             ⎪ λ ė
+                      τ                                                         represents the energy inflow and outflow of the system in (8). The
+             ⎪
+             ⎩     nr   c
+               0          if ė                  
+                               nr τ ext ≤ 0 or ėnr τ c ≤ 0
+                                                                                second line shows the energy dissipated by the nominal system
+                                                                                and the real robot with the auxiliary controller. According to
+where T is the lower bound of the energy tank level.                            Assumption 1, τ d satisfies (9). Therefore, the terms in the second
+                                                                                line are always less than or equal to zero (dissipative). The terms
+C. Passivity Analysis of the Proposed Method                                    in the last line are the indefinite terms that occur due to ėnr .
+                                                                                   If α = 0, ∂S∂t reduces to Ṡn and then satisfies
+   In this section, we investigated the system’s passivity when the
+proposed α modulation rule was applied. The following three                                ∂S
+processes were used to investigate the system’s passivity and                                 ≤ ṗ                                
+                                                                                                  des F o + q̇ τ ext − ṗn D ṗn + ėnr τ ext           (24)
+                                                                                           ∂t
+design the proposed adaptation rule. First, a storage function
+candidate (S) was proposed to explain the system’s characteris-                 where it includes the indefinite term ė
+                                                                                                                        nr τ ext , which can induce
+tics (especially the energy flow through the system’s I/O port).                energy if the term is positive. On the other hand, ∂S    ∂t reduces
+Second, the derivative of the storage function was obtained to                  to Ṡr if α = 1. Unlike the case where α = 0, ∂S    ∂t involves only
+deduce the passivity condition of the system. With time-varying                 negative terms except the I/O port of the system as
+α, the derivative of the storage function includes two terms: ∂S   ∂t
+                                                                                           ∂S
+and ∂S∂α α̇. Finally, the α modulation   rule and energy tank   were                          ≤ ṗ                               
+                                                                                                  des F o + q̇ τ ext − ṗ D ṗ + λq̇ τ d .              (25)
+                                                                                           ∂t
+designed from the derived ∂S           ∂S
+                               ∂t and ∂α α̇ so that the system did
+not generate energy internally.                                                 Hence, it can remain stable when the robot is interacting with
+   To represent the characteristics of the proposed system and                  a passive environment surface. However, the energy dissipation
+show its passivity with respect to the I/O ports [ṗ            
+                                                        des , F ext ]           due to an external disturbance (q̇  τ d ) disturbs the robot motion
+              
+and [F o , ṗ ] , as defined in (8), the candidate for the storage              so that it deviates from the desired behavior.
+
+   Authorized licensed use limited to: Technische Universitaet Muenchen. Downloaded on August 07,2026 at 08:25:14 UTC from IEEE Xplore. Restrictions apply.
+3924                                                                                                         IEEE TRANSACTIONS ON ROBOTICS, VOL. 40, 2024
+
+
+
+   In summary, the single scalar parameter α can modulate the                   where T̄ is the predefined upper bound of the energy level stored
+tradeoff between system stability and control performance (ro-                  in the tank (the maximum energy that can be stored in the tank),
+bustness) in the proposed control method. The physical meaning                  and ψ is the power flowing in and out of the tank, which is
+of changing α is described in greater detail in Section VII-A.                  defined as
+   The α modulation rule proposed in (18) in the previous
+section suppresses possible energy generation in the system by                                     ψ = (1 − α)ṗ            
+                                                                                                                n D ṗn + αṗ D ṗ
+
+eliminating the indefinite terms in (23) as                                                               − α̇(Ŝr − Sn ) − (1 − α)μ.                    (32)
+                   (1 − α)(ė              
+                             nr τ ext − λαėnr τ c ).                   (26)
+                                                                                The tank is recharged (energy is stored) with the dissipative
+When the system is generating energy (ė  nr τ ext > 0), (26) can                        ∂t and discharged when α̇(Ŝr − Sn ) > 0.
+                                                                                terms in ∂S
+                                ė
+                                  nr τ ext                                         The proposed α modulation rule fixes the α value to α = 1
+be canceled out by setting α as λė τ . The modulation rule
+                                   nr c
+(18) limits the α value to α ≤ 1 because (26) becomes zero                      if the energy level stored in the tank becomes lower than T. It
+when α = 1. The problematic case is when ė                                    makes α̇(Ŝr − Sn ) = 0; thus, the system remains passive when
+                                                 nr τ c ≤ 0. When
+ė τ    ≤ 0, increasing α  cannot suppress the energy  generation              the tank is depleted. Selection of the user-defined parameters, T̄
+  nr c
+at all, and the term injects energy into the system if 0 < α < 1.               and T, is discussed in Section VII.
+Therefore, α should be zero or one when ė                                        Finally, we can define a new storage function S  = S + T
+                                              nr τ c ≤ 0. If we set
+α = 1 when ė     τ  ≤  0, the α modulation   can ensure that ∂S               such that its time derivative satisfies the following passivity
+                 nr c                                           ∂t
+always satisfies the passivity condition                                        condition:
+                                                                                                         ∂S   ∂S
+                       ∂S
+                          ≤ ṗ                                                             Ṡ  = α̇      +    + Ṫ ≤ ṗ           
+                                                                                                                          des F o + q̇ τ ext             (33)
+                              des F o + q̇ τ ext .                      (27)                             ∂α   ∂t
+                       ∂t
+   However, if α = 1 whenever ė  nr τ c ≤ 0, the α modulation
+                                                                                with the proposed α modulation rule (19).
+becomes too conservative, and the control performance degrades
+excessively. For example, when the robot is moving in free                                                    VI. EXPERIMENT
+space, α should always be zero because there is no energy                          In this article, three experiments are conducted to validate
+generation in the nominal system. On the contrary, the F/T                      the proposed method and demonstrate its effectiveness. First,
+sensor signal and joint encoder signal include noise; hence, the                the interaction stability of the system was tested by clamping
+α modulation rule switches the α value to one although the                      the robot end-effector with a rigid vice. Second, the step-input
+system is already stable. In such a situation, the robot cannot                 position regulation experiment was performed in free space to
+reject external disturbances such as joint friction and loses its               demonstrate the disturbance rejection performance (accuracy
+control performance. Therefore, α is set to zero when ė
+                                                        nr τ c ≤ 0              of the realized dynamics) of the proposed method. Finally,
+and T < T in the proposed α modulation rule (19). This results                  compliant motion tracking on a surface was demonstrated as
+in possible energy generation in the system as                                  an application. A pencil was attached to the end-effector, and
+       ∂S                                                                       the robot tracked the given trajectory while regulating its contact
+          ≤ ṗ             
+               des F o + q̇ τ ext
+       ∂t                                                                       force according to the desired stiffness (drew a line on a surface).
+              − (1 − α)ṗ                                                     A ruler was installed on the trajectory to show that the robot can
+                             n D ṗn − αṗ D ṗ + (1 − α)μ              (28)
+                                                                                stably interact with the environmental constraints.
+                      ė             
+                        nr τ ext if ėnr τ c ≤ 0 and T < T
+        where μ =                                                                  The 6-DOF articulated robot arm Indy7 (Neuromeka, South
+                      0           else.                                         Korea) was used in all experiments. The robot was controlled
+The remaining step in the passivity analysis is to determine if                 with a Linux-based embedded PC called STEP3 (Neuromeka,
+energy is generated as the α value changes, i.e., to verify that                South Korea), which has an i7-6700K core and 8 GB of RAM.
+                                                                                The control frequency of the robot was 4 kHz. At the robot
+   ∂α ≤ 0. By the definition (22), ∂α can be obtained as
+α̇ ∂S                              ∂S
+                                                                                end-effector, a capacitance-type 6 DOF F/T sensor RFT80-6A01
+                     ∂S
+                        = Sr − Sn ≈ Ŝr − Sn .                          (29)    (Robotous, South Korea) was used to measure the contact
+                     ∂α                                                         wrench, and the force signal was updated at a sampling rate
+                                  ∂α because M is unknown.
+In practice, we cannot calculate ∂S                                             of 1 kHz.
+Thus, the model inertia matrix M̂ is used in Ŝ to monitor α̇ ∂S
+                                                              ∂α .
+   To prevent excessive energy generation due to the modulation                 A. End-Effector Clamping Test
+of α, an energy tank was designed and implemented as                               Clamping the end-effector of the robot with a vice is consid-
+                                  1                                             ered to generate a physical constraint (fixed joint) between the
+                            T = z2                          (30)
+                                  2                                             robot and the environment. This rigid connection between the
+where z is the internal state variable of the energy tank. Then,                robot and the environment prevents the robot motion. However,
+the dynamics of the state z is defined as                                       the robotic system can dissipate the energy stored in it only
+                                                                                through its motion (damping in controller or friction). Therefore,
+                           ψ
+                                 if T < T̄ or ψ < 0                             clamping the end-effector is very effective in evaluating the
+                   ż =    z                                            (31)
+                           0     else                                           passivity of the system.
+
+  Authorized licensed use limited to: Technische Universitaet Muenchen. Downloaded on August 07,2026 at 08:25:14 UTC from IEEE Xplore. Restrictions apply.
+LEE et al.: BIDIRECTIONAL ENERGY FLOW MODULATION FOR PASSIVE ADMITTANCE CONTROL                                                                            3925
+
+
+
+                                                                                       where each component corresponds to a robot joint (from 1 to
+                                                                                       6). Here, we note that the desired stiffness and damping were
+                                                                                       very low, so the robot exhibited underdamped behavior in free
+                                                                                       space. With such low impedance, the system was easily excited
+                                                                                       even when a small amount of energy was generated inside the
+                                                                                       system. Hence, the system’s passivity could be checked more
+                                                                                       effectively.
+                                                                                          The results are shown in Fig. 9. As described in the paragraph
+                                                                                       above, the test had three different periods. In the case of the
+                                                                                       conventional admittance control (the first row in Fig. 9), the
+                                                                                       robot showed unstable behavior (high-amplitude joint velocity
+                                                                                       peaks) when its end-effector was clamped (gray-shaded areas in
+Fig. 8. Configuration of experiment 1: Clamping end-effector with vise. The            Fig. 9). As a result, the contact force, which is the translational
+desired position of the end-effector (xdes ) was fixed between the jaws of the vise,   component of the external wrench F ext = [f                
+                                                                                                                                           ext , next ] , oscil-
+which was closed slowly by pushing the end-effector and then opened again.
+                                                                                       lated heavily. Especially, the equilibrium position (f ext /k)
+                                                                                       was much farther from the initial position (xdes ) than the actual
+   In this experiment, three different control schemes were com-                       deviated one (Δxdr ), which means that the instant contact force
+pared: conventional admittance control, impedance control, and                         was greater than the driving force exerted by the virtual spring.
+the proposed method. The robotic system remained motionless                            Considering that the vise was closed very slowly, the oscillation
+between the jaws of the vise (ṗdes = 0), and the vise was slowly                      indicates that the system generates energy internally. This energy
+closed by pushing the end-effector. After the vise was fully                           generation (ΔEgen = ė    nr τ ext dt) can also be checked from the
+closed, the end-effector was released slowly, and the robot                            data shown in Fig. 10.
+behavior was monitored (Fig. 8). Throughout the test, the robot                           Second, with impedance control, the system showed very sta-
+end-effector (p) attempted to regain the initial pose (pdes ) due                      ble behavior, as expected (the second row in Fig. 9). Throughout
+to the virtual spring action (K).                                                      the experiment, the robot and nominal robot velocities were
+   In the conventional admittance control, the nominal robot                           almost zero. The contact force increased as the vise was closing,
+dynamics is defined as in (3), and the driving torque (τ v ) is                        and the force level was maintained during the closing process.
+defined as in (5). The inertia reduction is not considered, that is                    However, when the vise was opened slowly (t > 10 s), the con-
+λ = 1, M n = M̂ , and C n = Ĉ, since the admittance control                           tact force rapidly decreased, and the end-effector did not return
+could become easily unstable without the inertia reduction.                            to the initial position, although the virtual spring was pulling
+The control motor torque (τ m ) for the conventional admittance                        the end-effector toward the initial position. This was because
+controller is defined as                                                               the joint friction (external disturbance) cancels out the driving
+                                                                                       force or external contact force, which disturbs the robot motion.
+                       τ m,conv = g + τ a,conv + τ c .                        (34)
+                                                                                       As a result, the robot could not realize the desired dynamics
+The auxiliary control input (τ a,conv ) is set to be the same as τ v                   (admittance), causing the equilibrium position (f ext /k) in the
+in (5), and the compensation torque (τ c ) is defined as (15). For                     position error graph to be much farther from the initial pose (pdes )
+the impedance controller, a simple PD controller with gravity                          when the external force was pushing the end-effector (t < 10
+compensation is employed as                                                            s). The position error remained even after the end-effector was
+                                                                                       pushed by the operator by hand (20s).
+                   τ m,imp = g + J  (Kdr − D ṗ).                           (35)
+                                                                                          With the proposed method, the system remained stable when
+It is noted that τ m,imp is equal to τa in (14) without inertia                        the vise was closed and then successfully returned to the initial
+reduction (λ = 1). Finally, as the third case, the proposed method                     position. Owing to the noise signal from the F/T sensor, the robot
+introduced in Section V-B was implemented.                                             generated a jittering motion during the experiment, but it did
+   The control parameters for the task space controllers (virtual                      not exceed a certain level. When the end-effector was clamped
+spring and damping) were set as follows:                                               firmly, the contact force and velocity peak increased slightly, but
+                                                                                       it did not lead to unstable behavior and excessive contact force.
+                 K = diag{100, 100, 100, 40, 40, 40}
+                                                                                       The generated energy (extracted from the energy tank) in the
+                 D = diag{10, 10, 10, 4, 4, 4}                                (36)     proposed method is defined as
+                                                                                                                  
+where the first three components are for the translation of the
+                                                                                                        ΔEgen = −α̇(Ŝr − Sn ) + μdt                       (38)
+end-effector, denoted as x, and the last three components are for
+the rotation (orientation), denoted as θ. For the compensation
+                                                                                       which is significantly smaller than that in the conventional
+torque (τ c ), the control gain matrices were set as follows:
+                                                                                       admittance control, as shown in Fig. 10. When the vise jaw
+             K γ = diag{200, 200, 200, 100, 100, 100}                                  was pushing the robot (injecting energy into the robotic system)
+                                                                                       and the end-effector was clamped, the α value was frequently
+              K p = diag{10, 10, 10, 10, 10, 10}
+                                                                                       increased to one to prevent energy generation (see Fig. 10).
+              K i = diag{5, 5, 5, 5, 5, 5}                                    (37)     In addition, the equilibrium position (f ext /k) was matched
+
+   Authorized licensed use limited to: Technische Universitaet Muenchen. Downloaded on August 07,2026 at 08:25:14 UTC from IEEE Xplore. Restrictions apply.
+3926                                                                                                             IEEE TRANSACTIONS ON ROBOTICS, VOL. 40, 2024
+
+
+
+
+Fig. 9. Results of the end-effector clamping experiment. The first column shows the joint velocity of the real robot and nominal robot. The second column
+shows the magnitude of contact force (||fext ||) during the test. The third columns show the deviation in the end-effector position (Δxdr ) from its initial position
+(xdes ). The end-effector position deviation (Δxdr ) is compared with the equilibrium point (f ext /k), where the external force and spring force become equal
+(the spring constant k was 100N/m in the experiment). In the second and third columns, the graphs show only the translation components of the external wrench
+(F ext = [f                                         
+            ext , next ] ) and error (dr = [Δxdr , Δθ dr ] ) for brevity. The gray-shaded areas in each of the graphs indicate the time periods when the end-effector
+was clamped.
+
+
+
+
+                                                                                    Fig. 11. Configuration of experiment 2: Position regulation in free space. The
+                                                                                    desired position (xdes ) is instantaneously moved 10 cm in the X direction and
+                                                                                    remains unchanged. After 30 s, xdes returns to the initial position.
+
+
+
+
+                                                                                    the raw impedance control was too conservative. In the previous
+                                                                                    experiment, we demonstrated that impedance control could not
+                                                                                    overcome external disturbances and could not realize the desired
+Fig. 10. Energy generation (top) and change in the α value (bottom) during          admittance. Therefore, the proposed method was compared with
+the experiment. The shaded area in each graph represents the period when the        impedance control combined with the friction compensation
+end-effector was clamped to the vise.
+                                                                                    algorithm.
+                                                                                       The joint friction (external disturbance) is modeled as a simple
+with the current deviated position in the position error graph                      viscous friction with a constant Coulomb friction, defined by
+although the contact force fluctuated with high frequency. This
+means that the system successfully realized the desired stiffness
+                                                                                                     1,i + c2,i {1 − exp(−|q̇i /c3,i |)}
+                                                                                                    c+                                           if q̇i ≥ 0
+                                                                                                            +                    +
+during contact.                                                                         τ̂d,i =                                                                 (39)
+                                                                                                    c−      −                    −
+                                                                                                     1,i + c2,i {1 − exp(−|q̇i /c3,i |)}         else.
+
+B. Motion Test in Free Space
+                                                                                    The friction model is defined as a piecewise function because
+   In the second experiment, the position regulation task was
+                                                                                    the motor may have different friction characteristics according
+performed with the robot. The step input (abrupt change in pdes )
+                                                                                    to the direction of rotation (+ : CW, − : CCW). The parameters
+is shown in Fig. 11. Then, the transient motion of the robot was                           − + − + −
+                                                                                      1 , c1 , c2 , c2 , c3 , c3 ) were identified by fitting the model
+                                                                                    (c+
+compared with that of the ideal case (simulation of the nominal
+                                                                                    onto the constant velocity motion data, as shown in Fig. 12. With
+robot). In this experiment, three different control methods were
+                                                                                    the identified friction torque, the control input of the impedance
+applied: conventional admittance control, impedance control
+                                                                                    control is defined as
+with friction compensation, and the proposed method. Unlike
+the clamping test discussed above, the friction compensation
+algorithm was applied in addition to impedance control because                                      τ m,imp = g + J  (Kdr − D ṗ) + τ̂ d .                    (40)
+
+  Authorized licensed use limited to: Technische Universitaet Muenchen. Downloaded on August 07,2026 at 08:25:14 UTC from IEEE Xplore. Restrictions apply.
+LEE et al.: BIDIRECTIONAL ENERGY FLOW MODULATION FOR PASSIVE ADMITTANCE CONTROL                                                                          3927
+
+
+
+                                                                                    motion. Similarly, the robot with the proposed method showed
+                                                                                    underdamped motion (blue dashed line in Fig. 13), but the
+                                                                                    motion converged faster than in the case of the conventional
+                                                                                    admittance control.
+                                                                                       A notable point in the results of this experiment was that the α
+                                                                                    value increased intermittently, as shown in Fig. 13, even though
+                                                                                    the robot’s end-effector did not make any contact during the
+                                                                                    motion. The cause of the increase in the α value was the noise
+                                                                                    signal in the measured external wrench. A nonzero α reduced
+Fig. 12. Friction identification results. The data and fitting curve of the fifth   the accuracy of admittance control, causing the resultant motion
+joint are shown as an example.                                                      to deviate from the ideal motion when the proposed method was
+                                                                                    applied. However, this effect was not severe in that the robot
+                                                                                    retained the underdamped behavior.
+                                                                                       In contrast, when impedance control was applied (green dash-
+                                                                                    dotted line in Fig. 13), the robot immediately converged to the
+                                                                                    equilibrium point. Although the friction was compensated using
+                                                                                    the friction model in (39), the mechanical energy in the system
+                                                                                    rapidly dissipated. Therefore, the desired admittance could not
+                                                                                    be properly realized in the robotic system. Moreover, the system
+                                                                                    exhibited jittering after the robot converged to the equilibrium
+                                                                                    point owing to the noise signal in the joint velocity (the middle
+                                                                                    graph in Fig. 13). The noise can cause excessive compensation
+                                                                                    of friction and induce jittering motion in the low-velocity region,
+                                                                                    which does not occur in the conventional admittance control or
+                                                                                    in the proposed method.
+
+
+
+                                                                                    C. Application Study: Drawing a Line With a Pencil and Ruler
+                                                                                       The previous two experiments have shown that the proposed
+                                                                                    method enables stable robot– environment interactions while
+                                                                                    realizing the desired admittance in free space. In this experiment,
+                                                                                    a practical physical interaction was demonstrated by drawing a
+                                                                                    line with a pencil and ruler as a proof of concept. Drawing a line
+                                                                                    with a pencil is challenging for an articulated robot arm because
+Fig. 13. Free motion test results. Top: Position error between the desired          the tip of the pencil (lead) is very fragile. If the joint torque is too
+position and robot position. Middle: Joint velocity. Bottom: α value.               small, the robot cannot overcome the joint friction and cannot
+                                                                                    follow the desired trajectory (target line). If the joint motor
+                                                                                    exerts an excessively large torque to overcome the disturbance,
+For this experiment, the stiffness and damping matrices for all
+                                                                                    the pencil tip can be broken due to excessive contact force.
+controllers were defined as
+                                                                                    Therefore, the robotic system should maintain stable interactions
+              K = diag{100, 100, 100, 400, 400, 400}                                to avoid generating a high contact force peak. In addition, the
+                                                                                    desired dynamics (low impedance or high admittance) should
+              D = diag{20, 20, 20, 20, 20, 20}.                            (41)
+                                                                                    be realized accurately to adapt its motion to the environment
+The other control parameters for the conventional admittance                        surface geometry with a small interaction force.
+controller and proposed method were set to be the same as those                        The experimental setup is shown in Fig. 14. A pencil was
+in the previous experiment.                                                         attached to the robot end-effector with a 6-DOF F/T sensor, as
+   The results are shown in Fig. 13. First, in the numerical                        shown in the red circle, and the desired position (xdes ) slowly
+simulation (ideal case), the robot slowly converges to the desired                  moved following a predefined path (red solid line). The desired
+pose showing underdamped motion (red line in Fig. 13). There                        path passed over the ruler fixed on the paper surface, and the
+was no interaction during the experiment (τ ext = 0). There-                        path was set to be deeper than the surface in its normal direction
+fore, the robot should follow the ideal motion if the control                       (approximately 7 cm). The robot should adapt to the interacting
+scheme can successfully reject the effect of unknown dynamics.                      surface geometry to avoid generating a large contact force. In this
+With the conventional admittance control (black dotted line in                      experiment, four control schemes were compared: conventional
+Fig. 13), the robot motion showed a small phase delay and                           admittance control, impedance control, impedance control with
+amplitude attenuation during oscillation, but the robot exhibited                   friction compensation, and the proposed method. For all con-
+underdamped motion, which was almost identical to the ideal                         trol schemes, the desired stiffness and damping matrices were
+
+   Authorized licensed use limited to: Technische Universitaet Muenchen. Downloaded on August 07,2026 at 08:25:14 UTC from IEEE Xplore. Restrictions apply.
+3928                                                                                                              IEEE TRANSACTIONS ON ROBOTICS, VOL. 40, 2024
+
+
+
+
+Fig. 14. In the configuration of the third experiment, a line was drawn with
+a pencil and ruler. The desired end-effector position xdes moves following the
+desired path (red solid line), and the robot should adjust its motion path according
+to the surface geometry (blue dashed line).
+
+
+
+
+                                                                                       Fig. 16. Contact force graph during the drawing experiment (red solid line).
+                                                                                       The driving force (exerted by the virtual spring) is also plotted (black dashed
+                                                                                       line).
+
+
+                                                                                       body) was broken. Finally, with the proposed method, the robot
+                                                                                       successfully followed the desired path by adjusting the path
+                                                                                       according to the surface geometry. The sharp pencil lead became
+                                                                                       slightly blunt, but it was not broken during the interaction.
+                                                                                          In Fig. 16, the contact force was compared with the driving
+                                                                                       force exerted by the virtual spring, K x Δxdr where K x is
+                                                                                       the translation component of K. With the impedance control,
+                                                                                       the robot did not generate any contact force, regardless of
+                                                                                       the deviation from the desired position (Δxdr ). When friction
+                                                                                       compensation was applied along with impedance control, the
+Fig. 15. Pencils used in the drawing experiments with different control                contact force fluctuated heavily because of the jittering induced
+schemes.                                                                               by the joint velocity noise. Moreover, the unknown disturbance
+                                                                                       (possibly undercompensated gravity) raised the contact force,
+defined as follows:                                                                    causing it to be mostly higher than K x Δxdr . When the pencil
+                                                                                       lead was broken (t < 51 s), a high peak contact force of over
+              K = diag{100, 100, 100, 400, 400, 400}                                   40 N was generated. In the case of the conventional admittance
+               D = diag{20, 20, 20, 40, 40, 40}.                              (42)     control, the impact (force peak) increased as the robot bounced,
+                                                                                       and the experiment was stopped by the operator because of
+The other control parameters for the conventional admittance                           safety considerations. With the proposed method, the contact
+controller and proposed method were set to be the same as those                        force was approximately the same as the driving force. When
+in the previous experiments.                                                           the peak contact force occurred (t < 20 s), the tip of the pencil
+   The result of each drawing experiment is directly reflected in                      lead crumbled slightly. Although the contact force fluctuated
+the pencil condition shown in Fig. 15. In the case of impedance                        intermittently owing to the friction induced by the paper surface
+control, the robot was nearly stationary during the experiment.                        and pencil tip, it did not exceed a certain level. Therefore,
+Hence, the pencil did not touch the surface at all and remained                        the robot could perform the task without breaking the pencil
+intact throughout the experiment. When friction compensation                           lead.
+was applied along with impedance control, the lead of the                                 In summary, the experiment showed that the proposed method
+pencil was broken due to the contact force. In the case of the                         could ensure stable interaction between the robot and its en-
+conventional admittance, the robot could not maintain contact,                         vironment and successfully imposed the desired stiffness on
+and the impact gradually increased due to energy generation as                         the robot motion without friction compensation or disturbance
+the robot bounced. As a result, the pencil lead (and even the                          identification.
+
+
+  Authorized licensed use limited to: Technische Universitaet Muenchen. Downloaded on August 07,2026 at 08:25:14 UTC from IEEE Xplore. Restrictions apply.
+LEE et al.: BIDIRECTIONAL ENERGY FLOW MODULATION FOR PASSIVE ADMITTANCE CONTROL                                                                          3929
+
+
+
+                                                                                to follow the nominal system’s motion. With a large α, the states
+                                                                                of the nominal robot converge to those of the real robot.
+                                                                                   Fig. 17(b) presents a reduced version of the system’s block
+                                                                                diagram; it shows what happens to the system with different
+                                                                                α values under physical interaction. When α = 0, there is no
+                                                                                bidirectional energy flow. Hence, the robotic system interacting
+                                                                                with the environment becomes identical to the unstable system
+                                                                                in Fig. 5. As analyzed in Section V-A, the system (the error
+                                                                                between ṗ and ṗn ) generates energy while interacting with the
+                                                                                environment. On the other hand, when α = 1, the compensation
+                                                                                torque does not affect the dynamics of the real robot. Hence,
+                                                                                the nominal system [the red-shaded part in Fig. 17(b)] simply
+                                                                                converges to the real system (the real robot with the auxiliary
+                                                                                controller). Here, the compensator acts like an observer rather
+                                                                                than a compensator that estimates the extended disturbance
+                                                                                (external disturbance and effect of model uncertainty). As a
+                                                                                result, the system becomes passive (since the auxiliary controller
+                                                                                is designed to be passive) and can remain stable when the robot
+                                                                                interacts with the environment, but it cannot overcome the effect
+                                                                                of the extended disturbance.
+                                                                                   Finally, the change in the control structure according to the
+                                                                                α value indicates that the proposed method (α modulation)
+                                                                                can be considered continuous switching between admittance
+                                                                                control and impedance control. As mentioned in [21] and [22],
+                                                                                impedance control and admittance control are complementary
+                                                                                to each other. Combining the two control strategies can be an
+                                                                                effective solution for physical interaction of the robot. Unlike
+                                                                                existing methods that have defined independent impedance and
+                                                                                admittance controllers and combined them [21], [22], [23], [24],
+                                                                                the proposed method unifies the two control schemes within a
+                                                                                single control structure and provides the parameter adaptation
+                                                                                rule based on the passivity analysis of the control structure.
+                                                                                Therefore, the proposed method can be considered an extension
+                                                                                of the hybrid (unified) impedance and admittance control, which
+                                                                                can ensure stable interactions with high accuracy.
+
+
+Fig. 17. Reconstructed block diagram of the system with the proposed ad-
+                                                                                B. Selection of Parameters in the Proposed Method
+mittance control method. (a) Fully described block diagram of the system. (b)      The proposed method has five user-defined controller param-
+Reduced version of the block diagram in (a).
+                                                                                eters excepting the desired dynamics: K γ , K p , K i , T̄ , and
+                                                                                T. The controller gain matrices K γ , K p , and K i are used to
+                           VII. DISCUSSION                                      calculate the compensation torque (τ c ), and they affect the con-
+                                                                                vergence of the error dynamics. According to [35, Corollary 1],
+A. Physical Meaning of Changing α in the Proposed Method
+                                                                                the diagonal matrices K p and K i should satisfy K 2p > 2K i
+   In Section V-C, the change in the system property accord-                    for the error dynamics to be stable. In addition, for the diagonal
+ing to the α value is explained based on the ∂S    ∂t derivation.               matrix K γ = kγ I, a large kγ can suppress enr . Accordingly,
+The change in system properties can also be understood by                       with a larger kγ , the error dynamics converges to zero faster.
+observing the change in the control structure. First, the block                 Therefore, it is recommended to set kγ as large as possible.
+diagram in Fig. 6 can be reconstructed as shown in Fig. 17(a) to                However, in practice, the control gain is limited by factors such
+illustrate the system’s characteristics more clearly. In the block              as system bandwidth, noise signals from sensors (F/T sensor and
+diagram, the nominal robot and real robot are driven by their                   joint encoder), and the motor torque limit.
+own controllers, the auxiliary controller and nominal controller,                  The parameters for the energy tank, T̄ and T, are used to
+and each robot and controller construct a feedback interconnec-                 guarantee the passivity of the system in theory. However, in
+tion [gray-shaded parts in Fig. 17(a)]. The bidirectional energy                reality, the values of the parameters does not affect the system
+flow determines how the compensation torque (τ c ) affects each                 behavior much because the system rarely generates energy with
+system. With a small α, the compensator forces the real system                  the proposed method. In experiment 1 (see Section VI-A), it
+
+
+   Authorized licensed use limited to: Technische Universitaet Muenchen. Downloaded on August 07,2026 at 08:25:14 UTC from IEEE Xplore. Restrictions apply.
+3930                                                                                                        IEEE TRANSACTIONS ON ROBOTICS, VOL. 40, 2024
+
+
+
+was empirically shown that the energy generation was very                       was observed. Thus, an unresolved issue regarding performance
+small even under the extreme case of physical interaction (see                  is that the cause for ėnr τ ext > 0 is not clear. Intuitively, we can
+Fig. 10). Thus, the system can realize the desired dynamics by                  expect that external disturbances such as joint friction or model
+extracting little energy from the tank. Therefore, an arbitrarily               uncertainty can increase ė    nr τ ext . When the robot end-effector
+small value (∼ 1.0) can be set as the maximum energy storage                    is pushed by physical interaction, the joint friction hinders the
+(T̄ ) to safeguard against possible energy generation. Similarly,               real robot’s motion. Hence, ėnr can be induced in the direction
+the minimum level of the energy tank (T) can be set freely within               of τ ext . Similarly, setting the desired inertia matrix M n to be
+the range of 0 < T < T̄ .                                                       smaller than the real robot inertia can also cause ėnr in the
+                                                                                direction of τ ext .1
+C. Limitations of the Proposed Method and Future Work
+   This article proposed an adaptive method for stable interaction                                         VIII. CONCLUSION
+with admittance control, and the concept was proven through                        In this article, an adaptive admittance control method was pro-
+a set of experiments. Nevertheless, some issues still exist in                  posed to overlay the desired dynamics (admittance) on a robot
+the proposed method. Therefore, in this section, we discuss the                 while maintaining stable interaction. To design the controller,
+limitations and deficiencies of the proposed method to provide                  the passivity of the robotic system and the admittance control
+readers with insight for possible future research.                              structure were analyzed, and a passivity condition was specified.
+   First, in the passivity analysis, the estimated inertia matrix M̂            Notably, the passivity analysis of admittance control is extended
+is used instead of the real value M to monitor the power flowing                to multi-DOF nonlinear robotic systems from linear systems.
+in and out of the tank. The overlooked power flow caused by                     The proposed control method suppresses energy generation by
+modeling errors is given as                                                     modulating the bidirectional energy flow, and the parameter
+                                          1                                     adaptation rule is designed to prevent the system from being
+         ΔSmo = −α̇(Sr − Ŝr ) = −α̇ λq̇  (M − M̂ )q̇.
+                                          2                                     too conservative (losing control performance). In addition, the
+This indefinite term may become significant when the value of                   energy tank is combined with the proposed adaptation rule to
+α̇ is large and the robot moves at high velocity simultaneously. It             ensure the passivity of the system.
+is anticipated that the value of α will change only when the robot                 As a result, the robotic system with the proposed control
+interacts with the environment; therefore, the effects of modeling              method can realize the desired admittance and maintain stable
+errors will be negligible only when the robot moves at low                      contact even with a stiff surface. Along with the experimental
+velocities during interactions. Although other energy dissipation               results that verified the effectiveness of the proposed method, an
+elements, such as desired damping or the robot’s joint friction,                extensive discussion was presented in this article for a better
+can attenuate this indefinite term, its energy generation cannot                understanding of the proposed method. As a hybrid control
+be monitored by the energy tank method, thus passivity cannot                   scheme that combines impedance and admittance control, the
+be guaranteed. This problem gets severe when a large inertia                    proposed method can selectively inherit the advantages of the
+reduction is attempted, which could represent a limitation of                   two complementary control methods. Therefore, it can be an
+our work.                                                                       effective solution to enable safe physical interaction of the robot.
+    Second, the proposed method provides an effective solution
+for instability due to the noncollocation issue between the nomi-               Appendix Derivation of the Right-Hand Side of (23)
+nal system and the F/T sensor, but there can exist other sources of                In this appendix, the derivation of (23) is provided. Starting
+instability in the robotic system. The well-known candidates for                from the definitions of Sr and Sn , ∂S
+                                                                                                                    ∂t can be obtained as
+subsidiary sources of instability are the sensor noise, discretiza-
+tion error of the control loop, and flexibility of the robot link                  ∂S
+structure (noncollocation issue arising from the robot hardware).                       = (1 − α)Ṡn + αṠr
+                                                                                   ∂t
+This kind of instability source may become substantial when a                                                                                   
+                                                                                                     1 
+large inertia reduction is attempted. Nevertheless, the instability                     = (1 − α)      q̇ n Ṁ n q̇ n + q̇  M  q̈
+                                                                                                                               n n  + ˙
+                                                                                                                                       
+                                                                                                                                           K dn
+(energy generation) due to such subsidiary sources is difficult                                      2                     n            dn
+
+                                                                                                                                        
+to monitor using the passivity analysis conducted in this article;                              1 
+                                                                                         +α       λq̇ Ṁ q̇ + λq̇  M q̈ + ˙     K dr   .
+thus, the proposed method cannot address it. For such instability                               2                               dr
+
+issues, the instability metric or observer algorithms proposed                                                                                   (43)
+in [5], [19], and [20] can be combined with the proposed method                 By substituting the nominal robot dynamics (7) and real robot
+to ensure the stability of the system.                                          dynamics (2) into M n q̈ n and M q̈, respectively, in (43), and by
+    Third, the proposed method increases α when the system                      using the skew-symmetric property of Ṁ − 2C, ∂S       ∂t is obtained
+generates energy (ė nr τ ext > 0), and a nonzero α value degrades
+the performance (accuracy of the realized dynamics) of the
+admittance control. The second experiment in Section VI-B                         1 For a linear system, it is well-known that a small desired inertia can make
+showed that the proposed method can realize the desired ad-                     the system nonpassive under the conventional admittance control scheme [1],
+mittance to some extent, but a deviation from the ideal motion                  [36].
+
+
+
+  Authorized licensed use limited to: Technische Universitaet Muenchen. Downloaded on August 07,2026 at 08:25:14 UTC from IEEE Xplore. Restrictions apply.
+LEE et al.: BIDIRECTIONAL ENERGY FLOW MODULATION FOR PASSIVE ADMITTANCE CONTROL                                                                                      3931
+
+
+
+as                                                                                    [14] K.-H. Lee and W. S. Newman, “Natural admittance control of an electro-
+                                                                                           hydraulic humanoid robot,” in Proc. IEEE Int. Conf. Robot. Biomimetics,
+ ∂S                                                                                        2014, pp. 1100–1105.
+    = (1 − α)(q̇                       
+                                                  ˙
+                 n τ v + q̇ n τ ext − q̇ n τ bd +  dn Kdn )                         [15] M. Kristalny and J. H. Cho, “Circumventing conceptual flaws in classical
+ ∂t                                                                                        interaction control strategies,” in Proc. IEEE/RSJ Int. Conf. Intell. Robots
+        + α(λ(q̇  τ m + q̇  τ ext − q̇  g + q̇  τ d ) + ˙ 
+                                                               dr Kdr ).
+                                                                                           Syst., 2021, pp. 9270–9275.
+                                                                                      [16] H.-Y. Li et al., “Stable and compliant motion of physical human–robot
+                                                                    (44)                   interaction coupled with a moving environment using variable admit-
+In the proposed method, τ v , τ a , τ m , and τ bd are defined as                          tance and adaptive control,” IEEE Robot. Autom. Lett., vol. 3, no. 3,
+in (5), (14), (16), and (17), respectively. Thus, by substituting                          pp. 2493–2500, Jul. 2018.
+                                                                                      [17] D. Lee, W. K. Chung, and K. Kim, “Safety-oriented teleoperation frame-
+(5), (14), (16), and (17) into (44), we can obtain the following                           work for contact-rich tasks in hazardous workspaces,” in Proc. IEEE/RSJ
+inequality:                                                                                Int. Conf. Intell. Robots Syst., 2021, pp. 4268–4275.
+                                                                                      [18] C. T. Landi, F. Ferraguti, L. Sabattini, C. Secchi, and C. Fantuzzi, “Admit-
+     ∂S                                                                                    tance control parameter adaptation for physical human-robot interaction,”
+        = (1 − α)(ṗ                        
+                    des Kdn + q̇ n τ ext − ṗn D ṗn )                                    in Proc. IEEE Int. Conf. Robot. Autom., 2017, pp. 2911–2916.
+     ∂t                                                                               [19] F. Dimeas and N. Aspragathos, “Online stability in human-robot coop-
+                                                                                           eration with admittance control,” IEEE Trans. Haptics, vol. 9, no. 2,
+            + α(ṗ                      
+                  des Kdr + q̇ τ ext − ṗ D ṗ)                                           pp. 267–278, Apr.–Jun. 2016.
+                                                                                      [20] M. A. Sassi, M. J. Otis, and A. Campeau-Lecours, “Active stability
+          + λα(1 − α)q̇  τ c − λα(1 − α)q̇                         
+                                                     n τ c + λαq̇ τ d .                    observer using artificial neural network for intuitive physical human–
+                                                                         (45)              robot interaction,” Int. J. Adv. Robotic Syst., vol. 14, no. 4, 2017,
+Finally, using the fact that q̇ 
+                                n τ ext = q̇ 
+                                               τ ext +  ė
+                                                          nr τ ext , (45) can              Art. no. 1729881417727326.
+                                                                                      [21] C. Ott, R. Mukherjee, and Y. Nakamura, “Unified impedance and admit-
+be rearranged as                                                                           tance control,” in Proc. IEEE Int. Conf. Robot. Autom., 2010, pp. 554–561.
+                                                                                      [22] C. Ott, R. Mukherjee, and Y. Nakamura, “A hybrid system framework for
+      ∂S                                                                                   unified impedance and admittance control,” J. Intell. Robot. Syst., vol. 78,
+         = ṗ                              
+             des {αKdr + (1 − α)Kdn } + q̇ τ ext                                         no. 3, pp. 359–375, 2015.
+      ∂t                                                                              [23] H. Kim, J. Kwon, Y. Oh, B. J. You, and W. Yang, “Weighted hybrid
+              − (1 − α)(ṗ                         
+                          n D ṗn ) − α(ṗ D ṗ − λq̇ τ d )
+                                                                                           admittance-impedance control with human intention based stiffness es-
+                                                                                           timation for human-robot interaction,” in Proc. IEEE/RSJ Int. Conf. Intell.
+              + (1 − α)(ė              
+                          nr τ ext − λαėnr τ c ).                           (46)          Robots Syst., 2018, pp. 1–6.
+                                                                                      [24] F. Cavenago, L. Voli, and M. Massari, “Adaptive hybrid system framework
+                                                                                           for unified impedance and admittance control,” J. Intell. Robot. Syst.,
+                                                                                           vol. 91, no. 3, pp. 569–581, 2018.
+                                    REFERENCES                                        [25] M. J. Kim et al., “Powered upper-limb control using passivity-based non-
+                                                                                           linear disturbance observer for unknown payload carrying applications,”
+ [1] A. Q. Keemink, H. v. d. Kooij, and A. H. Stienen, “Admittance control                 in Proc. IEEE Int. Conf. Robot. Autom., 2016, pp. 2340–2346.
+     for physical human–robot interaction,” Int. J. Robot. Res., vol. 37, no. 11,     [26] M. J. Kim, W. Lee, C. Ott, and W. K. Chung, “A passivity-based admittance
+     pp. 1421–1444, 2018.                                                                  control design using feedback interconnections,” in Proc. IEEE/RSJ Int.
+ [2] J. Park and W. K. Chung, “Analytic nonlinear H∞ inverse-optimal control               Conf. Intell. Robots Syst., 2016, pp. 801–807.
+     for Euler–Lagrange system,” IEEE Trans. Robot. Autom., vol. 16, no. 6,           [27] M. J. Kim et al., “A passivity-based nonlinear admittance control with ap-
+     pp. 847–854, Dec. 2000.                                                               plication to powered upper-limb control under unknown environmental in-
+ [3] J. Park and W. Chung, “Design of a robust H∞ PID control for industrial               teractions,” IEEE/ASME Trans. Mechatron., vol. 24, no. 4, pp. 1473–1484,
+     manipulators,” J. Dyn. Syst., Meas., Control, vol. 122, no. 4, pp. 803–812,           Aug. 2019.
+     2000.                                                                            [28] W. Lee, S. Yoo, S. Nam, K. Kim, and W. K. Chung, “Passivity-based
+ [4] M. Dohring and W. Newman, “The passivity of natural admittance control                robust compliance control of electro-hydraulic robot manipulators with
+     implementations,” in Proc. IEEE Int. Conf. Robot. Autom., vol. 3, 2003,               joint angle limit,” IEEE Robot. Autom. Lett., vol. 5, no. 2, pp. 3190–3197,
+     pp. 3710–3715.                                                                        Apr. 2020.
+ [5] F. Ferraguti, C. T. Landi, L. Sabattini, M. Bonfè, C. Fantuzzi, and C. Secchi,   [29] R. Kikuuwe, “Torque-bounded admittance control realized by a set-valued
+     “A variable admittance control strategy for stable physical human–robot               algebraic feedback,” IEEE Trans. Robot., vol. 35, no. 5, pp. 1136–1149,
+     interaction,” Int. J. Robot. Res., vol. 38, no. 6, pp. 747–765, 2019.                 Oct. 2019.
+ [6] S. Eppinger and W. Seering, “Understanding bandwidth limitations in              [30] R. Ortega, J. A. L. Perez, P. J. Nicklasson, and H. J. Sira-Ramirez, Passivity-
+     robot force control,” in Proc. IEEE Int. Conf. Robot. Autom., vol. 4, 1987,           Based Control of Euler-Lagrange Systems: Mechanical, Electrical and
+     pp. 904–909.                                                                          Electromechanical Applications. Berlin, Germany: Springer, 2013.
+ [7] A. Calanca, R. Muradore, and P. Fiorini, “A review of algorithms for             [31] B. Brogliato, R. Lozano, B. Maschke, and O. Egeland, “Dissipative sys-
+     compliant control of stiff and fixed-compliance robots,” IEEE/ASME                    tems analysis and control,” Theory Appl., 3rd ed. Olav Egeland: Springer,
+     Trans. Mechatron., vol. 21, no. 2, pp. 613–624, Apr. 2016.                            pp. 12–14, doi: 10.1007/978-3-030-19420-8.
+ [8] S. P. Buerger and N. Hogan, “Complementary stability and loop shaping            [32] H. K. Khalil, Nonlinear Systems, vol. 115, 3rd ed. Upper Saddle River,
+     for improved human–robot interaction,” IEEE Trans. Robot., vol. 23, no. 2,            NJ, USA: Patience Hall, 2002.
+     pp. 232–244, Apr. 2007.                                                          [33] R. Kikuuwe, “A sliding-mode-like position controller for admittance
+ [9] F. Ferraguti et al., “An energy tank-based interactive control architecture           control with bounded actuator force,” IEEE/ASME Trans. Mechatron.,
+     for autonomous and teleoperated robotic surgery,” IEEE Trans. Robot.,                 vol. 19, no. 5, pp. 1489–1500, Oct. 2014.
+     vol. 31, no. 5, pp. 1073–1088, Oct. 2015.                                        [34] M. D. Stefano, R. Balachandran, and C. Secchi, “A passivity-based
+[10] D. Heck, A. Saccon, R. Beerens, and H. Nijmeijer, “Direct force-reflecting            approach for simulating satellite dynamics with robots: Discrete-time
+     two-layer approach for passive bilateral teleoperation with time delays,”             integration and time-delay compensation,” IEEE Trans. Robot., vol. 36,
+     IEEE Trans. Robot., vol. 34, no. 1, pp. 194–206, Feb. 2018.                           no. 1, pp. 189–203, Feb. 2020.
+[11] C. Schindlbeck and S. Haddadin, “Unified passivity-based Cartesian               [35] M. J. Kim, Y. Choi, and W. K. Chung, “Bringing nonlinear H∞ optimality
+     force/impedance control for rigid and flexible joint robots via task-energy           to robot controllers,” IEEE Trans. Robot., vol. 31, no. 3, pp. 682–698,
+     tanks,” in Proc. IEEE Int. Conf. Robot. Autom., 2015, pp. 440–447.                    Jun. 2015.
+[12] Y. Michel, C. Ott, and D. Lee, “Safety-aware hierarchical passivity-based        [36] D. Ko, D. Lee, W. K. Chung, and K. Kim, “On the performance and pas-
+     variable compliance control for redundant manipulators,” IEEE Trans.                  sivity of admittance control with feed-forward input,” in Proc. IEEE/RSJ
+     Robot., vol. 38, no. 6, pp. 3899–3916, Dec. 2022.                                     Int. Conf. Intell. Robots Syst., 2022, pp. 11209–11215.
+[13] W. S. Newman, “Stability and performance limits of interaction con-              [37] A. Q. L. Keemink, “Haptic physical human assistance,” Ph.D.
+     trollers,” J. Dynamic Syst., Meas., Control, vol. 114, no. 4, pp. 563–570,            dissertation, Univ. Twente, Enschede Publisher: , pp. 129–137,
+     1992, doi: 10.1115/1.2897725.                                                         doi: 10.3990/1.9789036544085.
+
+
+     Authorized licensed use limited to: Technische Universitaet Muenchen. Downloaded on August 07,2026 at 08:25:14 UTC from IEEE Xplore. Restrictions apply.
+3932                                                                                                            IEEE TRANSACTIONS ON ROBOTICS, VOL. 40, 2024
+
+
+
+                          Donghyeon Lee received the B.S., M.S., and Ph.D.                                    Wan Kyun Chung (Fellow, IEEE) received the B.S.
+                          degrees in mechanical engineering from Pohang Uni-                                  degree in mechanical design from Seoul National
+                          versity of Science and Technology (POSTECH), Po-                                    University, Seoul, South Korea, in 1981, and the M.S.
+                          hang, South Korea, in 2016, 2018, and 2023, respec-                                 degree in mechanical engineering and the Ph.D. de-
+                          tively.                                                                             gree in production engineering from Korea Advanced
+                             He is currently the leader of R&D team 2 of Celloid                              Institute of Science and Technology, Daejeon, South
+                          Company Ltd., Pohang, South Korea. His research                                     Korea, in 1983 and 1987, respectively.
+                          interests include robot manipulators and interaction                                   He is currently a Professor with the School of Me-
+                          control.                                                                            chanical Engineering, Pohang University of Science
+                                                                                                              and Technology, Pohang, Korea (he joined the faculty
+                                                                                                              in 1987). In 1988, he was a Visiting Professor with the
+                                                                                    Robotics Institute, Carnegie Mellon University, Pittsburgh, PA, USA. In 1995,
+                                                                                    he was a Visiting Scholar with University of California Berkeley, Berkeley, CA,
+                                                                                    USA. His research interests include the development of robust controllers for
+                          Dongwoo Ko (Graduate Student Member, IEEE) re-            precision motion control, biomedical robotics, and AI-based biorobotics.
+                          ceived the B.S. degree in mechanical engineering            Dr. Chung was the Editor-in-Chief of the Journal of Intelligent Service
+                          from Pohang University of Science and Technology          Robotics by Springer from 2016 to 2022. He is currently an Editor for the
+                          (POSTECH), Pohang, South Korea, in 2020, and is           IEEE-Wiley book series on Robotics and Automation.
+                          currently working toward the Ph.D. degree in safety-
+                          critical control and interaction control of articulated
+                          robot manipulators from the Robotics Laboratory,
+                          POSTECH, Pohang, South Korea.
+                             His research interests include robot manipulators
+                          and interaction control.
+
+
+
+
+                          Min Jun Kim (Member, IEEE) received the B.S.
+                          degree in mechanical engineering from Korea Uni-
+                          versity, Seoul, South Korea, in 2010, and the Ph.D.
+                          degree in mechanical engineering from the Pohang
+                          University of Science and Technology (POSTECH),
+                          Pohang, South Korea, in 2016.
+                             He was a Research Scientist with the Institute of
+                          Robotics and Mechatronics, German Aerospace Cen-
+                          ter (DLR), Wessling, Germany, from 2016 to 2020.
+                          He is currently an Assistant Professor of electrical
+                          engineering with Korea Advanced Institute of Science
+and Technology (KAIST), Daejeon, South Korea. His research interests include
+flexible joint robots, physical robot interaction, aerial robots, and nonlinear
+robust control.
+
+
+
+
+  Authorized licensed use limited to: Technische Universitaet Muenchen. Downloaded on August 07,2026 at 08:25:14 UTC from IEEE Xplore. Restrictions apply.
+

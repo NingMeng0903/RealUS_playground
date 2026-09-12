@@ -1,0 +1,1031 @@
+                          This article has been accepted for inclusion in a future issue of this journal. Content is final as presented, with the exception of pagination.
+
+
+IEEE TRANSACTIONS ON ROBOTICS                                                                                                                                                1
+
+
+
+
+ A Passivity-Based Approach for Simulating Satellite
+  Dynamics With Robots: Discrete-Time Integration
+           and Time-Delay Compensation
+                                      Marco De Stefano , Ribin Balachandran , and Cristian Secchi
+
+
+   Abstract—This article proposes a passivity-based approach
+for simulating satellite dynamics on a position-controlled robot
+equipped with a force–torque sensor. Time delays intrinsic in the
+computational loop and discrete-time integration degrade the be-
+havior of the satellite dynamics reproduced by the robot. These
+factors can generate an energy-inconsistent simulation and can
+even render the system unstable. In this article, time delay and
+discrete-time integration effects are analyzed from an energetic
+perspective and compensated through a passivity-based control
+strategy to ensure a faithful and stable dynamic simulation with
+position-controlled robots. The benefit of the proposed strategy is
+validated by simulations and experiments on the On-Orbit Servic-
+ing Simulator (OOS-SIM), a robotic facility used for simulating
+free-floating dynamics.
+   Index Terms—Hardware-in-the-loop simulation,                                     passive
+                                                                                                   Fig. 1. OOS-SIM facility. The industrial robots are equipped with force–
+integrator, space robotics, time-delay compensation.                                               torque sensors. Servicer (left) and client (right).
+
+
+                              I. INTRODUCTION
+                                                                                                   operating in space. Robotic manipulators can be used in mis-
+      HE assembly and maintenance in orbit using robotic tech-
+T     nologies began in 1981 when the Space Shuttle Manipu-
+lator was used for the first time [1]. Advances in space robotic
+                                                                                                   sions for maintenance or deorbiting of defective satellites in
+                                                                                                   the context of active space debris removal. The dynamics and
+                                                                                                   control of a space robot can be quite complex [6] and before
+technologies have enabled the execution of precise and complex                                     the actual space missions, it is necessary to test and validate the
+maintenance tasks in orbit which reduce the risks associated with                                  control tasks on ground. Thus, reliable simulators which can
+manned extravehicular activities. Unmanned mission demon-                                          reproduce microgravity conditions are required. To this end,
+strators were flown in orbit to validate autonomous robot control                                  several solutions can be adopted such as air bearing systems,
+technologies [2]. A milestone was the success of the Robot                                         neutral buoyancy, zero-G parabolic flights, cable off-loaders,
+Technology Experiment (ROTEX) to demonstrate servicing                                             and robotic facilities [1]. Air bearing systems can provide gravity
+prototype capabilities using robots [3]. Later, robotic experi-                                    compensation but they are limited to planar motion simulations
+ments were conducted with the Japanese Engineering Test Satel-                                     only [7]. Neutral buoyancy can provide a very large workspace,
+lite VII (ETS-VII) [4], including real-time collision avoidance                                    however, the fluids introduce hydrodynamic effects which dis-
+capabilities [5].                                                                                  tort the dynamics to be reproduced. Zero-G parabolic flights can
+   Although the list is not exhaustive, the common aspect in                                       achieve nearly zero gravity conditions but they are limited by
+all of these on-orbit experiments is the use of a manipulator                                      test duration (only 20–30 s) and cargo [8].
+                                                                                                      Robotic facilities are systems with hardware-in-the-loop
+   Manuscript received June 22, 2019; accepted September 2, 2019. This paper                       where the robot end-effector moves according to a mathematical
+was recommended for publication by Associate Editor J. Abbott and Editor P.                        model to reproduce the desired working conditions (e.g., zero
+Robuffo Giordano upon evaluation of the reviewers’ comments. (Corresponding                        gravity). Several robotic simulators for space applications are
+author: Marco De Stefano.)
+   M. De Stefano and R. Balachandran are with the Department of                                    available-INVERITAS, a facility for rendezvous and capture of
+Analysis and Control of Advanced Robotic System, German Aerospace                                  satellites [9], EPOS (European Proximity Operation Simulator)
+Center,      82234 Wessling, Germany (e-mail: marco.destefano@dlr.de;                              to simulate rendezvous and docking [10], the SOCS (Lockheed
+ribin.balachandran@dlr.de).
+   C. Secchi is with the Department of Sciences and Methods for Engineer-                          Martin Space Operation Simulation Center) for testing the Orion
+ing, University of Modena and Reggio Emilia, 41100 Modena, Italy (e-mail:                          rendezvous [11], and the OOS-SIM, an on-ground experimental
+cristian.secchi@unimore.it).                                                                       facility for on-orbit servicing simulations [12]. In particular, the
+   Color versions of one or more of the figures in this article are available online
+at http://ieeexplore.ieee.org.                                                                     OOS-SIM is composed of two industrial robots simulating the
+   Digital Object Identifier 10.1109/TRO.2019.2945883                                              free-floating satellites (see Fig. 1). One of the satellites (servicer)
+                           1552-3098 © 2019 IEEE. Personal use is permitted, but republication/redistribution requires IEEE permission.
+                               See http://www.ieee.org/publications_standards/publications/rights/index.html for more information.
+                    This article has been accepted for inclusion in a future issue of this journal. Content is final as presented, with the exception of pagination.
+
+
+2                                                                                                                                                   IEEE TRANSACTIONS ON ROBOTICS
+
+
+
+is equipped with a manipulation arm. Each of the industrial                                    for each time step, which typically prohibits real-time deter-
+robots has a force–torque sensor mounted on its end-effector to                                minism for the industrial robot. Energy-preserving integrators
+measure external interactions. The measured forces and torques                                 based on momentum conservation [33] are also available in the
+are then provided to the mathematical model of the desired                                     literature. Nevertheless, geometric integration deals mainly with
+dynamics whose output (velocity) is commanded to the robot                                     isolated physical systems or systems with some damping [34],
+that moves in Cartesian space.                                                                 and the interaction with the external environment is not con-
+   The main issues with robotic facilities are the time delay                                  sidered. In haptics control, the operator needs to interact with a
+between the measured forces and the simulation driven reaction                                 virtual environment and the problem of integrating a nonisolated
+of the robot, and discrete-time dynamics integration [1]. These                                physical dynamics is relevant. In [35], it is shown that standard
+factors, if not properly addressed, cause energy inconsisten-                                  explicit integrators do not ensure passivity and, therefore, a
+cies and instabilities, especially during interactions with the                                more complex integration strategy has to be sought. An implicit
+environment.                                                                                   integration method, based on the port-Hamiltonian formulation
+                                                                                               of the dynamics to be simulated is proposed in [20]. In [36], a fast
+                                                                                               but implicit and variable rate integration strategy for implement-
+A. Related Work                                                                                ing mass–spring–damper systems is designed. Implicit and vari-
+   Several control algorithms for time-delay compensation have                                 able rate integration methods can prohibit real-time determinism
+been proposed for achieving stable simulation by modifying                                     on a standard industrial robot and, therefore, a real-time explicit
+the contact model (see, e.g., [13], [14]). However, they require                               method is more suitable. In [37] and [38], an explicit method for
+identification of contact parameters. In [15] and [16], a first-order                          simulating the dynamics of a rigid body was proposed and vali-
+compensation model was designed, but the knowledge of contact                                  dated on a robotic system for simulating the dynamics of a satel-
+frequency and time-delay duration is needed.                                                   lite. However, translational and rotational dynamics were treated
+   The passivity-based approaches have emerged as intuitive                                    separately.
+and effective strategies for achieving stability independent of
+the time delay. In fact, ensuring the passivity of the overall
+system is a sufficient condition for having a stable behavior [17].                            B. Contribution
+The field of haptics and teleoperation has thoroughly exploited                                   A common approach to compensate time delay in the control
+approaches based on passivity to deal with the instabilities due to                            loop of a robotic simulator is to modify the contact parame-
+time delay (see [18] for a survey). For example, wave variables                                ters without addressing the effects of discrete-time dynamics
+([19], [20]) have been implemented for making a bilateral com-                                 integration [13]–[15] and [16].
+munication channel passive. However, this technique introduces                                    In this article, a control strategy based on passivity criteria
+a characteristic impedance which might deteriorate the behavior                                is proposed in order to ensure a faithful and reliable dynamic
+of the teleoperation system [21]. In [22] and [23], the concept                                simulation. The approach does not rely on contact models and it
+of energy tank has been exploited for dealing with time delay.                                 can compensate the increase of energy due to the time delay
+But, the selection and tuning of the energy tank parameters is re-                             and also due to the discrete-time dynamics integration. The
+quired. In our article, we exploit time-domain passivity approach                              contribution is based on three main aspects.
+(TDPA), [24] to address the delay problems. Within this context,                                  First, a novel time-delay compensation strategy based on
+[25] proposed a geometric solution for haptic devices. In [26],                                TDPA is developed. This strategy is different from previous
+delay has been compensated using a time-varying damping                                        works [28] and [29], where a force estimator was required for
+weighted by the inertia matrix for a haptic device that, unlike                                the time-delay compensation control. The force estimator was
+industrial robots, is back-drivable. In [27], a technique for dissi-                           a function of the robot dynamics model. While using indus-
+pating the active energy in the null space of a redundant robot is                             trial robots, the dynamic model is not always available and
+suggested. This solution is not applicable in the considered con-                              the absence of a joint-torque interface limits its identification.
+text since most of the facilities for rendering satellite dynamics                             Therefore, in this article, the time-delay compensation strategy
+do not have redundancy (e.g., [10] and [12]). In [28] and [29],                                will rely only on measured data without depending on the robot
+TDPA has been exploited for reliably rendering satellite dynam-                                dynamics model. Furthermore, in [28] and [29], the passivity
+ics on a robotic simulator independent of the time delay. How-                                 controller was applied in admittance causality. In this article,
+ever the method required the knowledge of the robot dynamic                                    the passivity controller will be designed in impedance causality
+model.                                                                                         where the modified force is the input to the satellite dynamics.
+   In hardware-in-the-loop simulators, a discrete-time integra-                                Thus, the admittance port can be used to compensate the en-
+tion of a mathematical model (e.g., satellite dynamics) is also                                ergy generated by the discrete-time integrator by modifying the
+required. Discrete-time integration can lead to a loss of the                                  velocity commanded to the robot.
+geometric and energetic properties characterizing physical sys-                                   In [37] and [38], separate passive integrators for translational
+tems and, therefore, to an unnatural and unstable behavior [17].                               and rotational dynamics were designed, respectively, without
+Geometric integrators, i.e., numerical integration methods that                                including time-delay compensation. In this article, a unified inte-
+preserve geometric structure, such as symplectic forms, have                                   grator is obtained for simulating the complete satellite dynamics.
+been developed over the years (see [30]–[32]). These methods                                      Second, a unified architecture is designed, which combines
+require a numerical and iterative solution of the updated equation                             the time-delay compensation and the passive integrator, and
+                         This article has been accepted for inclusion in a future issue of this journal. Content is final as presented, with the exception of pagination.
+
+
+DE STEFANO et al.: PASSIVITY-BASED APPROACH FOR SIMULATING SATELLITE DYNAMICS WITH ROBOTS                                                                                       3
+
+
+
+
+Fig. 2. Admittance architecture with the desired dynamic—R is the robot, E
+is the environment, Des. Dyn. is the force-acceleration model of the dynamics                     Fig. 3. Admittance architecture where T Σ is the discrete integrator with time
+to be simulated.                                                                                  step T . Robot and internal controller are represented by time-delay block, T D.
+
+
+it acts as a passivity layer between the real hardware and the                                       The total wrench, twist, and mass matrix are defined as:
+mathematical model. Time-delay effects are resolved with a                                           1) Fe = (f e , τe ) ∈ R6 the wrench;
+passivity control (PC) which acts in impedance mode (force                                           2) Vs = (vs , ωs ) ∈ R6 the twist;
+correction) and the discrete integration effects are solved with a                                   3) H = (M , 03×3 ; 03×3 , I) ∈ R6×6 the total mass matrix
+second PC in admittance mode (velocity correction).                                                      (mass and inertia of the body).
+   Third, the proposed unified control structure is validated                                        By integrating (1) and (2) and by applying the inverse kine-
+experimentally on an industrial robot, the OOS-SIM, shown                                         matics it is possible to obtain the desired joint velocities for the
+in Fig. 1.                                                                                        industrial robot to track and the end-effector will evolve as a
+                                                                                                  floating rigid body not subjected to gravity.
+                        II. PROBLEM STATEMENT                                                        Fig. 3 shows the control architecture of the industrial robot
+   A suitable control strategy for implementing desired dynam-                                    where the location of the discrete-time integration and the time
+ics on industrial robots is the admittance control [39]. This                                     delay are delineated. The acceleration of the rigid body (com-
+strategy has been exploited in many different fields, see, e.g.,                                  puted by the desired dynamics block) is integrated in discrete
+[23] for a surgical application, [40] for a human–robot inter-                                    time with sampling time T , which results in the commanded
+action scenario, and also [12] for robotic simulators for space                                   velocity Vs (k). We assume that the industrial robot can perfectly
+applications.                                                                                     track a desired velocity set point. This is a common assumption
+   The schematic of a robotic simulator controlled with an                                        and it can be achieved by properly tuning the gains of the
+admittance architecture is illustrated in Fig. 2.                                                 low-level controllers of the robot [41]. However, the internal
+   The robot R is equipped with a six DoF (degree of freedom)                                     control of the robot and the inverse kinematics calculation
+force–torque sensor at the end-effector. When the robot interacts                                 might require several sampling steps for the computation of
+with the environment E, forces and torques are generated and                                      the desired set point. These factors introduce time delays in the
+measured by the sensor. Fe ∈ R6 is the vector composed of                                         corresponding simulation-driven motion of the robot. Therefore,
+Cartesian forces and torques. This is the input to the desired                                    the real velocity of the robot results to be Vs (k − μ), which is
+dynamics that, after integration, will provide the twist Vs ∈ R6                                  the commanded velocity delayed by a quantity μ, where μ ∈ N
+as a set point to the robot, which will consequently reproduce                                    is the number of discrete time steps of sampling time T . Hence,
+the desired behavior.                                                                             the robot has been represented as a time delay T D in Fig. 3.
+   Our main goal is to simulate a satellite dynamics that can
+be characterized as a free-floating rigid body. The translational                                 A. Time-Delay Effects
+dynamics is given by                                                                                 The effect of time delay within the admittance architecture
+                                v̇s = M −1 fe                                            (1)      shown in Fig. 3 can be seen in the following example. Let
+                                                                                                  us consider a rigid body with mass M = diag[50, 50, 50] kg
+and the rotational dynamics is described by                                                       and inertia I = diag[18, 20, 22] kgm2 with initial linear veloc-
+   ω̇s = I −1 (Iωs × ωs + τ e ) = I −1 (S(Iωs )ωs + τ e )                                (2)      ity vs (0) = [0.1, 0.15, 0.2] m/s and angular velocity ωs (0) =
+                                                                                                  [0.01, 0.02, 0.03] rad/s. We run a simulation with a time delay
+where the variables are defined as1 :                                                             (T D) of 10 ms in the loop. During its motion, forces and torques
+  1) M ∈ R3×3 the simulated mass matrix;                                                          are generated by colliding against virtual walls modeled using
+  2) f e ∈ R3 the Cartesian measured force;                                                       spring–damper systems. The measured forces and torques are the
+  3) vs ∈ R3 the Cartesian linear velocity;                                                       input to the desired dynamics block. The behavior of the system
+  4) v̇s ∈ R3 the Cartesian linear acceleration;                                                  can be seen in Fig. 4 where the velocity with the time delay in
+  5) I ∈ R3×3 the inertia matrix of the body about the center                                     the loop (solid line) is compared with the ideal case velocity
+     of mass;                                                                                     (dashed line) without delay. As it can be seen, the velocity of
+  6) ωs ∈ R3 the angular velocity;                                                                the simulated rigid body increases after each collision which is
+  7) ω̇s ∈ R3 the angular acceleration;                                                           against the energy conservation principle and it might lead to an
+  8) S(Iω s ) ∈ R3×3 the skew-symmetric matrix such that                                          unstable system.
+     S(Iω s )ω s = Iω s × ω s ;
+  9) τ e ∈ R3 the Cartesian measured torques.
+                                                                                                  B. Discrete Integration Effects
+   1 In this article, we use bold notation to indicate vectors and normal font for                  For analyzing the integration effects, we will consider the
+the individual components of the vectors.                                                         Euler integration method which is usually exploited in industrial
+                      This article has been accepted for inclusion in a future issue of this journal. Content is final as presented, with the exception of pagination.
+
+
+4                                                                                                                                                     IEEE TRANSACTIONS ON ROBOTICS
+
+
+
+
+                                                                                                 Fig. 5. Force profile, drift in position due to the discrete integration with (w)
+Fig. 4. Time delay causes instabilities-comparison of velocity with time delay                   sampling times T1 and T2 .
+in the loop (solid line) and ideal velocity without time delay (dashed line).
+
+
+
+robots. The reason is that Euler integrator is fast and explicit and
+it can be implemented in real time. To isolate the effects of the
+discrete integration, let us consider that the time delay in the
+loop is zero. The total energy H(vs , ωs ) of the rigid body is
+given by
+                  H(vs , ωs ) = Ht (vs ) + Hr (ωs )                                    (3)
+where Ht = 12 vs T M vs is the translational kinetic energy and
+Hr = 12 ωs T Iωs is the rotational energy. Consider now the
+effect of discretization on translational motions in (1). The
+following energy balance holds:
+                               Ḣt = fe T vs .                                         (4)
+                                                                                                 Fig. 6. Discrete integration causes drift in energy for the translational dynam-
+If there is no external interaction (i.e., fe = 0), the energy stored                            ics. Energy (HtT ) calculated with sampling time T1 and (HtT ) calculated with
+                                                                                                                 1                                               2
+                                                                                                 sampling time T2 . The reference energy Htc is calculated in continuous time.
+in the system is constant (i.e., Ḣt = 0).
+    Integrating the desired dynamics using the standard Euler
+method leads to the following discrete system:
+                                                                                                    Similar to the translational case, using the rotational dynamics
+            vs (k) = vs (k − 1) + T M −1 fe (k − 1).                                   (5)       in (2), the following energy balance holds:
+In case of free motion (i.e., fe (k − 1) = 0), the velocity of the                                                                     Ḣr = ωs T τ e .                              (6)
+system is constant over time. Thus, in this simple case, standard
+Euler integration is energetically well posed since it allows the                                Thus, as evident from (6), the energy variation is due to the
+discretized dynamics to behave in a physically consistent way                                    power exchanged with the environment.
+independent of the sample time. However, this relation does not                                     In order to compute the discrete angular velocity set point, (2)
+hold anymore in case of external interaction. Let us consider a                                  is integrated according to the Euler method and it results in
+body with mass 30 kg subjected to a force profile shown at the                                    I(ωs (k) − ωs (k − 1))T −1 = S(Iωs (k − 1))ωs (k − 1)
+top of Fig. 5. The integration of the dynamics is considered in the
+continuous case and compared with Euler discrete integrator for                                                                                                          + τe (k − 1).
+sampling times T1 = 0.1 s and T2 = 0.01 s. The increase in the                                                                                                                      (7)
+energy which is introduced into the system with respect to the                                   Consequently, the angular velocity set point to be commanded
+continuous time integrator is shown in Fig. 6, where Htc is                                      to the robot is
+the energy calculated in continuous time. Notice that the increase
+in energy is proportional to the sampling time and this leads to                                    ωs (k) = ωs (k − 1) + I −1 T S(Iωs (k − 1))ωs (k − 1)
+position drifts. The drift due to the integration with T1 reaches
+                                                                                                                                                                  + T I −1 τe (k − 1).
+0.05 m between 0 and 32 s and 0.15 m between 32 and 50 s,
+                                                                                                                                                                                     (8)
+(see Fig. 5 middle). Also, for the case with T2 , the drift appears.
+Since the sampling time is smaller, it results in a drift ten times                                 Similar to the translational case, the Euler integration gen-
+lower, as shown in Fig. 5 bottom.                                                                erates extra energy which destroys the energetic properties of
+                       This article has been accepted for inclusion in a future issue of this journal. Content is final as presented, with the exception of pagination.
+
+
+DE STEFANO et al.: PASSIVITY-BASED APPROACH FOR SIMULATING SATELLITE DYNAMICS WITH ROBOTS                                                                                      5
+
+
+
+
+                                                                                                Fig. 9. Admittance architecture of the industrial robot for the hardware-in-
+                                                                                                the-loop satellite simulation represented in electrical domain.
+
+
+
+                                                                                                compensating the effects of time delay and discrete-time integra-
+                                                                                                tion is important when external force is applied in order to avoid
+Fig. 7. Applied torques (top) and drift in roll, pitch and yaw considering
+sampling time T1 (middle) and T2 (bottom).                                                      instability issues and produce a faithful dynamic simulation with
+                                                                                                the industrial robots.
+
+                                                                                                                   III. NETWORK MODELING AND TDPA
+                                                                                                   In this section, we design a network model of the system
+                                                                                                presented in Fig. 3. This representation will allow us to highlight
+                                                                                                the energetic structure of the system and it will help identify the
+                                                                                                energy production due to the delay and the discrete integration.
+                                                                                                Furthermore, a background on TDPA, the control strategy that
+                                                                                                will be used, is provided.
+
+                                                                                                A. System Modeling
+                                                                                                   The control architecture of the industrial robot shown in Fig. 3,
+                                                                                                can be represented in electrical domain. This representation aids
+                                                                                                the definition of the power ports and the analysis of the energy be-
+                                                                                                havior. Therefore, the conventional mechanical–electrical anal-
+Fig. 8. Discrete integration of rotational dynamics causes energy drift. Com-                   ogy is exploited to map forces into voltages and velocities into
+parison of energy calculated in continuous time (Hrc ) and discrete sampling                    currents and the resulting circuit is shown in Fig. 9.
+times T1 (HrT ) and T2 (HrT ).
+              1               2                                                                    The industrial robot is represented in the gray box with an
+                                                                                                impedance Zr and its internal controller Zc . The interaction
+                                                                                                of the robot with the environment (Ze ) produces the voltage
+the rotational dynamics. This can be seen in the following                                      Fe which represents the force–torque sensor signals.2 This is
+example. Consider the torque profile in Fig. 7 (top) acting                                     transmitted with an ideal voltage source Fe to the left side of
+on a simulated body with inertia on the principal axis I =                                      the circuit and acts on the inductance H, which represents the
+diag(18, 20, 22) kgm2 . We calculate the rotational energy Hr                                   simulated mass of the satellite. Using the admittance dynamics
+for sampling times T1 = 0.1 s and T2 = 0.01 s. Fig. 8 shows                                     in (5) and (8), the desired velocity Vs is computed and is then
+the comparison of the energy calculated with the continuous                                     commanded to the internal controller of the robot through the
+time (Hrc ) and discrete times (HrT1 , HrT2 ). It can be seen that                              dependent current source on the right side of the circuit.
+there is an increase in energy due to the discrete integration. The                                Usually, it might be difficult to have access to the internal
+increase of energy results in a variation of angular position with                              controller of the industrial robot. The designed network repre-
+respect to the ideal, continuous case. Fig. 7 (middle and bottom)                               sentation allows us to consider the internal controller together
+shows the angular error (Δ) in roll, pitch, and yaw (Ψ, θ, φ)                                   with the robot impedance (Zc and Zr ). Robot and internal con-
+calculated with T1 and T2 with respect to the continuous case.                                  troller act as a delay source (between the commanded velocity
+   Energy and pose drifts affect the physical behavior of the                                   and resulting measured velocity of the robot) and therefore, they
+satellite simulated by the robot. Such drifts may lead the robot                                can be replaced with the time-delay block, T D (see gray box in
+to interact with unforeseen objects that produce further (drifted)                              Fig. 9.)
+behaviors leading to a deteriorated performance of the dynamic                                     Two one-port networks can be identified in the electrical
+simulation and even instabilities.                                                              system which are represented by the two dashed boxes in Fig. 9.
+   Notice that both industrial robots in Fig. 1 operate with the
+same control architecture and the reactive dynamics is perceived                                  2 Note that for the numerical simulation, the measured force F is modeled as a
+                                                                                                                                                                  e
+by the respective force–torque sensors, hence, the robots are                                   spring-dashpot model, later it will be replaced with the real sensor measurements
+susceptible to the issues presented in this section. Therefore,                                 during the experiments with the industrial robot.
+                    This article has been accepted for inclusion in a future issue of this journal. Content is final as presented, with the exception of pagination.
+
+
+6                                                                                                                                                   IEEE TRANSACTIONS ON ROBOTICS
+
+
+
+The output of the left-side network is Vs , the velocity computed
+by the discrete dynamics integration. The right-side network,
+which contains the time delay, outputs the interaction force Fe .
+Now, the energy behavior of the system can be analyzed from
+the interaction port with power conjugated variables Vs and Fe .
+
+
+B. Time Domain Passivity Approach
+    TDPA is an effective strategy for enforcing passivity in a one-                            Fig. 10.     Modeling in electrical domain for the time delay-variable force output.
+port network. The discrete-time domain will be considered, since
+it is the most suitable setting for the problems addressed in this
+article [24]. Consider a one-port network endowed with a power                                 However, when delay is considered, this condition will not
+port (u(k), y(k)) ∈ Rn × Rn by which it can interact (or be                                    hold anymore because the robot will interact with the envi-
+interconnected) with external systems.                                                         ronment with a delayed velocity Vs (k − μ) producing a force
+    The input u(k) and the output y(k) are power conjugated                                    VsT (k − μ)Ze . Then, the energy at the one-port will be differ-
+(e.g., force and velocity), i.e., their product has the unit of power.                         ent, more specifically
+The system is passive if there is a lower bounded energy function                                  m
+                                                                                                                                       m
+                                                                                                                                        
+E(m) such that                                                                                            FeT (k)Vs (k)T =                  VsT (k − μ)Ze Vs (k)T.           (11)
+                                                                                                   k=0                                  k=0
+                                                                                                                                                     
+                             m
+                                                                                                                                                      FeT (k)
+                                      T
+       E(m) = E(0) +               u (k)y(k)T ≥ 0 ∀m > 0                             (9)       The delay causes a discrepancy in the velocity during the contact
+                             k=0
+                                                                                               with the environment and the measured force is a function of it,
+where E(0) represents the initial energy stored in the system.                                 see (11). The energy of the port (Fe , Vs ) can be monitored at
+Equation (9) states that the system cannot produce more energy                                 each time-step with an energy observer defined as
+with respect to its initial storage and the input energy. Passivity is                              Eobs1 (k) = Eobs1 (k − 1) − FeT (k)Vs (k)T
+a sufficient condition for stability and, in particular, if a system
+is passive then it is also stable [42]. The main idea of TDPA                                                           + VsT (k − 1)α(k − 1)Vs (k − 1)T                     (12)
+is to monitor the energy flowing through the power port by                                     where α(k) ∈ R6×6 is a positive definite matrix which repre-
+means of a passivity observer (PO). If E(m) < 0, the system is                                 sents the time-varying damping of the passivity controller, later
+producing energy and such a regenerative effect can destabilize                                defined. Therefore, the last term in (12) is the energy associated
+the system [17]. In order to reestablish a passive behavior, a                                 to the passivity controller, defined as
+passivity controller (PC) is activated and it acts as a variable
+damper. More details about TDPA can be found in [24].                                                                        Fpc (k) = α(k)Vs (k).                           (13)
+                                                                                                  The impedance causality of the PC modifies the force Fe (k)
+                IV. TIME-DELAY COMPENSATION                                                    by a quantity Fpc (k) on the left-side of Fig. 10. The modified
+                                                                                               force provided to the admittance model is
+   In this section, we will exploit the network representation
+developed in Section III and TDPA in order to compensate the                                                              Fc (k) = Fe (k) − Fpc (k).                         (14)
+destabilizing effects of the time delay illustrated in Section II-A.
+   In our previous works ([28], [29]), the admittance PC (velocity                             We choose the matrix α(k) to have a diagonal form, therefore,
+modification) has been used and it requires the knowledge of the                               the following energy exchange from (12) holds:
+robot dynamics. However, for industrial robots, the dynamics                                                                   k 
+                                                                                                                                6
+are not generally available. In the current work, an impedance                                         Eobs1 (k) = −                        Fe,i (m)Vs,i (m)T
+causality for the PC is chosen, i.e., the input variable to the                                                                m=0 i=1
+admittance dynamics is a variable force signal. This will allow                                                                  6
+                                                                                                                               k 
+                                                                                                                               
+us to render passive the subnetwork containing the robot with                                                                                           2
+                                                                                                                           +                αi (m − 1)Vs,i (m − 1)T          (15)
+time delay without the knowledge of the robot dynamics.                                                                        m=1 i=1
+   Consider the one-port network (dashed box in Fig. 10)
+                                                                                               where i is the ith component of the vector. This leads to
+which includes the time delay, with power-correlated variables
+(Fe , Vs ). We observe the energy at this port and if activity is                                                                              6
+                                                                                                                                               
+detected, the PC modifies the force, thus rendering the one-port                                                           Eobs1 (k) =                Eobs1,i (k)            (16)
+network passive. In the ideal case (where no delay is considered),                                                                              i=i
+the energy at one-port will be                                                                 where the P O is
+      m
+                                   m
+                                                                                                          Eobs1,i (k) = Eobs1,i (k − 1) − Fe,i (k)Vs,i (k)T
+            FeT (k)Vs (k)T =               VsT (k)Ze Vs (k)T.                      (10)                                                        2
+      k=0                           k=0
+                                                                                                                                 + αi (k − 1)Vs,i (k − 1)T.                  (17)
+                        This article has been accepted for inclusion in a future issue of this journal. Content is final as presented, with the exception of pagination.
+
+
+DE STEFANO et al.: PASSIVITY-BASED APPROACH FOR SIMULATING SATELLITE DYNAMICS WITH ROBOTS                                                                                       7
+
+
+
+
+Fig. 11.   Scheme with impedance PC for compensating the time-delay effects.
+
+
+
+
+                                                                                                 Fig. 13. Energy in ideal case (dashed line) and energy with time delay in the
+                                                                                                 loop (solid line) measured at different ports. Top: Energy measured by the energy
+                                                                                                 observer. Bottom: Energy exchange between the robot and the environment as
+                                                                                                 measured at the interaction point.
+
+
+
+
+Fig. 12. Stable system—linear and angular velocity with time delay in the
+loop and passivity control (solid line), ideal velocity (dashed line).
+
+
+
+The control term in (13), which dissipates at each time step
+the active energy, is a function of the variable damping matrix
+α = diag(α1 , . . ., α6 ) whose components are
+                       ⎧
+                       ⎨− Eobs1,i (k) if E
+                              2 (k)T
+                            Vs,i           obs1,i < 0
+            αi (k) =                                  .   (18)
+                       ⎩0             else
+                                                                                                 Fig. 14. Energy in ideal case (dashed line) and energy with time delay and
+                                                                                                 PC (solid line) measured at different ports. Top: Energy measured by the energy
+Thus, if the one-port system behaves passively, Fpc = 0 and                                      observer. Bottom: Energy exchange between the robot and the environment as
+the measured force Fe is sent as an input to the admittance                                      measured at the interaction point.
+dynamics without modification. If some energy is produced, the
+damping factor is set such that the extra energy is dissipated
+and passivity is restored. The damper αi will make Eobs1,i ≥                                     i.e., Eobs1 (k)α=0 . Fig. 13 (bottom) shows the energy measured
+0 ∀i. Therefore, the overall energy in (16) will be Eobs1 (k) ≥ 0                                at the interaction point, i.e., EE (k) =    Fe (k)Vs (k − μ)T us-
+                                                                                                 ing the measured force Fe (k) and velocity at the end-effector
+achieving passivity of the system. The schematic of Fig. 3 is
+adapted with the corrected force Fc (k) as input to the desired                                  Vs (k − μ). In both plots, the dashed line is the energy in the
+dynamics and it is shown in Fig. 11.                                                             ideal case (i.e., without time delay in the loop). As can be seen,
+                                                                                                 violation of passivity is found at the port where the proposed
+   In order to validate the control, we run the simulation with
+the same initial conditions and mass parameter as described in                                   energy observer is located, while at the interaction port, the
+                                                                                                 system results to be passive according to definition (9).
+Section II-A. As it can be seen in Fig. 12, the velocity of the
+satellite does not increase and the overall system is stable. By                                    Although the interactions are passive, it can be clearly seen
+applying the described approach, the damaging effect of time                                     that the energy increases at the interaction port. This is attributed
+                                                                                                 to the time delay in the system. To prove this, we then evaluated
+delay shown in Fig. 4 is resolved.
+   The energy exchange between the time-delay port and robot                                     the energy at the same ports with the passivity controller acting
+controller is not regulated explicitly, therefore, the one-port                                  [i.e., α = 0 in (17)]. As it can be seen in Fig. 14, the passivity
+                                                                                                 is restored and the energies at both ports follow the ideal energy
+network as seen from the environment needs to be passive. A
+numerical analysis of the energy calculated at the environment                                   behavior (dashed line).
+port is performed in order to check the passivity. Fig. 13 (top)
+                                                                                                                   V. PASSIVE AND EXPLICIT INTEGRATOR
+shows the energy for the translational dynamics where the time
+delay is in the loop and it is monitored with the proposed energy                                   As shown in Section II-B, the generation of extra energy due
+observer in (17) without the update of the passivity controller,                                 to the discrete integration cause energy and position drifts. In this
+                   This article has been accepted for inclusion in a future issue of this journal. Content is final as presented, with the exception of pagination.
+
+
+8                                                                                                                                                  IEEE TRANSACTIONS ON ROBOTICS
+
+
+
+section, the extra energy introduced by the discrete integrator is
+identified. This information is exploited for modifying the ve-
+locity output of the Euler integrator with an admittance causality.
+To have a complete passive integrator, we need to merge works
+performed in [37] and [38] in order to build the overall passive
+architecture.
+
+A. Energy Generated by the Discrete Integration
+                                                                                              Fig. 15.     Modeling in electrical domain for discretization—variable velocity
+   1) Translational Dynamics: Consider the dynamics (1) dis-                                  input.
+cretized with the Euler method as reported in (5). The kinetic
+energy (4) in discrete time is
+             1                                                                                (23) by the term
+     Ht (k) =  vs (k)T M vs (k)
+             2                                                                                                      ΔHr (k) = ΔHr1 (k) + ΔHr2 (k).                         (24)
+             1
+            = [vs (k − 1) + T M −1 fe (k − 1)]T                                               In fact, the energy variation should be only due to the energy pro-
+             2
+                                                                                              vided through the power port, i.e., T ωs (k − 1)T τe (k − 1).
+                M [vs (k − 1) + T M −1 fe (k − 1)].                               (19)           In particular, ΔHr1 results from the integration of the rota-
+Considering that the mass matrix M is symmetric and positive                                  tional coupled dynamics, ΔHr2 results from the integration of
+definite, (19) can be rewritten as                                                            the external torque τe . These energy terms introduce undesired
+                                                                                              dynamics into the system [38].
+       Ht (k) = Ht (k − 1) + T vs (k − 1)T fe (k − 1)
+                1                                                                             B. Passive Integration Scheme
+              + T 2 fe (k − 1)T M −1 fe (k − 1).                                  (20)
+               2                                                                             In order to reestablish the physically consistent energetic
+                                      ΔHt (k)                                                 behavior of the discretized dynamics, we need to dissipate the
+Equation (20) does not represent a physical and passive behavior.                             extra energy ΔHt and ΔHr . In this subsection, we will exploit
+Indeed, the variation of energy should be only due to the power                               TDPA for dissipating the extra energies.
+provided through the port, i.e., vs (k − 1)T fe (k − 1). The                                     1) Passive Integration Scheme for Translational Dynamics:
+extra energy term                                                                             The extra energy term produced by the integration and reported
+                    1 2                                                                       in (21) is always positive and, therefore, it always corresponds
+      ΔHt (k) =       T fe (k − 1)T M −1 fe (k − 1)          (21)                             to a production of energy. It is possible to consider this term in
+                    2
+                                                                                              a passivity observer in order to detect a loss of passivity. Thus,
+is due to Euler integration [37]. This extra energy causes energy                             we can write the energy observer as
+inconsistency and drift that make the reproduced dynamics
+diverge from the ideal behavior as shown in Section II-B.                                         Eobs2 (k) = Eobs2 (k − 1) − ΔHt (k)
+   2) Rotational Dynamics: Consider the dynamics (2) dis-
+cretized by means of the Euler method and reported in (8). The                                                        + fe (k − 1)T β1 (k − 1)fe (k − 1)T. (25)
+rotational kinetic energy in discrete time Hr (k) is given by                                 The second term on the right side of (25) is the energy produced
+                          1                                                                   by the discrete integration, which needs to be dissipated. The last
+                  Hr (k) = ωs (k)T Iωs (k).                                       (22)
+                          2                                                                   term represents the energy dissipated by the passivity controller
+Considering that (I −1 )T = (I T )−1 ≡ I −1 and exploiting the                                with a damping matrix β1 defined later. The action of the PC is
+properties of the skew-symmetric matrix S(·) after substituting                               provided in an admittance causality as follows:
+(8) into (22), we obtain                                                                                                    vpc (k) = β1 (k)fe (k).                        (26)
+      Hr (k) = Hr (k − 1) + T ωs (k − 1)T τe (k − 1)
+                                                                                              This provides a correction to the output velocity of the admit-
+         1                                                                                    tance dynamics, i.e., the velocity commanded to the robot, given
+       + T 2 ωs (k − 1)T S(k)T I −1 S(k)ωs (k − 1)
+        2
+                                                                                              by
+                                               
+                                   ΔHr1 (k)
+                                                                                                                          vc (k) = vs (k) − vpc (k)                        (27)
+         1
+       + T 2 τe (k − 1)T I −1 τe (k − 1)                                          (23)        where vs (k) is achieved from (5). The passivity controller is
+        2                                                                                 represented as a variable resistance in parallel to the inductor in
+                        ΔHr2 (k)
+                                                                                              Fig. 15. The dissipation and, consequently, the correction, get
+where, for the sake of brevity, the dependency of Iωs (k − 1)                                 active only when passivity is violated, i.e., when Eobs2 (k) < 0
+in S has been omitted.                                                                        and only the excess of energy is dissipated.
+   As in the translational case, the discrete integration of rota-                               We choose the matrix β1 (k) ∈ R3×3 to have a diagonal
+tional dynamics leads to a nonphysical behavior as shown in                                   form such that β1 = diag(β1,1 , β1,2 , β1,3 ) and from (25), the
+                        This article has been accepted for inclusion in a future issue of this journal. Content is final as presented, with the exception of pagination.
+
+
+DE STEFANO et al.: PASSIVITY-BASED APPROACH FOR SIMULATING SATELLITE DYNAMICS WITH ROBOTS                                                                                     9
+
+
+
+                                                                                                 for the rotational case. To overcome this problem, we design
+                                                                                                 a fictitious port (χ, ω s ) where the PC is applied. The torque
+                                                                                                 χ ∈ R3 is composed of the external torque τe and a fictitious
+                                                                                                 torque τc = f (ωs , I) expressed as
+                                                                                                                  1
+                                                                                                   χ(k) = τe (k) + T 2 ωs (k)T S(Iωs (k))T I −1 S(Iωs (k))
+                                                                                                                  2
+                                                                                                                                                      
+                                                                                                                                                                τc
+                                                                                                                                                                (32)
+                                                                                                 which allows us to explicitly consider the contribution of ΔHr1
+                                                                                                 at the port level [38]. The definition of χ allows us to measure the
+                                                                                                 real and fictitious torques which can generate the extra energy
+                                                                                                 terms ΔHr1 and ΔHr2 produced by the integration. In this way,
+                                                                                                 the term τe takes into account the presence of ΔHr2 while the
+                                                                                                 term τc takes into account the presence of ΔHr1 . Thus, even
+Fig. 16. Translational energy corrected with the proposed integrator consider-                   during free motion, χ = 0 and it is possible to use the TDPA for
+ing sampling time (T1 and T2 ) and comparison with the continuous case (Htc ).
+                                                                                                 dissipating the energy produced by the Euler integrator.
+                                                                                                    We can now exploit the PO/PC approach by defining the
+                                                                                                 energy observer as
+following energy balance still holds:
+                                                                                                       Eobs3 (k) = Eobs3 (k − 1) − (ΔHr1 (k) + ΔHr2 (k))
+                                     k 
+                                      3
+                                                               2
+Eobs2 (k) = −ΔH t,i (k) +                         β1,i (m − 1)fe,i (m − 1)T                                                 + T χ(k − 1)T β2 (k − 1)χ(k − 1).              (33)
+                                    m=1 i=1
+                                                                                      (28)          Unlike the translational case where the dynamics is indepen-
+                                                                                                 dent along its components, the rotational dynamics is coupled.
+where i is the ith component of the vector and ΔHt,i (k) =                                       Therefore, for the dissipative action, we design a single damping
+T 2 fe,i
+     2
+                                                                                                 coefficient (β2 ) which acts in all the directions of the angular
+2Mi,i . This leads to
+                                                                                                 velocity. Otherwise, compensating in different directions will
+                                         3
+                                                                                                lead to a distortion of the reproduced dynamics. Therefore, if
+                      Eobs2 (k) =              Eobs2,i (k)                            (29)       some generated energy is detected (Eobs3 < 0), the time-varying
+                                         i=i                                                     damper β2 (k) will be modulated as follows:
+where
+                                                                                                                                        − TEχ(k)
+                                                                                                                                            obs3 (k)
+                                                                                                                                                   2 if Eobs3 < 0
+                                                                                                                      β2 (k) =                                             (34)
+             Eobs2,i (k) = Eobs2,i (k − 1) − ΔH t,i (k)                                                                                 0                   else
+                                               2
+                                + β1,i (k − 1)fe,i (k − 1)T.                          (30)       where χ(k)2 = χ(k)T χ(k).
+Thus, the coefficients of the damping matrix β1 =                                                   The velocity modification provided by the passivity controller
+diag(β1,1 , β1,2 , β1,3 ) are defined as                                                         is given by
+                         ⎧                                                                                                       ωpc (k) = β2 (k)χ(k).                     (35)
+                         ⎨− Eobs2,i (k) E
+                                2 (k)T
+                               fe,i        obs2,i (k) < 0
+            β1,i (k) =                                    . (31)                                 This is used for correcting the output of the Euler integrator as
+                         ⎩0              else
+                                                                                                                             ωc (k) = ωs (k) − ωpc (k)                     (36)
+This will provide the exact amount of damping required in (26)
+to restore the energy behavior of the system. For validation,                                    where ωc (k) represents the velocity commanded to the robot.
+we run the simulation with the same conditions as described in                                      As it can be seen in Fig. 17, here, the energy drifts discussed
+Section II-B. Using the proposed approach the extra energy has                                   in the problem statement are removed with the proposed passive
+been dissipated as it can be seen in Fig. 16. It is worth comparing                              integration scheme. It is worth comparing Fig. 8 (before applying
+Fig. 6 (problem statement) with Fig. 16.                                                         the method) and Fig. 17 (with the proposed method).
+    2) Passive Integration Scheme for Rotational Dynamics: For
+                                                                                                 C. Algorithm of the Passive Integrator
+the rotational dynamics, the natural power port to be considered
+is given by the pair (τe (k), ωs (k)). Similarly to (26), it would                                  Using the results of Sections V-A and V-B, it is possible to
+be possible to implement a dissipative action on this port while                                 build a passive and explicit discrete integrator for a rigid body
+exploiting the external torque τe (k).                                                           dynamics. We will group these results in an algorithmic form
+    However, in case of free motion, i.e., τe (k) = 0, no energy                                 in Algorithm 1 in order to provide a pseudocode that can be
+can be dissipated. In particular, during free motion, ΔHr2 = 0                                   easily executed in real time on industrial robots. The algorithm
+as evident from (23), but ΔHr1 can be greater than zero. Thus,                                   computes the extra energy produced and it builds the fictitious
+it is not sufficient to consider only the natural port (τe , ωs ) for                            variable χ. Then, it observes if there is a violation of passivity
+dissipating all the energy produced by the discrete integration                                  and it computes the gains of the passivity controllers (that will be
+                      This article has been accepted for inclusion in a future issue of this journal. Content is final as presented, with the exception of pagination.
+
+
+10                                                                                                                                                    IEEE TRANSACTIONS ON ROBOTICS
+
+
+
+
+Fig. 17. Proposed integrator corrects the energy drift—rotational energy in
+continuous time (Hrc ) and discrete time (HrT 1 , HrT 2 ).
+
+
+
+
+Fig. 18. Scheme with admittance PC for compensating the discrete-time
+integration effects.
+
+
+
+
+ Algorithm 1: Passive Integrator for Satellite Dynamics.
+ Input: vs (k − 1), ωs (k − 1), fe (k), τe (k), M , I, T
+                                                                                                 Fig. 19. Overall passivity-based control for simulating satellite dynamics on a
+ Output: vc (k), ωc (k)                                                                          robot in presence of time delay and discretization effects. (a) Interconnection of
+  1: Compute ΔHt using (21)                                                                      passive networks. (b) Passivity control interface in electrical domain. (c) Block
+  2: Compute ΔHr using (24)                                                                      diagram of the overall architecture with the passivity controllers.
+  3: Build the χ(k) variable using (32)
+  4: Compute Eobs2 (k) using (30)
+  5: Compute Eobs3 (k) using (33)
+                                                                                                    The passivity controller variables Vpc = (vpc , ωpc ) and Fpc
+  6: Set the damping β1 (k) using (31)
+                                                                                                 will render the respective networks passive. Therefore, the over-
+  7: Set the damping β2 (k) using (34)
+                                                                                                 all system is given by the interconnection of the two passive
+  8: Compute vc (k) = vs (k) − β1 (k)fe (k)
+                                                                                                 networks (N1 , N2 ). Interconnection of passive networks leads
+  9: Compute ωc (k) = ωs (k) − β2 (k)χ(k)
+                                                                                                 to an overall passive system that has no energy production [43].
+ 10: Output: Vc (k) = (vc (k), ωc (k))
+                                                                                                 Having proven that the overall system is now passive, a 2-port
+                                                                                                 network named passivity ctrl is isolated from Fig. 19(a) by com-
+                                                                                                 bining the two passivity control variables, namely Fpc and Vpc .
+zero if passivity is not violated). Finally, the dissipative actions                             This 2-port network acts as an interface or passivity transforma-
+of the PCs are exploited for updating the velocities commanded                                   tion from the simulated discrete dynamics (discr. dyn.) network
+to the robot. Fig. 18 shows the admittance scheme modified                                       to the robot with sensor network and is shown in Fig. 19(b).
+accordingly, where the P C provides the corrected velocity                                       Fig. 19(c) shows the block diagram with input–output variables
+Vc = (vc , ωc ) to the robot.                                                                    and the respective energy observers and passivity controllers
+                                                                                                 with references to the corresponding equations.
+                                                                                                    Notice that the corrected wrench Fc is obtained by (14), where
+                   VI. OVERALL ARCHITECTURE                                                      Fpc in (13), Eobs1,i in (17), and αi in (18) are recalculated
+   In the previous sections, passivity controllers were developed                                considering the corrected velocity Vc instead of Vs . Similarly,
+to deal with the time delay and the discrete-time integration ef-                                the corrected twist in network N2 , namely, Vc = (vc , ωc ) is
+fects separately. Here, we propose a framework which combines                                    obtained by the corrected velocity (27) and the corrected angular
+both controllers. As shown in Fig. 19(a), two networks have                                      velocity (36), where vpc in (26), Eobs2,i in (30), β1,i in (31),
+been introduced, namely, N1 with the variable resistor where                                     and ΔHt in (21) are recalculated considering the corrected
+the resulting current is Vpc and N2 with voltage drop Fpc .                                      force Fc = (fc , τc ) instead of Fe = (fe , τe ). Similarly Eobs3 ,
+                       This article has been accepted for inclusion in a future issue of this journal. Content is final as presented, with the exception of pagination.
+
+
+DE STEFANO et al.: PASSIVITY-BASED APPROACH FOR SIMULATING SATELLITE DYNAMICS WITH ROBOTS                                                                                     11
+
+
+
+
+                                                                                                Fig. 21. Rotational dynamics-torque correction τpc , angular velocity correc-
+Fig. 20. Translational dynamics-force correction fpc and velocity correction                    tion ωpc energy observers without and with PC. Last row (Eobs w PC) indicates
+vpc , energy observers without and with PC. Last row (Eobs w PC) indicates                      the passivity of the system.
+the passivity of the system.
+
+
+
+ΔHr1 (k), ΔHr2 (k), χ(k) are recalculated from (23) and (32)
+with the corrected values τc and ωc to recompute ωpc from
+(35). Therefore, the robot will receive a modified twist Vc (to
+correct the effects of the discrete integration) and the simulated
+dynamics receives as input a modified wrench Fc (to correct the
+effects of time delay).
+
+      VII. RESULTS WITH THE OVERALL ARCHITECTURE
+   The overall architecture has been verified first in simulation
+and later experimentally validated.
+   For the simulation case, we consider the satellite mass of M =
+280 kg and I = diag(18, 20, 22) kgm2 (i.e., client satellite for
+the DEOS mission [44]). The considered sampling time is 4 ms
+and the time delay in the loop 40 ms. Forces–torques act on the
+simulated satellite as it collides against the virtual walls.                                   Fig. 22. Stable behavior of the system-linear and angular velocities with the
+   Fig. 20 shows the results for the translational dynamics.                                    passivity approach to correct time delay and integration effects. The dashed line
+                                                                                                is the ideal velocity.
+The first column shows the passivity control for time-delay
+compensation where the correction is provided in impedance
+mode with the forces fpc . The second column is the passiv-
+                                                                                                passivity control (Eobs1 w PC and Eobs3 w PC) shown in the
+ity control for compensating the effects of discrete integration
+                                                                                                last row of Fig. 21 are positive semidefinite and therefore,
+which provides an admittance correction vpc . Both corrections
+                                                                                                all the activity has been dissipated. As a result, the diverging
+are generated to remove the activities measured by the energy
+                                                                                                behavior are resolved and the motion of the rigid body is stable
+observer and shown in the second row of Fig. 20. As it can
+                                                                                                and energetically consistent. It can be seen in Fig. 22 where
+be seen, the energies observed without the passivity controllers,
+                                                                                                the translational and rotational velocities of the rigid body are
+(Eobs1 w/o PC and Eobs2 w/o PC) become negative, indicating
+                                                                                                shown.
+activity in the system. The third row shows the energies with
+the passivity controllers (Eobs1 w PC and Eobs2 w PC). The
+                                                                                                A. Experiments
+positive semidefiniteness of these energies indicate the passivity
+of the system for translational dynamics.                                                          The proposed control architecture is applied and validated on
+   Similarly, Fig. 21 shows the corresponding results for the                                   the client robot of the OOS-SIM facility shown in Fig. 1. The
+rotational dynamics where τpc is the torque correction related                                  industrial robot (KR-120) is equipped with a 6-DoF force–torque
+to the passivity control for the time delay. The second column                                  sensor at its end-effector to measure external interaction and
+is related to the passivity control which provides an angular                                   the satellite mock-up is connected onto the sensor. Robot and
+velocity correction ωpc to avoid the discrete-time integration                                  sensor run in real time with a frequency of 250 Hz. We run the
+effects. Also, for the rotation dynamics, the energies with the                                 model-based dynamics in a real-time VxWorks computer, which
+                      This article has been accepted for inclusion in a future issue of this journal. Content is final as presented, with the exception of pagination.
+
+
+12                                                                                                                                                    IEEE TRANSACTIONS ON ROBOTICS
+
+
+
+
+Fig. 23. Experiment-increase in the robot velocity due to the time delay and
+discretization without passivity control.
+
+
+
+
+                                                                                                 Fig. 25. Experiment-linear (top) and angular velocity (bottom) of the robot
+                                                                                                 with the proposed approach. The velocity does not increases.
+
+
+
+                                                                                                 for the translational and rotational dynamics (Figs. 26 and 27,
+                                                                                                 respectively).
+                                                                                                    2) Translational Dynamics: Fig. 26(a) shows the impedance
+                                                                                                 correction fpc to avoid the activity due to the time delay which
+                                                                                                 is observed with the Eobs1 w/o pc. The activity due to the
+                                                                                                 discretization is shown in Fig. 26(b) (middle) which shows a
+                                                                                                 negative trend of energy. This is corrected with the passivity
+                                                                                                 controller which provides a correction vpc [see Fig. 26(b) top]
+Fig. 24.   Experiment-forces and torques measured by the sensor.                                 to restore the passivity. Passivity proof is given by the positive
+                                                                                                 semidefiniteness of Eobs w pc in Fig. 26(a) and (b).
+                                                                                                    3) Rotational Dynamics: The action of the passivity control
+                                                                                                 dealing with the time delay for the rotational dynamics is shown
+receives also the data from the sensors and computes the desired
+                                                                                                 in Fig. 27(a). In particular, τ pc is the passivity correction due
+set point using inverse kinematics. We use the internal set-point
+                                                                                                 to the energy generated by the time delay, which is shown
+tracking controller of the robot (KRC-4) through the RSI (Robot
+                                                                                                 in Fig. 27(a) middle. The activity due to the discretization is
+Sensor Interface) which enables communication with the real-
+                                                                                                 corrected by the admittance passivity control which provides a
+time computer. More details can be found in [12].
+                                                                                                 velocity correction ω pc shown in Fig. 27(b) top. This allows
+   The experiment considers a rigid body with a mass of
+                                                                                                 to restore the passivity properties of the system as proved in
+700 kg and I = diag(116, 160, 160) kgm2 (i.e., satellite in the
+                                                                                                 Fig. 27(a) and (b) bottom. The positive semidefiniteness of the
+DEOS mission [44]) with the intrinsic time delay of the fa-
+                                                                                                 energy indicates the passivity of the system.
+cility. The satellite mock-up has an initial linear velocity of
+[0, 0, −0.02] m/s and its motion is obstructed by two fixed
+physical constraints on which the mock-up will make contacts,                                                                       VIII. DISCUSSION
+see Fig. 1. The contact point 1 in the figure is a fixed surface and                                The results obtained with the passivity-based approach are
+the contact point 2 is the gripper of the light weight robot which                               promising in both simulation and experiment. The experiments
+is stationary.                                                                                   proved that the developed method can run on a real-time robot
+   1) Robot Motion: Fig. 23 shows the increase in the velocity                                   and can also deal with sensor noise which is intrinsic in measured
+of the satellite simulated with the robot during its interaction                                 data. In this article, a simple rigid body dynamics has been con-
+with the environment without the proposed approach. As it can                                    sidered (as representative of the satellite) without any flexibility
+be seen the velocity diverges after each contact leading to an                                   or disturbance which might require a deeper analysis for the
+unstable behavior.                                                                               discrete-time integrator. The method relies on the observability
+   Now, the proposed passivity-based approach is applied.                                        of the 1-port (Fe , Vs ) which can be obtained from force–torque
+Forces and torques are measured by the sensor during the                                         sensor and commanded velocity signals, both at high sampling
+contacts as shown in Fig. 24 and the active energy is observed                                   rate.
+and dissipated during the experiment. Therefore, the velocity                                       The extra energies introduced by the Euler integration as
+of the robot does not increase as can be seen in Fig. 25. The                                    reported in (21) and (24) are calculated in discrete time. These
+following results show the behavior of the passivity controllers                                 values might be slightly different with respect to the real ener-
+and the energy observers to prove the passivity of the system                                    getic disparity between discrete and continuous-time cases. This
+                        This article has been accepted for inclusion in a future issue of this journal. Content is final as presented, with the exception of pagination.
+
+
+DE STEFANO et al.: PASSIVITY-BASED APPROACH FOR SIMULATING SATELLITE DYNAMICS WITH ROBOTS                                                                                     13
+
+
+
+
+                                                                                                 Fig. 27. Experiment-passivity controller for compensating (a) time delay and
+                                                                                                 (b) discretization effects for the rotational dynamics. Last rows in (a) and (b)
+Fig. 26. Experiment-passivity controller for compensating (a) time delay and
+                                                                                                 indicate the passivity of the system. (a) Torque corrected with the PC, energy
+(b) discretization effects for the translational dynamics. Last rows in (a) and
+                                                                                                 observer without the PC and energy with PC. (b) Angular velocity corrected by
+(b) indicate the passivity of the system. (a) Force corrected by the PC, energy
+                                                                                                 the PC, energy observer without PC and energy with PC.
+observer without the PC and energy with PC. (b) Linear velocity corrected by
+the PC, energy observer without PC and energy with PC.
+
+
+
+
+error is given by the loss of information due to discretization and
+cannot be avoided. However, this difference becomes smaller as
+the sampling time decreases [45].
+   The sampling time of the considered setup is 4 ms and the
+correction of the PC results to be in the order of 10−4 m/s and
+10−4 rad/s, as can be seen in Fig. 20 (top-right) and Fig. 21
+(top-right). However, the correction of the PC in force (to com-
+pensate the time delay) also has an effect on the final velocity.
+A numerical analysis has been performed to evaluate the total
+velocity error (linear ṽ and angular ω̃) between the desired
+velocity (ideal case without time delay) and the velocity with
+time delay and passivity controllers acting. This error can be
+seen in Fig. 28 where the maximum error in velocity is below
+0.001 m/s and −0.3 deg/s. These values adhere, for instance,
+to the requirements of 0.01 m/s and 0.5 deg/s for a rendezvous
+                                                                                                 Fig. 28. Velocity correction (linear ṽ and angular ω̃) between the desired
+and synchronization space scenario, as reported in [46, Sec. 8].                                 velocity (ideal case without time delay) and the velocity with time delay and
+Furthermore, the deviation from the nominal desired velocity                                     passivity controllers acting.
+                    This article has been accepted for inclusion in a future issue of this journal. Content is final as presented, with the exception of pagination.
+
+
+14                                                                                                                                                  IEEE TRANSACTIONS ON ROBOTICS
+
+
+
+                                                                                               a passivity controller which modulates the force at the input
+                                                                                               of the admittance dynamics was proposed. A second passivity
+                                                                                               controller which deals with the effects of the discrete integration
+                                                                                               was proposed and this modulated the velocity output of the
+                                                                                               integrator in order to preserve the energetic properties. Both
+                                                                                               controllers were used in a unified architecture which acted as a
+                                                                                               passivity layer between the discrete system and the real robot.
+                                                                                               The proposed methods avoid unstable behavior in reproducing
+                                                                                               satellite dynamics while ensuring an energy consistent simula-
+                                                                                               tion, as validated on an industrial robot.
+
+
+                                                                                                                                          REFERENCES
+                                                                                                [1] A. Flores-Abad, O. Ma, K. Pham, and S. Ulrich, “A review of
+                                                                                                    space robotics technologies for on-orbit servicing,” Prog. Aerosp. Sci.,
+                                                                                                    vol. 68, pp. 1–26, 2014. [Online]. Available: http://www.sciencedirect.
+Fig. 29. Forces (top) and error between desired and measured position                               com/science/article/pii/S0376042114000347
+(bottom).                                                                                       [2] B. Wilcox, D. B. Gennery, B. Bon, and T. Litwin, “Real-time model-based
+                                                                                                    vision system for object acquisition and tracking,” Proc. SPIE, vol. 0754,
+                                                                                                    pp. 276–281, 1987.
+trajectory has also been calculated while using the overall archi-                              [3] G. Hirzinger, B. Brunner, J. Dietrich, and J. Heindl, “Sensor-based space
+tecture. This can be seen in Fig. 29. The plot at the top shows                                     robotics-ROTEX and its telerobotic features,” IEEE Trans. Robot. Autom.,
+                                                                                                    vol. 9, no. 5, pp. 649–663, Oct. 1993.
+the forces applied and the plot at the bottom shows the variation                               [4] K. Yoshida, “Engineering test satellite VII flight experiments for space
+of position caused by the compensation with respect to the ideal                                    robot dynamics and control: Theories on laboratory test beds ten years
+case. The error values are in the order of 0.015 m.                                                 ago, now in orbit,” Int. J. Robot. Res., vol. 22, no. 5, pp. 321–335, 2003.
+                                                                                                    [Online]. Available: https://doi.org/10.1177/0278364903022005003
+   High-frequency force and velocity modifications are gener-                                   [5] E. Freund, J. Rossmann, and M. Schluse, “Real-time collision avoidance
+ally reported as a limitation of the TDPA damping injection [47].                                   in space: The GETEX experiment,” Proc. SPIE, vol. 4196, pp. 255–267,
+The high-frequency damping generates an effect which might                                          2000.
+                                                                                                [6] S. Dubowsky and E. Papadopoulos, “The kinematics, dynamics, and
+modify the natural dynamic behavior of the system. This effect                                      control of free-flying and free-floating space robotic systems,” IEEE Trans.
+can be minimized by using passive filters in the force and                                          Robot. Autom., vol. 9, no. 5, pp. 531–543, Oct. 1993.
+velocity signals to remove the chattering effects. However, in                                  [7] J. L. Schwartz, M. A. Peck, and C. D. Hall, “Historical review of air-
+                                                                                                    bearing spacecraft simulators,” in J. Guid., Control, Dyn., vol. 26, no. 4,
+our approach, extra filters are not required since the system                                       pp. 513–522, 2003.
+dynamics already act as filters implicitly. The chattering in the                               [8] C. Menon et al., “Issues and solutions for testing free-flying robots,” Acta
+force modification for time-delay compensation is filtered out by                                   Astronautica, vol. 60, no. 12, pp. 957–965, 2007.
+                                                                                                [9] J. Paul et al., “INVERITAS: A facility for hardware-in-the-loop long
+the integration of the dynamics in (1) and (2). The chattering in                                   distance movement simulation for rendezvous and capture of satellites
+the velocity correction is already small due to the low sampling                                    and other autonomous objects,” Acta Astronautica, vol. 116, pp. 1–24,
+times used in our facility. Furthermore, the velocity commands                                      2015.
+                                                                                               [10] T. Boge, T. Wimmer, O. Ma, and T. Tzschichholz, “EPOS—Using robotics
+are sent to the internal controller of the industrial robot (in most                                for RvD simulation of on-orbit servicing missions,” in Proc. Guid., Navi-
+cases, a controller with integral action) which also filters out the                                gat., Control Co-Located Conf., Aug. 2010, pp. 1–15.
+chattering.                                                                                    [11] Z. Milenkovic and C. D’Souza, “The Space Operations Simulation Center
+                                                                                                    (SOSC) and closed-loop hardware testing for Orion Rendezvous system
+                                                                                                    design,” in Proc. Guid., Navigat., Control Co-located Conf., Aug. 2012,
+                          IX. CONCLUSION                                                            doi:10.2514/6.2012-5034.
+                                                                                               [12] J. Artigas et al., “The OOS-SIM: An on-ground simulation facility for
+   Reproducing satellite dynamics using on-ground robotic fa-                                       on-orbit servicing robotic operations,” in Proc. IEEE Int. Conf. Robot.
+cilities is a challenging task. From one side, robotic simulators                                   Autom., May 2015, pp. 2854–2860.
+have the advantage of reproducing effective gravity compen-                                    [13] C. Qi, X. Zhao, F. Gao, A. Ren, and Q. Sun, “Contact stiffness and
+                                                                                                    damping identification for hardware-in-the-loop contact simulator with
+sation on ground and allow motion in large workspaces which                                         measurement delay compensation,” Acta Astronautica, vol. 123, no. C,
+is needed for a space mission. On the other side, the motion                                        pp. 171–180, 2016.
+replicated by the robot is affected by intrinsic time delays in the                            [14] M. Zebenay, R. Lampariello, T. Boge, and D. Choukroun, “A new contact
+                                                                                                    dynamics model tool for hardware-in-the-loop docking simulation,” in
+loop and discrete data integration. This will affect the fidelity of                                Proc. 11th i-SAIRAS, Turin, Italy, 2012.
+the simulation. As it was shown in the first part of this article,                             [15] K. Osaki, A. Konno, and M. Uchiyama, “Delay time compensation for a
+time delay in the loop and discrete integration of the dynamics                                     hybrid simulator,” Adv. Robot., vol. 24, no. 8/9, pp. 1081–1098, 2010.
+                                                                                               [16] S. Abiko, Y. Satake, X. Jiang, T. Tsujita, and M. Uchiyama, “Delay
+might cause system instability and an inconsistent simulation                                       time compensation based on coefficient of restitution for collision hybrid
+from the energy point of view.                                                                      motion simulator,” Adv. Robot., vol. 28, no. 17, pp. 1177–1188, 2014.
+   In this article, passivity-based approaches were exploited to                               [17] C. Secchi, S. Stramigioli, and C. Fantuzzi, Control of Interactive Robotic
+                                                                                                    Interfaces: A Port-Hamiltonian Approach (Springer Tracts in Advanced
+faithfully reproduce rigid-body dynamics with robotic systems                                       Robotics). Berlin, Germany: Springer, 2007.
+in spite of these inevitable factors. The proposed model-free                                  [18] P. F. Hokayem and M. W. Spong, “Bilateral teleoperation: An historical
+methods can also be applied in industrial robots whose dy-                                          survey,” Automatica, vol. 42, pp. 2035–2057, 2006.
+                                                                                               [19] G. Niemeyer and J.-J. E. Slotine, “Telemanipulation with time delays,”
+namics are not known or cannot be easily identified. In order                                       Int. J. Robot. Res., vol. 23, no. 9, pp. 873–890, 2004. [Online]. Available:
+to compensate the damaging effects of intrinsic time delays,                                        https://doi.org/10.1177/0278364904045563
+                         This article has been accepted for inclusion in a future issue of this journal. Content is final as presented, with the exception of pagination.
+
+
+DE STEFANO et al.: PASSIVITY-BASED APPROACH FOR SIMULATING SATELLITE DYNAMICS WITH ROBOTS                                                                                         15
+
+
+
+[20] S. Stramigioli, C. Secchi, A. J. van der Schaft, and C. Fantuzzi, “Sam-                      [46] J. Telaar et al., “GNC architecture for the e.Deorbit mission,” Proc. 7th Eur.
+     pled data systems passivity and discrete port-hamiltonian systems,” IEEE                          Conf. Aeronaut. Space Sci., Jul. 2017, doi: 10.13009/EUCASS2017-317.
+     Trans. Robot., vol. 21, no. 4, pp. 574–587, Aug. 2005.                                       [47] Y. S. Kim and B. Hannaford, “Some practical issues in time domain
+[21] C. Secchi, F. Ferraguti, and C. Fantuzzi, “Catching the wave: A trans-                            passivity control of haptic interfaces,” in Proc. IEEE/RSJ Int. Conf. Intell.
+     parency oriented wave based teleoperation architecture,” in Proc. IEEE                            Robots Syst. (Cat. No.01CH37180), 2001, vol. 3, pp. 1744–1750.
+     Int. Conf. Robot. Autom., May 2016, pp. 2422–2427.
+[22] M. Franken, S. Stramigioli, S. Misra, C. Secchi, and A. Macchelli, “Bi-
+     lateral telemanipulation with time delays: A two-layer approach com-
+     bining passivity and transparency,” IEEE Trans. Robot., vol. 27, no. 4,
+     pp. 741–756, Aug. 2011.
+[23] F. Ferraguti et al., “An energy tank-based interactive control architecture
+                                                                                                                               Marco De Stefano received the bachelor’s degree in
+     for autonomous and teleoperated robotic surgery,” IEEE Trans. Robot.,
+     vol. 31, no. 5, pp. 1073–1088, Oct. 2015.                                                                                 aerospace engineering and the master’s degree cum
+                                                                                                                               laude in astronautical engineering from the Univer-
+[24] B. Hannaford and J.-H. Ryu, “Time domain passivity control of hap-
+                                                                                                                               sity of Rome La Sapienza, Rome, Italy, in 2008 and
+     tic interfaces,” in Proc. IEEE Int. Conf. Robot. Autom., 2001, vol. 2,
+                                                                                                                               2011, respectively, and the Ph.D. degree in industrial
+     pp. 1863–1869.
+[25] C. Preusche, G. Hirzinger, J.-H. Ryu, and B. Hannaford, “Time domain                                                      innovation engineering (summa cum laude) from the
+                                                                                                                               University of Modena and Reggio Emilia, Modena,
+     passivity control for 6 degrees of freedom haptic displays,” in Proc.
+                                                                                                                               Italy, in 2019.
+     IEEE/RSJ Int. Conf. Intell. Robots Syst., Oct. 2003, vol. 3, pp. 2944–2949.
+                                                                                                                                  Since 2012, he has been a Researcher with the
+[26] K. Hertkorn, T. Hulin, P. Kremer, C. Preusche, and G. Hirzinger, “Time
+     domain passivity control for multi-degree of freedom haptic devices                                                       Department for Analysis and Control of Advanced
+                                                                                                                               Control System, German Aerospace Center (DLR),
+     with time delay,” in Proc. IEEE Int. Conf. Robot. Autom., May 2010,
+                                                                                                  Wessling, Germany. His research interests include hardware-in-the-loop simu-
+     pp. 1313–1319.
+                                                                                                  lation, stability analysis, and control of space robots.
+[27] C. Ott, J. Artigas, and C. Preusche, “Subspace-oriented energy distribution
+     for the time domain passivity approach,” in Proc. IEEE/RSJ Int. Conf.
+     Intell. Robots Syst., Sep. 2011, pp. 665–671.
+[28] M. De Stefano, J. Artigas, W. Rackl, and A. Albu-Schaeffer, “Passivity
+     of virtual free-floating dynamics rendered on robotic facilities,” in Proc.
+     IEEE Int. Conf. Robot. Autom., May 2015, pp. 781–788.
+[29] M. De Stefano, J. Artigas, and C. Secchi, “An optimized passivity-based
+                                                                                                                            Ribin Balachandran received the bachelor’s degree
+     method for simulating satellite dynamics on a position controlled robot in
+                                                                                                                            in electrical and electronics engineering from the
+     presence of latencies,” in Proc. IEEE/RSJ Int. Conf. Intell. Robots Syst.,
+                                                                                                                            National Institute of Technology, Surathkal, India,
+     Oct. 2016, pp. 5419–5426.                                                                                              in 2009, and the master’s degree in automation and
+[30] E. Hairer, G. Wanner, and C. Lubich, Geometric Numerical Integration
+                                                                                                                            robotics from the Technical University of Dortmund,
+     (Computational Mathematics). Berlin, Germany: Springer, 2006.
+                                                                                                                            Dortmund, Germany, in 2013. He is currently work-
+[31] S. Blanes and F. Casas, A Concise Introduction to Geometric Numerical
+                                                                                                                            ing toward the Ph.D. degree in the field of teleopera-
+     Integration. Boca Raton, FL, USA: CRC Press, 2016.                                                                     tion and shared control with the Technical University
+[32] S. Ober-Bloebaum, “Discrete mechanics and optimal control,” Ph.D. dis-
+                                                                                                                            of Munich (TUM), Munich, Germany.
+     sertation, University of Paderborn, Paderborn, Germany, 2008.
+                                                                                                                               Since 2013, he has been a Researcher with the
+[33] P. Betsch and S. Uhlar, “Energy-momentum conserving integration of
+                                                                                                                            Institute of Robotics and Mechatronics, German
+     multibody dynamics,” Multibody Syst. Dyn., vol. 17, no. 4, pp. 243–289,                      Aerospace Center (DLR), Oberfpaffenhofen, Germany. His main research areas
+     2007.
+                                                                                                  are time-delayed teleoperation, haptics, and control for robotics.
+[34] K. Modin and G. Söderlind, “Geometric integration of Hamiltonian sys-
+     tems perturbed by Rayleigh damping,” Bit Numer. Math., 2011.
+[35] J. Brown and J. Colgate, “Minimum mass for haptic display simulations,”
+     in Proc. ASME Int. Mech. Eng. Congr. Expo., 1998, pp. 249–256.
+[36] D. Lee and K. Huang, “On passive non-iterative varying-step numerical
+     integration of mechanical systems for haptic rendering,” in Proc. ASME
+     Dyn. Syst. Control Conf., Ann Arbor, MI, USA, Oct. 2008.
+[37] M. De Stefano, R. Balachandran, J. Artigas, and C. Secchi, “Reproducing
+                                                                                                                             Cristian Secchi received the M.Sc. degree in com-
+     physical dynamics with hardware-in-the-loop simulators: A passive and
+                                                                                                                             puter science engineering from the University of
+     explicit discrete integrator,” in Proc. IEEE Int. Conf. Robot. Autom.,                                                  Bologna, Bologna, Italy, in 2000 and the Ph.D. degree
+     May 2017, pp. 5899–5906.
+                                                                                                                             in information engineering from the University of
+[38] M. De Stefano, J. Artigas, and C. Secchi, “A passive integration strategy
+                                                                                                                             Modena and Reggio Emilia, Modena, Italy, in 2004.
+     for rendering rotational rigid-body dynamics on a robotic simulator,” in
+                                                                                                                                He has been Visiting Student with the University of
+     Proc. IEEE/RSJ Int. Conf. Intell. Robots Syst., Sep. 2017, pp. 2806–2812.                                               Delft (NL) and the University of Twente (NL), in 2000
+[39] L. Villani and J. de Schutter, “Force control,” in Handbook of Robotics,
+                                                                                                                             and 2002, respectively. He is currently an Associate
+     B. Siciliano and O. Khatib, Eds., Berlin, Germany: Springer, 2016.
+                                                                                                                             Professor of Robotics with the University of Modena
+[40] C. T. Landi, F. Ferraguti, L. Sabattini, C. Secchi, M. Bonf, and C. Fantuzzi,
+                                                                                                                             and Reggio Emilia. He has authored or coauthored
+     “Variable admittance control preventing undesired oscillating behaviors
+                                                                                                                             more than 200 papers on international journals and
+     in physical human-robot interaction,” in Proc. IEEE/RSJ Int. Conf. Intell.
+                                                                                                  conferences. His research interests include human–robot physical interaction,
+     Robots Syst., Sep. 2017, pp. 3611–3616.
+                                                                                                  telerobotics, mobile robotics, and surgical robotics.
+[41] B. Siciliano and O. Khatib, Eds., Springer Handbook of Robotics. Berlin,                        Dr. Secchi was a participant of the CROW (Coordination of AGVs in Au-
+     Germany: Springer, 2008.
+                                                                                                  tomatic Warehouses) Project that has been selected as a Finalist for the 2010
+[42] A. van der Schaft, L2 -Gain and Passivity Techniques in Nonlinear Control
+                                                                                                  EUROP/EURON Technology Transfer Award for the Best Technology Transfer
+     (Communication and Control Engineering). Berlin, Germany: Springer-
+                                                                                                  Project in Europe. His Ph.D. thesis has been selected as one of the three finalists
+     Verlag, 2000.                                                                                of the Fifth Georges Giralt Award for the Best Ph.D. Thesis on Robotics in
+[43] H. Khalil, Nonlinear Systems. Englewood Cliffs, NJ, USA: Prentice-Hall,
+                                                                                                  Europe. He is an Associated Editor for the IEEE ROBOTICS AND AUTOMATION
+     2002.
+                                                                                                  LETTERS. He has been an Associate Editor for the IEEE TRANSACTIONS ON
+[44] “DEOS functional specification,” DLR and SpaceTech, Immenstaad,
+                                                                                                  ROBOTICS from 2012 to 2017 and for the IEEE ROBOTICS AND AUTOMATION
+     Germany, Jan. 2009. [Online]. Available: https://spacetech-i.com/                            MAGAZINE from 2005 to 2008. He has been Co-Chair of the IEEE Robotics
+     products/missions-satellites/deos
+                                                                                                  and Automation Society Technical Committee on Telerobotics from 2007 to
+[45] M. De Stefano, “Energy-based control for simulation of multi-body dy-
+                                                                                                  2012. He has been an Associate Editor for IROS2012 and the ICRA2013 and
+     namics using robotic facilities,” Ph.D. dissertation, Univ. Modena Reggio
+                                                                                                  ICRA2015 Conference Editorial Boards.
+     Emilia, Modena, Italy, Mar. 2019.
+

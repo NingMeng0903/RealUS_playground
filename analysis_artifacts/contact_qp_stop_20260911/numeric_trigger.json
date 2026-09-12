@@ -1,0 +1,71 @@
+{
+  "case": "uncalibrated/003/attempts/RH_Per_L_DtP/002, control 1487; last known raw wrench substituted",
+  "results": [
+    {
+      "version": "HEAD_before_fix",
+      "available_j": 0.543,
+      "status": "solver_failed",
+      "wall_ms": 16.276872000162257,
+      "iterations": 4129,
+      "solver_status": "QPSolverOutput.PROXQP_MAX_ITER_REACHED",
+      "accepted": false,
+      "energy_admissible": null,
+      "regression_assertion_passed": false
+    },
+    {
+      "version": "HEAD_before_fix",
+      "available_j": 0.0001,
+      "status": "image_unavailable",
+      "wall_ms": 1.2970260004294687,
+      "iterations": 120,
+      "solver_status": "QPSolverOutput.PROXQP_SOLVED",
+      "accepted": true,
+      "energy_admissible": true,
+      "regression_assertion_passed": true
+    },
+    {
+      "version": "HEAD_before_fix",
+      "available_j": 0.0,
+      "status": "image_unavailable",
+      "wall_ms": 0.86925599953247,
+      "iterations": 7,
+      "solver_status": "QPSolverOutput.PROXQP_SOLVED",
+      "accepted": true,
+      "energy_admissible": true,
+      "regression_assertion_passed": true
+    },
+    {
+      "version": "energy_precondition_fix",
+      "available_j": 0.543,
+      "status": "image_unavailable",
+      "wall_ms": 0.8946709995143465,
+      "iterations": 9,
+      "solver_status": "QPSolverOutput.PROXQP_SOLVED",
+      "accepted": true,
+      "energy_admissible": true,
+      "regression_assertion_passed": true
+    },
+    {
+      "version": "energy_precondition_fix",
+      "available_j": 0.0001,
+      "status": "image_unavailable",
+      "wall_ms": 0.9106870002142387,
+      "iterations": 9,
+      "solver_status": "QPSolverOutput.PROXQP_SOLVED",
+      "accepted": true,
+      "energy_admissible": true,
+      "regression_assertion_passed": true
+    },
+    {
+      "version": "energy_precondition_fix",
+      "available_j": 0.0,
+      "status": "image_unavailable",
+      "wall_ms": 0.9134880001511192,
+      "iterations": 7,
+      "solver_status": "QPSolverOutput.PROXQP_SOLVED",
+      "accepted": true,
+      "energy_admissible": true,
+      "regression_assertion_passed": true
+    }
+  ]
+}

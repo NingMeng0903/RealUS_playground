@@ -157,4 +157,5 @@ class ContactStatus(str, Enum):
     TASK_INFEASIBLE = "task_infeasible"
     MECHANICAL_INFEASIBLE = "mechanical_infeasible"
     SOLVER_FAILED = "solver_failed"
+    DEFERRED = "deferred"
     CERTIFICATE_INVALID = "certificate_invalid"

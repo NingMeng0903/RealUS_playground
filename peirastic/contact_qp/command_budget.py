@@ -4,6 +4,10 @@ An epoch holds both six-axis tool-frame quantities from a successful dual-device
 publication until replacement, stop, or its review-time expiry. Expiry terminates
 this mathematical output only: actual device stopping/tail work is unknown.
 Measured-port monitoring has no reference to this balance.
+
+An explicitly selected nominal-command source can fund final model output up to
+the frozen baseline's outward power. Unused task authorization is discarded;
+this supplied model makes no external one-port passivity claim.
 """
 from dataclasses import dataclass, replace
 import math
@@ -27,6 +31,8 @@ class _Pair:
     reviewed_s: float
     expires_s: float
     power_w: float
+    nominal_twist_tool: np.ndarray | None
+    task_power_w: float
     committed_s: float | None = None
 
 
@@ -35,7 +41,7 @@ class CommandBudget:
     wrench_convention='negative_control_raw_tcp_v1'
 
     def __init__(self,initial_j,capacity_j,stopping_reserve_j,*,max_command_interval_s,
-                 settlement_port,wrench_convention,constraint=None):
+                 settlement_port,wrench_convention,constraint=None,task_power_source='none'):
         if settlement_port!=self.settlement_port or wrench_convention!=self.wrench_convention:
             raise ValueError('explicit logical_final_model / negative_control_raw_tcp_v1 required')
         for value in (initial_j,capacity_j,stopping_reserve_j,max_command_interval_s):
@@ -46,21 +52,33 @@ class CommandBudget:
         if not self.stopping_reserve_j<=self.balance_j<=self.capacity_j:
             raise ValueError('reserve <= initial <= capacity required')
         self.max_command_interval_s=positive(max_command_interval_s,'max_command_interval_s')
+        if task_power_source not in ('none','nominal_command'):
+            raise ValueError('explicit none or nominal_command task_power_source required')
+        self.task_power_source=task_power_source
+        self.assurance='two_port_command_model' if task_power_source=='nominal_command' else 'command_model'
         self.parameters=dict(constraint or {})
+        if 'task_power_w' in self.parameters:
+            raise ValueError('task power is derived only from the frozen nominal command')
+        if self.parameters.get('assurance','command_model') not in ('command_model',self.assurance):
+            raise ValueError('logical model assurance required')
+        self.parameters['assurance']=self.assurance
         check=PortEnergyConstraint(wrench_environment=np.zeros(6),available_j=self.available_j,
             hold_s=self.max_command_interval_s,**self.parameters)
-        if check.assurance!='command_model' or any(np.any(getattr(check,k)) for k in
+        if any(np.any(getattr(check,k)) for k in
                 ('damping','tracking_error','wrench_error','wrench_rate')):
-            raise ValueError('logical held model requires command_model and zero damping/error/rate terms')
+            raise ValueError('logical held model requires zero damping/error/rate terms')
         self.active=None;self.pending=None;self.started=False;self.latched_reason=None
         self.last_time_s=None;self._snapshot=None;self._snapshot_rotation=None
+        self._snapshot_nominal=None
+        self.cumulative_port_work_j=0.;self.cumulative_task_source_used_j=0.
+        self.cumulative_tank_work_j=0.;self.cumulative_capacity_discard_j=0.
         self.events=[];self._seen=set()
 
     @property
     def reserved_j(self):
         pending=getattr(self,'pending',None);active=getattr(self,'active',None)
-        new=0. if pending is None else max(0.,-pending.power_w)*self.max_command_interval_s
-        old=0. if active is None else max(0.,-active.power_w)*max(0.,active.expires_s-self.last_time_s)
+        new=0. if pending is None else max(0.,-pending.power_w-pending.task_power_w)*self.max_command_interval_s
+        old=0. if active is None else max(0.,-active.power_w-active.task_power_w)*max(0.,active.expires_s-self.last_time_s)
         return old+new
 
     @property
@@ -78,6 +96,12 @@ class CommandBudget:
             settlement_port=self.settlement_port,wrench_convention=self.wrench_convention,
             max_command_interval_s=self.max_command_interval_s,latched_reason=self.latched_reason,
             logical_epoch_expiry_s=None if self.active is None else self.active.expires_s,
+            task_power_source=self.task_power_source,energy_assurance=self.assurance,
+            task_source_available_w=0. if self.active is None else self.active.task_power_w,
+            cumulative_port_work_j=self.cumulative_port_work_j,
+            cumulative_task_source_used_j=self.cumulative_task_source_used_j,
+            cumulative_tank_work_j=self.cumulative_tank_work_j,
+            cumulative_capacity_discard_j=self.cumulative_capacity_discard_j,
             physical_certified=False,actual_tail='unknown',predicted_recovery_credited_j=0.)
 
     @staticmethod
@@ -108,16 +132,29 @@ class CommandBudget:
         if old is not None:
             end=min(now,old.expires_s)
             dt=max(0.,end-self.last_time_s)
-            change=dt*old.power_w
+            source_used_w=min(old.task_power_w,max(0.,-old.power_w))
+            port_work=dt*old.power_w
+            source_work=dt*source_used_w
+            change=port_work+source_work
             balance=self.balance_j+change
-            if not math.isfinite(change) or not math.isfinite(balance):
+            discard=max(0.,balance-self.capacity_j)
+            totals=(self.cumulative_port_work_j+port_work,
+                self.cumulative_task_source_used_j+source_work,
+                self.cumulative_tank_work_j+change,self.cumulative_capacity_discard_j+discard)
+            if not all(math.isfinite(x) for x in (port_work,source_work,change,balance,discard,*totals)):
                 self.latched_reason='nonfinite_logical_work'
                 raise ValueError(self.latched_reason)
             # Upper clipping discards recovered energy. No lower clipping can
             # invent energy; an accounting violation fences further commands.
             self.balance_j=min(self.capacity_j,balance)
+            (self.cumulative_port_work_j,self.cumulative_task_source_used_j,
+             self.cumulative_tank_work_j,self.cumulative_capacity_discard_j)=totals
             self.events.append(dict(event='logical_epoch_work',command_id=old.command_id,
-                start_s=self.last_time_s,end_s=end,power_w=old.power_w,work_j=change,
+                start_s=self.last_time_s,end_s=end,power_w=old.power_w,work_j=port_work,
+                port_work_j=port_work,task_source_available_w=old.task_power_w,
+                task_source_used_w=source_used_w,task_source_used_j=source_work,
+                tank_work_j=change,capacity_discard_j=discard,
+                task_power_source=self.task_power_source,energy_assurance=self.assurance,
                 power_sign='positive_environment_input',
                 balance_j=self.balance_j,physical_certified=False))
             if self.balance_j<self.stopping_reserve_j-1e-12:
@@ -134,15 +171,28 @@ class CommandBudget:
         """Strict external settlement tick; duplicate times cannot credit work."""
         return self._settle(now_s,strict=True)
 
-    def snapshot(self,*,now_s,wrench_control_raw,rotation_base_tcp):
+    def snapshot(self,*,now_s,wrench_control_raw,rotation_base_tcp,nominal_twist_tool=None):
         if not self._settle(now_s):raise ValueError(self.latched_reason)
         if self.pending is not None:raise ValueError('unresolved logical reservation')
         rotation=vector(rotation_base_tcp,(3,3),name='pair rotation snapshot')
         if not np.allclose(rotation.T@rotation,np.eye(3),atol=1e-9) or np.linalg.det(rotation)<0:
             raise ValueError('invalid pair rotation snapshot')
-        self._snapshot=PortEnergyConstraint(wrench_environment=self.wrench_from_control(wrench_control_raw),
-            available_j=self.available_j,hold_s=self.max_command_interval_s,**self.parameters)
+        wrench=self.wrench_from_control(wrench_control_raw)
+        nominal=None;task_power=0.
+        if self.task_power_source=='nominal_command':
+            nominal=vector(nominal_twist_tool,(6,),name='frozen nominal tool twist')
+            with np.errstate(over='ignore',invalid='ignore'):
+                nominal_power=float(wrench @ nominal)
+            if not math.isfinite(nominal_power):
+                raise ValueError('nonfinite nominal task power')
+            task_power=max(0.,-nominal_power)
+        elif nominal_twist_tool is not None:
+            raise ValueError('nominal twist requires explicit nominal_command source')
+        self._snapshot=PortEnergyConstraint(wrench_environment=wrench,
+            available_j=self.available_j,hold_s=self.max_command_interval_s,
+            task_power_w=task_power,**self.parameters)
         self._snapshot_rotation=rotation
+        self._snapshot_nominal=nominal
         return self._snapshot
 
     def reserve(self,command_id,snapshot,final_velocity,*,now_s):
@@ -155,12 +205,12 @@ class CommandBudget:
         if not fresh.admissible(final,tolerance_w=0.,velocity_tolerance=0.):return False
         power=fresh.lower_power_w(final)
         expiry=float(now_s)+self.max_command_interval_s
-        liability=max(0.,-power)*self.max_command_interval_s
+        liability=max(0.,-power-fresh.task_power_w)*self.max_command_interval_s
         if not all(math.isfinite(x) for x in (power,expiry,liability)) or expiry<=now_s:
             raise ValueError('nonfinite logical reservation')
         if liability>self.available_j:return False
         self.pending=_Pair(command_id,fresh.wrench_environment,final,self._snapshot_rotation,
-                           float(now_s),expiry,power)
+                           float(now_s),expiry,power,self._snapshot_nominal,fresh.task_power_w)
         self.started=False
         self.events.append(dict(event='logical_reservation',command_id=command_id,reviewed_s=now_s,
             expires_s=expiry,power_w=power,liability_j=liability,**self.facts))
@@ -191,6 +241,9 @@ class CommandBudget:
         self.events.append(dict(event='logical_epoch_commit',command_id=command_id,
             reviewed_s=pair.reviewed_s,committed_s=now_s,expires_s=pair.expires_s,
             wrench_tool=pair.wrench.tolist(),velocity_tool=pair.velocity.tolist(),
+            nominal_twist_tool=None if pair.nominal_twist_tool is None else pair.nominal_twist_tool.tolist(),
+            task_source_available_w=pair.task_power_w,task_power_source=self.task_power_source,
+            energy_assurance=self.assurance,
             rotation_base_tcp=pair.rotation_base_tcp.tolist(),physical_certified=False))
 
     def reject_new_only(self,command_id,*,definitely_not_sent,now_s):

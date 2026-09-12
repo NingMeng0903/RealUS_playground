@@ -1,0 +1,188 @@
+--- a/peirastic/contact_qp/repair_policy.py
++++ b/peirastic/contact_qp/repair_policy.py
+@@ -14,6 +14,7 @@
+ class DifferentialRepairConfig:
+     revision: str = "v8r2_bounded_episode"
+     permission_mode: str = "bounded_episode"
++    differential_reference: str = "total_velocity"
+     balance_deadband: float = 0.10
+     max_permission_s: float = 2.0
+     max_angle_travel_rad: float = math.radians(3.)
+@@ -31,6 +32,10 @@
+             raise ValueError('permission_mode must be bounded_episode or continuous')
+         if self.permission_mode=='continuous' and self.revision!='v8r3_confidence_balance':
+             raise ValueError('continuous repair requires v8r3_confidence_balance')
++        if self.differential_reference not in ('total_velocity','nominal_increment'):
++            raise ValueError('unsupported differential reference')
++        if self.differential_reference=='nominal_increment' and self.revision!='v8r3_confidence_balance':
++            raise ValueError('nominal_increment requires v8r3_confidence_balance')
+         if isinstance(self.balance_deadband,(bool,np.bool_)) or not math.isfinite(self.balance_deadband) or not 0 <= self.balance_deadband < 1:
+             raise ValueError('balance_deadband must be finite in [0, 1)')
+         from .repair_episode import RepairEpisode
+@@ -71,15 +76,15 @@
+         imbalance=float(deficits[0]-deficits[1]) if differential_imbalance is None else float(differential_imbalance)
+         sign=float(np.sign(imbalance))
+         requested=repair_speed*gate*abs(imbalance)
+-        # Target total normal/rocking velocity. TorqueTilt commits the total
+-        # accepted omega into its next nominal state; adding the same visual
+-        # increment to that state every cycle would accumulate toward the cap.
+-        # Common translation cancels for a calibrated flat aperture.
++        # Common translation cancels for a calibrated flat aperture. The
++        # optional increment reference gives the visual task its own offset;
++        # the optimization still produces one constrained physical velocity.
+         row=np.asarray(visual_rows[0]-visual_rows[1],dtype=float).copy()
+         row[[0,1,3,5]]=0.
+         a=np.zeros(8);a[:3]=sign*(row @ scaled_basis)/normal_scale;a[2]=0.
+         a[5]=1.
+-        rows=[-a];upper=[-requested/normal_scale]
++        reference=sign*float(row @ nominal_twist) if self.differential_reference=='nominal_increment' else 0.
++        rows=[-a];upper=[-(requested+reference)/normal_scale]
+         h=np.zeros((8,8));g=np.zeros(8)
+         h[5,5]=self.differential_weight
+         # Historical r2 couples alpha to residual. R3 keeps alpha independent,
+@@ -95,6 +100,6 @@
+             h[6+i,6+i]=self.loading_weight*(1.-gate)
+         return h,g,np.asarray(rows),np.asarray(upper),dict(
+             repair_force_gate=gate,differential_sign=sign,differential_request_m_s=requested,
+-            differential_reference='total_velocity',
++            differential_reference=self.differential_reference,
+             differential_row=row,force_limit_assurance='measured_policy_not_prediction',
+             soft_force_n=self.soft_force_n,hard_force_supervisor_n=self.hard_stop_n)
+--- a/peirastic/contact_qp/qp.py
++++ b/peirastic/contact_qp/qp.py
+@@ -518,6 +518,8 @@
+         differential_row=(visual[0]-visual[1]).copy();differential_row[[0,1,3,5]]=0.
+         differential_sign=float(np.sign(differential_imbalance))
+         differential_nominal=differential_sign*float(differential_row @ data.nominal_twist)
++        differential_reference=(differential_nominal if
++            cfg.differential_repair.differential_reference=='nominal_increment' else 0.)
+         diagnostics.update(image_valid=image_valid, acquisition_loss=loss, alpha_preferred=alpha_preferred,
+                            visual_rows_active=visual_enabled,visual_window_active=visual_window_active, visual_requests_m_s=requests if visual_enabled else np.zeros(2),
+                            gamma_effective=gamma, quality=quality)
+@@ -528,7 +530,7 @@
+                            np.array_equal(nominal_full, data.nominal_twist) and
+                            _violation(cn, ln, un, x_nominal[:3]) <= cfg.solver_tolerance and
+                            (not visual_enabled or np.all((visual @ data.nominal_twist)[visual_window_active] >= requests[visual_window_active]))
+-                           and (not v8 or differential_nominal>=differential_requested)
++                           and (not v8 or differential_nominal-differential_reference>=differential_requested)
+                            and (data.energy is None or data.energy.admissible(data.nominal_twist,
+                                 tolerance_w=cfg.solver_tolerance,velocity_tolerance=cfg.solver_tolerance)))
+         solver_time = 0.
+@@ -645,9 +647,9 @@
+         if v8:
+             total_achieved=differential_sign*float(differential_row @ twist)
+             incremental_achieved=total_achieved-differential_nominal
+-            achieved=total_achieved
++            achieved=total_achieved-differential_reference
+             diagnostics.update(differential_request_m_s=differential_requested,
+-                differential_reference='total_velocity',
++                differential_reference=cfg.differential_repair.differential_reference,
+                 differential_nominal_achieved_m_s=differential_nominal,
+                 differential_total_achieved_m_s=total_achieved,
+                 differential_increment_achieved_m_s=incremental_achieved,
+--- a/peirastic/tests/test_contact_qp_incremental_visual.py
++++ b/peirastic/tests/test_contact_qp_incremental_visual.py
+@@ -0,0 +1,103 @@
++"""Incremental visual repair shares the physical command's hard constraints."""
++from dataclasses import replace
++
++import numpy as np
++import pytest
++
++from peirastic.contact_qp.qp import ContactQp, QpConfig
++from peirastic.contact_qp.repair_policy import DifferentialRepairConfig
++from peirastic.contact_qp.port_constraint import PortEnergyConstraint
++from peirastic.contact_qp.types import ProbeGeometry
++from peirastic.tests.test_contact_qp_solver import datum
++
++
++def config(**kwargs):
++    values=dict(allocation_policy='differential_repair_v8',
++        differential_repair=DifferentialRepairConfig(revision='v8r3_confidence_balance',
++            permission_mode='continuous',differential_reference='nominal_increment'),
++        max_acceleration=np.full(6,100.))
++    values.update(kwargs)
++    return QpConfig(**values)
++
++
++def with_nominal(omega,quality=(.6,.8,.9),**kwargs):
++    data=datum(quality,**kwargs)
++    nominal=data.nominal_twist.copy();nominal[4]=omega
++    return replace(data,nominal_twist=nominal,previous_twist=nominal)
++
++
++def test_matching_nominal_requires_additional_visual_motion_and_same_reference_diagnostics():
++    data=with_nominal(.02)
++    cfg=config();result=ContactQp(cfg).solve(data)
++    assert result.success and not result.diagnostics['transparent']
++    assert result.qp_twist[4]>.02+1e-3
++    d=result.diagnostics
++    assert d['differential_reference']=='nominal_increment'
++    assert d['differential_achieved_m_s']==pytest.approx(d['differential_increment_achieved_m_s'])
++    assert d['differential_total_achieved_m_s']==pytest.approx(
++        d['differential_nominal_achieved_m_s']+d['differential_increment_achieved_m_s'])
++    assert d['differential_auxiliary_shortfall']*cfg.normal_scale_m_s==pytest.approx(
++        d['differential_shortfall_m_s'],abs=1e-8)
++    legacy=ContactQp(replace(cfg,differential_repair=replace(cfg.differential_repair,
++        differential_reference='total_velocity'))).solve(data)
++    assert legacy.success and legacy.diagnostics['transparent']
++    np.testing.assert_array_equal(legacy.qp_twist,data.nominal_twist)
++
++
++def test_opposing_nominal_is_corrected_and_mirrored_geometry_reverses_increment():
++    data=with_nominal(-.005)
++    result=ContactQp(config()).solve(data)
++    assert result.success and result.qp_twist[4]>data.nominal_twist[4]+1e-3
++    mirrored_nominal=data.nominal_twist.copy();mirrored_nominal[4]*=-1
++    mirrored=replace(data,geometry=ProbeGeometry.synthetic(image_x_sign=-1),
++        nominal_twist=mirrored_nominal,previous_twist=mirrored_nominal)
++    other=ContactQp(config()).solve(mirrored)
++    assert other.success
++    assert other.qp_twist[4]==pytest.approx(-result.qp_twist[4],abs=1e-7)
++
++
++def test_zero_imbalance_keeps_nominal_exactly_transparent():
++    data=with_nominal(.02,quality=(.85,.85,.85))
++    result=ContactQp(config()).solve(data)
++    assert result.success and result.diagnostics['transparent']
++    assert result.diagnostics['differential_request_m_s']==0
++    np.testing.assert_array_equal(result.qp_twist,data.nominal_twist)
++
++
++@pytest.mark.parametrize('constraint',['angle','slew','aperture','force','energy'])
++def test_increment_cannot_bypass_physical_limits(constraint):
++    cfg=config();data=datum((.6,.8,.9))
++    if constraint=='angle':
++        cfg=replace(cfg,angle_limit_rad=.12);data=replace(data,measured_angle=.12)
++    elif constraint=='slew':
++        acceleration=np.full(6,100.);acceleration[4]=.001;cfg=replace(cfg,max_acceleration=acceleration)
++    elif constraint=='aperture':cfg=replace(cfg,aperture_budget_m_s=0.)
++    elif constraint=='force':data=replace(data,force_n=4.5)
++    else:
++        wrench=np.zeros(6);wrench[4]=-1.
++        data=replace(data,energy=PortEnergyConstraint(wrench,0.,.05))
++    result=ContactQp(cfg).solve(data)
++    assert result.success
++    assert result.qp_twist[4]<=((.001*data.dt_s+1e-8) if constraint=='slew' else 1e-8)
++    assert result.hard_constraints.violation(result.qp_twist)<=cfg.feasibility_tolerance
++    if constraint=='force':assert result.diagnostics['differential_request_m_s']==0
++    else:assert result.diagnostics['differential_shortfall_m_s']>0
++    if data.energy is not None:assert data.energy.admissible(result.qp_twist,tolerance_w=1e-8)
++
++
++def test_task_supply_enables_only_its_bounded_total_power():
++    wrench=np.zeros(6);wrench[4]=-1.
++    energy=PortEnergyConstraint(wrench,0.,.05,task_power_w=.005,assurance='two_port_command_model')
++    result=ContactQp(config()).solve(datum((.6,.8,.9),energy=energy))
++    assert result.success
++    assert 1e-4<result.qp_twist[4]<=.005+1e-8
++    assert energy.admissible(result.qp_twist,tolerance_w=1e-8)
++    assert result.diagnostics['differential_shortfall_m_s']>0
++
++
++def test_reference_is_explicit_legacy_default_and_r3_only():
++    assert DifferentialRepairConfig().differential_reference=='total_velocity'
++    with pytest.raises(ValueError,match='requires v8r3'):
++        DifferentialRepairConfig(differential_reference='nominal_increment')
++    with pytest.raises(ValueError,match='unsupported differential reference'):
++        DifferentialRepairConfig(differential_reference='implicit')

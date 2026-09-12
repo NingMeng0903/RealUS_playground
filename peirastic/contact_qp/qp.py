@@ -7,7 +7,7 @@ This module has no robot, transport, UI, or command-integrator dependency.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 import math
 from types import MappingProxyType
 import time
@@ -73,8 +73,11 @@ class QpConfig:
     max_iterations: int = 200
     inner_iterations: int = 100
     solver_preconditioning: bool = False
+    solver_policy: str = "legacy_v1"
 
     def __post_init__(self):
+        if self.solver_policy not in ("legacy_v1", "bounded_retry_v1"):
+            raise ValueError("unknown contact QP solver policy")
         if self.allocation_policy not in ('legacy_v7','differential_repair_v8'):
             raise ValueError('unknown allocation policy')
         policy=self.differential_repair
@@ -313,7 +316,7 @@ def _energy_rows(energy, scaled_basis, variables):
     shared=np.zeros(total);shared[:3]=energy.wrench_environment @ scaled_basis
     shared[variables:]=-coefficients*scales
     rows.append(shared)
-    lo=np.r_[np.full(2*count,-math.inf),energy.tracking_cost_w-energy.beta*energy.available_j/energy.hold_s]
+    lo=np.r_[np.full(2*count,-math.inf),energy.tracking_cost_w-energy.beta*energy.available_j/energy.hold_s-energy.task_power_w]
     hi=np.r_[np.zeros(2*count),math.inf]
     a,l,u=_normalize_rows(np.asarray(rows),lo,hi)
     return a,l,u,count
@@ -329,27 +332,148 @@ class ContactQp:
             from .repair_episode import RepairEpisode
             policy=self.config.differential_repair
             self.repair_episode=RepairEpisode(max_permission_s=policy.max_permission_s,
-                max_angle_travel_rad=policy.max_angle_travel_rad,healthy_frames=policy.healthy_frames)
+                max_angle_travel_rad=policy.max_angle_travel_rad,healthy_frames=policy.healthy_frames,
+                permission_mode=policy.permission_mode)
         self._solver = None
         self._solver_shape = None
+        self._numeric_attempts = []
+        self._numeric_deferred_reason = None
 
-    def _solve_numeric(self, hessian, gradient, c, lo, hi, *, energy_active=False):
+    @staticmethod
+    def _deadline_expired(deadline_s):
+        if deadline_s is None:
+            return False
+        now = time.monotonic()
+        return not math.isfinite(now) or now >= deadline_s
+
+    def _solve_numeric(self, hessian, gradient, c, lo, hi, *, energy_active=False,
+                       deadline_s=None):
+        self._numeric_attempts = []
+        self._numeric_deferred_reason = None
+        if self.config.solver_policy == "bounded_retry_v1":
+            return self._solve_numeric_bounded(hessian, gradient, c, lo, hi,
+                                               energy_active=energy_active, deadline_s=deadline_s)
+        if self._deadline_expired(deadline_s):
+            self._numeric_deferred_reason = "solver_deadline_exceeded"
+            return np.full(len(gradient), np.nan), "not_started", False, 0
+        result = self._solve_numeric_legacy(hessian, gradient, c, lo, hi,
+                                            energy_active=energy_active)
+        if self._deadline_expired(deadline_s):
+            self._numeric_deferred_reason = "solver_deadline_exceeded"
+            return result[0], result[1], False, result[3]
+        return result
+
+    def _solve_numeric_bounded(self, hessian, gradient, c, lo, hi, *, energy_active,
+                               deadline_s):
+        """Two finite numerical attempts; no physical row or tolerance changes.
+
+        Iteration caps bound native work, not OS scheduling. Absolute deadline
+        checks fence late results; publication must independently check its age.
+        """
         import proxsuite
         shape = (len(gradient), 0, len(c))
-        if self._solver_shape != shape:
+        primary_precondition = self.config.solver_preconditioning or energy_active
+        specs = (("cached_primary", 30, primary_precondition, 1e-5),
+                 ("fresh_ruiz_retry", 200, True, 1e-3))
+        last = (np.full(len(gradient), np.nan), "not_started", False, 0)
+        total_iterations = 0
+        for name, outer_cap, precondition, rho in specs:
+            if self._deadline_expired(deadline_s):
+                self._numeric_deferred_reason = "solver_deadline_exceeded"
+                break
+            started = time.perf_counter()
+            workspace_key = (shape, precondition, "bounded_retry_v1")
+            fresh = name != "cached_primary" or self._solver_shape != workspace_key
+            solver = self._solver
+            try:
+                if fresh:
+                    solver = proxsuite.proxqp.dense.QP(*shape)
+                    settings = solver.settings
+                    settings.eps_abs = self.config.solver_tolerance
+                    settings.eps_rel = 0.
+                    settings.max_iter = outer_cap
+                    settings.max_iter_in = 10
+                    settings.eps_primal_inf = 1e-10
+                    settings.eps_dual_inf = 1e-10
+                    settings.check_duality_gap = True
+                    settings.eps_duality_gap_abs = self.config.solver_tolerance
+                    settings.eps_duality_gap_rel = 0.
+                    solver.init(hessian, gradient, np.empty((0, len(gradient))), np.empty(0),
+                                c, lo, hi, compute_preconditioner=precondition, rho=rho)
+                    if name == "cached_primary":
+                        self._solver, self._solver_shape = solver, workspace_key
+                else:
+                    solver.update(H=hessian, g=gradient, C=c, l=lo, u=hi)
+                solver.settings.initial_guess = proxsuite.proxqp.InitialGuess.NO_INITIAL_GUESS
+                # Initialisation/equilibration also consumes the same deadline.
+                if self._deadline_expired(deadline_s):
+                    self._numeric_deferred_reason = "solver_deadline_exceeded"
+                    self._numeric_attempts.append(dict(attempt=name, fresh_workspace=fresh,
+                        status="deadline_before_solve", accepted=False,
+                        elapsed_s=time.perf_counter()-started, max_outer_iterations=outer_cap,
+                        max_inner_iterations=10, preconditioning=precondition, rho=rho))
+                    break
+                solver.solve()
+                info = solver.results.info
+                x = np.array(solver.results.x, copy=True)
+                finite = bool(np.isfinite(x).all() and np.isfinite(solver.results.z).all())
+                primal, dual, gap = float(info.pri_res), float(info.dua_res), float(info.duality_gap)
+                residual = _violation(c, lo, hi, x)
+                solved = info.status == proxsuite.proxqp.QPSolverOutput.PROXQP_SOLVED
+                accepted = bool(solved and finite and np.isfinite([primal, dual, gap]).all()
+                    and 0. <= primal <= self.config.solver_tolerance
+                    and 0. <= dual <= self.config.solver_tolerance
+                    and abs(gap) <= self.config.solver_tolerance
+                    and residual <= self.config.feasibility_tolerance)
+                expired = self._deadline_expired(deadline_s)
+                total_iterations += int(info.iter)
+                self._numeric_attempts.append(dict(attempt=name, fresh_workspace=fresh,
+                    status=str(info.status), accepted=accepted and not expired,
+                    finite=finite, primal_residual=primal, dual_residual=dual, duality_gap=gap,
+                    constraint_violation=residual, iterations=int(info.iter),
+                    outer_iterations=int(info.iter_ext), max_outer_iterations=outer_cap,
+                    max_inner_iterations=10, preconditioning=precondition, rho=rho,
+                    elapsed_s=time.perf_counter()-started, deadline_exceeded=expired))
+                last = x, str(info.status), accepted and not expired, total_iterations
+                if expired:
+                    self._numeric_deferred_reason = "solver_deadline_exceeded"
+                    break
+                if accepted:
+                    if name != "cached_primary":
+                        self._solver, self._solver_shape = None, None
+                    return last
+            except (ValueError, RuntimeError) as exc:
+                self._numeric_attempts.append(dict(attempt=name, fresh_workspace=fresh,
+                    status="numeric_exception", exception=str(exc), accepted=False,
+                    elapsed_s=time.perf_counter()-started, max_outer_iterations=outer_cap,
+                    max_inner_iterations=10, preconditioning=precondition, rho=rho))
+                last = np.full(len(gradient), np.nan), "numeric_exception", False, total_iterations
+            # Failed numerical state is never the next proposal's starting state.
+            self._solver, self._solver_shape = None, None
+        self._solver, self._solver_shape = None, None
+        self._numeric_deferred_reason = self._numeric_deferred_reason or "solver_attempts_exhausted"
+        return last[0], last[1], False, total_iterations
+
+    def _solve_numeric_legacy(self, hessian, gradient, c, lo, hi, *, energy_active=False):
+        import proxsuite
+        shape = (len(gradient), 0, len(c))
+        precondition = self.config.solver_preconditioning or energy_active
+        workspace_key = (shape, precondition)
+        if self._solver_shape != workspace_key:
             self._solver = proxsuite.proxqp.dense.QP(*shape)
-            self._solver_shape = shape
+            self._solver_shape = workspace_key
             self._solver.settings.eps_abs = self.config.solver_tolerance
             self._solver.settings.eps_rel = 0.
             self._solver.settings.max_iter = self.config.max_iterations
             self._solver.settings.max_iter_in = self.config.inner_iterations
             self._solver.settings.eps_primal_inf = 1e-10
             self._solver.settings.eps_dual_inf = 1e-10
-            # Variables and rows are already physically normalized below.
-            # A second Ruiz equilibration can stall the inactive-slack dual
-            # residual just above tolerance (captured design regressions).
+            # The shared energy row adds a different scale even when slack.
+            # The recorded uncalibrated/003 failure needs Ruiz equilibration (9
+            # iterations vs MAX_ITER_REACHED). Keep legacy no-energy behavior.
+            # Energy rows, objective, tolerances and final review are unchanged.
             self._solver.init(hessian, gradient, np.empty((0, len(gradient))), np.empty(0), c, lo, hi,
-                              compute_preconditioner=self.config.solver_preconditioning)
+                              compute_preconditioner=precondition)
         else:
             self._solver.update(H=hessian, g=gradient, C=c, l=lo, u=hi)
         # No reuse of a failed dual iterate or command history across proposals.
@@ -363,25 +487,43 @@ class ContactQp:
                 status == proxsuite.proxqp.QPSolverOutput.PROXQP_SOLVED,
                 int(self._solver.results.info.iter))
 
-    def solve(self, data: QpInput, *, interval_diagnostics: bool | None = None) -> QpResult:
+    def solve(self, data: QpInput, *, interval_diagnostics: bool | None = None,
+              deadline_s: float | None = None, online: bool = False) -> QpResult:
         if not isinstance(data, QpInput):
             raise TypeError("ContactQp.solve requires QpInput")
         start = time.perf_counter()
+        if type(online) is not bool:
+            raise ValueError("online must be boolean")
+        if deadline_s is not None:
+            if isinstance(deadline_s, (bool, np.bool_)) or not math.isfinite(deadline_s) or deadline_s < 0:
+                raise ValueError("deadline_s must be a finite nonnegative monotonic time")
+            deadline_s = float(deadline_s)
+        self._numeric_attempts = []
+        self._numeric_deferred_reason = None
         cfg, mech = self.config, data.mechanical
         v8=cfg.allocation_policy=="differential_repair_v8"
         balance_policy=v8 and cfg.differential_repair.revision=='v8r3_confidence_balance'
         force_gate=cfg.differential_repair.force_gate(data.force_n) if v8 else 1.
         compute_intervals = cfg.compute_interval_diagnostics if interval_diagnostics is None else bool(interval_diagnostics)
+        compute_intervals = compute_intervals and not online
         diagnostics = {"quality_policy_version": cfg.quality_policy_version,
                        "acoustic_derivative_certified": False, "port_verified": False,
                        "command_slew_dt_s": data.acceleration_dt_s, "command_hold_s": data.dt_s,
                        "allocation_policy":cfg.allocation_policy,"repair_force_gate":force_gate,
                        "differential_repair_revision":cfg.differential_repair.revision,
-                       "balance_deadband":cfg.differential_repair.balance_deadband if balance_policy else None}
+                       "balance_deadband":cfg.differential_repair.balance_deadband if balance_policy else None,
+                       "solver_policy": cfg.solver_policy, "solver_deadline_s": deadline_s,
+                       "online_failure_diagnostics": not online}
 
         def failure(status, reason):
             diagnostics.update(reason=reason, total_time_s=time.perf_counter() - start)
+            if status == ContactStatus.DEFERRED:
+                diagnostics.update(retryable=True, qp_input=asdict(data),
+                                   qp_config=asdict(cfg), numeric_attempts=self._numeric_attempts)
             return QpResult(None, 0., np.zeros(2), TwistConstraints(valid_until_s=data.now_s), status, diagnostics)
+
+        if self._deadline_expired(deadline_s):
+            return failure(ContactStatus.DEFERRED, "solver_deadline_exceeded")
 
         if (data.dt_s > cfg.max_step_s or (len(mech.A) and
                 (not math.isfinite(mech.valid_until_s) or data.now_s >= mech.valid_until_s))):
@@ -496,6 +638,7 @@ class ContactQp:
             except ValueError as exc:
                 return failure(ContactStatus.CERTIFICATE_INVALID,str(exc))
             diagnostics['repair_episode']=episode
+            diagnostics['repair_permission_mode']=cfg.differential_repair.permission_mode
             repair_allowed=episode['repair_allowed']
         requests = (force_gate if repair_allowed else 0.) * gamma * cfg.repair_speed_m_s * deficit - cfg.keep_speed_m_s * margin
         visual = window_rows(data.geometry, cfg.lateral_windows)[[0, 2]]
@@ -512,6 +655,7 @@ class ContactQp:
         differential_requested = cfg.repair_speed_m_s*force_gate*abs(differential_imbalance)
         differential_row=(visual[0]-visual[1]).copy();differential_row[[0,1,3,5]]=0.
         differential_sign=float(np.sign(differential_imbalance))
+        differential_nominal=differential_sign*float(differential_row @ data.nominal_twist)
         diagnostics.update(image_valid=image_valid, acquisition_loss=loss, alpha_preferred=alpha_preferred,
                            visual_rows_active=visual_enabled,visual_window_active=visual_window_active, visual_requests_m_s=requests if visual_enabled else np.zeros(2),
                            gamma_effective=gamma, quality=quality)
@@ -522,7 +666,7 @@ class ContactQp:
                            np.array_equal(nominal_full, data.nominal_twist) and
                            _violation(cn, ln, un, x_nominal[:3]) <= cfg.solver_tolerance and
                            (not visual_enabled or np.all((visual @ data.nominal_twist)[visual_window_active] >= requests[visual_window_active]))
-                           and (not v8 or differential_sign*float(differential_row @ data.nominal_twist)>=differential_requested)
+                           and (not v8 or differential_nominal>=differential_requested)
                            and (data.energy is None or data.energy.admissible(data.nominal_twist,
                                 tolerance_w=cfg.solver_tolerance,velocity_tolerance=cfg.solver_tolerance)))
         solver_time = 0.
@@ -576,12 +720,21 @@ class ContactQp:
                 diagnostics['energy_auxiliary_variables']=auxiliary_count
             solver_start = time.perf_counter()
             try:
-                x, solver_status, solved, iterations = self._solve_numeric(hessian, gradient, constraints, lo, hi, energy_active=data.energy is not None)
+                numeric_kwargs = dict(energy_active=data.energy is not None)
+                if deadline_s is not None:
+                    numeric_kwargs['deadline_s'] = deadline_s
+                x, solver_status, solved, iterations = self._solve_numeric(hessian, gradient, constraints, lo, hi, **numeric_kwargs)
             except (ValueError, RuntimeError) as exc:
                 return failure(ContactStatus.SOLVER_FAILED, str(exc))
             solver_time = time.perf_counter() - solver_start
             diagnostics.update(transparent=False, iterations=iterations, solver_status=solver_status)
+            if cfg.solver_policy == "bounded_retry_v1":
+                diagnostics['numeric_attempts'] = self._numeric_attempts
             if not solved or not np.isfinite(x).all() or _violation(constraints, lo, hi, x) > cfg.feasibility_tolerance:
+                if online or self._numeric_deferred_reason is not None:
+                    diagnostics['numeric_problem'] = dict(H=hessian, g=gradient, C=constraints, l=lo, u=hi)
+                    return failure(ContactStatus.DEFERRED,
+                        self._numeric_deferred_reason or "solver_attempts_exhausted")
                 # Diagnose failures separately from the successful per-tick
                 # path. No visual slack or relative row may soften mechanics.
                 try:
@@ -637,8 +790,15 @@ class ContactQp:
                            aperture_added_velocity_m_s=endpoint @ (twist - data.nominal_twist),
                            solver_time_s=solver_time, total_time_s=time.perf_counter() - start)
         if v8:
-            achieved=differential_sign*float(differential_row @ twist)
+            total_achieved=differential_sign*float(differential_row @ twist)
+            incremental_achieved=total_achieved-differential_nominal
+            achieved=total_achieved
             diagnostics.update(differential_request_m_s=differential_requested,
+                differential_reference='total_velocity',
+                differential_nominal_achieved_m_s=differential_nominal,
+                differential_total_achieved_m_s=total_achieved,
+                differential_increment_achieved_m_s=incremental_achieved,
+                qp_delta_omega_y_rad_s=float(twist[4]-data.nominal_twist[4]),
                 differential_achieved_m_s=achieved,
                 differential_shortfall_m_s=max(0.,differential_requested-achieved),
                 differential_sign=differential_sign,
@@ -647,5 +807,7 @@ class ContactQp:
                 differential_auxiliary_shortfall=0. if transparent else float(x[5]))
         status = ContactStatus.IMAGE_UNAVAILABLE if not image_valid else (
             ContactStatus.NOMINAL if transparent else ContactStatus.REPAIR)
+        if self._deadline_expired(deadline_s):
+            return failure(ContactStatus.DEFERRED, "solver_deadline_exceeded")
         return QpResult(twist, alpha, slack, exported, status, diagnostics,
                         energy_certificate=data.energy,created_time_s=data.now_s)

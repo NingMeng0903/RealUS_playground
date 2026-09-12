@@ -1,0 +1,16 @@
+--- /media/camp/EXT_DRIVE/ICRA_YM/script/scan_robot.py
++++ /media/camp/EXT_DRIVE/ICRA_YM/script/scan_robot.py
+@@ -349,6 +349,13 @@
+                     self.mark("tracking_observed")
+                     print("[SCAN] Running.", flush=True)
+                 if int(snap["done_seq"]) >= self.expected_seq:
++                    # done_seq acknowledges termination, including failures.
++                    # A completed scan may already have entered its quiet hold.
++                    completed = (int(snap.get("err_code", 0)) == 0 and
++                                 (int(snap["status"]) == int(Status.DONE) or
++                                  message.startswith("icra_wait")))
++                    if not completed:
++                        raise RuntimeError("Scan task ended without confirmed completion: " + message)
+                     if tracking_started is None:
+                         raise RuntimeError("Task ended before scan started.")
+                     self.mark("path_done")

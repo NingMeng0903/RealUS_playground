@@ -141,6 +141,9 @@ inline bool obb_separates_above(const Obb& a, const Obb& b, double threshold) {
 }  // namespace collision_broadphase
 
 struct TickIn {
+  Eigen::Vector3d rocking_axis_base = Eigen::Vector3d::Zero();
+  Vec6 rocking_bounds = Vec6::Zero();
+  bool rocking_enabled = false;
   Vec6 v_cmd = Vec6::Zero();
   Vec8 q_meas = Vec8::Zero();
   Vec8 qdot_ff = Vec8::Zero();
@@ -161,6 +164,10 @@ struct TickIn {
 };
 
 struct TickOut {
+  uint32_t rocking_policy_tier = 0;
+  uint32_t rocking_limited = 0;
+  double rocking_lower_rad_s = -std::numeric_limits<double>::infinity();
+  double rocking_upper_rad_s = std::numeric_limits<double>::infinity();
   Vec8 q_cmd = Vec8::Zero();
   Vec8 qdot = Vec8::Zero();
   Vec6 v_recv = Vec6::Zero();
@@ -560,6 +567,12 @@ class InnerLoop {
   double collision_ms_ = 0.0;
   double qp_total_ms_ = 0.0;
   uint32_t n_cbf_active_ = 0;
+  Eigen::Vector3d rocking_axis_base_ = Eigen::Vector3d::Zero();
+  Vec6 rocking_bounds_ = Vec6::Zero();
+  bool rocking_enabled_ = false;
+  uint32_t rocking_policy_tier_ = 0;
+  double rocking_lower_ = -std::numeric_limits<double>::infinity();
+  double rocking_upper_ = std::numeric_limits<double>::infinity();
   TaskWeightState task_weight_;
   bool pending_valid_ = false;
   HistorySnap pending_;

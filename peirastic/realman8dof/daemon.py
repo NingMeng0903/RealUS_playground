@@ -272,12 +272,17 @@ class ControllerService:
         from peirastic.realman8dof.modes.contact_qp import wrap_study_phase
         from peirastic.realman8dof.modes.contact_active import ContactQpOuter
         from peirastic.core.capabilities import (CapabilityAdvertisement, SOURCE_TIMEBASE_CAPABILITY,
-            DIFFERENTIAL_REPAIR_CAPABILITY, CONFIDENCE_BALANCE_CAPABILITY, LOGICAL_COMMAND_BUDGET_CAPABILITY)
+            DIFFERENTIAL_REPAIR_CAPABILITY, CONFIDENCE_BALANCE_CAPABILITY, LOGICAL_COMMAND_BUDGET_CAPABILITY,
+            CONTINUOUS_VISUAL_CAPABILITY, NOMINAL_TASK_POWER_CAPABILITY,
+            TRANSIENT_FEEDBACK_CAPABILITY, PAUSE_VISUAL_FEEDBACK_CAPABILITY)
         from peirastic.contact_qp.repair_policy import DifferentialRepairConfig
+        from peirastic.contact_qp.command_budget import CommandBudget
         from rm75_control.control.admittance_common.variable_step_filter import VariableLowpass1, VariableHighpass2
         self._capabilities = CapabilityAdvertisement(
             self.hub, {"contact_qp.recording_v1", "contact_qp.active_v1", SOURCE_TIMEBASE_CAPABILITY,
-                DIFFERENTIAL_REPAIR_CAPABILITY, CONFIDENCE_BALANCE_CAPABILITY, LOGICAL_COMMAND_BUDGET_CAPABILITY}
+                DIFFERENTIAL_REPAIR_CAPABILITY, CONFIDENCE_BALANCE_CAPABILITY, LOGICAL_COMMAND_BUDGET_CAPABILITY,
+                CONTINUOUS_VISUAL_CAPABILITY, NOMINAL_TASK_POWER_CAPABILITY,
+                TRANSIENT_FEEDBACK_CAPABILITY, PAUSE_VISUAL_FEEDBACK_CAPABILITY}
         )
 
     def close(self) -> None:

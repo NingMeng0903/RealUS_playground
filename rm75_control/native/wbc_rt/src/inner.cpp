@@ -21,7 +21,8 @@ namespace {
 constexpr int kNVar = kNv + kNTaskSlack + kNPref;
 constexpr int kNEq1 = kTask;
 constexpr int kNEq2 = kTask;
-constexpr int kNIn = kNv + kMaxCbf + kMaxPrefRows + kNPref;
+constexpr int kRockingRow = kNv + kMaxCbf + kMaxPrefRows + kNPref;
+constexpr int kNIn = kRockingRow + 1;
 constexpr double kRailDriveCap = 0.40;
 constexpr double kRailPrefW = 64.0;
 constexpr double kQuietLinEnter = 0.005;
@@ -1117,6 +1118,33 @@ bool InnerLoop::solve_hqp(const Mat6x8& J, const Vec6& v_cmd, const Vec8& q_geom
     return certified;
   };
 
+  // Fixed task-y row. P0 joint/collision rows never change on a relaxation.
+  const Eigen::Matrix<double, 1, kNv> rocking_row =
+      rocking_axis_base_.transpose() * J_task.bottomRows<3>();
+  const double rocking_offset = rocking_axis_base_.dot(rail_actual_contrib.tail<3>());
+  auto set_rocking_tier = [&](uint32_t tier) {
+    rocking_policy_tier_ = tier;
+    rocking_lower_ = -std::numeric_limits<double>::infinity();
+    rocking_upper_ = std::numeric_limits<double>::infinity();
+    C.row(kRockingRow).setZero();
+    lo[kRockingRow] = -1e20; hi[kRockingRow] = 1e20;
+    if (tier == 0 || tier == 4) return true;
+    for (uint32_t pair = 0; pair < 4 - tier; ++pair) {
+      rocking_lower_ = std::max(rocking_lower_, rocking_bounds_[2 * pair]);
+      rocking_upper_ = std::min(rocking_upper_, rocking_bounds_[2 * pair + 1]);
+    }
+    if (rocking_lower_ > rocking_upper_) return false;
+    C.block(kRockingRow, 0, 1, kNv) = rocking_row;
+    lo[kRockingRow] = rocking_lower_ - rocking_offset;
+    hi[kRockingRow] = rocking_upper_ - rocking_offset;
+    // Skip intervals already incompatible with the original joint box.
+    double possible_lo = 0., possible_hi = 0.;
+    for (int j = 0; j < kNv; ++j) {
+      possible_lo += rocking_row[j] * (rocking_row[j] >= 0. ? lo_box[j] : hi_box[j]);
+      possible_hi += rocking_row[j] * (rocking_row[j] >= 0. ? hi_box[j] : lo_box[j]);
+    }
+    return lo[kRockingRow] <= possible_hi + 1e-12 && hi[kRockingRow] >= possible_lo - 1e-12;
+  };
   const auto t_qp1_0 = std::chrono::steady_clock::now();
   assembly_ms_ = std::chrono::duration<double, std::milli>(t_qp1_0 - t_asm0).count();
   const int iter_nom = std::max(1, std::min(cfg_.max_iter, cfg_.max_iter_cap));
@@ -1125,7 +1153,12 @@ bool InnerLoop::solve_hqp(const Mat6x8& J, const Vec6& v_cmd, const Vec8& q_geom
   // turned ordinary preemption into a deterministic uncertified-QP stop.
   // Bound both solver loops; spend the optional QP2 budget only afterwards.
   qp1_->settings.max_iter = iter_nom;
-  bool qp1_ok = try_qp1(lo, hi);
+  bool qp1_ok = false;
+  for (uint32_t tier = rocking_enabled_ ? 1 : 0; tier <= (rocking_enabled_ ? 4u : 0u); ++tier) {
+    if (!set_rocking_tier(tier)) continue;
+    qp1_ok = try_qp1(lo, hi);
+    if (qp1_ok) break;
+  }
   // Do not retry with CBF lower bounds removed. That path could publish a
   // result that only satisfied joint boxes while reporting QP1 as solved.
   VecX x1;
@@ -1331,6 +1364,15 @@ TickOut InnerLoop::step(const TickIn& in) {
   const auto t0 = std::chrono::steady_clock::now();
   step_t0_ = t0;
   TickOut out;
+  rocking_enabled_ = in.rocking_enabled;
+  rocking_axis_base_ = in.rocking_axis_base;
+  rocking_bounds_ = in.rocking_bounds;
+  rocking_policy_tier_ = 0;
+  if (rocking_enabled_ && (!rocking_axis_base_.allFinite() ||
+      std::abs(rocking_axis_base_.squaredNorm() - 1.) > 1e-8 ||
+      !rocking_bounds_.allFinite() || rocking_bounds_[0] > rocking_bounds_[1])) {
+    throw std::invalid_argument("invalid fixed rocking envelope");
+  }
   handle_pending_flags(in.flags);
   Vec6 twist = in.v_cmd;
   if (!enabled_ || (in.flags & kInStale)) {
@@ -1985,6 +2027,30 @@ TickOut InnerLoop::step(const TickIn& in) {
     have_dq_prev_ = true;
     qdot_prev_ = qdot;
   }
+  // A downstream mechanical rewrite may require relaxing the task envelope.
+  // It never permits relaxing the original joint/collision limits.
+  if (published_ok && rocking_enabled_) {
+    Vec6 final_velocity = J * qdot;
+    if (has_rail_exec) final_velocity += J.col(0) * (rail_exec - qdot[0]);
+    const double omega = rocking_axis_base_.dot(final_velocity.tail<3>());
+    const double tolerance = std::max(10.0 * cfg_.eps_abs, 1e-5);
+    while (rocking_policy_tier_ < 4 &&
+           (omega < rocking_lower_ - tolerance || omega > rocking_upper_ + tolerance)) {
+      ++rocking_policy_tier_;
+      rocking_lower_ = -std::numeric_limits<double>::infinity();
+      rocking_upper_ = std::numeric_limits<double>::infinity();
+      if (rocking_policy_tier_ < 4) {
+        for (uint32_t pair = 0; pair < 4 - rocking_policy_tier_; ++pair) {
+          rocking_lower_ = std::max(rocking_lower_, rocking_bounds_[2 * pair]);
+          rocking_upper_ = std::min(rocking_upper_, rocking_bounds_[2 * pair + 1]);
+        }
+      }
+    }
+  }
+  out.rocking_policy_tier = rocking_policy_tier_;
+  out.rocking_limited = rocking_policy_tier_ > 1;
+  out.rocking_lower_rad_s = rocking_lower_;
+  out.rocking_upper_rad_s = rocking_upper_;
   last_slack_ = slack;
   last_tcp_est_ = J * qdot;
   if (has_rail_exec) {

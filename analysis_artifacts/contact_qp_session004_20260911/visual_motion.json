@@ -1,0 +1,360 @@
+{
+  "method": "Publication joined by control_id; scan times use session shared clock. Pose rotation uses xyz RPY and SO(3) interpolation, not Euler subtraction.",
+  "limits": "Final-minus-nominal includes all QP effects. Measured episode rotation is total relative rotation, not visual-only attribution. Image changes during translation are not causal proof of angular repair. No hardware execution or controller modification.",
+  "attempts": [
+    {
+      "attempt": "attempts/RH_Per_L_DtP/001",
+      "scan_s": 37.08410803300103,
+      "requested_cycles": 771,
+      "requested_successfully_published_cycles": 771,
+      "permission_s": 6.290858885002308,
+      "permission_without_differential_request_s": 1.9946964890004892,
+      "requested_s": 4.296162396001819,
+      "exhausted_with_latent_direction_s": 17.73474029499812,
+      "qp_changed_nominal_wy_over_1e_6_rad_s_cycles": 603,
+      "final_abs_wy_deg_s_p50_p95_max": [
+        1.1247086000253272,
+        3.396023441658374,
+        5.214092976223453
+      ],
+      "final_minus_nominal_abs_wy_deg_s_p50_p95_max": [
+        0.09471471203153739,
+        0.40533409642992,
+        0.6625003997851029
+      ],
+      "qp_adjustment_in_requested_direction_fraction": 0.7821011673151751,
+      "final_wy_in_requested_direction_fraction": 1.0,
+      "final_candidate_max_wy_difference_deg_s": 0.028444064326103073,
+      "repair_episodes": [
+        {
+          "start_scan_s": 0.0,
+          "end_scan_s": 16.248910828999215,
+          "healthy_reset": true,
+          "requested_cycles": 0,
+          "measured_relative_tool_y_deg": 0.1624877068512488,
+          "commanded_qp_minus_nominal_integral_deg": -0.002899141085805343,
+          "commanded_total_integral_deg": 0.11233198822419001,
+          "charged_permission_s": 2.0012667549999605,
+          "charged_angle_travel_deg": 5.496048328322051,
+          "start_quality_lcr": [
+            0.28028973528402196,
+            0.2686130947667684,
+            0.25992364695751824
+          ],
+          "end_quality_lcr": [
+            0.8923557528854132,
+            0.844875023684217,
+            0.9882662212674926
+          ],
+          "exhausted_s": 14.254214339998725,
+          "exhausted_with_latent_direction_s": 12.504136646999541
+        },
+        {
+          "start_scan_s": 16.29187301499951,
+          "end_scan_s": 16.49193200300033,
+          "healthy_reset": true,
+          "requested_cycles": 18,
+          "measured_relative_tool_y_deg": -0.0066043866295687785,
+          "commanded_qp_minus_nominal_integral_deg": -0.0025681782307422248,
+          "commanded_total_integral_deg": -0.0013761806283098053,
+          "charged_permission_s": 0.10294941299980565,
+          "charged_angle_travel_deg": 0.06879665505790053,
+          "start_quality_lcr": [
+            0.8695216680434082,
+            0.8178422550186369,
+            0.9878066300993393
+          ],
+          "end_quality_lcr": [
+            0.9354614242574965,
+            0.8536476371419903,
+            0.9885617819812731
+          ],
+          "exhausted_s": 0.0,
+          "exhausted_with_latent_direction_s": 0.0
+        },
+        {
+          "start_scan_s": 20.243586063999828,
+          "end_scan_s": 20.778437066999686,
+          "healthy_reset": true,
+          "requested_cycles": 83,
+          "measured_relative_tool_y_deg": 1.062197707602079,
+          "commanded_qp_minus_nominal_integral_deg": 0.014710334300176502,
+          "commanded_total_integral_deg": 1.0393785636777315,
+          "charged_permission_s": 0.4403535050005303,
+          "charged_angle_travel_deg": 1.0699089680170337,
+          "start_quality_lcr": [
+            0.9881847981402884,
+            0.8924207251659776,
+            0.869637301219165
+          ],
+          "end_quality_lcr": [
+            0.9898210453567056,
+            0.9289735137960432,
+            0.9267493278032402
+          ],
+          "exhausted_s": 0.0,
+          "exhausted_with_latent_direction_s": 0.0
+        },
+        {
+          "start_scan_s": 21.804954301998805,
+          "end_scan_s": 28.61301571399963,
+          "healthy_reset": true,
+          "requested_cycles": 307,
+          "measured_relative_tool_y_deg": 3.1004038608879894,
+          "commanded_qp_minus_nominal_integral_deg": 0.18415830232214286,
+          "commanded_total_integral_deg": 3.4941657386428484,
+          "charged_permission_s": 1.702558905000842,
+          "charged_angle_travel_deg": 5.029189949873925,
+          "start_quality_lcr": [
+            0.990895839858591,
+            0.9109551871343198,
+            0.8709327750788525
+          ],
+          "end_quality_lcr": [
+            0.993981387690821,
+            0.890565135964067,
+            0.9031911693191813
+          ],
+          "exhausted_s": 5.105347524999161,
+          "exhausted_with_latent_direction_s": 4.9832827749978605
+        },
+        {
+          "start_scan_s": 30.330768506999448,
+          "end_scan_s": 30.46834091599885,
+          "healthy_reset": true,
+          "requested_cycles": 8,
+          "measured_relative_tool_y_deg": 0.008349814449920376,
+          "commanded_qp_minus_nominal_integral_deg": 7.931505712169199e-06,
+          "commanded_total_integral_deg": 7.931505712169199e-06,
+          "charged_permission_s": 0.04904571900078736,
+          "charged_angle_travel_deg": 0.05523468680233717,
+          "start_quality_lcr": [
+            0.9934834090344311,
+            0.9185787262487124,
+            0.8934367967566581
+          ],
+          "end_quality_lcr": [
+            0.9936277594435254,
+            0.9339632034544227,
+            0.9157606181184388
+          ],
+          "exhausted_s": 0.0,
+          "exhausted_with_latent_direction_s": 0.0
+        },
+        {
+          "start_scan_s": 30.718308874000286,
+          "end_scan_s": 33.06185898299918,
+          "healthy_reset": true,
+          "requested_cycles": 355,
+          "measured_relative_tool_y_deg": 1.500737505164481,
+          "commanded_qp_minus_nominal_integral_deg": 0.32691302016366336,
+          "commanded_total_integral_deg": 1.6178333754571528,
+          "charged_permission_s": 2.0023090559989214,
+          "charged_angle_travel_deg": 1.7797216960362165,
+          "start_quality_lcr": [
+            0.9920288858316317,
+            0.9102137336348378,
+            0.8758194566555635
+          ],
+          "end_quality_lcr": [
+            0.9955437577132278,
+            0.9771108669734576,
+            0.9565612487902047
+          ],
+          "exhausted_s": 0.341432053999597,
+          "exhausted_with_latent_direction_s": 0.24732087300071726
+        }
+      ]
+    },
+    {
+      "attempt": "attempts/RH_Per_L_DtP/002",
+      "scan_s": 31.486837414000547,
+      "requested_cycles": 372,
+      "requested_successfully_published_cycles": 372,
+      "permission_s": 2.093723999001668,
+      "permission_without_differential_request_s": 0.0,
+      "requested_s": 2.093723999001668,
+      "exhausted_with_latent_direction_s": 3.4884750520013768,
+      "qp_changed_nominal_wy_over_1e_6_rad_s_cycles": 249,
+      "final_abs_wy_deg_s_p50_p95_max": [
+        1.115724834786924,
+        2.6527246150531787,
+        3.5669842018838747
+      ],
+      "final_minus_nominal_abs_wy_deg_s_p50_p95_max": [
+        0.03817887099710017,
+        0.2757187338510179,
+        0.41965844811300657
+      ],
+      "qp_adjustment_in_requested_direction_fraction": 0.6693548387096774,
+      "final_wy_in_requested_direction_fraction": 1.0,
+      "final_candidate_max_wy_difference_deg_s": 3.3165864155943873e-06,
+      "repair_episodes": [
+        {
+          "start_scan_s": 18.736086080998575,
+          "end_scan_s": 24.526248569998643,
+          "healthy_reset": true,
+          "requested_cycles": 356,
+          "measured_relative_tool_y_deg": 2.381188279364202,
+          "commanded_qp_minus_nominal_integral_deg": 0.15022608865363454,
+          "commanded_total_integral_deg": 2.6708317006269136,
+          "charged_permission_s": 2.002879177000068,
+          "charged_angle_travel_deg": 3.8010800667997224,
+          "start_quality_lcr": [
+            0.9938887676981785,
+            0.9694771290106258,
+            0.8836360354143088
+          ],
+          "end_quality_lcr": [
+            0.9952175100800975,
+            0.9475290838300543,
+            0.9277568473814631
+          ],
+          "exhausted_s": 3.727897568998742,
+          "exhausted_with_latent_direction_s": 3.4884750520013768
+        },
+        {
+          "start_scan_s": 25.507274290999703,
+          "end_scan_s": 25.64709223999853,
+          "healthy_reset": true,
+          "requested_cycles": 8,
+          "measured_relative_tool_y_deg": 0.012240390396816453,
+          "commanded_qp_minus_nominal_integral_deg": 0.0016500377500841756,
+          "commanded_total_integral_deg": 0.0016500377500841756,
+          "charged_permission_s": 0.044413171000996954,
+          "charged_angle_travel_deg": 0.054789713606218544,
+          "start_quality_lcr": [
+            0.9934098198296828,
+            0.9253773366370196,
+            0.8824959336535287
+          ],
+          "end_quality_lcr": [
+            0.9945008194168435,
+            0.9504236586137148,
+            0.9195189992824094
+          ],
+          "exhausted_s": 0.0,
+          "exhausted_with_latent_direction_s": 0.0
+        },
+        {
+          "start_scan_s": 28.508288739998534,
+          "end_scan_s": 28.65445825200004,
+          "healthy_reset": true,
+          "requested_cycles": 8,
+          "measured_relative_tool_y_deg": 0.0008340086534529374,
+          "commanded_qp_minus_nominal_integral_deg": 0.0008462915768672406,
+          "commanded_total_integral_deg": 0.0008462915768672406,
+          "charged_permission_s": 0.04552700400017784,
+          "charged_angle_travel_deg": 0.04164144559440375,
+          "start_quality_lcr": [
+            0.9953805665105514,
+            0.9446506435529238,
+            0.8900976820011066
+          ],
+          "end_quality_lcr": [
+            0.995162111249861,
+            0.9575086029473917,
+            0.9163068318228049
+          ],
+          "exhausted_s": 0.0,
+          "exhausted_with_latent_direction_s": 0.0
+        }
+      ]
+    },
+    {
+      "attempt": "attempts/RH_Per_C_DtP/001",
+      "scan_s": 30.89151265200053,
+      "requested_cycles": 247,
+      "requested_successfully_published_cycles": 247,
+      "permission_s": 1.3033576079978957,
+      "permission_without_differential_request_s": 0.0,
+      "requested_s": 1.3033576079978957,
+      "exhausted_with_latent_direction_s": 0.0,
+      "qp_changed_nominal_wy_over_1e_6_rad_s_cycles": 5,
+      "final_abs_wy_deg_s_p50_p95_max": [
+        0.3240033193815964,
+        0.6789826521661361,
+        0.7775486509907706
+      ],
+      "final_minus_nominal_abs_wy_deg_s_p50_p95_max": [
+        1.4944316633397902e-07,
+        3.3868342848643393e-07,
+        0.12527627081682816
+      ],
+      "qp_adjustment_in_requested_direction_fraction": 0.020242914979757085,
+      "final_wy_in_requested_direction_fraction": 1.0,
+      "final_candidate_max_wy_difference_deg_s": 1.0630136246713017e-06,
+      "repair_episodes": [
+        {
+          "start_scan_s": 24.57559683100044,
+          "end_scan_s": 25.256035283999154,
+          "healthy_reset": true,
+          "requested_cycles": 100,
+          "measured_relative_tool_y_deg": 0.20242800903469527,
+          "commanded_qp_minus_nominal_integral_deg": 0.00109775259802662,
+          "commanded_total_integral_deg": 0.22062846951504542,
+          "charged_permission_s": 0.5260622889982187,
+          "charged_angle_travel_deg": 0.3110328708672397,
+          "start_quality_lcr": [
+            0.9948120625278585,
+            0.9833696997897744,
+            0.8873181940789671
+          ],
+          "end_quality_lcr": [
+            0.9957801173170028,
+            0.9833564582553044,
+            0.9104094257361245
+          ],
+          "exhausted_s": 0.0,
+          "exhausted_with_latent_direction_s": 0.0
+        },
+        {
+          "start_scan_s": 25.302679025000543,
+          "end_scan_s": 25.448631170000226,
+          "healthy_reset": true,
+          "requested_cycles": 10,
+          "measured_relative_tool_y_deg": 0.07266983112102056,
+          "commanded_qp_minus_nominal_integral_deg": 0.0,
+          "commanded_total_integral_deg": 0.07989640218888597,
+          "charged_permission_s": 0.05272195900033694,
+          "charged_angle_travel_deg": 0.07660849888971746,
+          "start_quality_lcr": [
+            0.9956973913716199,
+            0.9789663486191365,
+            0.8720499789160571
+          ],
+          "end_quality_lcr": [
+            0.9951591194007134,
+            0.9817876098707957,
+            0.902201172872036
+          ],
+          "exhausted_s": 0.0,
+          "exhausted_with_latent_direction_s": 0.0
+        },
+        {
+          "start_scan_s": 27.4785634259988,
+          "end_scan_s": 28.44937760100038,
+          "healthy_reset": true,
+          "requested_cycles": 137,
+          "measured_relative_tool_y_deg": 0.29287538513221606,
+          "commanded_qp_minus_nominal_integral_deg": 0.0001794045968644633,
+          "commanded_total_integral_deg": 0.3012331468366609,
+          "charged_permission_s": 0.7256707599990477,
+          "charged_angle_travel_deg": 0.4413261936467506,
+          "start_quality_lcr": [
+            0.9930207105482378,
+            0.9688137705908165,
+            0.8923334709976976
+          ],
+          "end_quality_lcr": [
+            0.9961949432870351,
+            0.9740597286429955,
+            0.9142495099328528
+          ],
+          "exhausted_s": 0.0,
+          "exhausted_with_latent_direction_s": 0.0
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,36 @@
+[
+  {
+    "attempt": "yuhan_L/attempts/RH_Per_C_DtP/001",
+    "work_events": 17564,
+    "ledger_max_error": 1.3877787807814457e-15,
+    "control_to_committed_negative_raw_wrench_max_error": 0.0,
+    "port_work_j": 0.017897820516887073,
+    "nominal_source_funding_j": 0.05441521676429572,
+    "capacity_discard_j": 0.0262754099797895,
+    "final_balance_j": 0.1460376273013946,
+    "pause_durations_ms": [
+      6.075807999877725,
+      5.720522000046913,
+      5.447276002087165
+    ],
+    "request_publications": 2618,
+    "command_direction_agrees_with_quality": 2399,
+    "quality_to_differential_sign_errors": 0
+  },
+  {
+    "attempt": "yuhan_L/attempts/RH_Per_S_PtD/007",
+    "work_events": 17523,
+    "ledger_max_error": 4.718447854656915e-16,
+    "control_to_committed_negative_raw_wrench_max_error": 0.0,
+    "port_work_j": -0.12598104874179056,
+    "nominal_source_funding_j": 0.14293811097516837,
+    "capacity_discard_j": 0.0,
+    "final_balance_j": 0.11695706223337861,
+    "pause_durations_ms": [
+      8.8046340024448
+    ],
+    "request_publications": 3216,
+    "command_direction_agrees_with_quality": 2963,
+    "quality_to_differential_sign_errors": 0
+  }
+]

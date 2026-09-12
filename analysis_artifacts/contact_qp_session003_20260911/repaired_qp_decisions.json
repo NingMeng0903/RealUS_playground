@@ -1,0 +1,70 @@
+{
+  "scope": "Independent single-step offline decisions with recorded nominal/previous/wrench inputs; neutral measured angle and fresh repair episode assumed. Not a closed-loop replay or hardware validation.",
+  "results": [
+    {
+      "frame_index": 150,
+      "quality": [
+        0.5420334407237598,
+        0.7063422107713062,
+        0.8961904920930892
+      ],
+      "success": true,
+      "differential_request_m_s": 0.00048000860367570624,
+      "omega_y_rad_s": -0.01389390892935378,
+      "alpha": 0.7581563506785247,
+      "energy_admissible": true
+    },
+    {
+      "frame_index": 300,
+      "quality": [
+        0.6597443883770703,
+        0.8359358866171118,
+        0.9714634627400701
+      ],
+      "success": true,
+      "differential_request_m_s": 0.00025040174497608584,
+      "omega_y_rad_s": -0.005040664660178569,
+      "alpha": 0.8685103641035032,
+      "energy_admissible": true
+    },
+    {
+      "frame_index": 500,
+      "quality": [
+        0.6639035016959485,
+        0.897755656543602,
+        0.9657220567307329
+      ],
+      "success": true,
+      "differential_request_m_s": 0.0004101652851674312,
+      "omega_y_rad_s": -0.011343150091437444,
+      "alpha": 0.8724095328399516,
+      "energy_admissible": true
+    },
+    {
+      "frame_index": 700,
+      "quality": [
+        0.5693267896207512,
+        0.8312948829118929,
+        0.9905820507838095
+      ],
+      "success": true,
+      "differential_request_m_s": 0.0006064839097484219,
+      "omega_y_rad_s": -0.01626214847147691,
+      "alpha": 0.783743865269454,
+      "energy_admissible": true
+    },
+    {
+      "frame_index": 870,
+      "quality": [
+        0.49600772449213737,
+        0.7380353875834658,
+        0.9889369333039073
+      ],
+      "success": true,
+      "differential_request_m_s": 0.000873176019581711,
+      "omega_y_rad_s": -0.020793980695045913,
+      "alpha": 0.7150072417113789,
+      "energy_admissible": true
+    }
+  ]
+}

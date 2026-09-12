@@ -61,25 +61,40 @@ def _validate_effective_tasks(config, mode, feature):
     if mode=='active':
         for key in ('max_velocity','max_acceleration','angle_limit_rad'):
             settings.pop(key,None)  # overwritten by checked original nominal limits
-    QpConfig(**settings)
+    qp_config=QpConfig(**settings)
     if mode!='active':return
     enabled=config.get('energy_constraint_enabled',False)
     if type(enabled) is not bool:raise ValueError('energy_constraint_enabled must be boolean')
+    if qp_config.differential_repair.permission_mode=='continuous':
+        if qp_config.allocation_policy!='differential_repair_v8' or not qp_config.enable_visual:
+            raise ValueError('continuous visual repair requires the enabled v8 visual task')
+        if not enabled or feature.get('required') is not True:
+            raise ValueError('continuous visual repair requires command energy admission and required image feedback')
     energy=config.get('energy') or {}
     if not isinstance(energy,dict):raise ValueError('energy must be a mapping')
+    task_source=energy.get('task_power_source','none')
+    if task_source not in ('none','nominal_command') or (task_source!='none' and not enabled):
+        raise ValueError('nominal task power requires enabled logical command budget')
+    grace=float(feature.get('dropout_grace_s',0.))
+    if (grace>0 or feature.get('dropout_policy','stop')=='pause_visual') and (feature.get('required') is not True or not qp_config.enable_visual
+            or qp_config.allocation_policy!='differential_repair_v8'
+            or qp_config.differential_repair.permission_mode!='continuous'
+            or not enabled or grace>qp_config.max_image_age_s):
+        raise ValueError('dropout policy requires required continuous visual feedback, command budget, and grace <= max_image_age_s')
     if not energy:
         if enabled:raise ValueError('enabled command energy requires an explicit single-tank configuration')
         return
     allowed={'initial_j','capacity_j','stopping_reserve_j','measurement_bounds','constraint',
              'max_measurement_age_s','max_rail_interval_s','settlement_port','wrench_convention',
-             'max_command_interval_s'}
+             'max_command_interval_s','task_power_source'}
     unknown=set(energy)-allowed
     if unknown:raise ValueError('unknown energy fields: '+', '.join(sorted(unknown)))
     if enabled:
         from peirastic.contact_qp.command_budget import CommandBudget
         CommandBudget(energy['initial_j'],energy['capacity_j'],energy['stopping_reserve_j'],
             settlement_port=energy.get('settlement_port'),wrench_convention=energy.get('wrench_convention'),
-            max_command_interval_s=energy.get('max_command_interval_s'),constraint=energy.get('constraint'))
+            max_command_interval_s=energy.get('max_command_interval_s'),constraint=energy.get('constraint'),
+            task_power_source=task_source)
         from peirastic.contact_qp.energy import PortBounds
         from peirastic.contact_qp.port_alignment import MeasuredPortAligner
         bounds=PortBounds(**dict(energy.get('measurement_bounds') or {}),verified=False)
@@ -120,6 +135,17 @@ def validate_study_config(source):
         if geometry.get(key) is None:missing.append('geometry.'+key)
     if geometry.get('verified') is not True:missing.append('geometry.verified=true')
     feature=config.get('feature') or {}
+    if type(feature.get('required',False)) is not bool:
+        raise ValueError('feature.required must be boolean')
+    dropout_policy=feature.get('dropout_policy','stop')
+    if dropout_policy not in ('stop','pause_visual') or (dropout_policy!='stop' and mode!='active'):
+        raise ValueError('feature.dropout_policy must be stop or active pause_visual')
+    grace=feature.get('dropout_grace_s',0.)
+    if isinstance(grace,(bool,np.bool_)):
+        raise ValueError('feature.dropout_grace_s must be numeric')
+    grace=float(grace)
+    if not np.isfinite(grace) or grace<0 or (grace>0 and mode!='active'):
+        raise ValueError('feature.dropout_grace_s must be finite, nonnegative, and active-only')
     for key in ('config','window_version','registration_version','quality_policy_version','c_min'):
         if feature.get(key) is None:missing.append('feature.'+key)
     if feature.get('verified') is not True:missing.append('feature.verified=true')
@@ -135,6 +161,12 @@ def validate_study_config(source):
         fc=FeatureConfig(**feature['config'])
         if fc.window_version!=feature['window_version']:
             raise ValueError('feature.window_version does not match the worker configuration')
+        if feature.get('registration') is not None:
+            from peirastic.contact_qp.features import registration_revision
+            registration=feature['registration']
+            if not isinstance(registration,dict):raise ValueError('feature.registration must be a mapping')
+            if registration_revision(fc,**registration)!=feature['registration_version']:
+                raise ValueError('feature.registration_version does not match source/crop/flip registration')
         if fc.calibration_version!=g.calibration_version or fc.image_x_sign!=g.image_x_sign:
             raise ValueError('feature/probe calibration or image axis mismatch')
         threshold=feature['c_min']
@@ -160,7 +192,12 @@ def validate_study_config(source):
                 physical_port_assurance='unverified',hardware_connected=False,
                 command_energy_budget_enabled=bool(config.get('energy_constraint_enabled',False)),
                 differential_repair_revision=((config.get('qp') or {}).get('differential_repair') or {}).get('revision','v8r2_bounded_episode'),
+                repair_permission_mode=((config.get('qp') or {}).get('differential_repair') or {}).get('permission_mode','bounded_episode'),
                 settlement_port=(config.get('energy') or {}).get('settlement_port'),
+                task_power_source=(config.get('energy') or {}).get('task_power_source','none'),
+                energy_assurance='two_port_command_model' if (config.get('energy') or {}).get('task_power_source')=='nominal_command' else 'command_model',
+                image_dropout_grace_s=grace,
+                image_dropout_policy=dropout_policy,
                 physical_w_checked=config.get('physical_w_checked') is True,
                 allocation_policy=(config.get('qp') or {}).get('allocation_policy','legacy_v7'),
                 force_limit_assurance='measured_policy_not_prediction' if (config.get('qp') or {}).get('allocation_policy')=='differential_repair_v8' else 'legacy')

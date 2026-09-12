@@ -1,0 +1,418 @@
+{
+  "method": "Independent recorded point QPs, original study config and recorded nominal/previous/control slew/wrench/features/available energy. Measured angle unlogged and set zero; no additional mechanical certificate reconstructed. Fixed recorded poses/images, no new final IK/publication or closed-loop outcome prediction.",
+  "checks": [
+    {
+      "attempt": "attempts/RH_Per_S_DtP/001",
+      "frame": 129689,
+      "control_id": 5736,
+      "scan_t": 25.85486157000014,
+      "q": [
+        0.9941755934681562,
+        0.9897608812027018,
+        0.795648828478837
+      ],
+      "nominal_wy_deg_s": 0.6646596089116064,
+      "recorded_candidate_wy_deg_s": 0.9396533546827924,
+      "task_supply_w": 0.01405060799053736,
+      "checks": [
+        {
+          "reference": "total_velocity",
+          "deadband": 0.1,
+          "nominal_supply": false,
+          "success": true,
+          "status": "repair",
+          "wy_deg_s": 0.9396533545103489,
+          "increment_wy_deg_s": 0.27499374559874257,
+          "request_mm_s": 0.16536172830622403,
+          "reference_achieved_mm_s": 0.5084013907720681,
+          "shortfall_mm_s": 0.0,
+          "energy_margin_w": 9.534138744283988,
+          "hard_violation": 0.0,
+          "active_rows": [],
+          "recorded_candidate_max_twist_error": 3.009707066903289e-12
+        },
+        {
+          "reference": "nominal_increment",
+          "deadband": 0.1,
+          "nominal_supply": false,
+          "success": true,
+          "status": "repair",
+          "wy_deg_s": 0.9587969385016968,
+          "increment_wy_deg_s": 0.29413732959009037,
+          "request_mm_s": 0.16536172830622403,
+          "reference_achieved_mm_s": 0.15914361048549547,
+          "shortfall_mm_s": 0.006218117820728543,
+          "energy_margin_w": 9.534151756329397,
+          "hard_violation": 0.0,
+          "active_rows": []
+        },
+        {
+          "reference": "nominal_increment",
+          "deadband": 0.1,
+          "nominal_supply": true,
+          "success": true,
+          "status": "repair",
+          "wy_deg_s": 0.9587969385016968,
+          "increment_wy_deg_s": 0.29413732959009037,
+          "request_mm_s": 0.16536172830622403,
+          "reference_achieved_mm_s": 0.15914361048549547,
+          "shortfall_mm_s": 0.006218117820728543,
+          "energy_margin_w": 9.548202364319934,
+          "hard_violation": 0.0,
+          "active_rows": []
+        },
+        {
+          "reference": "nominal_increment",
+          "deadband": 0.03,
+          "nominal_supply": true,
+          "success": true,
+          "status": "repair",
+          "wy_deg_s": 1.076478352940689,
+          "increment_wy_deg_s": 0.41181874402908253,
+          "request_mm_s": 0.26243420466604506,
+          "reference_achieved_mm_s": 0.22281538314679214,
+          "shortfall_mm_s": 0.0396188215192529,
+          "energy_margin_w": 9.548292342039678,
+          "hard_violation": 0.0,
+          "active_rows": []
+        }
+      ]
+    },
+    {
+      "attempt": "attempts/RH_Per_S_DtP/001",
+      "frame": 129733,
+      "control_id": 5984,
+      "scan_t": 27.31903665199934,
+      "q": [
+        0.9931715455056279,
+        0.9931902593985354,
+        0.8956954458011765
+      ],
+      "nominal_wy_deg_s": 0.0,
+      "recorded_candidate_wy_deg_s": 0.0,
+      "task_supply_w": 0.01084291976310034,
+      "checks": [
+        {
+          "reference": "total_velocity",
+          "deadband": 0.1,
+          "nominal_supply": false,
+          "success": true,
+          "status": "nominal",
+          "wy_deg_s": 0.0,
+          "increment_wy_deg_s": 0.0,
+          "request_mm_s": 0.0,
+          "reference_achieved_mm_s": 0.0,
+          "shortfall_mm_s": 0.0,
+          "energy_margin_w": 9.130549148633165,
+          "hard_violation": 0.0,
+          "active_rows": [
+            "progress_range"
+          ],
+          "recorded_candidate_max_twist_error": 0.0
+        },
+        {
+          "reference": "nominal_increment",
+          "deadband": 0.1,
+          "nominal_supply": false,
+          "success": true,
+          "status": "nominal",
+          "wy_deg_s": 0.0,
+          "increment_wy_deg_s": 0.0,
+          "request_mm_s": 0.0,
+          "reference_achieved_mm_s": 0.0,
+          "shortfall_mm_s": 0.0,
+          "energy_margin_w": 9.130549148633165,
+          "hard_violation": 0.0,
+          "active_rows": [
+            "progress_range"
+          ]
+        },
+        {
+          "reference": "nominal_increment",
+          "deadband": 0.1,
+          "nominal_supply": true,
+          "success": true,
+          "status": "nominal",
+          "wy_deg_s": 0.0,
+          "increment_wy_deg_s": 0.0,
+          "request_mm_s": 0.0,
+          "reference_achieved_mm_s": 0.0,
+          "shortfall_mm_s": 0.0,
+          "energy_margin_w": 9.141392068396264,
+          "hard_violation": 0.0,
+          "active_rows": [
+            "progress_range"
+          ]
+        },
+        {
+          "reference": "nominal_increment",
+          "deadband": 0.03,
+          "nominal_supply": true,
+          "success": true,
+          "status": "repair",
+          "wy_deg_s": 0.21945939767384853,
+          "increment_wy_deg_s": 0.21945939767384853,
+          "request_mm_s": 0.13912597877206467,
+          "reference_achieved_mm_s": 0.11873896097941951,
+          "shortfall_mm_s": 0.020387017792645172,
+          "energy_margin_w": 9.14142813031299,
+          "hard_violation": 0.0,
+          "active_rows": [
+            "progress_range"
+          ]
+        }
+      ]
+    },
+    {
+      "attempt": "attempts/RH_Per_L_PtD/002",
+      "frame": 131952,
+      "control_id": 5150,
+      "scan_t": 23.987192250999215,
+      "q": [
+        0.5425284337267697,
+        0.7840544432678586,
+        0.9822337780698235
+      ],
+      "nominal_wy_deg_s": -0.895663513422182,
+      "recorded_candidate_wy_deg_s": -1.322039027588484,
+      "task_supply_w": 0.005365112670776918,
+      "checks": [
+        {
+          "reference": "total_velocity",
+          "deadband": 0.1,
+          "nominal_supply": false,
+          "success": true,
+          "status": "repair",
+          "wy_deg_s": -1.3220390275884844,
+          "increment_wy_deg_s": -0.42637551416630226,
+          "request_mm_s": 0.7549007652067862,
+          "reference_achieved_mm_s": 0.7152919500097792,
+          "shortfall_mm_s": 0.03960881519700691,
+          "energy_margin_w": 13.004759632497565,
+          "hard_violation": 0.0,
+          "active_rows": [],
+          "recorded_candidate_max_twist_error": 6.938893903907228e-18
+        },
+        {
+          "reference": "nominal_increment",
+          "deadband": 0.1,
+          "nominal_supply": false,
+          "success": true,
+          "status": "repair",
+          "wy_deg_s": -1.7821257843664153,
+          "increment_wy_deg_s": -0.8864622709442334,
+          "request_mm_s": 0.7549007652067862,
+          "reference_achieved_mm_s": 0.479622245003171,
+          "shortfall_mm_s": 0.2752785202036151,
+          "energy_margin_w": 13.004705698332959,
+          "hard_violation": 0.0,
+          "active_rows": [
+            "acceleration_4"
+          ]
+        },
+        {
+          "reference": "nominal_increment",
+          "deadband": 0.1,
+          "nominal_supply": true,
+          "success": true,
+          "status": "repair",
+          "wy_deg_s": -1.7821257843664153,
+          "increment_wy_deg_s": -0.8864622709442334,
+          "request_mm_s": 0.7549007652067862,
+          "reference_achieved_mm_s": 0.479622245003171,
+          "shortfall_mm_s": 0.2752785202036151,
+          "energy_margin_w": 13.010070811003736,
+          "hard_violation": 0.0,
+          "active_rows": [
+            "acceleration_4"
+          ]
+        },
+        {
+          "reference": "nominal_increment",
+          "deadband": 0.03,
+          "nominal_supply": true,
+          "success": true,
+          "status": "repair",
+          "wy_deg_s": -1.7821257847519612,
+          "increment_wy_deg_s": -0.8864622713297792,
+          "request_mm_s": 0.8447532873052654,
+          "reference_achieved_mm_s": 0.47962224521177144,
+          "shortfall_mm_s": 0.36513104209349406,
+          "energy_margin_w": 13.010070811003692,
+          "hard_violation": 0.0,
+          "active_rows": [
+            "acceleration_4"
+          ]
+        }
+      ]
+    },
+    {
+      "attempt": "attempts/RH_Per_L_PtD/002",
+      "frame": 131911,
+      "control_id": 4915,
+      "scan_t": 22.623016550000102,
+      "q": [
+        0.6559731546706906,
+        0.9219998362696036,
+        0.99807255397724
+      ],
+      "nominal_wy_deg_s": -0.964187587673942,
+      "recorded_candidate_wy_deg_s": -0.9899356947868635,
+      "task_supply_w": 0.00044112621119613216,
+      "checks": [
+        {
+          "reference": "total_velocity",
+          "deadband": 0.1,
+          "nominal_supply": false,
+          "success": true,
+          "status": "repair",
+          "wy_deg_s": -0.9899356947868637,
+          "increment_wy_deg_s": -0.02574810711292167,
+          "request_mm_s": 0.5379986651256654,
+          "reference_achieved_mm_s": 0.5356067549685015,
+          "shortfall_mm_s": 0.0023919101571638537,
+          "energy_margin_w": 13.11672806935682,
+          "hard_violation": 0.0,
+          "active_rows": [],
+          "recorded_candidate_max_twist_error": 3.469446951953614e-18
+        },
+        {
+          "reference": "nominal_increment",
+          "deadband": 0.1,
+          "nominal_supply": false,
+          "success": true,
+          "status": "repair",
+          "wy_deg_s": -1.8125082401405817,
+          "increment_wy_deg_s": -0.8483206524666397,
+          "request_mm_s": 0.5379986651256654,
+          "reference_achieved_mm_s": 0.458985643444492,
+          "shortfall_mm_s": 0.07901302168117341,
+          "energy_margin_w": 13.11677541354981,
+          "hard_violation": 0.0,
+          "active_rows": [
+            "acceleration_4"
+          ]
+        },
+        {
+          "reference": "nominal_increment",
+          "deadband": 0.1,
+          "nominal_supply": true,
+          "success": true,
+          "status": "repair",
+          "wy_deg_s": -1.8125082401405817,
+          "increment_wy_deg_s": -0.8483206524666397,
+          "request_mm_s": 0.5379986651256654,
+          "reference_achieved_mm_s": 0.458985643444492,
+          "shortfall_mm_s": 0.07901302168117341,
+          "energy_margin_w": 13.117216539761007,
+          "hard_violation": 0.0,
+          "active_rows": [
+            "acceleration_4"
+          ]
+        },
+        {
+          "reference": "nominal_increment",
+          "deadband": 0.03,
+          "nominal_supply": true,
+          "success": true,
+          "status": "repair",
+          "wy_deg_s": -1.8125082453855803,
+          "increment_wy_deg_s": -0.8483206577116383,
+          "request_mm_s": 0.6435039160959781,
+          "reference_achieved_mm_s": 0.4589856462823094,
+          "shortfall_mm_s": 0.18451826981366876,
+          "energy_margin_w": 13.117216539761309,
+          "hard_violation": 0.0,
+          "active_rows": [
+            "acceleration_4"
+          ]
+        }
+      ]
+    },
+    {
+      "attempt": "attempts/RH_Per_L_PtD/002",
+      "frame": 132250,
+      "control_id": 6968,
+      "scan_t": 33.92314851499941,
+      "q": [
+        0.9943444113290881,
+        0.997379771749563,
+        0.9965131932604019
+      ],
+      "nominal_wy_deg_s": 0.0,
+      "recorded_candidate_wy_deg_s": 0.0,
+      "task_supply_w": 0.0,
+      "checks": [
+        {
+          "reference": "total_velocity",
+          "deadband": 0.1,
+          "nominal_supply": false,
+          "success": true,
+          "status": "nominal",
+          "wy_deg_s": 0.0,
+          "increment_wy_deg_s": 0.0,
+          "request_mm_s": 0.0,
+          "reference_achieved_mm_s": 0.0,
+          "shortfall_mm_s": 0.0,
+          "energy_margin_w": 12.385559362558345,
+          "hard_violation": 2.220446049250313e-16,
+          "active_rows": [
+            "progress_range"
+          ],
+          "recorded_candidate_max_twist_error": 0.0
+        },
+        {
+          "reference": "nominal_increment",
+          "deadband": 0.1,
+          "nominal_supply": false,
+          "success": true,
+          "status": "nominal",
+          "wy_deg_s": 0.0,
+          "increment_wy_deg_s": 0.0,
+          "request_mm_s": 0.0,
+          "reference_achieved_mm_s": 0.0,
+          "shortfall_mm_s": 0.0,
+          "energy_margin_w": 12.385559362558345,
+          "hard_violation": 2.220446049250313e-16,
+          "active_rows": [
+            "progress_range"
+          ]
+        },
+        {
+          "reference": "nominal_increment",
+          "deadband": 0.1,
+          "nominal_supply": true,
+          "success": true,
+          "status": "nominal",
+          "wy_deg_s": 0.0,
+          "increment_wy_deg_s": 0.0,
+          "request_mm_s": 0.0,
+          "reference_achieved_mm_s": 0.0,
+          "shortfall_mm_s": 0.0,
+          "energy_margin_w": 12.385559362558345,
+          "hard_violation": 2.220446049250313e-16,
+          "active_rows": [
+            "progress_range"
+          ]
+        },
+        {
+          "reference": "nominal_increment",
+          "deadband": 0.03,
+          "nominal_supply": true,
+          "success": true,
+          "status": "nominal",
+          "wy_deg_s": 0.0,
+          "increment_wy_deg_s": 0.0,
+          "request_mm_s": 0.0,
+          "reference_achieved_mm_s": 0.0,
+          "shortfall_mm_s": 0.0,
+          "energy_margin_w": 12.385559362558345,
+          "hard_violation": 2.220446049250313e-16,
+          "active_rows": [
+            "progress_range"
+          ]
+        }
+      ]
+    }
+  ]
+}

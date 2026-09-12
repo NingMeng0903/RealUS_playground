@@ -1,0 +1,30 @@
+attempts/RH_Per_L_DtP/001 failed Stale or missing force feedback.
+ force {'n': 2568, 'min': -0.8241931109407185, 'p50': 4.0813724160482945, 'p95': 4.222272121225561, 'p99': 4.278092007296948, 'max': 4.380317315692505} source {'n': 2568, 'min': 4.417232999912812, 'p50': 6.811913000092318, 'p95': 9.381757050960006, 'p99': 10.613504379816732, 'max': 20.461382999201305}
+ terminal [('publication_fresh_retry', 'wrench_source_expired'), ('stop', 'contact_qp_exception:ValueError:source interval exceeds declared maximum')]
+raw tracking gaps 0 1
+attempts/RH_Per_L_DtP/002 completed None
+ force {'n': 6315, 'min': -0.8876579505580959, 'p50': 4.075368679751263, 'p95': 4.234562015663741, 'p99': 4.2998749140921575, 'max': 4.573709980193851} source {'n': 6315, 'min': 3.990494000390754, 'p50': 6.55285900029412, 'p95': 9.43291140047222, 'p99': 10.677854278401352, 'max': 14.751732998774969}
+ terminal [('publication_fresh_retry', 'dispatch_source_expired'), ('stop', 'phase_complete')]
+raw tracking gaps 1 3
+attempts/RH_Per_C_DtP/001 completed None
+ force {'n': 6461, 'min': -0.7713868603163365, 'p50': 4.081707438921493, 'p95': 4.235928986865322, 'p99': 4.30140810182825, 'max': 4.459782496199042} source {'n': 6461, 'min': 3.9652069990552263, 'p50': 6.334784999125986, 'p95': 9.402145000422024, 'p99': 10.549088600237154, 'max': 12.858400999903097}
+ terminal [('stop', 'phase_complete')]
+raw tracking gaps 0 3
+attempts/RH_Per_S_DtP/001 completed None
+ force {'n': 6766, 'min': -0.7659996928492397, 'p50': 4.079703759146079, 'p95': 4.231877331540553, 'p99': 4.320586008693603, 'max': 4.566081844206383} source {'n': 6766, 'min': 3.9288190000661416, 'p50': 6.268735999583441, 'p95': 9.374143250170164, 'p99': 10.498441900654143, 'max': 12.935495000419905}
+ terminal [('stop', 'phase_complete')]
+raw tracking gaps 0 1
+attempts/RH_Per_L_PtD/001 failed Stale or missing force feedback.
+attempts/RH_Per_L_PtD/002 failed Stale or missing force feedback.
+attempts/RH_Per_L_PtD/003 completed None
+ force {'n': 6427, 'min': -0.6012441899802341, 'p50': 3.885120213271578, 'p95': 4.0328201824621885, 'p99': 4.119140992065224, 'max': 4.3254467037775495} source {'n': 6427, 'min': 3.866205999656813, 'p50': 6.058733000827488, 'p95': 9.201823000330478, 'p99': 10.371146840334404, 'max': 12.27601800019329}
+ terminal [('stop', 'phase_complete')]
+raw tracking gaps 0 6
+attempts/RH_Per_C_PtD/001 completed None
+ force {'n': 6508, 'min': -0.6804947326737276, 'p50': 3.8809769123094378, 'p95': 4.049133525100129, 'p99': 4.149301869617162, 'max': 4.341810275506433} source {'n': 6508, 'min': 3.9593100009369664, 'p50': 6.170045000544633, 'p95': 9.055810101290263, 'p99': 10.165701940622967, 'max': 14.069961000132025}
+ terminal [('stop', 'phase_complete')]
+raw tracking gaps 0 1
+attempts/RH_Per_S_PtD/001 completed None
+ force {'n': 6801, 'min': -0.5041555168527698, 'p50': 3.9057195266370277, 'p95': 4.128227791944834, 'p99': 4.199363371503124, 'max': 4.348536374278439} source {'n': 6801, 'min': 3.8507200006279163, 'p50': 6.133697999757715, 'p95': 9.236191999661969, 'p99': 10.402039000837249, 'max': 12.980237999727251}
+ terminal [('stop', 'phase_complete')]
+raw tracking gaps 0 1

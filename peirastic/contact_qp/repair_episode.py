@@ -1,14 +1,18 @@
-"""Finite visual-attempt permission, independent of command transactions.
+"""Visual task availability, independent of command transactions.
 
-This is not an energy tank, an acoustic impossibility test or a physical angle
-certificate. Measured angle travel and elapsed permission are never refunded by
-failed publication, invalid imagery or a changed image configuration.
+Continuous mode uses only current image/contact/force availability; it has no
+attempt expiry or healthy-frame reset. Bounded mode retains its original finite
+attempt bookkeeping. Neither mode admits energy or certifies physical angles.
 """
 import math
 
 
 class RepairEpisode:
-    def __init__(self,*,max_permission_s=2.,max_angle_travel_rad=math.radians(3),healthy_frames=3):
+    def __init__(self,*,max_permission_s=2.,max_angle_travel_rad=math.radians(3),healthy_frames=3,
+                 permission_mode='bounded_episode'):
+        if permission_mode not in ('bounded_episode','continuous'):
+            raise ValueError('unsupported repair permission mode')
+        self.permission_mode=permission_mode
         if not math.isfinite(max_permission_s) or max_permission_s<=0:
             raise ValueError('positive repair permission duration required')
         if not math.isfinite(max_angle_travel_rad) or max_angle_travel_rad<=0:
@@ -31,6 +35,18 @@ class RepairEpisode:
         if self.last_time is not None and now<self.last_time:
             self.healthy_count=0
             raise ValueError('repair measurement clock reversed')
+        if self.permission_mode=='continuous':
+            self.last_time=now;self.last_angle=angle
+            allowed=bool(image_valid and observation is not None and execution_enabled and force_gate>0.)
+            reason=('contact_execution_not_enabled' if not execution_enabled else
+                    'image_unavailable' if not image_valid or observation is None else
+                    'force_gate_paused' if force_gate<=0. else 'continuous_visual_feedback')
+            return dict(permission_mode='continuous',repair_allowed=allowed,armed=allowed,
+                exhausted=False,reason=reason,angle_reference_reset=bool(angle_reference_reset),
+                permission_elapsed_s=None,measured_angle_travel_rad=None,
+                remaining_permission_s=None,remaining_angle_travel_rad=None,
+                healthy_confirmation_count=0,healthy_resets=0,
+                assurance='task_availability_not_execution_or_angle_certificate')
         if self.armed:
             if self.last_time is not None and self.previous_permission:
                 self.permission_elapsed_s+=now-self.last_time
@@ -69,7 +85,7 @@ class RepairEpisode:
             reason='permission_time_exhausted' if self.permission_elapsed_s>=self.max_permission_s-1e-12 else 'measured_angle_travel_exhausted'
         elif not execution_enabled:reason='contact_execution_not_enabled'
         elif force_gate<=0.:reason='force_gate_paused'
-        return dict(angle_reference_reset=bool(angle_reference_reset),repair_allowed=allowed,armed=self.armed,exhausted=exhausted,reason=reason,
+        return dict(permission_mode='bounded_episode',angle_reference_reset=bool(angle_reference_reset),repair_allowed=allowed,armed=self.armed,exhausted=exhausted,reason=reason,
             permission_elapsed_s=self.permission_elapsed_s,measured_angle_travel_rad=self.angle_travel_rad,
             remaining_permission_s=max(0.,self.max_permission_s-self.permission_elapsed_s),
             remaining_angle_travel_rad=max(0.,self.max_angle_travel_rad-self.angle_travel_rad),

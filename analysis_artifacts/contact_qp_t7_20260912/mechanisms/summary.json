@@ -1,0 +1,19 @@
+{
+  "logs": 49,
+  "scan_attempts": 48,
+  "scan_s": 1158.1486907309736,
+  "request_s": 796.0103461259987,
+  "min_energy_j": 0.08754547595223842,
+  "min_available_j": 0.035699743594885175,
+  "successful_request_publications": 136220,
+  "correct_direction_publications": 133557,
+  "nominal_covers_fraction": 0.39174765833749303,
+  "candidate_covers_fraction": 0.41529641483395485,
+  "totals": {
+    "port_work_j": -3.4007975205652925,
+    "task_source_used_j": 4.583058805617148,
+    "debit_j": 0.4150236324372247,
+    "positive_port_recovery_j": 1.5972849174890833,
+    "capacity_discard_j": 0.17366481940696235
+  }
+}

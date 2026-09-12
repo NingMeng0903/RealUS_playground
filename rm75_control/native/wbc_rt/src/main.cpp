@@ -647,12 +647,19 @@ int main(int argc, char** argv) {
         tin.rail_v = in->rail_v;
         tin.v_force_z = in->v_force_z;
         tin.flags = in->flags;
+        tin.rocking_enabled = in->rocking_enabled != 0;
+        for (int i = 0; i < 3; ++i) tin.rocking_axis_base[i] = in->rocking_axis_base[i];
+        for (int i = 0; i < 6; ++i) tin.rocking_bounds[i] = in->rocking_bounds[i];
         tin.posture_d = in->cmd_f[0];
         tin.posture_psi = in->cmd_f[1];
         if (in->flags & wbc_rt::kInHasQStar) {
           for (int i = 0; i < wbc_rt::kNv; ++i) tin.posture_q[i] = in->cmd_f[3 + i];
         }
         const auto tout = loop.step(tin);
+        out->rocking_policy_tier = tout.rocking_policy_tier;
+        out->rocking_limited = tout.rocking_limited;
+        out->rocking_lower_rad_s = tout.rocking_lower_rad_s;
+        out->rocking_upper_rad_s = tout.rocking_upper_rad_s;
         for (int i = 0; i < 8; ++i) {
           out->q_cmd[i] = tout.q_cmd[i];
           out->qdot[i] = tout.qdot[i];

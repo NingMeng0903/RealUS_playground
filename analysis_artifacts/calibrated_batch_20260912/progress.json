@@ -1,0 +1,5946 @@
+{
+  "source": "/media/camp/yameng/icra 2027/uncalibrated",
+  "destination": "/media/camp/yameng/icra 2027/calibrated",
+  "calibration": {
+    "report_file": "/media/camp/yameng/icra 2027/delay_cal/002/delay_report.json",
+    "report_sha256": "fcf33d180f3e1d2d857e7456bf35858588609cf8d39b0807d9ec2423360743e5",
+    "ultrasound_minus_tcp_ns": 151963651,
+    "force_minus_tcp_ns": 677747,
+    "calibration_us_offset_ns": 0
+  },
+  "contact_policy": {
+    "threshold_n": 4.0,
+    "entry_sustain_s": 0.1,
+    "exit_hysteresis_n": 3.2,
+    "exit_sustain_s": 0.25,
+    "exit_absolute": true,
+    "max_gap_s": 0.1,
+    "crop_s": 0.5
+  },
+  "files": [
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/HAOHAO/LH_Per_C_DtP.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/HAOHAO/LH_Per_C_DtP.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "created",
+      "input_frames": 168,
+      "output_frames": 163,
+      "dropped_frames": 5,
+      "streams": {
+        "tcp": {
+          "input_samples": 1024,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.3859031963190185,
+            "p95_ms": 3.554083500000001,
+            "max_ms": 4.613028
+          }
+        },
+        "force": {
+          "input_samples": 1116,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.0973539325153374,
+            "p95_ms": 2.4370693,
+            "max_ms": 2.659293
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/HAOHAO/LH_Per_C_PtD.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/HAOHAO/LH_Per_C_PtD.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "created",
+      "input_frames": 171,
+      "output_frames": 166,
+      "dropped_frames": 5,
+      "streams": {
+        "tcp": {
+          "input_samples": 1027,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.5643292228915662,
+            "p95_ms": 3.44164875,
+            "max_ms": 4.42385
+          }
+        },
+        "force": {
+          "input_samples": 1143,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.1227704156626508,
+            "p95_ms": 2.19975525,
+            "max_ms": 2.317736
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/HAOHAO/LH_Per_L_DtP.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/HAOHAO/LH_Per_L_DtP.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "created",
+      "input_frames": 162,
+      "output_frames": 157,
+      "dropped_frames": 5,
+      "streams": {
+        "tcp": {
+          "input_samples": 958,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.4623341974522295,
+            "p95_ms": 3.7385113999999997,
+            "max_ms": 4.637563
+          }
+        },
+        "force": {
+          "input_samples": 1078,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.3952930828025478,
+            "p95_ms": 2.3416778000000003,
+            "max_ms": 2.655554
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/HAOHAO/LH_Per_L_PtD.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/HAOHAO/LH_Per_L_PtD.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "created",
+      "input_frames": 164,
+      "output_frames": 159,
+      "dropped_frames": 5,
+      "streams": {
+        "tcp": {
+          "input_samples": 974,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.3766451761006289,
+            "p95_ms": 4.1942069,
+            "max_ms": 4.798314
+          }
+        },
+        "force": {
+          "input_samples": 1094,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.028117603773585,
+            "p95_ms": 2.4576313,
+            "max_ms": 2.922592
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/HAOHAO/LH_Per_S_DtP.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/HAOHAO/LH_Per_S_DtP.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "created",
+      "input_frames": 181,
+      "output_frames": 176,
+      "dropped_frames": 5,
+      "streams": {
+        "tcp": {
+          "input_samples": 1156,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.427130340909091,
+            "p95_ms": 2.48452225,
+            "max_ms": 3.844554
+          }
+        },
+        "force": {
+          "input_samples": 1205,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.1925627784090909,
+            "p95_ms": 1.90567675,
+            "max_ms": 2.357972
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/HAOHAO/LH_Per_S_PtD.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/HAOHAO/LH_Per_S_PtD.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "created",
+      "input_frames": 195,
+      "output_frames": 190,
+      "dropped_frames": 5,
+      "streams": {
+        "tcp": {
+          "input_samples": 1151,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.7424885947368418,
+            "p95_ms": 4.276919599999999,
+            "max_ms": 4.861047
+          }
+        },
+        "force": {
+          "input_samples": 1298,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.3540832684210526,
+            "p95_ms": 2.5149448499999996,
+            "max_ms": 2.735883
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/HAOHAO/RH_Per_C_DtP.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/HAOHAO/RH_Per_C_DtP.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "created",
+      "input_frames": 167,
+      "output_frames": 163,
+      "dropped_frames": 4,
+      "streams": {
+        "tcp": {
+          "input_samples": 1034,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.5129906748466257,
+            "p95_ms": 2.6812675000000006,
+            "max_ms": 4.377968
+          }
+        },
+        "force": {
+          "input_samples": 1119,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.219179736196319,
+            "p95_ms": 2.0729619,
+            "max_ms": 2.6104
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/HAOHAO/RH_Per_C_PtD.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/HAOHAO/RH_Per_C_PtD.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "created",
+      "input_frames": 169,
+      "output_frames": 165,
+      "dropped_frames": 4,
+      "streams": {
+        "tcp": {
+          "input_samples": 1025,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.5735118181818184,
+            "p95_ms": 2.915306199999999,
+            "max_ms": 4.987915
+          }
+        },
+        "force": {
+          "input_samples": 1128,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.4775946424242423,
+            "p95_ms": 2.5957296,
+            "max_ms": 2.691158
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/HAOHAO/RH_Per_L_DtP.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/HAOHAO/RH_Per_L_DtP.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "created",
+      "input_frames": 164,
+      "output_frames": 160,
+      "dropped_frames": 4,
+      "streams": {
+        "tcp": {
+          "input_samples": 996,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.3245712,
+            "p95_ms": 3.4315199999999986,
+            "max_ms": 4.691283
+          }
+        },
+        "force": {
+          "input_samples": 1095,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.1004476125,
+            "p95_ms": 2.56027785,
+            "max_ms": 2.642426
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/HAOHAO/RH_Per_L_PtD.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/HAOHAO/RH_Per_L_PtD.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "created",
+      "input_frames": 163,
+      "output_frames": 159,
+      "dropped_frames": 4,
+      "streams": {
+        "tcp": {
+          "input_samples": 976,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.1802449811320754,
+            "p95_ms": 2.6460333999999994,
+            "max_ms": 4.722585
+          }
+        },
+        "force": {
+          "input_samples": 1092,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.0735885911949685,
+            "p95_ms": 1.7885510999999998,
+            "max_ms": 2.104389
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/HAOHAO/RH_Per_S_DtP.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/HAOHAO/RH_Per_S_DtP.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "created",
+      "input_frames": 185,
+      "output_frames": 180,
+      "dropped_frames": 5,
+      "streams": {
+        "tcp": {
+          "input_samples": 1101,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.4776690333333335,
+            "p95_ms": 3.77639215,
+            "max_ms": 4.711022
+          }
+        },
+        "force": {
+          "input_samples": 1231,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.1632931444444443,
+            "p95_ms": 2.6157728,
+            "max_ms": 2.77653
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/HAOHAO/RH_Per_S_PtD.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/HAOHAO/RH_Per_S_PtD.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "created",
+      "input_frames": 190,
+      "output_frames": 185,
+      "dropped_frames": 5,
+      "streams": {
+        "tcp": {
+          "input_samples": 1125,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.3932872972972974,
+            "p95_ms": 3.755541999999999,
+            "max_ms": 4.887582
+          }
+        },
+        "force": {
+          "input_samples": 1265,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.2125199405405407,
+            "p95_ms": 1.9396318,
+            "max_ms": 2.376577
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/chenwei/LH_Per_C_DtP.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/chenwei/LH_Per_C_DtP.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "verified_existing",
+      "input_frames": 148,
+      "output_frames": 144,
+      "dropped_frames": 4,
+      "streams": {
+        "tcp": {
+          "input_samples": 953,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.101313388888889,
+            "p95_ms": 2.685287499999998,
+            "max_ms": 4.707202
+          }
+        },
+        "force": {
+          "input_samples": 991,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.0657568055555555,
+            "p95_ms": 2.37264835,
+            "max_ms": 2.601557
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/chenwei/LH_Per_C_PtD.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/chenwei/LH_Per_C_PtD.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "verified_existing",
+      "input_frames": 150,
+      "output_frames": 145,
+      "dropped_frames": 5,
+      "streams": {
+        "tcp": {
+          "input_samples": 912,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.341852551724138,
+            "p95_ms": 4.0912248,
+            "max_ms": 4.856267
+          }
+        },
+        "force": {
+          "input_samples": 997,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.1864513241379309,
+            "p95_ms": 2.6742168,
+            "max_ms": 2.769489
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/chenwei/LH_Per_L_DtP.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/chenwei/LH_Per_L_DtP.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "verified_existing",
+      "input_frames": 142,
+      "output_frames": 137,
+      "dropped_frames": 5,
+      "streams": {
+        "tcp": {
+          "input_samples": 885,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.2396854598540146,
+            "p95_ms": 1.8581927999999988,
+            "max_ms": 4.763553
+          }
+        },
+        "force": {
+          "input_samples": 948,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.0650554671532846,
+            "p95_ms": 2.4286470000000002,
+            "max_ms": 2.55142
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/chenwei/LH_Per_L_PtD.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/chenwei/LH_Per_L_PtD.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "verified_existing",
+      "input_frames": 141,
+      "output_frames": 137,
+      "dropped_frames": 4,
+      "streams": {
+        "tcp": {
+          "input_samples": 912,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.2283097153284672,
+            "p95_ms": 1.8817422,
+            "max_ms": 4.548172
+          }
+        },
+        "force": {
+          "input_samples": 945,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.3883910583941605,
+            "p95_ms": 2.3864453999999995,
+            "max_ms": 2.741157
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/chenwei/LH_Per_S_DtP.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/chenwei/LH_Per_S_DtP.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "verified_existing",
+      "input_frames": 163,
+      "output_frames": 158,
+      "dropped_frames": 5,
+      "streams": {
+        "tcp": {
+          "input_samples": 993,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.3055433670886074,
+            "p95_ms": 4.0571549000000005,
+            "max_ms": 4.907372
+          }
+        },
+        "force": {
+          "input_samples": 1086,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.0570330696202532,
+            "p95_ms": 2.5701856,
+            "max_ms": 2.660471
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/chenwei/LH_Per_S_PtD.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/chenwei/LH_Per_S_PtD.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "verified_existing",
+      "input_frames": 171,
+      "output_frames": 167,
+      "dropped_frames": 4,
+      "streams": {
+        "tcp": {
+          "input_samples": 1027,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.557890401197605,
+            "p95_ms": 3.242868699999997,
+            "max_ms": 4.618891
+          }
+        },
+        "force": {
+          "input_samples": 1144,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.3852559041916168,
+            "p95_ms": 2.4571272999999993,
+            "max_ms": 2.685752
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/chenwei/RH_Per_C_DtP.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/chenwei/RH_Per_C_DtP.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "verified_existing",
+      "input_frames": 192,
+      "output_frames": 187,
+      "dropped_frames": 5,
+      "streams": {
+        "tcp": {
+          "input_samples": 1156,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.4766326470588236,
+            "p95_ms": 4.2767659,
+            "max_ms": 4.833946
+          }
+        },
+        "force": {
+          "input_samples": 1280,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.1839402406417112,
+            "p95_ms": 2.5457026000000003,
+            "max_ms": 2.748228
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/chenwei/RH_Per_C_PtD.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/chenwei/RH_Per_C_PtD.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "verified_existing",
+      "input_frames": 191,
+      "output_frames": 187,
+      "dropped_frames": 4,
+      "streams": {
+        "tcp": {
+          "input_samples": 1176,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.7085440160427807,
+            "p95_ms": 2.9934632999999997,
+            "max_ms": 4.848169
+          }
+        },
+        "force": {
+          "input_samples": 1278,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.4632328128342247,
+            "p95_ms": 2.5833117,
+            "max_ms": 2.698897
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/chenwei/RH_Per_L_DtP.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/chenwei/RH_Per_L_DtP.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "verified_existing",
+      "input_frames": 188,
+      "output_frames": 183,
+      "dropped_frames": 5,
+      "streams": {
+        "tcp": {
+          "input_samples": 1171,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.3410212459016393,
+            "p95_ms": 2.6691547,
+            "max_ms": 4.832815
+          }
+        },
+        "force": {
+          "input_samples": 1246,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.3521954480874319,
+            "p95_ms": 2.2922672000000004,
+            "max_ms": 2.95199
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/chenwei/RH_Per_L_PtD.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/chenwei/RH_Per_L_PtD.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "verified_existing",
+      "input_frames": 188,
+      "output_frames": 184,
+      "dropped_frames": 4,
+      "streams": {
+        "tcp": {
+          "input_samples": 1148,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.6503628858695651,
+            "p95_ms": 3.3179858499999995,
+            "max_ms": 4.804124
+          }
+        },
+        "force": {
+          "input_samples": 1252,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.3446415217391305,
+            "p95_ms": 2.511975,
+            "max_ms": 2.758921
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/chenwei/RH_Per_S_DtP.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/chenwei/RH_Per_S_DtP.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "verified_existing",
+      "input_frames": 204,
+      "output_frames": 200,
+      "dropped_frames": 4,
+      "streams": {
+        "tcp": {
+          "input_samples": 1245,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.621954265,
+            "p95_ms": 2.9628182999999986,
+            "max_ms": 4.858692
+          }
+        },
+        "force": {
+          "input_samples": 1365,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.4280150299999996,
+            "p95_ms": 2.6129116,
+            "max_ms": 2.665084
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/chenwei/RH_Per_S_PtD.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/chenwei/RH_Per_S_PtD.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "verified_existing",
+      "input_frames": 201,
+      "output_frames": 197,
+      "dropped_frames": 4,
+      "streams": {
+        "tcp": {
+          "input_samples": 1204,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.5266216446700507,
+            "p95_ms": 3.8608427999999986,
+            "max_ms": 4.351073
+          }
+        },
+        "force": {
+          "input_samples": 1345,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.4568696294416243,
+            "p95_ms": 2.5973007999999997,
+            "max_ms": 2.685976
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/dianye/LH_Per_C_DtP.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/dianye/LH_Per_C_DtP.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "verified_existing",
+      "input_frames": 167,
+      "output_frames": 162,
+      "dropped_frames": 5,
+      "streams": {
+        "tcp": {
+          "input_samples": 991,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.5014456296296297,
+            "p95_ms": 3.6210820999999997,
+            "max_ms": 4.712453
+          }
+        },
+        "force": {
+          "input_samples": 1117,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.3151586296296296,
+            "p95_ms": 2.15202595,
+            "max_ms": 2.284412
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/dianye/LH_Per_C_PtD.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/dianye/LH_Per_C_PtD.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "verified_existing",
+      "input_frames": 174,
+      "output_frames": 170,
+      "dropped_frames": 4,
+      "streams": {
+        "tcp": {
+          "input_samples": 1034,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.6555159058823525,
+            "p95_ms": 3.5748779999999964,
+            "max_ms": 4.547031
+          }
+        },
+        "force": {
+          "input_samples": 1158,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.2884185823529413,
+            "p95_ms": 2.282624749999999,
+            "max_ms": 2.554794
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/dianye/LH_Per_L_DtP.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/dianye/LH_Per_L_DtP.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "verified_existing",
+      "input_frames": 160,
+      "output_frames": 156,
+      "dropped_frames": 4,
+      "streams": {
+        "tcp": {
+          "input_samples": 976,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.5601818012820514,
+            "p95_ms": 2.90321825,
+            "max_ms": 4.949975
+          }
+        },
+        "force": {
+          "input_samples": 1071,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.480509967948718,
+            "p95_ms": 2.6316405,
+            "max_ms": 2.799888
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/dianye/LH_Per_L_PtD.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/dianye/LH_Per_L_PtD.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "verified_existing",
+      "input_frames": 164,
+      "output_frames": 159,
+      "dropped_frames": 5,
+      "streams": {
+        "tcp": {
+          "input_samples": 965,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.301409603773585,
+            "p95_ms": 2.9320273999999933,
+            "max_ms": 4.834387
+          }
+        },
+        "force": {
+          "input_samples": 1093,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.093138364779874,
+            "p95_ms": 2.2768296,
+            "max_ms": 2.640046
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/dianye/LH_Per_S_DtP.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/dianye/LH_Per_S_DtP.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "verified_existing",
+      "input_frames": 190,
+      "output_frames": 186,
+      "dropped_frames": 4,
+      "streams": {
+        "tcp": {
+          "input_samples": 1132,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.774544623655914,
+            "p95_ms": 4.601434,
+            "max_ms": 4.794802
+          }
+        },
+        "force": {
+          "input_samples": 1272,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.3631270268817204,
+            "p95_ms": 2.33559525,
+            "max_ms": 2.634459
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/dianye/LH_Per_S_PtD.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/dianye/LH_Per_S_PtD.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "verified_existing",
+      "input_frames": 198,
+      "output_frames": 193,
+      "dropped_frames": 5,
+      "streams": {
+        "tcp": {
+          "input_samples": 1233,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.5416465492227982,
+            "p95_ms": 2.6192938,
+            "max_ms": 4.398881
+          }
+        },
+        "force": {
+          "input_samples": 1313,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.313123414507772,
+            "p95_ms": 2.348113599999999,
+            "max_ms": 2.703439
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/dianye/RH_Per_C_DtP.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/dianye/RH_Per_C_DtP.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "verified_existing",
+      "input_frames": 192,
+      "output_frames": 187,
+      "dropped_frames": 5,
+      "streams": {
+        "tcp": {
+          "input_samples": 1146,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.4631392941176469,
+            "p95_ms": 3.6716602999999983,
+            "max_ms": 4.171764
+          }
+        },
+        "force": {
+          "input_samples": 1279,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.4494517058823528,
+            "p95_ms": 2.5656361,
+            "max_ms": 2.65503
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/dianye/RH_Per_C_PtD.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/dianye/RH_Per_C_PtD.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "verified_existing",
+      "input_frames": 194,
+      "output_frames": 189,
+      "dropped_frames": 5,
+      "streams": {
+        "tcp": {
+          "input_samples": 1225,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.2241979947089947,
+            "p95_ms": 2.6296462,
+            "max_ms": 4.784875
+          }
+        },
+        "force": {
+          "input_samples": 1294,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.1242092698412698,
+            "p95_ms": 2.5634921999999998,
+            "max_ms": 2.676885
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/dianye/RH_Per_L_DtP.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/dianye/RH_Per_L_DtP.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "verified_existing",
+      "input_frames": 186,
+      "output_frames": 182,
+      "dropped_frames": 4,
+      "streams": {
+        "tcp": {
+          "input_samples": 1192,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.5337135769230767,
+            "p95_ms": 2.6639606999999996,
+            "max_ms": 4.678157
+          }
+        },
+        "force": {
+          "input_samples": 1244,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.4075276703296702,
+            "p95_ms": 2.487822049999999,
+            "max_ms": 2.709851
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/dianye/RH_Per_L_PtD.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/dianye/RH_Per_L_PtD.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "verified_existing",
+      "input_frames": 190,
+      "output_frames": 186,
+      "dropped_frames": 4,
+      "streams": {
+        "tcp": {
+          "input_samples": 1171,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.2130552956989247,
+            "p95_ms": 3.18420825,
+            "max_ms": 4.045793
+          }
+        },
+        "force": {
+          "input_samples": 1271,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.2599235967741933,
+            "p95_ms": 2.1261390000000002,
+            "max_ms": 2.338875
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/dianye/RH_Per_S_DtP.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/dianye/RH_Per_S_DtP.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "verified_existing",
+      "input_frames": 220,
+      "output_frames": 215,
+      "dropped_frames": 5,
+      "streams": {
+        "tcp": {
+          "input_samples": 1328,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.5627257581395348,
+            "p95_ms": 3.7934173999999996,
+            "max_ms": 4.402676
+          }
+        },
+        "force": {
+          "input_samples": 1468,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.151096530232558,
+            "p95_ms": 1.8303529999999995,
+            "max_ms": 2.314168
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/dianye/RH_Per_S_PtD.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/dianye/RH_Per_S_PtD.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "verified_existing",
+      "input_frames": 205,
+      "output_frames": 201,
+      "dropped_frames": 4,
+      "streams": {
+        "tcp": {
+          "input_samples": 1256,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.3674472437810945,
+            "p95_ms": 3.452282,
+            "max_ms": 4.531691
+          }
+        },
+        "force": {
+          "input_samples": 1371,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.342721905472637,
+            "p95_ms": 2.322284,
+            "max_ms": 2.527132
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yameng_1/LH_Per_C_DtP.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/yameng_1/LH_Per_C_DtP.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "verified_existing",
+      "input_frames": 165,
+      "output_frames": 160,
+      "dropped_frames": 5,
+      "streams": {
+        "tcp": {
+          "input_samples": 985,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.5299250937499997,
+            "p95_ms": 2.969385899999989,
+            "max_ms": 4.19508
+          }
+        },
+        "force": {
+          "input_samples": 1095,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.4558386875,
+            "p95_ms": 2.5728358499999993,
+            "max_ms": 2.684011
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yameng_1/LH_Per_C_PtD.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/yameng_1/LH_Per_C_PtD.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "verified_existing",
+      "input_frames": 167,
+      "output_frames": 162,
+      "dropped_frames": 5,
+      "streams": {
+        "tcp": {
+          "input_samples": 1017,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.6310751728395065,
+            "p95_ms": 3.2786778,
+            "max_ms": 4.887909
+          }
+        },
+        "force": {
+          "input_samples": 1107,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.306245086419753,
+            "p95_ms": 2.35519585,
+            "max_ms": 2.670634
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yameng_1/LH_Per_L_DtP.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/yameng_1/LH_Per_L_DtP.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "verified_existing",
+      "input_frames": 156,
+      "output_frames": 151,
+      "dropped_frames": 5,
+      "streams": {
+        "tcp": {
+          "input_samples": 954,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.5928850463576159,
+            "p95_ms": 2.967402,
+            "max_ms": 4.37991
+          }
+        },
+        "force": {
+          "input_samples": 1037,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.429299463576159,
+            "p95_ms": 2.524898,
+            "max_ms": 2.781867
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yameng_1/LH_Per_L_PtD.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/yameng_1/LH_Per_L_PtD.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "verified_existing",
+      "input_frames": 156,
+      "output_frames": 151,
+      "dropped_frames": 5,
+      "streams": {
+        "tcp": {
+          "input_samples": 918,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.362255821192053,
+            "p95_ms": 4.2947115,
+            "max_ms": 4.755235
+          }
+        },
+        "force": {
+          "input_samples": 1040,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.0655359139072846,
+            "p95_ms": 2.3778705,
+            "max_ms": 2.624007
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yameng_1/LH_Per_S_DtP.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/yameng_1/LH_Per_S_DtP.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "verified_existing",
+      "input_frames": 187,
+      "output_frames": 182,
+      "dropped_frames": 5,
+      "streams": {
+        "tcp": {
+          "input_samples": 1176,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.2048940494505493,
+            "p95_ms": 2.3563581,
+            "max_ms": 5.061615
+          }
+        },
+        "force": {
+          "input_samples": 1244,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.2609972912087912,
+            "p95_ms": 2.029421849999999,
+            "max_ms": 2.36905
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yameng_1/LH_Per_S_PtD.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/yameng_1/LH_Per_S_PtD.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "verified_existing",
+      "input_frames": 188,
+      "output_frames": 183,
+      "dropped_frames": 5,
+      "streams": {
+        "tcp": {
+          "input_samples": 1114,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.572054218579235,
+            "p95_ms": 2.800719800000001,
+            "max_ms": 4.617101
+          }
+        },
+        "force": {
+          "input_samples": 1249,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.4948936721311472,
+            "p95_ms": 2.6303208,
+            "max_ms": 2.84764
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yameng_1/RH_Per_C_DtP.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/yameng_1/RH_Per_C_DtP.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "verified_existing",
+      "input_frames": 191,
+      "output_frames": 186,
+      "dropped_frames": 5,
+      "streams": {
+        "tcp": {
+          "input_samples": 1180,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.4039679462365595,
+            "p95_ms": 3.7162337500000002,
+            "max_ms": 4.990554
+          }
+        },
+        "force": {
+          "input_samples": 1271,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.3697122204301075,
+            "p95_ms": 2.46429175,
+            "max_ms": 2.733839
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yameng_1/RH_Per_C_PtD.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/yameng_1/RH_Per_C_PtD.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "verified_existing",
+      "input_frames": 194,
+      "output_frames": 189,
+      "dropped_frames": 5,
+      "streams": {
+        "tcp": {
+          "input_samples": 1217,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.218281941798942,
+            "p95_ms": 2.4112575999999994,
+            "max_ms": 4.963584
+          }
+        },
+        "force": {
+          "input_samples": 1294,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.1517129576719578,
+            "p95_ms": 2.5777512,
+            "max_ms": 2.713887
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yameng_1/RH_Per_L_DtP.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/yameng_1/RH_Per_L_DtP.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "verified_existing",
+      "input_frames": 186,
+      "output_frames": 181,
+      "dropped_frames": 5,
+      "streams": {
+        "tcp": {
+          "input_samples": 1163,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.3423479779005525,
+            "p95_ms": 3.522406,
+            "max_ms": 4.344769
+          }
+        },
+        "force": {
+          "input_samples": 1234,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.1851697955801106,
+            "p95_ms": 2.364024,
+            "max_ms": 2.711222
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yameng_1/RH_Per_L_PtD.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/yameng_1/RH_Per_L_PtD.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "verified_existing",
+      "input_frames": 185,
+      "output_frames": 181,
+      "dropped_frames": 4,
+      "streams": {
+        "tcp": {
+          "input_samples": 1183,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.333784546961326,
+            "p95_ms": 2.445761,
+            "max_ms": 4.081774
+          }
+        },
+        "force": {
+          "input_samples": 1234,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.4195820165745856,
+            "p95_ms": 2.581564,
+            "max_ms": 2.816984
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yameng_1/RH_Per_S_DtP.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/yameng_1/RH_Per_S_DtP.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "verified_existing",
+      "input_frames": 226,
+      "output_frames": 221,
+      "dropped_frames": 5,
+      "streams": {
+        "tcp": {
+          "input_samples": 1351,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.6319939366515837,
+            "p95_ms": 3.677002,
+            "max_ms": 4.800401
+          }
+        },
+        "force": {
+          "input_samples": 1503,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.3683389909502262,
+            "p95_ms": 2.591217,
+            "max_ms": 3.044583
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yameng_1/RH_Per_S_PtD.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/yameng_1/RH_Per_S_PtD.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "verified_existing",
+      "input_frames": 214,
+      "output_frames": 210,
+      "dropped_frames": 4,
+      "streams": {
+        "tcp": {
+          "input_samples": 1295,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.610021861904762,
+            "p95_ms": 3.06463655,
+            "max_ms": 4.796597
+          }
+        },
+        "force": {
+          "input_samples": 1432,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.3482372428571427,
+            "p95_ms": 2.4072615,
+            "max_ms": 2.610928
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yameng_2/LH_Per_C_DtP.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/yameng_2/LH_Per_C_DtP.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "verified_existing",
+      "input_frames": 157,
+      "output_frames": 152,
+      "dropped_frames": 5,
+      "streams": {
+        "tcp": {
+          "input_samples": 927,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.459968605263158,
+            "p95_ms": 3.469039599999999,
+            "max_ms": 4.991321
+          }
+        },
+        "force": {
+          "input_samples": 1042,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.0347498289473684,
+            "p95_ms": 2.2080863999999996,
+            "max_ms": 2.536419
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yameng_2/LH_Per_C_PtD.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/yameng_2/LH_Per_C_PtD.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "verified_existing",
+      "input_frames": 156,
+      "output_frames": 151,
+      "dropped_frames": 5,
+      "streams": {
+        "tcp": {
+          "input_samples": 921,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.5880132185430464,
+            "p95_ms": 3.421016,
+            "max_ms": 4.256265
+          }
+        },
+        "force": {
+          "input_samples": 1034,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.2164699668874173,
+            "p95_ms": 2.100573,
+            "max_ms": 2.563122
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yameng_2/LH_Per_L_DtP.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/yameng_2/LH_Per_L_DtP.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "verified_existing",
+      "input_frames": 143,
+      "output_frames": 139,
+      "dropped_frames": 4,
+      "streams": {
+        "tcp": {
+          "input_samples": 843,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.3376696043165468,
+            "p95_ms": 4.2609287,
+            "max_ms": 4.611763
+          }
+        },
+        "force": {
+          "input_samples": 953,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.0684606043165465,
+            "p95_ms": 2.3723352999999996,
+            "max_ms": 2.680943
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yameng_2/LH_Per_L_PtD.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/yameng_2/LH_Per_L_PtD.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "verified_existing",
+      "input_frames": 145,
+      "output_frames": 140,
+      "dropped_frames": 5,
+      "streams": {
+        "tcp": {
+          "input_samples": 871,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.450323635714286,
+            "p95_ms": 3.6427588999999965,
+            "max_ms": 4.684582
+          }
+        },
+        "force": {
+          "input_samples": 961,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.059316857142857,
+            "p95_ms": 2.415375949999999,
+            "max_ms": 2.57581
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yameng_2/LH_Per_S_DtP.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/yameng_2/LH_Per_S_DtP.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "verified_existing",
+      "input_frames": 165,
+      "output_frames": 161,
+      "dropped_frames": 4,
+      "streams": {
+        "tcp": {
+          "input_samples": 1006,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.5341304161490683,
+            "p95_ms": 2.693925,
+            "max_ms": 4.629035
+          }
+        },
+        "force": {
+          "input_samples": 1098,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.3621754037267078,
+            "p95_ms": 2.301306,
+            "max_ms": 2.533367
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yameng_2/LH_Per_S_PtD.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/yameng_2/LH_Per_S_PtD.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "verified_existing",
+      "input_frames": 164,
+      "output_frames": 159,
+      "dropped_frames": 5,
+      "streams": {
+        "tcp": {
+          "input_samples": 1008,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.653967314465409,
+            "p95_ms": 3.8353566,
+            "max_ms": 4.653677
+          }
+        },
+        "force": {
+          "input_samples": 1094,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.4695515157232706,
+            "p95_ms": 2.5822781999999997,
+            "max_ms": 2.767824
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yameng_2/RH_Per_C_DtP.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/yameng_2/RH_Per_C_DtP.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "verified_existing",
+      "input_frames": 162,
+      "output_frames": 157,
+      "dropped_frames": 5,
+      "streams": {
+        "tcp": {
+          "input_samples": 986,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.7997335541401276,
+            "p95_ms": 4.539945,
+            "max_ms": 4.899292
+          }
+        },
+        "force": {
+          "input_samples": 1073,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.4821489617834396,
+            "p95_ms": 2.6027632,
+            "max_ms": 2.753513
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yameng_2/RH_Per_C_PtD.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/yameng_2/RH_Per_C_PtD.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "verified_existing",
+      "input_frames": 161,
+      "output_frames": 156,
+      "dropped_frames": 5,
+      "streams": {
+        "tcp": {
+          "input_samples": 961,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.3407364743589743,
+            "p95_ms": 3.3965022499999997,
+            "max_ms": 4.803252
+          }
+        },
+        "force": {
+          "input_samples": 1072,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.311614608974359,
+            "p95_ms": 2.44715725,
+            "max_ms": 2.768503
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yameng_2/RH_Per_L_DtP.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/yameng_2/RH_Per_L_DtP.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "verified_existing",
+      "input_frames": 159,
+      "output_frames": 155,
+      "dropped_frames": 4,
+      "streams": {
+        "tcp": {
+          "input_samples": 954,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.5208657096774192,
+            "p95_ms": 3.7526798999999946,
+            "max_ms": 4.867807
+          }
+        },
+        "force": {
+          "input_samples": 1062,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.391669206451613,
+            "p95_ms": 2.4649734999999993,
+            "max_ms": 2.704407
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yameng_2/RH_Per_L_PtD.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/yameng_2/RH_Per_L_PtD.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "verified_existing",
+      "input_frames": 157,
+      "output_frames": 153,
+      "dropped_frames": 4,
+      "streams": {
+        "tcp": {
+          "input_samples": 963,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.5724238104575163,
+            "p95_ms": 2.8620578000000014,
+            "max_ms": 4.993328
+          }
+        },
+        "force": {
+          "input_samples": 1045,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.4223224509803918,
+            "p95_ms": 2.618696,
+            "max_ms": 2.717617
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yameng_2/RH_Per_S_DtP.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/yameng_2/RH_Per_S_DtP.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "verified_existing",
+      "input_frames": 183,
+      "output_frames": 178,
+      "dropped_frames": 5,
+      "streams": {
+        "tcp": {
+          "input_samples": 1170,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.5197444831460674,
+            "p95_ms": 2.53693945,
+            "max_ms": 4.45586
+          }
+        },
+        "force": {
+          "input_samples": 1218,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.4432006292134834,
+            "p95_ms": 2.4274072,
+            "max_ms": 3.197613
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yameng_2/RH_Per_S_PtD.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/yameng_2/RH_Per_S_PtD.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "verified_existing",
+      "input_frames": 174,
+      "output_frames": 169,
+      "dropped_frames": 5,
+      "streams": {
+        "tcp": {
+          "input_samples": 1030,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.340319023668639,
+            "p95_ms": 3.133477399999996,
+            "max_ms": 4.542675
+          }
+        },
+        "force": {
+          "input_samples": 1155,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.2648269881656806,
+            "p95_ms": 2.401697199999999,
+            "max_ms": 2.660454
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yangming/LH_Per_C_DtP.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/yangming/LH_Per_C_DtP.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "created",
+      "input_frames": 792,
+      "output_frames": 787,
+      "dropped_frames": 5,
+      "streams": {
+        "tcp": {
+          "input_samples": 4204,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.7832989847522236,
+            "p95_ms": 4.500932899999999,
+            "max_ms": 6.926753
+          }
+        },
+        "force": {
+          "input_samples": 4635,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.4368110432020333,
+            "p95_ms": 3.1131062999999988,
+            "max_ms": 4.864276
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yangming/LH_Per_C_PtD.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/yangming/LH_Per_C_PtD.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "created",
+      "input_frames": 794,
+      "output_frames": 789,
+      "dropped_frames": 5,
+      "streams": {
+        "tcp": {
+          "input_samples": 4287,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.7970389239543725,
+            "p95_ms": 4.340087399999999,
+            "max_ms": 6.502002
+          }
+        },
+        "force": {
+          "input_samples": 4708,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.4727743612167299,
+            "p95_ms": 3.266775999999999,
+            "max_ms": 5.044523
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yangming/LH_Per_L_DtP.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/yangming/LH_Per_L_DtP.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "created",
+      "input_frames": 727,
+      "output_frames": 723,
+      "dropped_frames": 4,
+      "streams": {
+        "tcp": {
+          "input_samples": 4018,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.7269154301521439,
+            "p95_ms": 4.2657461,
+            "max_ms": 5.840823
+          }
+        },
+        "force": {
+          "input_samples": 4379,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.4794914149377592,
+            "p95_ms": 3.4236096,
+            "max_ms": 4.949846
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yangming/LH_Per_L_PtD.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/yangming/LH_Per_L_PtD.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "created",
+      "input_frames": 732,
+      "output_frames": 727,
+      "dropped_frames": 5,
+      "streams": {
+        "tcp": {
+          "input_samples": 4032,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.763503751031637,
+            "p95_ms": 4.414544599999999,
+            "max_ms": 6.409591
+          }
+        },
+        "force": {
+          "input_samples": 4395,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.4170704374140302,
+            "p95_ms": 3.0604114999999976,
+            "max_ms": 5.102533
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yangming/LH_Per_S_DtP.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/yangming/LH_Per_S_DtP.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "created",
+      "input_frames": 893,
+      "output_frames": 888,
+      "dropped_frames": 5,
+      "streams": {
+        "tcp": {
+          "input_samples": 4809,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.7754687094594597,
+            "p95_ms": 4.2383611,
+            "max_ms": 5.974658
+          }
+        },
+        "force": {
+          "input_samples": 5303,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.5467393671171172,
+            "p95_ms": 3.1608514,
+            "max_ms": 5.050844
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yangming/LH_Per_S_PtD.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/yangming/LH_Per_S_PtD.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "created",
+      "input_frames": 843,
+      "output_frames": 838,
+      "dropped_frames": 5,
+      "streams": {
+        "tcp": {
+          "input_samples": 4522,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.794965065632458,
+            "p95_ms": 4.488348899999998,
+            "max_ms": 6.525587
+          }
+        },
+        "force": {
+          "input_samples": 4964,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.4274280978520286,
+            "p95_ms": 3.3482298999999998,
+            "max_ms": 5.218878
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yangming/RH_Per_C_DtP.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/yangming/RH_Per_C_DtP.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "created",
+      "input_frames": 891,
+      "output_frames": 886,
+      "dropped_frames": 5,
+      "streams": {
+        "tcp": {
+          "input_samples": 4828,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.749948749435666,
+            "p95_ms": 4.34199575,
+            "max_ms": 6.495854
+          }
+        },
+        "force": {
+          "input_samples": 5305,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.4412953442437921,
+            "p95_ms": 3.2119315,
+            "max_ms": 5.077072
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yangming/RH_Per_C_PtD.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/yangming/RH_Per_C_PtD.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "created",
+      "input_frames": 930,
+      "output_frames": 925,
+      "dropped_frames": 5,
+      "streams": {
+        "tcp": {
+          "input_samples": 4968,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.7923867178378379,
+            "p95_ms": 4.547607799999999,
+            "max_ms": 6.351095
+          }
+        },
+        "force": {
+          "input_samples": 5455,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.4793716335135134,
+            "p95_ms": 3.1252818,
+            "max_ms": 4.68407
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yangming/RH_Per_L_DtP.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/yangming/RH_Per_L_DtP.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "created",
+      "input_frames": 749,
+      "output_frames": 744,
+      "dropped_frames": 5,
+      "streams": {
+        "tcp": {
+          "input_samples": 4192,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.7504926411290322,
+            "p95_ms": 4.38050805,
+            "max_ms": 6.111535
+          }
+        },
+        "force": {
+          "input_samples": 4591,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.4808807150537633,
+            "p95_ms": 3.1531549,
+            "max_ms": 5.439588
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yangming/RH_Per_L_PtD.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/yangming/RH_Per_L_PtD.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "created",
+      "input_frames": 717,
+      "output_frames": 712,
+      "dropped_frames": 5,
+      "streams": {
+        "tcp": {
+          "input_samples": 3917,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.699846390449438,
+            "p95_ms": 4.1466873999999985,
+            "max_ms": 6.030574
+          }
+        },
+        "force": {
+          "input_samples": 4330,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.4938499536516854,
+            "p95_ms": 3.11962395,
+            "max_ms": 4.955576
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yangming/RH_Per_S_DtP.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/yangming/RH_Per_S_DtP.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "created",
+      "input_frames": 920,
+      "output_frames": 915,
+      "dropped_frames": 5,
+      "streams": {
+        "tcp": {
+          "input_samples": 4936,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.880806193442623,
+            "p95_ms": 4.6919889,
+            "max_ms": 6.012855
+          }
+        },
+        "force": {
+          "input_samples": 5439,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.471957462295082,
+            "p95_ms": 3.5159014999999996,
+            "max_ms": 5.177413
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yangming/RH_Per_S_PtD.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/yangming/RH_Per_S_PtD.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "created",
+      "input_frames": 1045,
+      "output_frames": 1040,
+      "dropped_frames": 5,
+      "streams": {
+        "tcp": {
+          "input_samples": 5552,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.85231985,
+            "p95_ms": 4.613402,
+            "max_ms": 6.112488
+          }
+        },
+        "force": {
+          "input_samples": 6237,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.476382478846154,
+            "p95_ms": 3.3190599499999998,
+            "max_ms": 5.03213
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yangming/attempts/LH_Per_C_DtP/001/raw.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/yangming/attempts/LH_Per_C_DtP/001/raw.h5",
+      "role": "raw",
+      "attempt_status": "result",
+      "action": "created",
+      "input_frames": 1048,
+      "output_frames": 1036,
+      "dropped_frames": 12,
+      "streams": {
+        "tcp": {
+          "input_samples": 5722,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.7167474333976835,
+            "p95_ms": 4.431089,
+            "max_ms": 6.926753
+          }
+        },
+        "force": {
+          "input_samples": 6220,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 7,
+          "residual": {
+            "mean_ms": 1.4272841061776063,
+            "p95_ms": 3.0308052500000002,
+            "max_ms": 4.864276
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yangming/attempts/LH_Per_C_PtD/001/raw.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/yangming/attempts/LH_Per_C_PtD/001/raw.h5",
+      "role": "raw",
+      "attempt_status": "result",
+      "action": "created",
+      "input_frames": 1032,
+      "output_frames": 1022,
+      "dropped_frames": 10,
+      "streams": {
+        "tcp": {
+          "input_samples": 5667,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 1,
+          "residual": {
+            "mean_ms": 1.7438358209393348,
+            "p95_ms": 4.3936684,
+            "max_ms": 11.004967
+          }
+        },
+        "force": {
+          "input_samples": 6178,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 5,
+          "residual": {
+            "mean_ms": 1.439685904109589,
+            "p95_ms": 3.1122540499999998,
+            "max_ms": 7.772411
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yangming/attempts/LH_Per_L_DtP/001/raw.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/yangming/attempts/LH_Per_L_DtP/001/raw.h5",
+      "role": "raw",
+      "attempt_status": "result",
+      "action": "created",
+      "input_frames": 1006,
+      "output_frames": 997,
+      "dropped_frames": 9,
+      "streams": {
+        "tcp": {
+          "input_samples": 5678,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.6941249558676028,
+            "p95_ms": 4.2086928,
+            "max_ms": 13.269693
+          }
+        },
+        "force": {
+          "input_samples": 6094,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 5,
+          "residual": {
+            "mean_ms": 1.461792109327984,
+            "p95_ms": 3.355098199999999,
+            "max_ms": 12.539924
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yangming/attempts/LH_Per_L_PtD/001/raw.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/yangming/attempts/LH_Per_L_PtD/001/raw.h5",
+      "role": "raw",
+      "attempt_status": "result",
+      "action": "created",
+      "input_frames": 973,
+      "output_frames": 964,
+      "dropped_frames": 9,
+      "streams": {
+        "tcp": {
+          "input_samples": 5446,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.7215633350622406,
+            "p95_ms": 4.382054899999997,
+            "max_ms": 10.214654
+          }
+        },
+        "force": {
+          "input_samples": 5889,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 5,
+          "residual": {
+            "mean_ms": 1.4117962717842325,
+            "p95_ms": 3.0213825499999993,
+            "max_ms": 11.140639
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yangming/attempts/LH_Per_S_DtP/001/raw.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/yangming/attempts/LH_Per_S_DtP/001/raw.h5",
+      "role": "raw",
+      "attempt_status": "result",
+      "action": "created",
+      "input_frames": 1148,
+      "output_frames": 1139,
+      "dropped_frames": 9,
+      "streams": {
+        "tcp": {
+          "input_samples": 6296,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.7767598568920107,
+            "p95_ms": 4.264420799999998,
+            "max_ms": 10.877494
+          }
+        },
+        "force": {
+          "input_samples": 6891,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 4,
+          "residual": {
+            "mean_ms": 1.5404381141352064,
+            "p95_ms": 3.1480635999999995,
+            "max_ms": 11.660947
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yangming/attempts/LH_Per_S_PtD/001/raw.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/yangming/attempts/LH_Per_S_PtD/001/raw.h5",
+      "role": "raw",
+      "attempt_status": "result",
+      "action": "created",
+      "input_frames": 1100,
+      "output_frames": 1088,
+      "dropped_frames": 12,
+      "streams": {
+        "tcp": {
+          "input_samples": 6013,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.7563963704044117,
+            "p95_ms": 4.433427149999999,
+            "max_ms": 6.525587
+          }
+        },
+        "force": {
+          "input_samples": 6526,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 7,
+          "residual": {
+            "mean_ms": 1.4229864558823528,
+            "p95_ms": 3.2451127999999905,
+            "max_ms": 5.218878
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yangming/attempts/RH_Per_C_DtP/001/raw.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/yangming/attempts/RH_Per_C_DtP/001/raw.h5",
+      "role": "raw",
+      "attempt_status": "failed",
+      "action": "created",
+      "input_frames": 504,
+      "output_frames": 494,
+      "dropped_frames": 10,
+      "streams": {
+        "tcp": {
+          "input_samples": 2770,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.7575922085020241,
+            "p95_ms": 4.2707247,
+            "max_ms": 14.016261
+          }
+        },
+        "force": {
+          "input_samples": 3003,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 5,
+          "residual": {
+            "mean_ms": 1.50068554048583,
+            "p95_ms": 3.1508065999999992,
+            "max_ms": 8.660401
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yangming/attempts/RH_Per_C_DtP/003/raw.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/yangming/attempts/RH_Per_C_DtP/003/raw.h5",
+      "role": "raw",
+      "attempt_status": "failed",
+      "action": "created",
+      "input_frames": 496,
+      "output_frames": 484,
+      "dropped_frames": 12,
+      "streams": {
+        "tcp": {
+          "input_samples": 2741,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.6510184958677685,
+            "p95_ms": 3.8940581499999993,
+            "max_ms": 5.908028
+          }
+        },
+        "force": {
+          "input_samples": 2926,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 7,
+          "residual": {
+            "mean_ms": 1.4516145785123966,
+            "p95_ms": 2.9325404,
+            "max_ms": 4.804669
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yangming/attempts/RH_Per_C_DtP/004/raw.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/yangming/attempts/RH_Per_C_DtP/004/raw.h5",
+      "role": "raw",
+      "attempt_status": "result",
+      "action": "created",
+      "input_frames": 1170,
+      "output_frames": 1160,
+      "dropped_frames": 10,
+      "streams": {
+        "tcp": {
+          "input_samples": 6452,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.7125927594827584,
+            "p95_ms": 4.31448035,
+            "max_ms": 6.495854
+          }
+        },
+        "force": {
+          "input_samples": 7023,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 5,
+          "residual": {
+            "mean_ms": 1.4402452043103446,
+            "p95_ms": 3.0534035499999996,
+            "max_ms": 14.221957
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yangming/attempts/RH_Per_C_PtD/001/raw.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/yangming/attempts/RH_Per_C_PtD/001/raw.h5",
+      "role": "raw",
+      "attempt_status": "result",
+      "action": "created",
+      "input_frames": 1380,
+      "output_frames": 1370,
+      "dropped_frames": 10,
+      "streams": {
+        "tcp": {
+          "input_samples": 7529,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.7642152386861312,
+            "p95_ms": 4.4297521999999985,
+            "max_ms": 9.57803
+          }
+        },
+        "force": {
+          "input_samples": 8262,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 5,
+          "residual": {
+            "mean_ms": 1.4506582744525547,
+            "p95_ms": 2.98634115,
+            "max_ms": 11.245375
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yangming/attempts/RH_Per_L_DtP/001/raw.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/yangming/attempts/RH_Per_L_DtP/001/raw.h5",
+      "role": "raw",
+      "attempt_status": "result",
+      "action": "created",
+      "input_frames": 984,
+      "output_frames": 979,
+      "dropped_frames": 5,
+      "streams": {
+        "tcp": {
+          "input_samples": 5604,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.6980676772216547,
+            "p95_ms": 4.347103899999998,
+            "max_ms": 13.065293
+          }
+        },
+        "force": {
+          "input_samples": 6080,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 1,
+          "residual": {
+            "mean_ms": 1.4538501389172624,
+            "p95_ms": 3.1435926999999997,
+            "max_ms": 13.843613
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yangming/attempts/RH_Per_L_PtD/001/raw.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/yangming/attempts/RH_Per_L_PtD/001/raw.h5",
+      "role": "raw",
+      "attempt_status": "result",
+      "action": "created",
+      "input_frames": 1105,
+      "output_frames": 1096,
+      "dropped_frames": 9,
+      "streams": {
+        "tcp": {
+          "input_samples": 6165,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.6149243731751823,
+            "p95_ms": 4.046538999999999,
+            "max_ms": 9.336236
+          }
+        },
+        "force": {
+          "input_samples": 6739,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 5,
+          "residual": {
+            "mean_ms": 1.4606854206204378,
+            "p95_ms": 3.0788374999999997,
+            "max_ms": 10.420172
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yangming/attempts/RH_Per_S_DtP/001/raw.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/yangming/attempts/RH_Per_S_DtP/001/raw.h5",
+      "role": "raw",
+      "attempt_status": "result",
+      "action": "created",
+      "input_frames": 1186,
+      "output_frames": 1176,
+      "dropped_frames": 10,
+      "streams": {
+        "tcp": {
+          "input_samples": 6497,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.818501742346939,
+            "p95_ms": 4.591432,
+            "max_ms": 12.236603
+          }
+        },
+        "force": {
+          "input_samples": 7081,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 6,
+          "residual": {
+            "mean_ms": 1.4721705518707482,
+            "p95_ms": 3.36587375,
+            "max_ms": 13.217174
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yangming/attempts/RH_Per_S_PtD/003/raw.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/yangming/attempts/RH_Per_S_PtD/003/raw.h5",
+      "role": "raw",
+      "attempt_status": "result",
+      "action": "created",
+      "input_frames": 1443,
+      "output_frames": 1433,
+      "dropped_frames": 10,
+      "streams": {
+        "tcp": {
+          "input_samples": 7827,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.7917465729239357,
+            "p95_ms": 4.504968599999998,
+            "max_ms": 6.112488
+          }
+        },
+        "force": {
+          "input_samples": 8708,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 5,
+          "residual": {
+            "mean_ms": 1.4313257264480113,
+            "p95_ms": 3.2627841999999996,
+            "max_ms": 5.03213
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yuhan_L/RH_Per_C_DtP.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/yuhan_L/RH_Per_C_DtP.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "created",
+      "input_frames": 860,
+      "output_frames": 855,
+      "dropped_frames": 5,
+      "streams": {
+        "tcp": {
+          "input_samples": 4220,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.9700099789473684,
+            "p95_ms": 4.6908297999999995,
+            "max_ms": 7.736816
+          }
+        },
+        "force": {
+          "input_samples": 4616,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.7129369192982455,
+            "p95_ms": 3.814759899999998,
+            "max_ms": 5.246037
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yuhan_L/RH_Per_C_PtD.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/yuhan_L/RH_Per_C_PtD.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "created",
+      "input_frames": 829,
+      "output_frames": 825,
+      "dropped_frames": 4,
+      "streams": {
+        "tcp": {
+          "input_samples": 4108,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 2.002938878787879,
+            "p95_ms": 5.034015999999999,
+            "max_ms": 13.522544
+          }
+        },
+        "force": {
+          "input_samples": 4366,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.6648218545454547,
+            "p95_ms": 3.791876799999999,
+            "max_ms": 14.646503
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yuhan_L/RH_Per_L_DtP.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/yuhan_L/RH_Per_L_DtP.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "created",
+      "input_frames": 776,
+      "output_frames": 771,
+      "dropped_frames": 5,
+      "streams": {
+        "tcp": {
+          "input_samples": 3824,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.9338002075226977,
+            "p95_ms": 4.6979635,
+            "max_ms": 7.880803
+          }
+        },
+        "force": {
+          "input_samples": 4098,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.710389701686122,
+            "p95_ms": 3.6665945,
+            "max_ms": 5.294122
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yuhan_L/RH_Per_L_PtD.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/yuhan_L/RH_Per_L_PtD.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "created",
+      "input_frames": 805,
+      "output_frames": 801,
+      "dropped_frames": 4,
+      "streams": {
+        "tcp": {
+          "input_samples": 3889,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 2.0276986679151063,
+            "p95_ms": 4.937147,
+            "max_ms": 7.202806
+          }
+        },
+        "force": {
+          "input_samples": 4103,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.6326110636704119,
+            "p95_ms": 3.647556,
+            "max_ms": 5.207284
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yuhan_L/RH_Per_S_DtP.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/yuhan_L/RH_Per_S_DtP.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "created",
+      "input_frames": 1089,
+      "output_frames": 1084,
+      "dropped_frames": 5,
+      "streams": {
+        "tcp": {
+          "input_samples": 5281,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 2.014469763837638,
+            "p95_ms": 4.960450049999992,
+            "max_ms": 6.90382
+          }
+        },
+        "force": {
+          "input_samples": 5662,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.7315283957564576,
+            "p95_ms": 3.7614292,
+            "max_ms": 5.35237
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yuhan_L/RH_Per_S_PtD.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/yuhan_L/RH_Per_S_PtD.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "created",
+      "input_frames": 996,
+      "output_frames": 992,
+      "dropped_frames": 4,
+      "streams": {
+        "tcp": {
+          "input_samples": 4828,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 2.072601142137097,
+            "p95_ms": 5.119567199999998,
+            "max_ms": 11.945988
+          }
+        },
+        "force": {
+          "input_samples": 5071,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.7930501189516128,
+            "p95_ms": 3.9062163999999986,
+            "max_ms": 14.032016
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yuhan_L/attempts/RH_Per_C_DtP/001/raw.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/yuhan_L/attempts/RH_Per_C_DtP/001/raw.h5",
+      "role": "raw",
+      "attempt_status": "result",
+      "action": "created",
+      "input_frames": 1192,
+      "output_frames": 1182,
+      "dropped_frames": 10,
+      "streams": {
+        "tcp": {
+          "input_samples": 6012,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.9289507157360406,
+            "p95_ms": 4.6241663000000015,
+            "max_ms": 7.736816
+          }
+        },
+        "force": {
+          "input_samples": 6512,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 6,
+          "residual": {
+            "mean_ms": 1.6800980989847716,
+            "p95_ms": 3.762257850000001,
+            "max_ms": 9.49711
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yuhan_L/attempts/RH_Per_C_PtD/001/raw.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/yuhan_L/attempts/RH_Per_C_PtD/001/raw.h5",
+      "role": "raw",
+      "attempt_status": "result",
+      "action": "created",
+      "input_frames": 1082,
+      "output_frames": 1072,
+      "dropped_frames": 10,
+      "streams": {
+        "tcp": {
+          "input_samples": 5472,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.9707404197761194,
+            "p95_ms": 4.974221399999998,
+            "max_ms": 13.522544
+          }
+        },
+        "force": {
+          "input_samples": 5768,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 5,
+          "residual": {
+            "mean_ms": 1.660420615671642,
+            "p95_ms": 3.7859001999999986,
+            "max_ms": 15.612251
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yuhan_L/attempts/RH_Per_L_DtP/001/raw.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/yuhan_L/attempts/RH_Per_L_DtP/001/raw.h5",
+      "role": "raw",
+      "attempt_status": "failed",
+      "action": "created",
+      "input_frames": 122,
+      "output_frames": 111,
+      "dropped_frames": 11,
+      "streams": {
+        "tcp": {
+          "input_samples": 622,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 1,
+          "residual": {
+            "mean_ms": 1.9686732072072075,
+            "p95_ms": 4.6014075,
+            "max_ms": 5.593306
+          }
+        },
+        "force": {
+          "input_samples": 617,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 6,
+          "residual": {
+            "mean_ms": 1.621107693693694,
+            "p95_ms": 3.9610705,
+            "max_ms": 4.422546
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yuhan_L/attempts/RH_Per_L_DtP/002/raw.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/yuhan_L/attempts/RH_Per_L_DtP/002/raw.h5",
+      "role": "raw",
+      "attempt_status": "result",
+      "action": "created",
+      "input_frames": 1039,
+      "output_frames": 1029,
+      "dropped_frames": 10,
+      "streams": {
+        "tcp": {
+          "input_samples": 5266,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.92049842079689,
+            "p95_ms": 4.761385199999999,
+            "max_ms": 7.880803
+          }
+        },
+        "force": {
+          "input_samples": 5636,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 5,
+          "residual": {
+            "mean_ms": 1.649418696793003,
+            "p95_ms": 3.5100901999999996,
+            "max_ms": 7.984578
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yuhan_L/attempts/RH_Per_L_PtD/001/raw.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/yuhan_L/attempts/RH_Per_L_PtD/001/raw.h5",
+      "role": "raw",
+      "attempt_status": "failed",
+      "action": "created",
+      "input_frames": 193,
+      "output_frames": 182,
+      "dropped_frames": 11,
+      "streams": {
+        "tcp": {
+          "input_samples": 963,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 2.014917543956044,
+            "p95_ms": 4.96624425,
+            "max_ms": 9.3383
+          }
+        },
+        "force": {
+          "input_samples": 1001,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 6,
+          "residual": {
+            "mean_ms": 1.5798049340659341,
+            "p95_ms": 3.5660973499999975,
+            "max_ms": 5.21732
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yuhan_L/attempts/RH_Per_L_PtD/003/raw.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/yuhan_L/attempts/RH_Per_L_PtD/003/raw.h5",
+      "role": "raw",
+      "attempt_status": "failed",
+      "action": "created",
+      "input_frames": 712,
+      "output_frames": 702,
+      "dropped_frames": 10,
+      "streams": {
+        "tcp": {
+          "input_samples": 3553,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.9982021495726494,
+            "p95_ms": 4.813865399999999,
+            "max_ms": 7.488476
+          }
+        },
+        "force": {
+          "input_samples": 3683,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 6,
+          "residual": {
+            "mean_ms": 1.621119566951567,
+            "p95_ms": 3.5676584,
+            "max_ms": 6.867127
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yuhan_L/attempts/RH_Per_L_PtD/004/raw.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/yuhan_L/attempts/RH_Per_L_PtD/004/raw.h5",
+      "role": "raw",
+      "attempt_status": "result",
+      "action": "created",
+      "input_frames": 1071,
+      "output_frames": 1063,
+      "dropped_frames": 8,
+      "streams": {
+        "tcp": {
+          "input_samples": 5355,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.9758980498588903,
+            "p95_ms": 4.8265893,
+            "max_ms": 15.082444
+          }
+        },
+        "force": {
+          "input_samples": 5633,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 3,
+          "residual": {
+            "mean_ms": 1.653522640639699,
+            "p95_ms": 3.6145235,
+            "max_ms": 15.760191
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yuhan_L/attempts/RH_Per_S_DtP/001/raw.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/yuhan_L/attempts/RH_Per_S_DtP/001/raw.h5",
+      "role": "raw",
+      "attempt_status": "failed",
+      "action": "created",
+      "input_frames": 585,
+      "output_frames": 575,
+      "dropped_frames": 10,
+      "streams": {
+        "tcp": {
+          "input_samples": 2906,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 1,
+          "residual": {
+            "mean_ms": 1.9475860504347826,
+            "p95_ms": 4.703081299999999,
+            "max_ms": 7.079633
+          }
+        },
+        "force": {
+          "input_samples": 3115,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 5,
+          "residual": {
+            "mean_ms": 1.6262710260869566,
+            "p95_ms": 3.716523099999999,
+            "max_ms": 5.81991
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yuhan_L/attempts/RH_Per_S_DtP/002/raw.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/yuhan_L/attempts/RH_Per_S_DtP/002/raw.h5",
+      "role": "raw",
+      "attempt_status": "failed",
+      "action": "created",
+      "input_frames": 815,
+      "output_frames": 805,
+      "dropped_frames": 10,
+      "streams": {
+        "tcp": {
+          "input_samples": 3992,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 2.02136470310559,
+            "p95_ms": 5.0421862,
+            "max_ms": 16.250855
+          }
+        },
+        "force": {
+          "input_samples": 4265,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 5,
+          "residual": {
+            "mean_ms": 1.6375727714285715,
+            "p95_ms": 3.8094486,
+            "max_ms": 11.791037
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yuhan_L/attempts/RH_Per_S_DtP/003/raw.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/yuhan_L/attempts/RH_Per_S_DtP/003/raw.h5",
+      "role": "raw",
+      "attempt_status": "failed",
+      "action": "created",
+      "input_frames": 240,
+      "output_frames": 229,
+      "dropped_frames": 11,
+      "streams": {
+        "tcp": {
+          "input_samples": 1224,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.9705224148471616,
+            "p95_ms": 4.950041399999999,
+            "max_ms": 6.514571
+          }
+        },
+        "force": {
+          "input_samples": 1261,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 6,
+          "residual": {
+            "mean_ms": 1.587332672489083,
+            "p95_ms": 3.3822601999999997,
+            "max_ms": 4.06732
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yuhan_L/attempts/RH_Per_S_DtP/004/raw.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/yuhan_L/attempts/RH_Per_S_DtP/004/raw.h5",
+      "role": "raw",
+      "attempt_status": "result",
+      "action": "created",
+      "input_frames": 1361,
+      "output_frames": 1351,
+      "dropped_frames": 10,
+      "streams": {
+        "tcp": {
+          "input_samples": 6769,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.9843971369356033,
+            "p95_ms": 4.8186295,
+            "max_ms": 13.673798
+          }
+        },
+        "force": {
+          "input_samples": 7203,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 5,
+          "residual": {
+            "mean_ms": 1.7076293974833459,
+            "p95_ms": 3.732227,
+            "max_ms": 14.094219
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yuhan_L/attempts/RH_Per_S_PtD/001/raw.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/yuhan_L/attempts/RH_Per_S_PtD/001/raw.h5",
+      "role": "raw",
+      "attempt_status": "failed",
+      "action": "created",
+      "input_frames": 692,
+      "output_frames": 683,
+      "dropped_frames": 9,
+      "streams": {
+        "tcp": {
+          "input_samples": 3408,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 2.1255932737920937,
+            "p95_ms": 4.939673,
+            "max_ms": 13.176819
+          }
+        },
+        "force": {
+          "input_samples": 3583,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 4,
+          "residual": {
+            "mean_ms": 1.7925136017569547,
+            "p95_ms": 3.7028756999999985,
+            "max_ms": 12.499072
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yuhan_L/attempts/RH_Per_S_PtD/003/raw.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/yuhan_L/attempts/RH_Per_S_PtD/003/raw.h5",
+      "role": "raw",
+      "attempt_status": "failed",
+      "action": "created",
+      "input_frames": 467,
+      "output_frames": 457,
+      "dropped_frames": 10,
+      "streams": {
+        "tcp": {
+          "input_samples": 2270,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 2.096537855579869,
+            "p95_ms": 4.798026599999999,
+            "max_ms": 5.834795
+          }
+        },
+        "force": {
+          "input_samples": 2346,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 6,
+          "residual": {
+            "mean_ms": 1.797703899343545,
+            "p95_ms": 3.8809185999999998,
+            "max_ms": 5.270337
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yuhan_L/attempts/RH_Per_S_PtD/004/raw.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/yuhan_L/attempts/RH_Per_S_PtD/004/raw.h5",
+      "role": "raw",
+      "attempt_status": "failed",
+      "action": "created",
+      "input_frames": 431,
+      "output_frames": 421,
+      "dropped_frames": 10,
+      "streams": {
+        "tcp": {
+          "input_samples": 2079,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 2.0541078859857484,
+            "p95_ms": 4.989893,
+            "max_ms": 7.413551
+          }
+        },
+        "force": {
+          "input_samples": 2175,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 6,
+          "residual": {
+            "mean_ms": 1.6996694893111641,
+            "p95_ms": 3.831125,
+            "max_ms": 4.886183
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yuhan_L/attempts/RH_Per_S_PtD/005/raw.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/yuhan_L/attempts/RH_Per_S_PtD/005/raw.h5",
+      "role": "raw",
+      "attempt_status": "failed",
+      "action": "created",
+      "input_frames": 373,
+      "output_frames": 362,
+      "dropped_frames": 11,
+      "streams": {
+        "tcp": {
+          "input_samples": 1806,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.9703321823204418,
+            "p95_ms": 4.9034322,
+            "max_ms": 7.448103
+          }
+        },
+        "force": {
+          "input_samples": 1884,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 6,
+          "residual": {
+            "mean_ms": 1.643119174033149,
+            "p95_ms": 3.8377919499999997,
+            "max_ms": 5.311344
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yuhan_L/attempts/RH_Per_S_PtD/006/raw.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/yuhan_L/attempts/RH_Per_S_PtD/006/raw.h5",
+      "role": "raw",
+      "attempt_status": "failed",
+      "action": "created",
+      "input_frames": 386,
+      "output_frames": 381,
+      "dropped_frames": 5,
+      "streams": {
+        "tcp": {
+          "input_samples": 1890,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.8867232598425199,
+            "p95_ms": 5.026199,
+            "max_ms": 7.288857
+          }
+        },
+        "force": {
+          "input_samples": 1972,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 1,
+          "residual": {
+            "mean_ms": 1.7368961679790025,
+            "p95_ms": 3.908102,
+            "max_ms": 11.595053
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yuhan_L/attempts/RH_Per_S_PtD/007/raw.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/yuhan_L/attempts/RH_Per_S_PtD/007/raw.h5",
+      "role": "raw",
+      "attempt_status": "result",
+      "action": "created",
+      "input_frames": 1258,
+      "output_frames": 1249,
+      "dropped_frames": 9,
+      "streams": {
+        "tcp": {
+          "input_samples": 6247,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.9953263738991192,
+            "p95_ms": 4.948087799999998,
+            "max_ms": 11.945988
+          }
+        },
+        "force": {
+          "input_samples": 6568,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 5,
+          "residual": {
+            "mean_ms": 1.733842760608487,
+            "p95_ms": 3.8145794,
+            "max_ms": 14.032016
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yuhan_R/RH_Per_C_DtP.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/yuhan_R/RH_Per_C_DtP.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "created",
+      "input_frames": 922,
+      "output_frames": 917,
+      "dropped_frames": 5,
+      "streams": {
+        "tcp": {
+          "input_samples": 4784,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.8103027851690294,
+            "p95_ms": 4.49835,
+            "max_ms": 6.015091
+          }
+        },
+        "force": {
+          "input_samples": 5261,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.5753128538713193,
+            "p95_ms": 3.3498891999999985,
+            "max_ms": 5.208876
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yuhan_R/RH_Per_C_PtD.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/yuhan_R/RH_Per_C_PtD.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "created",
+      "input_frames": 1002,
+      "output_frames": 998,
+      "dropped_frames": 4,
+      "streams": {
+        "tcp": {
+          "input_samples": 5127,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.906031736472946,
+            "p95_ms": 4.6507094,
+            "max_ms": 6.722278
+          }
+        },
+        "force": {
+          "input_samples": 5711,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.5297430430861723,
+            "p95_ms": 3.2229925,
+            "max_ms": 6.492874
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yuhan_R/RH_Per_L_DtP.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/yuhan_R/RH_Per_L_DtP.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "created",
+      "input_frames": 852,
+      "output_frames": 848,
+      "dropped_frames": 4,
+      "streams": {
+        "tcp": {
+          "input_samples": 4516,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.7615162959905664,
+            "p95_ms": 4.56300485,
+            "max_ms": 6.27863
+          }
+        },
+        "force": {
+          "input_samples": 4918,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.5157180070754717,
+            "p95_ms": 3.01164945,
+            "max_ms": 4.825134
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yuhan_R/RH_Per_L_PtD.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/yuhan_R/RH_Per_L_PtD.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "created",
+      "input_frames": 887,
+      "output_frames": 882,
+      "dropped_frames": 5,
+      "streams": {
+        "tcp": {
+          "input_samples": 4592,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.859118431972789,
+            "p95_ms": 4.710522499999996,
+            "max_ms": 6.958986
+          }
+        },
+        "force": {
+          "input_samples": 5068,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.554118896825397,
+            "p95_ms": 3.3015632499999983,
+            "max_ms": 5.244802
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yuhan_R/RH_Per_S_DtP.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/yuhan_R/RH_Per_S_DtP.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "created",
+      "input_frames": 1203,
+      "output_frames": 1198,
+      "dropped_frames": 5,
+      "streams": {
+        "tcp": {
+          "input_samples": 6173,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.8786808873121872,
+            "p95_ms": 4.5433897,
+            "max_ms": 6.955998
+          }
+        },
+        "force": {
+          "input_samples": 6870,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.5703847604340566,
+            "p95_ms": 3.454466149999999,
+            "max_ms": 5.37312
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yuhan_R/RH_Per_S_PtD.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/yuhan_R/RH_Per_S_PtD.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "created",
+      "input_frames": 1057,
+      "output_frames": 1053,
+      "dropped_frames": 4,
+      "streams": {
+        "tcp": {
+          "input_samples": 5482,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.8836339145299148,
+            "p95_ms": 4.4383175999999995,
+            "max_ms": 6.742795
+          }
+        },
+        "force": {
+          "input_samples": 6067,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.517158400759734,
+            "p95_ms": 3.3685797999999987,
+            "max_ms": 5.193625
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yuhan_R/attempts/RH_Per_C_DtP/001/raw.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/yuhan_R/attempts/RH_Per_C_DtP/001/raw.h5",
+      "role": "raw",
+      "attempt_status": "result",
+      "action": "created",
+      "input_frames": 1223,
+      "output_frames": 1211,
+      "dropped_frames": 12,
+      "streams": {
+        "tcp": {
+          "input_samples": 6516,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.8005298744838978,
+            "p95_ms": 4.4744835,
+            "max_ms": 6.015091
+          }
+        },
+        "force": {
+          "input_samples": 7042,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 8,
+          "residual": {
+            "mean_ms": 1.5656653963666392,
+            "p95_ms": 3.2791275,
+            "max_ms": 5.208876
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yuhan_R/attempts/RH_Per_C_PtD/001/raw.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/yuhan_R/attempts/RH_Per_C_PtD/001/raw.h5",
+      "role": "raw",
+      "attempt_status": "result",
+      "action": "created",
+      "input_frames": 1295,
+      "output_frames": 1285,
+      "dropped_frames": 10,
+      "streams": {
+        "tcp": {
+          "input_samples": 6786,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.8576158054474707,
+            "p95_ms": 4.6545678,
+            "max_ms": 6.722278
+          }
+        },
+        "force": {
+          "input_samples": 7388,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 5,
+          "residual": {
+            "mean_ms": 1.5564414614785993,
+            "p95_ms": 3.2451154,
+            "max_ms": 15.398337
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yuhan_R/attempts/RH_Per_L_DtP/001/raw.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/yuhan_R/attempts/RH_Per_L_DtP/001/raw.h5",
+      "role": "raw",
+      "attempt_status": "result",
+      "action": "created",
+      "input_frames": 1098,
+      "output_frames": 1090,
+      "dropped_frames": 8,
+      "streams": {
+        "tcp": {
+          "input_samples": 5939,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.7058231486238533,
+            "p95_ms": 4.4302451,
+            "max_ms": 6.27863
+          }
+        },
+        "force": {
+          "input_samples": 6419,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 4,
+          "residual": {
+            "mean_ms": 1.4955936825688074,
+            "p95_ms": 3.0114201499999997,
+            "max_ms": 11.108236
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yuhan_R/attempts/RH_Per_L_PtD/002/raw.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/yuhan_R/attempts/RH_Per_L_PtD/002/raw.h5",
+      "role": "raw",
+      "attempt_status": "result",
+      "action": "created",
+      "input_frames": 1183,
+      "output_frames": 1173,
+      "dropped_frames": 10,
+      "streams": {
+        "tcp": {
+          "input_samples": 6244,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.8395501346973573,
+            "p95_ms": 4.6269605999999985,
+            "max_ms": 16.009153
+          }
+        },
+        "force": {
+          "input_samples": 6842,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 5,
+          "residual": {
+            "mean_ms": 1.532523283887468,
+            "p95_ms": 3.2221029999999993,
+            "max_ms": 12.794815
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yuhan_R/attempts/RH_Per_S_DtP/001/raw.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/yuhan_R/attempts/RH_Per_S_DtP/001/raw.h5",
+      "role": "raw",
+      "attempt_status": "result",
+      "action": "created",
+      "input_frames": 1446,
+      "output_frames": 1436,
+      "dropped_frames": 10,
+      "streams": {
+        "tcp": {
+          "input_samples": 7593,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.8107880403899719,
+            "p95_ms": 4.4631075000000004,
+            "max_ms": 6.955998
+          }
+        },
+        "force": {
+          "input_samples": 8322,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 6,
+          "residual": {
+            "mean_ms": 1.5432633809192202,
+            "p95_ms": 3.37496875,
+            "max_ms": 5.37312
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yuhan_R/attempts/RH_Per_S_PtD/001/raw.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/yuhan_R/attempts/RH_Per_S_PtD/001/raw.h5",
+      "role": "raw",
+      "attempt_status": "result",
+      "action": "created",
+      "input_frames": 1374,
+      "output_frames": 1363,
+      "dropped_frames": 11,
+      "streams": {
+        "tcp": {
+          "input_samples": 7226,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.8390738855465885,
+            "p95_ms": 4.394822399999997,
+            "max_ms": 15.097022
+          }
+        },
+        "force": {
+          "input_samples": 7945,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 7,
+          "residual": {
+            "mean_ms": 1.5050815392516506,
+            "p95_ms": 3.335472899999999,
+            "max_ms": 8.178583
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/zhongkai/LH_Per_C_DtP.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/zhongkai/LH_Per_C_DtP.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "verified_existing",
+      "input_frames": 214,
+      "output_frames": 210,
+      "dropped_frames": 4,
+      "streams": {
+        "tcp": {
+          "input_samples": 1303,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.6983667571428571,
+            "p95_ms": 3.905113449999998,
+            "max_ms": 4.56525
+          }
+        },
+        "force": {
+          "input_samples": 1429,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.4638071523809524,
+            "p95_ms": 2.57892325,
+            "max_ms": 2.798014
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/zhongkai/LH_Per_C_PtD.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/zhongkai/LH_Per_C_PtD.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "verified_existing",
+      "input_frames": 215,
+      "output_frames": 211,
+      "dropped_frames": 4,
+      "streams": {
+        "tcp": {
+          "input_samples": 1302,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.5595425450236968,
+            "p95_ms": 2.843158,
+            "max_ms": 4.629368
+          }
+        },
+        "force": {
+          "input_samples": 1432,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.2938723981042652,
+            "p95_ms": 2.340438,
+            "max_ms": 2.624905
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/zhongkai/LH_Per_L_DtP.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/zhongkai/LH_Per_L_DtP.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "verified_existing",
+      "input_frames": 211,
+      "output_frames": 207,
+      "dropped_frames": 4,
+      "streams": {
+        "tcp": {
+          "input_samples": 1277,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.4719020096618358,
+            "p95_ms": 3.6203492999999995,
+            "max_ms": 4.998889
+          }
+        },
+        "force": {
+          "input_samples": 1400,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.3706081739130436,
+            "p95_ms": 2.5839071999999996,
+            "max_ms": 2.692617
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/zhongkai/LH_Per_L_PtD.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/zhongkai/LH_Per_L_PtD.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "verified_existing",
+      "input_frames": 209,
+      "output_frames": 204,
+      "dropped_frames": 5,
+      "streams": {
+        "tcp": {
+          "input_samples": 1284,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.3663430490196078,
+            "p95_ms": 3.7904811499999984,
+            "max_ms": 5.02465
+          }
+        },
+        "force": {
+          "input_samples": 1390,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.0733772647058824,
+            "p95_ms": 2.4263685500000003,
+            "max_ms": 2.657027
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/zhongkai/LH_Per_S_DtP.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/zhongkai/LH_Per_S_DtP.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "verified_existing",
+      "input_frames": 228,
+      "output_frames": 223,
+      "dropped_frames": 5,
+      "streams": {
+        "tcp": {
+          "input_samples": 1379,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.562305533632287,
+            "p95_ms": 3.3136293,
+            "max_ms": 4.926445
+          }
+        },
+        "force": {
+          "input_samples": 1518,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.3840535022421527,
+            "p95_ms": 2.5409839,
+            "max_ms": 2.654834
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/zhongkai/LH_Per_S_PtD.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/zhongkai/LH_Per_S_PtD.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "verified_existing",
+      "input_frames": 223,
+      "output_frames": 219,
+      "dropped_frames": 4,
+      "streams": {
+        "tcp": {
+          "input_samples": 1355,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.3431593835616438,
+            "p95_ms": 3.9583899999999996,
+            "max_ms": 4.710873
+          }
+        },
+        "force": {
+          "input_samples": 1477,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.1943052328767123,
+            "p95_ms": 2.2420798,
+            "max_ms": 2.524884
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/zhongkai/RH_Per_C_DtP.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/zhongkai/RH_Per_C_DtP.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "verified_existing",
+      "input_frames": 178,
+      "output_frames": 173,
+      "dropped_frames": 5,
+      "streams": {
+        "tcp": {
+          "input_samples": 1081,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.515559485549133,
+            "p95_ms": 3.79545,
+            "max_ms": 4.737064
+          }
+        },
+        "force": {
+          "input_samples": 1169,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.2042565086705201,
+            "p95_ms": 2.6136778,
+            "max_ms": 3.795492
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/zhongkai/RH_Per_C_PtD.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/zhongkai/RH_Per_C_PtD.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "verified_existing",
+      "input_frames": 181,
+      "output_frames": 176,
+      "dropped_frames": 5,
+      "streams": {
+        "tcp": {
+          "input_samples": 1165,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.4537053181818183,
+            "p95_ms": 2.3548165,
+            "max_ms": 4.271641
+          }
+        },
+        "force": {
+          "input_samples": 1208,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.1562307215909091,
+            "p95_ms": 1.93906825,
+            "max_ms": 2.552151
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/zhongkai/RH_Per_L_DtP.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/zhongkai/RH_Per_L_DtP.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "verified_existing",
+      "input_frames": 174,
+      "output_frames": 169,
+      "dropped_frames": 5,
+      "streams": {
+        "tcp": {
+          "input_samples": 1078,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.622752846153846,
+            "p95_ms": 3.0091795999999995,
+            "max_ms": 4.500264
+          }
+        },
+        "force": {
+          "input_samples": 1162,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.4328445857988166,
+            "p95_ms": 2.4227572,
+            "max_ms": 2.64345
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/zhongkai/RH_Per_L_PtD.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/zhongkai/RH_Per_L_PtD.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "verified_existing",
+      "input_frames": 177,
+      "output_frames": 173,
+      "dropped_frames": 4,
+      "streams": {
+        "tcp": {
+          "input_samples": 1061,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.2585153930635837,
+            "p95_ms": 3.7568824000000003,
+            "max_ms": 4.656227
+          }
+        },
+        "force": {
+          "input_samples": 1182,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.1405413410404623,
+            "p95_ms": 2.3493732,
+            "max_ms": 2.974751
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/zhongkai/RH_Per_S_DtP.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/zhongkai/RH_Per_S_DtP.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "verified_existing",
+      "input_frames": 196,
+      "output_frames": 191,
+      "dropped_frames": 5,
+      "streams": {
+        "tcp": {
+          "input_samples": 1196,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.561038837696335,
+            "p95_ms": 2.982023,
+            "max_ms": 4.869701
+          }
+        },
+        "force": {
+          "input_samples": 1308,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.431949445026178,
+            "p95_ms": 2.5648045,
+            "max_ms": 2.689051
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/zhongkai/RH_Per_S_PtD.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/zhongkai/RH_Per_S_PtD.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "verified_existing",
+      "input_frames": 191,
+      "output_frames": 187,
+      "dropped_frames": 4,
+      "streams": {
+        "tcp": {
+          "input_samples": 1154,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.5450351604278076,
+            "p95_ms": 4.167734299999992,
+            "max_ms": 4.839645
+          }
+        },
+        "force": {
+          "input_samples": 1272,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.369124919786096,
+            "p95_ms": 2.3004203,
+            "max_ms": 2.492831
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/zhongyao/LH_Per_C_DtP.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/zhongyao/LH_Per_C_DtP.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "created",
+      "input_frames": 190,
+      "output_frames": 185,
+      "dropped_frames": 5,
+      "streams": {
+        "tcp": {
+          "input_samples": 1164,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.2845866216216217,
+            "p95_ms": 3.1397445999999998,
+            "max_ms": 4.984993
+          }
+        },
+        "force": {
+          "input_samples": 1268,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.1227395675675675,
+            "p95_ms": 2.6017126,
+            "max_ms": 2.744266
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/zhongyao/LH_Per_L_DtP.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/zhongyao/LH_Per_L_DtP.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "verified_existing",
+      "input_frames": 180,
+      "output_frames": 176,
+      "dropped_frames": 4,
+      "streams": {
+        "tcp": {
+          "input_samples": 1112,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.6558348522727273,
+            "p95_ms": 2.90209125,
+            "max_ms": 4.831127
+          }
+        },
+        "force": {
+          "input_samples": 1201,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.3563621136363637,
+            "p95_ms": 2.6039835,
+            "max_ms": 2.804537
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/zhongyao/RH_Per_C_DtP.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/zhongyao/RH_Per_C_DtP.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "verified_existing",
+      "input_frames": 225,
+      "output_frames": 221,
+      "dropped_frames": 4,
+      "streams": {
+        "tcp": {
+          "input_samples": 1403,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.4503824117647057,
+            "p95_ms": 2.629172,
+            "max_ms": 4.885034
+          }
+        },
+        "force": {
+          "input_samples": 1496,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.3468757511312217,
+            "p95_ms": 2.309253,
+            "max_ms": 2.608166
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/zhongyao/RH_Per_C_PtD.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/zhongyao/RH_Per_C_PtD.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "verified_existing",
+      "input_frames": 224,
+      "output_frames": 220,
+      "dropped_frames": 4,
+      "streams": {
+        "tcp": {
+          "input_samples": 1439,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.3096158181818185,
+            "p95_ms": 2.0788808999999997,
+            "max_ms": 4.106221
+          }
+        },
+        "force": {
+          "input_samples": 1499,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.0865144363636365,
+            "p95_ms": 2.1784275999999996,
+            "max_ms": 2.664059
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/zhongyao/RH_Per_L_DtP.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/zhongyao/RH_Per_L_DtP.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "verified_existing",
+      "input_frames": 221,
+      "output_frames": 217,
+      "dropped_frames": 4,
+      "streams": {
+        "tcp": {
+          "input_samples": 1420,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.2563074562211982,
+            "p95_ms": 2.2137112,
+            "max_ms": 4.290074
+          }
+        },
+        "force": {
+          "input_samples": 1474,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.0993786405529955,
+            "p95_ms": 2.429332999999998,
+            "max_ms": 2.947419
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/zhongyao/RH_Per_L_PtD.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/zhongyao/RH_Per_L_PtD.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "verified_existing",
+      "input_frames": 222,
+      "output_frames": 217,
+      "dropped_frames": 5,
+      "streams": {
+        "tcp": {
+          "input_samples": 1388,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.5650861290322582,
+            "p95_ms": 2.6976424,
+            "max_ms": 4.404306
+          }
+        },
+        "force": {
+          "input_samples": 1477,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.394840470046083,
+            "p95_ms": 2.3972414,
+            "max_ms": 2.623099
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/zhongyao/RH_Per_S_DtP.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/zhongyao/RH_Per_S_DtP.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "verified_existing",
+      "input_frames": 235,
+      "output_frames": 230,
+      "dropped_frames": 5,
+      "streams": {
+        "tcp": {
+          "input_samples": 1378,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.6036578826086958,
+            "p95_ms": 3.252707749999997,
+            "max_ms": 4.587491
+          }
+        },
+        "force": {
+          "input_samples": 1564,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.4111585913043476,
+            "p95_ms": 2.4302198499999994,
+            "max_ms": 2.61585
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/zhongyao/RH_Per_S_PtD.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/zhongyao/RH_Per_S_PtD.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "verified_existing",
+      "input_frames": 234,
+      "output_frames": 229,
+      "dropped_frames": 5,
+      "streams": {
+        "tcp": {
+          "input_samples": 1430,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.363322231441048,
+            "p95_ms": 3.7281619999999998,
+            "max_ms": 4.958404
+          }
+        },
+        "force": {
+          "input_samples": 1556,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.271038711790393,
+            "p95_ms": 2.2544655999999996,
+            "max_ms": 2.977774
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/zhongyao2/LH_Per_C_DtP.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/zhongyao2/LH_Per_C_DtP.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "created",
+      "input_frames": 967,
+      "output_frames": 962,
+      "dropped_frames": 5,
+      "streams": {
+        "tcp": {
+          "input_samples": 5073,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.9019679303534305,
+            "p95_ms": 4.695741599999998,
+            "max_ms": 6.17737
+          }
+        },
+        "force": {
+          "input_samples": 5552,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.5155641735966736,
+            "p95_ms": 3.0520564,
+            "max_ms": 5.148243
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/zhongyao2/LH_Per_C_PtD.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/zhongyao2/LH_Per_C_PtD.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "created",
+      "input_frames": 803,
+      "output_frames": 798,
+      "dropped_frames": 5,
+      "streams": {
+        "tcp": {
+          "input_samples": 4282,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.852679080200501,
+            "p95_ms": 4.67067055,
+            "max_ms": 6.180951
+          }
+        },
+        "force": {
+          "input_samples": 4704,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.4842789598997495,
+            "p95_ms": 3.12691315,
+            "max_ms": 4.977321
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/zhongyao2/LH_Per_L_DtP.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/zhongyao2/LH_Per_L_DtP.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "created",
+      "input_frames": 752,
+      "output_frames": 747,
+      "dropped_frames": 5,
+      "streams": {
+        "tcp": {
+          "input_samples": 3976,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.9115621004016066,
+            "p95_ms": 4.640903699999999,
+            "max_ms": 6.680835
+          }
+        },
+        "force": {
+          "input_samples": 4406,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.4906415274431057,
+            "p95_ms": 3.174003099999999,
+            "max_ms": 5.283912
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/zhongyao2/LH_Per_L_PtD.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/zhongyao2/LH_Per_L_PtD.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "created",
+      "input_frames": 768,
+      "output_frames": 764,
+      "dropped_frames": 4,
+      "streams": {
+        "tcp": {
+          "input_samples": 4000,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.901627140052356,
+            "p95_ms": 4.52926175,
+            "max_ms": 7.153044
+          }
+        },
+        "force": {
+          "input_samples": 4437,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.5012040785340315,
+            "p95_ms": 3.3174193500000015,
+            "max_ms": 4.578065
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/zhongyao2/LH_Per_S_DtP.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/zhongyao2/LH_Per_S_DtP.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "created",
+      "input_frames": 864,
+      "output_frames": 859,
+      "dropped_frames": 5,
+      "streams": {
+        "tcp": {
+          "input_samples": 4720,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.7885727147846335,
+            "p95_ms": 4.303831399999997,
+            "max_ms": 6.184833
+          }
+        },
+        "force": {
+          "input_samples": 5146,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.5212701688009314,
+            "p95_ms": 3.0781251,
+            "max_ms": 5.252591
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/zhongyao2/LH_Per_S_PtD.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/zhongyao2/LH_Per_S_PtD.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "created",
+      "input_frames": 958,
+      "output_frames": 953,
+      "dropped_frames": 5,
+      "streams": {
+        "tcp": {
+          "input_samples": 5062,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.8881277292759706,
+            "p95_ms": 4.494330799999999,
+            "max_ms": 6.474242
+          }
+        },
+        "force": {
+          "input_samples": 5556,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.5388650807974817,
+            "p95_ms": 3.1058184,
+            "max_ms": 5.304165
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/zhongyao2/RH_Per_C_DtP.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/zhongyao2/RH_Per_C_DtP.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "created",
+      "input_frames": 691,
+      "output_frames": 686,
+      "dropped_frames": 5,
+      "streams": {
+        "tcp": {
+          "input_samples": 3759,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.7680637332361515,
+            "p95_ms": 4.44823725,
+            "max_ms": 5.853837
+          }
+        },
+        "force": {
+          "input_samples": 4108,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.4569529387755102,
+            "p95_ms": 3.0663365000000002,
+            "max_ms": 4.791541
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/zhongyao2/RH_Per_C_PtD.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/zhongyao2/RH_Per_C_PtD.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "created",
+      "input_frames": 852,
+      "output_frames": 847,
+      "dropped_frames": 5,
+      "streams": {
+        "tcp": {
+          "input_samples": 4448,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.8830440094451004,
+            "p95_ms": 4.450238099999999,
+            "max_ms": 6.969409
+          }
+        },
+        "force": {
+          "input_samples": 4938,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.5804404391971663,
+            "p95_ms": 3.426232099999999,
+            "max_ms": 5.56414
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/zhongyao2/RH_Per_L_DtP.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/zhongyao2/RH_Per_L_DtP.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "created",
+      "input_frames": 622,
+      "output_frames": 618,
+      "dropped_frames": 4,
+      "streams": {
+        "tcp": {
+          "input_samples": 3446,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.7138993009708736,
+            "p95_ms": 4.0321149499999995,
+            "max_ms": 5.825939
+          }
+        },
+        "force": {
+          "input_samples": 3815,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.4664924595469255,
+            "p95_ms": 3.1650463999999996,
+            "max_ms": 5.337023
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/zhongyao2/RH_Per_L_PtD.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/zhongyao2/RH_Per_L_PtD.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "created",
+      "input_frames": 633,
+      "output_frames": 628,
+      "dropped_frames": 5,
+      "streams": {
+        "tcp": {
+          "input_samples": 3442,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.8469407149681527,
+            "p95_ms": 4.2573932,
+            "max_ms": 5.722095
+          }
+        },
+        "force": {
+          "input_samples": 3813,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.486323377388535,
+            "p95_ms": 3.00931085,
+            "max_ms": 4.830804
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/zhongyao2/RH_Per_S_DtP.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/zhongyao2/RH_Per_S_DtP.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "created",
+      "input_frames": 813,
+      "output_frames": 807,
+      "dropped_frames": 6,
+      "streams": {
+        "tcp": {
+          "input_samples": 4358,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.8537305997521685,
+            "p95_ms": 4.5235818,
+            "max_ms": 6.282201
+          }
+        },
+        "force": {
+          "input_samples": 4813,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 1,
+          "residual": {
+            "mean_ms": 1.5055110619578687,
+            "p95_ms": 3.347145599999999,
+            "max_ms": 5.317384
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/zhongyao2/RH_Per_S_PtD.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/zhongyao2/RH_Per_S_PtD.h5",
+      "role": "contact_segment",
+      "attempt_status": "not_recorded",
+      "action": "created",
+      "input_frames": 772,
+      "output_frames": 767,
+      "dropped_frames": 5,
+      "streams": {
+        "tcp": {
+          "input_samples": 4217,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.7262115580182529,
+            "p95_ms": 4.4683025999999995,
+            "max_ms": 10.351405
+          }
+        },
+        "force": {
+          "input_samples": 4764,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.351605930899609,
+            "p95_ms": 2.8995423,
+            "max_ms": 11.100414
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/zhongyao2/attempts/LH_Per_C_DtP/001/raw.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/zhongyao2/attempts/LH_Per_C_DtP/001/raw.h5",
+      "role": "raw",
+      "attempt_status": "result",
+      "action": "created",
+      "input_frames": 1220,
+      "output_frames": 1208,
+      "dropped_frames": 12,
+      "streams": {
+        "tcp": {
+          "input_samples": 6530,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 1,
+          "residual": {
+            "mean_ms": 1.858705995860927,
+            "p95_ms": 4.6356999,
+            "max_ms": 6.17737
+          }
+        },
+        "force": {
+          "input_samples": 7112,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 6,
+          "residual": {
+            "mean_ms": 1.489196407284768,
+            "p95_ms": 3.0345258499999974,
+            "max_ms": 5.148243
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/zhongyao2/attempts/LH_Per_C_PtD/001/raw.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/zhongyao2/attempts/LH_Per_C_PtD/001/raw.h5",
+      "role": "raw",
+      "attempt_status": "result",
+      "action": "created",
+      "input_frames": 1042,
+      "output_frames": 1037,
+      "dropped_frames": 5,
+      "streams": {
+        "tcp": {
+          "input_samples": 5656,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.7999847463837992,
+            "p95_ms": 4.6615557999999995,
+            "max_ms": 9.417964
+          }
+        },
+        "force": {
+          "input_samples": 6195,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 1,
+          "residual": {
+            "mean_ms": 1.4622308534233366,
+            "p95_ms": 3.1167043999999993,
+            "max_ms": 6.13734
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/zhongyao2/attempts/LH_Per_L_DtP/001/raw.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/zhongyao2/attempts/LH_Per_L_DtP/001/raw.h5",
+      "role": "raw",
+      "attempt_status": "result",
+      "action": "created",
+      "input_frames": 1046,
+      "output_frames": 1035,
+      "dropped_frames": 11,
+      "streams": {
+        "tcp": {
+          "input_samples": 5673,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.8176984009661836,
+            "p95_ms": 4.5851389,
+            "max_ms": 12.331128
+          }
+        },
+        "force": {
+          "input_samples": 6215,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 6,
+          "residual": {
+            "mean_ms": 1.4393807942028984,
+            "p95_ms": 3.1270066,
+            "max_ms": 8.190596
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/zhongyao2/attempts/LH_Per_L_PtD/001/raw.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/zhongyao2/attempts/LH_Per_L_PtD/001/raw.h5",
+      "role": "raw",
+      "attempt_status": "failed",
+      "action": "created",
+      "input_frames": 401,
+      "output_frames": 391,
+      "dropped_frames": 10,
+      "streams": {
+        "tcp": {
+          "input_samples": 2163,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.9370197647058824,
+            "p95_ms": 4.258532000000001,
+            "max_ms": 15.383479
+          }
+        },
+        "force": {
+          "input_samples": 2305,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 6,
+          "residual": {
+            "mean_ms": 1.6174604731457798,
+            "p95_ms": 3.357675,
+            "max_ms": 15.96617
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/zhongyao2/attempts/LH_Per_L_PtD/002/raw.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/zhongyao2/attempts/LH_Per_L_PtD/002/raw.h5",
+      "role": "raw",
+      "attempt_status": "result",
+      "action": "created",
+      "input_frames": 1053,
+      "output_frames": 1043,
+      "dropped_frames": 10,
+      "streams": {
+        "tcp": {
+          "input_samples": 5653,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.851278766059444,
+            "p95_ms": 4.487604499999999,
+            "max_ms": 7.153044
+          }
+        },
+        "force": {
+          "input_samples": 6171,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 6,
+          "residual": {
+            "mean_ms": 1.4676918130393097,
+            "p95_ms": 3.1574118999999996,
+            "max_ms": 10.065933
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/zhongyao2/attempts/LH_Per_S_DtP/001/raw.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/zhongyao2/attempts/LH_Per_S_DtP/001/raw.h5",
+      "role": "raw",
+      "attempt_status": "result",
+      "action": "created",
+      "input_frames": 1117,
+      "output_frames": 1105,
+      "dropped_frames": 12,
+      "streams": {
+        "tcp": {
+          "input_samples": 6162,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.7636394687782806,
+            "p95_ms": 4.297919799999999,
+            "max_ms": 6.808663
+          }
+        },
+        "force": {
+          "input_samples": 6452,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 7,
+          "residual": {
+            "mean_ms": 1.535081209954751,
+            "p95_ms": 3.3088520000000003,
+            "max_ms": 9.069599
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/zhongyao2/attempts/LH_Per_S_PtD/001/raw.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/zhongyao2/attempts/LH_Per_S_PtD/001/raw.h5",
+      "role": "raw",
+      "attempt_status": "result",
+      "action": "created",
+      "input_frames": 1244,
+      "output_frames": 1235,
+      "dropped_frames": 9,
+      "streams": {
+        "tcp": {
+          "input_samples": 6703,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 1,
+          "residual": {
+            "mean_ms": 1.8195345174089068,
+            "p95_ms": 4.4177401,
+            "max_ms": 12.468295
+          }
+        },
+        "force": {
+          "input_samples": 7310,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 5,
+          "residual": {
+            "mean_ms": 1.503824944939271,
+            "p95_ms": 3.078778699999999,
+            "max_ms": 8.291344
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/zhongyao2/attempts/RH_Per_C_DtP/001/raw.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/zhongyao2/attempts/RH_Per_C_DtP/001/raw.h5",
+      "role": "raw",
+      "attempt_status": "result",
+      "action": "created",
+      "input_frames": 983,
+      "output_frames": 974,
+      "dropped_frames": 9,
+      "streams": {
+        "tcp": {
+          "input_samples": 5406,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 1,
+          "residual": {
+            "mean_ms": 1.765643070841889,
+            "p95_ms": 4.5004293499999966,
+            "max_ms": 13.28271
+          }
+        },
+        "force": {
+          "input_samples": 5863,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 3,
+          "residual": {
+            "mean_ms": 1.5159261704312117,
+            "p95_ms": 3.196261849999999,
+            "max_ms": 16.232559
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/zhongyao2/attempts/RH_Per_C_PtD/001/raw.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/zhongyao2/attempts/RH_Per_C_PtD/001/raw.h5",
+      "role": "raw",
+      "attempt_status": "result",
+      "action": "created",
+      "input_frames": 1140,
+      "output_frames": 1129,
+      "dropped_frames": 11,
+      "streams": {
+        "tcp": {
+          "input_samples": 6130,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 1,
+          "residual": {
+            "mean_ms": 1.7988667130203722,
+            "p95_ms": 4.2890644,
+            "max_ms": 6.969409
+          }
+        },
+        "force": {
+          "input_samples": 6742,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 6,
+          "residual": {
+            "mean_ms": 1.5152460354295838,
+            "p95_ms": 3.3162071999999982,
+            "max_ms": 5.56414
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/zhongyao2/attempts/RH_Per_L_DtP/001/raw.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/zhongyao2/attempts/RH_Per_L_DtP/001/raw.h5",
+      "role": "raw",
+      "attempt_status": "result",
+      "action": "created",
+      "input_frames": 888,
+      "output_frames": 878,
+      "dropped_frames": 10,
+      "streams": {
+        "tcp": {
+          "input_samples": 5005,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.7150396343963554,
+            "p95_ms": 4.0691837999999985,
+            "max_ms": 11.512615
+          }
+        },
+        "force": {
+          "input_samples": 5308,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 6,
+          "residual": {
+            "mean_ms": 1.5025767027334853,
+            "p95_ms": 3.2530007000000003,
+            "max_ms": 10.264929
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/zhongyao2/attempts/RH_Per_L_PtD/001/raw.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/zhongyao2/attempts/RH_Per_L_PtD/001/raw.h5",
+      "role": "raw",
+      "attempt_status": "result",
+      "action": "created",
+      "input_frames": 895,
+      "output_frames": 890,
+      "dropped_frames": 5,
+      "streams": {
+        "tcp": {
+          "input_samples": 4982,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.766735326966292,
+            "p95_ms": 4.2566163999999995,
+            "max_ms": 6.71016
+          }
+        },
+        "force": {
+          "input_samples": 5461,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 1,
+          "residual": {
+            "mean_ms": 1.4428638269662923,
+            "p95_ms": 2.9251615999999996,
+            "max_ms": 6.584251
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/zhongyao2/attempts/RH_Per_S_DtP/001/raw.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/zhongyao2/attempts/RH_Per_S_DtP/001/raw.h5",
+      "role": "raw",
+      "attempt_status": "failed",
+      "action": "created",
+      "input_frames": 756,
+      "output_frames": 751,
+      "dropped_frames": 5,
+      "streams": {
+        "tcp": {
+          "input_samples": 4008,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.8471529494007992,
+            "p95_ms": 4.765687,
+            "max_ms": 12.289923
+          }
+        },
+        "force": {
+          "input_samples": 4434,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 1,
+          "residual": {
+            "mean_ms": 1.4458060719041275,
+            "p95_ms": 3.3462490000000003,
+            "max_ms": 12.762945
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/zhongyao2/attempts/RH_Per_S_DtP/002/raw.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/zhongyao2/attempts/RH_Per_S_DtP/002/raw.h5",
+      "role": "raw",
+      "attempt_status": "failed",
+      "action": "created",
+      "input_frames": 287,
+      "output_frames": 277,
+      "dropped_frames": 10,
+      "streams": {
+        "tcp": {
+          "input_samples": 1539,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.7982272671480146,
+            "p95_ms": 4.1876126,
+            "max_ms": 5.798063
+          }
+        },
+        "force": {
+          "input_samples": 1648,
+          "reused_samples": 0,
+          "uncovered_frames": 5,
+          "distant_frames": 5,
+          "residual": {
+            "mean_ms": 1.5764192707581228,
+            "p95_ms": 3.0679754,
+            "max_ms": 15.732773
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/zhongyao2/attempts/RH_Per_S_DtP/003/raw.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/zhongyao2/attempts/RH_Per_S_DtP/003/raw.h5",
+      "role": "raw",
+      "attempt_status": "result",
+      "action": "created",
+      "input_frames": 1122,
+      "output_frames": 1112,
+      "dropped_frames": 10,
+      "streams": {
+        "tcp": {
+          "input_samples": 6121,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.79711198381295,
+            "p95_ms": 4.44525535,
+            "max_ms": 6.282201
+          }
+        },
+        "force": {
+          "input_samples": 6610,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 6,
+          "residual": {
+            "mean_ms": 1.5180423749999998,
+            "p95_ms": 3.320922400000001,
+            "max_ms": 5.361921
+          }
+        }
+      }
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/zhongyao2/attempts/RH_Per_S_PtD/001/raw.h5",
+      "output": "/media/camp/yameng/icra 2027/calibrated/zhongyao2/attempts/RH_Per_S_PtD/001/raw.h5",
+      "role": "raw",
+      "attempt_status": "result",
+      "action": "created",
+      "input_frames": 1014,
+      "output_frames": 1003,
+      "dropped_frames": 11,
+      "streams": {
+        "tcp": {
+          "input_samples": 5651,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 0,
+          "residual": {
+            "mean_ms": 1.7209132751744767,
+            "p95_ms": 4.3573499,
+            "max_ms": 10.351405
+          }
+        },
+        "force": {
+          "input_samples": 6248,
+          "reused_samples": 0,
+          "uncovered_frames": 4,
+          "distant_frames": 7,
+          "residual": {
+            "mean_ms": 1.3738158125623132,
+            "p95_ms": 2.8969063999999993,
+            "max_ms": 11.100414
+          }
+        }
+      }
+    }
+  ],
+  "metadata": [],
+  "raw_postprocess": [],
+  "errors": [
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yangming/attempts/LH_Per_C_DtP/001/raw.h5",
+      "error": "TypeError: process_file() got an unexpected keyword argument 'exit_absolute'"
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yangming/attempts/LH_Per_C_PtD/001/raw.h5",
+      "error": "TypeError: process_file() got an unexpected keyword argument 'exit_absolute'"
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yangming/attempts/LH_Per_L_DtP/001/raw.h5",
+      "error": "TypeError: process_file() got an unexpected keyword argument 'exit_absolute'"
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yangming/attempts/LH_Per_L_PtD/001/raw.h5",
+      "error": "TypeError: process_file() got an unexpected keyword argument 'exit_absolute'"
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yangming/attempts/LH_Per_S_DtP/001/raw.h5",
+      "error": "TypeError: process_file() got an unexpected keyword argument 'exit_absolute'"
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yangming/attempts/LH_Per_S_PtD/001/raw.h5",
+      "error": "TypeError: process_file() got an unexpected keyword argument 'exit_absolute'"
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yangming/attempts/RH_Per_C_DtP/001/raw.h5",
+      "error": "TypeError: process_file() got an unexpected keyword argument 'exit_absolute'"
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yangming/attempts/RH_Per_C_DtP/003/raw.h5",
+      "error": "TypeError: process_file() got an unexpected keyword argument 'exit_absolute'"
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yangming/attempts/RH_Per_C_DtP/004/raw.h5",
+      "error": "TypeError: process_file() got an unexpected keyword argument 'exit_absolute'"
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yangming/attempts/RH_Per_C_PtD/001/raw.h5",
+      "error": "TypeError: process_file() got an unexpected keyword argument 'exit_absolute'"
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yangming/attempts/RH_Per_L_DtP/001/raw.h5",
+      "error": "TypeError: process_file() got an unexpected keyword argument 'exit_absolute'"
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yangming/attempts/RH_Per_L_PtD/001/raw.h5",
+      "error": "TypeError: process_file() got an unexpected keyword argument 'exit_absolute'"
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yangming/attempts/RH_Per_S_DtP/001/raw.h5",
+      "error": "TypeError: process_file() got an unexpected keyword argument 'exit_absolute'"
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yangming/attempts/RH_Per_S_PtD/003/raw.h5",
+      "error": "TypeError: process_file() got an unexpected keyword argument 'exit_absolute'"
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yuhan_L/attempts/RH_Per_C_DtP/001/raw.h5",
+      "error": "TypeError: process_file() got an unexpected keyword argument 'exit_absolute'"
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yuhan_L/attempts/RH_Per_C_PtD/001/raw.h5",
+      "error": "TypeError: process_file() got an unexpected keyword argument 'exit_absolute'"
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yuhan_L/attempts/RH_Per_L_DtP/001/raw.h5",
+      "error": "TypeError: process_file() got an unexpected keyword argument 'exit_absolute'"
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yuhan_L/attempts/RH_Per_L_DtP/002/raw.h5",
+      "error": "TypeError: process_file() got an unexpected keyword argument 'exit_absolute'"
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yuhan_L/attempts/RH_Per_L_PtD/001/raw.h5",
+      "error": "TypeError: process_file() got an unexpected keyword argument 'exit_absolute'"
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yuhan_L/attempts/RH_Per_L_PtD/003/raw.h5",
+      "error": "TypeError: process_file() got an unexpected keyword argument 'exit_absolute'"
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yuhan_L/attempts/RH_Per_L_PtD/004/raw.h5",
+      "error": "TypeError: process_file() got an unexpected keyword argument 'exit_absolute'"
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yuhan_L/attempts/RH_Per_S_DtP/001/raw.h5",
+      "error": "TypeError: process_file() got an unexpected keyword argument 'exit_absolute'"
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yuhan_L/attempts/RH_Per_S_DtP/002/raw.h5",
+      "error": "TypeError: process_file() got an unexpected keyword argument 'exit_absolute'"
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yuhan_L/attempts/RH_Per_S_DtP/003/raw.h5",
+      "error": "TypeError: process_file() got an unexpected keyword argument 'exit_absolute'"
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yuhan_L/attempts/RH_Per_S_DtP/004/raw.h5",
+      "error": "TypeError: process_file() got an unexpected keyword argument 'exit_absolute'"
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yuhan_L/attempts/RH_Per_S_PtD/001/raw.h5",
+      "error": "TypeError: process_file() got an unexpected keyword argument 'exit_absolute'"
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yuhan_L/attempts/RH_Per_S_PtD/003/raw.h5",
+      "error": "TypeError: process_file() got an unexpected keyword argument 'exit_absolute'"
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yuhan_L/attempts/RH_Per_S_PtD/004/raw.h5",
+      "error": "TypeError: process_file() got an unexpected keyword argument 'exit_absolute'"
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yuhan_L/attempts/RH_Per_S_PtD/005/raw.h5",
+      "error": "TypeError: process_file() got an unexpected keyword argument 'exit_absolute'"
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yuhan_L/attempts/RH_Per_S_PtD/006/raw.h5",
+      "error": "TypeError: process_file() got an unexpected keyword argument 'exit_absolute'"
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yuhan_L/attempts/RH_Per_S_PtD/007/raw.h5",
+      "error": "TypeError: process_file() got an unexpected keyword argument 'exit_absolute'"
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yuhan_R/attempts/RH_Per_C_DtP/001/raw.h5",
+      "error": "TypeError: process_file() got an unexpected keyword argument 'exit_absolute'"
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yuhan_R/attempts/RH_Per_C_PtD/001/raw.h5",
+      "error": "TypeError: process_file() got an unexpected keyword argument 'exit_absolute'"
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yuhan_R/attempts/RH_Per_L_DtP/001/raw.h5",
+      "error": "TypeError: process_file() got an unexpected keyword argument 'exit_absolute'"
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yuhan_R/attempts/RH_Per_L_PtD/002/raw.h5",
+      "error": "TypeError: process_file() got an unexpected keyword argument 'exit_absolute'"
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yuhan_R/attempts/RH_Per_S_DtP/001/raw.h5",
+      "error": "TypeError: process_file() got an unexpected keyword argument 'exit_absolute'"
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/yuhan_R/attempts/RH_Per_S_PtD/001/raw.h5",
+      "error": "TypeError: process_file() got an unexpected keyword argument 'exit_absolute'"
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/zhongyao2/attempts/LH_Per_C_DtP/001/raw.h5",
+      "error": "TypeError: process_file() got an unexpected keyword argument 'exit_absolute'"
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/zhongyao2/attempts/LH_Per_C_PtD/001/raw.h5",
+      "error": "TypeError: process_file() got an unexpected keyword argument 'exit_absolute'"
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/zhongyao2/attempts/LH_Per_L_DtP/001/raw.h5",
+      "error": "TypeError: process_file() got an unexpected keyword argument 'exit_absolute'"
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/zhongyao2/attempts/LH_Per_L_PtD/001/raw.h5",
+      "error": "TypeError: process_file() got an unexpected keyword argument 'exit_absolute'"
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/zhongyao2/attempts/LH_Per_L_PtD/002/raw.h5",
+      "error": "TypeError: process_file() got an unexpected keyword argument 'exit_absolute'"
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/zhongyao2/attempts/LH_Per_S_DtP/001/raw.h5",
+      "error": "TypeError: process_file() got an unexpected keyword argument 'exit_absolute'"
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/zhongyao2/attempts/LH_Per_S_PtD/001/raw.h5",
+      "error": "TypeError: process_file() got an unexpected keyword argument 'exit_absolute'"
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/zhongyao2/attempts/RH_Per_C_DtP/001/raw.h5",
+      "error": "TypeError: process_file() got an unexpected keyword argument 'exit_absolute'"
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/zhongyao2/attempts/RH_Per_C_PtD/001/raw.h5",
+      "error": "TypeError: process_file() got an unexpected keyword argument 'exit_absolute'"
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/zhongyao2/attempts/RH_Per_L_DtP/001/raw.h5",
+      "error": "TypeError: process_file() got an unexpected keyword argument 'exit_absolute'"
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/zhongyao2/attempts/RH_Per_L_PtD/001/raw.h5",
+      "error": "TypeError: process_file() got an unexpected keyword argument 'exit_absolute'"
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/zhongyao2/attempts/RH_Per_S_DtP/001/raw.h5",
+      "error": "TypeError: process_file() got an unexpected keyword argument 'exit_absolute'"
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/zhongyao2/attempts/RH_Per_S_DtP/002/raw.h5",
+      "error": "TypeError: process_file() got an unexpected keyword argument 'exit_absolute'"
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/zhongyao2/attempts/RH_Per_S_DtP/003/raw.h5",
+      "error": "TypeError: process_file() got an unexpected keyword argument 'exit_absolute'"
+    },
+    {
+      "source": "/media/camp/yameng/icra 2027/uncalibrated/zhongyao2/attempts/RH_Per_S_PtD/001/raw.h5",
+      "error": "TypeError: process_file() got an unexpected keyword argument 'exit_absolute'"
+    }
+  ]
+}

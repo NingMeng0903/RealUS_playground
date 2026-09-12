@@ -1,0 +1,19 @@
+{
+  "base": "669beac6668f659aaa05f92c5425ca0235f0523b",
+  "head": "515f774c405c85e1a9b13456d2048c32b81016f3",
+  "unchanged_original_files": {
+    "peirastic/apps/run_controller.py": "afc14539d0b7f3472d49e46117d03855dfd4095070b52cdf62a0d95b93260b99",
+    "rm75_control/rm75_control/control/joint_admittance_8dof/loop.py": "ac52277e7065f46980bed69371952a3ac9df10215ed60252b18cb583fb65c8db",
+    "rm75_control/rm75_control/control/joint_admittance_8dof/hw/rail_servo.py": "6ad5dd73f51a81a8dcb5f89bacd1733a717e7aab7d6e8f2db3f42bfceba4d421",
+    "rm75_control/rm75_control/hw/lw100/drive.py": "d828d8d1d089728ab7bd877427a9ef3326c1827efc14102469cceff927da3038",
+    "rm75_control/rm75_control/hw/lw100/modbus_rtu_tcp.py": "547e189a037fe32b41ceedea99cefe6def3537a89e540bfafcaba5baa2590176",
+    "rm75_control/rm75_control/hw/lw100/registers.py": "c2387da5f86ed245c90dba83e676d5e3c013543a15d8a053eea22b04abbb416c"
+  },
+  "outer_files": {
+    "peirastic/contact_qp/qp.py": "9f06db29b09aa703310f06d123fd43ce43ce8035475010bf134d457bf0653b44",
+    "peirastic/core/capabilities.py": "9f6eb30989137db2893bf0aa1e31bd76a2da0dee531d64ed31e9f96feed602bf",
+    "peirastic/config/contact_qp/active_probe50_v8r3_tank.yaml": "cda3061d1a5432c0d3c19f3e48b21af417dd659ee622533fff8f3abd26b92895",
+    "peirastic/tests/test_contact_qp_recorded_energy_failure.py": "6886f0c090453ff2d3c9e4ed79db723cad5fc23dad4f0d56cf34b9fa6ca0e9a6"
+  },
+  "native_protocol_hash": "b715be9d9774f59637e66e4aec0b2e79af05c8966c487e287d01cbd1cab570da"
+}

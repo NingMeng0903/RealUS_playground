@@ -1,0 +1,543 @@
+6432                                                                                  IEEE ROBOTICS AND AUTOMATION LETTERS, VOL. 9, NO. 7, JULY 2024
+
+
+
+
+       A Perturbation-Robust Framework for Admittance
+        Control of Robotic Systems With High-Stiffness
+                 Contacts and Heavy Payload
+       Kangwagye Samuel , Member, IEEE, Kevin Haninger , Member, IEEE, Roberto Oboe , Fellow, IEEE,
+                    Sami Haddadin , Fellow, IEEE, and Sehoon Oh , Senior Member, IEEE
+
+
+   Abstract—Applications involving serial manipulators, in both                                           I. INTRODUCTION
+co-manipulation with humans and autonomous operation tasks,
+                                                                                      HE future of robotic manipulators is directed toward an
+require the robot to render high admittance so as to minimize
+contact forces and maintain stable contacts with high-stiffness
+surfaces. This can be achieved through admittance control, how-
+                                                                                T     increasingly significant usage in applications that demand
+                                                                                interactions with both intricate environments and human coun-
+ever, inner loop dynamics limit the bandwidth within which the                  terparts. These applications span a diverse range of tasks, featur-
+desired admittance can be rendered from the outer loop. More-                   ing autonomous robot operations such as the autonomous move-
+over, perturbations affect the admittance control performance                   ment of heavy loads in warehouses and the collaborative manipu-
+whereas other system specific limitations such as “black box”
+PD position control in typical industrial manipulators hinder the               lation of objects and payloads with human intervention. In these
+implementation of more advanced control methods. To address                     scenarios, robots and humans coexist within the same opera-
+these challenges, a perturbation-robust framework, designed for                 tional space, often in highly dynamic environments with vary-
+serial manipulators engaged in contact-rich tasks involving heavy               ing contact stiffness. In many applications, high-performance
+payloads, is introduced in this paper. Within this framework, a                 motion control is desired (high accuracy, motion bandwidth,
+generalized Perturbation-Robust Observer (PROB), which exploits                 reach and/or payload) as well as contact safety (limited force
+the joint velocity measurements and inner loop velocity control
+                                                                                overshoot, contact stability over a range of stiffnesses). The
+model, and accommodates the varying stiffness of contacts through
+contact force measurements is introduced. Three PROBs including                 motion requirements can lead to the use of typical industrial
+a novel Combined Dynamics Observer (CDYOB) are presented.                       robots, which have a low intrinsic admittance due to their heavy
+The CDYOB can render wide-range admittance without bandwidth                    structure and payload. This raises critical concerns regarding the
+limitations from the inner loop. Theoretical analyses and exper-                safety of both robots and human collaborators [1].
+iments with an industrial robot validate the effectiveness of the                  To ensure safe and effective robot interactions, the concept
+proposed method.                                                                of impedance/admittance control has played a pivotal role [2].
+  Index Terms—Compliance and impedance control, force control,                  When admittance control is realized on industrial robots, the
+Human-Robot Collaboration, motion control.                                      control objective is to increase the robot’s admittance, with the
+                                                                                goal of minimizing contact forces and damping high transient
+   Manuscript received 29 January 2024; accepted 13 May 2024. Date of
+                                                                                contact forces [3]. Admittance control strategies have been de-
+publication 28 May 2024; date of current version 5 June 2024. This letter
+was recommended for publication by Associate Editor C. Della Santina and        veloped to achieve this objective. These include positive velocity
+Editor J. P. Desai upon evaluation of the reviewers’ comments. This work was    feedback inner loop shaping [4], disturbance observer (DOB)
+supported in part by Technology Innovation Program under Grant 20015101         approaches, [5], feedforward and PID compensators [3], learn-
+funded by Ministry of Trade, Industry & Energy (MOTIE, Korea), and in part
+by European Union’s Horizon 2020 Research and Innovation Programme under
+                                                                                ing methods [6], neural network techniques [7], among others.
+Grant Agreement Number 101058521 – CONVERGING. (Corresponding                   However, the general hindrance in these methods is that the
+author: Sehoon Oh.)                                                             range of admittance rendering is limited by the inner loop motion
+   Kangwagye Samuel is with the Chair of Robotics and Systems Intelligence,     control bandwidth. This is in addition to system-specific limita-
+Munich Institute of Robotics and Machine Intelligence (MIRMI), Technical
+University Munich, 80992 Munich, Germany, and also with the Department          tions such as “black box” position control in typical industrial
+of Mechanical and Production Engineering, Kyambogo University, Kyambogo,        manipulators.
+Kampala, Uganda (e-mail: s.kangwagye@tum.de).                                      Furthermore, admittance control performance is affected by
+   Kevin Haninger is with the Department of Automation, Fraunhofer IPK,
+10589 Berlin, Germany (e-mail: kevin.haninger@ipk.fraunhofer.de).
+                                                                                disturbances, high-frequency contact forces, and payload force
+   Roberto Oboe is with the Department of Management and Engineering,           variations. These three factors are collectively called pertur-
+University of Padova, 35122 Vicenza, Italy (e-mail: roberto.oboe@unipd.it).     bations in this paper. Disturbances considered here include
+   Sami Haddadin is with the Chair of Robotics and Systems Intelligence,        nonlinear friction, mechanical vibrations due to higher-order
+Munich Institute of Robotics and Machine Intelligence (MIRMI), Technical
+University Munich, 80992 Munich, Germany (e-mail: haddadin@tum.de).             dynamics, and coupling between degrees of freedom (DOF) in
+   Sehoon Oh is with the Department of Robotics and Mechatronics Engineering,   task space due to imperfections in joint-level control, as well
+Daegu Gyeongbuk Institute of Science and Technology, Daegu 42988, South         as external forces acting directly on the joints and links of the
+Korea (e-mail: sehoon@dgist.ac.kr).
+                                                                                robot [8]. High-frequency contact forces arise from the coupling
+   This letter has supplementary downloadable material available at
+https://doi.org/10.1109/LRA.2024.3406055, provided by the authors.              of the robot and the unknown environment dynamics and contact
+   Digital Object Identifier 10.1109/LRA.2024.3406055                           transitions [9]. These may cause higher transient forces and
+
+                   © 2024 The Authors. This work is licensed under a Creative Commons Attribution 4.0 License. For more information, see
+                                                        https://creativecommons.org/licenses/by/4.0/
+SAMUEL et al.: PERTURBATION-ROBUST FRAMEWORK FOR ADMITTANCE CONTROL OF ROBOTIC SYSTEMS                                                                   6433
+
+
+
+
+                                                                                Fig. 2. Closed-loop identification of the position/velocity-controlled manipu-
+                                                                                lator. Top: robot poses. Bottom: magnitude plot of the experimentally measured
+                                                                                FRFs and estimated model by curve fitting.
+
+
+                                                                                   This paper involves design of the three distinct PROBs,
+                                                                                including a novel Combined Dynamics Observer (CDYOB),
+                                                                                which brings together the dynamic characteristics of inner and
+                                                                                outer loops, eliminating the inner loop bandwidth limitation to
+Fig. 1. Illustration of a typical industrial robot involved in autonomous and   achieve wide-range admittance rendering from the outer loop.
+human assisted operations with contact-rich tasks and payload.                  Evolution of the novel CDYOB is introduced by the two previ-
+                                                                                ously developed PROBs, i.e., the Task Space Outer-loop Inte-
+                                                                                grated DOB (OIDOBt) in [20] and the Multifunction Observer
+oscillations during contact. Varying forces arising from heavy                  (MOB) in [21]. The summarized design of OIDOBt and MOB
+payloads can amplify low to mid-frequency oscillations. The                     is presented and their strengths and limitations are pointed out
+effects of disturbances and inner loop position control limita-                 to lay a foundation for the CDYOB design. The effectiveness of
+tions of industrial robots were resolved by realizing the admit-                the proposed method is evaluated through theoretical analyses
+tance control in task space, with the end-effector force informa-               and experiments.
+tion utilized as feedback in the outer loop [10, §6.4]. However,
+inner loop dynamics limit the frequency range within which the                  II. MANIPULATOR CLOSED LOOP DYNAMICS IDENTIFICATION,
+desired admittance can be rendered in these approaches. Modern                   BASIC ADMITTANCE CONTROL, AND PROBLEM DESCRIPTION
+control techniques aimed at enhancing admittance rendering ac-                     Consider manipulator tasks that involve low to high-stiffness
+curacy and mitigating contact forces have included sliding mode,                contact-rich scenarios and heavy payloads. An example studied
+advanced feed-forward, and convex synthesis control [11], [12],                 in this paper is illustrated in Fig. 1. It shows a typical industrial
+[13], [14], [15], particularly concerning serial manipulators with              robot in (a) with a “black box” inner position control loop and
+accessible inner position control loop.                                         an outer admittance control loop realized about the robot’s Tool
+   The motivation of this paper is that inner loop bandwidth lim-               Center Point (TCP) by the force/torque (F/T) sensor measure-
+itation and perturbations remain a challenge to realizing stable,               ments in task space.
+high-admittance control. Such limitations are addressed in mo-
+tion control with Disturbance Observer-based techniques [16],
+which exploit system models, input/output measurements and                      A. Identification of Manipulator Closed Loop Dynamics
+loop-shaping to achieve high performance. However, such tech-                      Conventional admittance control for robot manipulator has
+niques must be adapted for multi-DOF serial robots with closed                  only the admittance model in the outer loop [9]. This has
+inner-loop control, as typical on both collaborative and in-                    drawbacks such as restricted design freedom and bandwidth
+dustrial robots. Furthermore, the controller must be adapted                    limitation by the inner loop dynamics. This paper aims to design
+for task-space admittance control, including the end-effector                   a controller outside the inner position control loop of the robot in
+force/torque sensors [17], [18], [19] and payload models [9].                   Fig. 1(a), where a task space model-based approach that includes
+   In regard to the above, the main contribution of this paper is the           the nominal inner loop dynamics in its design is suggested.
+development of a perturbation-robust framework for admittance                      To this end, the inner closed loop dynamics are measured in
+control in task space of robotic manipulators engaged in contact-               task space by closed-loop nonparametric system identification
+rich tasks with heavy payloads. Within this framework, a gener-                 technique. This is motivated by the two advantages of the robot
+alized Perturbation-Robust Observer (PROB) is designed. The                     system in Fig. 1(a) of: the availability of command input and
+PROB accommodates the varying stiffness of contacts through                     measured robot positions/velocities in task space, and, total
+contact force measurements, exploits the command velocity,                      control is diagonal and each DOF is independent since the
+robot velocity measurements, and inner loop velocity control                    Cartesian configuration decouples the joint dynamics. Under
+model to suppress the effects of disturbances, and masks the                    position control, a multisine signal is supplied to the robot as the
+effect of payload force variations through the robot velocity                   desired position and the corresponding position measurements
+measurements. The PROB does not require access to the in-                       are recorded. This is conducted on various robot poses, as shown
+ner velocity control loop but its output modifies the velocity                  in Fig. 2(top), and the x/y/z-axes of the robot. The obtained data
+reference signal.                                                               is utilized to compute the actual averaged frequency response
+6434                                                                                     IEEE ROBOTICS AND AUTOMATION LETTERS, VOL. 9, NO. 7, JULY 2024
+
+
+
+                                                                                      The generated force F acts on the robot and is measured by the
+                                                                                   F/T sensor as Fm . The human interacts with the robot through
+                                                                                   Fhum while virtual force can be supplied through Fr to drive
+                                                                                   the robot autonomously. The desired admittance computes the
+                                                                                   reference velocity Vr for the inner loop. This framework can
+                                                                                   be applied to all the robotic manipulators equipped with end
+                                                                                   effector force and joint position sensors.
+
+                                                                                   C. Problem Description
+                                                                                       1) Desired Control Goals and Conditions: The design goal
+                                                                                   is to achieve broad compliance so as to reduce contact forces and
+Fig. 3. Generalized admittance control framework showing the proposed              maintain stability during contact with high-stiffness surface. Ide-
+perturbation-robust observer for a single DOF. The Laplace operator s is ignored   ally, it is desired from Fig. 3 that the inner-loop dynamics should
+on the subsystems for compactness.
+                                                                                   be canceled, resulting into rendering the desired admittance
+                                                                                   through the outer loop, i.e., V/Fext = A, so that the admittance
+function (FRF) T (s) of all the poses for each axis, as shown                      can be increased without limitation from the actual inner loop
+in Fig. 2. The estimated FRF, Test (s), is obtained by fitting                     dynamics. Assuming that A(s) can be rendered, its gain and
+Test = Γd T = Γd CR/(1 + CR). Where the dynamics C, R,                             transient characteristics determine the level of compliance and
+and Γd are actual velocity controller, robot, and time delay, and                  speed of response. To this end, A(s) is designed for force input
+are given for a single-DOF as                                                      and velocity output as shown below
+                     ki              1                                                         A(s) = 1/(Ma s + Ba ) = ka /(τa s + 1)              (3)
+   C(s) = kp +          , R(s) =            , Γd (s) = e−td s               (1)
+                     s           Mr s + B r
+                                                                                   where Ma is the virtual mass and Ba is the virtual damping,
+where kp and ki are proportional and integral coefficients, Mr                     such that ka = 1/Ba is the gain and τa = Ma /Ba is the time
+and Br are robot mass and damping, and td is the communica-                        constant. It is desired from (3) to increase ka and reduce τa to
+tion time delay between internal and external controllers. The                     achieve high admittance and fast response in the outer loop and
+velocity controller C(s) is modeled as PI and the robot R(s) is                    realize the overall control goal of safe and effective interactions.
+modeled as a mass-damper system. The nonlinearities in actual                         2) Limitations of Basic Framework and Effect of Perturba-
+measurements are ignored since they are outside the bandwidth                      tions and System Specific Limitations: Consider the admittance,
+(3–5 Hz) of the robot. The details, including modeling, system                     Y = V/Fext , force tracking in autonomous mode, G = F/Fr ,
+identification, and model validation, are presented in [4], [21]                   and disturbance, D = F/DF , transfer functions for the basic
+by the authors.                                                                    method derived as
+
+B. Basic Admittance Control Framework                                                              Y basic = (C −1 T + Γd T A)/ζ1basic             (4)
+   Under autonomous operation, the gripper is making contact                                       Gbasic = Γd T A(P −1 + E)/ζ2basic               (5)
+on soft surface in Fig. 1(b) and hard contact while carrying
+an extra payload in Fig. 1(c). In manual mode in Fig. 1(d),                                        D   basic
+                                                                                                               = R/ζ2basic                         (6)
+the human manipulates the robot in the plug insertion task.                        where ζ1basic = 1 + T C −1 P −1 + Γd T AP −1 , ζ2basic = 1 + C −1
+Here, perturbations are defined as follows: During contact, the                    T (P −1 + E) + Γd T A(P −1 + E), and T = CR/(1 + CR).
+unknown environment dynamics couple with the robot, poten-                         The Laplace operator s is ignored from herein after for com-
+tially causing oscillation or instability, and contact transitions or              pactness. Note that, perturbations are described in Fig. 3 as
+collisions can also cause higher transient forces. The payload in                  force variations Fenv and Fp due to environment and payload
+Fig. 1(c) can generate payload force variations which may lead                     dynamics, respectively, and the disturbances dF .
+to oscillations in free space motion or contact. Lastly, the manip-                   It is observed from (4) that the basic method cannot render the
+ulator has disturbances such as nonlinear friction, nonlinearities                 desired admittance since the inner loop, payload, and time delay
+and coupling between DOFs in task space due to imperfections                       dynamics cannot be cancelled. These dynamics also affect force
+in joint-level control, gear cogging, and mechanical vibrations                    tracking performance as shown in (5) and hinder the suppression
+due to higher order dynamics.                                                      of the disturbances in (6). The payload forces are not reduced
+   To this end, Fig. 3 (black solid lines) presents the task space                 or masked by the basic method and these forces can occur from
+basic admittance control framework of Fig. 1 for a single DOF,                     low to mid-frequency ranges. Moreover, increasing the stiffness
+which consists of only admittance controller A(s), also called                     of the contacting surface increases peak contact forces [10,
+desired admittance, in the outer loop and the manipulator closed                   §6.3] [22].
+loop dynamics (green color). The robot is carrying a heavy                            Since the outer loop consists only of the admittance controller,
+payload P (s) and making contacts with a stiff environment                         the remaining remedy to the above problem is to increase the gain
+E(s). These are modeled as                                                         of inner loop velocity controller. Let ki = 0 such that C = kp ,
+               P (s) = 1/Mp s         and     E(s) = Ke /s                  (2)    making kp very large, (4)–(6) become
+                                                                                                                      −1
+                                                                                                 kp = Γd A/(1 + Γd AP    )
+                                                                                            basic
+where Mp is payload mass and Ke is environment stiffness.                                 Ylarge                                                   (7)
+SAMUEL et al.: PERTURBATION-ROBUST FRAMEWORK FOR ADMITTANCE CONTROL OF ROBOTIC SYSTEMS                                              6435
+
+
+
+
+       large kp = Γd A(P
+      Gbasic             −1
+                            + E)/(1 + Γd A(P −1 + E))           (8)       The functions of N1 Fm and N2 Vm terms are to estimate
+                                                                       and suppress the force variations due to contact dynamics and
+             kp = 0.
+       basic
+      Dlarge                                                    (9)    payload, respectively. Where N1 accommodates the varying
+                                                                       stiffness of contacts through contact force measurements and
+This result shows that the desired admittance cannot be rendered
+                                                                       N2 masks the payload force variations through robot velocity
+even after increasing kp since the payload and time delay dy-
+                                                                       measurements. Detailed designs of N1 and N2 is presented in
+namics are not canceled as shown in (7). In addition, the high
+                                                                       Section III-B.
+gain does not mask the forces due to environment stiffness as
+                                                                          For utilization in the following sections, the admittance ren-
+shown in (8). On the other hand, disturbances can be completely
+                                                                       dering, Y = V/Fext , force tracking in autonomous robot opera-
+suppressed by high gain as shown in (9).
+                                                                       tion, G = F/Fr , and force tracking during manual guidance of
+   From the above analysis, the design freedom of the basic
+                                                                       the robot, H = F/Fhum , transfer functions with the proposed
+method is only restricted to adjusting the admittance gain and
+                                                                       PROB are given below.
+time constant parameters. However, the inner loop dynamics
+narrows the bandwidth within which the desired admittance can              Y PROB = [C −1 T (1 − Q) + Γd T (A + N1 )]/ζ1PROB       (11)
+be rendered from the outer loop. Moreover, increasing the gain
+to cancel the robot dynamics and disturbances is impossible                GPROB = Γd T A(P −1 + E)/ζ2PROB                         (12)
+for systems with specific limitations such as “black box” PD
+position control of typical industrial robots. To remedy these             H PROB = (1 − Q + Γd T (QTn−1 − N2 ))/ζ2PROB            (13)
+issues, a generalized robust admittance control method which
+                                                                       where ζ1PROB = (1 + T C −1 P −1 )(1−Q)+Γd T [QTn−1 −N2 +
+includes the nominal models of the inner loop dynamics in its
+                                                                       (A + N1 )P −1 ] and ζ2PROB = [1 + C −1 T (P −1 + E)](1 − Q) +
+design is presented next.
+                                                                       Γd T [QTn−1 − N2 + (A + N1 )(P −1 + E)].
+    III. GENERALIZED PERTURBATION-ROBUST OBSERVER
+                                                                       B. Design of Three Distinct PROBs
+   Fig. 3 (blue lines) presents the generalized Perturbation-
+Robust Observer (PROB), which is constructed on the basic                 In this subsection, PROBs are designed to meet the goal and
+admittance control framework (black lines), built outside the          condition stated in Section II-C1 of canceling the inner loop
+inner velocity control loop (green lines). The PROB exploits the       dynamics to render the desired admittance from the outer loop
+availability of task space robot velocity and F/T sensor measure-      without bandwidth limitations. This function, and the suppres-
+ments, and the command velocity to estimate the perturbations.         sion of the effects of perturbation can be achieved without the
+The PROB is partly similar to the disturbance observer [16],           need to tune the inner loop gain. To this end, a novel PROB,
+but has additional inputs through N1 and N2 , which provide            which eliminates the limitation of the inner loop bandwidth to
+additional design freedom. It can be observed that, there is no        render the desired admittance from the outer loop is proposed.
+need to access the inner loop, instead, the task space velocity        But before this, a summarized design of the existing two PROBs,
+reference Vr is modified by p̂ert , the output of the PROB. By         i.e., OIDOBt and MOB is presented along with their strengths
+modifying the velocity reference [3], the proposed approach can        and limitations to lay a foundation for designing the novel PROB.
+be generalized to robotic systems with joint position/velocity         Therefore, a total of three PROBs are designed with different
+and end effector force measurements. Moreover, the proposed            N1 and N2 structures. The design of N1 and N2 considers
+PROB framework is inherently robust against model uncertainty          the outer and inner loop dynamic characteristics, i.e., the outer
+as proven for the measured model in Fig. 2 in [20] and [21] for        loop admittance controller A and the inner loop dynamics Cn
+the OIDOBt and MOB methods.                                            and Rn . Note that, in addition to the requirement of rendering
+                                                                       the desired admittance stated in Section II-C1, the design of
+                                                                       N1 and N2 should also satisfy the design condition of typical
+A. Perturbation Estimation With Generalized PROB
+                                                                       DOBs of nominalizing the inner velocity control loop, i.e., make
+  From Fig. 3, the estimated perturbation is given by                  V/Vr |Q=1 = Tn .
+                                                                          1) PROB1. Task Space Outer-Loop Integrated DOB
+          P̂ert = Q[Tn−1 Vm − Vi ] + N1 Fm − N2 Vm             (10)    (OIDOBt): The evolution of the PROB design started with the
+                                                                       design of OIDOBt in [20] where N1 and N2 were designed as
+where P̂ert , V• , and Fm are the Laplace transforms of p̂ert , V• ,   follows.
+and Fm , respectively. Q is the Q-filter, Tn is the nominal model
+of T , N1 and N2 are filters to be designed.                                N1OIDOBt = A(1 − Q) and N2OIDOBt = QAPn−1 .            (14)
+   The term Tn−1 Vm − Vi in (10) is designed to robustly esti-
+mate the disturbances, dF , thereby improving the inner-loop           The design in (14) satisfies the V/Vr |Q=1 = Tn condition. The
+motion control accuracy. It possesses the structure of classi-         high-pass filter component, 1 − Q, in N1 allows the extraction
+cal DOBs [16], however, the difference is in the design of             of high-frequency contact forces from the F/T sensor measure-
+Tn and the implementation in task space, outside the inner             ments to be suppressed. Therefore, the Q-filter cutoff frequency
+loop. Here, Tn is the nominal model of the closed inner loop           determines the suppression level of oscillations due to contact
+dynamics T = CR/(1 + CR). Q is the Q-filter, designed as               dynamics during contact. In N2 , payload is compensated by
+Q = ωQ /(s + ωQ ), where ωQ is the Q-filter cutoff frequency.          the inverse of the nominal dynamics with same structure as the
+Q makes Tn proper and attenuates the measurement noises in             actual payload dynamics, i.e., Pn = 1/Mn s. In both N1 and N2
+Vm and Fm .                                                            designs, A converts force into velocity as well as shapes the
+6436                                                                        IEEE ROBOTICS AND AUTOMATION LETTERS, VOL. 9, NO. 7, JULY 2024
+
+
+
+                                                                        Rendering the desired admittance condition is checked by
+                                                                      substituting (16) and (17) in (11) and set Q = 1 to obtain
+
+                                                                                           MOB
+                                                                                          YQ=1 = (A + Cn−1 )Tn .                     (18)
+
+                                                                      From (18), rendering the desired admittance is affected by
+Fig. 4.   Plots of |N1 | and |N2 | when ωQ = 15 Hz.                   the nominal velocity controller even when |Tn | = 1. Thus, in
+                                                                      addition to the effect of Tn bandwidth as with the OIDOBt, the
+                                                                      desired admittance, A, can not be rendered by the MOB due to
+force information to accurately track the desired admittance in       the presence of Cn−1 . Furthermore, due to the utilization of Cn−1
+the outer loop.                                                       in the design of N1MOB and N2MOB , a well estimated Cn from a
+   Note that, the design of N1 and N2 in (14) is independent of       poorly designed C may affect the estimation accuracy of contact
+the actual robot dynamics, thus, the effect of variations in actual   dynamics and payload force variations.
+dynamics is eliminated. In addition, payload force variations are        3) PROB3. Proposed Combined Dynamics Observer
+compensated in all frequency ranges as shown by |N2OIDOBt | in        (CDYOB): The design of novel CDYOB combines the inner
+Fig. 4.                                                               and outer loop dynamic characteristics to address the limitations
+   To check the design condition of rendering the desired admit-      of OIDOBt and MOB. To this end, with a constraint that
+tance, substitute (14) in (11) and set Q = 1 to get                   V/Vr |Q=1 = Tn , N1 and N2 for CDYOB are designed as
+                                                                      shown below
+                             OIDOBt
+                            YQ=1    = ATn .                   (15)
+It is observed in (15) that, the desired admittance can be rendered              N1CDYOB = N1MOB ARn−1 = QCn−1 ARn−1                 (19)
+only in the low frequency range, i.e., where |Tn | = 1. Therefore,
+the bandwidth of Tn limits the frequency range within which                      N2CDYOB = N2OIDOBt Tn−1 = QAPn−1 Tn−1 .             (20)
+the desired admittance can be rendered. Another limitation of
+OIDOBt can be observed in (14) that when ωQ is very large,            Substitute (19) and (20) in (11) and set Q = 1 to obtain
+i.e., Q = 1, N1OIDOBt = 0, implying that, the effects of contact
+dynamics are suppressed when ωQ is set as a small value. This                                    CDYOB
+                                                                                                YQ=1   = A.                          (21)
+is a trade-off with the suppression disturbances, dF . Moreover,
+with ωQ = 15 Hz, |N1OIDOBt | is observed to be the lowest in          Thus, the goal of rendering the desired admittance has been
+Fig. 4.                                                               achieved. Therefore, high gain and fast response characteristics
+    2) PROB2. Multi-Function Observer (MOB): To overcome              of A in (3) can be realized without any limitation as compared
+the limitations of OIDOBt, authors proposed the MOB in [21],          to OIDOBt in (15) and MOB in (17).
+where N1 and N2 were designed as follows.                                 The result in (21) is achieved by combining the strengths of
+                                                                      OIDOBt and MOB to design N1CDYOB in (19) and N2CDYOB in
+   N1MOB = QCn−1                                              (16)    (20). Similar to OIDOBt, the admittance controller A shapes the
+   N2MOB = N2OIDOBt + QCn−1 Pn−1 = Q(A + Cn−1 )Pn−1 .         (17)    force information to accurately track the desired admittance in
+                                                                      the outer loop as well as converts force into velocity since both
+N1MOB in (16) is designed using nominal velocity controller dy-       Cn−1 Rn−1 in (19) and Pn−1 Tn−1 in (20) input and output velocities.
+namics, Cn , which takes a different approach from the OIDOBt             The combination ACn−1 Rn−1 in (19) results into a high-pass
+case in (14). This eliminates the N1OIDOBt |Q=1 = 0 limitation        filter as desired for extracting the high-frequency forces due
+since N1MOB |Q=1 = 0, while achieving the function of estimat-       to contact dynamics. Moreover, since the open loop dynamics,
+ing and suppressing the contact dynamics through Cn−1 . Here,         Cn−1 Rn−1 , is an indirect force estimator, more accurate contact
+Cn−1 has a high-pass filter structure and is force input velocity     dynamics are estimated by the proposed CDYOB. This is shown
+output, thus, it serves the combined purpose of A(1 − Q) in           by |N1CDYOB | in Fig. 4 where CDYOB exhibits larger magnitude
+OIDOBt. In fact, the MOB suppresses the effects of contact            than OIDOBt and MOB.
+dynamics better than the OIDOBt as shown by its higher |N1MOB |           In addition to compensating payload forces through Pn−1 ,
+in Fig. 4.                                                            the closed loop nominal dynamics Tn−1 in (20) accounts for
+   On the other hand, N2MOB is designed from N2OIDOBt as shown        the compensation of the undesired coupling forces between the
+in (17). This is because, designing N1MOB as QCn−1 necessitates       velocity controlled robot and the attached payload, which are
+the inclusion of Cn−1 in the design of N2MOB in order to satisfy      not considered in OIDOBt and MOB. This is validated by the
+the V/Vr |Q=1 = Tn condition. Despite this constraint, payload        largest |N2CDYOB | in Fig. 4 for CDYOB.
+force variations can be compensated by the MOB in low to mid-             To summarize, from its design structure, the proposed novel
+frequency ranges as shown by |N2MOB | in Fig. 4.                      CDYOB guarantees safety during interactions due to its ca-
+   With accurate Cn obtained from a well designed inner loop          pability to render the desired admittance from the outer loop
+velocity controller C, the outer loop force tracking accuracy         without any limitation. Thus, CDYOB is suitable for tasks that
+at steady state during contact can be improved. Moreover, ωQ          involve high speed motion in free space and where the robot and
+can be increased to improve disturbance rejection performance         environment dynamics couple such as plug insertions, which
+while improving contact stability since N1MOB = 0 when Q = 1         require reliable contact stability, as compared to OIDOBt and
+as with N1OIDOBt .                                                    MOB which have bandwidth limitations of the inner loop.
+SAMUEL et al.: PERTURBATION-ROBUST FRAMEWORK FOR ADMITTANCE CONTROL OF ROBOTIC SYSTEMS                                                    6437
+
+
+
+    IV. FURTHER CLOSED LOOP PERFORMANCE ANALYSIS
+A. Parameters Utilized for Analysis
+   To begin with, the values of parameters in (1) are extracted
+from Test transfer function in Fig. 2 to get
+        C(s) = 1425 + 38000/s,         Γd (s) = e−0.003 s ,
+                 and    R(s) = 1/(41.67s + 1000).             (22)
+Values in (22) are further changed to obtain an FRF with a higher
+bandwidth, which can be utilized as nominal model Cn and Rn ,
+and the result is given by
+    Cn = 475 + 19000/s, Rn = 1/(16.67s + 600).                (23)
+Furthermore, A = 1/(8s + 800) = 0.0013/(0.01s + 1) fol-
+lowing the commonly utilized values by researchers, Ke = 5 ×
+105 N/m represents very stiff surfaces, and Mp = 5kg, Mpn =
+4kg are used since they are within the payload limits of the          Fig. 5.   Plots of |Y | when ωQ = 15 Hz, and |G|, |H| when Q = 1.
+robot in Fig. 1 of 7 kg maximum. ωQ = 15Hz was obtained
+experimentally with contact control, accounting for both low
+and high frequency characteristics and the trade-off between
+                                                                      D. Performance Evaluation of Peak Contact Forces, Force
+latency and noise attenuation.
+                                                                      Tracking Accuracy, and Stability During Contact
+
+B. Evaluation of Perturbation Robustness Performance                     Let Mp = Mpn = 0 such that N2 = 0 since payload (gripper)
+                                                                      forces are small and overshadowed by contact forces. Substitute
+   The perturbations are estimated utilizing end effector force       N1 in (12) and (13), and set Q = 1 to get
+and robot velocity measurements. To this end, re-write (10) to
+represent component wise the disturbances dF , contact dynam-
+ics in Fm , and payload forces in Vm . To achieve this, derive Vi                  GOIDOBt = AETn /(1 + AETn )                            (27)
+from Fig. 3 in terms of dF , Fm , and Vm , substitute the result in                G MOB
+                                                                                             = AETn /(1 + ETn (A + Cn−1 ))                (28)
+(10) and set Q = 1 to get
+                                                                                   GCDYOB = AETn /(1 + AE)                                (29)
+   OIDOBt
+ P̂ert    = Cn−1 DF − Cn−1 Fm − APn−1 Vm                      (24)
+                                                                                   H OIDOBt = 1/(1 + AETn )                               (30)
+  MOB
+P̂ert     = Cn−1 DF − Pn−1 (A + Cn−1 )Vm                      (25)
+                                                                                   H MOB     = 1/(1 + ETn (A + Cn−1 ))                    (31)
+   CDYOB
+ P̂ert   = Cn−1 DF + Cn−1 (ARn−1 − 1)Fm − APn−1 Tn−1 Vm .
+                                                      (26)                         H CDYOB = 1/(1 + AE).                                  (32)
+
+All the PROBs estimate the disturbances dF in the same way
+as shown by the term Cn−1 DF . Moreover, D = F/DF |Q=1 = 0            It can be observed from (27)–(32) that with all the three PROBs,
+for all the PROBs, which confirms the disturbance rejection by        the time delays are eliminated while the velocity controller and
+the Tn−1 Vm − Vi component in (10) as with classical DOBs [16].       robot dynamics are nominalized. This facilitates the increase
+This resolves the limitation by the basic method in (6). On the       of ka and reducing τa of the admittance controller without
+other hand, the proposed CDYOB leverages its special feature          hindrances from the actual dynamics. However, differences are
+of combining the inner and outer loop dynamics to estimate the        observed in the denominators of each PROB, where the OIDOBt
+high-frequency contact forces and payload force variations, on        and MOB have Tn , which is absent in CDYOB. This eliminates
+Fm and Vm components to ensure safety during contact beyond           the bandwidth limitation, thus, gives CDYOB an extra advantage
+the capabilities of OIDOBt and MOB.                                   of further increasing the admittance. Furthermore, the mag-
+                                                                      nitudes of (27)–(32) are shown in Fig. 5(bottom), confirming
+                                                                      that the CDYOB can improve force tracking accuracy, increase
+C. Wide-Range Admittance Rendering
+                                                                      control bandwidth during contact, and reduce resonant forces as
+   The inner loop bandwidth limitation has been eliminated            compared to basic, ODIOBt, and MOB methods.
+under ideal conditions in (21). Considering the actual case, e.g.,       Stability during contact is further checked by plotting the
+when ωQ = 15 Hz, |Y | is plotted in Fig. 5(top). It can be seen       poles and zeros of (27)–(29) as shown in Fig. 6. The proposed
+that CDYOB increases the admittance rendering range to almost         CDYOB exhibits the best contact stability since all the poles are
+same as the desired admittance. MOB exhibits resonance due            in the left half plane and far from the neutral axis. All the poles
+to the effect of Cn in (18) where as the OIDOBt and basic             with MOB are stable however, dominant poles are closer to the
+method present same results, being limited by the inner loop          neutral axis than those of CDYOB. On the other hand, the basic
+dynamics.                                                             and OIDOBt methods exhibit unstable poles.
+6438                                                                           IEEE ROBOTICS AND AUTOMATION LETTERS, VOL. 9, NO. 7, JULY 2024
+
+
+
+
+Fig. 6.   Pole-zero plot of G when Q = 1.
+
+
+                  V. EXPERIMENTAL VERIFICATION
+   Experiments involving contact control scenarios with the
+robot operating autonomously as in Fig. 1(b) and (c) and contact-
+rich assembly tasks with human assistance in manual mode as
+in Fig. 1(d) are conducted. The proposed CDYOB is compared
+with basic, OIDOBt, and MOB methods where performance is
+                                                                     Fig. 7.    Experiment results for contact control at various conditions.
+evaluated based on peak contact forces and steady-state force
+tracking error, all of which are desired to be reduced.
+   The task space position command for implementation on the
+robot in Fig. 1 is derived from Fig. 3 as
+                   Xi = Φ1 Fr − Φ2 Fm − Φ3 Vm                (33)
+
+where Φ1 = A/Φ4 , Φ2 = (A + N1 )/Φ4 , Φ3 = (QTn−1 −
+N2 )/Φ4 , and Φ4 = s(1 − Q). The transfer functions Φ1 , Φ2 ,
+and Φ3 are discretized in MATLAB at a sampling frequency
+of 1250 Hz on a remote computer, and the result is sent to the
+robot’s internal computer, running in real time, which computes
+the command signal for the robot controller. ωQ = 15 Hz was
+utilized while Cn and Rn were empirically tuned from (23) to
+get Rn = 1/(2.5s + 20), Cn = 100 + 400/s for OIDOBt and
+CDYOB, and Cn = 10 + 400/s for MOB.                                  Fig. 8. Peak contact forces and force tracking errors at steady state. Top row:
+                                                                     variation in contact stiffness, middle row: variation in payload, and bottom row:
+                                                                     effect of admittance controller gain and time constant.
+A. Contact Control
+   To evaluate suppression of high-frequency contact dynamics,
+payload force variations, and the effect of variation in the gain    by the setup in Fig. 1(b) and (c), respectively, where the distance
+and time constant of the desired admittance, three contact control   from the fixture to the contact point (in red) determines the
+scenarios are considered, i.e., contact on surfaces with varying     stiffness of the plastic beam. Here, N2 = 0 in (33) since no extra
+stiffness, contact with additional payload, and variation in ka      payload is attached to the end effector. Results are presented in
+and τa .                                                             Figs. 7 and 8(a), (e), (b), (f) for variation in admittance gain as:
+   In all these scenarios, the robot is commanded with a constant    for ka = 0.0025: (a) on soft contact and (e) on hard contact, and
+virtual force of Fr = 16 N to start from a constant position in      for ka = 0.0013: (b) on soft contact and (f) on hard contact.
+space, move and collides with the stiff surface and keeps contact.   Due to increased stiffness, hard surface leads to larger peak
+The contacting surface is a 3D printed plastic beam (in blue         contact forces and higher magnitudes of oscillations at steady
+color) fixed in the robot’s workspace as illustrated in Fig. 1(b)    state for all the methods for similar ka values. All PROBs show
+and (c). The contact control experiment results for the three        comparable peak contact forces, however, the proposed CDYOB
+conditions are presented in Fig. 7 for the step response time        exhibits faster damping after contact and least tracking error, an
+plots and their numerical values of peak contact forces and root     indication of safe reaction and improved contact stability.
+mean square values of the force tracking errors at steady state         2) Additional Payload: 5 kg payload is added to the end
+in Fig. 8.                                                           effector as shown in Fig. 1(c) and contact control experiment
+   1) Variation in Contact Surface Stiffness: The robot is com-      is repeated on hard contact, with Pn = 1/5 s for N2 setting
+manded to make contact on soft and hard surfaces as illustrated      in (33). Results are presented in Figs. 7 and 8(e), (g), (h) for
+SAMUEL et al.: PERTURBATION-ROBUST FRAMEWORK FOR ADMITTANCE CONTROL OF ROBOTIC SYSTEMS                                                                6439
+
+
+
+ka = 0.0025: (e) with no payload and (g) with 5 kg payload              these contexts and explore enhancements for systems like collab-
+attached, and for ka = 0.0013: (h) with 5 kg payload attached.          orative robots with accessible inner loop controller parameters.
+Due to increased momentum by the extra payload, contact forces
+are larger even for CDYOB (from 40.9 N in (e) to 44.9 N in (g)),                                            REFERENCES
+however, the CDYOB shows faster damping and there is no big
+                                                                         [1] S. Haddadin, A. De Luca, and A. Albu-Schäffer, “Robot collisions: A
+change in the tracking error. On the other hand, other methods’              survey on detection, isolation, and identification,” IEEE Trans. Robot.,
+performances deteriorate due to addition of payload.                         vol. 33, no. 6, pp. 1292–1312, Dec. 2017.
+   3) Variation in Gain and Time Constant of Desired Admit-              [2] G. Raiola, C. A. Cardenas, T. S. Tadele, T. De Vries, and S. Stramigi-
+                                                                             oli, “Development of a safety-and energy-aware impedance controller
+tance: Results in Figs. 7 and 8(a)–(f) are further studied to ex-            for collaborative robots,” IEEE Robot. Automat. Lett., vol. 3, no. 2,
+amine the influence of ka and τa characteristics of the admittance           pp. 1237–1244, Apr. 2018.
+controller. ka is varied for (a), (b), and (d) as 0.0025, 0.0013, and    [3] A. Q. Keemink, H. van der Kooij, and A. H. Stienen, “Admittance
+0.004 on soft contact and reduced from 0.025 in (e) to 0.0013 in             control for physical humanrobot interaction,” Int. J. Robot. Res., vol. 37,
+                                                                             pp. 1421–1444, Sep. 2018.
+(f) on hard surface. On soft contact, τa is reduced from 0.01 in (a)     [4] K. Samuel, K. Haninger, and S. Oh, “Increasing admittance of industrial
+to 0.0063 in (c). Lowering ka decreases the robot speed before               robots by velocity feedback inner-loop shaping,” in Proc. IEEE Int. Conf.
+and on contact, thus contact force is reduced as observed in (a)             Robot. Automat., 2023, pp. 5228–5234.
+                                                                         [5] M. J. Kim and W. K. Chung, “Disturbance-observer-based PD control
+and (b). The basic method exhibits large oscillations at steady
+                                                                             of flexible joint robots for asymptotic convergence,” IEEE Trans. Robot.,
+state in (b) while the CDYOB shows no overshoot and tracks                   vol. 31, no. 6, pp. 1508–1516, Dec. 2015.
+the reference with minimal error as compared to OIDOBt and               [6] X. Yu, P. Liu, W. He, Y. Liu, Q. Chen, and L. Ding, “Human-robot
+MOB which show larger tracking errors. A small improvement                   variable impedance skills transfer learning based on dynamic movement
+                                                                             primitives,” IEEE Robot. Automat. Lett., vol. 7, no. 3, pp. 6463–6470,
+is observed for CDYOB when τa is reduced.                                    Jul. 2022.
+   To summarize, the proposed CDYOB shows reduced peak                   [7] G. Peng, C. P. Chen, W. He, and C. Yang, “Neural-learning-based force
+contact forces, faster damping, and the least tracking error as              sensorless admittance control for robots with input deadzone,” IEEE Trans.
+compared to basic, OIDOBt, and MOB methods in all the above                  Ind. Electron., vol. 68, no. 6, pp. 5184–5196, Jun. 2021.
+                                                                         [8] D. Kaserer, H. Gattringer, and A. Müller, “Time optimal motion planning
+cases. Therefore, higher admittance can be rendered and the time             and admittance control for cooperative grasping,” IEEE Robot. Automat.
+constant can be reduced to achieve the goal of safe contacts and             Lett., vol. 5, no. 2, pp. 2216–2223, Apr. 2020.
+dynamic interactions. The performance is attributed to the ability       [9] K. Haninger, M. Radke, A. Vick, and J. Krüger, “Towards high-payload
+                                                                             admittance control for manual guidance with environmental contact,”
+of the CDYOB to cancel the effect of robot dynamics, payload,                IEEE Robot. Automat. Lett., vol. 7, no. 2, pp. 4275–4282, Apr. 2022.
+and contact forces while suppressing the effects of perturbations,      [10] K. Samuel, “Development of advanced robot force control algorithms,”
+thus, eliminating the inner loop bandwidth limitation to render              Ph.D. dissertation, Daegu Gyeongbuk Institute of Science and Technology,
+the desired admittance as theoretically proven in (21).                      Daegu, South Korea, 2023.
+                                                                        [11] I. Ranatunga, F. L. Lewis, D. O. Popa, and S. M. Tousif, “Adaptive
+                                                                             admittance control for human–robot interaction using model reference
+B. Actual Demonstrations With Contact-Rich Tasks                             design and adaptive inverse filtering,” IEEE Trans. control Syst. Technol.,
+                                                                             vol. 25, no. 1, pp. 278–285, Jan. 2017.
+   The proposed CDYOB, along with basic, OIDOBt, and MOB                [12] E. Sariyildiz, H. Sekiguchi, T. Nozaki, B. Ugurlu, and K. Ohnishi, “A
+                                                                             stability analysis for the acceleration-based robust position control of robot
+are utilized for real-world assembly applications with human                 manipulators via disturbance observer,” IEEE/ASME Trans. Mechatronics,
+assistance. Four tasks involving environmental coupling with                 vol. 23, no. 5, pp. 2369–2378, Oct. 2018.
+the robot in Fig. 1(a) are considered: Three tasks with linear          [13] R. Kikuuwe, “A sliding-mode-like position controller for admittance
+motions only by disabling the rotational DOF, i.e., plug insertion           control with bounded actuator force,” IEEE/ASME Trans. Mechatronics,
+                                                                             vol. 19, no. 5, pp. 1489–1500, Oct. 2014.
+with fine positioning, switch insertion onto the rail, peg-in-          [14] D. Ko, D. Lee, W. K. Chung, and K. Kim, “On the performance and pas-
+hole (gear insertion), and one task of colliding the gripper tip             sivity of admittance control with feed-forward input,” in Proc. IEEE/RSJ
+with random objects when the rotation 4/5/6 is also activated                Int. Conf. Intell. Robots Syst., 2022, pp. 11209–11215.
+with CDYOB. In all these tasks, the human manipulates the               [15] H. Pham and Q. C. Pham, “Convex controller synthesis for robot contact,”
+                                                                             IEEE Robot. Automat. Lett., vol. 5, no. 2, pp. 3330–3337, Apr. 2020.
+admittance controlled robot as illustrated in Fig. 1(d) for the         [16] S. Li, J. Yang, W. H. Chen, and X. Chen, Disturbance Observer-Based
+plug insertion task. The attached video, also accessible via                 Control: Methods and Applications. Boca Raton, FL, USA: CRC Press,
+https://youtu.be/18_bj8L5yU0, shows the demos along with the                 2014.
+                                                                        [17] M. S. Erden and A. Billard, “Hand impedance measurements during
+live plots of x/y/z force responses. The proposed CDYOB is                   interactive manual welding with a robot,” IEEE Trans. Robot., vol. 31,
+observed to exhibit smallest contact forces, faster damping, and             no. 1, pp. 168–179, Feb. 2015.
+no oscillations during contact.                                         [18] Z. Li, J. Liu, Z. Huang, Y. Peng, H. Pu, and L. Ding, “Adaptive impedance
+                                                                             control of human–robot cooperation using reinforcement learning,” IEEE
+                                                                             Trans. Ind. Electron., vol. 64, no. 10, pp. 8013–8022, Oct. 2017.
+                        VI. CONCLUSION                                  [19] M. Bednarczyk, H. Omran, and B. Bayle, “EMG-based variable impedance
+                                                                             control with passivity guarantees for collaborative robotics,” IEEE Robot.
+   This paper presented a generalized perturbation-robust frame-             Automat. Lett., vol. 7, no. 2, pp. 4307–4312, Apr. 2022.
+work for admittance control of multi-DOF robotic systems,               [20] K. Samuel, K. Haninger, R. Oboe, and S. Oh, “Task space outer-loop
+                                                                             integrated DOB-based admittance control of an industrial robot,” IEEE
+where a novel CDYOB which overcomes bandwidth limitations                    Trans. Control Syst. Technol., vol. 32, no. 3, pp. 974–989, May 2024.
+by inner position control was developed. While the focus was            [21] K. Samuel, K. Haninger, R. Oboe, and S. Oh, “Outer-loop admittance and
+on robot manipulators, the framework’s applicability can be                  motion control dual improvement via a multi-function observer,” IEEE
+extended to various multi-DOF systems in contact-rich tasks,                 Trans. Ind. Electron., vol. 71, no. 8, pp. 9339–9350, Aug. 2024.
+                                                                        [22] K. Samuel, K. Haninger, and S. Oh, “High-performance admittance control
+including mobile manipulations, legged robots, and assistance                of an industrial robot via disturbance observer,” in Proc. IEEE IECON 48th
+systems. Future research aims to implement the framework in                  Annu. Conf. Ind. Electron. Soc., 2022, pp. 1–6.
+

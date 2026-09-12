@@ -6708,6 +6708,14 @@ def run_joint_admittance_phases(
                         publication_owner = getattr(phase.outer, "publication_owner", None)
                         active_source = None
                         if publication_owner is not None:
+                            wait_for_source = getattr(publication_owner, "waiting_for_retry_source", None)
+                            if callable(wait_for_source) and wait_for_source(
+                                float(getattr(snap, "t_s", float("nan"))), now_s=time.monotonic(),
+                            ):
+                                ticks += 1
+                                next_tick += dt
+                                _wait_until(next_tick)
+                                continue
                             active_source = publication_owner.prepare_source(
                                 f"{id(obs)}:{getattr(state_bus, 'session_id', 'direct')}",
                                 float(getattr(snap, "t_s", float("nan"))),
@@ -7223,10 +7231,18 @@ def run_joint_admittance_phases(
                                 abort_reservation = getattr(rail_bridge, "abort_reservation", None)
                                 if callable(abort_reservation): abort_reservation()
                                 publication_owner.publication_abort("final_review_rejected", definitely_not_sent=True)
-                                phase_stopped = True
-                                stop_reason = "contact_qp_final_review_rejected"
                                 abort_pub = getattr(inner, "abort_publication", None)
                                 if callable(abort_pub): abort_pub()
+                                retry_unsent = getattr(publication_owner, "retry_unsent_publication", None)
+                                if callable(retry_unsent) and retry_unsent():
+                                    # No transport succeeded. Preserve committed history,
+                                    # watchdog age and reference; recompute next paced tick.
+                                    ticks += 1
+                                    next_tick += dt
+                                    _wait_until(next_tick)
+                                    continue
+                                phase_stopped = True
+                                stop_reason = "contact_qp_final_review_rejected"
                                 _fault_stop(stop_reason)
                                 break
                         if rail_bridge is not None:
@@ -7238,7 +7254,22 @@ def run_joint_admittance_phases(
                                 or 0
                             )
                         if publication_owner is not None:
-                            publication_owner.publication_started(proposal_id)
+                            if not publication_owner.publication_started(proposal_id):
+                                abort_reservation = getattr(rail_bridge, "abort_reservation", None)
+                                if callable(abort_reservation): abort_reservation()
+                                publication_owner.publication_abort("dispatch_rejected", definitely_not_sent=True)
+                                abort_pub = getattr(inner, "abort_publication", None)
+                                if callable(abort_pub): abort_pub()
+                                retry_unsent = getattr(publication_owner, "retry_unsent_publication", None)
+                                if callable(retry_unsent) and retry_unsent():
+                                    ticks += 1
+                                    next_tick += dt
+                                    _wait_until(next_tick)
+                                    continue
+                                phase_stopped = True
+                                stop_reason = "contact_qp_dispatch_rejected"
+                                _fault_stop(stop_reason)
+                                break
                         try:
                             step.arm_send_mono_ns = time.monotonic_ns()
                             _send_joint_canfd_cmd(

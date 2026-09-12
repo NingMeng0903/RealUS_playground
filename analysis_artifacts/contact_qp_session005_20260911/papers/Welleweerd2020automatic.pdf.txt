@@ -1,0 +1,570 @@
+2020 IEEE International Conference on Robotics and Automation (ICRA)
+31 May - 31 August, 2020. Paris, France
+
+
+
+
+      Automated robotic breast ultrasound acquisition using ultrasound
+                                  feedback
+                M.K. Welleweerd1 , A.G. de Groot1 , S.O.H. de Looijer1 , F.J. Siepel1 , S. Stramigioli1,2
+
+
+   Abstract— Current challenges in automated robotic breast                  volume of lesions are more precise. Moreover, it is easier to
+ultrasound (US) acquisitions include keeping acoustic coupling               register preoperative data like an MRI of the breast with the
+between the breast and the US probe, minimizing tissue                       intraoperative US data.
+deformations and safety. In this paper, we present how an au-
+tonomous 3D breast US acquisition can be performed utilizing                    Currently, there are several approaches to acquire 3D US
+a 7DOF robot equipped with a linear US transducer. Robotic                   breast data. Manual acquisitions can be divided in freehand
+3D breast US acquisitions would increase the diagnostic value                scanning, mechanical scanning and 2D array scanning [2].
+of the modality since they allow patient specific scans and have             Automated scanners include contactless scanners which scan
+a high reproducibility, accuracy and efficiency. Additionally, 3D            the patient in prone position, with the breast submerged in a
+US acquisitions allow more flexibility in examining the breast
+and simplify registration with preoperative images like MRI. To              liquid. Other scanners scan the patient in supine position, the
+overcome the current challenges, the robot follows a reference-              probe being in contact with the breast [3]. Both automated
+based trajectory adjusted by a visual servoing algorithm. The                systems have disadvantages: either part of the signal is
+reference trajectory is a patient specific trajectory coming from            lost due to the US traveling through the liquid, or volume
+e.g. an MRI. The visual servoing algorithm commands in-plane                 reconstruction is complex due to deformation of the breast.
+rotations and corrects the probe contact based on confidence
+maps. A safety aware, intrinsically passive framework is utilised               Compared to the conventional approaches, the advantages
+to actuate the robot. The approach is illustrated with experi-               of utilizing a robotically manipulated linear US probe for
+ments on a phantom, which show that the robot only needs                     automated breast volume acquisitions are plentiful. Robotic
+minor pre-procedural information to consistently image the                   arms offer a higher accuracy compared to other tracked
+phantom while relying mainly on US feedback.                                 systems and enhanced dexterity and consistency compared
+                       I. INTRODUCTION                                       to human operators. The linear US probes are widespread in
+                                                                             medical imaging and offer a higher resolution than 3D US
+   Ultrasound (US) imaging has become an important di-                       probes. Thus, high quality, accurately localized slices can be
+agnostic tool for breast cancer detection. It is not only                    acquired by a robotic manipulator equipped with a US probe.
+used in the diagnostic biopsy procedure for confirming the                   In addition, acquisitions can be tailored to the individuals’
+pathology, but also for localizing breast cancer. US has                     breast shape, possibly making US volume reconstructions
+advantages over other imaging methods because it is cheap,                   more accurate and efficient. Robotics has already shown its
+safe, and is able to display images of the region of interest                potential in several other medical US applications [4]–[6].
+(ROI) in real time. Furthermore, it is more reliable than                       Nevertheless, there are also some challenges in automated
+mammography in detecting cancers in dense breasted women                     robotic US breast acquisitions. The breast is highly de-
+and the distinction between cystic and solid lesions can                     formable, so there is a balance between acoustic coupling and
+be made. Also, malignant lesions are recognized with 98%                     applied pressure. A deformed acquisition is more difficult to
+confidence [1].                                                              reconstruct and register with other modalities. Another aspect
+   However, the use of handheld US has substantial limita-                   is the safety of both the patient and the system operator.
+tions as well. The accuracy of probe manipulation is highly                     Keeping contact can be achieved in several ways. In static
+operator dependent, the reproducibility is low and the pro-                  situations, a trajectory closely describing skin surface can be
+cedure is time consuming. It is difficult to reliably measure                generated utilizing preoperative images such as MRI and reg-
+structures of interest because the images represent 2D cross-                istering the trajectory with the patient in robot coordinates.
+sections. Finally, relating the images to 3D preoperative                    Trajectories can also be generated in real time by recon-
+images in e.g. US guided biopsies on MR-detected lesions                     structing the skin surface using commercially available 3D
+is complex due to the lack of discernable spatial features.                  cameras [3]. However, having a predefined trajectory does
+   3D US breast acquisitions would overcome these limita-                    not guarantee probe contact, since involuntary patient move-
+tions: larger ROIs can be imaged, arbitrary cross-sections                   ments, or measurement inaccuracies may occur. Therefore,
+of this ROI are possible, and measurements of the size and                   several studies implemented force control strategies in their
+  1 are affiliated with the Robotics and Mechatronics group, University of   application [7]–[11]. While normal force is closely related to
+Twente, The Netherlands m.k.welleweerd@utwente.nl                            acoustic coupling, it is not solely responsible for high quality
+  2 is affiliated with the Bio-mechatronics and Energy-Efficient Robotics    images. Scanning with force feedback may unnecessarily
+group, ITMO University, St. Petersburg, The Russian Federation.              deform a softer breast, while the image quality may decline
+  This project has received funding from the European Unions Horizon
+2020 research and innovation programme under grant agreement No.             when scanning a stiffer breast. Visual servoing algorithms
+688188 (MURAB).                                                              link end-effector (EE) behaviour to image features. In [12]
+
+978-1-7281-7395-5/20/$31.00 ©2020 IEEE                                   9946
+
+
+   Authorized licensed use limited to: UNIVERSITY OF TWENTE.. Downloaded on December 10,2020 at 07:48:25 UTC from IEEE Xplore. Restrictions apply.
+and [13], an intensity based method is proposed to control                                      II. AUTOMATED ROBOTIC BREAST ULTRASOUND
+the probe. Additionally, in-plane motions can be controlled
+using feature tracking [14], while out-of-plane motions can                                 A. System overview
+be controlled by image moments [15], speckle correlation                                       A system overview is presented in Fig. 1. The patient lies
+[16] or block matching [17]. Recently, confidence maps have                                 on a patient bed in prone position with the examined breast
+been successfully implemented by [8]–[11]. A confidence                                     through a hole such that it is freely accessible for the robot.
+map represents the confidence in the US signal in a pixel-                                  The robot is placed underneath the bed. It is equipped with
+wise manner. It has been used to avoid imaging shadowing                                    an EE holding a linear US transducer [19]. The robot follows
+objects, to achieve uniform probe contact, and to optimise a                                a trajectory over the breast surface with the US transducer
+target region or the global image.                                                          to acquire a series of 2D US images for 3D volume re-
+   Safety is paramount in medical robotics since the robots                                 construction. This trajectory is a reference trajectory based
+are operating in an unstructured environment and interacting                                on preoperative images such as MRI adapted with real-time
+with patients. Therefore, compliance of the robotic arm                                     visual servoing input coming from US confidence maps. This
+should be introduced to account for uncontrolled impact                                     trajectory is the input for a SAIP control algorithm which
+and patient movements. Several safety metrics have been                                     actuates the robot. The different parts of the robot control
+suggested such as Head Impact Power and Head Injury                                         are described in the following subsections.
+Criteria and safety based controllers have been implemented
+limiting velocity, force, power and energy of the robot [18].
+                                                                                            B. Path planning
+   This study aims to perform a breast shape preserving,
+safe automated robotic 3D US volume acquisition of the                                         The path is defined as a series of homogeneous matrices
+breast. High quality, patient specific acquisitions, obtained                                 0
+                                                                                            Href (i) located on the patient’s skin defining the desired
+while taking safety into consideration, are necessary to bring                              poses and positions of the transducer in the robot base frame.
+applications like this closer to clinical practise. We developed                            The surface of a patient or phantom is obtained by converting
+a setup to achieve this. The patient is positioned in prone                                 the MRI scan or the CAD-file to a tessellated surface
+position and an initial scanning trajectory is extracted from                               reconstruction. The waypoints are generated by casting rays
+the preoperative MRI. This scanning trajectory may not be                                   from a predefined path like a line or spiral towards the
+accurate due to deformations during repositioning of the                                    surface (see Fig. 2). The intersection point of the ray with
+patient or involuntary movements. Thus, feedback is essential                               the surface is calculated utilizing the Fast, Minimum Storage
+for autonomous scanning. Since force feedback may have                                      Ray/Triangle intersection [20]. These intersection points rep-
+varying results over different breasts, we propose a system                                 resent the translation of the EE. The desired orientation of
+that relies solely on US feedback. Confidence maps are                                      the EE is normal to the skin in each position. This normal is
+utilized to maintain the contact between the probe and the                                  extracted from the intersected triangle utilizing the vertices.
+breast and to minimize the applied pressure. We implemented                                 The orientation of the x-axis is obtained by the cross-product
+the trajectory following and visual servoing adjustments in a                               of the z-axis and the unit-vector in the direction of the next
+safety aware, intrinsically passive (SAIP) control framework                                point. The y-axis is obtained by taking the cross-product
+to ensure safety of the patient. The performed experiments                                  of the z-axis with the x-axis. The correct transformation of
+show that the robot consistently images a complex scanning                                  the waypoints with respect to the base frame is obtained by
+trajectory based on minimal pre-procedural input.                                           measurement or marker localization.
+
+
+                                                                      q6                                       Patient bed
+
+                                                                q5
+
+                        Passivity layer
+  Reference               Energy tanks:                               q4
+   trajectory              H(s1)···H(sn)
+                                                 τ0                                                                               Ultrasound image
+     0
+   Href
+                Hvs0      Safety layer                     q3                         q1                         y
+                                                                                                                     z
+                           Limitations:                          q2
+      ref                   Emax , Pmax       q , q , τm                                                       xΨ
+   H vs                                                                                                           ee
+
+                                                                                                                                   Confidence map
+Visual servoing          Motion layer                                                           End-effector             Breast
+  adjustment            Stiffness, damping:                                                q0
+                                                                           z
+                                K, B                                              y
+            Cmean , μ                                                      Ψ0 x
+
+Fig. 1: A system overview. The robot is placed underneath the breast. Scanning is done based on a reference trajectory
+adjusted with visual servoing information. A safety aware, intrinsically passive controller actuates the robot.
+
+                                                                               9947
+
+
+  Authorized licensed use limited to: UNIVERSITY OF TWENTE.. Downloaded on December 10,2020 at 07:48:25 UTC from IEEE Xplore. Restrictions apply.
+C. Confidence maps                                                         over the image. The confidence weighted barycentre, µ, of
+   Confidence maps provide a per-pixel measure of uncer-                   the confidence map gives a measure of how the confidence
+tainty of the acquired US image. Each US image I : Ω →                     is divided over the image and is defined as
+[0, 1] is associated with a confidence map C : Ω → [0, 1]                                         1 X
+in which each pixel (i, j) ∈ Ω := [1..n] × [1..m] represents                                µi =            i · C(i, j) ,
+                                                                                                 CP
+                                                                                                    (i,j)∈P
+the confidence of that pixel in the US image I(i, j). The                                                                        (2)
+US image, I, is mapped to the confidence map, C, based                                            1 X
+                                                                                            µj =            j · C(i, j) ,
+on the probability of a random walk starting from a pixel                                        CP
+                                                                                                              (i,j)∈P
+(i, j) and reaching each of the virtual transducer elements                               P
+[21]. The random walks algorithm meets three constraints                   with CP = (i,j)∈ C (i, j) the total confidence. The pixel
+[9]: the top row of the US image has confidence 1, the                     indices µi and µj are converted to coordinates in the EE
+bottom row of the image has confidence 0 and US-specific                   frame, µz and µx , respectively. The desired x-coordinate of
+propagation constraints are obeyed by the signal. Confidence               the barycentre is around 0, as this indicates the probe is
+maps accentuate attenuated and shadowed parts of an image.                 oriented normal to the skin. The angle between the central
+As such, they are useful to estimate how the probe is in                   scan line (x = 0) and the line passing through the origin and
+contact with the skin.                                                     the barycentre is a measure for the error between the current
+                                                                           and the desired pose of the probe eθ = tan µµxz .
+D. Control strategy                                                           The mean confidence Cmean of a US image indicates which
+   The robot should move the US probe over the skin of                     portion of the transducer area is in contact with the skin as
+the patient without losing contact nor causing too much                    the breast is a curved surface:
+compression. The general shape of the patient’s body has                                             1     X
+been extracted from the MRI and located with respect                                       Cmean =               C (i, j) .           (3)
+                                                                                                   m·n
+to the robot. However, small deformations or involuntary                                                          (i,j)∈P
+
+movements of the patient may cause the actual trajectory                   The error is defined by the set mean, Cset , and the currently
+to differ from the calculated trajectory. Thus, the probe may              measured mean confidence, Cm : ec = Cset − Cm .
+inadvertently lose contact with the patient, press too hard,                  The confidence weighted barycentre and the mean con-
+or only partly touch the skin. The confidence maps can be                  fidence are controlled utilizing a simple PD controller. The
+used to control two degrees of freedom of the probe: the                   error is scaled with a third order function to give large errors
+in-plane rotation and the translation in the z-direction of the            a higher weight than small errors. For safety reasons, the
+EE frame, Ψee , as defined in Fig. 1. The other four degrees               maximum deviation of the visual servoing algorithm with
+of freedom are determined by the predefined path. Thus, the                respect to the unmodified reference path is limited.
+                  0
+reference pose Href (i) of the probe at time i is adjusted by
+      ref
+H(i)adj according to:                                                      E. Safety aware intrinsically passive controller
+                                                                              The control architecture of the robot is implemented
+             H(i)0vs = H(i)0ref H(i)ref
+                                    adj                                    according to the SAIP control scheme presented in [18].
+                                                      adj
+                        = H(i)0ref H(i − 1)ref
+                                           adj H (i)vs ,            (1)    Impedance control is useful in human robot interaction
+                                                                           because the environmental uncertainty requires compliant
+                  adj
+            H (i)vs = HΔz Ht HΔθ .                                         robotic behavior. By monitoring the energy and power output
+     ref                                                                   of the robot, safe human-robot interaction can be warranted.
+H (i)adj is composed of the current and previous outputs of                Passivity is a fundamental criterion of a system because if
+                                  adj
+the visual servoing algorithm, Hvs    and H(i − 1)ref
+                                                    adj , respec-          passivity is not preserved, the possibility exists that a passive
+tively. The visual servoing algorithm outputs a translation,               environment destabilizes the robot [22]. The definition of a
+∆z, in z-direction, HΔz , and a rotation, ∆θ, around either                passive system is a stable dynamic system of which the total
+end of the transducer, Ht HΔθ . Ht helps expressing the                    energy is never higher than the sum of its initial energy and
+rotation in the correct frame by a transformation of half the              any external energy supplied to it by interaction.
+probe-width along the x-axis of the transducer.                               1) Impedance control: For a detailed overview of the
+   Two features are extracted from the confidence maps                     implementation of the controller please refer to [18]. The
+that indicate whether rotation or translation in z-direction is            dynamic equation of the controlled system is given by
+needed to improve the contact of the US probe with the skin.                                                        T         T
+Only the top section, P ⊂ Ω, of the confidence map is used                    M (q) q̈+C (q, q̇) q̇ + F (q, q̇) + G (q) =
+for feature extraction, to make these features independent                                            T                    T
+                                                                                       J T (q) W 0 −B (q) q̇ + J T (q) W 0 ,                        (4)
+of the physiology of the patient. In the female breast, this                           |       {z      }            |    {z  }
+                                                                                             elastic wrench                  external wrench
+section consists of skin and adipose tissue, while further from
+the surface muscle tissue and ribs are located, which are not              where J(q) is the manipulator jacobian, M (q) is the inertia
+US transparent.                                                            matrix, C(q, q̇) represents the Coriolis and centrifugal terms,
+   As shown in Fig. 1, if the probe is in contact with the                 F (q, q̇) contains the friction forces, G(q) is the gravitational
+skin on one side, the confidence will be unevenly spread                   term, B(q) represents the damping and q is the vector with
+
+                                                                       9948
+
+
+  Authorized licensed use limited to: UNIVERSITY OF TWENTE.. Downloaded on December 10,2020 at 07:48:25 UTC from IEEE Xplore. Restrictions apply.
+joint positions. The elastic wrench and the external wrench
+are wrenches applied to the EE induced by the virtual spring                      1.1
+and external forces, respectively. The control law for the
+actuator torques, τa , then becomes:
+                      T                       T
+  τaT = J T (q) W 0 −B (q) q̇ + J T (q) W 0 −
+
+
+
+
+                                                                           z(m)
+                                                     T           T
+                             Ĉ (q, q̇) q̇ − F̂ (q, q̇) − Ĝ (q) .                 1
+                                                                 (5)
+Ĉ(q, q̇)q̇, F̂ (q q̇), and Ĝ(q) are compensation terms for
+Coriolis and centrifugal forces, for friction forces and gravity
+forces respectively.
+                                                                                                                          0
+   2) Safety aware impedance control: To guarantee the                            0.9                            -0.1               Trajectory
+                                                                                   -0.04     0 0.04     -0.2                        Intersection
+safety of the interaction of the robot both energy and power                                                     y(m)
+                                                                                        x(m)
+should be monitored and limited. The total energy, Etot , of
+the robot is defined by the kinetic energy and the potential               Fig. 2: Tesselated phantom used for the experiments with in
+energy stored in the virtual spring between the current and                green the projected trajectory and in blue the intersections.
+desired position such that
+                    Etot = T (q, q̇) + V Rcd , pdc ,
+                                                  
+                                                             (6)              3) Assuring passivity: Passivity is assured by adding an
+in which T (q, q̇) is the kinetic energy of the links, V (Rcd , pdc )      energy tank to each joint. For each joint, the energy tank
+is the potential energy in the virtual spring and Rcd and pdc are          H(s) is modeled as a spring with a constant stiffness such
+respectively the rotation and translation between the current              that the energy in the tank is defined as H(s) = 21 k s2 . The
+and desired EE position. Energy limitation of Etot is achieved             spring is connected to the joint via a transmission ratio un
+by modifying the stiffness of the virtual spring and thus the              such that the port-Hamiltonian formulation becomes
+                                                                                                               
+potential energy. A scaling factor, λ, is defined which scales                              ṡn         0     un     sn
+the stiffness matrices to limit the potential energy:                                             =                      ,            (12)
+                                                                                            τon       −un 0          q̇n
+                (
+                   1              for Etot ≤ Emax                          in which sn is the spring state of joint n, q̇ is the joint
+            λ = Emax −T (q,q̇)                     .        (7)            velocity, τon is the torque at the output and un is defined as
+                          d
+                      V (R )
+                                  for Etot > Emax
+                            c                                                                  ( −τ
+                                                                                                     cn
+Because the potential energy scales linearly with the stiffness                                   sn       for Hn (sn ) > 
+                                                                                        un = −τ                              ,        (13)
+of the virtual spring. The total energy of the system becomes                                        cn
+                                                                                                   γ 2 sn  otherwise
+                Etot = T (q, q̇) + λV Rcd , pdc .
+                                               
+                                                            (8)                            √
+                                                                           where γ =          2 , τcn is the torque computed by the
+   The total power flow Pc from the controller to the robot                safety aware controller and  is a threshold value which
+is defined by the power Pm for motions of the robot and                    indicates a nearly empty tank. When this value is reached,
+the power Pg consumed for compensating the gravity and                     the transmission ratio does not become zero. This way, a
+keeping the robot in its current configuration:                            control action still takes place and prevents recharging of
+                                    T                                     the tank due to inertial motion of the other links. The torque
+          Pc = J T (q)(W 0 )T − B q̇ q̇ + Ĝ(q)q̇ .     (9)                output sent to joint n is
+               |           {z           } | {z }
+                                Pm                   Pg
+                                                                                                      τon = −un · sn .                         (14)
+Pm represents the power that can be transferred to the envi-
+ronment while Pg is used by the robot itself to compensate
+its weight. Thus, Pm should be limited to a value Pmax to                                  III. E XPERIMENTAL VALIDATION
+prevent injuries. This is done by adding a scaling factor, β,
+                                                                           A. Experimental setup
+to the damping:
+                                                                             An experimental setup was devised on which the designed
+          1                     f or Pc ≤ Pmax                            controller was implemented and tested (Fig. 3). It consists
+     β = (J T (q)(W0 )T q̇−Pmax                   .     (10)
+                                f or Pc > Pmax                            of a KUKA LBR Med 7 R800 (KUKA GMBH, Germany).
+                   q̇ T Bi q̇
+                                                                           The manipulator is equipped with an EE holding a linear
+The resulting power of the system is                                       probe (VF13-5, Siemens AG, Germany). The probe to flange
+                                           T                              transformation is extracted from the CAD data of the EE. The
+         Pc = J T (q)(W 0 )T − βBi q̇           q̇ + Ĝ(q)q̇ .    (11)
+                                                                           US probe is connected to a US machine (X300, Siemens AG,
+To summarize, the energy in the system and the power                       Germany), which streams the US images with an update rate
+flow from the controller to the robot are monitored by the                 of 24 Hz to a workstation via a capture card (Pro Capture
+controller which scales the stiffness and damping to ensure                DVI HD, Magewell, China). Each US image is resized to
+that both stay within limits.                                              100 by 145 pixels before converting it to a confidence
+
+                                                                       9949
+
+
+  Authorized licensed use limited to: UNIVERSITY OF TWENTE.. Downloaded on December 10,2020 at 07:48:25 UTC from IEEE Xplore. Restrictions apply.
+                                                                                                                Mean Confidence
+                                                                                                                                                                     w/
+                                                                                                                                                                     w/o
+                                                                                      1
+
+
+
+
+                                                                           Cmean
+                                                                                      0
+                                                                                       0    20        40       60        80      100      120      140    160      180
+                                                                                                                        Scan path (mm)
+                                                                                     40                             z-adjustments
+                                                                                                                                                                w/
+                                                                                                                                                                Expected
+                                                                                     20                                                                         w/o
+
+
+
+
+                                                                           z (mm)
+                                                                                      0
+
+                                                                                      0     20        40       60        80      100      120      140    160      180
+                                                                                                                        Scan path (mm)
+                                                                                                                    θ adjustments
+                                                                                     0
+
+
+
+
+                                                                           θ (deg)
+                                                                                 -20       w/
+                                                                                           Expected
+                                                                                           w/o
+                                                                                 -40
+                                                                                    0       20        40       60        80      100      120      140    160      180
+                                                                                                                        Scan path (mm)
+
+                                                                            Fig. 4: Path 1: The mean confidence, z-adjustments and θ-
+                                                                            adjustments are plotted during a scan with (w/) and without
+                                                                            (w/o) a controller. The opaque regions show minimum and
+                                                                            maximum mean confidence measured during 5 scans.
+
+
+
+        Fig. 3: The setup used for the experiments.                         phantom when not using the controller. Path 3 and 4 show
+                                                                            the largest improvements since the lack of correct z-data
+                                                                            meant that the probe almost did not have any contact with
+map to achieve a 24 Hz update frequency of the visual                       the phantom if the controller was not activated.
+servoing algorithm also. The workstation communicates with                     In Fig. 4 presents the measurement data of path 1. The
+the manipulator via the fast research interface (FRI) with an               path described the phantom surface, thus no corrections
+update rate of 200 Hz.                                                      of the visual servoing algorithm were expected. However,
+   A phantom was constructed utilizing PVCP (Lureparts,                     the θ- and z-adjustment were non-zero during most of the
+The Netherlands). The shape, shown in in Fig. 2, is chosen to               trajectory. It is also shown that the trajectory w/o controller
+specifically test how the system responds to both the required              had a lower confidence in the second half of the trajectory.
+in-plane rotations and z-translation to keep contact.                       The most probable cause is that the robot to phantom
+                                                                            calibration — which was done by hand — was inaccurate and
+B. Experiments                                                              thus the phantom had a different position than the generated
+   Four paths over the phantom were generated utilizing the                 waypoints. Other causes could include inaccuracies in the
+phantom’s CAD file. Path 1 contains homogeneous matrices                    US probe to flange calibration or the phantom surface
+as generated by the planning algorithm. In path 2 and 3, the                compared to the reference path. The US images presented
+rotational and z-translational component were kept constant,                in Fig. 5 show how the phantom was more compressed w/o
+respectively. Thus, the algorithm either has to compensate                  controller than it was w/ controller at 76 mm. Based on these
+only for in-plane rotations or z-translations. Path 4 contains              results, the controller seems to compensate for biases in the
+the correct x- and y-coordinates, and the controller has to                 phantom’s position with respect to the followed path.
+compensate for both in-plane rotations and z-translations.                     Fig. 6 presents an overview of path 4. Clearly, w/o
+                                                                            controller the contact was lost shortly after the start of
+C. Results
+   Each of the described paths was executed five times with
+(w/) and without (w/o) the visual servoing controller acti-                 TABLE I: An overview of the US acquisition results during
+vated and averaging was applied. Table I shows an overview                  each path with (w/) and without (w/o) controller.
+of the US acquisition results during scanning of each path w/                                 Path         Controller      Cmean         Difference (%)
+and w/o controller. The average mean confidence Cmean of                                         1
+                                                                                                             w/o            0.911
+                                                                                                                                                -5.9
+all images during a scan is taken as a quality measure. Three                                                 w/            0.857
+                                                                                                             w/o            0.768
+out of four paths show an improvement in mean confidence.                                        2
+                                                                                                              w/            0.857
+                                                                                                                                                11.6
+In path 1 a decrease in confidence of 5.9 % is observed.                                         3
+                                                                                                             w/o            0.232
+                                                                                                                                                362.1
+In path 2, the least improvement in confidence is achieved.                                                   w/            0.840
+                                                                                                             w/o            0.203
+The reference path contained the correct z-positions, and                                        4
+                                                                                                              w/            0.818
+                                                                                                                                                397.1
+therefore the probe was always half in contact with the
+
+                                                                       9950
+
+
+  Authorized licensed use limited to: UNIVERSITY OF TWENTE.. Downloaded on December 10,2020 at 07:48:25 UTC from IEEE Xplore. Restrictions apply.
+                                                                                                             Mean Confidence
+                                                                                                                                                           w/
+                                                                                                                                                           w/o
+                                                                                      1
+
+
+
+
+                                                                           Cmean
+                                                                                      0
+                                                                                       0    20        40    60      80      100     120   140   160      180
+                                                                                                                   Scan path (mm)
+                                                                                     40                          z-adjustments
+                                                                                                                                                      w/
+                                                                                                                                                      Expected
+                                                                                     20                                                               w/o
+
+
+
+
+                                                                           z (mm)
+                                                                                      0
+
+                                                                                      0     20        40    60      80      100     120   140   160      180
+                                                                                                                   Scan path (mm)
+                                                                                                                 θ adjustments
+              w/o                                  w/                                0
+
+
+
+
+                                                                           θ (deg)
+Fig. 5: A US image of path 1 taken at 76 mm from the start                       -20       w/
+                                                                                           Expected
+for both w/o controller and w/ controller. It is shown that the                            w/o
+                                                                                 -40
+right image is less compressed and more balanced.                                   0       20        40    60      80      100     120   140   160      180
+                                                                                                                   Scan path (mm)
+
+                                                                            Fig. 6: Path 4: The mean confidence, z-adjustments and θ-
+                                                                            adjustments are plotted during a scan with (w/) and without
+scanning. This was anticipated, as the reference path only
+                                                                            (w/o) a controller. The opaque regions show minimum and
+contained the correct x- and y-coordinates. During scanning
+                                                                            maximum mean confidence measured during 5 scans.
+w/ controller the average mean confidence was 0.818, which
+is an improvement of 397.1 % compared to scanning w/o
+controller. It is shown that the confidence was less stable
+during the first half of scanning. This is due to the phantom               to generate a trajectory. MRI-US fusion can be particularly
+slope, which moves away from the transducer, whereas                        useful to perform robot-assisted US-guided biopsies on le-
+the during the second half, the slope moves towards the                     sions detected on an MRI. However, to make the system
+transducer. The z- and θ- adjustments are shifted with respect              stand-alone and decrease the cost of a robotic US acquisition,
+to the expected adjustments, which also indicates that the                  a scanner like the one utilized in [3] could be added.
+measured phantom position deviated from its actual position.                   Further, the present phantom is not a breast phantom and
+                                                                            merely designed to test the algorithm’s response to in-plane
+                       IV. DISCUSSION                                       rotations and z-translations. A breast phantom will require
+   This study demonstrates an approach to automatic robotic                 a more complex trajectory but may be more suitable for
+3D breast US acquisition. The approach focuses on optimiz-                  the visual servoing algorithm since the changes in surface
+ing acoustic coupling, minimizing deformation and assuring                  contact are less abrupt.
+patient safety. We show how a patient specific trajectory                      Currently, a PD controller is used to adjust the trajectory.
+is generated and how the trajectory is adjusted based on                    It is observed that the mean confidence during a scan is a
+confidence maps. The output is passed to the SAIP controller                bit unstable, and differs in the second half of the trajectory
+actuating a 7DOF manipulator. Although more elaborate                       compared to the first half. Though this had partly to do
+testing is needed, the current results indicate the system can              with the complex phantom design, a better tuning or other
+reproducibly perform US acquisitions: TABLE I shows that                    implementation of the controller may improve the results.
+with the visual servoing algorithm activated, the average con-                 Although a force sensor is currently not integrated in the
+fidence values over a trajectory are quite similar. Overall, the            setup, it may still be practical to do this. Firstly, it may be
+results show that the acquisition benefits from US feedback,                useful to gather force data during experiments to support our
+either deformation wise or image quality wise. Our results for              claim that less force is exerted. Additionally, a combination
+in-plane rotations based on confidence maps are comparable                  of US and force data can be utilized to adaptively change
+to other studies which implemented this feature [7], [9]–[11].              the desired mean confidence based on tissue deformation.
+Additionally, we show that confidence maps can also be used                    An interesting topic for further analysis is the SAIP con-
+for maintaining contact with the patient. Other studies used a              troller. This might reveal the energy budgets and energy and
+force sensor for maintaining probe contact. The consistency                 power limitations appropriate for this particular application.
+and the ability to generate patient specific trajectories mean
+that the setup has a benefit over the current handheld and
+automated methods used in clinical practice.                                                               V. CONCLUSIONS
+   In our setup, we tried mimicking a realistic clinical setting
+in which the robot is placed underneath the patient and scans                  We proposed an approach for robotic 3D US acquisition
+the patient in prone position. Nevertheless, the setup is still             of the breast. Although presented for a specific application,
+experimental and there are multiple aspects left to explore.                the approach is flexible enough to be suitable for other 3D
+   Firstly, we assumed that an MRI is available of the breast               US acquisitions as well.
+
+                                                                       9951
+
+
+  Authorized licensed use limited to: UNIVERSITY OF TWENTE.. Downloaded on December 10,2020 at 07:48:25 UTC from IEEE Xplore. Restrictions apply.
+                              R EFERENCES                                             ultrasound-guided breast biopsies,” International Journal of Computer
+                                                                                      Assisted Radiology and Surgery, feb 2020.
+ [1] F. D. Nandan and B. A. Alladin, “The Role of Ultrasound as a                [20] T. Moller and B. Trumbore, “Fast, minimum storage ray-triangle
+     Diagnostic Tool for Breast Cancer in the Screening of Younger Women              intersection,” Journal of Graphics tools, vol. 2, pp. 21–28, 1997.
+     (Age 25-38) in Guyana,” Journal of Medical Diagnostic Methods,              [21] A. Karamalis, W. Wein, T. Klein, and N. Navab, “Ultrasound confi-
+     vol. 07, no. 03, 2018.                                                           dence maps using random walks,” Medical Image Analysis, vol. 16,
+ [2] Q. Huang and Z. Zeng, “A Review on Real-Time 3D Ultrasound                       no. 6, pp. 1101–1112, aug 2012.
+     Imaging Technology,” BioMed Research International, vol. 2017, pp.          [22] S. Stramigioli, “Energy-aware robotics,” in Mathematical Control
+     1–20, 2017.                                                                      Theory I, ser. Lecture Notes in Control and Information Sciences,
+ [3] Q. Huang, B. Wu, J. Lan, and X. Li, “Fully Automatic Three-                      M. K. Camlibel, A. A. Julius, R. Pasumarthy, and J. M. Scherpen,
+     Dimensional Ultrasound Imaging Based on Conventional B-Scan,”                    Eds. Cham: Springer International Publishing, 2015, vol. 461, pp.
+     IEEE Transactions on Biomedical Circuits and Systems, vol. 12, no. 2,            37–49.
+     pp. 426–436, apr 2018.
+ [4] M. Z. Mahmoud, M. Aslam, M. Alsaadi, M. A. Fagiri, and B. Alonazi,
+     “Evolution of Robot-assisted ultrasound-guided breast biopsy sys-
+     tems,” Journal of Radiation Research and Applied Sciences, vol. 11,
+     no. 1, pp. 89–97, jan 2018.
+ [5] H. T. Sen, M. A. L. Bell, I. Iordachita, J. Wong, and P. Kazanzides, “A
+     cooperatively controlled robot for ultrasound monitoring of radiation
+     therapy,” in 2013 IEEE/RSJ International Conference on Intelligent
+     Robots and Systems. IEEE, nov 2013, pp. 3071–3076.
+ [6] N. Hungr, M. Baumann, J.-A. Long, and J. Troccaz, “A 3-D Ultra-
+     sound Robotic Prostate Brachytherapy System With Prostate Motion
+     Tracking,” IEEE Transactions on Robotics, vol. 28, no. 6, pp. 1382–
+     1397, dec 2012.
+ [7] S. Virga, O. Zettinig, M. Esposito, K. Pfister, B. Frisch, T. Neff,
+     N. Navab, and C. Hennersperger, “Automatic force-compliant robotic
+     ultrasound screening of abdominal aortic aneurysms,” in 2016
+     IEEE/RSJ International Conference on Intelligent Robots and Systems
+     (IROS). IEEE, oct 2016, pp. 508–513.
+ [8] S. Virga, R. Göbl, M. Baust, N. Navab, and C. Hennersperger, “Use the
+     force: deformation correction in robotic 3D ultrasound,” International
+     Journal of Computer Assisted Radiology and Surgery, vol. 13, no. 5,
+     pp. 619–627, may 2018.
+ [9] P. Chatelain, A. Krupa, and N. Navab, “Optimization of ultrasound
+     image quality via visual servoing,” in 2015 IEEE International Con-
+     ference on Robotics and Automation (ICRA). IEEE, may 2015, pp.
+     5997–6002.
+[10] P. Chatelain, A. Krupa, and N. Navab, “Confidence-driven control of
+     an ultrasound probe: Target-specific acoustic window optimization,”
+     in 2016 IEEE International Conference on Robotics and Automation
+     (ICRA), vol. 2016-June. IEEE, may 2016, pp. 3441–3446.
+[11] P. Chatelain, A. Krupa, and N. Navab, “Confidence-Driven Control of
+     an Ultrasound Probe,” IEEE Transactions on Robotics, vol. 33, no. 6,
+     pp. 1410–1424, dec 2017.
+[12] C. Nadeau and A. Krupa, “Intensity-Based Ultrasound Visual Ser-
+     voing: Modeling and Validation With 2-D and 3-D Probes,” IEEE
+     Transactions on Robotics, vol. 29, no. 4, pp. 1003–1015, aug 2013.
+[13] Y. J. Kim, J. H. Seo, H. R. Kim, and K. G. Kim, “Development of a
+     control algorithm for the ultrasound scanning robot (NCCUSR) using
+     ultrasound image and force feedback,” The International Journal of
+     Medical Robotics and Computer Assisted Surgery, vol. 13, no. 2, p.
+     e1756, jun 2017.
+[14] P. Abolmaesumi, S. Salcudean, Wen-Hong Zhu, M. Sirouspour, and
+     S. DiMaio, “Image-guided control of a robot for medical ultrasound,”
+     IEEE Transactions on Robotics and Automation, vol. 18, no. 1, pp.
+     11–23, 2002.
+[15] R. Mebarki, A. Krupa, and F. Chaumette, “2-D Ultrasound Probe
+     Complete Guidance by Visual Servoing Using Image Moments,” IEEE
+     Transactions on Robotics, vol. 26, no. 2, pp. 296–306, apr 2010.
+[16] A. Krupa, G. Fichtinger, and G. D. Hager, “Real-time Motion Sta-
+     bilization with B-mode Ultrasound Using Image Speckle Information
+     and Visual Servoing,” The International Journal of Robotics Research,
+     vol. 28, no. 10, pp. 1334–1354, oct 2009.
+[17] R. Nakadate, J. Solis, A. Takanishi, E. Minagawa, M. Sugawara, and
+     K. Niki, “Out-of-plane visual servoing method for tracking the carotid
+     artery with a robot-assisted ultrasound diagnostic system,” in 2011
+     IEEE International Conference on Robotics and Automation. IEEE,
+     may 2011, pp. 5267–5272.
+[18] G. Raiola, C. A. Cardenas, T. S. Tadele, T. de Vries, and S. Stramigioli,
+     “Development of a Safety- and Energy-Aware Impedance Controller
+     for Collaborative Robots,” IEEE Robotics and Automation Letters,
+     vol. 3, no. 2, pp. 1237–1244, apr 2018.
+[19] M. K. Welleweerd, F. J. Siepel, V. Groenhuis, J. Veltman,
+     and S. Stramigioli, “Design of an end-effector for robot-assisted
+
+
+                                                                             9952
+
+
+   Authorized licensed use limited to: UNIVERSITY OF TWENTE.. Downloaded on December 10,2020 at 07:48:25 UTC from IEEE Xplore. Restrictions apply.
+

@@ -1,10 +1,15 @@
-# V8r3 confidence-balance fusion plus one logical held-pair command tank.
+# V8r3 confidence-balance fusion plus one supplied logical command tank.
 # Original force target remains 4 N; 4.5 N repair gate and 6 N supervisor unchanged.
-# Confidence deadband 0.10 and .6/.8/.05 J are engineering settings, not physical safety bounds.
-# Tank settles frozen W=-control_raw_tcp and final-model V only after dual publication.
+# Continuous visual feedback: no elapsed-time/travel lockout or healthy reset.
+# Confidence deadband 0.03 and .10/.15/.05 J are engineering settings, not physical safety bounds.
+# Tank settles absolute frozen W=-control_raw_tcp and final-model V after dual publication.
+# Explicit nominal task power funds baseline outward work; unused supply is discarded.
+# This two-port command model does not assert external-port passivity.
 # Measured W/V diagnostics never create spendable credit. Hardware passivity is unverified.
-# Logical expiry .05 s requires the independent stop path; device auto-stop is not asserted.
-# Requires confidence_balance_v8_r3 and logical_command_budget_v1 daemon capabilities.
+# Logical expiry .05 s fences new commands; it does not auto-stop the devices.
+# Device stopping uses the original controller/rail path, outside this model proof.
+# Requires nominal_task_power_v1 and pause_visual_feedback_v1 in addition to v8r3 handlers.
+# Missing/stale images pause visual correction after valid feedback; fresh force baseline continues.
 mode: active
 log_path: null
 feature_endpoint: tcp://127.0.0.1:17361
@@ -32,6 +37,15 @@ geometry:
   calibration_version: probe50_center_tcp_user_20260910_v1
   verified: true
 feature:
+  required: true
+  dropout_policy: pause_visual
+  # Fixed camera/crop registration. Publisher instance IDs only reset frame history.
+  registration:
+    source_id: realus.us_framegrab
+    crop_box: [753, 1417, 154, 880]
+    hflip: false
+    clock_domain: host_monotonic
+    already_aligned: false
   config:
     algorithm_version: randomwalk_welleweerd2020_v3
     width: 145
@@ -57,7 +71,7 @@ feature:
     low_confidence_threshold: 0.8
     unknown_scanline_range: 1.0
   window_version: 8b51133835031ba9ee2d
-  registration_version: fbe3a5c9d4cb3065966a
+  registration_version: db4c7447b3c40983e6b6
   quality_policy_version: welleweerd_toproi_v3_initial_unverified
   c_min: 0.8
   verified: true
@@ -71,9 +85,12 @@ force_axis_monotonicity_confirmed: true
 physical_w_checked: false
 energy_constraint_enabled: true
 energy:
-  initial_j: 0.6
-  capacity_j: 0.8
+  # Session 005 model excess drawdown .02634 J; .05 J spendable is a trial buffer.
+  # It is not a measured physical-energy limit or automatic image-based refill.
+  initial_j: 0.10
+  capacity_j: 0.15
   stopping_reserve_j: 0.05
+  task_power_source: nominal_command
   settlement_port: logical_final_model
   wrench_convention: negative_control_raw_tcp_v1
   max_command_interval_s: 0.05
@@ -86,17 +103,16 @@ energy:
     max_sample_interval_s: 0.015
   constraint:
     beta: 1.0
-    assurance: command_model
-    bounds_version: logical_held_pair_v1
+    assurance: two_port_command_model
+    bounds_version: logical_nominal_task_power_v1
 
 qp:
   allocation_policy: differential_repair_v8
   differential_repair:
     revision: v8r3_confidence_balance
-    balance_deadband: 0.10
-    max_permission_s: 2.0
-    max_angle_travel_rad: 0.05235987755982989
-    healthy_frames: 3
+    permission_mode: continuous
+    # Successful recorded L/C late-half imbalance max .016576; this is a trial threshold.
+    balance_deadband: 0.03
     differential_weight: 10.0
     residual_progress_gain: 0.75
     loading_weight: 10.0

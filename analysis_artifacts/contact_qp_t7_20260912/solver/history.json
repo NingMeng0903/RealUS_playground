@@ -1,0 +1,942 @@
+[
+  {
+    "case": 0,
+    "variant": "current",
+    "samples": 3089,
+    "elapsed_s": 2.0324337649981317,
+    "successful_sample_replay_failures": [],
+    "final_failure_replay": {
+      "success": false,
+      "numeric": {
+        "dua_res": "nan",
+        "duality_gap": "nan",
+        "iter": "19303",
+        "iter_ext": "200",
+        "iterative_residual": "nan",
+        "minimal_H_eigenvalue_estimate": "0.0",
+        "mu_eq": "1e-05",
+        "mu_in": "0.0010000000000000002",
+        "mu_updates": "2",
+        "objValue": "nan",
+        "pri_res": "0.0",
+        "rho": "1e-05",
+        "rho_updates": "0",
+        "run_time": "0.0",
+        "setup_time": "0.0",
+        "solve_time": "0.0",
+        "sparse_backend": "SparseBackend.Automatic",
+        "status": "QPSolverOutput.PROXQP_MAX_ITER_REACHED",
+        "violation": Infinity
+      }
+    },
+    "iteration_percentiles": [
+      0.0,
+      25.0,
+      48.11999999999989,
+      239.0
+    ]
+  },
+  {
+    "case": 0,
+    "variant": "update_preconditioner",
+    "samples": 3089,
+    "elapsed_s": 2.060031732002244,
+    "successful_sample_replay_failures": [],
+    "final_failure_replay": {
+      "success": true,
+      "numeric": {
+        "dua_res": "8.71739950247595e-12",
+        "duality_gap": "3.805983306293115e-13",
+        "iter": "16",
+        "iter_ext": "13",
+        "iterative_residual": "3.111386017258042e-12",
+        "minimal_H_eigenvalue_estimate": "0.0",
+        "mu_eq": "1e-05",
+        "mu_in": "0.0010000000000000002",
+        "mu_updates": "2",
+        "objValue": "-0.011176123229751145",
+        "pri_res": "5.544453784978032e-13",
+        "rho": "1e-05",
+        "rho_updates": "0",
+        "run_time": "0.0",
+        "setup_time": "0.0",
+        "solve_time": "0.0",
+        "sparse_backend": "SparseBackend.Automatic",
+        "status": "QPSolverOutput.PROXQP_SOLVED",
+        "violation": 5.545008896490344e-13
+      }
+    },
+    "iteration_percentiles": [
+      0.0,
+      26.0,
+      58.11999999999989,
+      156.0
+    ]
+  },
+  {
+    "case": 0,
+    "variant": "fresh",
+    "samples": 3089,
+    "elapsed_s": 2.0228885270007595,
+    "successful_sample_replay_failures": [],
+    "final_failure_replay": {
+      "success": true,
+      "numeric": {
+        "dua_res": "8.71739950247595e-12",
+        "duality_gap": "3.805428194780802e-13",
+        "iter": "16",
+        "iter_ext": "13",
+        "iterative_residual": "3.1115066832475413e-12",
+        "minimal_H_eigenvalue_estimate": "0.0",
+        "mu_eq": "1e-05",
+        "mu_in": "0.0010000000000000002",
+        "mu_updates": "2",
+        "objValue": "-0.011176123229751589",
+        "pri_res": "5.545564008002657e-13",
+        "rho": "1e-05",
+        "rho_updates": "0",
+        "run_time": "0.0",
+        "setup_time": "0.0",
+        "solve_time": "0.0",
+        "sparse_backend": "SparseBackend.Automatic",
+        "status": "QPSolverOutput.PROXQP_SOLVED",
+        "violation": 5.545008896490344e-13
+      }
+    },
+    "iteration_percentiles": [
+      0.0,
+      26.0,
+      58.0,
+      180.0
+    ]
+  },
+  {
+    "case": 1,
+    "variant": "current",
+    "samples": 3553,
+    "elapsed_s": 2.5357557979987178,
+    "successful_sample_replay_failures": [
+      {
+        "control_id": 210,
+        "reason": "solver_status_or_residual",
+        "numeric": {
+          "dua_res": "1.3745039007345022e-09",
+          "duality_gap": "-1.673896576903644e-10",
+          "iter": "603",
+          "iter_ext": "200",
+          "iterative_residual": "1.7086311728675945e-10",
+          "minimal_H_eigenvalue_estimate": "0.0",
+          "mu_eq": "1e-05",
+          "mu_in": "0.0010000000000000002",
+          "mu_updates": "2",
+          "objValue": "-37.70336904296659",
+          "pri_res": "0.0",
+          "rho": "1e-05",
+          "rho_updates": "0",
+          "run_time": "0.0",
+          "setup_time": "0.0",
+          "solve_time": "0.0",
+          "sparse_backend": "SparseBackend.Automatic",
+          "status": "QPSolverOutput.PROXQP_MAX_ITER_REACHED",
+          "violation": 0.0
+        }
+      }
+    ],
+    "final_failure_replay": {
+      "success": true,
+      "numeric": {
+        "dua_res": "9.39949651666817e-10",
+        "duality_gap": "1.200243238130838e-10",
+        "iter": "24",
+        "iter_ext": "14",
+        "iterative_residual": "3.0046908172925083e-10",
+        "minimal_H_eigenvalue_estimate": "0.0",
+        "mu_eq": "0.001",
+        "mu_in": "0.1",
+        "mu_updates": "0",
+        "objValue": "-7.481067677927286",
+        "pri_res": "0.0",
+        "rho": "1e-05",
+        "rho_updates": "0",
+        "run_time": "0.0",
+        "setup_time": "0.0",
+        "solve_time": "0.0",
+        "sparse_backend": "SparseBackend.Automatic",
+        "status": "QPSolverOutput.PROXQP_SOLVED",
+        "violation": 0.0
+      }
+    },
+    "iteration_percentiles": [
+      4.0,
+      25.0,
+      44.0,
+      603.0
+    ]
+  },
+  {
+    "case": 1,
+    "variant": "update_preconditioner",
+    "samples": 3553,
+    "elapsed_s": 2.627970212000946,
+    "successful_sample_replay_failures": [
+      {
+        "control_id": 210,
+        "reason": "solver_status_or_residual",
+        "numeric": {
+          "dua_res": "1.3745039007345022e-09",
+          "duality_gap": "-1.673896576903644e-10",
+          "iter": "603",
+          "iter_ext": "200",
+          "iterative_residual": "1.7086311728675945e-10",
+          "minimal_H_eigenvalue_estimate": "0.0",
+          "mu_eq": "1e-05",
+          "mu_in": "0.0010000000000000002",
+          "mu_updates": "2",
+          "objValue": "-37.70336904296659",
+          "pri_res": "0.0",
+          "rho": "1e-05",
+          "rho_updates": "0",
+          "run_time": "0.0",
+          "setup_time": "0.0",
+          "solve_time": "0.0",
+          "sparse_backend": "SparseBackend.Automatic",
+          "status": "QPSolverOutput.PROXQP_MAX_ITER_REACHED",
+          "violation": 0.0
+        }
+      }
+    ],
+    "final_failure_replay": {
+      "success": true,
+      "numeric": {
+        "dua_res": "5.347787554756012e-10",
+        "duality_gap": "5.33498245580688e-10",
+        "iter": "18",
+        "iter_ext": "13",
+        "iterative_residual": "1.9874331574006814e-10",
+        "minimal_H_eigenvalue_estimate": "0.0",
+        "mu_eq": "0.001",
+        "mu_in": "0.1",
+        "mu_updates": "0",
+        "objValue": "-7.481067677493414",
+        "pri_res": "1.6066718887272504e-20",
+        "rho": "1e-05",
+        "rho_updates": "0",
+        "run_time": "0.0",
+        "setup_time": "0.0",
+        "solve_time": "0.0",
+        "sparse_backend": "SparseBackend.Automatic",
+        "status": "QPSolverOutput.PROXQP_SOLVED",
+        "violation": 1.6066718887272504e-20
+      }
+    },
+    "iteration_percentiles": [
+      4.0,
+      24.0,
+      44.0,
+      603.0
+    ]
+  },
+  {
+    "case": 1,
+    "variant": "fresh",
+    "samples": 3553,
+    "elapsed_s": 2.6390445979996002,
+    "successful_sample_replay_failures": [],
+    "final_failure_replay": {
+      "success": true,
+      "numeric": {
+        "dua_res": "5.347787554756012e-10",
+        "duality_gap": "5.334985786475954e-10",
+        "iter": "18",
+        "iter_ext": "13",
+        "iterative_residual": "1.9874325974430697e-10",
+        "minimal_H_eigenvalue_estimate": "0.0",
+        "mu_eq": "0.001",
+        "mu_in": "0.1",
+        "mu_updates": "0",
+        "objValue": "-7.481067677493414",
+        "pri_res": "1.6066718665315096e-20",
+        "rho": "1e-05",
+        "rho_updates": "0",
+        "run_time": "0.0",
+        "setup_time": "0.0",
+        "solve_time": "0.0",
+        "sparse_backend": "SparseBackend.Automatic",
+        "status": "QPSolverOutput.PROXQP_SOLVED",
+        "violation": 1.606671866531509e-20
+      }
+    },
+    "iteration_percentiles": [
+      4.0,
+      24.0,
+      43.0,
+      351.0
+    ]
+  },
+  {
+    "case": 2,
+    "variant": "current",
+    "samples": 2136,
+    "elapsed_s": 1.7174154310014274,
+    "successful_sample_replay_failures": [],
+    "final_failure_replay": {
+      "success": true,
+      "numeric": {
+        "dua_res": "5.962789855652046e-10",
+        "duality_gap": "-7.027800563719211e-11",
+        "iter": "15",
+        "iter_ext": "10",
+        "iterative_residual": "3.3026443144718844e-11",
+        "minimal_H_eigenvalue_estimate": "0.0",
+        "mu_eq": "0.001",
+        "mu_in": "0.1",
+        "mu_updates": "0",
+        "objValue": "-1.7923780023062301",
+        "pri_res": "0.0",
+        "rho": "1e-05",
+        "rho_updates": "0",
+        "run_time": "0.0",
+        "setup_time": "0.0",
+        "solve_time": "0.0",
+        "sparse_backend": "SparseBackend.Automatic",
+        "status": "QPSolverOutput.PROXQP_SOLVED",
+        "violation": 0.0
+      }
+    },
+    "iteration_percentiles": [
+      12.0,
+      35.0,
+      64.60000000000036,
+      316.0
+    ]
+  },
+  {
+    "case": 2,
+    "variant": "update_preconditioner",
+    "samples": 2136,
+    "elapsed_s": 1.7751125030008552,
+    "successful_sample_replay_failures": [],
+    "final_failure_replay": {
+      "success": true,
+      "numeric": {
+        "dua_res": "2.707173086781793e-10",
+        "duality_gap": "-7.066880414186016e-11",
+        "iter": "13",
+        "iter_ext": "11",
+        "iterative_residual": "2.498350160534865e-25",
+        "minimal_H_eigenvalue_estimate": "0.0",
+        "mu_eq": "0.001",
+        "mu_in": "0.1",
+        "mu_updates": "0",
+        "objValue": "-1.7923780023062303",
+        "pri_res": "0.0",
+        "rho": "1e-05",
+        "rho_updates": "0",
+        "run_time": "0.0",
+        "setup_time": "0.0",
+        "solve_time": "0.0",
+        "sparse_backend": "SparseBackend.Automatic",
+        "status": "QPSolverOutput.PROXQP_SOLVED",
+        "violation": 0.0
+      }
+    },
+    "iteration_percentiles": [
+      12.0,
+      34.0,
+      62.0,
+      192.0
+    ]
+  },
+  {
+    "case": 2,
+    "variant": "fresh",
+    "samples": 2136,
+    "elapsed_s": 1.7575891409978794,
+    "successful_sample_replay_failures": [],
+    "final_failure_replay": {
+      "success": true,
+      "numeric": {
+        "dua_res": "2.7071730867336854e-10",
+        "duality_gap": "-7.066880414186016e-11",
+        "iter": "13",
+        "iter_ext": "11",
+        "iterative_residual": "4.492848053522726e-25",
+        "minimal_H_eigenvalue_estimate": "0.0",
+        "mu_eq": "0.001",
+        "mu_in": "0.1",
+        "mu_updates": "0",
+        "objValue": "-1.7923780023062303",
+        "pri_res": "0.0",
+        "rho": "1e-05",
+        "rho_updates": "0",
+        "run_time": "0.0",
+        "setup_time": "0.0",
+        "solve_time": "0.0",
+        "sparse_backend": "SparseBackend.Automatic",
+        "status": "QPSolverOutput.PROXQP_SOLVED",
+        "violation": 0.0
+      }
+    },
+    "iteration_percentiles": [
+      12.0,
+      34.0,
+      65.65000000000009,
+      249.0
+    ]
+  },
+  {
+    "case": 3,
+    "variant": "current",
+    "samples": 1842,
+    "elapsed_s": 1.3989238849972025,
+    "successful_sample_replay_failures": [],
+    "final_failure_replay": {
+      "success": true,
+      "numeric": {
+        "dua_res": "2.247562674167821e-11",
+        "duality_gap": "9.237055564881302e-14",
+        "iter": "14",
+        "iter_ext": "7",
+        "iterative_residual": "4.621313199598164e-24",
+        "minimal_H_eigenvalue_estimate": "0.0",
+        "mu_eq": "0.0001",
+        "mu_in": "0.010000000000000002",
+        "mu_updates": "1",
+        "objValue": "-1.600780967752879",
+        "pri_res": "0.0",
+        "rho": "1e-05",
+        "rho_updates": "0",
+        "run_time": "0.0",
+        "setup_time": "0.0",
+        "solve_time": "0.0",
+        "sparse_backend": "SparseBackend.Automatic",
+        "status": "QPSolverOutput.PROXQP_SOLVED",
+        "violation": 0.0
+      }
+    },
+    "iteration_percentiles": [
+      12.0,
+      33.0,
+      76.58999999999992,
+      848.0
+    ]
+  },
+  {
+    "case": 3,
+    "variant": "update_preconditioner",
+    "samples": 1842,
+    "elapsed_s": 1.460806541999773,
+    "successful_sample_replay_failures": [],
+    "final_failure_replay": {
+      "success": false,
+      "numeric": {
+        "dua_res": "2.043034457404097e-09",
+        "duality_gap": "0.0",
+        "iter": "770",
+        "iter_ext": "200",
+        "iterative_residual": "2.683464120338274e-10",
+        "minimal_H_eigenvalue_estimate": "0.0",
+        "mu_eq": "1e-05",
+        "mu_in": "0.0010000000000000002",
+        "mu_updates": "2",
+        "objValue": "-1.600780967752879",
+        "pri_res": "0.0",
+        "rho": "1e-05",
+        "rho_updates": "0",
+        "run_time": "0.0",
+        "setup_time": "0.0",
+        "solve_time": "0.0",
+        "sparse_backend": "SparseBackend.Automatic",
+        "status": "QPSolverOutput.PROXQP_MAX_ITER_REACHED",
+        "violation": 0.0
+      }
+    },
+    "iteration_percentiles": [
+      11.0,
+      28.0,
+      55.58999999999992,
+      302.0
+    ]
+  },
+  {
+    "case": 3,
+    "variant": "fresh",
+    "samples": 1842,
+    "elapsed_s": 1.6293710019999708,
+    "successful_sample_replay_failures": [],
+    "final_failure_replay": {
+      "success": true,
+      "numeric": {
+        "dua_res": "1.9964306013647883e-10",
+        "duality_gap": "-3.1667557465198115e-11",
+        "iter": "78",
+        "iter_ext": "8",
+        "iterative_residual": "5.2346977954108536e-11",
+        "minimal_H_eigenvalue_estimate": "0.0",
+        "mu_eq": "0.0001",
+        "mu_in": "0.010000000000000002",
+        "mu_updates": "1",
+        "objValue": "-1.6007809677528788",
+        "pri_res": "0.0",
+        "rho": "1e-05",
+        "rho_updates": "0",
+        "run_time": "0.0",
+        "setup_time": "0.0",
+        "solve_time": "0.0",
+        "sparse_backend": "SparseBackend.Automatic",
+        "status": "QPSolverOutput.PROXQP_SOLVED",
+        "violation": 0.0
+      }
+    },
+    "iteration_percentiles": [
+      11.0,
+      28.0,
+      60.0,
+      325.0
+    ]
+  },
+  {
+    "case": 4,
+    "variant": "current",
+    "samples": 1932,
+    "elapsed_s": 1.5643259069984197,
+    "successful_sample_replay_failures": [],
+    "final_failure_replay": {
+      "success": true,
+      "numeric": {
+        "dua_res": "9.343577716597417e-10",
+        "duality_gap": "6.535740837421145e-10",
+        "iter": "21",
+        "iter_ext": "10",
+        "iterative_residual": "7.771525121398872e-10",
+        "minimal_H_eigenvalue_estimate": "0.0",
+        "mu_eq": "1e-05",
+        "mu_in": "0.0010000000000000002",
+        "mu_updates": "2",
+        "objValue": "2.1858020472278374",
+        "pri_res": "9.417799873290278e-12",
+        "rho": "1e-05",
+        "rho_updates": "0",
+        "run_time": "0.0",
+        "setup_time": "0.0",
+        "solve_time": "0.0",
+        "sparse_backend": "SparseBackend.Automatic",
+        "status": "QPSolverOutput.PROXQP_SOLVED",
+        "violation": 9.417799873290278e-12
+      }
+    },
+    "iteration_percentiles": [
+      11.0,
+      31.0,
+      58.690000000000055,
+      169.0
+    ]
+  },
+  {
+    "case": 4,
+    "variant": "update_preconditioner",
+    "samples": 1932,
+    "elapsed_s": 1.6006313039979432,
+    "successful_sample_replay_failures": [],
+    "final_failure_replay": {
+      "success": true,
+      "numeric": {
+        "dua_res": "4.2997177489658863e-10",
+        "duality_gap": "2.0968915492858287e-10",
+        "iter": "13",
+        "iter_ext": "11",
+        "iterative_residual": "1.3620526472606114e-10",
+        "minimal_H_eigenvalue_estimate": "0.0",
+        "mu_eq": "1e-05",
+        "mu_in": "0.0010000000000000002",
+        "mu_updates": "2",
+        "objValue": "2.1858020471981607",
+        "pri_res": "6.272760089132134e-13",
+        "rho": "1e-05",
+        "rho_updates": "0",
+        "run_time": "0.0",
+        "setup_time": "0.0",
+        "solve_time": "0.0",
+        "sparse_backend": "SparseBackend.Automatic",
+        "status": "QPSolverOutput.PROXQP_SOLVED",
+        "violation": 6.272760089132134e-13
+      }
+    },
+    "iteration_percentiles": [
+      11.0,
+      31.449999999999818,
+      58.690000000000055,
+      288.0
+    ]
+  },
+  {
+    "case": 4,
+    "variant": "fresh",
+    "samples": 1932,
+    "elapsed_s": 1.5788095719981357,
+    "successful_sample_replay_failures": [],
+    "final_failure_replay": {
+      "success": true,
+      "numeric": {
+        "dua_res": "4.2997037056320123e-10",
+        "duality_gap": "2.0969714853436017e-10",
+        "iter": "13",
+        "iter_ext": "11",
+        "iterative_residual": "1.3620502159616742e-10",
+        "minimal_H_eigenvalue_estimate": "0.0",
+        "mu_eq": "1e-05",
+        "mu_in": "0.0010000000000000002",
+        "mu_updates": "2",
+        "objValue": "2.1858020471981616",
+        "pri_res": "6.269429420058259e-13",
+        "rho": "1e-05",
+        "rho_updates": "0",
+        "run_time": "0.0",
+        "setup_time": "0.0",
+        "solve_time": "0.0",
+        "sparse_backend": "SparseBackend.Automatic",
+        "status": "QPSolverOutput.PROXQP_SOLVED",
+        "violation": 6.272760089132134e-13
+      }
+    },
+    "iteration_percentiles": [
+      11.0,
+      31.449999999999818,
+      58.0,
+      232.0
+    ]
+  },
+  {
+    "case": 5,
+    "variant": "current",
+    "samples": 2307,
+    "elapsed_s": 1.8477085990016349,
+    "successful_sample_replay_failures": [],
+    "final_failure_replay": {
+      "success": true,
+      "numeric": {
+        "dua_res": "4.263993818400692e-10",
+        "duality_gap": "1.529219329290954e-11",
+        "iter": "15",
+        "iter_ext": "10",
+        "iterative_residual": "2.0857838523584125e-10",
+        "minimal_H_eigenvalue_estimate": "0.0",
+        "mu_eq": "0.001",
+        "mu_in": "0.1",
+        "mu_updates": "0",
+        "objValue": "-0.5868643759123465",
+        "pri_res": "9.358019914529336e-11",
+        "rho": "1e-05",
+        "rho_updates": "0",
+        "run_time": "0.0",
+        "setup_time": "0.0",
+        "solve_time": "0.0",
+        "sparse_backend": "SparseBackend.Automatic",
+        "status": "QPSolverOutput.PROXQP_SOLVED",
+        "violation": 9.358022690086898e-11
+      }
+    },
+    "iteration_percentiles": [
+      12.0,
+      24.0,
+      39.0,
+      90.0
+    ]
+  },
+  {
+    "case": 5,
+    "variant": "update_preconditioner",
+    "samples": 2307,
+    "elapsed_s": 1.8818271150012151,
+    "successful_sample_replay_failures": [],
+    "final_failure_replay": {
+      "success": true,
+      "numeric": {
+        "dua_res": "2.958283631106632e-10",
+        "duality_gap": "-4.838528362693939e-11",
+        "iter": "18",
+        "iter_ext": "10",
+        "iterative_residual": "1.5543018219411224e-10",
+        "minimal_H_eigenvalue_estimate": "0.0",
+        "mu_eq": "0.001",
+        "mu_in": "0.1",
+        "mu_updates": "0",
+        "objValue": "-0.5868643759303566",
+        "pri_res": "6.265147185768871e-10",
+        "rho": "1e-05",
+        "rho_updates": "0",
+        "run_time": "0.0",
+        "setup_time": "0.0",
+        "solve_time": "0.0",
+        "sparse_backend": "SparseBackend.Automatic",
+        "status": "QPSolverOutput.PROXQP_SOLVED",
+        "violation": 6.265147185768871e-10
+      }
+    },
+    "iteration_percentiles": [
+      12.0,
+      30.0,
+      119.94000000000005,
+      158.0
+    ]
+  },
+  {
+    "case": 5,
+    "variant": "fresh",
+    "samples": 2307,
+    "elapsed_s": 1.8831053890025942,
+    "successful_sample_replay_failures": [],
+    "final_failure_replay": {
+      "success": true,
+      "numeric": {
+        "dua_res": "2.9582836859634045e-10",
+        "duality_gap": "-4.8385298372088936e-11",
+        "iter": "18",
+        "iter_ext": "10",
+        "iterative_residual": "1.5543018208438541e-10",
+        "minimal_H_eigenvalue_estimate": "0.0",
+        "mu_eq": "0.001",
+        "mu_in": "0.1",
+        "mu_updates": "0",
+        "objValue": "-0.5868643759303566",
+        "pri_res": "6.265147220463341e-10",
+        "rho": "1e-05",
+        "rho_updates": "0",
+        "run_time": "0.0",
+        "setup_time": "0.0",
+        "solve_time": "0.0",
+        "sparse_backend": "SparseBackend.Automatic",
+        "status": "QPSolverOutput.PROXQP_SOLVED",
+        "violation": 6.265147185768871e-10
+      }
+    },
+    "iteration_percentiles": [
+      12.0,
+      30.0,
+      120.0,
+      154.0
+    ]
+  },
+  {
+    "case": 6,
+    "variant": "current",
+    "samples": 4477,
+    "elapsed_s": 4.036937321998266,
+    "successful_sample_replay_failures": [],
+    "final_failure_replay": {
+      "success": false,
+      "numeric": {
+        "dua_res": "nan",
+        "duality_gap": "nan",
+        "iter": "18045",
+        "iter_ext": "200",
+        "iterative_residual": "nan",
+        "minimal_H_eigenvalue_estimate": "0.0",
+        "mu_eq": "1.0000000000000002e-07",
+        "mu_in": "1.0000000000000004e-05",
+        "mu_updates": "4",
+        "objValue": "nan",
+        "pri_res": "0.0",
+        "rho": "1e-05",
+        "rho_updates": "0",
+        "run_time": "0.0",
+        "setup_time": "0.0",
+        "solve_time": "0.0",
+        "sparse_backend": "SparseBackend.Automatic",
+        "status": "QPSolverOutput.PROXQP_MAX_ITER_REACHED",
+        "violation": Infinity
+      }
+    },
+    "iteration_percentiles": [
+      14.0,
+      37.0,
+      67.71999999999935,
+      585.0
+    ]
+  },
+  {
+    "case": 6,
+    "variant": "update_preconditioner",
+    "samples": 4477,
+    "elapsed_s": 4.229917192002176,
+    "successful_sample_replay_failures": [],
+    "final_failure_replay": {
+      "success": false,
+      "numeric": {
+        "dua_res": "nan",
+        "duality_gap": "nan",
+        "iter": "17326",
+        "iter_ext": "200",
+        "iterative_residual": "nan",
+        "minimal_H_eigenvalue_estimate": "0.0",
+        "mu_eq": "0.9090909090909091",
+        "mu_in": "0.9090909090909091",
+        "mu_updates": "6",
+        "objValue": "nan",
+        "pri_res": "0.0",
+        "rho": "1e-05",
+        "rho_updates": "0",
+        "run_time": "0.0",
+        "setup_time": "0.0",
+        "solve_time": "0.0",
+        "sparse_backend": "SparseBackend.Automatic",
+        "status": "QPSolverOutput.PROXQP_MAX_ITER_REACHED",
+        "violation": Infinity
+      }
+    },
+    "iteration_percentiles": [
+      15.0,
+      38.0,
+      106.55999999999585,
+      316.0
+    ]
+  },
+  {
+    "case": 6,
+    "variant": "fresh",
+    "samples": 4477,
+    "elapsed_s": 4.219333024000662,
+    "successful_sample_replay_failures": [],
+    "final_failure_replay": {
+      "success": false,
+      "numeric": {
+        "dua_res": "nan",
+        "duality_gap": "nan",
+        "iter": "17914",
+        "iter_ext": "200",
+        "iterative_residual": "nan",
+        "minimal_H_eigenvalue_estimate": "0.0",
+        "mu_eq": "1.0000000000000002e-07",
+        "mu_in": "1.0000000000000004e-05",
+        "mu_updates": "4",
+        "objValue": "nan",
+        "pri_res": "0.0",
+        "rho": "1e-05",
+        "rho_updates": "0",
+        "run_time": "0.0",
+        "setup_time": "0.0",
+        "solve_time": "0.0",
+        "sparse_backend": "SparseBackend.Automatic",
+        "status": "QPSolverOutput.PROXQP_MAX_ITER_REACHED",
+        "violation": Infinity
+      }
+    },
+    "iteration_percentiles": [
+      15.0,
+      38.0,
+      103.47999999999956,
+      775.0
+    ]
+  },
+  {
+    "case": 7,
+    "variant": "current",
+    "samples": 1646,
+    "elapsed_s": 1.3918050350002886,
+    "successful_sample_replay_failures": [],
+    "final_failure_replay": {
+      "success": true,
+      "numeric": {
+        "dua_res": "5.020998736646709e-11",
+        "duality_gap": "2.4350743643708483e-11",
+        "iter": "18",
+        "iter_ext": "9",
+        "iterative_residual": "4.02306501390874e-11",
+        "minimal_H_eigenvalue_estimate": "0.0",
+        "mu_eq": "0.0001",
+        "mu_in": "0.010000000000000002",
+        "mu_updates": "1",
+        "objValue": "-3.832381597660475",
+        "pri_res": "1.6504020372565265e-11",
+        "rho": "1e-05",
+        "rho_updates": "0",
+        "run_time": "0.0",
+        "setup_time": "0.0",
+        "solve_time": "0.0",
+        "sparse_backend": "SparseBackend.Automatic",
+        "status": "QPSolverOutput.PROXQP_SOLVED",
+        "violation": 1.650379832796034e-11
+      }
+    },
+    "iteration_percentiles": [
+      13.0,
+      36.0,
+      54.0,
+      254.0
+    ]
+  },
+  {
+    "case": 7,
+    "variant": "update_preconditioner",
+    "samples": 1646,
+    "elapsed_s": 1.4321938049979508,
+    "successful_sample_replay_failures": [],
+    "final_failure_replay": {
+      "success": true,
+      "numeric": {
+        "dua_res": "1.5706615350686958e-10",
+        "duality_gap": "-1.1103651331723086e-10",
+        "iter": "22",
+        "iter_ext": "11",
+        "iterative_residual": "7.732694036190891e-11",
+        "minimal_H_eigenvalue_estimate": "0.0",
+        "mu_eq": "0.0001",
+        "mu_in": "0.010000000000000002",
+        "mu_updates": "1",
+        "objValue": "-3.8323815976779576",
+        "pri_res": "7.604139540262622e-12",
+        "rho": "1e-05",
+        "rho_updates": "0",
+        "run_time": "0.0",
+        "setup_time": "0.0",
+        "solve_time": "0.0",
+        "sparse_backend": "SparseBackend.Automatic",
+        "status": "QPSolverOutput.PROXQP_SOLVED",
+        "violation": 7.603917495657697e-12
+      }
+    },
+    "iteration_percentiles": [
+      13.0,
+      47.0,
+      134.54999999999995,
+      143.0
+    ]
+  },
+  {
+    "case": 7,
+    "variant": "fresh",
+    "samples": 1646,
+    "elapsed_s": 1.451367426001525,
+    "successful_sample_replay_failures": [],
+    "final_failure_replay": {
+      "success": true,
+      "numeric": {
+        "dua_res": "1.5706742187328222e-10",
+        "duality_gap": "-1.1104073216472443e-10",
+        "iter": "22",
+        "iter_ext": "11",
+        "iterative_residual": "7.73274583220824e-11",
+        "minimal_H_eigenvalue_estimate": "0.0",
+        "mu_eq": "0.0001",
+        "mu_in": "0.010000000000000002",
+        "mu_updates": "1",
+        "objValue": "-3.8323815976779576",
+        "pri_res": "7.604361584867547e-12",
+        "rho": "1e-05",
+        "rho_updates": "0",
+        "run_time": "0.0",
+        "setup_time": "0.0",
+        "solve_time": "0.0",
+        "sparse_backend": "SparseBackend.Automatic",
+        "status": "QPSolverOutput.PROXQP_SOLVED",
+        "violation": 7.604361584867547e-12
+      }
+    },
+    "iteration_percentiles": [
+      13.0,
+      47.0,
+      134.54999999999995,
+      151.0
+    ]
+  }
+]
