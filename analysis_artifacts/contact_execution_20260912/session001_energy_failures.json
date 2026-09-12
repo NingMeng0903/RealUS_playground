@@ -1,0 +1,269 @@
+[
+  {
+    "attempt": "002",
+    "control_id": 4070,
+    "source_file": "/media/camp/yameng/icra 2027/uncalibrated/001/attempts/RH_Per_L_DtP/002/contact_qp.jsonl",
+    "source_time_s": 30065.071687258,
+    "q_meas": [
+      0.15379714965820312,
+      -1.2366879875004062,
+      -1.5114376618903385,
+      0.9785712188566184,
+      1.9052886939185765,
+      1.3280559844949538,
+      1.3439558551510538,
+      1.4183069185702675
+    ],
+    "q_source_offset_s": 0.0,
+    "rotation_base_tcp": [
+      [
+        -0.9935300763444365,
+        -0.02004975025223941,
+        -0.11178548615022103
+      ],
+      [
+        -0.011573989337244382,
+        0.9970435932451903,
+        -0.07596127921211844
+      ],
+      [
+        0.11297800746092039,
+        -0.07417601151007573,
+        -0.9908248529112588
+      ]
+    ],
+    "nominal_twist_tool": [
+      0.001752027616100988,
+      0.0047485573510291324,
+      -0.00036959074798152605,
+      -0.000280564285166823,
+      0.0,
+      -5.038179122738273e-05
+    ],
+    "candidate_twist_tool": [
+      0.001752027616100988,
+      0.0047485573510291324,
+      -0.00036959074798152605,
+      -0.000280564285166823,
+      0.0,
+      -5.038179122738273e-05
+    ],
+    "wrench_environment": [
+      -0.09128386548468947,
+      -2.714546172265053,
+      -4.1559403084920135,
+      -0.1469387835207081,
+      -0.020145187728402146,
+      -0.06283868542046694
+    ],
+    "old_final_tool": [
+      0.0017138024141960806,
+      0.008041467063523992,
+      -0.0006204659854645914,
+      -0.0002805647888814581,
+      -1.082150778631355e-10,
+      -5.038323412652222e-05
+    ],
+    "energy": {
+      "balance_j": 0.05040847101696086,
+      "reserved_j": 0.00011104003207965104,
+      "available_j": 0.00029743098488120584,
+      "raw_available_j": 0.00029743098488120584,
+      "command_budget_enforced": true,
+      "energy_constraint_enabled": true,
+      "settlement_port": "logical_final_model",
+      "wrench_convention": "negative_control_raw_tcp_v1",
+      "max_command_interval_s": 0.05,
+      "latched_reason": null,
+      "logical_epoch_expiry_s": 30065.123171458,
+      "task_power_source": "nominal_command",
+      "energy_assurance": "two_port_command_model",
+      "task_source_available_w": 0.012687529875638513,
+      "cumulative_port_work_j": -0.29631962883864665,
+      "cumulative_task_source_used_j": 0.24672809985560806,
+      "cumulative_tank_work_j": -0.04959152898303888,
+      "cumulative_capacity_discard_j": 0.0,
+      "physical_certified": false,
+      "actual_tail": "unknown",
+      "predicted_recovery_credited_j": 0.0
+    }
+  },
+  {
+    "attempt": "003",
+    "control_id": 3239,
+    "source_file": "/media/camp/yameng/icra 2027/uncalibrated/001/attempts/RH_Per_L_DtP/003/contact_qp.jsonl",
+    "source_time_s": 30108.888719395,
+    "q_meas": [
+      0.13826751708984375,
+      -1.2525529707462262,
+      -1.5164991327000885,
+      0.9843133270619655,
+      1.9023739972635392,
+      1.343694066415899,
+      1.3410934896114366,
+      1.4108019974603696
+    ],
+    "q_source_offset_s": 0.0,
+    "rotation_base_tcp": [
+      [
+        -0.9936207397972999,
+        -0.020119591713918163,
+        -0.11096408190910963
+      ],
+      [
+        -0.011694221679227106,
+        0.9970344057483037,
+        -0.07606338760168413
+      ],
+      [
+        0.11216537176857859,
+        -0.07428052088799711,
+        -0.9909093468085889
+      ]
+    ],
+    "nominal_twist_tool": [
+      0.0013162900120105628,
+      0.005300540843653567,
+      -0.001665185765476101,
+      3.4078706403669034e-05,
+      0.0,
+      4.023673028795162e-05
+    ],
+    "candidate_twist_tool": [
+      0.0013162900120105628,
+      0.005300540843653567,
+      -0.001665185765476101,
+      3.4078706403669034e-05,
+      0.0,
+      4.023673028795162e-05
+    ],
+    "wrench_environment": [
+      -0.45687860812098524,
+      -3.105946293822235,
+      -4.244216242778082,
+      -0.17692941756824948,
+      0.00384689686616546,
+      -0.09101994808717823
+    ],
+    "old_final_tool": [
+      0.0012761655888672988,
+      0.008721495767878463,
+      -0.0019261676576732172,
+      3.407357311846092e-05,
+      -4.839866501854659e-09,
+      4.022420514698642e-05
+    ],
+    "energy": {
+      "balance_j": 0.050279671406381475,
+      "reserved_j": 2.502513344178831e-05,
+      "available_j": 0.000254646272939684,
+      "raw_available_j": 0.000254646272939684,
+      "command_budget_enforced": true,
+      "energy_constraint_enabled": true,
+      "settlement_port": "logical_final_model",
+      "wrench_convention": "negative_control_raw_tcp_v1",
+      "max_command_interval_s": 0.05,
+      "latched_reason": null,
+      "logical_epoch_expiry_s": 30108.939911125,
+      "task_power_source": "nominal_command",
+      "energy_assurance": "two_port_command_model",
+      "task_source_available_w": 0.007687153431445039,
+      "cumulative_port_work_j": -0.24925442408788911,
+      "cumulative_task_source_used_j": 0.19953409549427042,
+      "cumulative_tank_work_j": -0.04972032859361838,
+      "cumulative_capacity_discard_j": 0.0,
+      "physical_certified": false,
+      "actual_tail": "unknown",
+      "predicted_recovery_credited_j": 0.0
+    }
+  },
+  {
+    "attempt": "004",
+    "control_id": 3568,
+    "source_file": "/media/camp/yameng/icra 2027/uncalibrated/001/attempts/RH_Per_L_DtP/004/contact_qp.jsonl",
+    "source_time_s": 30156.500534216,
+    "q_meas": [
+      0.1460454559326172,
+      -1.2429187191867557,
+      -1.51508539363542,
+      0.9820269366871052,
+      1.9057424965683258,
+      1.3362414764214212,
+      1.3402557922905523,
+      1.4148512007397807
+    ],
+    "q_source_offset_s": 0.0,
+    "rotation_base_tcp": [
+      [
+        -0.9937632232300978,
+        -0.020006177577673995,
+        -0.10970145401979635
+      ],
+      [
+        -0.011687929848479533,
+        0.9970430127259337,
+        -0.07595145206150367
+      ],
+      [
+        0.11089656645353786,
+        -0.07419557691078654,
+        -0.9910585088256353
+      ]
+    ],
+    "nominal_twist_tool": [
+      0.0016591582835433947,
+      0.0049745240066245205,
+      -0.0017972944534211527,
+      -3.8016447457886244e-05,
+      0.0,
+      -0.0001532399217255175
+    ],
+    "candidate_twist_tool": [
+      0.0016591582835433947,
+      0.0049745240066245205,
+      -0.0017972944534211527,
+      -3.8016447457886244e-05,
+      0.0,
+      -0.0001532399217255175
+    ],
+    "wrench_environment": [
+      -0.303832883604622,
+      -2.975781736523507,
+      -4.223017648997171,
+      -0.1516316357350897,
+      -0.009001823838279433,
+      -0.07315764881199593
+    ],
+    "old_final_tool": [
+      0.0016378769571489976,
+      0.00678992114233979,
+      -0.0019355864897567182,
+      -3.801722204242721e-05,
+      2.66572249432499e-09,
+      -0.00015324436238255105
+    ],
+    "energy": {
+      "balance_j": 0.05045243881343892,
+      "reserved_j": 0.0002641189786494145,
+      "available_j": 0.00018831983478950531,
+      "raw_available_j": 0.00018831983478950531,
+      "command_budget_enforced": true,
+      "energy_constraint_enabled": true,
+      "settlement_port": "logical_final_model",
+      "wrench_convention": "negative_control_raw_tcp_v1",
+      "max_command_interval_s": 0.05,
+      "latched_reason": null,
+      "logical_epoch_expiry_s": 30156.55289434,
+      "task_power_source": "nominal_command",
+      "energy_assurance": "two_port_command_model",
+      "task_source_available_w": 0.00976900679225981,
+      "cumulative_port_work_j": -0.27396736790522974,
+      "cumulative_task_source_used_j": 0.22441980671866824,
+      "cumulative_tank_work_j": -0.04954756118656136,
+      "cumulative_capacity_discard_j": 0.0,
+      "physical_certified": false,
+      "actual_tail": "unknown",
+      "predicted_recovery_credited_j": 0.0
+    }
+  }
+]

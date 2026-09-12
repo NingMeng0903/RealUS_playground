@@ -26,6 +26,13 @@ def test_real_enabled_adapter_commits_final_pair_and_drains_events(monkeypatch):
     active,pose,clock,sink=enabled(monkeypatch)
     try:
         command=propose(active,pose,clock)
+        row=active.command_power_constraints()
+        rotation=active.pending_rotation_base_tcp
+        wrench=active.pending_result.energy_certificate.wrench_environment
+        np.testing.assert_allclose(row['command_power_wrench_base'],
+            np.r_[rotation @ wrench[:3],rotation @ wrench[3:]])
+        bound=active.pending_result.energy_certificate
+        assert row['command_power_min_w']==pytest.approx(-(bound.task_power_w+bound.beta*bound.available_j/bound.hold_s))
         assert active.energy is None  # no second spendable or monitoring tank
         assert active.pending_result.energy_certificate.hold_s==.05
         assert active.pending_dt==.005

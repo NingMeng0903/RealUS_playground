@@ -369,6 +369,9 @@ class NativeWbcClient:
         rec["magic"] = P.WBC_MAGIC
         rec["version"] = P.WBC_VERSION
         rec["rocking_enabled"] = 0
+        rec["command_power_enabled"] = 0
+        rec["command_power_wrench_base"][:] = 0.
+        rec["command_power_min_w"] = 0.
         rec["rocking_axis_base"][:] = 0.
         rec["rocking_bounds"][:] = 0.
         rec["cmd_f"][:] = 0.0
@@ -662,6 +665,12 @@ class NativeWbcClient:
         rec["rocking_enabled"] = int(rocking_axis is not None)
         rec["rocking_axis_base"][:] = 0. if rocking_axis is None else rocking_axis
         rec["rocking_bounds"][:] = 0. if rocking_bounds is None else rocking_bounds
+        from ..command_power import validate_command_power
+        power_wrench, power_min = validate_command_power(
+            kwargs.get("command_power_wrench_base"), kwargs.get("command_power_min_w"))
+        rec["command_power_enabled"] = int(power_wrench is not None)
+        rec["command_power_wrench_base"][:] = 0. if power_wrench is None else power_wrench
+        rec["command_power_min_w"] = 0. if power_min is None else power_min
         rec["cmd_f"][:] = 0.0
         flags = 0
         if kwargs.get("contact_active"):

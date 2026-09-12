@@ -22,7 +22,7 @@ _SEED_Q = np.array([0.375, 0.194, -0.503, -0.069, 1.979, -0.776, 0.547, -4.370])
 
 
 def test_protocol_sizes_match_packed_cxx() -> None:
-    assert P.WBC_IN_SIZE == 692
+    assert P.WBC_IN_SIZE == 752
     assert P.WBC_OUT_SIZE == 1496
     binary = find_wbc_rt_binary()
     if binary is None:
@@ -34,10 +34,11 @@ def test_protocol_sizes_match_packed_cxx() -> None:
     assert int(inn) == P.WBC_IN_SIZE
     assert int(outn) == P.WBC_OUT_SIZE
     info = subprocess.check_output([str(binary), "--protocol-info"], text=True)
-    assert "version 9" in info
-    assert "692" in info
+    assert "version 10" in info
+    assert "752" in info
     assert "1496" in info
     assert "rocking_interval_v1" in info
+    assert "command_power_v1" in info
 
 
 def test_native_seq_wait_stays_20ms() -> None:

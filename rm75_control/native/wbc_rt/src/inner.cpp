@@ -22,7 +22,8 @@ constexpr int kNVar = kNv + kNTaskSlack + kNPref;
 constexpr int kNEq1 = kTask;
 constexpr int kNEq2 = kTask;
 constexpr int kRockingRow = kNv + kMaxCbf + kMaxPrefRows + kNPref;
-constexpr int kNIn = kRockingRow + 1;
+constexpr int kCommandPowerRow = kRockingRow + 1;
+constexpr int kNIn = kCommandPowerRow + 1;
 constexpr double kRailDriveCap = 0.40;
 constexpr double kRailPrefW = 64.0;
 constexpr double kQuietLinEnter = 0.005;
@@ -1122,6 +1123,14 @@ bool InnerLoop::solve_hqp(const Mat6x8& J, const Vec6& v_cmd, const Vec8& q_geom
   const Eigen::Matrix<double, 1, kNv> rocking_row =
       rocking_axis_base_.transpose() * J_task.bottomRows<3>();
   const double rocking_offset = rocking_axis_base_.dot(rail_actual_contrib.tail<3>());
+  // Logical future-command power uses FULL J, never the measured-rail task
+  // affine map. This row survives all rocking relaxations and both QP levels.
+  const Eigen::Matrix<double, 1, kNv> power_row = command_power_wrench_base_.transpose() * J;
+  if (command_power_enabled_) {
+    C.block(kCommandPowerRow, 0, 1, kNv) = power_row;
+    lo[kCommandPowerRow] = command_power_min_w_ +
+        (power_row.squaredNorm() > 0. ? std::nextafter(cert_tol, INFINITY) : 0.);
+  }
   auto set_rocking_tier = [&](uint32_t tier) {
     rocking_policy_tier_ = tier;
     rocking_lower_ = -std::numeric_limits<double>::infinity();
@@ -1365,6 +1374,13 @@ TickOut InnerLoop::step(const TickIn& in) {
   step_t0_ = t0;
   TickOut out;
   rocking_enabled_ = in.rocking_enabled;
+  command_power_enabled_ = in.command_power_enabled;
+  command_power_wrench_base_ = in.command_power_wrench_base;
+  command_power_min_w_ = in.command_power_min_w;
+  if (command_power_enabled_ && (!command_power_wrench_base_.allFinite() ||
+                                 !std::isfinite(command_power_min_w_))) {
+    throw std::invalid_argument("invalid command power constraint");
+  }
   rocking_axis_base_ = in.rocking_axis_base;
   rocking_bounds_ = in.rocking_bounds;
   rocking_policy_tier_ = 0;
@@ -2017,13 +2033,23 @@ TickOut InnerLoop::step(const TickIn& in) {
     if (would) {
       const Vec8 qdot_s = (q_shadow - q_prev) / dt;
       const Vec6 lock_err = last_lock_J_ * qdot_s - last_lock_v_;
-      if (lock_err.norm() <= std::max(10.0 * cfg_.eps_abs, 1e-5)) {
+      if (lock_err.norm() <= std::max(10.0 * cfg_.eps_abs, 1e-5) &&
+          (!command_power_enabled_ || command_power_wrench_base_.dot(J * qdot_s) >= command_power_min_w_)) {
         q_cmd_ = q_shadow;
         qdot = qdot_s;
       }
     }
   }
   uint32_t publication_pause_reason = 0;
+  // Includes QP1-only numerical fallback, clipping and all rail mutations.
+  // Do not send an uncertified result or hide the changed payload in telemetry.
+  if (published_ok && command_power_enabled_ &&
+      (!qdot.allFinite() || command_power_wrench_base_.dot(J * qdot) < command_power_min_w_)) {
+    published_ok = false;
+    qp1_status_ = kQpFailed;
+    q_cmd_ = q_prev;
+    qdot.setZero();
+  }
   if (published_ok) {
     dq_prev_ = q_cmd_ - q_prev;
     have_dq_prev_ = true;
@@ -2255,6 +2281,9 @@ TickOut InnerLoop::step(const TickIn& in) {
     out.qdot = cand_qd;
   } else if (!published_ok) {
     pending_valid_ = false;
+    // A rejected prepare owns no publication. Retain the post-measurement
+    // rebase, but roll back speculative command/jerk/rail proposal history.
+    restore_history(committed_snap_);
   }
   return out;
 }

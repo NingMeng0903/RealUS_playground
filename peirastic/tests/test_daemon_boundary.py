@@ -13,6 +13,21 @@ from peirastic.realman8dof import daemon
 from rm75_control.control.joint_admittance_8dof.loop import LoopResult, Phase
 
 
+def test_relay_force_uses_independent_compensator_with_same_model(monkeypatch):
+    control = SimpleNamespace(cfg=object(), phi=np.arange(10.))
+    private = SimpleNamespace(phi=control.phi.copy())
+    created = []
+    def make(cfg):
+        assert cfg is control.cfg
+        return private
+    monkeypatch.setattr(daemon, "CompensatedForceObserver", make)
+    daemon.configure_relay_force(SimpleNamespace(set_force_observer=created.append), control)
+    assert created == [private] and private is not control
+    private.phi[0] += 1
+    with pytest.raises(RuntimeError, match="force model changed"):
+        daemon.configure_relay_force(SimpleNamespace(set_force_observer=created.append), control)
+
+
 class _Hub:
     def __init__(self, polls=None):
         self.events: list[tuple[str, dict]] = []
@@ -294,6 +309,7 @@ def test_pending_dof_runs_transition_hold_then_installs_queued_mode(monkeypatch)
         if phase.on_enter is not None:
             phase.on_enter()
         step = SimpleNamespace(q_send=np.zeros(8), slack_norm=0.0)
+        kwargs["on_force_sample"](np.arange(6.0))
         kwargs["on_step"]("test", 0.0, step, np.zeros(6), np.arange(6.0), 0.0)
         if len(runner_calls) == 1:
             assert kwargs["stop_check"]()

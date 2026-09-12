@@ -534,9 +534,12 @@ class StateRelayPublisher:
         # Task set_f_ext wins; idle uses CompensatedForceObserver → TCP.
         self._task_f_ext_mono = 0.0
         self._task_f_ext_hold_s = 0.05
+        self._force_publish_lock = threading.Lock()
+        self._last_force_source_t_s = -float("inf")
         self._force_obs: Any | None = None
         self._force_t0: float | None = None
         self._last_idle_force_seq = -1
+        self._last_idle_force_t_s = -float("inf")
 
     def set_kin(self, kin: Any | None) -> None:
         """Hot-swap TCP kinematics used for SHM pose (e.g. after tool sync)."""
@@ -573,6 +576,7 @@ class StateRelayPublisher:
         self._force_obs = observer
         self._force_t0 = None
         self._last_idle_force_seq = -1
+        self._last_idle_force_t_s = -float("inf")
 
     def set_f_ext(
         self,
@@ -584,8 +588,18 @@ class StateRelayPublisher:
         """Publish controller-compensated tool wrench on ``rm75_f_ext``."""
         if f_ext is None:
             return
-        self._task_f_ext_mono = time.monotonic()
-        self._f_ext_shm.publish(f_ext, t_s=t_s, wall_time_ns=wall_time_ns)
+        now = time.monotonic()
+        source_t = now if t_s is None else float(t_s)
+        if not np.isfinite(source_t) or source_t <= 0.0 or source_t > now:
+            return
+        with self._force_publish_lock:
+            self._task_f_ext_mono = now
+            # A task resuming after idle compensation may have read an older
+            # snapshot. Never replace newer telemetry with that old sample.
+            if source_t < self._last_force_source_t_s:
+                return
+            self._f_ext_shm.publish(f_ext, t_s=source_t, wall_time_ns=wall_time_ns)
+            self._last_force_source_t_s = source_t
 
     def _idle_publish_f_ext(
         self,
@@ -596,11 +610,6 @@ class StateRelayPublisher:
         pub_seq: int,
     ) -> None:
         """Publish TCP compensated wrench while no task is writing f_ext."""
-        if (
-            time.monotonic() - float(self._task_f_ext_mono)
-            <= float(self._task_f_ext_hold_s)
-        ):
-            return
         if source == "rail":
             return
         obs = self._force_obs
@@ -624,7 +633,8 @@ class StateRelayPublisher:
                 t_obs = float(snap.t_s)
             except (TypeError, ValueError, OverflowError):
                 return
-            if not np.isfinite(t_obs) or t_obs <= 0.0:
+            if (not np.isfinite(t_obs) or t_obs <= self._last_idle_force_t_s
+                    or t_obs <= 0.0 or t_obs > time.monotonic()):
                 return
             try:
                 _, f_ext = obs.update(
@@ -640,14 +650,23 @@ class StateRelayPublisher:
             if hasattr(kin, "wrench_link7_to_tcp"):
                 f_ext = kin.wrench_link7_to_tcp(f_ext)
             fr = np.asarray(f_ext, dtype=float).reshape(-1)
-            if fr.size < 3 or not np.all(np.isfinite(fr[:3])):
+            if fr.size != 6 or not np.all(np.isfinite(fr)):
                 return
             self._last_idle_force_seq = key
-            self._f_ext_shm.publish(
-                fr,
-                t_s=float(snap.t_s),
-                wall_time_ns=int(getattr(snap, "wall_time_ns", 0) or 0) or None,
-            )
+            self._last_idle_force_t_s = t_obs
+            # Keep the independent compensator warm on real source samples
+            # even while the task owns publication. Mode compilation can take
+            # longer than the recorder's 100 ms age limit; the observer must
+            # be ready when the task's existing 50 ms ownership expires.
+            with self._force_publish_lock:
+                if (time.monotonic() - self._task_f_ext_mono <= self._task_f_ext_hold_s
+                        or t_obs < self._last_force_source_t_s):
+                    return
+                self._f_ext_shm.publish(
+                    fr, t_s=t_obs,
+                    wall_time_ns=int(getattr(snap, "wall_time_ns", 0) or 0) or None,
+                )
+                self._last_force_source_t_s = t_obs
         except Exception:
             pass
 

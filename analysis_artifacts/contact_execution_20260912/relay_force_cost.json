@@ -1,0 +1,6 @@
+{
+  "samples": 500,
+  "median_ms": 0.13396999929682352,
+  "p95_ms": 0.14577964902855456,
+  "note": "private relay gravity/filter cost, offline wall timing under concurrent regression, not deadline proof"
+}

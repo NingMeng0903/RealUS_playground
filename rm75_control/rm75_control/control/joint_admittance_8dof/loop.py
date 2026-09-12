@@ -22,6 +22,7 @@ from typing import Protocol
 
 import numpy as np
 from scipy.spatial.transform import Rotation as Rsc
+from .command_power import final_command_qdot
 
 from rm75_control.control.admittance_common.async_state import arm_qdot_rad_s_from_snap
 from rm75_control.control.joint_admittance_8dof.collision_model import CollisionConfig
@@ -1851,6 +1852,8 @@ class JointIkController:
         task_safety_rows: tuple = (),
         rocking_axis_base=None,
         rocking_bounds=None,
+        command_power_wrench_base=None,
+        command_power_min_w=None,
         path_twist: np.ndarray | None = None,
         feedback_twist: np.ndarray | None = None,
         v_force_z: float | None = None,
@@ -1881,6 +1884,8 @@ class JointIkController:
                 task_safety_rows=task_safety_rows,
                 rocking_axis_base=rocking_axis_base,
                 rocking_bounds=rocking_bounds,
+                command_power_wrench_base=command_power_wrench_base,
+                command_power_min_w=command_power_min_w,
                 path_twist=path_twist,
                 feedback_twist=feedback_twist,
                 v_force_z=v_force_z,
@@ -2540,6 +2545,8 @@ class JointIkController:
             secondary_qdot=sec_filt,
             rocking_axis_base=rocking_axis_base,
             rocking_bounds=rocking_bounds,
+            command_power_wrench_base=command_power_wrench_base,
+            command_power_min_w=command_power_min_w,
             q_meas=q_state,
             resync_err=resync_vec,
             rail_locked=locked_hold,
@@ -6992,6 +6999,7 @@ def run_joint_admittance_phases(
                         rocking_kwargs = {}
                         if publication_owner is not None:
                             rocking_kwargs = publication_owner.rocking_constraints()
+                            rocking_kwargs.update(publication_owner.command_power_constraints())
                         step = inner.update(
                             twist,
                             control_dt,
@@ -7304,9 +7312,9 @@ def run_joint_admittance_phases(
                         proposal_id = None
                         if publication_owner is not None:
                             proposal_id = publication_owner.pending_id
-                            final_qdot = np.asarray(step.qdot, dtype=float).copy()
-                            # Final payload model includes the last Python rail correction.
-                            final_qdot[0] = (float(rail_pub_m) - float(q_prev[0])) / float(inner.cfg.dt)
+                            final_qdot = final_command_qdot(step.qdot,
+                                proposed_rail_m=float(step.q_send[0]),
+                                published_rail_m=float(rail_pub_m), dt_s=float(inner.cfg.dt))
                             if rail_coast_active: final_qdot[0] = 0.0
                             final_base = inner.kin.jacobian(q_meas) @ final_qdot
                             rotation = publication_owner.pending_rotation_base_tcp
@@ -7314,6 +7322,11 @@ def run_joint_admittance_phases(
                             if not publication_owner.publication_review(
                                 proposal_id, final_tool, now_s=time.monotonic(),
                                 facts={"rail_target_m": float(rail_pub_m), "rail_coast": bool(rail_coast_active),
+                                    "velocity_model": "rebased_command_delta_v2",
+                                    "command_qdot": final_qdot.tolist(),
+                                    "rail_proposal_m": float(step.q_send[0]),
+                                    "rail_model_rate_m_s": float(final_qdot[0]),
+                                    "rail_execution_rate_m_s": float(step.rail_exec_for_qp_m_s),
                                     "rocking_policy_tier": step.rocking_policy_tier,
                                     "rocking_limited": step.rocking_limited,
                                     "rocking_lower_rad_s": step.rocking_lower_rad_s,
@@ -7337,7 +7350,8 @@ def run_joint_admittance_phases(
                                     _wait_until(next_tick)
                                     continue
                                 phase_stopped = True
-                                stop_reason = "contact_qp_final_review_rejected"
+                                stop_reason = "contact_qp_final_review_rejected:" + str(
+                                    getattr(publication_owner, "_publication_rejection_reason", None) or "unknown")
                                 _fault_stop(stop_reason)
                                 break
                         if rail_bridge is not None:

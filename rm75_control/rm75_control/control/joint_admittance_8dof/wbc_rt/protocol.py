@@ -8,7 +8,7 @@ from __future__ import annotations
 import numpy as np
 
 WBC_MAGIC = 0x57424331
-WBC_VERSION = 9
+WBC_VERSION = 10
 DEFAULT_IN_NAME = "rm75_wbc_in"
 DEFAULT_OUT_NAME = "rm75_wbc_out"
 
@@ -106,6 +106,9 @@ WBC_IN_DTYPE = np.dtype(
         ("rocking_axis_base", "<f8", (3,)),
         ("rocking_bounds", "<f8", (6,)),
         ("rocking_enabled", "<u4"),
+        ("command_power_wrench_base", "<f8", (6,)),
+        ("command_power_min_w", "<f8"),
+        ("command_power_enabled", "<u4"),
     ],
     align=False,
 )
@@ -237,7 +240,7 @@ WBC_OUT_DTYPE = np.dtype(
 WBC_IN_SIZE = int(WBC_IN_DTYPE.itemsize)
 WBC_OUT_SIZE = int(WBC_OUT_DTYPE.itemsize)
 # Packed C++ layouts in native/wbc_rt/include/wbc_rt/protocol.hpp.
-assert WBC_IN_SIZE == 692, WBC_IN_SIZE
+assert WBC_IN_SIZE == 752, WBC_IN_SIZE
 assert WBC_OUT_SIZE == 1496, WBC_OUT_SIZE
 
 

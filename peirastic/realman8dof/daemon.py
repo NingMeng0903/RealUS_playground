@@ -50,6 +50,16 @@ def default_log_dir() -> Path:
     return playground / "rm75_control" / "apps" / "logs" / "peirastic"
 
 
+def configure_relay_force(relay, control_observer) -> None:
+    """Keep mode-boundary telemetry independent of the control filter state."""
+    if control_observer is None:
+        return
+    observer = CompensatedForceObserver(control_observer.cfg)
+    if not np.array_equal(observer.phi, control_observer.phi):
+        raise RuntimeError("force model changed during relay initialization")
+    relay.set_force_observer(observer)
+
+
 def resolve_log_csv(
     value: str | None,
     *,
@@ -275,7 +285,7 @@ class ControllerService:
             DIFFERENTIAL_REPAIR_CAPABILITY, CONFIDENCE_BALANCE_CAPABILITY, LOGICAL_COMMAND_BUDGET_CAPABILITY,
             CONTINUOUS_VISUAL_CAPABILITY, NOMINAL_TASK_POWER_CAPABILITY,
             TRANSIENT_FEEDBACK_CAPABILITY, PAUSE_VISUAL_FEEDBACK_CAPABILITY,
-            CONTINUOUS_EXECUTION_CAPABILITY, SOURCE_GAP_CAPABILITY)
+            CONTINUOUS_EXECUTION_CAPABILITY, SOURCE_GAP_CAPABILITY, FINAL_COMMAND_POWER_CAPABILITY)
         from peirastic.contact_qp.repair_policy import DifferentialRepairConfig
         from peirastic.contact_qp.command_budget import CommandBudget
         from rm75_control.control.admittance_common.variable_step_filter import VariableLowpass1, VariableHighpass2
@@ -284,7 +294,7 @@ class ControllerService:
                 DIFFERENTIAL_REPAIR_CAPABILITY, CONFIDENCE_BALANCE_CAPABILITY, LOGICAL_COMMAND_BUDGET_CAPABILITY,
                 CONTINUOUS_VISUAL_CAPABILITY, NOMINAL_TASK_POWER_CAPABILITY,
                 TRANSIENT_FEEDBACK_CAPABILITY, PAUSE_VISUAL_FEEDBACK_CAPABILITY,
-                CONTINUOUS_EXECUTION_CAPABILITY, SOURCE_GAP_CAPABILITY}
+                CONTINUOUS_EXECUTION_CAPABILITY, SOURCE_GAP_CAPABILITY, FINAL_COMMAND_POWER_CAPABILITY}
         )
 
     def close(self) -> None:
@@ -1514,7 +1524,10 @@ def run_service(
                 )
                 cleanup.callback(relay.stop)
                 svc._state_relay = relay
+                configure_relay_force(relay, svc.force_observer)
                 relay.start()
+                if svc.force_observer is not None:
+                    svc.panel.event("STATE", "force relay=continuous; independent mode-boundary compensation")
             else:
                 print(
                     "[WARN] state_relay.enabled=false — "

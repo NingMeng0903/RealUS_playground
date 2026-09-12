@@ -144,6 +144,9 @@ struct TickIn {
   Eigen::Vector3d rocking_axis_base = Eigen::Vector3d::Zero();
   Vec6 rocking_bounds = Vec6::Zero();
   bool rocking_enabled = false;
+  Vec6 command_power_wrench_base = Vec6::Zero();
+  double command_power_min_w = 0.;
+  bool command_power_enabled = false;
   Vec6 v_cmd = Vec6::Zero();
   Vec8 q_meas = Vec8::Zero();
   Vec8 qdot_ff = Vec8::Zero();
@@ -570,6 +573,9 @@ class InnerLoop {
   Eigen::Vector3d rocking_axis_base_ = Eigen::Vector3d::Zero();
   Vec6 rocking_bounds_ = Vec6::Zero();
   bool rocking_enabled_ = false;
+  Vec6 command_power_wrench_base_ = Vec6::Zero();
+  double command_power_min_w_ = 0.;
+  bool command_power_enabled_ = false;
   uint32_t rocking_policy_tier_ = 0;
   double rocking_lower_ = -std::numeric_limits<double>::infinity();
   double rocking_upper_ = std::numeric_limits<double>::infinity();

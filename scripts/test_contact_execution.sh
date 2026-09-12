@@ -26,6 +26,9 @@ esac
 /usr/bin/cmake --build rm75_control/native/wbc_rt/build -j2
 /usr/bin/ctest --test-dir rm75_control/native/wbc_rt/build --output-on-failure
 python -m pytest "${CONTACT_TEST_FILES[@]}" \
+  rm75_control/tests/test_command_power.py \
+  rm75_control/tests/test_state_relay.py \
+  peirastic/tests/test_daemon_boundary.py \
   rm75_control/tests/test_rocking_envelope.py \
   rm75_control/tests/test_wbc_rt_aborted_reply.py \
   rm75_control/tests/test_wbc_rt_notifications.py \

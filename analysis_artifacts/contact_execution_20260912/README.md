@@ -1,5 +1,7 @@
 # 连续推进、平顺旋转与短时恢复交付
 
+最新 `/001` 实机暴露的地轨功率模型与 MOVEJ 力发布缺口已另行修正，见 [本轮修正与命令](session001_fix.md) 和 [独立 ULTRA 审查](session001_ultra_review.md)。当前 native ABI 为 v10，752/1496 字节；下面早期验证记录保留其发生时的版本信息。
+
 2026-09-12。实现采用 HIGH，独立 ULTRA 审查见 [ultra_review.md](ultra_review.md)。本次仅修改软件、编译 native 并运行离线测试，没有操作机器人、地轨或采集新的人体扫描。
 
 当前默认配置仍是 `peirastic/config/contact_qp/active_probe50_v8r3_tank.yaml`，新增显式 `execution_policy: continuous_recovery_v1`。能量罐保持初始 **0.100 J / 容量 0.150 J / 留额 0.050 J**，原法向目标 4 N、视觉力门控 4–4.5 N、实际收到的原始/滤波 6 N 停止条件保留。

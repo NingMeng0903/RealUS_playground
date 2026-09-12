@@ -160,6 +160,8 @@ class ContactQpOuter:
                   f"quality=deficit_only; alpha=0.25..1 slew=path_ramp; solver=bounded_retry_v1; "
                   f"source_gap={self.source_clock.gap_policy}; rocking={self._rocking.policy}; "
                   f"jerk={self._rocking.jerk_limit:.6g} rad/s^3",flush=True)
+        if self.command_budget is not None:
+            print("[CONTACT_QP] final_power=inner_qp1_qp2; velocity_model=rebased_command_delta_v2",flush=True)
 
     def __getattr__(self,name):return getattr(self.baseline,name)
     @property
@@ -214,6 +216,26 @@ class ContactQpOuter:
             time.monotonic(),self.pending_actual_dt)
         self._pending_rocking=(axis,bounds,facts)
         return dict(rocking_axis_base=axis,rocking_bounds=bounds)
+
+    def command_power_constraints(self):
+        """Admit the future command model in BOTH inner QPs before sending.
+
+        Available energy is conservative until the original active lease ends:
+        old outward work reduces balance and old reservation by the same amount.
+        The final reservation still checks the current balance without tolerance.
+        """
+        if self.command_budget is None:return {}
+        if not self._nominal_pending:raise RuntimeError('power row requires pending outer proposal')
+        bound=self.pending_result.energy_certificate
+        if bound is None:raise RuntimeError('missing frozen command power bound')
+        rotation=self.pending_rotation_base_tcp
+        wrench=np.r_[rotation @ bound.wrench_environment[:3],rotation @ bound.wrench_environment[3:]]
+        minimum=-(bound.task_power_w+bound.beta*bound.available_j/bound.hold_s)
+        self.sink.emit('inner_command_power_constraint',control_id=self.pending_id,
+            wrench_base=wrench,minimum_power_w=minimum,available_j=bound.available_j,
+            task_power_w=bound.task_power_w,hold_s=bound.hold_s,
+            velocity_model='rebased_command_delta_v2',physical_certified=False)
+        return dict(command_power_wrench_base=wrench,command_power_min_w=minimum)
 
     def observe_measured_port(self, snap, raw_rail_feedback, wrench_tcp, kin, *, now_s, source_id):
         """Measurement-only ingress, independent of the current command proposal."""
@@ -526,7 +548,8 @@ class ContactQpOuter:
             self.sink.emit('publication_review_rejected',control_id=candidate_id,reason=reason,
                 review_time_s=now_s,created_time_s=result.created_time_s,
                 valid_until_s=result.hard_constraints.valid_until_s,
-                final_command_model_tool=final,facts=facts or {})
+                final_command_model_tool=final,facts=facts or {},
+                energy=None if self.command_budget is None else self.command_budget.facts)
             return False
         if not np.isfinite(final).all() or not np.isfinite(now_s):return rejected('nonfinite_payload_or_time')
         if now_s<result.created_time_s:return rejected('review_time_reversed')

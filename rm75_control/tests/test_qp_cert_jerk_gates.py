@@ -21,10 +21,10 @@ from rm75_control.control.joint_admittance_8dof.tasks.rail_command import (
 from rm75_control.control.joint_admittance_8dof.wbc_rt import protocol as P
 
 
-def test_protocol_v8_sizes() -> None:
-    assert P.WBC_VERSION == 8
-    assert P.WBC_IN_SIZE == 616
-    assert P.WBC_OUT_SIZE == 1472
+def test_protocol_current_sizes() -> None:
+    assert P.WBC_VERSION == 10
+    assert P.WBC_IN_SIZE == 752
+    assert P.WBC_OUT_SIZE == 1496
 
 
 def test_inbox_brake_stays_inside_accel_box() -> None:

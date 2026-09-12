@@ -203,9 +203,11 @@ def test_production_retry_branch_aborts_every_proposal_and_paces_without_send(fa
             events.append('retry');return True
     rail=NS(enabled=True,measured_m=0.,reserve_target_m=lambda *a,**k:True,
             commit_reservation=lambda:events.append('rail_commit'),abort_reservation=lambda:events.append('rail_abort'))
-    env=dict(time=__import__('time'),np=np,publication_owner=Owner(),rail_bridge=rail,rail_coast_active=False,
+    env=dict(time=__import__('time'),np=np,final_command_qdot=loop.final_command_qdot,
+        publication_owner=Owner(),rail_bridge=rail,rail_coast_active=False,
         step=NS(qdot=np.zeros(8),q_send=np.zeros(8),rocking_policy_tier=0,
-            rocking_limited=False,rocking_lower_rad_s=-np.inf,rocking_upper_rad_s=np.inf),q_prev=np.zeros(8),q_meas=np.zeros(8),
+            rocking_limited=False,rocking_lower_rad_s=-np.inf,rocking_upper_rad_s=np.inf,
+            rail_exec_for_qp_m_s=0.),q_prev=np.zeros(8),q_meas=np.zeros(8),
         inner=NS(cfg=NS(dt=.005,resync_err_rail_m=.01),limits=NS(q_lower=np.full(8,-1),q_upper=np.ones(8)),
             kin=NS(jacobian=lambda q:np.eye(6,8)),_direct_joint_ptp=False,_plan_drives_rail=False,
             abort_publication=lambda:events.append('inner_abort'),commit_publication=lambda q:events.append('inner_commit')),

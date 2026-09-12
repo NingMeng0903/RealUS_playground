@@ -246,6 +246,60 @@ class _FakeKin:
         return np.array([0.1, 0.2, 0.3, 0.0, 0.0, 0.0])
 
 
+def test_mode_boundary_force_stays_live_without_reusing_source_samples(monkeypatch):
+    from types import SimpleNamespace
+    from rm75_control.control.admittance_common import state_relay
+    clock = [10.0]
+    monkeypatch.setattr(state_relay.time, "monotonic", lambda: clock[0])
+    pub = StateRelayPublisher(SimpleNamespace(), kin=_FakeKin())
+    obs = _FakeForceObs(np.array([0., 0., .4, 0., 0., 0.]))
+    pub.set_force_observer(obs)
+    rows = []
+    pub._f_ext_shm = SimpleNamespace(publish=lambda f, **kw: rows.append((np.array(f), kw)))
+    pub.set_f_ext(np.array([0., 0., .5, 0., 0., 0.]), t_s=10., wall_time_ns=100)
+    # A 300 ms MOVEJ compilation: the control observer is not running, but
+    # genuine sensor samples continue. No age threshold is increased.
+    for i in range(1, 61):
+        clock[0] = 10. + i * .005
+        snap = SimpleNamespace(t_s=clock[0], wall_time_ns=100+i,
+                               force_raw=np.ones(6)*3.5, q_deg=np.zeros(7))
+        pub._idle_publish_f_ext(snap, 0., source="thread", pub_seq=i)
+        n = obs.n
+        pub._idle_publish_f_ext(snap, 0., source="thread", pub_seq=i+1000)
+        assert obs.n == n  # relay sequence is not a new force measurement
+        assert clock[0] - rows[-1][1]["t_s"] <= .055
+    assert obs.n == 60  # kept warm even during the task's first 50 ms
+    assert rows[-1][0][2] == pytest.approx(.4)
+    assert rows[-1][1]["t_s"] == pytest.approx(10.3)
+    before = len(rows)
+    pub.set_f_ext(np.ones(6)*9, t_s=10.29, wall_time_ns=159)
+    assert len(rows) == before  # resuming task cannot rewind source time
+    clock[0] += .005
+    pub.set_f_ext(np.ones(6)*.6, t_s=clock[0], wall_time_ns=161)
+    assert rows[-1][0][2] == pytest.approx(.6)
+    # A stopped sensor cannot be made fresh by a still-live relay thread.
+    clock[0] += .2
+    pub._idle_publish_f_ext(snap, 0., source="thread", pub_seq=9999)
+    assert clock[0] - rows[-1][1]["t_s"] >= .199
+
+
+def test_idle_force_rechecks_task_ownership_after_compensation(monkeypatch):
+    from types import SimpleNamespace
+    from rm75_control.control.admittance_common import state_relay
+    monkeypatch.setattr(state_relay.time, "monotonic", lambda: 10.)
+    pub = StateRelayPublisher(SimpleNamespace(), kin=_FakeKin())
+    rows = []
+    pub._f_ext_shm = SimpleNamespace(publish=lambda f, **kw: rows.append((np.array(f), kw)))
+    def update(*args, **kwargs):
+        pub.set_f_ext(np.ones(6)*.6, t_s=10.)
+        return np.zeros(6), np.ones(6)*.4
+    pub.set_force_observer(SimpleNamespace(update=update))
+    snap = SimpleNamespace(t_s=9.999, wall_time_ns=100,
+                           force_raw=np.zeros(6), q_deg=np.zeros(7))
+    pub._idle_publish_f_ext(snap, 0., source="thread", pub_seq=1)
+    assert len(rows) == 1 and rows[-1][0][2] == pytest.approx(.6)
+
+
 def test_idle_f_ext_uses_compensator_not_raw(relay_name):
     """Idle viz must not publish raw sensor Z (tool-weight jump when C stops)."""
     from rm75_control.control.admittance_common.state_relay import (

@@ -16,6 +16,7 @@ SOURCE_TIMEBASE_CAPABILITY='contact_qp.source_timebase_bilinear_v1'
 DIFFERENTIAL_REPAIR_CAPABILITY='contact_qp.differential_repair_v8_r2'
 CONFIDENCE_BALANCE_CAPABILITY='contact_qp.confidence_balance_v8_r3'
 LOGICAL_COMMAND_BUDGET_CAPABILITY='contact_qp.logical_command_budget_v1'
+FINAL_COMMAND_POWER_CAPABILITY='contact_qp.final_command_power_v2'
 CONTINUOUS_VISUAL_CAPABILITY='contact_qp.continuous_visual_v1'
 NOMINAL_TASK_POWER_CAPABILITY='contact_qp.nominal_task_power_v1'
 TRANSIENT_FEEDBACK_CAPABILITY='contact_qp.transient_feedback_grace_v1'
@@ -39,6 +40,7 @@ def study_capabilities(config):
             required.append(CONTINUOUS_VISUAL_CAPABILITY)
     if active and config.get('energy_constraint_enabled') is True:
         required.append(LOGICAL_COMMAND_BUDGET_CAPABILITY)
+        required.append(FINAL_COMMAND_POWER_CAPABILITY)
         if (config.get('energy') or {}).get('task_power_source')=='nominal_command':
             required.append(NOMINAL_TASK_POWER_CAPABILITY)
     if active and float((config.get('feature') or {}).get('dropout_grace_s',0.))>0:

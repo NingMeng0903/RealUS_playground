@@ -749,7 +749,10 @@ class QpIkController:
     def commit_applied(self, qdot: np.ndarray) -> None:
         """Advance committed qdot history after both transports accept."""
         applied = np.asarray(qdot, dtype=float).reshape(-1).copy()
-        self.qdot_prev2 = np.asarray(self._qdot_prev_seen, dtype=float).copy()
+        # Transactional step(commit_history=False) will not shift at entry.
+        # Its next jerk box needs the two most recent *committed* velocities,
+        # not an extra-old sample from the non-transactional entry path.
+        self.qdot_prev2 = np.asarray(self.qdot_prev, dtype=float).copy()
         self._qdot_prev_seen = np.asarray(self.qdot_prev, dtype=float).copy()
         self.qdot_prev = applied
 
@@ -812,6 +815,11 @@ class QpIkController:
                 ),
             )
         rocking_row = getattr(self, "_last_rocking_row", None)
+        power_row = getattr(self, "_last_command_power_row", None)
+        if power_row is not None and float(power_row @ qdot_arr) < self._last_command_power_min_w:
+            # The solve row already paid the numerical tolerance. A later
+            # rewrite cannot borrow it again from the energy ledger.
+            return float("inf"), float("inf")
         if rocking_row is not None and getattr(self, "last_rocking_policy_tier", 0) in (1, 2, 3):
             omega = float(rocking_row @ qdot_arr) + self._last_rocking_offset
             hard = max(hard, self.last_rocking_lower_rad_s - omega,
@@ -1077,10 +1085,16 @@ class QpIkController:
         commit_history: bool = True,
         rocking_axis_base=None,
         rocking_bounds=None,
+        command_power_wrench_base=None,
+        command_power_min_w=None,
     ) -> IkStepResult:
         t_total = time.perf_counter()
         from ..rocking_envelope import validate_rocking, rocking_interval
         rocking_axis, rocking_limits = validate_rocking(rocking_axis_base, rocking_bounds)
+        from ..command_power import validate_command_power
+        power_wrench, power_min = validate_command_power(command_power_wrench_base, command_power_min_w)
+        self._last_command_power_row = None
+        self._last_command_power_min_w = power_min
         self.last_rocking_policy_tier = 0
         self.last_rocking_limited = False
         self.last_rocking_lower_rad_s = -float("inf")
@@ -1425,6 +1439,20 @@ class QpIkController:
             self._last_rocking_row = rocking_axis @ J_task[3:, :]
             self._last_rocking_offset = float(rocking_axis @ rail_exec_contrib[3:])
 
+        # This is the commanded port, so retain J's commanded rail column.
+        # The measured-rail affine task map would leave its future work free.
+        power_index = len(lo)
+        C_hard = np.vstack((C_hard, np.zeros((1, C_hard.shape[1]))))
+        lo = np.r_[lo, -np.inf]; hi = np.r_[hi, np.inf]
+        if power_wrench is not None:
+            row = power_wrench @ J
+            self._last_command_power_row = row.copy()
+            C_hard[power_index, :nv] = row
+            tolerance = max(10.0 * float(self.cfg.eps_abs), 1e-5)
+            # Pay for the existing solver certification tolerance, rather
+            # than allowing it to spend beyond the zero-tolerance ledger.
+            lo[power_index] = power_min + (np.nextafter(tolerance, np.inf) if np.any(row) else 0.)
+
         def set_rocking_tier(tier):
             self.last_rocking_policy_tier = tier
             self.last_rocking_limited = tier > 1
@@ -1663,6 +1691,9 @@ class QpIkController:
                     pref_slack_col=pref.slack_col,
                     pref_lower=pref.lower,
                 )
+                C2 = np.vstack((C2, C_hard[rocking_row_index:]))
+                lo2 = np.r_[lo2, lo[rocking_row_index:]]
+                hi2 = np.r_[hi2, hi[rocking_row_index:]]
                 A2 = np.zeros((n_task, n_var), dtype=float)
                 A2[:, :nv] = J_task
                 b2 = np.asarray(lock_vel, dtype=float).copy()
