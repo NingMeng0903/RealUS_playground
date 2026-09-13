@@ -333,6 +333,7 @@ class TorqueTilt:
         slack_norm: float | None = None,
         euler_order: str = "xyz",
         measurement_fresh: bool = True,
+        visual_velocity_target_rad_s: float | None = None,
     ) -> float:
         if self._pending_command is not None:
             raise RuntimeError("cannot update while a tilt proposal is pending")
@@ -403,23 +404,25 @@ class TorqueTilt:
         elif self.tilt_stalled:
             self.tilt_stop_reason = "cop_stall"
         if self.engaged and not self.tilt_frozen and not self.tilt_stalled:
-            vel, _ = kikuuwe_step(
-                np.array([self._w]),
-                np.array([self.tau_error_y]),
-                mass=cfg.mass,
-                damping=cfg.damping,
-                coulomb=cfg.coulomb_nm,
-                dt=dt,
-                vmax=cfg.vmax_rad_s,
-            )
-            target = float(vel[0])
+            if visual_velocity_target_rad_s is None:
+                vel, _ = kikuuwe_step(
+                    np.array([self._w]), np.array([self.tau_error_y]),
+                    mass=cfg.mass, damping=cfg.damping, coulomb=cfg.coulomb_nm,
+                    dt=dt, vmax=cfg.vmax_rad_s)
+                target = float(vel[0])
+            else:
+                # Experimental image-owned task already contains the original
+                # I/D dynamics. Moment is observed for CoP, not a second target.
+                target = float(visual_velocity_target_rad_s)
+                if not math.isfinite(target):
+                    raise ValueError('finite visual angular target required')
             if at_pos and target > 0.0:
                 target = 0.0
                 self.tilt_stop_reason = "angle_limit"
             if at_neg and target < 0.0:
                 target = 0.0
                 self.tilt_stop_reason = "angle_limit"
-            if not self.tilt_stop_reason and abs(self.tau_error_y) <= cfg.coulomb_nm:
+            if visual_velocity_target_rad_s is None and not self.tilt_stop_reason and abs(self.tau_error_y) <= cfg.coulomb_nm:
                 self.tilt_stop_reason = "torque_deadband"
         self._w += float(np.clip(target - self._w, -cfg.a_max * dt, cfg.a_max * dt))
         self._w = float(np.clip(self._w, -cfg.vmax_rad_s, cfg.vmax_rad_s))
@@ -474,11 +477,12 @@ class LegacyForceWithTilt:
         return self._combine(zout, kwargs)
 
     def prepare(self, *, measurement_id: int | None=None,control_step_id=None,
-                source_sample_id=None,source_t_s=None,**kwargs) -> ForceOutput:
+                source_sample_id=None,source_t_s=None,visual_velocity_target_rad_s=None,**kwargs) -> ForceOutput:
         zout = self.z_law.prepare(measurement_id=measurement_id,control_step_id=control_step_id,
             source_sample_id=source_sample_id,source_t_s=source_t_s,**kwargs)
         try:
-            return self._combine(zout, kwargs, measurement_id=measurement_id if control_step_id is None else control_step_id)
+            return self._combine(zout, dict(kwargs, visual_velocity_target_rad_s=visual_velocity_target_rad_s),
+                                 measurement_id=measurement_id if control_step_id is None else control_step_id)
         except Exception:
             self.z_law.abort()
             if self.tilt._pending_command is not None:
@@ -526,6 +530,7 @@ class LegacyForceWithTilt:
             slack_norm=kwargs.get("slack_norm"),
             euler_order=euler,
             measurement_fresh=kwargs.get('measurement_fresh',True),
+            visual_velocity_target_rad_s=kwargs.get('visual_velocity_target_rad_s'),
             **sequence,
         )
         velocity = np.asarray(zout.v_force, dtype=float).reshape(6).copy()

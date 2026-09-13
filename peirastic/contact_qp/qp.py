@@ -57,6 +57,9 @@ class QpConfig:
     progress_weight: float = 1.0
     slack_weight: float = 10.0
     aperture_cost_weight: float = 1.0
+    cop_weight: float = 1.0
+    cop_min_force_n: float = 0.8
+    cop_max_m: float = 0.025
     max_velocity: np.ndarray = field(default_factory=lambda: np.array([.04, .04, .01, .6, .28, .6]))
     max_acceleration: np.ndarray = field(default_factory=lambda: np.array([1., 1., .8, 2., 3., 2.]))
     angle_limit_rad: float = math.radians(150.)
@@ -78,7 +81,8 @@ class QpConfig:
     def __post_init__(self):
         if self.solver_policy not in ("legacy_v1", "bounded_retry_v1"):
             raise ValueError("unknown contact QP solver policy")
-        if self.allocation_policy not in ('legacy_v7','differential_repair_v8'):
+        if self.allocation_policy not in ('legacy_v7','differential_repair_v8',
+                                        'confidence_angular_v1','confidence_cop_v1','delay_kf_cop_v1'):
             raise ValueError('unknown allocation policy')
         policy=self.differential_repair
         if isinstance(policy,Mapping):policy=DifferentialRepairConfig(**policy)
@@ -87,12 +91,12 @@ class QpConfig:
         if self.schema_version != SCHEMA_VERSION or float(self.force_target_n) != 4.0:
             raise ValueError("contact QP v1 requires the fixed 4 N target")
         for name in ("force_sign_band_n", "aperture_budget_m_s", "repair_speed_m_s", "keep_speed_m_s",
-                     "aperture_cost_weight"):
+                     "aperture_cost_weight", "cop_weight"):
             object.__setattr__(self, name, positive(getattr(self, name), name, zero=True))
         for name in ("max_image_age_s", "max_step_s", "certificate_horizon_s", "normal_scale_m_s",
                      "angular_scale_rad_s", "slack_scale_m_s", "normal_weight", "angular_weight",
                      "progress_weight", "slack_weight", "angle_limit_rad", "solver_tolerance",
-                     "feasibility_tolerance"):
+                     "feasibility_tolerance", "cop_min_force_n", "cop_max_m"):
             object.__setattr__(self, name, positive(getattr(self, name), name))
         if not math.isfinite(self.c_min) or not 0 < self.c_min < 1 or not self.quality_policy_version:
             raise ValueError("explicit policy version and c_min in (0,1) required")
@@ -138,10 +142,36 @@ class QpInput:
     repair_execution_enabled: bool = True
     repair_angle_reference_reset: bool = False
     alpha_preferred: float | None = None
+    visual_omega_target_rad_s: float | None = None
+    loading_velocity_m_s: float | None = None
+    cop_m: float | None = None
+    # New affine TFF policy: all following path/nominal components are at the
+    # contact-face origin in contact coordinates, never at the original TCP.
+    mechanical_normal_m_s: float | None = None
+    mechanical_omega_rad_s: float | None = None
+    path_feedback_contact: np.ndarray = field(default_factory=lambda: np.zeros(6))
+    path_feedforward_contact: np.ndarray | None = None
+    visual_request_rad_s: float | None = None
+    visual_task_valid: bool = False
+    visual_gamma: float = 1.0
 
     def __post_init__(self):
-        if self.alpha_preferred is not None and (not math.isfinite(self.alpha_preferred) or not .25 <= self.alpha_preferred <= 1.):
-            raise ValueError('quality alpha preference must be in [0.25,1]')
+        for name in ('visual_omega_target_rad_s', 'loading_velocity_m_s', 'cop_m',
+                     'mechanical_normal_m_s', 'mechanical_omega_rad_s', 'visual_request_rad_s'):
+            value = getattr(self, name)
+            if value is not None:
+                if isinstance(value, (bool, np.bool_)) or not math.isfinite(value):
+                    raise ValueError(f'{name} must be finite')
+                object.__setattr__(self, name, float(value))
+        if self.alpha_preferred is not None and (not math.isfinite(self.alpha_preferred) or not 0. <= self.alpha_preferred <= 1.):
+            raise ValueError('quality alpha preference must be in [0,1]')
+        if type(self.visual_task_valid) is not bool:
+            raise ValueError('visual_task_valid must be bool')
+        if isinstance(self.visual_gamma, (bool, np.bool_)) or not math.isfinite(self.visual_gamma) or not 0 <= self.visual_gamma <= 1:
+            raise ValueError('visual_gamma must be in [0,1]')
+        object.__setattr__(self, 'path_feedback_contact', vector(self.path_feedback_contact, (6,), name='path_feedback_contact'))
+        if self.path_feedforward_contact is not None:
+            object.__setattr__(self, 'path_feedforward_contact', vector(self.path_feedforward_contact, (6,), name='path_feedforward_contact'))
         if type(self.repair_angle_reference_reset) is not bool:raise ValueError("repair_angle_reference_reset must be bool")
         if type(self.repair_execution_enabled) is not bool:raise ValueError("repair_execution_enabled must be bool")
         if self.schema_version != SCHEMA_VERSION or not isinstance(self.geometry, ProbeGeometry):
@@ -155,7 +185,8 @@ class QpInput:
             raise ValueError("invalid contact observation")
         for name in ("nominal_twist", "path_twist", "previous_twist"):
             object.__setattr__(self, name, vector(getattr(self, name), (6,), name=name))
-        motion_basis(self.path_twist)
+        if self.path_feedforward_contact is None:
+            motion_basis(self.path_twist)
         force_n = float(self.force_n)
         if not math.isfinite(force_n):
             raise ValueError("compression-positive force measurement must be finite")
@@ -508,11 +539,15 @@ class ContactQp:
         self._numeric_attempts = []
         self._numeric_deferred_reason = None
         cfg, mech = self.config, data.mechanical
+        if cfg.allocation_policy == 'delay_kf_cop_v1':
+            from .weighted_outer import solve_weighted_outer
+            return solve_weighted_outer(self, data, deadline_s=deadline_s, online=online)
+        priority = cfg.allocation_policy in ('confidence_angular_v1', 'confidence_cop_v1')
         v8=cfg.allocation_policy=="differential_repair_v8"
         balance_policy=v8 and cfg.differential_repair.revision=='v8r3_confidence_balance'
-        force_gate=cfg.differential_repair.force_gate(data.force_n) if v8 else 1.
+        force_gate=cfg.differential_repair.force_gate(data.force_n) if v8 or cfg.allocation_policy in ('confidence_angular_v1','confidence_cop_v1') else 1.
         compute_intervals = cfg.compute_interval_diagnostics if interval_diagnostics is None else bool(interval_diagnostics)
-        compute_intervals = compute_intervals and not online
+        compute_intervals = compute_intervals and not online and not priority
         diagnostics = {"quality_policy_version": cfg.quality_policy_version,
                        "acoustic_derivative_certified": False, "port_verified": False,
                        "command_slew_dt_s": data.acceleration_dt_s, "command_hold_s": data.dt_s,
@@ -536,13 +571,29 @@ class ContactQp:
         if self._deadline_expired(deadline_s):
             return failure(ContactStatus.DEFERRED, "solver_deadline_exceeded")
 
+        nominal_twist = data.nominal_twist
+        if priority:
+            if data.visual_omega_target_rad_s is None or data.loading_velocity_m_s is None:
+                return failure(ContactStatus.CERTIFICATE_INVALID, 'missing_confidence_allocation_targets')
+            if cfg.allocation_policy == 'confidence_cop_v1':
+                t = data.geometry.T_tcp_face
+                face_x = t[0, 3] + np.array([-1., 1.]) * data.geometry.half_length_m * t[0, 0]
+                if data.cop_m is None or not min(face_x)-1e-12 <= data.cop_m <= max(face_x)+1e-12:
+                    return failure(ContactStatus.CERTIFICATE_INVALID, 'cop_outside_physical_face')
+            nominal_twist = data.path_twist.copy()
+            nominal_twist[2] = data.loading_velocity_m_s
+            nominal_twist[4] = data.visual_omega_target_rad_s
+            diagnostics.update(solver_policy='bounded_retry_v1',
+                aperture_baseline='pure_loading_plus_filtered_visual_omega',
+                legacy_force_priority_replaced=True)
+
         if (data.dt_s > cfg.max_step_s or (len(mech.A) and
                 (not math.isfinite(mech.valid_until_s) or data.now_s >= mech.valid_until_s))):
             return failure(ContactStatus.CERTIFICATE_INVALID, "expired_or_unbounded_mechanical_certificate_or_step")
         basis = motion_basis(data.path_twist)
-        nominal_y = np.array([data.nominal_twist[2], data.nominal_twist[4], 1.])
+        nominal_y = np.array([nominal_twist[2], nominal_twist[4], 1.])
         nominal_full = basis @ nominal_y
-        if np.any(np.abs(nominal_full - data.nominal_twist) > cfg.subspace_tolerance):
+        if np.any(np.abs(nominal_full - nominal_twist) > cfg.subspace_tolerance):
             return failure(ContactStatus.TASK_INFEASIBLE, "nominal_outside_ordinary_motion_basis")
         zero_path = np.linalg.norm(data.path_twist) <= 1e-14
         scales = np.array([cfg.normal_scale_m_s, cfg.angular_scale_rad_s, 1.,
@@ -579,9 +630,9 @@ class ContactQp:
         endpoint_full = aperture_rows(data.geometry, data.center_interval_m)
         endpoint = endpoint_full.copy()
         endpoint[:, [0, 1, 3, 5]] = 0.
-        endpoint_nominal = endpoint @ data.nominal_twist
+        endpoint_nominal = endpoint @ nominal_twist
         reliable = abs(data.force_n - cfg.force_target_n) > cfg.force_sign_band_n + 1e-12
-        if cfg.enable_force_priority and reliable and not v8:
+        if cfg.enable_force_priority and reliable and not v8 and not priority:
             sign = math.copysign(1., data.force_n - cfg.force_target_n)
             rows.extend(sign * endpoint)
             lower.extend([-math.inf] * 2)
@@ -623,7 +674,7 @@ class ContactQp:
         diagnostics.update(omega_interval_mechanical=intervals[0], omega_interval_force_priority=intervals[1],
                            omega_interval_complete=intervals[2], force_sign_reliable=reliable,
                            interval_diagnostics_computed=compute_intervals,
-                           nominal_subspace_residual=float(np.max(np.abs(nominal_full - data.nominal_twist))))
+                           nominal_subspace_residual=float(np.max(np.abs(nominal_full - nominal_twist))))
         if compute_intervals and intervals[0] is None:
             try:
                 return subspace_failure()
@@ -655,7 +706,7 @@ class ContactQp:
             repair_allowed=episode['repair_allowed']
         requests = (force_gate if repair_allowed else 0.) * gamma * cfg.repair_speed_m_s * deficit - cfg.keep_speed_m_s * margin
         visual = window_rows(data.geometry, cfg.lateral_windows)[[0, 2]]
-        visual_enabled = image_valid and cfg.enable_visual and (not v8 or force_gate>0.)
+        visual_enabled = not priority and image_valid and cfg.enable_visual and (not v8 or force_gate>0.)
         if cfg.differential_repair.quality_objective=='deficit_only_v1' and not np.any(deficit>0.):
             visual_enabled=False
         visual_window_active=np.full(2,visual_enabled,dtype=bool)
@@ -675,104 +726,123 @@ class ContactQp:
                            quality_objective=cfg.differential_repair.quality_objective,
                            visual_rows_active=visual_enabled,visual_window_active=visual_window_active, visual_requests_m_s=requests if visual_enabled else np.zeros(2),
                            gamma_effective=gamma, quality=quality)
-        x_nominal = np.r_[nominal_y / scales[:3], 0., 0.]
-        # At this point every quadratic term has its global minimum at nominal.
-        # Returning the input array copy avoids numerical drift from solving it.
-        transparent = bool(not zero_path and alpha_preferred == 1. and
-                           np.array_equal(nominal_full, data.nominal_twist) and
-                           _violation(cn, ln, un, x_nominal[:3]) <= cfg.solver_tolerance and
-                           (not visual_enabled or np.all((visual @ data.nominal_twist)[visual_window_active] >= requests[visual_window_active]))
-                           and (not v8 or differential_nominal>=differential_requested)
-                           and (data.energy is None or data.energy.admissible(data.nominal_twist,
-                                tolerance_w=cfg.solver_tolerance,velocity_tolerance=cfg.solver_tolerance)))
-        solver_time = 0.
-        if transparent:
-            twist, alpha, slack = data.nominal_twist.copy(), 1., np.zeros(2)
-            diagnostics.update(transparent=True, iterations=0, solver_status="exact_nominal_optimum")
-        else:
-            target = x_nominal.copy()
-            target[2] = alpha_preferred
-            weights = np.array([cfg.normal_weight, cfg.angular_weight, cfg.progress_weight,
-                                cfg.slack_weight, cfg.slack_weight])
-            hessian = np.diag(weights)
-            gradient = -weights * target
-            if cfg.enable_aperture and cfg.aperture_cost_weight > 0:
-                penalty = np.zeros((2, 5))
-                penalty[:, :3] = (endpoint @ scaled_basis) / cfg.normal_scale_m_s
-                reference = endpoint_nominal / cfg.normal_scale_m_s
-                hessian += cfg.aperture_cost_weight * penalty.T @ penalty
-                gradient -= cfg.aperture_cost_weight * penalty.T @ reference
-            constraints = np.pad(cn, ((0, 0), (0, 2)))
-            constraints = np.concatenate((constraints, np.eye(5)[2:]))
-            lo = np.r_[ln, 0., 0., 0.]
-            hi = np.r_[un, alpha_hi, math.inf, math.inf]
-            if visual_enabled:
-                visual_c = np.zeros((2, 5))
-                visual_c[:, :3] = visual @ scaled_basis
-                visual_c[:, 3:] = np.eye(2) * cfg.slack_scale_m_s
-                vc, vl, vu = _normalize_rows(visual_c[visual_window_active], requests[visual_window_active], np.full(int(visual_window_active.sum()), math.inf))
-                constraints = np.concatenate((constraints, vc))
-                lo, hi = np.r_[lo, vl], np.r_[hi, vu]
-            if v8:
-                hessian=np.pad(hessian,((0,3),(0,3)));gradient=np.pad(gradient,(0,3))
-                constraints=np.pad(constraints,((0,0),(0,3)))
-                ph,pg,pr,pu,pfacts=cfg.differential_repair.terms(
-                    scaled_basis=scaled_basis,visual_rows=visual,endpoint_rows=endpoint,
-                    nominal_twist=data.nominal_twist,deficits=differential_deficit,
-                    repair_speed=cfg.repair_speed_m_s,normal_scale=cfg.normal_scale_m_s,
-                    force_n=data.force_n,alpha_preferred=alpha_preferred,progress_weight=cfg.progress_weight,
-                    differential_imbalance=differential_imbalance)
-                hessian+=ph;gradient+=pg
-                constraints=np.concatenate((constraints,pr,np.eye(8)[5:]))
-                lo=np.r_[lo,np.full(len(pr),-math.inf),np.zeros(3)]
-                hi=np.r_[hi,pu,np.full(3,math.inf)]
-                diagnostics.update(pfacts)
-            if data.energy is not None:
-                ea,el,eu,auxiliary_count=_energy_rows(data.energy,scaled_basis,len(gradient))
-                hessian=np.pad(hessian,((0,auxiliary_count),(0,auxiliary_count)))
-                gradient=np.pad(gradient,(0,auxiliary_count))
-                constraints=np.pad(constraints,((0,0),(0,auxiliary_count)))
-                constraints=np.concatenate((constraints,ea));lo=np.r_[lo,el];hi=np.r_[hi,eu]
-                diagnostics['energy_auxiliary_variables']=auxiliary_count
+        if priority:
+            from .priority_allocation import solve_priority
             solver_start = time.perf_counter()
             try:
-                numeric_kwargs = dict(energy_active=data.energy is not None)
-                if deadline_s is not None:
-                    numeric_kwargs['deadline_s'] = deadline_s
-                x, solver_status, solved, iterations = self._solve_numeric(hessian, gradient, constraints, lo, hi, **numeric_kwargs)
+                x = solve_priority(self, data, scaled_basis, scales, cn, ln, un,
+                    alpha_preferred=alpha_preferred, zero_path=zero_path,
+                    deadline_s=deadline_s, diagnostics=diagnostics,
+                    hard_rows=(hard_a, hard_lo, hard_hi))
             except (ValueError, RuntimeError) as exc:
-                return failure(ContactStatus.SOLVER_FAILED, str(exc))
+                return failure(ContactStatus.DEFERRED, str(exc))
             solver_time = time.perf_counter() - solver_start
-            diagnostics.update(transparent=False, iterations=iterations, solver_status=solver_status)
-            if cfg.solver_policy == "bounded_retry_v1":
-                diagnostics['numeric_attempts'] = self._numeric_attempts
-                diagnostics['solver_backend_version'] = self._numeric_backend_version
-            if not solved or not np.isfinite(x).all() or _violation(constraints, lo, hi, x) > cfg.feasibility_tolerance:
-                if online or self._numeric_deferred_reason is not None:
-                    diagnostics['numeric_problem'] = dict(H=hessian, g=gradient, C=constraints, l=lo, u=hi)
-                    return failure(ContactStatus.DEFERRED,
-                        self._numeric_deferred_reason or "solver_attempts_exhausted")
-                # Diagnose failures separately from the successful per-tick
-                # path. No visual slack or relative row may soften mechanics.
-                try:
-                    if interval(mechanical_count) is None:
-                        return subspace_failure()
-                    if interval(len(rows)) is None:
-                        return failure(ContactStatus.TASK_INFEASIBLE, "relative_baseline_rows_conflict_with_mechanical_admission")
-                except RuntimeError as exc:
-                    return failure(ContactStatus.SOLVER_FAILED, str(exc))
+            if x is None:
+                return failure(ContactStatus.DEFERRED,
+                    self._numeric_deferred_reason or 'solver_attempts_exhausted')
+            alpha = float(np.clip(x[2], 0., 0. if zero_path else alpha_preferred))
+            twist = basis @ np.array([x[0]*scales[0], x[1]*scales[1], alpha])
+            slack = np.zeros(2)
+            transparent = False
+        else:
+            x_nominal = np.r_[nominal_y / scales[:3], 0., 0.]
+            # At this point every quadratic term has its global minimum at nominal.
+            # Returning the input array copy avoids numerical drift from solving it.
+            transparent = bool(not zero_path and alpha_preferred == 1. and
+                               np.array_equal(nominal_full, data.nominal_twist) and
+                               _violation(cn, ln, un, x_nominal[:3]) <= cfg.solver_tolerance and
+                               (not visual_enabled or np.all((visual @ data.nominal_twist)[visual_window_active] >= requests[visual_window_active]))
+                               and (not v8 or differential_nominal>=differential_requested)
+                               and (data.energy is None or data.energy.admissible(data.nominal_twist,
+                                    tolerance_w=cfg.solver_tolerance,velocity_tolerance=cfg.solver_tolerance)))
+            solver_time = 0.
+            if transparent:
+                twist, alpha, slack = data.nominal_twist.copy(), 1., np.zeros(2)
+                diagnostics.update(transparent=True, iterations=0, solver_status="exact_nominal_optimum")
+            else:
+                target = x_nominal.copy()
+                target[2] = alpha_preferred
+                weights = np.array([cfg.normal_weight, cfg.angular_weight, cfg.progress_weight,
+                                    cfg.slack_weight, cfg.slack_weight])
+                hessian = np.diag(weights)
+                gradient = -weights * target
+                if cfg.enable_aperture and cfg.aperture_cost_weight > 0:
+                    penalty = np.zeros((2, 5))
+                    penalty[:, :3] = (endpoint @ scaled_basis) / cfg.normal_scale_m_s
+                    reference = endpoint_nominal / cfg.normal_scale_m_s
+                    hessian += cfg.aperture_cost_weight * penalty.T @ penalty
+                    gradient -= cfg.aperture_cost_weight * penalty.T @ reference
+                constraints = np.pad(cn, ((0, 0), (0, 2)))
+                constraints = np.concatenate((constraints, np.eye(5)[2:]))
+                lo = np.r_[ln, 0., 0., 0.]
+                hi = np.r_[un, alpha_hi, math.inf, math.inf]
+                if visual_enabled:
+                    visual_c = np.zeros((2, 5))
+                    visual_c[:, :3] = visual @ scaled_basis
+                    visual_c[:, 3:] = np.eye(2) * cfg.slack_scale_m_s
+                    vc, vl, vu = _normalize_rows(visual_c[visual_window_active], requests[visual_window_active], np.full(int(visual_window_active.sum()), math.inf))
+                    constraints = np.concatenate((constraints, vc))
+                    lo, hi = np.r_[lo, vl], np.r_[hi, vu]
+                if v8:
+                    hessian=np.pad(hessian,((0,3),(0,3)));gradient=np.pad(gradient,(0,3))
+                    constraints=np.pad(constraints,((0,0),(0,3)))
+                    ph,pg,pr,pu,pfacts=cfg.differential_repair.terms(
+                        scaled_basis=scaled_basis,visual_rows=visual,endpoint_rows=endpoint,
+                        nominal_twist=data.nominal_twist,deficits=differential_deficit,
+                        repair_speed=cfg.repair_speed_m_s,normal_scale=cfg.normal_scale_m_s,
+                        force_n=data.force_n,alpha_preferred=alpha_preferred,progress_weight=cfg.progress_weight,
+                        differential_imbalance=differential_imbalance)
+                    hessian+=ph;gradient+=pg
+                    constraints=np.concatenate((constraints,pr,np.eye(8)[5:]))
+                    lo=np.r_[lo,np.full(len(pr),-math.inf),np.zeros(3)]
+                    hi=np.r_[hi,pu,np.full(3,math.inf)]
+                    diagnostics.update(pfacts)
                 if data.energy is not None:
+                    ea,el,eu,auxiliary_count=_energy_rows(data.energy,scaled_basis,len(gradient))
+                    hessian=np.pad(hessian,((0,auxiliary_count),(0,auxiliary_count)))
+                    gradient=np.pad(gradient,(0,auxiliary_count))
+                    constraints=np.pad(constraints,((0,0),(0,auxiliary_count)))
+                    constraints=np.concatenate((constraints,ea));lo=np.r_[lo,el];hi=np.r_[hi,eu]
+                    diagnostics['energy_auxiliary_variables']=auxiliary_count
+                solver_start = time.perf_counter()
+                try:
+                    numeric_kwargs = dict(energy_active=data.energy is not None)
+                    if deadline_s is not None:
+                        numeric_kwargs['deadline_s'] = deadline_s
+                    x, solver_status, solved, iterations = self._solve_numeric(hessian, gradient, constraints, lo, hi, **numeric_kwargs)
+                except (ValueError, RuntimeError) as exc:
+                    return failure(ContactStatus.SOLVER_FAILED, str(exc))
+                solver_time = time.perf_counter() - solver_start
+                diagnostics.update(transparent=False, iterations=iterations, solver_status=solver_status)
+                if cfg.solver_policy == "bounded_retry_v1":
+                    diagnostics['numeric_attempts'] = self._numeric_attempts
+                    diagnostics['solver_backend_version'] = self._numeric_backend_version
+                if not solved or not np.isfinite(x).all() or _violation(constraints, lo, hi, x) > cfg.feasibility_tolerance:
+                    if online or self._numeric_deferred_reason is not None:
+                        diagnostics['numeric_problem'] = dict(H=hessian, g=gradient, C=constraints, l=lo, u=hi)
+                        return failure(ContactStatus.DEFERRED,
+                            self._numeric_deferred_reason or "solver_attempts_exhausted")
+                    # Diagnose failures separately from the successful per-tick
+                    # path. No visual slack or relative row may soften mechanics.
                     try:
-                        if not _linear_feasible(constraints,lo,hi):
-                            return failure(ContactStatus.TASK_INFEASIBLE,"energy_budget_infeasible")
+                        if interval(mechanical_count) is None:
+                            return subspace_failure()
+                        if interval(len(rows)) is None:
+                            return failure(ContactStatus.TASK_INFEASIBLE, "relative_baseline_rows_conflict_with_mechanical_admission")
                     except RuntimeError as exc:
-                        return failure(ContactStatus.SOLVER_FAILED,str(exc))
-                return failure(ContactStatus.SOLVER_FAILED, "solver_status_or_residual")
-            y = x[:3] * scales[:3]
-            alpha = float(np.clip(y[2], 0., alpha_hi))
-            y[2] = alpha
-            twist = basis @ y
-            slack = np.where(visual_window_active,np.maximum(requests - visual @ twist,0.),0.)
+                        return failure(ContactStatus.SOLVER_FAILED, str(exc))
+                    if data.energy is not None:
+                        try:
+                            if not _linear_feasible(constraints,lo,hi):
+                                return failure(ContactStatus.TASK_INFEASIBLE,"energy_budget_infeasible")
+                        except RuntimeError as exc:
+                            return failure(ContactStatus.SOLVER_FAILED,str(exc))
+                    return failure(ContactStatus.SOLVER_FAILED, "solver_status_or_residual")
+                y = x[:3] * scales[:3]
+                alpha = float(np.clip(y[2], 0., alpha_hi))
+                y[2] = alpha
+                twist = basis @ y
+                slack = np.where(visual_window_active,np.maximum(requests - visual @ twist,0.),0.)
         if _violation(hard_a, hard_lo, hard_hi, twist) > cfg.feasibility_tolerance:
             return failure(ContactStatus.SOLVER_FAILED, "final_hard_constraint_residual")
         if data.energy is not None:
@@ -804,8 +874,14 @@ class ContactQp:
         diagnostics.update(active_hard_rows=tuple(label for label, on in zip(labels[:len(hard_a)], active) if on),
                            max_hard_violation=_violation(hard_a, hard_lo, hard_hi, twist),
                            visual_residual_m_s=np.where(visual_window_active,visual @ twist + slack - requests,0.),
-                           aperture_added_velocity_m_s=endpoint @ (twist - data.nominal_twist),
+                           aperture_added_velocity_m_s=endpoint @ (twist - nominal_twist),
                            solver_time_s=solver_time, total_time_s=time.perf_counter() - start)
+        if priority:
+            reduced = not zero_path and alpha < alpha_preferred-cfg.feasibility_tolerance
+            diagnostics.update(
+                alpha_reduction_active_hard_rows=diagnostics['active_hard_rows'] if reduced else (),
+                alpha_reduction_energy_active=bool(reduced and data.energy is not None
+                    and data.energy.margin_power_w(twist) <= cfg.feasibility_tolerance))
         if v8:
             total_achieved=differential_sign*float(differential_row @ twist)
             incremental_achieved=total_achieved-differential_nominal

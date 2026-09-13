@@ -1,0 +1,76 @@
+{
+  "scans": 49,
+  "all_controls": 241127,
+  "moving_controls": 196455,
+  "exact_frames": 31961,
+  "missing_frames": 0,
+  "quality_max_abs_error": 0.0,
+  "clock_kinds": {
+    "exact_exported_expiry_minus_horizon": 240956,
+    "exact_rejected_created_time": 171
+  },
+  "modes": {
+    "confidence_angular_v1": {
+      "moving_controls": 196455,
+      "moving_accepted": 196455,
+      "moving_exact_image": 196452,
+      "moving_weak_image": 59438,
+      "deferrals": 0,
+      "segment_restarts": 0,
+      "scans_strict_full_coverage": 49,
+      "tank_min_j": 0.1,
+      "tank_end_sum_j": 5.932897056615018,
+      "weak_speed_sum": 32.68955807574908,
+      "weak_speed_n": 59438,
+      "cost_sum_s": 354.688495208371,
+      "cost_n": 196455,
+      "omega_error_max": 8.673617379884035e-19,
+      "pair_residual_max": 8.673617379884035e-19,
+      "port_work_j": -5.782785674843816,
+      "task_source_used_j": 7.076889144285205,
+      "moving_acceptance_fraction": 1.0,
+      "mean_cost_s": 0.0018054439704175054,
+      "mean_weak_side_speed_m_s": 0.0005499774231257627
+    },
+    "confidence_cop_v1": {
+      "moving_controls": 196455,
+      "moving_accepted": 196455,
+      "moving_exact_image": 196452,
+      "moving_weak_image": 59438,
+      "deferrals": 0,
+      "segment_restarts": 0,
+      "scans_strict_full_coverage": 49,
+      "tank_min_j": 0.1,
+      "tank_end_sum_j": 5.930398480207242,
+      "weak_speed_sum": 33.30274909597998,
+      "weak_speed_n": 59438,
+      "cost_sum_s": 355.0509704394135,
+      "cost_n": 196455,
+      "omega_error_max": 2.048519608779172e-13,
+      "pair_residual_max": 5.9155137470206744e-09,
+      "port_work_j": -5.800695119845249,
+      "task_source_used_j": 7.092627736164889,
+      "moving_acceptance_fraction": 1.0,
+      "mean_cost_s": 0.0018072890506192945,
+      "mean_weak_side_speed_m_s": 0.0005602939045051984
+    }
+  },
+  "timing_bounds": {
+    "confidence_angular_v1": {
+      "moving_samples": 196455,
+      "deadline_15ms_count_lower": 0,
+      "deadline_15ms_count_upper": 0,
+      "cost_p95_deadline_scenario_count": 0,
+      "compute_over_5ms_count_lower": 0,
+      "compute_over_5ms_count_upper": 0
+    },
+    "confidence_cop_v1": {
+      "moving_samples": 196455,
+      "deadline_15ms_count_lower": 0,
+      "deadline_15ms_count_upper": 2658,
+      "cost_p95_deadline_scenario_count": 0,
+      "compute_over_5ms_count_lower": 0,
+      "compute_over_5ms_count_upper": 771
+    }
+  }
+}

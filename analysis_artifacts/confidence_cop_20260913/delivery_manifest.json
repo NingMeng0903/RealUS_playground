@@ -1,0 +1,53 @@
+{
+  "implementation": "confidence_cop_components_v1",
+  "experimental": true,
+  "default_profile_unchanged_from_HEAD": true,
+  "hardware_commands_executed": false,
+  "source_sha256": {
+    "peirastic/contact_qp/confidence_fusion.py": "ad72cada1a7ee5ee0bc74dbfec0ee9701c95be7b76cf9115dd6378a669d0fb3e",
+    "peirastic/contact_qp/priority_allocation.py": "9bcee00a5476553396757fb7f28179e5eff73583a4c0d572d8f55c25010c9767",
+    "peirastic/contact_qp/qp.py": "8bbddf12b3358908c719979b0ee7245159f85a86d7e139c05397e80bc64f93c4",
+    "peirastic/contact_qp/types.py": "0fb0b4c0de6d6b2becb8c2fe021b4213642349db8d47ea50d61b7dd488b775d1",
+    "peirastic/contact_qp/features.py": "d2686a56eb06709061ebb04979cc581819d023a1f74f9a5990af31ca8e34d5ff",
+    "peirastic/contact_qp/command_budget.py": "611ecba84d8e814c593866b4af1a3c19c9f52a7ee9e4c132f327cb13f66f7e5b",
+    "peirastic/contact_qp/runtime_config.py": "16788b7e953ae9a7a3bac420993a77ca3a931af892b457bceca29c4d9e1631ac",
+    "peirastic/core/capabilities.py": "70beaf4da1afb5e4ae30ae2ee456c7aa0ae5d08edf70ba5f1ed40778da684e39",
+    "peirastic/realman8dof/modes/contact_active.py": "5be91bc0c240088cf51a18909e7e695914db70ad2ebda81ae1d810703e1e33f3",
+    "peirastic/realman8dof/modes/contact_recording.py": "a90d890adea81cb388cd37cd8c77d094b107c8a601dcba2d2c57da96a57a9a7a",
+    "peirastic/realman8dof/force/torque_tilt.py": "a7bb22809cf58a4350fd50d88ec67c5bc0c1122f5cbdb30477aac135b2eb336e",
+    "peirastic/realman8dof/daemon.py": "65e859117b2e3ab5a24c863c50705eb2129fc9ab666b6cbdda80fe4bf6a49931",
+    "peirastic/apps/contact_qp_features.py": "49bd9fc5c2aa49b4c05edec339c8ba9170da353cb343714152bf8b6e9b6b244b",
+    "peirastic/apps/contact_qp_check.py": "ec49014da2b41da2dd48a904cef656e2fc9ff903133f6aca990856ca7a512047",
+    "peirastic/config/contact_qp/active_probe50_confidence_tank.yaml": "2a7553326b782f9fc99adc0fce3a0ebbb078c13a9fc6166375309689e03cf9a8",
+    "peirastic/config/contact_qp/active_probe50_confidence_cop_tank.yaml": "325fd1e80a7112e178b1b76af2fb98660e7e4e05f7086e575da5b4de95a86645",
+    "peirastic/config/contact_qp/active_probe50_v8r3_tank.yaml": "fa5afadf9ff0b4a8891c20c91b04d726e99c2a078608a7244be3dc85d22df59d",
+    "scripts/run_icra_tank.sh": "77a5b9f16bd2c4deb6a13ddb3adcb621babf77c2a104fe01aac6cf8cc7b86593"
+  },
+  "validation": {
+    "broad_before_exact_optimization": "regression.log:713 passed, including 100000-tick nominal equivalence",
+    "updated_broad_before_exact_optimization": "regression_final.log:716 passed, 1 unchanged long test deselected",
+    "final_runtime": "fusion_regression_final.log:16 passed",
+    "independent_ultra": "ultra_review.md:146 initial;141 optimized;51 final focused passed",
+    "workflow_only": "workflow_simulation.log:12 synthetic scans saved, no real QP",
+    "final_exact_optimization": "ultra_review.md:51 final priority/runtime tests passed; stricter row guard and zero power tolerance verified"
+  },
+  "replay_reports": [
+    "REPORT.md",
+    "optimized_replay/REPORT.md"
+  ],
+  "limitations": [
+    "supplied command model, not physical passivity",
+    "CoP geometry, not ck or exact constant force",
+    "recorded-input ideal-inner replay, not changed-image prediction"
+  ],
+  "replay_complete": {
+    "scans": 49,
+    "control_proposals": 241127,
+    "moving_proposals": 196455,
+    "unique_control_used_jpeg_frames": 31961,
+    "candidate_acceptance_differences": 0,
+    "optimized_report": "optimized_replay/REPORT.md",
+    "optimized_comparison": "OPTIMIZATION.md",
+    "physical_image_effect_verified": false
+  }
+}

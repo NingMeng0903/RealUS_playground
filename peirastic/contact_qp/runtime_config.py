@@ -15,9 +15,17 @@ def load_study_config(source):
 def source_settings(config):
     """Bind the recovery interval to the existing lease, without a second knob."""
     source=dict(config.get('source') or {})
+    delayed=(config.get('qp') or {}).get('allocation_policy')=='delay_kf_cop_v1'
     if source.get('gap_policy')=='lease_fresh_foh_v1':
         if 'max_recovery_interval_s' in source:
             raise ValueError('recovery interval is derived from energy.max_command_interval_s')
+        if delayed:
+            from .command_lease import CommandLease
+            command=config.get('command') or {}
+            if set(command)!={'max_interval_s'}:
+                raise ValueError('delay KF requires explicit command.max_interval_s')
+            source['max_recovery_interval_s']=CommandLease(command['max_interval_s']).max_command_interval_s
+            return source
         if config.get('energy_constraint_enabled') is not True:
             raise ValueError('gap recovery requires a committed command budget')
         source['max_recovery_interval_s']=(config.get('energy') or {}).get('max_command_interval_s')
@@ -74,22 +82,57 @@ def _validate_effective_tasks(config, mode, feature):
         for key in ('max_velocity','max_acceleration','angle_limit_rad'):
             settings.pop(key,None)  # overwritten by checked original nominal limits
     qp_config=QpConfig(**settings)
+    delayed=qp_config.allocation_policy=='delay_kf_cop_v1'
+    from .confidence_fusion import POLICIES, FEATURE_VERSION, TASK_SOURCE
+    image_owned=qp_config.allocation_policy in POLICIES
     if mode!='active':return
+    if delayed:
+        from .delayed_kf import KfConfig
+        from .types import REGION_FEATURE_VERSION
+        if config.get('energy') or config.get('energy_constraint_enabled',False):
+            raise ValueError('delay_kf_cop_v1 removes energy configuration; migrate to command.max_interval_s')
+        if fc.algorithm_version!='randomwalk_welleweerd2020_v3':
+            raise ValueError('regional delay KF requires randomwalk_welleweerd2020_v3 feature extraction')
+        kf=KfConfig(**dict(config.get('image_kf') or {}))
+        if (kf.channels!=fc.region_count or kf.observation_kind!='regions'
+                or feature.get('region_feature_version')!=REGION_FEATURE_VERSION
+                or feature.get('region_layout_version')!=fc.region_layout_version
+                or feature.get('required') is not True or not qp_config.enable_visual
+                or config.get('execution_policy')!='continuous_recovery_v1'
+                or qp_config.differential_repair.permission_mode!='continuous'):
+            raise ValueError('delay KF requires matching N-region layout, channels and continuous required regional feedback')
+        if float(feature.get('dropout_grace_s',0.))>qp_config.max_image_age_s:
+            raise ValueError('dropout grace must not exceed image age')
+        source_settings(config)
+        return
     enabled=config.get('energy_constraint_enabled',False)
     if type(enabled) is not bool:raise ValueError('energy_constraint_enabled must be boolean')
     if qp_config.differential_repair.permission_mode=='continuous':
-        if qp_config.allocation_policy!='differential_repair_v8' or not qp_config.enable_visual:
+        if qp_config.allocation_policy not in ('differential_repair_v8',*POLICIES) or not qp_config.enable_visual:
             raise ValueError('continuous visual repair requires the enabled v8 visual task')
         if not enabled or feature.get('required') is not True:
             raise ValueError('continuous visual repair requires command energy admission and required image feedback')
     energy=config.get('energy') or {}
     if not isinstance(energy,dict):raise ValueError('energy must be a mapping')
     task_source=energy.get('task_power_source','none')
-    if task_source not in ('none','nominal_command') or (task_source!='none' and not enabled):
+    if task_source not in ('none','nominal_command',TASK_SOURCE) or (task_source!='none' and not enabled):
         raise ValueError('nominal task power requires enabled logical command budget')
+    if image_owned:
+        if (task_source!=TASK_SOURCE or feature.get('confidence_feature_version')!=FEATURE_VERSION
+                or config.get('execution_policy')!='continuous_recovery_v1'
+                or qp_config.differential_repair.permission_mode!='continuous'):
+            raise ValueError('image-owned fusion requires versioned centroid, continuous execution and isolated loading_scan_v1 supply')
+        # This first implementation uses tool-Z loading and tool-Y rocking on
+        # the registered centered face; arbitrary face transforms need a full
+        # screw-coordinate allocation, not a silently reused scalar CoP.
+        geometry,normal=calibrated_geometry(config)
+        if not np.allclose(geometry.T_tcp_face,np.eye(4),rtol=0,atol=1e-12) or not np.array_equal(normal,[0.,0.,1.]):
+            raise ValueError('image-owned fusion requires the centered, tool-aligned into-contact face')
+    elif task_source==TASK_SOURCE:
+        raise ValueError('loading_scan_v1 requires separated image-owned fusion components')
     grace=float(feature.get('dropout_grace_s',0.))
     if (grace>0 or feature.get('dropout_policy','stop')=='pause_visual') and (feature.get('required') is not True or not qp_config.enable_visual
-            or qp_config.allocation_policy!='differential_repair_v8'
+            or qp_config.allocation_policy not in ('differential_repair_v8',*POLICIES)
             or qp_config.differential_repair.permission_mode!='continuous'
             or not enabled or grace>qp_config.max_image_age_s):
         raise ValueError('dropout policy requires required continuous visual feedback, command budget, and grace <= max_image_age_s')
@@ -146,7 +189,8 @@ def validate_study_config(source):
     if execution not in ('legacy_v1',EXECUTION_POLICY):raise ValueError('unknown execution policy')
     if execution==EXECUTION_POLICY:
         qp=config.get('qp') or {}
-        if (mode!='active' or not config.get('energy_constraint_enabled') or
+        delayed=qp.get('allocation_policy')=='delay_kf_cop_v1'
+        if (mode!='active' or (not delayed and not config.get('energy_constraint_enabled')) or
                 (config.get('source') or {}).get('gap_policy')!='lease_fresh_foh_v1' or
                 qp.get('solver_policy')!='bounded_retry_v1' or
                 (qp.get('differential_repair') or {}).get('quality_objective')!='deficit_only_v1'):
@@ -217,9 +261,9 @@ def validate_study_config(source):
                 repair_permission_mode=((config.get('qp') or {}).get('differential_repair') or {}).get('permission_mode','bounded_episode'),
                 settlement_port=(config.get('energy') or {}).get('settlement_port'),
                 task_power_source=(config.get('energy') or {}).get('task_power_source','none'),
-                energy_assurance='two_port_command_model' if (config.get('energy') or {}).get('task_power_source')=='nominal_command' else 'command_model',
+                energy_assurance='not_applicable' if (config.get('qp') or {}).get('allocation_policy')=='delay_kf_cop_v1' else 'two_port_command_model' if (config.get('energy') or {}).get('task_power_source','none')!='none' else 'command_model',
                 image_dropout_grace_s=grace,
                 image_dropout_policy=dropout_policy,
                 physical_w_checked=config.get('physical_w_checked') is True,
                 allocation_policy=(config.get('qp') or {}).get('allocation_policy','legacy_v7'),
-                force_limit_assurance='measured_policy_not_prediction' if (config.get('qp') or {}).get('allocation_policy')=='differential_repair_v8' else 'legacy')
+                force_limit_assurance='measured_policy_not_prediction' if (config.get('qp') or {}).get('allocation_policy') in ('differential_repair_v8','confidence_angular_v1','confidence_cop_v1','delay_kf_cop_v1') else 'legacy')

@@ -8,6 +8,10 @@ import math
 import numpy as np
 
 SCHEMA_VERSION = 1
+# Optional evidence policy, independent of the legacy LCR schema/window hashes.
+CONFIDENCE_FEATURE_VERSION = "confidence_column_centroid_v1"
+WEAK_SIDE_FEATURE_VERSION = "confidence_weakside_column_q25_v1"
+REGION_FEATURE_VERSION = "confidence_equal_regions_weighted_q25_v1"
 WINDOW_NAMES = ("left", "center", "right")
 REQUIRED_WINDOWS = (0, 2)
 
@@ -54,6 +58,12 @@ class ProbeGeometry:
 
 @dataclass(frozen=True)
 class ContactObservation:
+    """Schema-v1 LCR observation with optional independently versioned centroid.
+
+    Centroid x is in processed-image coordinates, normalized by image
+    half-width; mass validity does not replace the existing image validity.
+    Missing evidence remains None and requires explicit handling by consumers.
+    """
     frame_seq: int
     source_id: str
     effective_time_s: float
@@ -64,6 +74,18 @@ class ContactObservation:
     window_version: str
     schema_version: int = SCHEMA_VERSION
     calibration_version: str = "unverified"
+    confidence_centroid_x: float | None = None
+    confidence_centroid_valid: bool = False
+    confidence_feature_version: str | None = None
+    confidence_lr: np.ndarray | None = None
+    confidence_lr_valid: np.ndarray = field(default_factory=lambda: np.zeros(2, dtype=bool))
+    weakside_feature_version: str | None = None
+    timestamp_semantics: str | None = None
+    region_confidence: np.ndarray | None = None
+    region_valid: np.ndarray | None = None
+    region_edges: np.ndarray | None = None
+    region_feature_version: str | None = None
+    region_layout_version: str | None = None
 
     def __post_init__(self):
         if self.schema_version != SCHEMA_VERSION or self.frame_seq < 0:
@@ -83,6 +105,64 @@ class ContactObservation:
         valid.setflags(write=False)
         object.__setattr__(self, "quality", q)
         object.__setattr__(self, "valid", valid)
+        if not isinstance(self.confidence_centroid_valid, (bool, np.bool_)):
+            raise ValueError("confidence_centroid_valid must be boolean")
+        object.__setattr__(self, "confidence_centroid_valid", bool(self.confidence_centroid_valid))
+        version = self.confidence_feature_version
+        if version is not None and (not isinstance(version, str) or not version.strip()):
+            raise ValueError("confidence_feature_version must be a nonempty policy version")
+        x = self.confidence_centroid_x
+        if self.confidence_centroid_valid:
+            if (version is None or x is None or isinstance(x, (bool, np.bool_))
+                    or not math.isfinite(float(x)) or not -1 <= float(x) <= 1):
+                raise ValueError("valid confidence centroid requires policy version and finite x in [-1,1]")
+            object.__setattr__(self, "confidence_centroid_x", float(x))
+        elif x is not None:
+            raise ValueError("invalid confidence centroid must have x=None")
+
+        lr_valid = np.asarray(self.confidence_lr_valid)
+        if lr_valid.shape != (2,) or lr_valid.dtype.kind != "b":
+            raise ValueError("confidence_lr_valid must contain two boolean flags")
+        lr_valid = lr_valid.copy()
+        lr_valid.setflags(write=False)
+        object.__setattr__(self, "confidence_lr_valid", lr_valid)
+        if self.weakside_feature_version is None:
+            if self.confidence_lr is not None or lr_valid.any() or (self.timestamp_semantics is not None and self.region_feature_version is None):
+                raise ValueError("weak-side evidence requires an explicit feature version")
+        else:
+            if not isinstance(self.weakside_feature_version, str) or not self.weakside_feature_version.strip():
+                raise ValueError("weakside_feature_version must be nonempty")
+            if self.timestamp_semantics != "effective_image_time":
+                raise ValueError("weak-side timestamps must explicitly be effective_image_time")
+            lr = vector(self.confidence_lr, (2,), name="confidence_lr")
+            if np.any((lr < 0) | (lr > 1)):
+                raise ValueError("confidence_lr must be in [0,1]")
+            object.__setattr__(self, "confidence_lr", lr)
+        if self.region_feature_version is None:
+            if any(v is not None for v in (self.region_confidence, self.region_valid,
+                                           self.region_edges, self.region_layout_version)):
+                raise ValueError("region evidence requires an explicit feature version")
+        else:
+            if (not isinstance(self.region_feature_version, str) or not self.region_feature_version.strip()
+                    or not isinstance(self.region_layout_version, str) or not self.region_layout_version.strip()
+                    or self.timestamp_semantics != "effective_image_time"):
+                raise ValueError("region evidence requires layout and effective image time")
+            raw = np.asarray(self.region_confidence)
+            if raw.ndim != 1 or len(raw) < 2:
+                raise ValueError("region_confidence requires N >= 2 entries")
+            regional = vector(raw, raw.shape, name="region_confidence")
+            if np.any((regional < 0) | (regional > 1)):
+                raise ValueError("region_confidence must be in [0,1]")
+            flags = np.asarray(self.region_valid)
+            if flags.shape != regional.shape or flags.dtype.kind != 'b':
+                raise ValueError("region_valid must contain N boolean flags")
+            flags = flags.copy(); flags.setflags(write=False)
+            edges = vector(self.region_edges, (len(regional)+1,), name="region_edges")
+            if not np.allclose(edges, np.linspace(0., 1., len(edges)), atol=1e-12, rtol=0):
+                raise ValueError("region_edges must equally partition the full image [0,1]")
+            object.__setattr__(self, "region_confidence", regional)
+            object.__setattr__(self, "region_valid", flags)
+            object.__setattr__(self, "region_edges", edges)
 
     @property
     def version(self):
@@ -94,11 +174,29 @@ class ContactObservation:
                     and self.valid[list(REQUIRED_WINDOWS)].all())
 
     def to_dict(self):
-        return {"schema_version": self.schema_version, "frame_seq": self.frame_seq,
+        result = {"schema_version": self.schema_version, "frame_seq": self.frame_seq,
                 "source_id": self.source_id, "effective_time_s": self.effective_time_s,
                 "received_time_s": self.received_time_s, "quality": self.quality.tolist(),
                 "valid": self.valid.tolist(), "registration_version": self.registration_version,
                 "window_version": self.window_version, "calibration_version": self.calibration_version}
+        # Additive schema-v1 extension: absence is legacy evidence, never x=0.
+        # Consumers of the new policy must require its exact version explicitly.
+        if self.confidence_feature_version is not None:
+            result.update(confidence_centroid_x=self.confidence_centroid_x,
+                          confidence_centroid_valid=self.confidence_centroid_valid,
+                          confidence_feature_version=self.confidence_feature_version)
+        if self.weakside_feature_version is not None:
+            result.update(confidence_lr=self.confidence_lr.tolist(),
+                          confidence_lr_valid=self.confidence_lr_valid.tolist(),
+                          weakside_feature_version=self.weakside_feature_version,
+                          timestamp_semantics=self.timestamp_semantics)
+        if self.region_feature_version is not None:
+            result.update(region_confidence=self.region_confidence.tolist(),
+                          region_valid=self.region_valid.tolist(), region_edges=self.region_edges.tolist(),
+                          region_feature_version=self.region_feature_version,
+                          region_layout_version=self.region_layout_version,
+                          timestamp_semantics=self.timestamp_semantics)
+        return result
 
     @classmethod
     def from_dict(cls, raw):

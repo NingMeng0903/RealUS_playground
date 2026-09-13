@@ -21,11 +21,18 @@ CONTINUOUS_VISUAL_CAPABILITY='contact_qp.continuous_visual_v1'
 NOMINAL_TASK_POWER_CAPABILITY='contact_qp.nominal_task_power_v1'
 TRANSIENT_FEEDBACK_CAPABILITY='contact_qp.transient_feedback_grace_v1'
 PAUSE_VISUAL_FEEDBACK_CAPABILITY='contact_qp.pause_visual_feedback_v1'
+CONFIDENCE_COP_CAPABILITY='contact_qp.confidence_cop_components_v1'
+DELAY_KF_COP_CAPABILITY='contact_qp.delay_kf_cop_v1'
 
 
 def study_capabilities(config):
     active=config.get('mode','baseline')=='active'
     required=['contact_qp.active_v1' if active else 'contact_qp.recording_v1']
+    if active and (config.get('qp') or {}).get('allocation_policy')=='delay_kf_cop_v1':
+        required.extend((DELAY_KF_COP_CAPABILITY,CONTINUOUS_VISUAL_CAPABILITY))
+    if active and (config.get('qp') or {}).get('allocation_policy') in ('confidence_angular_v1','confidence_cop_v1'):
+        required.append(CONFIDENCE_COP_CAPABILITY)
+        required.append(CONTINUOUS_VISUAL_CAPABILITY)
     if active and config.get('execution_policy')=='continuous_recovery_v1':
         required.append(CONTINUOUS_EXECUTION_CAPABILITY)
     if active and (config.get('source') or {}).get('gap_policy')=='lease_fresh_foh_v1':

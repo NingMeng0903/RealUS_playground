@@ -24,7 +24,7 @@ from scipy import sparse
 from scipy.sparse.linalg import spsolve
 from scipy.ndimage import zoom
 
-from .types import ContactObservation
+from .types import CONFIDENCE_FEATURE_VERSION, WEAK_SIDE_FEATURE_VERSION, REGION_FEATURE_VERSION, ContactObservation
 
 
 def revision(raw):
@@ -48,6 +48,7 @@ class FeatureConfig:
     image_x_sign: int = 1
     low_confidence_threshold: float = 0.8
     unknown_scanline_range: float = 1.0
+    region_count: int = 10
 
     def __post_init__(self):
         if self.algorithm_version not in ("randomwalk_thesis_v1", "randomwalk_camp_bmode_v2", "randomwalk_welleweerd2020_v3"):
@@ -56,6 +57,9 @@ class FeatureConfig:
             raise ValueError("invalid experimental confidence/unknown thresholds")
         if self.width < 8 or self.height < 8 or self.width*self.height > 250000:
             raise ValueError("invalid processing resolution")
+        if (isinstance(self.region_count, bool) or not isinstance(self.region_count, (int, np.integer))
+                or not 2 <= self.region_count <= min(self.width, 64)):
+            raise ValueError("region_count must be an integer from 2 to min(processing width, 64)")
         if any(not math.isfinite(v) or v < 0 for v in
                (self.attenuation, self.contrast, self.lateral_penalty, self.effective_delay_s)):
             raise ValueError("invalid confidence parameters")
@@ -72,6 +76,7 @@ class FeatureConfig:
     @property
     def window_version(self):
         values = asdict(self)
+        values.pop("region_count")  # Independent layout identity; preserve historical LCR hashes.
         if self.algorithm_version != "randomwalk_welleweerd2020_v3":
             # These policies do not participate in historical v1/v2 observations.
             values.pop("low_confidence_threshold")
@@ -80,6 +85,52 @@ class FeatureConfig:
             # Preserve historical v1 evidence hashes; this parameter is v2-only.
             values.pop("camp_weight_epsilon")
         return revision(values)
+
+    @property
+    def region_edges(self):
+        return np.linspace(0., 1., self.region_count+1)
+
+    @property
+    def region_layout_version(self):
+        return revision(dict(feature=REGION_FEATURE_VERSION, count=self.region_count,
+                             width=self.width, height=self.height, near_depth=self.near_depth,
+                             edges=self.region_edges.tolist(), boundary="exclude_top_seed",
+                             quantile="pixel_overlap_weighted_inverse_cdf_0.25"))
+
+
+def region_quality(confidence, config, unknown_columns=None):
+    """N exact equal-width regions with fractional pixel-overlap weighting.
+
+    The original map is unchanged. Boundary pixels contribute according to
+    their geometric overlap; this preserves mirror symmetry for widths such as
+    145 pixels split into 10 bins. Q25 is the weighted inverse empirical CDF.
+    """
+    c = np.asarray(confidence, dtype=float)
+    if c.shape != (config.height, config.width) or not np.isfinite(c).all():
+        raise ValueError("confidence shape must match feature configuration")
+    y0 = max(1, int(config.height*config.near_depth[0]))
+    y1 = min(config.height, max(y0+1, int(config.height*config.near_depth[1])))
+    columns = c[y0:y1].mean(axis=0)
+    unknown = np.zeros(config.width, dtype=bool) if unknown_columns is None else np.asarray(unknown_columns)
+    if unknown.shape != (config.width,) or unknown.dtype.kind != 'b':
+        raise ValueError("unknown_columns must contain processing-width boolean flags")
+    pixel_lo, pixel_hi = np.arange(config.width), np.arange(1, config.width+1)
+    edges = config.region_edges
+    quality, valid = [], []
+    for left, right in zip(edges[:-1]*config.width, edges[1:]*config.width):
+        weights = np.maximum(0., np.minimum(pixel_hi, right)-np.maximum(pixel_lo, left))
+        support = weights > 1e-12
+        values, weights = columns[support], weights[support]
+        order = np.argsort(values, kind='stable')
+        cumulative = np.cumsum(weights[order])
+        index = min(int(np.searchsorted(cumulative, .25*cumulative[-1], side='left')), len(order)-1)
+        quality.append(float(values[order[index]]))
+        valid.append(bool(not unknown[support].any()))
+    bad = (np.asarray(quality) < config.low_confidence_threshold) & np.asarray(valid)
+    return dict(region_confidence=quality, region_valid=valid, region_edges=edges.tolist(),
+                region_feature_version=REGION_FEATURE_VERSION, region_layout_version=config.region_layout_version,
+                region_bad_mask=bad.tolist(), region_bad_indices=np.flatnonzero(bad).tolist(),
+                region_centers=((edges[:-1]+edges[1:])/2).tolist(), region_roi_rows=[y0, y1])
 
 
 def random_walk_confidence(image, config=None):
@@ -158,6 +209,26 @@ def window_quality(confidence, config=None):
 
 
 
+def weakside_quality(confidence, config):
+    """Q25 of per-column near-field means, excluding the top seed boundary.
+
+    This is separate from the legacy ROI/centroid evidence. Unknown scanlines
+    remain raw numerical evidence and are invalidated separately, never zeroed.
+    On the active 100-row map and [0,.22] ROI this is exactly c[1:22].
+    """
+    c = np.asarray(confidence, dtype=float)
+    if c.shape != (config.height, config.width) or not np.isfinite(c).all():
+        raise ValueError("confidence shape must match feature configuration")
+    y0 = max(1, int(config.height * config.near_depth[0]))
+    y1 = min(config.height, max(y0 + 1, int(config.height * config.near_depth[1])))
+    columns = c[y0:y1].mean(axis=0)
+    quality = [float(np.quantile(columns[int(lo*config.width):
+                     max(int(lo*config.width)+1, int(hi*config.width))], .25))
+               for lo, hi in (config.lateral_windows[0], config.lateral_windows[2])]
+    return dict(confidence_lr=quality, weakside_feature_version=WEAK_SIDE_FEATURE_VERSION,
+                weakside_roi_rows=[y0, y1], weakside_column_confidence=columns.tolist())
+
+
 def welleweerd_config(**overrides):
     """Declared reconstruction, not undisclosed paper parameters.
 
@@ -200,6 +271,36 @@ def unknown_scanlines(image, config):
             (np.ptp(im) < 1.0))
 
 
+def confidence_centroid_from_columns(column_confidence):
+    """Return versioned image-x evidence from the full lateral ROI distribution.
+
+    Column i has coordinate (2*i + 1 - width)/width: pixel centers relative
+    to the image center, divided by image half-width. Positive means image
+    right; the image edges are -1/+1. No physical sign or angle calibration
+    is applied. Inputs are raw, unmasked ROI column means, never LCR quality.
+    Empty, negative, nonfinite, zero or overflowing total mass is invalid.
+    This mass validity is independent of the observation's image-valid flags.
+    """
+    columns = np.asarray(column_confidence, dtype=float)
+    if columns.ndim != 1:
+        raise ValueError("column_confidence must be one-dimensional")
+    result = dict(confidence_centroid_x=None, confidence_centroid_valid=False,
+                  confidence_feature_version=CONFIDENCE_FEATURE_VERSION)
+    if not columns.size or not np.isfinite(columns).all() or np.any(columns < 0):
+        return result
+    with np.errstate(over="ignore", invalid="ignore"):
+        mass = float(columns.sum())
+    if not math.isfinite(mass) or mass <= 0:
+        return result
+    x = (2*np.arange(columns.size, dtype=float) + 1 - columns.size)/columns.size
+    # Normalize first to avoid overflowing the weighted sum of finite masses.
+    centroid = float(np.dot(columns/mass, x))
+    if math.isfinite(centroid):
+        result.update(confidence_centroid_x=float(np.clip(centroid, -1., 1.)),
+                      confidence_centroid_valid=True)
+    return result
+
+
 def confidence_features(image, confidence, config):
     """Paper eqs (2),(3) and explicit experimental diagnostic regions.
 
@@ -222,7 +323,9 @@ def confidence_features(image, confidence, config):
         edges = np.diff(np.r_[False, mask, False].astype(int))
         regions.extend(dict(label=label, x_start=int(a), x_stop=int(b))
                        for a, b in zip(np.flatnonzero(edges == 1), np.flatnonzero(edges == -1)))
-    return dict(top_roi_rows=[y0, y1], roi_mean=float(roi.mean()),
+    return dict(**confidence_centroid_from_columns(columns), **weakside_quality(c, config),
+                **region_quality(c, config, unknown),
+                top_roi_rows=[y0, y1], roi_mean=float(roi.mean()),
                 paper_eq3_fullarea_mean=mass/(h*w), confidence_mass=mass,
                 barycenter_row_col_1based=([float((roi*np.arange(y0+1, y1+1)[:, None]).sum()/mass),
                                             float((roi*np.arange(1, w+1)[None, :]).sum()/mass)]
@@ -237,7 +340,8 @@ def confidence_features(image, confidence, config):
                               "Unknown: full-depth resized scanline range below configured DN threshold, or globally flat frame.",
                               "Raw confidence and statistics are unmasked; regions are not calibrated physical contact labels.",
                               "Eq3 divides top-ROI sum by full image area; ROI mean divides by ROI area.",
-                              "Barycentre is in pixels only; no physical angle without calibration."])
+                              "Barycentre is in pixels only; no physical angle without calibration.",
+                              "Centroid x uses all ROI column means and pixel centers relative to image half-width; positive is image right."])
 
 
 def effective_image_time(recorded_time_s, delay_s, *, already_aligned=False):
@@ -272,19 +376,36 @@ class FeatureExtractor:
                                              crop_box=crop_box, hflip=hflip,
                                              already_aligned=already_aligned, clock_domain=clock_domain)
         c = random_walk_confidence(image, cfg)
-        q = window_quality(c, cfg)
-        # Blank/no-image frames are invalid observations, not reliable low quality.
-        valid = np.full(3, float(np.ptp(image)) >= 1.0, dtype=bool)
+        weakside = {}
         if cfg.algorithm_version == "randomwalk_welleweerd2020_v3":
             self.last_features = confidence_features(image, c, cfg)
-            known = ~unknown_scanlines(image, cfg)
-            valid &= np.array([known[int(lo*cfg.width):max(int(lo*cfg.width)+1, int(hi*cfg.width))].all()
-                               for lo, hi in cfg.lateral_windows])
+            centroid = {name: self.last_features[name] for name in
+                        ("confidence_centroid_x", "confidence_centroid_valid", "confidence_feature_version")}
+            q = np.asarray(self.last_features["quality_lcr"], dtype=float)
+            # The diagnostic already resized the image and includes globally
+            # flat frames in its unknown mask. Reuse that exact validity rule.
+            known = ~np.asarray(self.last_features["unknown_columns"], dtype=bool)
+            valid = np.array([known[int(lo*cfg.width):max(int(lo*cfg.width)+1, int(hi*cfg.width))].all()
+                              for lo, hi in cfg.lateral_windows])
+            weakside = dict(confidence_lr=self.last_features["confidence_lr"],
+                            confidence_lr_valid=valid[[0, 2]],
+                            weakside_feature_version=WEAK_SIDE_FEATURE_VERSION,
+                            timestamp_semantics="effective_image_time")
+            weakside.update({key: self.last_features[key] for key in
+                             ('region_confidence', 'region_valid', 'region_edges',
+                              'region_feature_version', 'region_layout_version')})
+        else:
+            self.last_features = None
+            q = window_quality(c, cfg)
+            # Blank/no-image frames are invalid observations, not reliable low quality.
+            valid = np.full(3, float(np.ptp(image)) >= 1.0, dtype=bool)
+            y0, y1 = (int(c.shape[0]*f) for f in cfg.near_depth)
+            centroid = confidence_centroid_from_columns(c[y0:max(y0+1, y1)].mean(axis=0))
         obs = ContactObservation(int(frame_seq), str(source_id),
                                  effective_image_time(capture_time_s, cfg.effective_delay_s,
                                                       already_aligned=already_aligned),
                                  float(received_time_s), q, valid, registration, cfg.window_version,
-                                 calibration_version=cfg.calibration_version)
+                                 calibration_version=cfg.calibration_version, **centroid, **weakside)
         return obs, c
 
 

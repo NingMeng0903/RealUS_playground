@@ -99,6 +99,22 @@ def test_p0_conflict_is_named_and_not_collapsed() -> None:
     assert snap.qp1_status == "p0_conflict"
 
 
+def test_qp1_solver_failure_publishes_residual_slack_not_stop() -> None:
+    core, ctrl = _core()
+    J = ctrl.kin.jacobian(Q_SAFE)
+    core._solve_qp = lambda *a, **k: None  # type: ignore[method-assign]
+    core.step(
+        Q_SAFE,
+        np.array([0.05, 0.0, 0.0, 0.0, 0.0, 0.0]),
+        0.005,
+        q_meas=Q_SAFE,
+        jacobian=J,
+    )
+    assert not core.last_failed
+    assert core.last_qp1_status == "solved"
+    assert float(core.last_qp1_residual_norm) > 1.0e-3
+
+
 def test_qp2_failure_returns_qp1_elementwise() -> None:
     core, ctrl = _core()
     J = ctrl.kin.jacobian(Q_SAFE)

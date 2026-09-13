@@ -66,6 +66,8 @@ def test_residual_qp1_layout_contract() -> None:
     assert "collapse_interval(&lo_box, &hi_box, &qdot_prev_, &a_max_, h1)" in SRC
     solve = SRC[SRC.index("bool InnerLoop::solve_hqp") : SRC.index("TickOut InnerLoop::step")]
     assert "inbox_brake(qdot_prev_, lo_box, hi_box, a_max_, h1)" not in solve
+    assert "Admit residual task slack without dropping CBF." in solve
+    assert "admit_residual_task" in solve
     ptp = SRC[SRC.index("if (direct_ptp_ && (in.flags & kInHasQdotFf))") :]
     ptp = ptp[: ptp.index("double rail_exec")]
     assert "pending_ = capture_history()" in ptp
@@ -118,7 +120,8 @@ def test_qp_status_alone_is_not_a_certificate() -> None:
     assert "qp_ineq_violation(C, lo, hi, x2)" in SRC
     assert "Do not retry with CBF lower bounds removed" in SRC
     solve = SRC[SRC.index("bool InnerLoop::solve_hqp") : SRC.index("TickOut InnerLoop::step")]
-    assert "qp1_status_ = kQpSolved" not in solve
+    assert "admit_residual_task" in solve
+    assert solve.count("qp1_status_ = kQpSolved") == 1
 
 
 def test_mixer_final_components_sum_exactly() -> None:

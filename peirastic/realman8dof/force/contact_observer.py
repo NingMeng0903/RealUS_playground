@@ -24,6 +24,13 @@ class ConfidenceSubscriber:
         self.last_error = ""
 
     def snapshot(self):
+        for observation in self.poll_observations():
+            self.latest.accept(observation)
+        return self.latest.observation
+
+    def poll_observations(self):
+        """Parsed transport order, including OOS frames needed by delay KF."""
+        observations=[]
         # At most four small JSON messages; never wait or decode B-mode here.
         for _ in range(4):
             if not self.socket.poll(0):
@@ -32,11 +39,11 @@ class ConfidenceSubscriber:
             try:
                 if len(parts) != 2 or parts[0] != b"contact_qp_features_v1" or len(parts[1]) > 8192:
                     raise ValueError("invalid feature envelope")
-                self.latest.accept(ContactObservation.from_dict(json.loads(parts[1])))
+                observations.append(ContactObservation.from_dict(json.loads(parts[1])))
             except (ValueError, TypeError, KeyError) as exc:
                 self.rejected += 1
                 self.last_error = str(exc)
-        return self.latest.observation
+        return tuple(observations)
 
     def close(self):
         self.socket.close()

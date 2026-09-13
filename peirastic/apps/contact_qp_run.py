@@ -22,7 +22,10 @@ def main(argv=None):
     try:
         config=load_study_config(args.config)
         report=validate_study_config(config)
-        report['nominal_profile']='icra_contact_payload (original tool-axis 4 N, 0.010 m/s normal and seek limits)'
+        nominal_frame = ('contact-face' if (config.get('qp') or {}).get('allocation_policy')
+                         == 'delay_kf_cop_v1' else 'tool-axis')
+        report['nominal_profile']=(f'icra_contact_payload ({nominal_frame} 4 N, '
+                                   '0.010 m/s normal and seek limits)')
         spec=None
         if args.path_spec:
             import yaml

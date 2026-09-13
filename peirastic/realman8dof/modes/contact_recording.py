@@ -19,6 +19,7 @@ import atexit
 from threading import Lock
 from dataclasses import asdict,is_dataclass
 from collections.abc import Mapping
+from collections import deque
 import numpy as np
 
 _OPEN_SINKS=set()
@@ -52,6 +53,11 @@ def study_fingerprints(baseline,config):
     for relative in ('realman8dof/modes/contact_qp.py','realman8dof/modes/contact_recording.py',
             'realman8dof/modes/contact_active.py','contact_qp/runtime_source.py','contact_qp/runtime_config.py',
             'contact_qp/execution.py','contact_qp/rocking_smoothing.py','contact_qp/repair_policy.py',
+            'contact_qp/confidence_fusion.py','contact_qp/priority_allocation.py','contact_qp/types.py',
+            'contact_qp/weighted_outer.py','contact_qp/delayed_kf.py','contact_qp/command_lease.py',
+            'contact_qp/region_visual.py',
+            'contact_qp/geometry.py','realman8dof/force/contact_observer.py',
+            'contact_qp/features.py','apps/contact_qp_features.py',
             'contact_qp/command_budget.py','contact_qp/qp.py','contact_qp/port_constraint.py','realman8dof/force/legacy.py',
             'realman8dof/force/torque_tilt.py','realman8dof/force/nominal_transaction.py','configs/force.yaml'):
         path=root/relative
@@ -64,7 +70,13 @@ def study_fingerprints(baseline,config):
         path=shared_controller.parent.parent/relative
         if path.is_file():sources['rm75_control/'+relative]=hashlib.sha256(path.read_bytes()).hexdigest()
     controller=getattr(baseline,'controller',None)
-    effective=json_value(dict(force=getattr(controller,'cfg',None),study=config))
+    for relative in ('rm75_control/native/wbc_rt/src/inner.cpp',
+            'rm75_control/rm75_control/control/joint_admittance_8dof/solver/qp_builder.py'):
+        path=root.parent/relative
+        if path.is_file():sources[relative]=hashlib.sha256(path.read_bytes()).hexdigest()
+    law=getattr(baseline,'force_law',None)
+    effective=json_value(dict(force=getattr(controller,'cfg',None),study=config,
+        torque_tilt=getattr(getattr(law,'tilt',None),'cfg',None)))
     encoded=json.dumps(effective,sort_keys=True,separators=(',',':'),allow_nan=False).encode()
     try:
         baseline_head=subprocess.run(['git','rev-parse','HEAD'],cwd=root,capture_output=True,text=True,
@@ -140,9 +152,11 @@ class ContactRecordSink:
 
 class FeatureReceiver:
     """Latest immutable observation; no image processing in the controller."""
-    def __init__(self,endpoint,*,topic='contact_qp_features_v1'):
+    def __init__(self,endpoint,*,topic='contact_qp_features_v1',retain_oos=False):
         self.endpoint=str(endpoint);self.topic=str(topic)
         self.observation=None;self.error=None;self.received_count=0
+        self.retain_oos=bool(retain_oos);self.dropped_observations=0
+        self._observations=deque(maxlen=256);self._observation_lock=Lock()
         self._finish=Event()
         self._thread=Thread(target=self._receive,name='contact-study-features',daemon=True)
         self._thread.start()
@@ -154,14 +168,29 @@ class FeatureReceiver:
             if self.topic!='contact_qp_features_v1':raise ValueError('unsupported feature topic')
             subscriber=ConfidenceSubscriber(self.endpoint)
             while not self._finish.is_set():
-                observation=subscriber.snapshot()
-                if observation is not self.observation:
-                    self.observation=observation;self.received_count+=1
+                if self.retain_oos:
+                    batch=subscriber.poll_observations()
+                    with self._observation_lock:
+                        for observation in batch:
+                            if len(self._observations)==self._observations.maxlen:self.dropped_observations+=1
+                            self._observations.append(observation);self.received_count+=1
+                            old=self.observation
+                            if old is None or old.source_id!=observation.source_id or observation.effective_time_s>=old.effective_time_s:
+                                self.observation=observation
+                else:
+                    observation=subscriber.snapshot()
+                    if observation is not self.observation:
+                        self.observation=observation;self.received_count+=1
                 self.error=subscriber.last_error or None
                 self._finish.wait(.01)
         except Exception as exc:self.error=str(exc)
         finally:
             if subscriber is not None:subscriber.close()
+
+    def drain_observations(self):
+        with self._observation_lock:
+            batch=tuple(self._observations);self._observations.clear()
+        return batch
 
     def close(self,*,wait=True):
         self._finish.set()

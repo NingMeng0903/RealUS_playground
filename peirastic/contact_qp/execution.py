@@ -56,13 +56,14 @@ class QualityProgress:
 
 class QualityIntervals:
     """Diagnostic weak-side intervals; never a repair permission timer."""
-    def __init__(self, c_min, improvement_deadband, window_s, emit):
+    def __init__(self, c_min, improvement_deadband, window_s, emit, *, region_count=None):
         self.c_min = c_min
         self.deadband = improvement_deadband
         self.window_s = window_s
         self.emit = emit
         self.key = None
         self.active = {}
+        self.region_count=region_count
 
     def observe(self, observation, now_s, reasons):
         if observation is None:
@@ -73,8 +74,16 @@ class QualityIntervals:
             for item in self.active.values(): item['reasons'].update(reasons)
             return
         self.key = key
-        for name, index in (('left', 0), ('right', 2)):
-            quality = float(observation.quality[index])
+        entries=(tuple((f'region_{i}',i) for i in range(self.region_count)) if self.region_count is not None
+                 else (('left',0),('right',2)))
+        values=observation.region_confidence if self.region_count is not None else observation.quality
+        validity=observation.region_valid if self.region_count is not None else (True,True,True)
+        if values is None or len(values)!=(self.region_count if self.region_count is not None else 3):return
+        for name, index in entries:
+            if not validity[index]:
+                if name in self.active:self.active[name]['reasons'].add('region_unknown')
+                continue
+            quality = float(values[index])
             item = self.active.get(name)
             if quality >= self.c_min:
                 if item is not None:

@@ -22,6 +22,47 @@ def wrench_tcp_to_face(wrench_tcp, geometry: ProbeGeometry):
     return np.linalg.solve(twist_tcp_to_face(geometry).T, vector(wrench_tcp, (6,)))
 
 
+def contact_cop_from_wrench(wrench_contact, *, min_force_n=0.8, max_abs_m=0.025):
+    """Return contact CoP and validity reason for an environment-on-tool wrench.
+
+    The contact normal points into the surface, so compression is -f_z.
+    A force at x gives tau_y=-x*f_z and therefore x=-tau_y/f_z.
+    Invalid load/geometry disables the soft objective; it is never clamped.
+    """
+    w = vector(wrench_contact, (6,), name='wrench_contact')
+    if not np.isfinite([min_force_n, max_abs_m]).all() or min_force_n <= 0 or max_abs_m <= 0:
+        raise ValueError('positive finite CoP gates required')
+    if -w[2] < min_force_n:
+        return None, 'insufficient_compression'
+    cop = -float(w[4]) / float(w[2])
+    if abs(cop) > max_abs_m:
+        return None, 'outside_contact_face'
+    return cop, 'valid'
+
+
+def affine_contact_motion(geometry, feedback_contact, feedforward_contact):
+    """TFF offset and [normal, rocking, progress] basis at TCP/tool.
+
+    S_m projects both path terms off contact z/y before the full six-axis
+    rigid transformation; alpha scales only the feedforward column.
+    """
+    feedback = np.array(vector(feedback_contact, (6,)), copy=True)
+    feedforward = np.array(vector(feedforward_contact, (6,)), copy=True)
+    feedback[[2, 4]] = 0.
+    feedforward[[2, 4]] = 0.
+    contact_basis = motion_basis(feedforward)
+    transform = twist_tcp_to_face(geometry)
+    return np.linalg.solve(transform, feedback), np.linalg.solve(transform, contact_basis)
+
+
+def accepted_alpha_affine(basis, offset, proposed_alpha, sent_tool, predicted_tool, tolerance):
+    """Evaluate realised progress after subtracting the fixed path feedback."""
+    a = vector(offset, (6,), name='affine offset')
+    return accepted_alpha(basis, proposed_alpha,
+                          vector(sent_tool, (6,)) - a,
+                          vector(predicted_tool, (6,)) - a, tolerance)
+
+
 def motion_basis(path_twist):
     b = np.array(vector(path_twist, (6,)), copy=True)
     if abs(b[2]) > 1e-12 or abs(b[4]) > 1e-12:

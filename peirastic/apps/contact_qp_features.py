@@ -70,11 +70,17 @@ def process_parts(parts, extractor, received_s):
 
 
 def encode_feature_payload(observation, features, processing_s):
-    """Bounded control snapshot; column arrays/regions belong in preview JSON."""
+    """Bounded snapshot with optional versioned centroid in observation fields.
+
+    Column arrays/regions belong in preview JSON. Never infer control evidence
+    from the legacy diagnostic pixel barycentre or the three LCR qualities.
+    """
     payload=observation.to_dict()
     if features is not None:
         keys=('top_roi_rows','roi_mean','paper_eq3_fullarea_mean',
-              'barycenter_row_col_1based','threshold','frame_status')
+              'barycenter_row_col_1based','threshold','frame_status','weakside_roi_rows',
+              'weakside_feature_version','confidence_lr','region_bad_mask','region_bad_indices',
+              'region_centers','region_roi_rows','region_layout_version','region_feature_version')
         summary={key:features[key] for key in keys if key in features}
         summary['low_confidence_column_count']=int(np.count_nonzero(features.get('low_confidence_columns',[])))
         summary['unknown_column_count']=int(np.count_nonzero(features.get('unknown_columns',[])))
@@ -83,6 +89,26 @@ def encode_feature_payload(observation, features, processing_s):
     blob=json.dumps(payload,allow_nan=False,separators=(',',':')).encode()
     if len(blob)>8192:raise ValueError('feature snapshot exceeds receiver envelope')
     return blob
+
+
+def receive_latest(sub, not_before_s):
+    """Drain multipart frames through the next allowed processing start."""
+    parts = sub.recv_multipart()
+    while True:
+        # CONFLATE is incompatible with multipart; keep only the newest frame.
+        for _ in range(64):
+            if not sub.poll(0):
+                break
+            parts = sub.recv_multipart()
+        else:
+            continue
+        remain = not_before_s - time.monotonic()
+        if remain <= 0:
+            return parts
+        # Poll can return early (including millisecond rounding). Recheck the
+        # deadline and drain again, including frames arriving at the deadline.
+        if sub.poll(max(1, min(100, int(remain * 1000)))):
+            parts = sub.recv_multipart()
 
 
 def main(argv=None):
@@ -96,7 +122,7 @@ def main(argv=None):
     parser.add_argument("--image-x-sign", type=int, choices=(-1, 1), default=None)
     parser.add_argument("--max-frames", type=int, default=0)
     parser.add_argument("--max-hz", type=float, default=20.0,
-                        help="Latest-only publish cap after a finished frame; 0 disables.")
+                        help="Latest-only processing start-to-start cap; 0 disables.")
     args = parser.parse_args(argv)
     if isinstance(args.max_hz, bool) or not np.isfinite(args.max_hz) or args.max_hz < 0:
         raise SystemExit("max-hz must be a finite nonnegative rate")
@@ -110,7 +136,7 @@ def main(argv=None):
     extractor = FeatureExtractor(replace(config, **overrides))
     min_period = 0. if args.max_hz == 0 else 1. / float(args.max_hz)
     LOG.info("feature window_version=%s", extractor.config.window_version)
-    LOG.info("confidence worker CPUs=%s max_hz=%s", background_cpus, args.max_hz)
+    LOG.info("confidence worker CPUs=%s max_hz=%s pacing=start_to_start_latest_v1", background_cpus, args.max_hz)
     latest = LatestObservation()
     context = zmq.Context()
     sub = context.socket(zmq.SUB); pub = context.socket(zmq.PUB)
@@ -119,25 +145,16 @@ def main(argv=None):
     sub.setsockopt(zmq.LINGER, 0); pub.setsockopt(zmq.LINGER, 0)
     sub.connect(args.input); pub.bind(args.output)
     count = 0
-    last_done = 0.
+    last_start = -float("inf")
     try:
         while not args.max_frames or count < args.max_frames:
             if not sub.poll(100):
                 continue
-            parts = sub.recv_multipart()
-            # CONFLATE is incompatible with multipart; keep only the newest frame.
-            while True:
-                for _ in range(64):
-                    if not sub.poll(0):
-                        break
-                    parts = sub.recv_multipart()
-                else:
-                    continue
-                remain = last_done + min_period - time.monotonic()
-                if remain <= 0 or not sub.poll(max(1, int(remain * 1000))):
-                    break
-                parts = sub.recv_multipart()
+            parts = receive_latest(sub, last_start + min_period)
             received = time.monotonic()
+            # Anchor to the actual start, so a slow solve never creates a
+            # catch-up schedule or an additional full-period wait afterward.
+            last_start = received
             start = time.perf_counter()
             try:
                 obs = process_parts(parts, extractor, received)
@@ -145,7 +162,6 @@ def main(argv=None):
                     continue
                 blob=encode_feature_payload(obs,extractor.last_features,time.perf_counter()-start)
                 pub.send_multipart([OUTPUT_TOPIC, blob], flags=zmq.NOBLOCK)
-                last_done = time.monotonic()
                 count += 1
                 if count == 1:
                     LOG.info("publishing confidence registration_version=%s quality=%s valid=%s",

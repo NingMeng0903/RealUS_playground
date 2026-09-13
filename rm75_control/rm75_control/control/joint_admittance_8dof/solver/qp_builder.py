@@ -7,6 +7,8 @@ Formulation (Escande et al. 2014 slack task + Faverjon velocity damper / Khazoom
     QP1: min 0.5 wᵀ W_task w
          J_task qdot - w = v_cmd                   (protected equality)
          l_box <= qdot <= u_box, J_col qdot >= v_safe
+         If ProxQP cannot certify, a hard-feasible residual (task slack)
+         command is admitted. Only an empty P0/CBF/power set stops.
 
     QP2: keep QP1's achieved Cartesian velocity as a hard equality on the
          *full* Jacobian (including the next rail command).  Attractors may
@@ -1522,6 +1524,17 @@ class QpIkController:
         except Exception:
             pass
         self.last_zero_slack_feasible = False
+        if x1 is None:
+            set_rocking_tier(4 if rocking_axis is not None else 0)
+            mid = 0.5 * (np.asarray(lo_box, dtype=float) + np.asarray(hi_box, dtype=float))
+            for cand in (self.qdot_prev, np.zeros(nv), mid):
+                qdot_try = self._clip_qdot_to_p0(cand, lo_box, hi_box)
+                x_try = self._pack_residual_x(qdot_try, J_task, b_task, n_var, n_task)
+                if self._solution_feasible(x_try, A1, b1, C_hard, lo, hi):
+                    x1 = x_try
+                    raw_qp1 = "solved"
+                    self.last_qp1_status = raw_qp1
+                    break
         if x1 is None:
             t_fallback = time.perf_counter()
             qdot = np.zeros_like(self.qdot_prev)

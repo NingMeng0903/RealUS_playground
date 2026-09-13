@@ -18,6 +18,19 @@ def observation_problem(observation, config, *, now_s):
         return 'no confidence messages; start the confidence worker and ultrasound publisher'
     if observation.version != expected:
         return f'version mismatch: expected={expected}, received={observation.version}; check source/crop/hflip and worker config'
+    from peirastic.contact_qp.confidence_fusion import POLICIES, FEATURE_VERSION
+    if (config.get('qp') or {}).get('allocation_policy')=='delay_kf_cop_v1':
+        import numpy as np
+        from peirastic.contact_qp.types import REGION_FEATURE_VERSION
+        fc=FeatureConfig(**feature['config'])
+        if (observation.region_feature_version!=REGION_FEATURE_VERSION
+                or observation.region_layout_version!=fc.region_layout_version
+                or not np.array_equal(observation.region_edges,fc.region_edges)
+                or observation.timestamp_semantics!='effective_image_time'):
+            return 'N-region confidence layout/version or effective image timestamp mismatch; restart the configured worker'
+    if ((config.get('qp') or {}).get('allocation_policy') in POLICIES
+            and observation.confidence_feature_version!=FEATURE_VERSION):
+        return 'confidence centroid worker version mismatch; restart worker with the experimental config'
     max_age = float((config.get('qp') or {}).get('max_image_age_s', .30))
     # Preflight runs before teaching/contact. Unknown or low-quality free-air
     # frames still prove transport/configuration; they do not authorize repair.
@@ -51,6 +64,13 @@ def wait_for_features(config, *, timeout_s=8., frames=3, subscriber=None):
                     return dict(status='ready', distinct_frames=good,
                         feature_endpoint=config['feature_endpoint'],
                         quality=observation.quality.tolist(), valid=observation.valid.tolist(),
+                        confidence_lr=None if observation.confidence_lr is None else observation.confidence_lr.tolist(),
+                        weakside_feature_version=observation.weakside_feature_version,
+                        region_confidence=None if observation.region_confidence is None else observation.region_confidence.tolist(),
+                        region_valid=None if observation.region_valid is None else observation.region_valid.tolist(),
+                        region_edges=None if observation.region_edges is None else observation.region_edges.tolist(),
+                        region_layout_version=observation.region_layout_version,
+                        timestamp_semantics=observation.timestamp_semantics,
                         age_s=now-observation.effective_time_s,
                         registration_version=observation.registration_version,
                         window_version=observation.window_version,

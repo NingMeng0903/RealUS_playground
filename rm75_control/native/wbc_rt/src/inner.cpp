@@ -1170,9 +1170,30 @@ bool InnerLoop::solve_hqp(const Mat6x8& J, const Vec6& v_cmd, const Vec8& q_geom
   }
   // Do not retry with CBF lower bounds removed. That path could publish a
   // result that only satisfied joint boxes while reporting QP1 as solved.
+  // Admit residual task slack without dropping CBF. ProxQP failing the
+  // Cartesian request is a leftover residual, not a stop, while P0/CBF/power
+  // still certify the published qdot.
+  auto admit_residual_task = [&](VecX* x_out) -> bool {
+    set_rocking_tier(rocking_enabled_ ? 4u : 0u);
+    const Vec8 mid = 0.5 * (lo_box + hi_box);
+    const Vec8 cands[3] = {qdot_prev_, Vec8::Zero(), mid};
+    for (const Vec8& cand : cands) {
+      const VecX x_try = pack_x(clip_qdot(cand));
+      if (qp_eq_violation(A1, b1, x_try) <= cert_tol &&
+          qp_ineq_violation(C, lo, hi, x_try) <= cert_tol) {
+        *x_out = x_try;
+        return true;
+      }
+    }
+    return false;
+  };
   VecX x1;
   if (qp1_ok) {
     x1 = qp1_->results.x;
+  } else if (admit_residual_task(&x1)) {
+    qp1_ok = true;
+    qp1_last_ok_ = true;
+    qp1_status_ = kQpSolved;
   } else {
     const auto t_qp1_1 = std::chrono::steady_clock::now();
     qp1_ms_ = std::chrono::duration<double, std::milli>(t_qp1_1 - t_qp1_0).count();

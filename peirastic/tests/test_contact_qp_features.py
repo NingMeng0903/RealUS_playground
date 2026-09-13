@@ -96,7 +96,7 @@ def _matlab_dense_oracle(image, cfg):
 
 @pytest.mark.parametrize('gamma', [0., .03, .05])
 def test_camp_bmode_matches_independent_dense_matlab_oracle(gamma):
-    cfg = FeatureConfig(width=9, height=8, lateral_penalty=gamma)
+    cfg = FeatureConfig(width=9, height=8, region_count=9, lateral_penalty=gamma)
     im = np.random.default_rng(29).integers(30, 200, (8, 9)).astype(float)
     np.testing.assert_allclose(random_walk_confidence(im, cfg),
                                _matlab_dense_oracle(im, cfg), atol=2e-11)
@@ -236,6 +236,7 @@ def test_welleweerd_profile_preserves_solver_and_legacy_hashes():
     old_values = asdict(cfg)
     old_values.pop('low_confidence_threshold')
     old_values.pop('unknown_scanline_range')
+    old_values.pop('region_count')
     assert cfg.window_version == revision(old_values)
     paper = welleweerd_config(width=16, height=20)
     image = np.random.default_rng(31).integers(0, 255, (20, 16))
@@ -246,7 +247,7 @@ def test_welleweerd_profile_preserves_solver_and_legacy_hashes():
 
 def test_paper_statistics_and_explicit_regions():
     from peirastic.contact_qp.features import welleweerd_config, confidence_features
-    cfg = welleweerd_config(width=8, height=8, near_depth=(0., .5))
+    cfg = welleweerd_config(width=8, height=8, region_count=8, near_depth=(0., .5))
     c = np.broadcast_to(np.array([.2]*4 + [1.]*4), (8, 8)).copy()
     image = np.broadcast_to(np.arange(8)[:, None], (8, 8)).copy()
     out = confidence_features(image, c, cfg)
@@ -309,3 +310,56 @@ def test_fragmented_confidence_feature_payload_is_bounded_and_readable():
     assert summary['low_confidence_column_count']==int(np.count_nonzero(full['low_confidence_columns']))
     assert summary['threshold']==cfg.low_confidence_threshold
     assert len(full['column_confidence'])==cfg.width  # preview data retained
+
+
+@pytest.mark.parametrize('image_kind', ['resized_noise', 'unknown_right', 'flat', 'sub_dn'])
+@pytest.mark.parametrize('unknown_range', [0., 1.])
+def test_cached_paper_features_match_original_observation_and_payload(monkeypatch, image_kind, unknown_range):
+    """Reuse must preserve exact map, statistics, validity and serialized output."""
+    from peirastic.contact_qp import features as feat
+    from peirastic.apps.contact_qp_features import encode_feature_payload
+    cfg = feat.welleweerd_config(unknown_scanline_range=unknown_range)
+    image = np.random.default_rng(76).integers(0, 255, (113, 169)).astype(float)
+    if image_kind == 'unknown_right':
+        image[:, 80:] = 0.
+    elif image_kind == 'flat':
+        image[:] = 80.
+    elif image_kind == 'sub_dn':
+        image /= 512.
+    expected_map = feat.random_walk_confidence(image, cfg)
+    expected_features = feat.confidence_features(image, expected_map, cfg)
+    # Reconstruct the pre-optimization extraction path independently of its cache.
+    quality = feat.window_quality(expected_map, cfg)
+    known = ~feat.unknown_scanlines(image, cfg)
+    valid = np.full(3, float(np.ptp(image)) >= 1., dtype=bool)
+    valid &= [known[int(lo*cfg.width):max(int(lo*cfg.width)+1, int(hi*cfg.width))].all()
+              for lo, hi in cfg.lateral_windows]
+    kwargs = dict(frame_seq=4, source_id='camera:instance', capture_time_s=2.,
+                  received_time_s=2.01, crop_box=[1, 170, 4, 117], hflip=True,
+                  registration_source_id='camera')
+    expected_obs = ContactObservation(4, 'camera:instance', 2.-cfg.effective_delay_s, 2.01,
+        quality, valid, feat.registration_revision(cfg, source_id='camera',
+        crop_box=kwargs['crop_box'], hflip=True), cfg.window_version,
+        calibration_version=cfg.calibration_version,
+        **feat.confidence_centroid_from_columns(expected_features['column_confidence']),
+        confidence_lr=expected_features['confidence_lr'], confidence_lr_valid=valid[[0, 2]],
+        weakside_feature_version=feat.WEAK_SIDE_FEATURE_VERSION,
+        timestamp_semantics='effective_image_time',
+        **{key: expected_features[key] for key in ('region_confidence', 'region_valid', 'region_edges',
+                                                  'region_feature_version', 'region_layout_version')})
+    calls = dict(confidence_features=0, window_quality=0, unknown_scanlines=0)
+    for name in calls:
+        original = getattr(feat, name)
+        def counted(*args, _name=name, _original=original, **kwargs):
+            calls[_name] += 1
+            return _original(*args, **kwargs)
+        monkeypatch.setattr(feat, name, counted)
+    extractor = feat.FeatureExtractor(cfg)
+    actual_obs, actual_map = extractor.extract(image, **kwargs)
+    assert actual_map.shape == (100, 145)
+    np.testing.assert_array_equal(actual_map, expected_map)
+    assert actual_obs.to_dict() == expected_obs.to_dict()
+    assert extractor.last_features == expected_features
+    assert encode_feature_payload(actual_obs, extractor.last_features, .035) == encode_feature_payload(
+        expected_obs, expected_features, .035)
+    assert calls == dict(confidence_features=1, window_quality=1, unknown_scanlines=1)

@@ -1,0 +1,15 @@
+{
+  "baseline_commit": "76de62392bfec801136e7c32d4374ceafb71d63e",
+  "changed_code_and_tests_sha256": {
+    "peirastic/apps/contact_qp_features.py": "d5354f85008aca7d33ebae6bf9ecacb0b45574f37058ca582a3978791c8b921c",
+    "peirastic/contact_qp/features.py": "02ace392480539c7ee2d86c714bd4886701e5b2546169ec5e5f7b1acef0c055b",
+    "peirastic/realman8dof/modes/contact_active.py": "aa7dbb316d8ed3138bbb9420f3bea1ec1244788278a1a9b30496f9353d8f7efa",
+    "peirastic/tests/test_contact_qp_features.py": "da03a43bcca020458767110b71150a47867607407faa798dedbbccc3f8e8bab1",
+    "peirastic/tests/test_contact_qp_feature_pacing.py": "9e3b405fe49a49cb9943623489373b05477235e176ff02f4214f47e15321c2ec",
+    "peirastic/tests/test_contact_qp_execution_runtime.py": "730a064a689296c39ec7c250b2a6be99d387b9a3b1ba6e329e37cd08ce254256",
+    "peirastic/config/contact_qp/active_probe50_v8r3_tank.yaml": "fa5afadf9ff0b4a8891c20c91b04d726e99c2a078608a7244be3dc85d22df59d"
+  },
+  "source_session": "/media/camp/yameng/icra 2027/uncalibrated/001",
+  "hardware_executed": false,
+  "source_h5_modified": false
+}

@@ -1,0 +1,401 @@
+{
+  "RH_Per_C_DtP": {
+    "attempt": "/media/camp/yameng/icra 2027/uncalibrated/001/attempts/RH_Per_C_DtP/001",
+    "result": {
+      "outcome": "completed",
+      "output": "/media/camp/yameng/icra 2027/uncalibrated/001/RH_Per_C_DtP.h5",
+      "episode": {
+        "status": "accepted",
+        "episode_index": 1,
+        "session_index": 12,
+        "entry_time_ns": 1789160562645762844,
+        "entry_confirmed_time_ns": 1789160562750088344,
+        "exit_time_ns": 1789160593584209244,
+        "exit_confirmed_time_ns": 1789160593834426078,
+        "start_time_ns": 1789160563145762844,
+        "end_time_ns": 1789160593084209244,
+        "raw_duration_s": 30.9384464,
+        "duration_s": 29.9384464,
+        "crop_s": 0.5,
+        "threshold_n": 4.0,
+        "exit_threshold_n": 0.7999999999999998,
+        "exit_hysteresis_n": 3.2,
+        "exit_absolute": true
+      }
+    },
+    "event_counts": {
+      "study_start": 1,
+      "source_filter_epoch_reset": 1,
+      "control_sample": 5929,
+      "inner_command_power_constraint": 5929,
+      "final_rocking_review": 5929,
+      "logical_command_energy": 17788,
+      "publication_review": 5929,
+      "publication_transport_result": 5929,
+      "final_rocking_publication": 5929,
+      "publication": 5929,
+      "quality_interval_start": 4,
+      "nonspendable_measured_port": 7430,
+      "quality_no_improvement": 2,
+      "quality_interval_end": 4,
+      "image_feedback_unavailable": 19,
+      "image_feedback_recovered": 19,
+      "reference_complete": 1,
+      "publication_aborted": 1,
+      "stop": 1,
+      "recording_close": 1
+    },
+    "tank_min_j": 0.08822433556243488,
+    "tank_max_j": 0.10646898732999892,
+    "tank_end_j": 0.0891592550749533,
+    "tank_charge_j": 0.014795415365402959,
+    "tank_debit_j": 0.02563616029044963,
+    "cumulative_port_work_j": -0.3090011707231727,
+    "cumulative_task_source_used_j": 0.29816042579812596,
+    "image_pause_count": 19,
+    "image_pause_total_s": 0.14240901300217956,
+    "image_pause_max_s": 0.013373635003517848,
+    "tracking_duration_s": 30.35733176099893,
+    "tracking_samples": 5240,
+    "tracking_image_status_counts": {
+      "ok": 5218,
+      "transient_stale": 22
+    },
+    "force_ingress_age_ms": {
+      "median": 2.22253850006382,
+      "p95": 4.50345320350607,
+      "max": 6.813243999204133
+    },
+    "review_rejections": []
+  },
+  "RH_Per_C_PtD": {
+    "attempt": "/media/camp/yameng/icra 2027/uncalibrated/001/attempts/RH_Per_C_PtD/001",
+    "result": {
+      "outcome": "completed",
+      "output": "/media/camp/yameng/icra 2027/uncalibrated/001/RH_Per_C_PtD.h5",
+      "episode": {
+        "status": "accepted",
+        "episode_index": 1,
+        "session_index": 2,
+        "entry_time_ns": 1789160811949598904,
+        "entry_confirmed_time_ns": 1789160812052638575,
+        "exit_time_ns": 1789160846426270948,
+        "exit_confirmed_time_ns": 1789160846676738578,
+        "start_time_ns": 1789160812449598904,
+        "end_time_ns": 1789160845926270948,
+        "raw_duration_s": 34.476672044,
+        "duration_s": 33.476672044,
+        "crop_s": 0.5,
+        "threshold_n": 4.0,
+        "exit_threshold_n": 0.7999999999999998,
+        "exit_hysteresis_n": 3.2,
+        "exit_absolute": true
+      }
+    },
+    "event_counts": {
+      "study_start": 1,
+      "source_filter_epoch_reset": 2,
+      "control_sample": 5938,
+      "inner_command_power_constraint": 5938,
+      "final_rocking_review": 5938,
+      "logical_command_energy": 17829,
+      "publication_review": 5935,
+      "publication_transport_result": 5934,
+      "final_rocking_publication": 5934,
+      "publication": 5934,
+      "quality_interval_start": 7,
+      "nonspendable_measured_port": 7592,
+      "quality_no_improvement": 3,
+      "quality_interval_end": 7,
+      "qp_prepare_rejected": 2,
+      "publication_aborted": 9,
+      "publication_fresh_retry": 6,
+      "image_feedback_unavailable": 37,
+      "image_feedback_recovered": 37,
+      "source_epoch_reset": 1,
+      "port_alignment": 3,
+      "source_gap_recovered": 2,
+      "publication_review_rejected": 3,
+      "publication_dispatch_rejected": 1,
+      "reference_complete": 1,
+      "stop": 1,
+      "recording_close": 1
+    },
+    "tank_min_j": 0.09946862817637576,
+    "tank_max_j": 0.10723843994079234,
+    "tank_end_j": 0.10696186549951839,
+    "tank_charge_j": 0.014140290387159355,
+    "tank_debit_j": 0.007178424887640892,
+    "cumulative_port_work_j": -0.10919640793334481,
+    "cumulative_task_source_used_j": 0.11615827343286274,
+    "image_pause_count": 37,
+    "image_pause_total_s": 0.3192135549907107,
+    "image_pause_max_s": 0.01903616100025829,
+    "tracking_duration_s": 33.53566446399782,
+    "tracking_samples": 5208,
+    "tracking_image_status_counts": {
+      "ok": 5163,
+      "transient_stale": 45
+    },
+    "force_ingress_age_ms": {
+      "median": 2.2094770029070787,
+      "p95": 4.590312752407043,
+      "max": 8.575584004574921
+    },
+    "review_rejections": [
+      {
+        "reason": "wrench_source_expired",
+        "source_age_at_review_s": 0.016144590998010244,
+        "proposal_age_at_review_s": 0.01214483099465724
+      },
+      {
+        "reason": "wrench_source_expired",
+        "source_age_at_review_s": 0.015879703001701273,
+        "proposal_age_at_review_s": 0.009739372006151825
+      },
+      {
+        "reason": "wrench_source_expired",
+        "source_age_at_review_s": 0.017443104996345937,
+        "proposal_age_at_review_s": 0.010189963999437168
+      }
+    ]
+  },
+  "RH_Per_L_DtP": {
+    "attempt": "/media/camp/yameng/icra 2027/uncalibrated/001/attempts/RH_Per_L_DtP/001",
+    "result": {
+      "outcome": "completed",
+      "output": "/media/camp/yameng/icra 2027/uncalibrated/001/RH_Per_L_DtP.h5",
+      "episode": {
+        "status": "accepted",
+        "episode_index": 1,
+        "session_index": 22,
+        "entry_time_ns": 1789160501502574169,
+        "entry_confirmed_time_ns": 1789160501603324136,
+        "exit_time_ns": 1789160541550883737,
+        "exit_confirmed_time_ns": 1789160541805781513,
+        "start_time_ns": 1789160502002574169,
+        "end_time_ns": 1789160541050883737,
+        "raw_duration_s": 40.048309568,
+        "duration_s": 39.048309568,
+        "crop_s": 0.5,
+        "threshold_n": 4.0,
+        "exit_threshold_n": 0.7999999999999998,
+        "exit_hysteresis_n": 3.2,
+        "exit_absolute": true
+      }
+    },
+    "event_counts": {
+      "study_start": 1,
+      "source_filter_epoch_reset": 1,
+      "quality_interval_start": 9,
+      "control_sample": 7452,
+      "inner_command_power_constraint": 7452,
+      "final_rocking_review": 7452,
+      "logical_command_energy": 22358,
+      "publication_review": 7451,
+      "publication_transport_result": 7451,
+      "final_rocking_publication": 7451,
+      "publication": 7451,
+      "nonspendable_measured_port": 9371,
+      "quality_interval_end": 9,
+      "image_feedback_unavailable": 24,
+      "image_feedback_recovered": 24,
+      "quality_no_improvement": 1,
+      "publication_review_rejected": 1,
+      "publication_aborted": 2,
+      "publication_fresh_retry": 1,
+      "source_gap_recovered": 1,
+      "port_alignment": 1,
+      "reference_complete": 1,
+      "stop": 1,
+      "recording_close": 1
+    },
+    "tank_min_j": 0.09717397931575701,
+    "tank_max_j": 0.10973151441547571,
+    "tank_end_j": 0.10417482043396645,
+    "tank_charge_j": 0.026941994812630123,
+    "tank_debit_j": 0.022767174378663095,
+    "cumulative_port_work_j": -0.5979550059570813,
+    "cumulative_task_source_used_j": 0.6021298263910484,
+    "image_pause_count": 24,
+    "image_pause_total_s": 0.23252263200265588,
+    "image_pause_max_s": 0.024166789000446443,
+    "tracking_duration_s": 39.367562911997084,
+    "tracking_samples": 6577,
+    "tracking_image_status_counts": {
+      "ok": 6542,
+      "transient_stale": 35
+    },
+    "force_ingress_age_ms": {
+      "median": 2.119477001542691,
+      "p95": 4.62030960334232,
+      "max": 8.188664993213024
+    },
+    "review_rejections": [
+      {
+        "reason": "wrench_source_expired",
+        "source_age_at_review_s": 0.015697096001531463,
+        "proposal_age_at_review_s": 0.011445634998381138
+      }
+    ]
+  },
+  "RH_Per_L_PtD": {
+    "attempt": "/media/camp/yameng/icra 2027/uncalibrated/001/attempts/RH_Per_L_PtD/001",
+    "result": {
+      "outcome": "completed",
+      "output": "/media/camp/yameng/icra 2027/uncalibrated/001/RH_Per_L_PtD.h5",
+      "episode": {
+        "status": "accepted",
+        "episode_index": 1,
+        "session_index": 1,
+        "entry_time_ns": 1789160675748978523,
+        "entry_confirmed_time_ns": 1789160675849156026,
+        "exit_time_ns": 1789160707741151739,
+        "exit_confirmed_time_ns": 1789160707996362239,
+        "start_time_ns": 1789160676248978523,
+        "end_time_ns": 1789160707241151739,
+        "raw_duration_s": 31.992173216,
+        "duration_s": 30.992173216,
+        "crop_s": 0.5,
+        "threshold_n": 4.0,
+        "exit_threshold_n": 0.7999999999999998,
+        "exit_hysteresis_n": 3.2,
+        "exit_absolute": true
+      }
+    },
+    "event_counts": {
+      "study_start": 1,
+      "source_filter_epoch_reset": 1,
+      "control_sample": 5908,
+      "inner_command_power_constraint": 5908,
+      "final_rocking_review": 5908,
+      "logical_command_energy": 17732,
+      "publication_review": 5905,
+      "publication_transport_result": 5905,
+      "final_rocking_publication": 5905,
+      "publication": 5905,
+      "quality_interval_start": 12,
+      "nonspendable_measured_port": 7452,
+      "publication_review_rejected": 3,
+      "publication_aborted": 6,
+      "publication_fresh_retry": 4,
+      "quality_interval_end": 12,
+      "image_feedback_unavailable": 18,
+      "image_feedback_recovered": 18,
+      "quality_no_improvement": 5,
+      "qp_prepare_rejected": 1,
+      "source_gap_recovered": 1,
+      "port_alignment": 1,
+      "reference_complete": 1,
+      "stop": 1,
+      "recording_close": 1
+    },
+    "tank_min_j": 0.09993888423657336,
+    "tank_max_j": 0.11295857971476557,
+    "tank_end_j": 0.11223586424822257,
+    "tank_charge_j": 0.016110423276355222,
+    "tank_debit_j": 0.0038745590281327813,
+    "cumulative_port_work_j": -0.12142419800580873,
+    "cumulative_task_source_used_j": 0.1336600622540313,
+    "image_pause_count": 18,
+    "image_pause_total_s": 0.15519317000143928,
+    "image_pause_max_s": 0.03213246900122613,
+    "tracking_duration_s": 31.067022313000052,
+    "tracking_samples": 5172,
+    "tracking_image_status_counts": {
+      "ok": 5149,
+      "transient_stale": 23
+    },
+    "force_ingress_age_ms": {
+      "median": 2.179872499254998,
+      "p95": 4.564697946261731,
+      "max": 9.219450999808032
+    },
+    "review_rejections": [
+      {
+        "reason": "wrench_source_expired",
+        "source_age_at_review_s": 0.015044187995954417,
+        "proposal_age_at_review_s": 0.006335068996122573
+      },
+      {
+        "reason": "wrench_source_expired",
+        "source_age_at_review_s": 0.01700970599631546,
+        "proposal_age_at_review_s": 0.009392868996656034
+      },
+      {
+        "reason": "wrench_source_expired",
+        "source_age_at_review_s": 0.015810481003427412,
+        "proposal_age_at_review_s": 0.005508918002306018
+      }
+    ]
+  },
+  "RH_Per_S_DtP": {
+    "attempt": "/media/camp/yameng/icra 2027/uncalibrated/001/attempts/RH_Per_S_DtP/001",
+    "result": {
+      "outcome": "completed",
+      "output": "/media/camp/yameng/icra 2027/uncalibrated/001/RH_Per_S_DtP.h5",
+      "episode": {
+        "status": "accepted",
+        "episode_index": 1,
+        "session_index": 0,
+        "entry_time_ns": 1789160615585403810,
+        "entry_confirmed_time_ns": 1789160615691184880,
+        "exit_time_ns": 1789160647442916969,
+        "exit_confirmed_time_ns": 1789160647697898379,
+        "start_time_ns": 1789160616085403810,
+        "end_time_ns": 1789160646942916969,
+        "raw_duration_s": 31.857513159,
+        "duration_s": 30.857513159,
+        "crop_s": 0.5,
+        "threshold_n": 4.0,
+        "exit_threshold_n": 0.7999999999999998,
+        "exit_hysteresis_n": 3.2,
+        "exit_absolute": true
+      }
+    },
+    "event_counts": {
+      "study_start": 1,
+      "source_filter_epoch_reset": 1,
+      "port_alignment": 1,
+      "control_sample": 6680,
+      "inner_command_power_constraint": 6680,
+      "final_rocking_review": 6680,
+      "logical_command_energy": 20041,
+      "publication_review": 6680,
+      "publication_transport_result": 6680,
+      "final_rocking_publication": 6680,
+      "publication": 6680,
+      "quality_interval_start": 2,
+      "nonspendable_measured_port": 8407,
+      "quality_interval_end": 2,
+      "image_feedback_unavailable": 26,
+      "image_feedback_recovered": 26,
+      "reference_complete": 1,
+      "publication_aborted": 1,
+      "stop": 1,
+      "recording_close": 1
+    },
+    "tank_min_j": 0.0993267505500968,
+    "tank_max_j": 0.10834980661878778,
+    "tank_end_j": 0.10059992424189043,
+    "tank_charge_j": 0.025879644357098264,
+    "tank_debit_j": 0.025279720115208747,
+    "cumulative_port_work_j": -0.2914993941315911,
+    "cumulative_task_source_used_j": 0.2920993183734809,
+    "image_pause_count": 26,
+    "image_pause_total_s": 0.19724439900164725,
+    "image_pause_max_s": 0.021620231003907975,
+    "tracking_duration_s": 31.25277542999538,
+    "tracking_samples": 5252,
+    "tracking_image_status_counts": {
+      "ok": 5222,
+      "transient_stale": 30
+    },
+    "force_ingress_age_ms": {
+      "median": 2.2504724984173663,
+      "p95": 4.4924374011316095,
+      "max": 8.39062799786916
+    },
+    "review_rejections": []
+  }
+}

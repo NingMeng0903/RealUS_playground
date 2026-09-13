@@ -11,14 +11,19 @@ import uuid
 from pathlib import Path
 import numpy as np
 from scipy.spatial.transform import Rotation
+from rm75_control.control.joint_admittance_8dof.loop import _rt_print
 from peirastic.contact_qp.qp import ContactQp,QpConfig,QpInput
-from peirastic.contact_qp.types import ProbeGeometry,ContactStatus,REQUIRED_WINDOWS
-from peirastic.contact_qp.geometry import motion_basis
+from peirastic.contact_qp.types import ProbeGeometry,ContactStatus,REQUIRED_WINDOWS,TwistConstraints,REGION_FEATURE_VERSION
+from peirastic.contact_qp.geometry import (motion_basis,twist_tcp_to_face,wrench_tcp_to_face,
+    affine_contact_motion,contact_cop_from_wrench)
 from peirastic.contact_qp.features import FeatureConfig
 from peirastic.contact_qp.reference import FiniteIntervalReference
 from peirastic.contact_qp.runtime_source import SourceClock,SourceGapContext
 from peirastic.contact_qp.execution import EXECUTION_POLICY,ProposalDeferred,QualityProgress,QualityIntervals
 from peirastic.contact_qp.rocking_smoothing import RockingSmoothing
+from peirastic.contact_qp.region_visual import region_visual_request
+from peirastic.contact_qp.confidence_fusion import (POLICIES, FEATURE_VERSION, TASK_SOURCE,
+    ConfidenceAngularTask, cop_preference, task_components, accepted_loading)
 from peirastic.contact_qp.runtime_config import validate_study_config,calibrated_geometry,source_settings
 from peirastic.contact_qp.energy import EnergyLedger,PortBounds
 from peirastic.contact_qp.runtime_energy import RuntimeEnergy
@@ -28,9 +33,31 @@ _LATEST_IMAGE=object()
 
 class _PrepareLaw:
     """Choose the existing law's transaction entry without copying its math."""
-    def __init__(self,law):self.law=law;self.context={}
+    def __init__(self,law):self.law=law;self.context={};self.geometry=None;self.last_output=None
     def __getattr__(self,name):return getattr(self.law,name)
-    def update(self,**kwargs):return self.law.prepare(**kwargs,**self.context)
+    def contact_pose(self,pose,euler_order):
+        pose=np.asarray(pose,dtype=float)
+        rotation=Rotation.from_euler(euler_order,pose[3:]).as_matrix()
+        face=self.geometry.T_tcp_face
+        return np.r_[pose[:3]+rotation @ face[:3,3],
+                     Rotation.from_matrix(rotation @ face[:3,:3]).as_euler(euler_order)]
+    def reset(self,**kwargs):
+        if self.geometry is not None:
+            kwargs['pose']=self.contact_pose(kwargs['pose'],self.law.controller.cfg.euler_order)
+            kwargs['f_ext']=wrench_tcp_to_face(kwargs['f_ext'],self.geometry)
+        return self.law.reset(**kwargs)
+    def update(self,**kwargs):
+        if self.geometry is not None:
+            kwargs['pose']=self.contact_pose(kwargs['pose'],kwargs.get('euler_order') or 'xyz')
+            kwargs['f_ext']=wrench_tcp_to_face(kwargs['f_ext'],self.geometry)
+            if kwargs.get('f_ext_raw') is not None:
+                kwargs['f_ext_raw']=wrench_tcp_to_face(kwargs['f_ext_raw'],self.geometry)
+            path=twist_tcp_to_face(self.geometry) @ np.asarray(kwargs['path_twist'])
+            path[[2,4]]=0.;kwargs['path_twist']=path
+            # f_des is the fixed [0,0,4,0,0,0] task in C; it is a task
+            # definition, not a physical wrench attached to the old TCP.
+        self.last_output=self.law.prepare(**kwargs,**self.context)
+        return self.last_output
 
 
 class ContactQpOuter:
@@ -42,6 +69,7 @@ class ContactQpOuter:
         validate_study_config(config)
         if config.get('mode')!='active':raise ValueError('active outer requires mode=active')
         self._continuous_execution=config.get('execution_policy')==EXECUTION_POLICY
+        self._delayed=(config.get('qp') or {}).get('allocation_policy')=='delay_kf_cop_v1'
         source=source_settings(config)
         self.source_clock=SourceClock(**source)
         if config.get('force_axis_monotonicity_confirmed') is not True:
@@ -69,6 +97,13 @@ class ContactQpOuter:
             # solver's into-contact +Z with a proper rigid rotation.
             geometry=replace(geometry,T_tcp_face=geometry.T_tcp_face @ np.diag([1.,-1.,-1.,1.]))
         self.geometry=geometry
+        if self._delayed:
+            self._preview.geometry=geometry
+            # The contact selector is applied after transforming the full path
+            # to C. The legacy TCP selector must not discard screw components.
+            self.baseline.mask_force_from_path=False
+            if not np.allclose(geometry.T_tcp_face,np.eye(4),rtol=0,atol=1e-12):
+                self.baseline.position.cfg.track_axes=np.ones(6)
         feature=config['feature'];self.feature_config=FeatureConfig(**feature['config'])
         self.registration_version=feature['registration_version']
         self._image_dropout_grace_s=float(feature.get('dropout_grace_s',0.))
@@ -90,6 +125,22 @@ class ContactQpOuter:
                         max_acceleration=acceleration,angle_limit_rad=self.nominal.tilt.cfg.theta_max_rad)
         self.solver=ContactQp(QpConfig(**settings))
         tilt=self.nominal.tilt.cfg
+        self._image_owned=self.solver.config.allocation_policy in POLICIES
+        self._command_lease=None;self._image_kf=None;self._pending_prediction=None
+        if self._delayed:
+            from peirastic.contact_qp.command_lease import CommandLease
+            from peirastic.contact_qp.delayed_kf import DelayConfidenceKF,KfConfig
+            self._command_lease=CommandLease(config['command']['max_interval_s'])
+            self._image_kf=DelayConfidenceKF(KfConfig(**config['image_kf']))
+        self._visual_task=None
+        if self._image_owned:
+            from peirastic.contact_qp.geometry import window_rows
+            rows=window_rows(self.geometry,self.feature_config.lateral_windows)
+            self._visual_task=ConfidenceAngularTask(mass=tilt.mass,damping=tilt.damping,
+                repair_speed_m_s=self.solver.config.repair_speed_m_s,lever_m=abs(rows[0,4]-rows[2,4]),
+                image_x_sign=self.geometry.image_x_sign,deadband=self.solver.config.differential_repair.balance_deadband,
+                c_min=self.solver.config.c_min,max_velocity=vmax[4],max_acceleration=acceleration[4])
+        self._pending_fusion={}
         self._rocking=(RockingSmoothing(vmax[4],acceleration[4],tilt.mass,tilt.damping)
             if self._continuous_execution else None)
         self._pending_rocking=None;self._rocking_review_facts={}
@@ -133,10 +184,11 @@ class ContactQpOuter:
             Path('apps/logs/contact_qp')/(time.strftime('%Y%m%d_%H%M%S')+'_'+uuid.uuid4().hex[:8]+'.jsonl'))
         self._quality_intervals=(QualityIntervals(self.solver.config.c_min,
             self.solver.config.differential_repair.balance_deadband,
-            self.solver.config.max_image_age_s,self.sink.emit) if self._continuous_execution else None)
+            self.solver.config.max_image_age_s,self.sink.emit,
+            region_count=self.feature_config.region_count if self._delayed else None) if self._continuous_execution else None)
         self._endpoint_started_s=None;self._deferred_source_t_s=None
         self._reference_resume_after_s=None
-        self.features=feature_receiver or FeatureReceiver(config['feature_endpoint'])
+        self.features=feature_receiver or FeatureReceiver(config['feature_endpoint'],retain_oos=self._delayed)
         self.reference_time_s=0.;self._control_time_s=0.;self._control_id=0;self.arrival_confirmed=False
         self._source_step=None;self._source_prepared=False;self._source_epoch_reset=False;self._angle_origin=None
         self._last_velocity_time=None;self._previous=np.zeros(6);self._previous_rotation=None;self.pending_result=None
@@ -148,13 +200,21 @@ class ContactQpOuter:
         self.sink.emit('study_start',mode='active',command_authority='outer_qp_original_ik',
             physical_port_assurance='unverified',task_certificate=False,config=config,
             **clock_metadata(),**study_fingerprints(baseline,config))
-        if self.solver.config.differential_repair.permission_mode=='continuous':
+        if self._delayed:
+            print(f"[CONTACT_QP] fusion=delay_kf_cop_v1; mechanical=force_torque; "
+                  f"visual={self.feature_config.region_count}_region_KF; energy=disabled; command_lease={self._command_lease.max_command_interval_s:.3f}s; "
+                  "cop=mechanical_increment_A; feedback=affine; alpha=feedforward_only",flush=True)
+        elif self.solver.config.differential_repair.permission_mode=='continuous':
             print(f"[CONTACT_QP] visual=continuous; image=required; "
                   f"image_loss={self._image_dropout_policy}; "
                   f"tank={energy['initial_j']:.3f}/{energy['capacity_j']:.3f} J; "
                   f"reserve={energy['stopping_reserve_j']:.3f} J; "
                   f"task_power={energy.get('task_power_source','none')}; "
-                  f"fusion=shared_total_velocity",flush=True)
+                  f"fusion={self.solver.config.allocation_policy if self._image_owned else 'shared_total_velocity'}",flush=True)
+        if self._image_owned:
+            print(f"[CONTACT_QP] angular_task=confidence_centroid; feature={FEATURE_VERSION}; "
+                  f"cop_pairing={self.solver.config.allocation_policy=='confidence_cop_v1'}; "
+                  "state=separate_loading_visual_scan; supply=loading_scan_v1; experimental=true",flush=True)
         if self._continuous_execution:
             print(f"[CONTACT_QP] execution={EXECUTION_POLICY}; clock=actual_success_interval; "
                   f"quality=deficit_only; alpha=0.25..1 slew=path_ramp; solver=bounded_retry_v1; "
@@ -179,6 +239,13 @@ class ContactQpOuter:
 
     def begin_hybrid_episode(self,applied_twist_base,current_pose):
         self.baseline.begin_hybrid_episode(applied_twist_base,current_pose)
+        if self._delayed:
+            rotation=Rotation.from_euler(self.controller.cfg.euler_order,np.asarray(current_pose)[3:]).as_matrix()
+            applied=np.asarray(applied_twist_base)
+            self._previous=np.r_[rotation.T @ applied[:3],rotation.T @ applied[3:]]
+            self._previous_rotation=rotation.copy()
+        if self._visual_task is not None:
+            self._visual_task.omega_base=np.asarray(applied_twist_base)[3:].copy()
         if self._rocking is not None:
             self._rocking.seed(np.asarray(applied_twist_base)[3:],time.monotonic())
         self.source_clock.begin_epoch()
@@ -192,7 +259,7 @@ class ContactQpOuter:
     def prepare_source(self,source_id,source_t_s,wall_time_ns,*,now_s):
         previous=self.source_clock.last
         context=None
-        budget=self.command_budget
+        budget=self.command_budget or self._command_lease
         if self._continuous_execution and previous is not None:
             # A currently old sample is never supplied to either filter. The
             # runner may wait inside the unchanged old dual-device lease.
@@ -227,7 +294,9 @@ class ContactQpOuter:
 
     def rocking_constraints(self):
         if self._rocking is None:return {}
-        axis,bounds,facts=self._rocking.preview(self.pending_rotation_base_tcp,
+        rotation=self.pending_rotation_base_tcp
+        if self._delayed:rotation=rotation @ self.geometry.T_tcp_face[:3,:3]
+        axis,bounds,facts=self._rocking.preview(rotation,
             time.monotonic(),self.pending_actual_dt)
         self._pending_rocking=(axis,bounds,facts)
         return dict(rocking_axis_base=axis,rocking_bounds=bounds)
@@ -292,6 +361,7 @@ class ContactQpOuter:
         age=None if observation is None else now-observation.effective_time_s
         reason=('missing' if observation is None else
                 'version_mismatch' if observation.version!=expected else
+                'centroid_version_mismatch' if self._image_owned and observation.confidence_feature_version!=FEATURE_VERSION else
                 'future_or_invalid_time' if not (np.isfinite(age) and
                     np.isfinite(observation.received_time_s) and observation.received_time_s<=now and age>=0) else
                 'stale' if age>self.solver.config.max_image_age_s else
@@ -303,7 +373,7 @@ class ContactQpOuter:
                 self.sink.emit('image_feedback_recovered',effective_age_s=age,
                     unavailable_s=now-self._image_unavailable_since_s)
                 if self._image_notice_active:
-                    print(f"[CONTACT_QP] visual resumed; image age={age*1000:.1f} ms",flush=True)
+                    _rt_print(f"[CONTACT_QP] visual resumed; image age={age*1000:.1f} ms")
                     self._image_notice_active=False
             self._image_unavailable_since_s=None
             return observation,reason
@@ -319,7 +389,7 @@ class ContactQpOuter:
                         visual_task_enabled=False,scan_quality_degraded=True)
                     if now-self._image_last_notice_s>=1.:
                         age_label='missing' if age is None else f'{age*1000:.1f} ms'
-                        print(f"[CONTACT_QP] visual paused; {reason}; image age={age_label}; fresh-force task continues",flush=True)
+                        _rt_print(f"[CONTACT_QP] visual paused; {reason}; image age={age_label}; fresh-force task continues")
                         self._image_last_notice_s=now;self._image_notice_active=True
                 elapsed=now-self._image_unavailable_since_s
                 if elapsed>=0 and (self._image_dropout_policy=='pause_visual' or elapsed<self._image_dropout_grace_s):
@@ -333,14 +403,41 @@ class ContactQpOuter:
                 '; run scripts/run_icra_tank.sh check')
         return None,reason
 
+    def _delayed_observation(self,now,batch,snapshot):
+        """Consume transport observations once before QP transactions begin."""
+        expected=(self.registration_version,self.feature_config.window_version,self.feature_config.calibration_version)
+        for obs in batch:
+            compatible=(obs.version==expected and self._region_layout_compatible(obs))
+            accepted=self._image_kf.ingest(obs,now) if compatible else False
+            replayed=self._image_kf.predict(now)
+            self.sink.emit('image_kf_measurement',accepted=accepted,
+                reason=self._image_kf.last_reason if compatible else 'registration_or_feature_mismatch',
+                feature=obs.to_dict(),latest_replayed_innovation=self._image_kf.last_innovation,
+                latest_replayed_innovation_covariance=self._image_kf.last_innovation_covariance,
+                latest_replayed_frame_seq=replayed.frame_seq,
+                latest_replayed_effective_time_s=replayed.effective_time_s)
+        prediction=self._image_kf.predict(now)
+        if snapshot is not None and (snapshot.version!=expected or not self._region_layout_compatible(snapshot)):
+            prediction=replace(prediction,valid=False,reason='registration_or_feature_mismatch')
+        self._pending_prediction=prediction
+        return snapshot if prediction.valid else None,prediction.reason
+
+    def _region_layout_compatible(self,observation):
+        """The production branch requires all N channels; LR is diagnostic only."""
+        return bool(observation.region_feature_version==REGION_FEATURE_VERSION
+            and observation.region_layout_version==self.feature_config.region_layout_version
+            and observation.region_confidence is not None
+            and np.shape(observation.region_confidence)==(self.feature_config.region_count,)
+            and np.array_equal(observation.region_edges,self.feature_config.region_edges))
+
     def retry_unsent_publication(self):
         """Allow fresh recomputation inside an unchanged, committed old lease.
 
         The runner calls this only after aborting rail, outer and inner proposals.
         No deadline, watchdog heartbeat, source timestamp or command is renewed.
         """
-        budget=self.command_budget
-        retry_reasons={'wrench_source_expired','dispatch_source_expired'}
+        budget=self.command_budget or self._command_lease
+        retry_reasons={'wrench_source_expired','dispatch_source_expired','dispatch_certificate_expired'}
         if self._continuous_execution:retry_reasons.update(('awaiting_fresh_force','solver_deadline_exceeded','solver_attempts_exhausted','native_timeout'))
         if (self._publication_rejection_reason not in retry_reasons
                 or self._nominal_pending
@@ -367,7 +464,7 @@ class ContactQpOuter:
         """No new proposal or watchdog heartbeat until the rejected source changes."""
         watermark=self._publication_retry_source_t_s
         if watermark is None:return False
-        budget=self.command_budget
+        budget=self.command_budget or self._command_lease
         if budget is None or budget.active is None or budget.latched_reason:
             raise RuntimeError('fresh publication retry has no valid committed lease')
         if not np.isfinite(now_s) or now_s<budget.last_time_s:
@@ -393,7 +490,16 @@ class ContactQpOuter:
         # Read the immutable receiver snapshot before its decision timestamp.
         # A frame arriving during nominal computation belongs to the next tick.
         image_snapshot=self.features.observation
+        image_batch=()
+        if self._delayed:
+            drain=getattr(self.features,'drain_observations',None)
+            image_batch=drain() if drain is not None else (() if image_snapshot is None else (image_snapshot,))
         now=time.monotonic();actual_dt=float(self.baseline.dt if dt_actual is None else dt_actual)
+        contact_force=(float(wrench_tcp_to_face(f_ext,self.geometry)[2]) if self._delayed else float(f_ext[2]))
+        contact_force_raw=(contact_force if f_ext_raw is None else
+            float(wrench_tcp_to_face(f_ext_raw,self.geometry)[2]) if self._delayed else float(np.asarray(f_ext_raw)[2]))
+        if self._delayed:
+            delayed_observation,delayed_image_reason=self._delayed_observation(now,image_batch,image_snapshot)
         if not np.isfinite(actual_dt) or actual_dt <= 0: raise ValueError("invalid control interval")
         dt=min(actual_dt,float(self.baseline.dt))  # future command-budget hold model
         reference_dt=actual_dt if self._continuous_execution else dt
@@ -422,6 +528,11 @@ class ContactQpOuter:
         if self._previous_rotation is not None:
             old_to_current=rotation.T @ self._previous_rotation
             previous=np.r_[old_to_current @ previous[:3],old_to_current @ previous[3:]]
+        if self._image_owned:
+            # The image dynamic target and its hard outer Y slew must share
+            # the same successful final angular history. Translational history
+            # remains an outer command: rail compensation never enters loading.
+            previous[4]=float((rotation.T @ self._visual_task.omega_base)[1])
         metadata=dict(measured_twist_metadata or {})
         velocity=None
         if measured_twist_valid and measured_twist_base is not None:
@@ -432,7 +543,7 @@ class ContactQpOuter:
         if velocity_fresh:self._last_velocity_time=measurement_time_s
         if self.contact_gate is not None:
             self.contact_gate.guard_approach(current_pose)
-            if source.fresh:self.contact_gate.observe_force(float(f_ext[2]),source.source_t_s,valid=True)
+            if source.fresh:self.contact_gate.observe_force(contact_force,source.source_t_s,valid=True)
             self.contact_gate.sample(self.reference_time_s)
         ref,h_ref=self.reference.candidate(self.reference_time_s,reference_dt if reference_dt>0 else dt)
         if reference_dt<=0:h_ref=0.
@@ -444,20 +555,43 @@ class ContactQpOuter:
             source_t_s=source.source_t_s,measurement_fresh=source.fresh,source_dt_s=source.source_dt_s,
             velocity_measurement_fresh=velocity_fresh,velocity_dt_s=velocity_dt)
         try:
-            if (self.solver.config.allocation_policy=='differential_repair_v8' and source.fresh):
+            if (self.solver.config.allocation_policy in ('differential_repair_v8','delay_kf_cop_v1',*POLICIES) and source.fresh):
                 original_scalar=float(f_ext[2])
                 raw_scalar=original_scalar if f_ext_raw is None else float(np.asarray(f_ext_raw)[2])
-                if max(original_scalar,raw_scalar)>=self.solver.config.differential_repair.hard_stop_n:
+                supervisor_values=(original_scalar,raw_scalar,contact_force,contact_force_raw) if self._delayed else (original_scalar,raw_scalar)
+                if max(supervisor_values)>=self.solver.config.differential_repair.hard_stop_n:
                     self.sink.emit('force_supervisor_stop',control_id=self._control_id,
                         filtered_original_force_n=original_scalar,raw_original_force_n=raw_scalar,
+                        filtered_contact_force_n=contact_force,raw_contact_force_n=contact_force_raw,
+                        primary_force_frame='contact_face' if self._delayed else 'tcp_tool',
+                        additional_stop_frame='tcp_tool' if self._delayed else None,
                         threshold_n=6.,source=source.__dict__,
                         assurance='fresh_measurement_stop_not_inter_sample_peak_guarantee')
                     raise RuntimeError('v8 fresh force supervisor reached 6 N; original stop chain required')
+            self._pending_fusion={}
+            if self._image_owned:
+                observation,image_reason=self._image_observation(now,
+                    contact_enabled=self.contact_gate is None or self.contact_gate.started,observation=image_snapshot)
+                enabled=bool(self.controller.contact_present) and (self.contact_gate is None or self.contact_gate.started)
+                omega,self._pending_fusion=self._visual_task.preview(observation,rotation_base_tcp=rotation,
+                    dt_s=actual_dt,force_gate=self.solver.config.differential_repair.force_gate(float(f_ext[2])),enabled=enabled)
+                # Re-express the successful angular state before the original
+                # tilt transaction's hard caps/slew. Its torque drive is bypassed.
+                self.nominal.tilt._w=self.nominal.tilt.omega_y=float((rotation.T @ self._visual_task.omega_base)[1])
+                self._preview.context['visual_velocity_target_rad_s']=omega
             nominal=np.asarray(self.baseline.sample(self._control_time_s,current_pose,f_ext,contact=contact,
                 f_ext_raw=f_ext_raw,dt_actual=actual_dt,sensor_age_s=source.age_s,feedback_age_s=feedback_age_s,
                 feedback_fresh_tick=feedback_fresh_tick,feedback_velocity_valid=velocity is not None,
-                v_tcp_z_actual=None if velocity is None else float(velocity[2]),slack_norm=slack_norm))
+                v_tcp_z_actual=None if velocity is None else float((twist_tcp_to_face(self.geometry) @ velocity)[2]) if self._delayed else float(velocity[2]),slack_norm=slack_norm))
             self._nominal_pending=True
+            if self._delayed:
+                tf=twist_tcp_to_face(self.geometry)
+                feedback=tf @ np.asarray(self.baseline.last_feedback_twist)
+                feedforward=tf @ np.asarray(self.baseline.last_path_twist)
+                self._pending_mechanical_contact=feedback+feedforward
+                self._pending_mechanical_contact[[2,4]]=np.asarray(self._preview.last_output.v_force)[[2,4]]
+                nominal=np.linalg.solve(tf,self._pending_mechanical_contact)
+            self._pending_mechanical_tcp=nominal.copy()
             # Consume the accepted source's real LP/HP measurement once even
             # if computation used up its remaining send age. Commands roll
             # back; measurement history does not.
@@ -471,21 +605,80 @@ class ContactQpOuter:
             angle_reference_reset=bool(self.controller.physical_contact_acquire_event or self._angle_origin is None)
             if angle_reference_reset:
                 self._angle_origin=rotation.copy()
-            measured_angle=float(Rotation.from_matrix(self._angle_origin.T @ rotation).as_rotvec()[1])
+            relative_rotvec=Rotation.from_matrix(self._angle_origin.T @ rotation).as_rotvec()
+            measured_angle=float(relative_rotvec @ self.geometry.T_tcp_face[:3,1]) if self._delayed else float(relative_rotvec[1])
             path=nominal.copy();path[[2,4]]=0.;self.pending_basis=motion_basis(path)
-            observation,image_reason=self._image_observation(now,
-                contact_enabled=self.contact_gate is None or self.contact_gate.started,
-                observation=image_snapshot)
+            if self._delayed:
+                observation,image_reason=delayed_observation,delayed_image_reason
+            elif not self._image_owned:
+                observation,image_reason=self._image_observation(now,
+                    contact_enabled=self.contact_gate is None or self.contact_gate.started,
+                    observation=image_snapshot)
             image_valid=observation is not None
+            fusion_input={};supply_input={}
+            if self._image_owned:
+                loading,scan=task_components(nominal)
+                cp,cp_reason=cop_preference(f_ext,self.geometry,
+                    contact=bool(self.controller.contact_present),minimum_force_n=self.nominal.tilt.cfg.contact_n)
+                if self.solver.config.allocation_policy=='confidence_angular_v1':cp=0.;cp_reason='angular_only_control'
+                fusion_input=dict(visual_omega_target_rad_s=float(nominal[4]),
+                    loading_velocity_m_s=float(loading[2]),cop_m=cp)
+                supply_input=dict(loading_twist_tool=loading,scan_twist_tool=scan)
+                self._pending_fusion.update(cop_preference_m=cp,cop_reason=cp_reason,
+                    loading_requested_tool=loading,scan_requested_tool=scan,
+                    visual_after_nominal_limits_rad_s=float(nominal[4]))
             self._pending_alpha_target=None;self._pending_alpha_preferred=None
-            if self._quality_progress is not None:
+            if self._quality_progress is not None and not self._delayed:
                 self._pending_alpha_target,self._pending_alpha_preferred=self._quality_progress.preview(observation,actual_dt)
+            mechanical_rows=TwistConstraints()
+            acceleration_dt=actual_dt
+            if self._delayed:
+                tf=twist_tcp_to_face(self.geometry)
+                nominal_contact=tf @ nominal
+                ff_contact=tf @ np.asarray(self.baseline.last_path_twist)
+                fb_contact=tf @ np.asarray(self.baseline.last_feedback_twist)
+                self.pending_offset,self.pending_basis=affine_contact_motion(self.geometry,fb_contact,ff_contact)
+                region_mask=(None if image_snapshot is None or not self._region_layout_compatible(image_snapshot)
+                             else image_snapshot.region_valid)
+                region_task=region_visual_request(self._pending_prediction.quality_raw,region_mask,
+                    self.feature_config.region_edges,self.geometry,c_min=self.solver.config.c_min,
+                    repair_speed_m_s=self.solver.config.repair_speed_m_s,
+                    evidence_valid=self._pending_prediction.valid)
+                request=region_task.request_rad_s;alpha_des=region_task.alpha_preferred
+                self._pending_alpha_target=self._pending_alpha_preferred=alpha_des
+                # Existing control wrench is tool-on-environment. Convert all
+                # six axes together, then rotate/shift once to the contact face.
+                env_contact=wrench_tcp_to_face(-np.asarray(f_ext,dtype=float),self.geometry)
+                cp,cp_reason=contact_cop_from_wrench(env_contact,min_force_n=self.solver.config.cop_min_force_n,
+                    max_abs_m=min(self.geometry.half_length_m,self.solver.config.cop_max_m))
+                fusion_input=dict(mechanical_normal_m_s=float(nominal_contact[2]),
+                    mechanical_omega_rad_s=float(nominal_contact[4]),path_feedback_contact=fb_contact,
+                    path_feedforward_contact=ff_contact,visual_request_rad_s=request,
+                    visual_task_valid=region_task.valid,
+                    visual_gamma=self.solver.config.differential_repair.force_gate(contact_force),cop_m=cp)
+                self._pending_fusion=dict(prediction=self._pending_prediction.to_dict(),
+                    region_task=region_task.to_dict(),region_feature_version=REGION_FEATURE_VERSION,
+                    region_layout_version=self.feature_config.region_layout_version,
+                    region_count=self.feature_config.region_count,
+                    visual_request_rad_s=request,cop_preference_m=cp,cop_reason=cp_reason,
+                    environment_wrench_contact=env_contact,wrench_boundary='environment_contact = transform(-control_tcp)',
+                    mechanical_nominal_contact=nominal_contact,force_task_frame='contact_face',
+                    filtered_contact_force_n=contact_force,raw_contact_force_n=contact_force_raw,
+                    additional_stop_frame='tcp_tool')
+                if self._rocking is not None:
+                    axis,bounds,history=self._rocking.preview(rotation @ self.geometry.T_tcp_face[:3,:3],now,actual_dt)
+                    self._pending_rocking=(axis,bounds,history)
+                    low=float(np.max(bounds[::2]));high=float(np.min(bounds[1::2]))
+                    if low>high:raise RuntimeError('published rocking acceleration/jerk intersection empty')
+                    mechanical_rows=TwistConstraints(tf[[4]], [low], [high],valid_until_s=now+self.config['command']['max_interval_s'],
+                        labels=('published_contact_rocking_speed_acc_jerk',))
+                    acceleration_dt=history['elapsed_s']
             self.pending_wrench_environment=None if f_ext_raw is None else np.asarray(f_ext_raw,dtype=float).copy()
             energy_snapshot=None
             if self.command_budget is not None:
                 energy_snapshot=self.command_budget.snapshot(now_s=now,wrench_control_raw=f_ext_raw,
                     rotation_base_tcp=self.pending_rotation_base_tcp,
-                    **({'nominal_twist_tool':nominal} if self.config.get('energy',{}).get('task_power_source','none')=='nominal_command' else {}))
+                    **({'nominal_twist_tool':nominal} if self.config.get('energy',{}).get('task_power_source','none')=='nominal_command' else supply_input))
             elif self.energy is not None:
                 # Completed measured intervals enter through observe_measured_port;
                 # this mixed-time diagnostic twist is never relabeled as aligned.
@@ -495,12 +688,14 @@ class ContactQpOuter:
             deadline=source.source_t_s+self.source_clock.max_age_s
             if self.command_budget is not None and self.command_budget.active is not None:
                 deadline=min(deadline,self.command_budget.active.expires_s)
+            if self._command_lease is not None and self._command_lease.active is not None:
+                deadline=min(deadline,self._command_lease.active.expires_s)
             self.pending_result=self.solver.solve(QpInput(self.geometry,nominal,path,
-                float(np.sign(self.baseline.desired_force[2])*f_ext[2]),dt,now,
+                float(-env_contact[2]) if self._delayed else float(np.sign(self.baseline.desired_force[2])*f_ext[2]),dt,now,
                 observation=observation,previous_twist=previous,measured_angle=measured_angle,energy=energy_snapshot,
-                acceleration_dt_s=actual_dt,
+                acceleration_dt_s=acceleration_dt,mechanical=mechanical_rows,
                 repair_execution_enabled=bool(self.controller.contact_present) and (self.contact_gate is None or bool(self.contact_gate.started)),
-                repair_angle_reference_reset=angle_reference_reset,alpha_preferred=self._pending_alpha_preferred),
+                repair_angle_reference_reset=angle_reference_reset,alpha_preferred=self._pending_alpha_preferred,**fusion_input),
                 **(dict(deadline_s=deadline,online=True) if self._continuous_execution else {}))
             if self.pending_result.qp_twist is None:
                 self.sink.emit('qp_prepare_rejected',control_id=self._control_id,
@@ -515,7 +710,17 @@ class ContactQpOuter:
                 diagnostic=self.pending_result.diagnostics
                 reasons=[]
                 request=float(diagnostic.get('differential_request_m_s',0.))
-                if request<=0:reasons.append('request_zero_or_deadband')
+                if self._delayed:
+                    reasons.append(self._pending_fusion['region_task']['reason'])
+                    if diagnostic.get('visual_shortfall_rad_s',0.)>self.solver.config.feasibility_tolerance:
+                        reasons.append('outer_regional_visual_shortfall')
+                elif self._image_owned:
+                    reasons.extend(diagnostic.get('allocation_reason_codes',()))
+                    reasons.append(self._pending_fusion['visual_reason'])
+                    if self._pending_fusion['visual_force_gate']<1.:reasons.append('force_gate')
+                    if self._pending_fusion['cop_reason'] not in ('valid','angular_only_control'):
+                        reasons.append('cop_'+self._pending_fusion['cop_reason'])
+                elif request<=0:reasons.append('request_zero_or_deadband')
                 if diagnostic.get('differential_shortfall_m_s',0.)>self.solver.config.feasibility_tolerance:
                     reasons.append('outer_repair_shortfall')
                 reasons.extend('outer_'+str(label) for label in diagnostic.get('active_hard_rows',())
@@ -523,19 +728,23 @@ class ContactQpOuter:
                 if diagnostic.get('energy_margin_power_w',float('inf'))<=self.solver.config.feasibility_tolerance:
                     reasons.append('command_energy_limit')
                 if diagnostic.get('repair_force_gate',1.)<1.:reasons.append('force_gate')
-                if self.pending_result.alpha+1e-8<self._pending_alpha_preferred:reasons.append('outer_mechanical_or_energy_progress_limit')
+                if self.pending_result.alpha+1e-8<self._pending_alpha_preferred:
+                    reasons.append('outer_mechanical_progress_limit' if self._delayed else 'outer_mechanical_or_energy_progress_limit')
                 self._quality_intervals.observe(observation,now,reasons)
-            self.last_path_twist=self.pending_result.alpha*self.baseline.last_path_twist
-            self.last_feedback_twist=self.pending_result.alpha*self.baseline.last_feedback_twist
+            self.last_path_twist=self.pending_result.alpha*(self.pending_basis[:,2] if self._delayed else self.baseline.last_path_twist)
+            self.last_feedback_twist=self.pending_offset.copy() if self._delayed else self.pending_result.alpha*self.baseline.last_feedback_twist
             self.sink.emit('control_sample',control_id=self._control_id,reference_s=self.reference_time_s,
+                proposal_time_s=now,
                 nominal_twist_tool=nominal,candidate_twist_tool=self.pending_result.qp_twist,
                 previous_outer_command_tool=previous,command_slew_dt_s=actual_dt,
                 rotation_base_tcp=rotation,
+                angular_slew_history='final_published_contact' if self._delayed else 'final_published_tool_y' if self._image_owned else 'outer_candidate',
+                fusion_components=self._pending_fusion if self._image_owned or self._delayed else None,
                 repair_episode=(dict(self.pending_result.diagnostics['repair_episode'])
                     if 'repair_episode' in self.pending_result.diagnostics else None),
                 allocation_diagnostics={key:value for key,value in self.pending_result.diagnostics.items()
                     if key.startswith("differential_") or key in ("repair_force_gate","visual_window_active",
-                        "repair_permission_mode","qp_delta_omega_y_rad_s")},
+                        "repair_permission_mode","qp_delta_omega_y_rad_s") or self._image_owned or self._delayed},
                 alpha=self.pending_result.alpha,alpha_target=self._pending_alpha_target,
                 alpha_preferred=self._pending_alpha_preferred,h_ref_s=h_ref,command_hold_model_s=dt,
                 reference_interval_s=reference_dt,numeric_attempts=self.pending_result.diagnostics.get("numeric_attempts"),
@@ -572,7 +781,8 @@ class ContactQpOuter:
             self._rocking_review_facts=dict(facts or {})
             rocking_tolerance=float(self._rocking_review_facts.get("rocking_tolerance_rad_s",self.solver.config.feasibility_tolerance))
             if not np.isfinite(rocking_tolerance) or rocking_tolerance<0:return rejected("invalid_rocking_tolerance")
-            if not self._rocking.review(final,self._rocking_review_facts,rocking_tolerance):
+            rocking_final=twist_tcp_to_face(self.geometry) @ final if self._delayed else final
+            if not self._rocking.review(rocking_final,self._rocking_review_facts,rocking_tolerance):
                 return rejected('final_rocking_interval_violation')
             self.sink.emit('final_rocking_review',control_id=candidate_id,
                 final_omega_y_rad_s=float(final[4]),axis_base=self._pending_rocking[0] if self._pending_rocking else None,
@@ -586,7 +796,19 @@ class ContactQpOuter:
                         self._quality_intervals.add_reasons([name])
             if self._quality_intervals is not None and self._rocking_review_facts.get('rocking_limited'):
                 self._quality_intervals.add_reasons(['rotation_smoothing_limited_by_mechanics'])
-        if self.command_budget is not None:
+        if self._delayed:
+            if not 0<=now_s-self._source_step.source_t_s<self.source_clock.max_age_s:return rejected('wrench_source_expired')
+            if now_s>=result.hard_constraints.valid_until_s:return rejected('certificate_expired')
+            mechanical=np.array([not label.startswith(('affine_motion_subspace_','progress_range'))
+                for label in result.hard_constraints.labels],dtype=bool)
+            values=result.hard_constraints.A[mechanical] @ final
+            lo=result.hard_constraints.lower[mechanical];hi=result.hard_constraints.upper[mechanical]
+            violation=float(max(0.,np.max(lo-values,initial=0.),np.max(values-hi,initial=0.)))
+            if violation>self.solver.config.feasibility_tolerance:return rejected('final_mechanical_interval_violation')
+            if not self._command_lease.reserve(candidate_id,created_s=result.created_time_s,now_s=now_s):
+                return rejected('command_lease_reservation_rejected')
+            self._reserved_id=candidate_id
+        elif self.command_budget is not None:
             # Original IK owns the final mechanical constraints; its payload
             # does not carry the outer QP's exported task certificate. Admission
             # uses the actual force-source deadline and the final-model budget.
@@ -605,17 +827,19 @@ class ContactQpOuter:
 
     def publication_started(self,candidate_id):
         if candidate_id!=self._pending_id:raise RuntimeError('orphan publication start')
-        if self.command_budget is not None:
+        budget=self.command_budget or self._command_lease
+        if budget is not None:
             # Last gate before the first device send. A late review/logging tick
             # must be rejected while the rail reservation is still abortable.
             now=time.monotonic()
-            pending=self.command_budget.pending
+            pending=budget.pending
             valid=(self._review_time_s is not None and self._review_time_s<=now and
                 self._dispatch_time_s is None and self._reserved_id==candidate_id and
                 pending is not None and pending.command_id==candidate_id and now<pending.expires_s and
                 self.pending_result.created_time_s<=now)
             source_age=now-self._source_step.source_t_s
             reason=('missing_review_or_invalid_dispatch' if not valid else
+                    'dispatch_certificate_expired' if self._delayed and now>=self.pending_result.hard_constraints.valid_until_s else
                     'dispatch_source_expired' if source_age>=self.source_clock.max_age_s else
                     'dispatch_source_future' if not source_age>=0 else None)
             if reason is not None:
@@ -625,7 +849,11 @@ class ContactQpOuter:
                     source_time_s=self._source_step.source_t_s,
                     dispatch_valid_until_s=self._source_step.source_t_s+self.source_clock.max_age_s)
                 return False
-            self.command_budget.publication_started(candidate_id)
+            if self._delayed:
+                if not budget.publication_started(candidate_id,now_s=now):
+                    self._publication_rejection_reason='command_lease_dispatch_rejected'
+                    return False
+            else:budget.publication_started(candidate_id)
             self._dispatch_time_s=now
         return True
 
@@ -646,14 +874,54 @@ class ContactQpOuter:
                 rotation_base_tcp=self.pending_rotation_base_tcp,
                 dual_success=bool(facts and facts.get('arm')=='sent' and facts.get('rail') in ('sent','disabled')))
             self._drain_command_energy()
+        if self._delayed:
+            if self._dispatch_time_s is None:
+                raise RuntimeError('commit without valid dispatch')
+            self._command_lease.commit(candidate_id,now_s=now_s,
+                dual_success=bool(facts and facts.get('arm')=='sent' and facts.get('rail') in ('sent','disabled')))
         path=self.pending_basis[:,2];denom=float(path @ path)
         alpha=0. if denom<=1e-28 else float(np.clip(path @ final/denom,0.,self.pending_result.alpha))
+        if self._delayed:
+            tolerance=self.solver.config.subspace_tolerance
+            coefficients=np.linalg.lstsq(self.pending_basis/tolerance[:,None],
+                (final-self.pending_offset)/tolerance,rcond=None)[0]
+            alpha=0. if denom<=1e-28 else float(np.clip(coefficients[2],0.,self.pending_result.alpha))
+            self.sink.emit('affine_final_realisation',control_id=candidate_id,
+                realised_coefficients=coefficients,affine_offset_tcp=self.pending_offset,
+                affine_residual_tool=final-self.pending_offset-self.pending_basis @ coefficients,
+                final_contact_twist=twist_tcp_to_face(self.geometry) @ final,
+                candidate_contact_twist=twist_tcp_to_face(self.geometry) @ self.pending_result.qp_twist)
         # These are command integrators. The rail-compensated payload model
         # is not a newly requested outer action and must not rebase them.
         accepted_outer=self.pending_result.qp_twist
         force=np.zeros(6);force[[2,4]]=accepted_outer[[2,4]]
-        self.nominal.commit_applied(force,final_full_twist=accepted_outer)
-        timely = self.command_budget is not None or (np.isfinite(now_s) and
+        if self._delayed:
+            # The independent mechanical proposal advances only after success.
+            # Neither QP visual/CoP increments nor rail compensation becomes its
+            # next admittance drive. Publication history below remains separate.
+            mechanical=self._pending_mechanical_contact
+            force[:]=0.;force[[2,4]]=mechanical[[2,4]]
+            self.nominal.commit_applied(force,final_full_twist=mechanical,
+                accepted_normal_z=float(mechanical[2]))
+        elif self._image_owned:
+            requested_z=float(self._pending_fusion['loading_requested_tool'][2])
+            cp=float(self._pending_fusion['cop_preference_m'])
+            loading_z=accepted_loading(accepted_outer,requested_z,cp)
+            force[2]=loading_z;force[4]=final[4]
+            pure=alpha*path.copy();pure[2]=loading_z
+            self.nominal.commit_applied(force,final_full_twist=pure,accepted_normal_z=loading_z)
+            self._visual_task.commit(final,self.pending_rotation_base_tcp)
+            self.sink.emit('fusion_publication',control_id=candidate_id,
+                loading_accepted_outer_z_m_s=loading_z,
+                geometric_candidate_z_m_s=float(accepted_outer[2]-loading_z),
+                visual_final_omega_rad_s=float(final[4]),cop_preference_m=cp,
+                cop_candidate_residual_m_s=float(accepted_outer[2]-requested_z-cp*accepted_outer[4]),
+                cop_final_model_residual_m_s=float(final[2]-requested_z-cp*final[4]),
+                final_minus_candidate_tool=final-accepted_outer,
+                final_model_is_measurement=False,loading_state_uses_rail_model=False)
+        else:
+            self.nominal.commit_applied(force,final_full_twist=accepted_outer)
+        timely = self.command_budget is not None or self._delayed or (np.isfinite(now_s) and
             self.pending_result.created_time_s <= now_s < self.pending_result.hard_constraints.valid_until_s)
         if not timely: alpha=0.
         if self.pending_h_ref>0:
@@ -667,7 +935,10 @@ class ContactQpOuter:
         if self._quality_progress is not None:
             self._quality_progress.commit(self._pending_alpha_preferred)
             if self._rocking.time_s is None:self._rocking.seed(np.zeros(3),now_s-self.pending_actual_dt)
-            audit=self._rocking.publication_audit(final,self.pending_rotation_base_tcp,now_s,
+            rocking_final=twist_tcp_to_face(self.geometry) @ final if self._delayed else final
+            rocking_rotation=(self.pending_rotation_base_tcp @ self.geometry.T_tcp_face[:3,:3]
+                              if self._delayed else self.pending_rotation_base_tcp)
+            audit=self._rocking.publication_audit(rocking_final,rocking_rotation,now_s,
                 self.pending_actual_dt,int(self._rocking_review_facts['rocking_policy_tier']),
                 float(self._rocking_review_facts.get('rocking_tolerance_rad_s',self.solver.config.feasibility_tolerance)))
             self.sink.emit('final_rocking_publication',control_id=candidate_id,publication_time_s=now_s,
@@ -681,13 +952,26 @@ class ContactQpOuter:
             if request>0 and row is not None:
                 achieved=float(diag.get('differential_sign',0.))*float(np.asarray(row)@final)
                 if achieved+self.solver.config.feasibility_tolerance<request:reasons.append('final_repair_shortfall')
+            if self._delayed:
+                target=float(diag['visual_request_gated_rad_s'])
+                achieved=float((twist_tcp_to_face(self.geometry) @ final)[4])
+                shortfall=max(abs(target)-np.sign(target)*achieved,0.) if diag['visual_rows_active'] else 0.
+                if shortfall>self.solver.config.feasibility_tolerance:reasons.append('final_regional_visual_shortfall')
+                self.sink.emit('final_regional_visual_task',control_id=candidate_id,
+                    region_count=self.feature_config.region_count,region_layout_version=self.feature_config.region_layout_version,
+                    gated_request_rad_s=target,final_contact_omega_rad_s=achieved,
+                    shortfall_rad_s=shortfall,diagnostic_only=True)
+            if self._image_owned:
+                target=float(diag['visual_omega_target_rad_s'])
+                if abs(final[4]-target)>self.solver.config.feasibility_tolerance:
+                    reasons.append('final_visual_target_deviation')
             if alpha+1e-8<self.pending_result.alpha:reasons.append('inner_progress_limit')
             self._quality_intervals.add_reasons(reasons)
             if self._endpoint_started_s is None and self.reference.exhaustion_reason(self.reference_time_s):
                 self._endpoint_started_s=now_s
                 self.sink.emit('reference_complete',time_s=now_s,reference_s=self.reference_time_s,phase='endpoint_convergence')
-                print('[CONTACT_QP] reference complete; endpoint convergence.',flush=True)
-        self._previous=self.pending_result.qp_twist.copy()
+                _rt_print('[CONTACT_QP] reference complete; endpoint convergence.')
+        self._previous=final.copy() if self._delayed else self.pending_result.qp_twist.copy()
         self._previous_rotation=self.pending_rotation_base_tcp.copy()
         self._nominal_pending=False;self._reserved_id=None
         self._publication_retry_count=0;self._publication_retry_source_t_s=None
@@ -719,6 +1003,9 @@ class ContactQpOuter:
         if self.command_budget is not None:
             self.command_budget.reject_new_only(self._reserved_id,definitely_not_sent=definitely_not_sent,now_s=time.monotonic())
             self._reserved_id=None
+        if self._command_lease is not None:
+            self._command_lease.reject_new_only(definitely_not_sent=definitely_not_sent,now_s=time.monotonic())
+            self._reserved_id=None
         self.sink.emit('publication_aborted',control_id=self._pending_id,reason=reason,
                        reference_s=self.reference_time_s,facts=facts or {})
         self._drain_command_energy()
@@ -736,6 +1023,7 @@ class ContactQpOuter:
         if self._quality_intervals is not None:self._quality_intervals.close(time.monotonic())
         self.publication_abort(reason)
         if self.command_budget is not None:self.command_budget.stop(now_s=time.monotonic())
+        if self._command_lease is not None:self._command_lease.stop(now_s=time.monotonic())
         self._drain_command_energy()
         self.sink.emit('stop',reason=reason,reference_s=self.reference_time_s,physical_execution='unconfirmed')
 

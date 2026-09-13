@@ -1,0 +1,166 @@
+{
+  "schema": "confidence_region_delay_kf_calibration_v1",
+  "region_feature_version": "confidence_equal_regions_weighted_q25_v1",
+  "region_layout_version": "82988106444c09bb21cf",
+  "kf": {
+    "q": 0.012965973869995408,
+    "r": 7.747925143660531e-05,
+    "max_age_s": 0.3,
+    "history_s": 0.3,
+    "initial_rate_variance": 1.0,
+    "channels": 10,
+    "observation_kind": "regions"
+  },
+  "method": "common white-acceleration q and R=rI; training innovation maximum likelihood",
+  "log_parameter_bounds": [
+    [
+      -18.420680743952367,
+      4.605170185988092
+    ],
+    [
+      -23.025850929940457,
+      -1.3862943611198906
+    ]
+  ],
+  "likelihood": -118025.14177508144,
+  "training": [
+    {
+      "name": "RH_Per_C_DtP",
+      "sha256": "c0766d0509f39d333cd1296e0cadf31b4071d4595d74c6a90c72c676a34eb91c"
+    },
+    {
+      "name": "RH_Per_L_DtP",
+      "sha256": "8e683bde361b7227a38f61c227fcdcd1a4e1d8337c066b5dc5cf00f7913c475e"
+    },
+    {
+      "name": "RH_Per_S_DtP",
+      "sha256": "a5949088e05ae2af9cbeb11934f1fd7b6f43f6aeb98b56d22c0c77179e0430f6"
+    }
+  ],
+  "validation": [
+    {
+      "name": "RH_Per_C_PtD",
+      "sha256": "c93c0d7808c48c952ece33774ae69f09a27c1f39a739cfdd53b58da3f8d7a449"
+    },
+    {
+      "name": "RH_Per_L_PtD",
+      "sha256": "6ce8431db8878671f5e4c2d3ee5e29399632aa29bc77fc32bd9ceee707e48b1f"
+    },
+    {
+      "name": "RH_Per_S_PtD",
+      "sha256": "77689054294f53123a42027a9854e84017348584a0328239cec1f4c48755c291"
+    }
+  ],
+  "validation_used_for_fit": false,
+  "prediction_experiment": "fixed registered arrival delay; actual worker compute latency excluded",
+  "errors": {
+    "RH_Per_C_DtP": {
+      "samples": 960,
+      "prediction_raw": {
+        "rmse": 0.018499632381119537,
+        "mae": 0.009433743423062376
+      },
+      "prediction_task": {
+        "rmse": 0.018455171276654702,
+        "mae": 0.00941059206765413
+      },
+      "held": {
+        "rmse": 0.017447493858792663,
+        "mae": 0.008544440902666872
+      }
+    },
+    "RH_Per_L_DtP": {
+      "samples": 965,
+      "prediction_raw": {
+        "rmse": 0.010868904667965057,
+        "mae": 0.005278697621514097
+      },
+      "prediction_task": {
+        "rmse": 0.010743133854150398,
+        "mae": 0.00520501555971501
+      },
+      "held": {
+        "rmse": 0.010376577826243186,
+        "mae": 0.004726712020069091
+      }
+    },
+    "RH_Per_S_DtP": {
+      "samples": 991,
+      "prediction_raw": {
+        "rmse": 0.018073719444903467,
+        "mae": 0.008342538591862575
+      },
+      "prediction_task": {
+        "rmse": 0.01807302247543177,
+        "mae": 0.008341500082904097
+      },
+      "held": {
+        "rmse": 0.016543558018937338,
+        "mae": 0.007395197541075855
+      }
+    },
+    "RH_Per_C_PtD": {
+      "samples": 1001,
+      "prediction_raw": {
+        "rmse": 0.018679377951883624,
+        "mae": 0.00809574963228228
+      },
+      "prediction_task": {
+        "rmse": 0.0183853363634254,
+        "mae": 0.007913341713564727
+      },
+      "held": {
+        "rmse": 0.016112799838384862,
+        "mae": 0.006896216454045036
+      }
+    },
+    "RH_Per_L_PtD": {
+      "samples": 980,
+      "prediction_raw": {
+        "rmse": 0.021560567363700794,
+        "mae": 0.009699306777093512
+      },
+      "prediction_task": {
+        "rmse": 0.021497556912518576,
+        "mae": 0.009657129410922368
+      },
+      "held": {
+        "rmse": 0.018191900437181885,
+        "mae": 0.007947121432596058
+      }
+    },
+    "RH_Per_S_PtD": {
+      "samples": 982,
+      "prediction_raw": {
+        "rmse": 0.019027069352107084,
+        "mae": 0.008104660008443279
+      },
+      "prediction_task": {
+        "rmse": 0.0189873476823023,
+        "mae": 0.008060157969513398
+      },
+      "held": {
+        "rmse": 0.016755051927841116,
+        "mae": 0.007113539517314553
+      }
+    }
+  },
+  "heldout_aggregate": {
+    "samples": 2963,
+    "held": {
+      "rmse": 0.01703549797774447,
+      "mae": 0.007315824326846476
+    },
+    "prediction_raw": {
+      "rmse": 0.019789150314192892,
+      "mae": 0.008629072612810497
+    },
+    "prediction_task": {
+      "rmse": 0.01966038597434983,
+      "mae": 0.008538750254486794
+    },
+    "raw_rmse_change_fraction": 0.16164202185611787,
+    "task_rmse_change_fraction": 0.15408343213885312
+  },
+  "prediction_improved_on_heldout": false
+}

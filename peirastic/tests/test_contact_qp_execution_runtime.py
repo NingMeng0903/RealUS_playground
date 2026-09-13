@@ -49,6 +49,35 @@ def commit(active,command,clock):
     active.publication_commit(active.pending_id,command,now_s=clock[0],facts={'arm':'sent','rail':'sent'})
 
 
+def test_visual_notices_never_wait_for_stdout_or_a_full_print_queue(monkeypatch):
+    from queue import Queue
+    from rm75_control.control.joint_admittance_8dof.loop import _AsyncPrint
+
+    active,pose,clock,sink=fixture(monkeypatch)
+    # Model a stalled stdout consumer: no worker drains this bounded queue.
+    printer=_AsyncPrint.__new__(_AsyncPrint)
+    printer._q=Queue(maxsize=1)
+    monkeypatch.setattr('peirastic.realman8dof.modes.contact_active._rt_print',printer.write)
+    def forbidden_print(*args,**kwargs):
+        raise AssertionError('control tick must not synchronously print')
+    monkeypatch.setattr('builtins.print',forbidden_print)
+    try:
+        fresh=active.features.observation
+        assert active._image_observation(clock[0],contact_enabled=True)[1]=='ok'
+        clock[0]+=.301
+        assert active._image_observation(clock[0],contact_enabled=True)==(None,'transient_stale')
+        assert printer._q.qsize()==1
+        # Recovery still proceeds if the prior notice cannot be printed.
+        active.features.observation=replace(fresh,effective_time_s=clock[0],received_time_s=clock[0])
+        assert active._image_observation(clock[0],contact_enabled=True)[1]=='ok'
+        assert printer._q.qsize()==1
+        assert not active._image_notice_active
+        assert [r['event'] for r in sink.records if r['event'].startswith('image_feedback_')]==[
+            'image_feedback_unavailable','image_feedback_recovered']
+    finally:
+        active.close()
+
+
 def test_actual_reference_interval_and_refusal_have_no_catch_up(monkeypatch):
     active,pose,clock,sink=fixture(monkeypatch)
     commit(active,sample(active,pose,clock,dt=1/179),clock)
