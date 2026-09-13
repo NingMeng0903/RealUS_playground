@@ -13,8 +13,7 @@ from peirastic.contact_qp.weighted_outer import merge_exact_constraint_rows
 
 
 def config(**kwargs):
-    kwargs.setdefault('max_acceleration', np.full(6, 1e6))
-    return QpConfig(allocation_policy='delay_kf_cop_v1', **kwargs)
+    return QpConfig(allocation_policy='delay_kf_cop_v1', max_acceleration=np.full(6, 1e6), **kwargs)
 
 
 def datum(**kwargs):
@@ -35,10 +34,7 @@ def test_feasible_mechanical_nominal_is_exact_with_inactive_visual(visual):
     assert result.success, result.diagnostics
     np.testing.assert_array_equal(result.diagnostics['solution'], [.001, .02, .7, 0.])
     assert result.diagnostics['transparent']
-    assert result.diagnostics['cop_pairing'] == 'mechanical_increment_equality'
-    assert 'cop_increment_pairing' in result.hard_constraints.labels
-    assert result.diagnostics['cop_increment_residual_m_s'] == pytest.approx(0.)
-    assert 'objective_cop' not in result.diagnostics
+    assert result.diagnostics['objective_cop'] == 0.
     assert result.diagnostics['visual_rows_active'] is False
     assert result.energy_certificate is None
     assert not any('energy' in label or 'aperture' in label for label in result.hard_constraints.labels)
@@ -53,56 +49,32 @@ def test_nominal_satisfying_visual_is_not_added_a_second_time():
     assert result.diagnostics['U_m_s'] == .001
 
 
-@pytest.mark.parametrize('cop', [-.022, 0., .022])
-@pytest.mark.parametrize('direction', [-1, 1])
-def test_cop_pairing_analytical_solution_uses_effective_angular_stiffness(cop, direction):
-    cfg = config(normal_scale_m_s=.003, angular_scale_rad_s=.13,
-                 normal_weight=2.3, angular_weight=.7, slack_weight=4.2)
-    mechanical = -.03*direction
-    request = .12*direction
-    result = ContactQp(cfg).solve(datum(mechanical_omega_rad_s=mechanical,
+@pytest.mark.parametrize('sign', [-1, 1])
+def test_joint_weighted_solution_matches_closed_form_including_opposed_torque(sign):
+    mechanical = -.03*sign
+    request = .12*sign
+    cop = .018
+    result = ContactQp(config()).solve(datum(mechanical_omega_rad_s=mechanical,
         visual_task_valid=True, visual_request_rad_s=request, cop_m=cop))
     assert result.success, result.diagnostics
-    angular_stiffness = cfg.angular_weight + cfg.normal_weight*(cop*cfg.angular_scale_rad_s/cfg.normal_scale_m_s)**2
-    expected_omega = (angular_stiffness*mechanical+cfg.slack_weight*request)/(angular_stiffness+cfg.slack_weight)
-    expected_normal = .001+cop*(expected_omega-mechanical)
+    angular_stiffness = 1.+(cop*.1/.002)**2/2.
+    expected_omega = (angular_stiffness*mechanical+10.*request)/(angular_stiffness+10.)
+    expected_normal = .001+cop*(expected_omega-mechanical)/2.
     assert result.diagnostics['Omega_rad_s'] == pytest.approx(expected_omega, abs=2e-9)
-    assert result.diagnostics['U_m_s'] == pytest.approx(expected_normal, abs=2e-9)
-    assert result.diagnostics['sigma_I_rad_s'] == pytest.approx(abs(request)-direction*expected_omega, abs=2e-9)
-    assert result.diagnostics['cop_pairing'] == 'mechanical_increment_equality'
-    assert result.diagnostics['cop_increment_residual_m_s'] == pytest.approx(0., abs=2e-10)
-    assert 'cop_increment_pairing' in result.hard_constraints.labels
-    assert 'objective_cop' not in result.diagnostics
+    assert result.diagnostics['U_m_s'] == pytest.approx(expected_normal, abs=2e-10)
+    assert result.diagnostics['sigma_I_rad_s'] == pytest.approx(abs(request)-sign*expected_omega, abs=2e-9)
+    assert result.diagnostics['cop_pairing'] == 'mechanical_increment_A'
     assert len(result.diagnostics['numeric_attempts']) <= 2
 
 
-def test_larger_normal_penalty_reduces_rotation_without_breaking_cop_pairing():
-    d = datum(mechanical_omega_rad_s=0., visual_task_valid=True,
-        visual_request_rad_s=.1, cop_m=.02)
-    low = ContactQp(config(normal_weight=1.)).solve(d)
-    high = ContactQp(config(normal_weight=100.)).solve(d)
-    assert low.success and high.success
-    assert high.diagnostics['Omega_rad_s'] < low.diagnostics['Omega_rad_s']
-    assert high.diagnostics['sigma_I_rad_s'] > low.diagnostics['sigma_I_rad_s']
-    for result in (low, high):
-        assert result.diagnostics['cop_increment_residual_m_s'] == pytest.approx(0., abs=2e-10)
-        assert result.diagnostics['U_m_s'] == pytest.approx(
-            .001+.02*result.diagnostics['Omega_rad_s'], abs=2e-9)
-
-
 @pytest.mark.parametrize('force,cop', [(.799, .015), (4., .02501), (4., None), (-4., .015)])
-def test_invalid_cop_omits_pairing_instead_of_clamping(force, cop):
+def test_invalid_cop_disables_soft_term_instead_of_clamping(force, cop):
     result = ContactQp(config()).solve(datum(force_n=force, cop_m=cop,
         mechanical_omega_rad_s=0., visual_task_valid=True, visual_request_rad_s=.11))
     assert result.success, result.diagnostics
     assert result.diagnostics['cop_valid'] is False
-    assert 'cop_increment_pairing' not in result.hard_constraints.labels
-    assert result.diagnostics['cop_increment_residual_m_s'] is None
     assert result.diagnostics['Omega_rad_s'] == pytest.approx(.1, abs=2e-9)
     assert result.diagnostics['U_m_s'] == pytest.approx(.001, abs=2e-10)
-    # With no valid contact point, an independent angular increment remains admissible.
-    unpaired = result.qp_twist + np.array([0., 0., 0., 0., .005, 0.])
-    assert result.final_velocity_admissible(unpaired, now_s=1.)
 
 
 def test_visual_gate_scales_request_and_zero_gate_removes_row():
@@ -126,29 +98,6 @@ def test_affine_feedback_not_scaled_and_alpha_zero_keeps_contact_mechanics():
     assert not r.final_velocity_admissible(r.qp_twist, now_s=1.+config().certificate_horizon_s)
 
 
-@pytest.mark.parametrize('rotated', [False, True])
-def test_exported_certificate_admits_only_cop_paired_final_twists(rotated):
-    t = np.eye(4)
-    if rotated:
-        t[:3, :3] = Rotation.from_euler('xyz', [.4, -.3, .7]).as_matrix()
-        t[:3, 3] = [.012, -.02, .06]
-    geometry = ProbeGeometry(.025, t)
-    result = ContactQp(config()).solve(datum(geometry=geometry, cop_m=.02,
-        mechanical_omega_rad_s=.01))
-    assert result.success, result.diagnostics
-    assert result.final_velocity_admissible(result.qp_twist, now_s=1.)
-    assert 'cop_increment_pairing' in result.hard_constraints.labels
-
-    transform = twist_tcp_to_face(geometry)
-    delta_omega = .005
-    valid_increment_face = np.array([0., 0., .02*delta_omega, 0., delta_omega, 0.])
-    unpaired_increment_face = np.array([0., 0., 0., 0., delta_omega, 0.])
-    valid_pair = result.qp_twist + np.linalg.solve(transform, valid_increment_face)
-    unpaired = result.qp_twist + np.linalg.solve(transform, unpaired_increment_face)
-    assert result.final_velocity_admissible(valid_pair, now_s=1.)
-    assert not result.final_velocity_admissible(unpaired, now_s=1.)
-
-
 def test_noncoincident_rotated_face_uses_full_twist_and_affine_certificate():
     t = np.eye(4)
     t[:3, :3] = Rotation.from_euler('xyz', [.4, -.3, .7]).as_matrix()
@@ -168,56 +117,16 @@ def test_noncoincident_rotated_face_uses_full_twist_and_affine_certificate():
     assert r.hard_constraints.violation(a+b@[.001, .02, .8]) > .09
 
 
-@pytest.mark.parametrize('bound', ['normal_velocity', 'normal_acceleration'])
-def test_normal_bounds_reduce_visual_correction_through_slack(bound):
-    velocity = np.full(6, 1e6)
-    acceleration = np.full(6, 1e6)
-    previous = np.zeros(6)
-    if bound == 'normal_velocity':
-        velocity[2] = .0012
-    else:
-        acceleration[2] = .04
-        previous[2] = .001
-    d = datum(mechanical_omega_rad_s=0., visual_task_valid=True,
-        visual_request_rad_s=.1, previous_twist=previous, cop_m=.02)
-    r = ContactQp(config(max_velocity=velocity, max_acceleration=acceleration)).solve(d)
-    assert r.success, r.diagnostics
-    assert 0. < r.diagnostics['Omega_rad_s'] <= .0100001
-    assert r.diagnostics['sigma_I_rad_s'] > .089
-    assert r.diagnostics['cop_increment_residual_m_s'] == pytest.approx(0., abs=2e-10)
-    assert r.diagnostics['U_m_s'] == pytest.approx(.001+.02*r.diagnostics['Omega_rad_s'], abs=2e-9)
-    assert ('velocity_2' if bound == 'normal_velocity' else 'acceleration_2') in r.diagnostics['active_hard_rows']
-
-
-def test_external_jerk_limit_constrains_rotated_face_and_uses_visual_slack():
+def test_tcp_limits_constrain_rotated_face_and_external_jerk_remains_hard():
     t = np.eye(4); t[:3, :3] = Rotation.from_euler('z', .5).as_matrix()
-    geometry = ProbeGeometry(.025, t)
-    face_omega_row = twist_tcp_to_face(geometry)[4]
-    d = datum(geometry=geometry, mechanical=TwistConstraints(
-        face_omega_row[None, :], [-.005], [.005], valid_until_s=1.05,
-        labels=('published_jerk_y',)), mechanical_omega_rad_s=0., cop_m=.02,
+    d = datum(geometry=ProbeGeometry(.025, t), mechanical=TwistConstraints(
+        np.eye(6)[[4]], [-.005], [.005], valid_until_s=1.05, labels=('published_jerk_y',)),
         visual_task_valid=True, visual_request_rad_s=.15)
     r = ContactQp(config()).solve(d)
     assert r.success, r.diagnostics
-    assert abs((twist_tcp_to_face(geometry)@r.qp_twist)[4]) <= .005+1e-8
+    assert abs(r.qp_twist[4]) <= .005+1e-8
     assert 'published_jerk_y' in r.diagnostics['active_hard_rows']
-    assert r.diagnostics['sigma_I_rad_s'] > .144
-    assert r.diagnostics['cop_increment_residual_m_s'] == pytest.approx(0., abs=2e-10)
-
-
-def test_infeasible_mechanical_rows_cannot_bypass_hard_cop_pairing():
-    mechanics = TwistConstraints(np.eye(6)[[2, 4]], [.001, .1], [.001, .1],
-        valid_until_s=1.1, labels=('fixed_normal_velocity', 'fixed_face_omega'))
-    d = datum(mechanical=mechanics,
-        mechanical_omega_rad_s=0., cop_m=.02,
-        visual_task_valid=True, visual_request_rad_s=.1)
-    result = ContactQp(config()).solve(d)
-    assert not result.success
-    assert result.status == ContactStatus.TASK_INFEASIBLE
-    assert result.qp_twist is None
-    assert not result.final_velocity_admissible(np.zeros(6), now_s=1.)
-    without_cop = ContactQp(config()).solve(replace(d, cop_m=None))
-    assert without_cop.success, without_cop.diagnostics
+    assert r.diagnostics['sigma_I_rad_s'] > .14
 
 
 def test_conflicting_mechanical_rows_are_never_softened_by_visual_slack():

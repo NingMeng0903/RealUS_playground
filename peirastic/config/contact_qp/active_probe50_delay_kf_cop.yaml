@@ -1,5 +1,4 @@
-# Default outer: fixed 4 N + mechanical TorqueTilt + delayed full-width 10-region q25 confidence + hard incremental CoP pairing.
-# U = U_m + c_p*(Omega - Omega_m); unmet image rotation uses sigma_I.
+# Default outer: fixed 4 N + mechanical TorqueTilt + delayed full-width 10-region q25 confidence + incremental CoP weighted QP.
 # No energy tank or task-power supply. Original mechanical and publication limits remain.
 # KF noise fitted only on session005 DtP; PtD fixed-delay prediction error is reported in the calibration JSON.
 # New image quality is a signal proxy; same-path acquisition is needed to evaluate actual image repair.
@@ -102,6 +101,7 @@ qp:
   angular_weight: 1.0
   progress_weight: 1.0
   slack_weight: 10.0
+  cop_weight: 1.0
   cop_min_force_n: 0.8
   cop_max_m: 0.025
   enable_aperture: false

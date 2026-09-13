@@ -1,8 +1,8 @@
 """One weighted, four-variable, energy-free affine contact allocation.
 
 Physical variables are [U (m/s), Omega (rad/s), alpha, sigma_I (rad/s)].
-Only the numerical problem is scaled. A hard CoP equality pairs deviations
-from the mechanical nominal; the image inequality acts on final contact Omega.
+Only the numerical problem is scaled. CoP couples deviations from the
+mechanical nominal; the image inequality acts on the final contact Omega.
 """
 from __future__ import annotations
 
@@ -50,7 +50,7 @@ def solve_weighted_outer(solver, data, *, deadline_s=None, online=False):
     diagnostics = dict(allocation_policy='delay_kf_cop_v1',
         quality_policy_version=cfg.quality_policy_version, solver_policy='bounded_retry_v1',
         solver_deadline_s=deadline_s, energy_enabled=False,
-        cop_pairing='mechanical_increment_equality', acoustic_derivative_certified=False,
+        cop_pairing='mechanical_increment_A', acoustic_derivative_certified=False,
         command_slew_dt_s=data.acceleration_dt_s, command_hold_s=data.dt_s)
 
     def failure(status, reason):
@@ -120,18 +120,14 @@ def solve_weighted_outer(solver, data, *, deadline_s=None, online=False):
     cop_valid = bool(data.cop_m is not None and data.force_n >= cfg.cop_min_force_n
                      and abs(data.cop_m) <= cop_limit)
     cop = float(data.cop_m) if cop_valid else 0.
-    if cop_valid:
-        # U - c_p*Omega = U_m - c_p*Omega_m. The normal-reference cost
-        # can reduce the angular correction, but cannot weaken this pairing.
-        cop_row = np.array([[1., -cop*scale[1]/scale[0], 0., 0.]])
-        cop_rhs = cop_row @ target
-        cop_c, cop_lo, cop_hi = _normalize_rows(cop_row, cop_rhs, cop_rhs)
-        constraints = np.concatenate((constraints, cop_c))
-        lo, hi = np.r_[lo, cop_lo], np.r_[hi, cop_hi]
     weights = np.array([cfg.normal_weight, cfg.angular_weight, cfg.progress_weight, cfg.slack_weight])
     # The factor two converts the published squared objective to 1/2 x'Hx+g'x.
     hessian = 2.*np.diag(weights)
     gradient = -2.*weights*target
+    if cop_valid and cfg.cop_weight > 0.:
+        cop_row = np.array([1., -cop*scale[1]/scale[0], 0., 0.])
+        hessian += 2.*cfg.cop_weight*np.outer(cop_row, cop_row)
+        gradient -= 2.*cfg.cop_weight*cop_row*float(cop_row@target)
     diagnostics.update(mechanical_normal_m_s=nominal[0], mechanical_omega_rad_s=nominal[1],
         mechanical_nominal_twist_tcp=nominal_tcp, affine_offset_tcp=offset,
         affine_basis_tcp=basis, alpha_preferred=alpha_des, alpha_target=alpha_des,
@@ -183,15 +179,6 @@ def solve_weighted_outer(solver, data, *, deadline_s=None, online=False):
     # Admit the affine subspace, not a linear subspace through zero. The final
     # inner velocity may slow progress but cannot exceed this proposal's alpha.
     exported_a, exported_lo, exported_hi = hard_a.copy(), hard_lo.copy(), hard_hi.copy()
-    if cop_valid:
-        # Express the same affine equality at the original TCP so final IK
-        # admission cannot accept rotation without its accompanying translation.
-        cop_tcp_row = transform[2]-cop*transform[4]
-        cop_tcp_rhs = nominal[0]-cop*nominal[1]
-        exported_a = np.concatenate((exported_a, cop_tcp_row[None, :]))
-        exported_lo = np.r_[exported_lo, cop_tcp_rhs]
-        exported_hi = np.r_[exported_hi, cop_tcp_rhs]
-        labels.append('cop_increment_pairing')
     if not zero_path:
         progress_row = np.linalg.pinv(basis)[2]
         shift = float(progress_row@offset)
@@ -220,6 +207,7 @@ def solve_weighted_outer(solver, data, *, deadline_s=None, online=False):
         visual_shortfall_rad_s=solution[3],
         visual_residual_rad_s=request_sign*solution[1]+solution[3]-requested if visual_active else 0.,
         objective_mechanical=float(cfg.normal_weight*(delta[0]/scale[0])**2+cfg.angular_weight*(delta[1]/scale[1])**2),
+        objective_cop=float(cfg.cop_weight*(cop_residual/scale[0])**2) if cop_valid else 0.,
         objective_visual=float(cfg.slack_weight*(solution[3]/scale[3])**2),
         objective_progress=float(cfg.progress_weight*(solution[2]-alpha_des)**2),
         active_hard_rows=tuple(label for label, on in zip(labels[:len(hard_a)], active) if on),

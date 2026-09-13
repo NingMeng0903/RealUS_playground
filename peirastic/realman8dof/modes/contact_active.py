@@ -203,7 +203,7 @@ class ContactQpOuter:
         if self._delayed:
             print(f"[CONTACT_QP] fusion=delay_kf_cop_v1; mechanical=force_torque; "
                   f"visual={self.feature_config.region_count}_region_KF; energy=disabled; command_lease={self._command_lease.max_command_interval_s:.3f}s; "
-                  "cop=mechanical_increment_equality; feedback=affine; alpha=feedforward_only",flush=True)
+                  "cop=mechanical_increment_A; feedback=affine; alpha=feedforward_only",flush=True)
         elif self.solver.config.differential_repair.permission_mode=='continuous':
             print(f"[CONTACT_QP] visual=continuous; image=required; "
                   f"image_loss={self._image_dropout_policy}; "
@@ -799,8 +799,6 @@ class ContactQpOuter:
         if self._delayed:
             if not 0<=now_s-self._source_step.source_t_s<self.source_clock.max_age_s:return rejected('wrench_source_expired')
             if now_s>=result.hard_constraints.valid_until_s:return rejected('certificate_expired')
-            # CoP increment pairing is a hard row and remains in this final
-            # admission check even when IK leaves the path-tracking subspace.
             mechanical=np.array([not label.startswith(('affine_motion_subspace_','progress_range'))
                 for label in result.hard_constraints.labels],dtype=bool)
             values=result.hard_constraints.A[mechanical] @ final

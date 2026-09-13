@@ -27,7 +27,7 @@ def contact_cop_from_wrench(wrench_contact, *, min_force_n=0.8, max_abs_m=0.025)
 
     The contact normal points into the surface, so compression is -f_z.
     A force at x gives tau_y=-x*f_z and therefore x=-tau_y/f_z.
-    Invalid load/geometry omits the CoP coupling equality; it is never clamped.
+    Invalid load/geometry disables the soft objective; it is never clamped.
     """
     w = vector(wrench_contact, (6,), name='wrench_contact')
     if not np.isfinite([min_force_n, max_abs_m]).all() or min_force_n <= 0 or max_abs_m <= 0:
