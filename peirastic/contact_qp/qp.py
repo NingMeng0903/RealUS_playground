@@ -57,7 +57,6 @@ class QpConfig:
     progress_weight: float = 1.0
     slack_weight: float = 10.0
     aperture_cost_weight: float = 1.0
-    cop_weight: float = 1.0
     cop_min_force_n: float = 0.8
     cop_max_m: float = 0.025
     max_velocity: np.ndarray = field(default_factory=lambda: np.array([.04, .04, .01, .6, .28, .6]))
@@ -91,7 +90,7 @@ class QpConfig:
         if self.schema_version != SCHEMA_VERSION or float(self.force_target_n) != 4.0:
             raise ValueError("contact QP v1 requires the fixed 4 N target")
         for name in ("force_sign_band_n", "aperture_budget_m_s", "repair_speed_m_s", "keep_speed_m_s",
-                     "aperture_cost_weight", "cop_weight"):
+                     "aperture_cost_weight"):
             object.__setattr__(self, name, positive(getattr(self, name), name, zero=True))
         for name in ("max_image_age_s", "max_step_s", "certificate_horizon_s", "normal_scale_m_s",
                      "angular_scale_rad_s", "slack_scale_m_s", "normal_weight", "angular_weight",

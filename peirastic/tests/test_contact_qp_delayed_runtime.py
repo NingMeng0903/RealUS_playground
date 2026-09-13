@@ -7,6 +7,8 @@ import numpy as np
 import pytest
 
 from peirastic.contact_qp.command_lease import CommandLease
+from peirastic.contact_qp.execution import ProposalDeferred
+from peirastic.contact_qp.qp import _linear_feasible
 from peirastic.contact_qp.runtime_config import load_study_config,validate_study_config
 from peirastic.contact_qp.types import REGION_FEATURE_VERSION, WEAK_SIDE_FEATURE_VERSION
 from peirastic.contact_qp.geometry import twist_tcp_to_face,point_normal_row
@@ -64,6 +66,7 @@ def test_default_delayed_profile_uses_no_energy_and_requires_new_capability():
     config=load_study_config(Path(__file__).parents[1]/'config/contact_qp/active_probe50_delay_kf_cop.yaml')
     facts=validate_study_config(config)
     assert facts['configuration_valid']
+    assert 'cop_weight' not in config['qp']
     assert facts['command_energy_budget_enabled'] is False
     assert DELAY_KF_COP_CAPABILITY in study_capabilities(config)
     assert not any('power' in cap or 'budget' in cap for cap in study_capabilities(config))
@@ -78,16 +81,42 @@ def test_runtime_uses_delay_prediction_new_qp_and_separate_nominal_publication_h
         assert active.command_budget is None and active.energy is None
         assert active.command_power_constraints()=={}
         assert active._visual_task is None
+        published=0;deferred=0;recovered=False
         for i in range(12):
             active.features.observation=frame(active,clock[0],i,(.65,.9))
-            command=sample(active,pose,clock,torque=.06)
+            previous=active._previous.copy()
+            nominal=active.controller.last_v_cmd.copy()
+            omega=active.nominal.tilt.omega_y
+            reference=active.reference_time_s
+            lease=active._command_lease.active
+            try:
+                command=sample(active,pose,clock,torque=.06)
+            except ProposalDeferred:
+                # In this fixed-pose fixture the normal admittance reverses
+                # against a tight published angular jerk bound. Hard CoP
+                # pairing can then be infeasible even with unlimited image slack.
+                problem=active.pending_result.diagnostics['numeric_problem']
+                assert not _linear_feasible(problem['C'],problem['l'],problem['u'])
+                assert active.pending_result.qp_twist is None
+                np.testing.assert_array_equal(active._previous,previous)
+                np.testing.assert_array_equal(active.controller.last_v_cmd,nominal)
+                assert active.nominal.tilt.omega_y==omega
+                assert active.reference_time_s==reference
+                assert active._command_lease.active==lease
+                assert active._command_lease.pending is None
+                deferred+=1
+                clock[0]+=.005
+                continue
             mechanical=active._pending_mechanical_tcp.copy()
             assert 'visual_velocity_target_rad_s' not in active._preview.context
             assert active.pending_result.diagnostics['allocation_policy']=='delay_kf_cop_v1'
             assert active._pending_prediction.valid
             assert active._pending_fusion['cop_preference_m']==pytest.approx(-.06/4.)
             assert active._pending_fusion['visual_request_rad_s']<0  # left is face+x; negative Omega loads it
+            assert abs(active.pending_result.diagnostics['cop_increment_residual_m_s'])<1e-10
             commit(active,command,clock)
+            published+=1
+            recovered=recovered or deferred>0
             np.testing.assert_allclose(active.controller.last_v_cmd,mechanical,atol=1e-14)
             np.testing.assert_array_equal(active._previous,command)
             assert active.nominal.tilt.omega_y==pytest.approx(mechanical[4])
@@ -96,7 +125,8 @@ def test_runtime_uses_delay_prediction_new_qp_and_separate_nominal_publication_h
         assert any(abs(r['nominal_twist_tool'][4])>0 for r in sink.records if r['event']=='control_sample')
         assert not any(r['event']=='logical_command_energy' for r in sink.records)
         regional=[r for r in sink.records if r['event']=='final_regional_visual_task']
-        assert len(regional)==12 and all(r['region_count']==10 for r in regional)
+        assert published+deferred==12 and deferred>0 and recovered
+        assert len(regional)==published and all(r['region_count']==10 for r in regional)
         for row in regional:
             expected=max(abs(row['gated_request_rad_s'])-np.sign(row['gated_request_rad_s'])*row['final_contact_omega_rad_s'],0.)
             assert row['shortfall_rad_s']==pytest.approx(expected)
@@ -126,6 +156,42 @@ def test_failed_proposal_keeps_kf_measurement_once_and_old_lease_expiry(monkeypa
         sample(active,pose,clock)
         last=[r for r in sink.records if r['event']=='image_kf_measurement' and r['feature']['frame_seq']==1][-1]
         assert not last['accepted'] and last['reason']=='duplicate_frame'
+        active.publication_abort('not sent',definitely_not_sent=True)
+    finally:active.close()
+
+
+@pytest.mark.parametrize('rotated',[False,True])
+def test_publication_rejects_normal_motion_that_breaks_cop_pairing(monkeypatch,rotated):
+    active,pose,clock,sink=fixture(monkeypatch)
+    try:
+        if rotated:
+            t=np.eye(4);t[:3,3]=[.012,-.015,.08]
+            t[:3,:3]=Rotation.from_euler('xyz',[.15,-.2,.3]).as_matrix()
+            active.geometry=replace(active.geometry,T_tcp_face=t)
+            active._preview.geometry=active.geometry
+            active.set_origin(pose)
+        transform=twist_tcp_to_face(active.geometry)
+        wrench=transform.T @ np.array([0.,0.,4.,0.,.06,0.])
+        command=sample(active,pose,clock,wrench=wrench)
+        result=active.pending_result
+        assert result.diagnostics['cop_valid']
+        assert abs(result.diagnostics['cop_increment_residual_m_s'])<1e-10
+        # This perturbation stays within the velocity/acceleration/rocking
+        # limits but translates normally without changing the selected rotation.
+        unpaired=command+np.linalg.solve(transform,np.array([0.,0.,1e-5,0.,0.,0.]))
+        limits=result.hard_constraints
+        physical=np.array([not label.startswith(('affine_motion_subspace_',
+            'progress_range','cop_increment_pairing')) for label in limits.labels])
+        values=limits.A[physical] @ unpaired
+        assert np.all(values>=limits.lower[physical]-1e-8)
+        assert np.all(values<=limits.upper[physical]+1e-8)
+        active.rocking_constraints()
+        assert not active.publication_review(active.pending_id,unpaired,
+            now_s=clock[0],facts=dict(rocking_policy_tier=4))
+        assert active._publication_rejection_reason=='final_mechanical_interval_violation'
+        assert active._command_lease.pending is None
+        assert active.publication_review(active.pending_id,command,
+            now_s=clock[0],facts=dict(rocking_policy_tier=4))
         active.publication_abort('not sent',definitely_not_sent=True)
     finally:active.close()
 
