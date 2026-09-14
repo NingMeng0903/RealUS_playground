@@ -208,6 +208,61 @@ def test_cartesian_p_lpf_leaves_ff_and_keeps_dc_gain() -> None:
     assert np.allclose(out[:3], [0.20, 0.0, 0.0], atol=1e-3)
 
 
+def test_feedback_accel_limit_caps_linear_step() -> None:
+    cfg = CartesianTrackConfig(
+        k_task=np.array([20.0, 20.0, 20.0, 2.0, 2.0, 2.0]),
+        feedback_accel_limit_m_s2=1.0,
+        path_feedforward=False,
+        control_frame="base",
+        max_lin_vel_m_s=1.0,
+        fb_lpf_tau_s=0.0,
+    )
+
+    class _Ref:
+        pose_d = np.zeros(6)
+        vel_ff = np.zeros(6)
+
+        def sample(self, t_s: float):
+            del t_s
+            return self
+
+    ref = _Ref()
+    outer = CartesianTrackOuterLoop(ref, cfg)
+    pose = np.zeros(6)
+    outer.sample(0.0, pose, np.zeros(6))
+    ref.pose_d = np.array([0.05, 0.0, 0.0, 0.0, 0.0, 0.0])
+    out = outer.sample(0.005, pose, np.zeros(6))
+    assert out[0] == pytest.approx(0.005, abs=1e-9)
+    assert abs(out[1]) < 1e-12
+
+
+def test_max_lin_vel_caps_feedback_peak() -> None:
+    cfg = CartesianTrackConfig(
+        k_task=np.array([20.0, 20.0, 20.0, 2.0, 2.0, 2.0]),
+        feedback_accel_limit_m_s2=0.0,
+        path_feedforward=False,
+        control_frame="base",
+        max_lin_vel_m_s=0.02,
+        fb_lpf_tau_s=0.0,
+    )
+
+    class _Ref:
+        pose_d = np.zeros(6)
+        vel_ff = np.zeros(6)
+
+        def sample(self, t_s: float):
+            del t_s
+            return self
+
+    ref = _Ref()
+    outer = CartesianTrackOuterLoop(ref, cfg)
+    pose = np.zeros(6)
+    outer.sample(0.0, pose, np.zeros(6))
+    ref.pose_d = np.array([0.05, 0.0, 0.0, 0.0, 0.0, 0.0])
+    out = outer.sample(0.005, pose, np.zeros(6))
+    assert float(np.linalg.norm(out[:3])) == pytest.approx(0.02, abs=1e-12)
+
+
 def test_build_ellipse_program_from_live_pose_and_ipc() -> None:
     params = SinToolYTaskParams(
         config_path=str(_CFG),

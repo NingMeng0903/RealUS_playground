@@ -33,10 +33,18 @@ class ContactGatedReference:
         *,
         start_force_n: float | None = None,
         start_force_s: float = 0.1,
+        start_blend_s: float = 0.5,
+        max_lateral_drift_m: float = 0.03,
     ) -> None:
         self.reference = reference
         self.start_force_n = start_force_n
         self.start_force_s = float(start_force_s)
+        self.start_blend_s = float(start_blend_s)
+        self.max_lateral_drift_m = float(max_lateral_drift_m)
+        if not np.isfinite(self.start_blend_s) or self.start_blend_s < 0:
+            raise ValueError("invalid start_blend_s")
+        if not np.isfinite(self.max_lateral_drift_m) or self.max_lateral_drift_m < 0:
+            raise ValueError("invalid max_lateral_drift_m")
         if start_force_n is not None and (
             not np.isfinite(start_force_n) or start_force_n <= 0
             or not np.isfinite(start_force_s) or start_force_s < 0
@@ -53,6 +61,9 @@ class ContactGatedReference:
         self._elapsed_s = 0.0
         self._last_input_t_s: float | None = None
         self._first_sample: MotionReference | None = None
+        self._hold_pose: np.ndarray | None = None
+        self._start_offset: np.ndarray | None = None
+        self.on_start: Callable[[], None] | None = None
         if contact_present is not None:
             self.bind_contact_present(contact_present)
 
@@ -85,6 +96,14 @@ class ContactGatedReference:
         self._seen_air = False
         self._seek_wall_start = None
         self._seek_normal = None
+        self._hold_pose = None
+        self._start_offset = None
+
+    def reanchor_hold(self, pose) -> None:
+        """Re-home the pre-contact hold to the live pose so lateral feedback starts at zero."""
+        if self._started:
+            return
+        self._hold_pose = np.asarray(pose, dtype=float).reshape(6).copy()
 
     def guard_approach(self, pose) -> None:
         """Bound an ICRA seek even if the external acquisition process disappears."""
@@ -103,6 +122,13 @@ class ContactGatedReference:
                 self._seek_normal = -Rotation.from_euler("xyz", anchor[3:]).as_matrix()[:, 2]
             if float((np.asarray(pose)[:3] - anchor[:3]) @ self._seek_normal) < -0.010:
                 raise RuntimeError("ICRA contact seek exceeded taught surface by 10 mm")
+            if self.max_lateral_drift_m > 0.0:
+                drift = float(np.linalg.norm(np.asarray(pose, dtype=float)[:2] - anchor[:2]))
+                if drift > self.max_lateral_drift_m:
+                    raise RuntimeError(
+                        f"ICRA contact seek lateral drift {1000.0 * drift:.1f} mm "
+                        f"exceeded {1000.0 * self.max_lateral_drift_m:.1f} mm"
+                    )
 
     def observe_force(self, fz: float, sample_time_s: float, *, valid: bool = True) -> None:
         """Use fresh compensated samples, independently of physical contact tuning."""
@@ -206,11 +232,26 @@ class ContactGatedReference:
                 # Do not pass the runner's absolute/governor time through to
                 # an unstarted child: this is both the hold and the initial
                 # time anchor for sources without set_origin().
+                if self._hold_pose is not None:
+                    return MotionReference(
+                        pose_d=self._hold_pose.copy(),
+                        vel_ff=np.zeros(6, dtype=float),
+                        t_ref=0.0,
+                        valid=bool(getattr(anchor, "valid", True)),
+                    )
                 return self._hold(anchor)
             self._started = True
             self._elapsed_s = 0.0
             self._last_input_t_s = t_input if np.isfinite(t_input) else None
-            return anchor
+            if self._hold_pose is not None:
+                offset = np.zeros(6, dtype=float)
+                offset[:3] = self._hold_pose[:3] - np.asarray(anchor.pose_d, dtype=float)[:3]
+                self._start_offset = offset
+            else:
+                self._start_offset = None
+            if self.on_start is not None:
+                self.on_start()
+            return self._blended(anchor)
 
         if np.isfinite(t_input):
             if self._last_input_t_s is not None:
@@ -221,7 +262,25 @@ class ContactGatedReference:
             # its governor clock; a later tick must not create a time burst.
             if self._last_input_t_s is None or t_input > self._last_input_t_s:
                 self._last_input_t_s = t_input
-        return self.reference.sample(float(self._elapsed_s))
+        return self._blended(self.reference.sample(float(self._elapsed_s)))
+
+    def _blend_weight(self) -> float:
+        if self._start_offset is None or self.start_blend_s <= 0.0:
+            return 0.0
+        return float(max(0.0, 1.0 - self._elapsed_s / self.start_blend_s))
+
+    def _blended(self, sample: MotionReference) -> MotionReference:
+        weight = self._blend_weight()
+        if weight <= 0.0 or self._start_offset is None:
+            return sample
+        pose = np.asarray(sample.pose_d, dtype=float).reshape(6).copy()
+        pose[:3] = pose[:3] + weight * self._start_offset[:3]
+        return MotionReference(
+            pose_d=pose,
+            vel_ff=np.asarray(sample.vel_ff, dtype=float).reshape(6).copy(),
+            t_ref=float(getattr(sample, "t_ref", 0.0)),
+            valid=bool(getattr(sample, "valid", True)),
+        )
 
 
 __all__ = ["ContactGatedReference"]

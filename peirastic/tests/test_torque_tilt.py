@@ -38,7 +38,7 @@ def step(tilt, tau, *, fz=2.0, contact=True, desired=DESIRED, dt=DT, **kwargs):
 
 class TestTorqueTilt(unittest.TestCase):
     def test_small_noise_sticks_but_both_sides_above_threshold_yield(self):
-        for tau in (-0.025, -0.01, 0.0, 0.01, 0.025):
+        for tau in (-0.02, -0.01, 0.0, 0.01, 0.02):
             tilt = law()
             for _ in range(80):
                 self.assertEqual(step(tilt, tau), 0.0)
@@ -95,7 +95,7 @@ class TestTorqueTilt(unittest.TestCase):
             theta += DT * step(tilt, tau)
         self.assertGreater(theta, 0.08)
         self.assertLessEqual(theta, surface_angle)
-        self.assertLessEqual(abs(stiffness * (theta - surface_angle)), 0.025 + 1e-5)
+        self.assertLessEqual(abs(stiffness * (theta - surface_angle)), 0.02 + 1e-5)
 
     def test_rotational_contact_spring_stops_at_small_cap_before_far_surface(self):
         tilt = TorqueTilt(CAP20)
@@ -116,7 +116,7 @@ class TestTorqueTilt(unittest.TestCase):
             theta += DT * step(tilt, tau, pose=twisted, slack_norm=0.0)
         self.assertGreater(theta, 0.70)
         self.assertFalse(tilt.tilt_frozen)
-        self.assertLessEqual(abs(stiffness * (theta - surface_angle)), 0.025 + 1e-5)
+        self.assertLessEqual(abs(stiffness * (theta - surface_angle)), 0.02 + 1e-5)
 
     def test_slack_freezes_omega_but_world_tilt_does_not(self):
         tilt = law()
@@ -291,7 +291,7 @@ class TestTorqueTilt(unittest.TestCase):
         tilt = TorqueTilt()
         step(tilt, 0.01)
         self.assertEqual(tilt.tilt_stop_reason, "torque_deadband")
-        self.assertEqual(tilt.telemetry()["tilt_deadband_nm"], 0.025)
+        self.assertEqual(tilt.telemetry()["tilt_deadband_nm"], 0.02)
         step(tilt, 0.12, contact=False)
         self.assertEqual(tilt.tilt_stop_reason, "no_contact")
         step(tilt, 0.12, slack_norm=0.12)
@@ -363,6 +363,18 @@ class TestTorqueTilt(unittest.TestCase):
             v_force_z=-0.08,
         )
         np.testing.assert_allclose(v[:3], [0.0, 0.0, 0.08], atol=1e-12)
+
+    def test_note_executed_omega_pulls_wound_state_toward_accepted(self):
+        tilt = law()
+        tilt._w = tilt.omega_y = 0.28
+        for _ in range(2):
+            tilt.note_executed_omega(0.01, DT)
+        self.assertAlmostEqual(tilt._w, 0.28)
+        tilt.note_executed_omega(0.01, DT)
+        self.assertLess(tilt._w, 0.28)
+        self.assertGreater(tilt._w, 0.01)
+        step = tilt.cfg.a_max * DT
+        self.assertAlmostEqual(tilt._w, 0.28 - step)
 
 
 if __name__ == "__main__":

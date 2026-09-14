@@ -22,8 +22,8 @@ from rm75_control.control.joint_admittance_8dof.wbc_rt import protocol as P
 
 
 def test_protocol_current_sizes() -> None:
-    assert P.WBC_VERSION == 10
-    assert P.WBC_IN_SIZE == 752
+    assert P.WBC_VERSION == 11
+    assert P.WBC_IN_SIZE == 1780
     assert P.WBC_OUT_SIZE == 1496
 
 

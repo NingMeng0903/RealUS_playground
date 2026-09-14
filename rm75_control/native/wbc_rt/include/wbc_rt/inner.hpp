@@ -147,6 +147,10 @@ struct TickIn {
   Vec6 command_power_wrench_base = Vec6::Zero();
   double command_power_min_w = 0.;
   bool command_power_enabled = false;
+  Eigen::Matrix<double, 16, 6> command_twist_rows_base = Eigen::Matrix<double, 16, 6>::Zero();
+  Eigen::Matrix<double, 16, 1> command_twist_lower = Eigen::Matrix<double, 16, 1>::Zero();
+  Eigen::Matrix<double, 16, 1> command_twist_upper = Eigen::Matrix<double, 16, 1>::Zero();
+  int command_twist_count = 0;
   Vec6 v_cmd = Vec6::Zero();
   Vec8 q_meas = Vec8::Zero();
   Vec8 qdot_ff = Vec8::Zero();
@@ -576,6 +580,10 @@ class InnerLoop {
   Vec6 command_power_wrench_base_ = Vec6::Zero();
   double command_power_min_w_ = 0.;
   bool command_power_enabled_ = false;
+  Eigen::Matrix<double, 16, 6> command_twist_rows_base_ = Eigen::Matrix<double, 16, 6>::Zero();
+  Eigen::Matrix<double, 16, 1> command_twist_lower_ = Eigen::Matrix<double, 16, 1>::Zero();
+  Eigen::Matrix<double, 16, 1> command_twist_upper_ = Eigen::Matrix<double, 16, 1>::Zero();
+  int command_twist_count_ = 0;
   uint32_t rocking_policy_tier_ = 0;
   double rocking_lower_ = -std::numeric_limits<double>::infinity();
   double rocking_upper_ = std::numeric_limits<double>::infinity();

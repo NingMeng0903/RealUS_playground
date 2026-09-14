@@ -816,6 +816,13 @@ class QpIkController:
                     )
                 ),
             )
+        command_base = getattr(self, "_last_command_twist_base", np.zeros((0, 6)))
+        if len(command_base):
+            affine = self.last_task_jacobian @ qdot_arr + self.last_rail_exec_contrib
+            command_value = command_base @ affine
+            if (np.any(command_value < self._last_command_twist_lower - 1e-8)
+                    or np.any(command_value > self._last_command_twist_upper + 1e-8)):
+                return float("inf"), float("inf")
         rocking_row = getattr(self, "_last_rocking_row", None)
         power_row = getattr(self, "_last_command_power_row", None)
         if power_row is not None and float(power_row @ qdot_arr) < self._last_command_power_min_w:
@@ -1089,12 +1096,22 @@ class QpIkController:
         rocking_bounds=None,
         command_power_wrench_base=None,
         command_power_min_w=None,
+        command_twist_rows_base=None,
+        command_twist_lower=None,
+        command_twist_upper=None,
     ) -> IkStepResult:
         t_total = time.perf_counter()
         from ..rocking_envelope import validate_rocking, rocking_interval
         rocking_axis, rocking_limits = validate_rocking(rocking_axis_base, rocking_bounds)
         from ..command_power import validate_command_power
         power_wrench, power_min = validate_command_power(command_power_wrench_base, command_power_min_w)
+        from ..command_twist import validate_command_twist
+        command_rows, command_lo, command_hi = validate_command_twist(
+            command_twist_rows_base, command_twist_lower, command_twist_upper)
+        self._last_command_twist_rows = np.zeros((0, self.kin.nv))
+        self._last_command_twist_base = np.zeros((0, 6))
+        self._last_command_twist_lower = command_lo
+        self._last_command_twist_upper = command_hi
         self._last_command_power_row = None
         self._last_command_power_min_w = power_min
         self.last_rocking_policy_tier = 0
@@ -1454,6 +1471,23 @@ class QpIkController:
             # Pay for the existing solver certification tolerance, rather
             # than allowing it to spend beyond the zero-tolerance ledger.
             lo[power_index] = power_min + (np.nextafter(tolerance, np.inf) if np.any(row) else 0.)
+
+        # Affine map is slack + v_cmd. Put the row on slack so it is not a
+        # second copy of J_task.
+        self._last_command_twist_base = np.asarray(command_rows, dtype=float).copy()
+        self._last_command_twist_rows = command_rows @ J_task
+        self._last_command_twist_lower = command_lo
+        self._last_command_twist_upper = command_hi
+        if len(command_rows):
+            extra = np.zeros((len(command_rows), C_hard.shape[1]))
+            extra[:, nv:nv + N_TASK_SLACK] = command_rows
+            shift = command_rows @ v_cmd0
+            tolerance = max(10.0 * float(self.cfg.eps_abs), 1e-5)
+            margin = np.minimum(2. * tolerance, (command_hi-command_lo) / 4.)
+            margin = np.where(np.any(command_rows != 0., axis=1), margin, 0.)
+            C_hard = np.vstack((C_hard, extra))
+            lo = np.r_[lo, command_lo - shift + margin]
+            hi = np.r_[hi, command_hi - shift - margin]
 
         def set_rocking_tier(tier):
             self.last_rocking_policy_tier = tier

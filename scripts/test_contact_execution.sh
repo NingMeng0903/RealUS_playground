@@ -16,6 +16,11 @@ case "${1:-focused}" in
       peirastic/tests/test_contact_qp_execution_runtime.py
       peirastic/tests/test_contact_qp_transient_feedback.py
       peirastic/tests/test_contact_qp_active.py
+      peirastic/tests/test_contact_qp_weighted_outer.py
+      peirastic/tests/test_contact_qp_delayed_runtime.py
+      peirastic/tests/test_hybrid_contact_reference.py
+      peirastic/tests/test_scan_path.py
+      peirastic/tests/test_pad_visual_tilt.py
       peirastic/tests/test_contact_qp_active_history.py
       peirastic/tests/test_contact_qp_command_budget_active.py
       peirastic/tests/test_contact_qp_continuous_visual.py
@@ -27,7 +32,10 @@ esac
 /usr/bin/ctest --test-dir rm75_control/native/wbc_rt/build --output-on-failure
 python -m pytest "${CONTACT_TEST_FILES[@]}" \
   rm75_control/tests/test_command_power.py \
+  rm75_control/tests/test_command_twist.py \
   rm75_control/tests/test_state_relay.py \
+  rm75_control/tests/test_rail_dstar_owner.py \
+  rm75_control/tests/test_ellipse_cartesian_track.py \
   peirastic/tests/test_daemon_boundary.py \
   rm75_control/tests/test_rocking_envelope.py \
   rm75_control/tests/test_wbc_rt_aborted_reply.py \

@@ -207,6 +207,17 @@ def test_hfpc_compiles_compact_path_with_open_my_and_independent_4n_gate(monkeyp
     assert abs(outer.last_omega_y) > .01
 
 
+def test_stroke_amplitude_is_half_taught_y_span_not_noise_amplitude():
+    distal = D.copy()
+    proximal = P.copy()
+    distal[1] = 0.14
+    proximal[1] = 0.30
+    spec = make_spec(distal, proximal, "S", "DtP", 7)
+    ref = ForearmReference(spec)
+    assert ref.stroke_amplitude_m == pytest.approx(0.08)
+    assert ref.amplitude != pytest.approx(ref.stroke_amplitude_m)
+
+
 def test_controller_seek_guard_works_without_external_supervisor(monkeypatch):
     from peirastic.scan_path import outward
     now = [10.0]
@@ -222,3 +233,8 @@ def test_controller_seek_guard_works_without_external_supervisor(monkeypatch):
     too_deep[:3] -= .011 * outward(D)
     with pytest.raises(RuntimeError, match="10 mm"):
         gate.guard_approach(too_deep)
+    gate.set_origin(D)
+    drifted = D.copy()
+    drifted[1] += 0.04
+    with pytest.raises(RuntimeError, match="lateral drift"):
+        gate.guard_approach(drifted)

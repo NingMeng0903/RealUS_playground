@@ -12,6 +12,28 @@ def load_study_config(source):
     return dict(source)
 
 
+def motion_settings(config):
+    """Optional active-study limits, applied before constructing the outer QP.
+
+    The acquisition script's legacy 10 mm/s defaults must not silently override
+    the selected study profile. Air seeking retains the existing force-based
+    contact detector, governor and acceleration/jerk shaping.
+    """
+    raw=config.get('motion')
+    if raw is None:return {}
+    if ((config.get('qp') or {}).get('allocation_policy')!='delay_kf_cop_v1'
+            or config.get('mode')!='active'):
+        raise ValueError('motion limits require the active delayed policy')
+    if not isinstance(raw,dict) or set(raw)!={'normal_max_m_s','seek_m_s'}:
+        raise ValueError('motion requires normal_max_m_s and seek_m_s')
+    if any(isinstance(v,bool) or not isinstance(v,(int,float)) or not np.isfinite(v) or v<=0
+           for v in raw.values()):
+        raise ValueError('motion limits must be finite and positive')
+    if raw['seek_m_s']>raw['normal_max_m_s']:
+        raise ValueError('seek speed must not exceed the normal limit')
+    return {key:float(value) for key,value in raw.items()}
+
+
 def source_settings(config):
     """Bind the recovery interval to the existing lease, without a second knob."""
     source=dict(config.get('source') or {})
@@ -104,6 +126,10 @@ def _validate_effective_tasks(config, mode, feature):
         if float(feature.get('dropout_grace_s',0.))>qp_config.max_image_age_s:
             raise ValueError('dropout grace must not exceed image age')
         source_settings(config)
+        motion_settings(config)
+        interval=float(config['command']['max_interval_s'])
+        if float(config['source']['max_age_s'])>interval or qp_config.certificate_horizon_s>interval:
+            raise ValueError('force age and candidate lifetime must not exceed the command lease')
         return
     enabled=config.get('energy_constraint_enabled',False)
     if type(enabled) is not bool:raise ValueError('energy_constraint_enabled must be boolean')

@@ -716,6 +716,8 @@ class ControllerService:
     @staticmethod
     def _is_latched_fault(reason: str) -> bool:
         text = str(reason or "").lower()
+        if "publication_infeasible" in text:
+            return False
         tokens = (
             "watchdog",
             "native_timeout",
@@ -729,7 +731,8 @@ class ControllerService:
             "partial_arm",
             "unknown_partial",
             "arm_send_fault",
-            "publication",
+            "publication_transport",
+            "partial_publication",
         )
         return any(tok in text for tok in tokens)
 

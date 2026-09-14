@@ -120,6 +120,31 @@ def test_numeric_deferral_consumes_measurement_once_and_keeps_original_lease(mon
     np.testing.assert_array_equal(active._previous,previous)
     np.testing.assert_array_equal(active._rocking.omega_base,angle_history)
     clock[0]=10.05
+    with pytest.raises(ProposalDeferred,match='lease expired'):
+        active.waiting_for_retry_source(10.005,now_s=clock[0])
+    assert active._lease_expiry_retries==1
+    active._publication_retry_source_t_s=10.005
+    active._publication_rejection_reason='solver_attempts_exhausted'
+    active.command_budget.active=old
+    active.command_budget.latched_reason=None
+    active.command_budget.last_time_s=10.049
+    clock[0]=10.05
+    with pytest.raises(ProposalDeferred,match='lease expired'):
+        active.waiting_for_retry_source(10.005,now_s=clock[0])
+    active._publication_retry_source_t_s=10.005
+    active._publication_rejection_reason='solver_attempts_exhausted'
+    active.command_budget.active=old
+    active.command_budget.latched_reason=None
+    active.command_budget.last_time_s=10.049
+    clock[0]=10.05
+    with pytest.raises(ProposalDeferred,match='lease expired'):
+        active.waiting_for_retry_source(10.005,now_s=clock[0])
+    active._publication_retry_source_t_s=10.005
+    active._publication_rejection_reason='solver_attempts_exhausted'
+    active.command_budget.active=old
+    active.command_budget.latched_reason=None
+    active.command_budget.last_time_s=10.049
+    clock[0]=10.05
     with pytest.raises(RuntimeError,match='lease expired'):
         active.waiting_for_retry_source(10.005,now_s=clock[0])
 

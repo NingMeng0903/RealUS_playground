@@ -369,6 +369,10 @@ class NativeWbcClient:
         rec["magic"] = P.WBC_MAGIC
         rec["version"] = P.WBC_VERSION
         rec["rocking_enabled"] = 0
+        rec["command_twist_count"] = 0
+        rec["command_twist_rows_base"][:] = 0.
+        rec["command_twist_lower"][:] = 0.
+        rec["command_twist_upper"][:] = 0.
         rec["command_power_enabled"] = 0
         rec["command_power_wrench_base"][:] = 0.
         rec["command_power_min_w"] = 0.
@@ -671,6 +675,16 @@ class NativeWbcClient:
         rec["command_power_enabled"] = int(power_wrench is not None)
         rec["command_power_wrench_base"][:] = 0. if power_wrench is None else power_wrench
         rec["command_power_min_w"] = 0. if power_min is None else power_min
+        from ..command_twist import validate_command_twist
+        rows, lower, upper = validate_command_twist(kwargs.get("command_twist_rows_base"),
+            kwargs.get("command_twist_lower"), kwargs.get("command_twist_upper"))
+        rec["command_twist_count"] = len(rows)
+        rec["command_twist_rows_base"][:] = 0.
+        rec["command_twist_lower"][:] = 0.
+        rec["command_twist_upper"][:] = 0.
+        rec["command_twist_rows_base"][:len(rows)] = rows
+        rec["command_twist_lower"][:len(rows)] = lower
+        rec["command_twist_upper"][:len(rows)] = upper
         rec["cmd_f"][:] = 0.0
         flags = 0
         if kwargs.get("contact_active"):

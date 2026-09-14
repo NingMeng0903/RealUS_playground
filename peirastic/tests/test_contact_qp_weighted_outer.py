@@ -34,7 +34,8 @@ def test_feasible_mechanical_nominal_is_exact_with_inactive_visual(visual):
     assert result.success, result.diagnostics
     np.testing.assert_array_equal(result.diagnostics['solution'], [.001, .02, .7, 0.])
     assert result.diagnostics['transparent']
-    assert result.diagnostics['objective_cop'] == 0.
+    assert result.diagnostics['objective_normal'] == 0.
+    assert result.diagnostics['objective_angular'] == 0.
     assert result.diagnostics['visual_rows_active'] is False
     assert result.energy_certificate is None
     assert not any('energy' in label or 'aperture' in label for label in result.hard_constraints.labels)
@@ -57,13 +58,14 @@ def test_joint_weighted_solution_matches_closed_form_including_opposed_torque(si
     result = ContactQp(config()).solve(datum(mechanical_omega_rad_s=mechanical,
         visual_task_valid=True, visual_request_rad_s=request, cop_m=cop))
     assert result.success, result.diagnostics
-    angular_stiffness = 1.+(cop*.1/.002)**2/2.
-    expected_omega = (angular_stiffness*mechanical+10.*request)/(angular_stiffness+10.)
-    expected_normal = .001+cop*(expected_omega-mechanical)/2.
+    expected_omega = (mechanical+10.*request)/11.
+    expected_normal = .001+cop*(expected_omega-mechanical)
     assert result.diagnostics['Omega_rad_s'] == pytest.approx(expected_omega, abs=2e-9)
     assert result.diagnostics['U_m_s'] == pytest.approx(expected_normal, abs=2e-10)
     assert result.diagnostics['sigma_I_rad_s'] == pytest.approx(abs(request)-sign*expected_omega, abs=2e-9)
-    assert result.diagnostics['cop_pairing'] == 'mechanical_increment_A'
+    assert result.diagnostics['cop_pairing'] == 'coupled_normal_task_v1'
+    assert result.diagnostics['cop_increment_residual_m_s'] == pytest.approx(0., abs=2e-12)
+    assert result.diagnostics['objective_normal'] == pytest.approx(0., abs=1e-16)
     assert len(result.diagnostics['numeric_attempts']) <= 2
 
 
@@ -165,6 +167,30 @@ def test_cop_gates_do_not_invent_centered_contact():
     assert contact_cop_from_wrench([0, 0, -4., 0, .12, 0])[0] is None
 
 
+def test_seek_slew_ignores_substep_rocking_gap_from_session006():
+    # 006 RH_Per_L_DtP/002 first seek tick: leftover retract twist vs 0.64 ms
+    # rocking gap. Default accel limits; identity face. Old path was empty.
+    previous = np.array([-9.963132645691925e-05, -0.0009756655031079071,
+                         0.0002986811879365003, 0.0010785198108304295,
+                         0.0010566936261009361, 0.0011681979359987385])
+    offset = np.array([0.00010350876992989112, 0.0004094106702881522, 0.,
+                       0.0004957293284419115, 0., 0.00042729018761546617])
+    common = dict(previous_twist=previous, path_feedback_contact=offset,
+                  path_feedforward_contact=np.zeros(6), mechanical_normal_m_s=.001,
+                  mechanical_omega_rad_s=0., force_n=-0.1882847475556741, cop_m=None,
+                  visual_task_valid=True, visual_request_rad_s=0., alpha_preferred=.58)
+    cfg = QpConfig(allocation_policy='delay_kf_cop_v1')
+    tiny = ContactQp(cfg).solve(datum(dt_s=.0006385390006471425,
+        acceleration_dt_s=.0006385390006471425, **common), online=True)
+    assert not tiny.success
+    assert tiny.diagnostics['reason'] == 'fixed_affine_component_outside_mechanical_interval'
+    held = ContactQp(cfg).solve(datum(dt_s=.005, acceleration_dt_s=.0006385390006471425,
+        **common), online=True)
+    assert held.success, held.diagnostics
+    assert held.diagnostics['command_slew_dt_s'] == pytest.approx(.005)
+    assert held.qp_twist is not None
+
+
 def test_exact_row_merge_preserves_intersection_and_does_not_merge_near_parallel():
     c=np.array([[1.,0.],[-1.,0.],[1.,0.],[0.,0.],[1.,1e-15]])
     lo=np.array([-2.,-3.,-.5,-1.,-4.]);hi=np.array([2.,1.,1.,1.,4.])
@@ -194,3 +220,49 @@ def test_recorded_feasible_false_infeasibility_solves_with_exact_duplicate_merge
     assert _violation(c,l,u,x)<=qp.config.feasibility_tolerance
     assert qp._numeric_attempts[-1]['dual_residual']<=qp.config.solver_tolerance
     assert abs(qp._numeric_attempts[-1]['duality_gap'])<=qp.config.solver_tolerance
+
+
+def test_impossible_fixed_feedback_is_reported_before_numerical_retries():
+    d=datum(previous_twist=[0.,.0085,0.,0.,0.,0.],
+        path_feedback_contact=[0.,-.001,0.,0.,0.,0.],path_feedforward_contact=np.zeros(6),
+        dt_s=.005,acceleration_dt_s=.005,cop_m=None)
+    cfg=QpConfig(allocation_policy='delay_kf_cop_v1')
+    result=ContactQp(cfg).solve(d,online=True)
+    assert result.status==ContactStatus.MECHANICAL_INFEASIBLE
+    assert result.diagnostics['reason']=='fixed_affine_component_outside_mechanical_interval'
+    assert result.diagnostics['infeasible_fixed_rows'][0]['label']=='acceleration_1'
+    assert not result.diagnostics['numeric_attempts']
+
+
+def test_small_fixed_acceleration_overshoot_is_deferred_online():
+    d=datum(previous_twist=np.zeros(6),
+        path_feedback_contact=[0.,.0055,0.,0.,0.,0.],path_feedforward_contact=np.zeros(6),
+        dt_s=.005,acceleration_dt_s=.005,cop_m=None,mechanical_omega_rad_s=0.)
+    cfg=QpConfig(allocation_policy='delay_kf_cop_v1')
+    online=ContactQp(cfg).solve(d,online=True)
+    assert online.status==ContactStatus.DEFERRED
+    assert online.diagnostics['reason']=='fixed_affine_acceleration_retry'
+    assert online.diagnostics['infeasible_fixed_rows'][0]['label']=='acceleration_1'
+    offline=ContactQp(cfg).solve(d,online=False)
+    assert offline.status==ContactStatus.MECHANICAL_INFEASIBLE
+    assert offline.diagnostics['reason']=='fixed_affine_component_outside_mechanical_interval'
+
+
+def test_fixed_velocity_row_stays_mechanically_infeasible():
+    d=datum(previous_twist=np.zeros(6),
+        path_feedback_contact=[0.,.05,0.,0.,0.,0.],path_feedforward_contact=np.zeros(6),
+        dt_s=.005,acceleration_dt_s=.005,cop_m=None,mechanical_omega_rad_s=0.)
+    result=ContactQp(QpConfig(allocation_policy='delay_kf_cop_v1')).solve(d,online=True)
+    assert result.status==ContactStatus.MECHANICAL_INFEASIBLE
+    assert result.diagnostics['reason']=='fixed_affine_component_outside_mechanical_interval'
+    labels={row['label'] for row in result.diagnostics['infeasible_fixed_rows']}
+    assert 'velocity_1' in labels
+
+
+def test_zero_row_roundoff_is_checked_in_physical_units():
+    d=datum(previous_twist=[0.,.005+1e-10,0.,0.,0.,0.],
+        path_feedback_contact=np.zeros(6),path_feedforward_contact=np.zeros(6),
+        dt_s=.005,acceleration_dt_s=.005,cop_m=None,mechanical_omega_rad_s=0.)
+    result=ContactQp(QpConfig(allocation_policy='delay_kf_cop_v1')).solve(d)
+    assert result.success,result.diagnostics
+    assert result.diagnostics['max_hard_violation']<1e-8

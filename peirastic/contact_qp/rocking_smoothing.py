@@ -28,8 +28,11 @@ class RockingSmoothing:
 
     def preview(self, rotation_base_tcp, now_s, default_dt_s):
         rotation = np.asarray(rotation_base_tcp, dtype=float).reshape(3, 3)
-        dt = default_dt_s if self.time_s is None else now_s-self.time_s
-        if not np.isfinite(rotation).all() or not math.isfinite(dt) or dt <= 0:
+        elapsed = default_dt_s if self.time_s is None else now_s-self.time_s
+        dt = max(float(elapsed), float(default_dt_s))
+        if not np.isfinite(rotation).all() or not math.isfinite(elapsed) or elapsed <= 0:
+            raise ValueError('invalid final rocking frame/time')
+        if not math.isfinite(dt) or dt <= 0:
             raise ValueError('invalid final rocking frame/time')
         axis = rotation[:, 1].copy()
         previous = float(axis @ self.omega_base)
@@ -38,13 +41,16 @@ class RockingSmoothing:
         # Keep an empty acceleration/jerk intersection empty. A preceding
         # mechanical override can exceed a_max; clipping here would falsely
         # label an abrupt return to a_max as jerk-constrained tier 1.
+        # Floor the slew window at the control hold. A 1 ms proposal gap
+        # otherwise collapses J*dt^2 by ~50x versus the real 7 ms cycle.
         jerk_acc = [acceleration-self.jerk_limit*dt,
                     acceleration+self.jerk_limit*dt]
         bounds = np.array([-self.velocity_limit, self.velocity_limit,
                            previous-a*dt, previous+a*dt,
                            previous+jerk_acc[0]*dt, previous+jerk_acc[1]*dt])
         return axis, bounds, dict(previous_rad_s=previous, previous_acceleration_rad_s2=acceleration,
-                                 elapsed_s=dt, jerk_limit_rad_s3=self.jerk_limit)
+                                 elapsed_s=float(elapsed), bound_dt_s=float(dt),
+                                 jerk_limit_rad_s3=self.jerk_limit)
 
     def commit(self, final_tool, rotation_base_tcp, now_s):
         omega = np.asarray(rotation_base_tcp) @ np.asarray(final_tool)[3:]

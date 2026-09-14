@@ -657,3 +657,20 @@ def test_nongated_finite_hot_install_uses_mode_t0(monkeypatch, task_mode):
 
     assert install_t0 == [pytest.approx(1.25)]
     assert compiled.count(task_mode) == 1
+
+
+def test_solver_retry_lease_expiry_is_not_a_latched_fault() -> None:
+    assert not daemon.ControllerService._is_latched_fault(
+        "contact_qp_exception:RuntimeError:fresh publication retry lease expired: committed_lease_expired"
+    )
+    assert not daemon.ControllerService._is_latched_fault(
+        "qpik_fault:task_pause:publication_infeasible"
+    )
+    assert not daemon.ControllerService._is_latched_fault(
+        "qpik_fault:stop:final_publication_infeasible_coordinated_brake"
+    )
+    assert daemon.ControllerService._is_latched_fault("publication_transport failed")
+    assert daemon.ControllerService._is_latched_fault("partial_publication")
+    assert daemon.ControllerService._is_latched_fault("rail_panic")
+    assert daemon.ControllerService._is_latched_fault("qpik_fault:stop:feedback_stale")
+    assert daemon.ControllerService._is_latched_fault("qpik_fault:stop:watchdog")

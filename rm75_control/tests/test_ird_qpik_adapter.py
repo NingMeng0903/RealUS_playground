@@ -102,6 +102,30 @@ def test_hot_path_goodness_stays_sigma_min_even_if_ird_loads() -> None:
     assert isinstance(inner._rail_goodness.inner, SigmaMinGoodness)
 
 
+def test_stroke_planner_warmup_does_not_change_plan_state() -> None:
+    from rm75_control.control.joint_admittance_8dof.collision_model import (
+        CollisionConfig,
+    )
+    from rm75_control.control.joint_admittance_8dof.loop import (
+        JointIkConfig,
+        JointIkController,
+    )
+
+    inner = JointIkController(
+        RobotKinematics(),
+        JointIkConfig(
+            collision=CollisionConfig(enabled=False),
+            psi_retarget=PsiRetargetConfig(enabled=True, n_y=3, n_d=3, n_psi=3),
+        ),
+    )
+    assert inner._stroke_planner_warmed is True
+    rt = inner.posture_retarget
+    assert rt is not None
+    assert rt._planned is False
+    assert rt._psi_star is None
+    assert rt.cfg.n_y == 3
+
+
 def test_default_ird_config_is_off_until_yaml_enables_it() -> None:
     assert IrdConfig().enabled is False
     assert Path(IrdConfig().checkpoint).name == "selected.pt"

@@ -58,7 +58,7 @@ class TorqueTiltConfig:
     axis: int = 4
     mass: float = 0.065
     damping: float = 0.28
-    coulomb_nm: float = 0.025
+    coulomb_nm: float = 0.02
     vmax_rad_s: float = 0.22
     a_max: float = 4.5
     contact_only: bool = True
@@ -72,6 +72,7 @@ class TorqueTiltConfig:
     # Disabled by default: curved/soft contact need not reduce CoP by 1 mm
     # within 350 ms. Stopping rotation can prevent the latch from recovering.
     cop_stall_s: float = 0.0
+    recovery_timeout_s: float = 1.5
 
     def __post_init__(self) -> None:
         if self.axis != 4:
@@ -80,7 +81,8 @@ class TorqueTiltConfig:
             value = float(getattr(self, name))
             if not math.isfinite(value) or value <= 0.0:
                 raise ValueError(f"torque_tilt.{name} must be finite and positive")
-        for name in ("coulomb_nm", "contact_n", "slack_freeze", "r_margin_m", "cop_stall_m", "cop_stall_s"):
+        for name in ("coulomb_nm", "contact_n", "slack_freeze", "r_margin_m", "cop_stall_m", "cop_stall_s",
+                     "recovery_timeout_s"):
             value = float(getattr(self, name))
             if not math.isfinite(value) or value < 0.0:
                 raise ValueError(f"torque_tilt.{name} must be finite and nonnegative")
@@ -115,7 +117,7 @@ class TorqueTiltConfig:
             axis=int(block.get("axis", 4)),
             mass=float(block.get("mass", 0.065)),
             damping=float(block.get("damping", 0.28)),
-            coulomb_nm=float(block.get("coulomb_nm", 0.025)),
+            coulomb_nm=float(block.get("coulomb_nm", 0.02)),
             vmax_rad_s=float(block.get("vmax_rad_s", 0.22)),
             a_max=float(block.get("a_max", 4.5)),
             contact_only=bool(block.get("contact_only", True)),
@@ -127,6 +129,7 @@ class TorqueTiltConfig:
             r_margin_m=float(block.get("r_margin_m", 0.008)),
             cop_stall_m=float(block.get("cop_stall_m", 0.006)),
             cop_stall_s=float(block.get("cop_stall_s", 0.0)),
+            recovery_timeout_s=float(block.get("recovery_timeout_s", 1.5)),
         )
 
 
@@ -201,6 +204,7 @@ class TorqueTilt:
         self.on_tube = False
         self._cop_x_watch = float("nan")
         self._cop_stall_t = 0.0
+        self._windup_ticks = 0
 
     def prepare(self, f_ext, f_des, *, measurement_id: int, **kwargs) -> float:
         """Advance contact/CoP/pose observations once; defer command integration."""
@@ -245,6 +249,24 @@ class TorqueTilt:
         if self._pending_command is None:
             raise RuntimeError("no tilt proposal to abort")
         self._pending_command = None
+
+    def note_executed_omega(self, accepted_omega: float, dt_s: float) -> None:
+        """Pull the admittance state toward the executed command when saturated."""
+        accepted = float(accepted_omega)
+        dt = float(dt_s)
+        if not math.isfinite(accepted) or not math.isfinite(dt) or dt <= 0.0:
+            return
+        proposed = float(self._w)
+        if abs(proposed) > 1e-6 and abs(accepted) < 0.25 * abs(proposed):
+            self._windup_ticks += 1
+        else:
+            self._windup_ticks = 0
+        if self._windup_ticks < 3:
+            return
+        step = float(self.cfg.a_max) * dt
+        self._w += float(np.clip(accepted - self._w, -step, step))
+        self.omega_y = self._w
+        self.stuck = abs(self._w) <= 1e-12
 
     def telemetry(self) -> dict:
         return {

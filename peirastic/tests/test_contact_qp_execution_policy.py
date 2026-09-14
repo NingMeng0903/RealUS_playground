@@ -80,7 +80,7 @@ def test_quality_interval_annotations_do_not_disable_progress_or_count_control_t
         assert proposal==plain.preview(obs,.005)
         annotated.commit(proposal[1]);plain.commit(proposal[1])
     marks=[facts for event,facts in events if event=='quality_no_improvement']
-    assert len(marks)==1 and marks[0]['diagnostic_only'] is True
+    assert len(marks)==1 and marks[0]['diagnostic_only'] is False
     assert marks[0]['reasons']==['force_gate']
     assert annotated.alpha==plain.alpha and annotated.alpha>=.25
     monitor.observe(None,.31,())
@@ -90,6 +90,28 @@ def test_quality_interval_annotations_do_not_disable_progress_or_count_control_t
     assert end['unique_frames']==2 and end['no_improvement_marked'] is True
     assert end['end_reason']=='quality_recovered'
     assert set(end['reasons'])=={'force_gate','image_unavailable','image_resumed'}
+
+
+def test_marked_region_interval_escalates_alpha_and_omega_floor():
+    events=[]
+    monitor=QualityIntervals(.85,.03,.2,lambda event,**facts:events.append((event,facts)),region_count=10)
+    late=np.array([.555,.562,.581,.628,.708,.857,.931,.977,.989,.993])
+    def region_obs(frame):
+        return SimpleNamespace(source_id='camera',frame_seq=frame,effective_time_s=frame,
+            region_confidence=late,region_valid=np.ones(10,dtype=bool),quality=None)
+    monitor.observe(region_obs(1),0.,())
+    request,alpha=monitor.apply_escalation(-0.016,0.88,repair_speed_m_s=0.008)
+    assert alpha==pytest.approx(0.88)
+    assert request==pytest.approx(-0.016)
+    monitor.observe(region_obs(2),0.3,())
+    assert monitor.escalation_active
+    marks=[facts for event,facts in events if event=='quality_no_improvement']
+    assert marks and all(facts['diagnostic_only'] is False for facts in marks)
+    request,alpha=monitor.apply_escalation(-0.016,0.88,repair_speed_m_s=0.008)
+    assert alpha==0.25
+    assert request==pytest.approx(-0.05)
+    held,held_alpha=monitor.apply_escalation(0.,1.,repair_speed_m_s=0.008)
+    assert held_alpha==0.25 and held==pytest.approx(-0.05)
 
 
 def test_improving_weak_quality_is_not_marked_and_scan_close_is_diagnostic():
@@ -118,7 +140,31 @@ def test_final_rocking_history_is_rotated_into_current_tool_frame():
     assert facts['previous_rad_s']==pytest.approx(expected_local[1])
     assert facts['previous_acceleration_rad_s2']==pytest.approx(expected_acc_local[1])
     assert facts['elapsed_s']==pytest.approx(.01)
+    assert facts['bound_dt_s']==pytest.approx(.01)
     assert (bounds[2]+bounds[3])/2==pytest.approx(expected_local[1])
+
+
+def test_rocking_preview_floors_submillisecond_window():
+    smooth=RockingSmoothing(.8,2.,.04,1.)
+    smooth.seed(np.zeros(3),0.)
+    _,collapsed,_=smooth.preview(np.eye(3),.001,.005)
+    _,floored,facts=smooth.preview(np.eye(3),.001,.005)
+    assert facts['elapsed_s']==pytest.approx(.001)
+    assert facts['bound_dt_s']==pytest.approx(.005)
+    # J*dt^2 would be 50x smaller on the 1 ms wall gap than on the 5 ms hold.
+    assert collapsed[5]==pytest.approx(smooth.jerk_limit*.005**2)
+    assert floored[3]==pytest.approx(2.*.005)
+
+
+def test_publication_audit_uses_real_elapsed_but_floored_bounds():
+    smooth=RockingSmoothing(1.,1.,.1,1.)
+    smooth.seed(np.zeros(3),1.)
+    final=np.zeros(6);final[4]=smooth.jerk_limit*(.005**2)
+    audit=smooth.publication_audit(final,np.eye(3),1.001,.005,1,1e-8)
+    assert audit['actual_interval_s']==pytest.approx(.001)
+    assert abs(audit['actual_jerk_rad_s3'])>smooth.jerk_limit
+    assert not audit['timing_limited']
+    assert audit['actual_policy_tier']==1
 
 
 def test_rocking_preview_and_rejection_do_not_mutate_published_history():

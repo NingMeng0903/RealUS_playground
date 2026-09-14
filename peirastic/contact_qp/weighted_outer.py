@@ -47,11 +47,14 @@ def solve_weighted_outer(solver, data, *, deadline_s=None, online=False):
 
     start = time.perf_counter()
     cfg, mech = solver.config, data.mechanical
+    # Never slew on a window shorter than the command hold. Callers used to
+    # pass rocking publication gaps (~0.6 ms) and empty the first seek QP.
+    slew_dt = max(float(data.acceleration_dt_s), float(data.dt_s))
     diagnostics = dict(allocation_policy='delay_kf_cop_v1',
         quality_policy_version=cfg.quality_policy_version, solver_policy='bounded_retry_v1',
         solver_deadline_s=deadline_s, energy_enabled=False,
-        cop_pairing='mechanical_increment_A', acoustic_derivative_certified=False,
-        command_slew_dt_s=data.acceleration_dt_s, command_hold_s=data.dt_s)
+        cop_pairing='coupled_normal_task_v1', acoustic_derivative_certified=False,
+        command_slew_dt_s=slew_dt, command_hold_s=data.dt_s)
 
     def failure(status, reason):
         from .numeric_record import encode, SCHEMA
@@ -90,9 +93,9 @@ def solve_weighted_outer(solver, data, *, deadline_s=None, online=False):
     # All hard Cartesian rows are expressed at the original TCP; the angle
     # bound uses the contact-y angular row so offset/rotation cannot mislabel it.
     rows = [*np.eye(6), *np.eye(6), transform[4]]
-    lower = [*(-cfg.max_velocity), *(data.previous_twist-cfg.max_acceleration*data.acceleration_dt_s),
+    lower = [*(-cfg.max_velocity), *(data.previous_twist-cfg.max_acceleration*slew_dt),
              (-cfg.angle_limit_rad-data.measured_angle)/data.dt_s]
-    upper = [*cfg.max_velocity, *(data.previous_twist+cfg.max_acceleration*data.acceleration_dt_s),
+    upper = [*cfg.max_velocity, *(data.previous_twist+cfg.max_acceleration*slew_dt),
              (cfg.angle_limit_rad-data.measured_angle)/data.dt_s]
     labels = [*(f'velocity_{i}' for i in range(6)), *(f'acceleration_{i}' for i in range(6)),
               'angle_limit_contact_y']
@@ -100,8 +103,30 @@ def solve_weighted_outer(solver, data, *, deadline_s=None, online=False):
         rows.extend(mech.A); lower.extend(mech.lower); upper.extend(mech.upper)
         labels.extend(mech.labels or tuple(f'mechanical_{i}' for i in range(len(mech.A))))
     hard_a, hard_lo, hard_hi = np.asarray(rows), np.asarray(lower), np.asarray(upper)
-    constraints, lo, hi = _normalize_rows(hard_a @ scaled_basis,
-                                         hard_lo-hard_a@offset, hard_hi-hard_a@offset)
+    projected=hard_a @ scaled_basis
+    shifted_lo,shifted_hi=hard_lo-hard_a@offset,hard_hi-hard_a@offset
+    fixed=~np.any(projected!=0.,axis=1)
+    impossible=fixed & ((shifted_lo>cfg.solver_tolerance) | (shifted_hi < -cfg.solver_tolerance))
+    if np.any(impossible):
+        rows_info=[dict(label=labels[i],value=float(hard_a[i]@offset),
+            lower=float(hard_lo[i]),upper=float(hard_hi[i])) for i in np.flatnonzero(impossible)]
+        diagnostics['infeasible_fixed_rows']=rows_info
+        allow=float(cfg.fixed_acceleration_overshoot)
+        accel_only=all(str(row['label']).startswith('acceleration_') for row in rows_info)
+        small=True
+        for row in rows_info:
+            half=0.5*(row['upper']-row['lower'])
+            over=max(row['lower']-row['value'], row['value']-row['upper'])
+            if half<=0 or over/half>allow:
+                small=False
+                break
+        if online and accel_only and small and allow>0:
+            return failure(ContactStatus.DEFERRED,'fixed_affine_acceleration_retry')
+        return failure(ContactStatus.MECHANICAL_INFEASIBLE,'fixed_affine_component_outside_mechanical_interval')
+    # Exact zero rows carry no decision variable. Check them in SI units above;
+    # normalizing them by 1e-12 created billion-scale residuals and futile retries.
+    diagnostics['fixed_rows_checked']=int(np.count_nonzero(fixed))
+    constraints, lo, hi = _normalize_rows(projected[~fixed],shifted_lo[~fixed],shifted_hi[~fixed])
     constraints = np.concatenate((constraints, np.eye(4)[2:]))
     lo, hi = np.r_[lo, 0., 0.], np.r_[hi, 1., math.inf]
 
@@ -120,14 +145,13 @@ def solve_weighted_outer(solver, data, *, deadline_s=None, online=False):
     cop_valid = bool(data.cop_m is not None and data.force_n >= cfg.cop_min_force_n
                      and abs(data.cop_m) <= cop_limit)
     cop = float(data.cop_m) if cop_valid else 0.
-    weights = np.array([cfg.normal_weight, cfg.angular_weight, cfg.progress_weight, cfg.slack_weight])
+    weights = np.array([0., cfg.angular_weight, cfg.progress_weight, cfg.slack_weight])
     # The factor two converts the published squared objective to 1/2 x'Hx+g'x.
     hessian = 2.*np.diag(weights)
     gradient = -2.*weights*target
-    if cop_valid and cfg.cop_weight > 0.:
-        cop_row = np.array([1., -cop*scale[1]/scale[0], 0., 0.])
-        hessian += 2.*cfg.cop_weight*np.outer(cop_row, cop_row)
-        gradient -= 2.*cfg.cop_weight*cop_row*float(cop_row@target)
+    r_row = np.array([1., -cop*scale[1]/scale[0], 0., 0.]) if cop_valid else np.array([1., 0., 0., 0.])
+    hessian += 2.*cfg.normal_weight*np.outer(r_row, r_row)
+    gradient -= 2.*cfg.normal_weight*r_row*float(r_row@target)
     diagnostics.update(mechanical_normal_m_s=nominal[0], mechanical_omega_rad_s=nominal[1],
         mechanical_nominal_twist_tcp=nominal_tcp, affine_offset_tcp=offset,
         affine_basis_tcp=basis, alpha_preferred=alpha_des, alpha_target=alpha_des,
@@ -206,8 +230,8 @@ def solve_weighted_outer(solver, data, *, deadline_s=None, online=False):
         cop_increment_residual_m_s=cop_residual if cop_valid else None,
         visual_shortfall_rad_s=solution[3],
         visual_residual_rad_s=request_sign*solution[1]+solution[3]-requested if visual_active else 0.,
-        objective_mechanical=float(cfg.normal_weight*(delta[0]/scale[0])**2+cfg.angular_weight*(delta[1]/scale[1])**2),
-        objective_cop=float(cfg.cop_weight*(cop_residual/scale[0])**2) if cop_valid else 0.,
+        objective_normal=float(cfg.normal_weight*(r_row@(solution/scale-target))**2),
+        objective_angular=float(cfg.angular_weight*(delta[1]/scale[1])**2),
         objective_visual=float(cfg.slack_weight*(solution[3]/scale[3])**2),
         objective_progress=float(cfg.progress_weight*(solution[2]-alpha_des)**2),
         active_hard_rows=tuple(label for label, on in zip(labels[:len(hard_a)], active) if on),

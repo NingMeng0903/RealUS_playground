@@ -364,7 +364,7 @@ hybrid_motion:
     axis: 4
     mass: 0.065
     damping: 0.28
-    coulomb_nm: 0.025
+    coulomb_nm: 0.02
     vmax_rad_s: 0.22
     a_max: 4.5
     contact_only: true

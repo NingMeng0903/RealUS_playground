@@ -55,7 +55,7 @@ class QualityProgress:
 
 
 class QualityIntervals:
-    """Diagnostic weak-side intervals; never a repair permission timer."""
+    """Weak-side intervals. A marked no-improvement interval escalates repair."""
     def __init__(self, c_min, improvement_deadband, window_s, emit, *, region_count=None):
         self.c_min = c_min
         self.deadband = improvement_deadband
@@ -64,6 +64,7 @@ class QualityIntervals:
         self.key = None
         self.active = {}
         self.region_count=region_count
+        self.last_request_sign = 0.0
 
     def observe(self, observation, now_s, reasons):
         if observation is None:
@@ -102,7 +103,25 @@ class QualityIntervals:
                     item['best']-item['baseline'] <= self.deadband):
                 item['marked'] = True
                 self.emit('quality_no_improvement', side=name, start_s=item['start_s'],
-                          time_s=now_s, reasons=sorted(item['reasons']), diagnostic_only=True)
+                          time_s=now_s, reasons=sorted(item['reasons']), diagnostic_only=False)
+
+    @property
+    def escalation_active(self):
+        return any(bool(item.get('marked')) for item in self.active.values())
+
+    def apply_escalation(self, request_rad_s, alpha_preferred, *, repair_speed_m_s):
+        """Hold path at α_min and keep a signed visual ω floor while marked."""
+        request = 0. if request_rad_s is None else float(request_rad_s)
+        if abs(request) > 0.:
+            self.last_request_sign = float(np.sign(request))
+        if not self.escalation_active:
+            return request, alpha_preferred
+        alpha = .25 if alpha_preferred is None else min(float(alpha_preferred), .25)
+        sign = float(np.sign(request)) if request != 0. else float(self.last_request_sign)
+        floor = 6.25 * float(repair_speed_m_s)
+        if sign == 0. or not math.isfinite(floor) or floor <= 0.:
+            return request, alpha
+        return sign * max(abs(request), floor), alpha
 
     def add_reasons(self, reasons):
         for item in self.active.values(): item['reasons'].update(reasons)

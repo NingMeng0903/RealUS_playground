@@ -1,10 +1,11 @@
 """Software-only active publication checks; geometry is explicitly a test fixture."""
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from types import SimpleNamespace
 import numpy as np
 import pytest
 from peirastic.tests.test_contact_qp_runtime import make_outer, MemorySink
 from peirastic.contact_qp.features import FeatureConfig
+from peirastic.realman8dof.force.torque_tilt import TorqueTilt
 from peirastic.realman8dof.modes.contact_active import ContactQpOuter
 
 
@@ -98,7 +99,7 @@ def test_runner_actual_publication_block_preserves_device_facts(failure):
         publication_owner=Owner(),rail_bridge=rail,rail_coast_active=False,
         step=NS(qdot=np.zeros(8),q_send=np.zeros(8),rocking_policy_tier=0,
             rocking_limited=False,rocking_lower_rad_s=-np.inf,rocking_upper_rad_s=np.inf,
-            rail_exec_for_qp_m_s=0.),q_prev=np.zeros(8),q_meas=np.zeros(8),
+            rail_exec_for_qp_m_s=0.,v_tcp_estimated=np.zeros(6)),q_prev=np.zeros(8),q_meas=np.zeros(8),
         inner=NS(cfg=NS(dt=.005,resync_err_rail_m=.01),limits=NS(q_lower=np.full(8,-1),q_upper=np.ones(8)),
                  kin=NS(jacobian=lambda q:np.eye(6,8)),_direct_joint_ptp=False,_plan_drives_rail=False,
                  abort_publication=lambda:events.append('inner_abort'),commit_publication=lambda q:events.append('inner_commit')),
@@ -175,6 +176,27 @@ def test_daemon_done_requires_confirmed_active_arrival(arrived):
     if arrived:
         assert events[0]['status']==Status.DONE and events[0]['done_seq']==12
         assert svc._pending=='idle'
+
+
+def test_mechanical_recovery_is_soft_until_timeout(monkeypatch):
+    active,pose,clock,sink=make_active(monkeypatch)
+    original=TorqueTilt.needs_normal_retract
+    try:
+        active.nominal.tilt.cfg=replace(active.nominal.tilt.cfg,recovery_timeout_s=0.)
+        TorqueTilt.needs_normal_retract=property(lambda self:True)
+        command=propose(active,pose,clock)
+        assert command is not None
+        assert any(r['event']=='mechanical_recovery' for r in sink.records)
+        sample=next(r for r in reversed(sink.records) if r['event']=='control_sample')
+        assert 'tilt_stop_reason' in sample
+        assert sample['mechanical_recovery_active'] is True
+        active.publication_abort('held',definitely_not_sent=True)
+        clock[0]+=.005
+        with pytest.raises(RuntimeError,match='mechanical recovery'):
+            propose(active,pose,clock)
+    finally:
+        TorqueTilt.needs_normal_retract=original
+        active.close()
 
 
 def test_geometric_endpoint_alone_does_not_confirm_settled_arrival(monkeypatch):

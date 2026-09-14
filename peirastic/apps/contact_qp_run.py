@@ -24,8 +24,14 @@ def main(argv=None):
         report=validate_study_config(config)
         nominal_frame = ('contact-face' if (config.get('qp') or {}).get('allocation_policy')
                          == 'delay_kf_cop_v1' else 'tool-axis')
+        from peirastic.contact_qp.runtime_config import motion_settings
+        motion=motion_settings(config)
+        normal=motion.get('normal_max_m_s',.010);seek=motion.get('seek_m_s',.010)
         report['nominal_profile']=(f'icra_contact_payload ({nominal_frame} 4 N, '
-                                   '0.010 m/s normal and seek limits)')
+                                   f'{normal:.3f} m/s normal, {seek:.3f} m/s seek limits)')
+        report['force_age_limit_s']=(config.get('source') or {}).get('max_age_s')
+        report['candidate_lifetime_s']=(config.get('qp') or {}).get('certificate_horizon_s',.01)
+        report['command_max_interval_s']=(config.get('command') or {}).get('max_interval_s')
         spec=None
         if args.path_spec:
             import yaml
@@ -42,8 +48,8 @@ def main(argv=None):
     from peirastic.scan_path import SCAN_FORCE_AXES
     from peirastic.realman8dof.force.contact_nominal import icra_contact_payload
     arm=PeirasticArm(prefix=args.prefix)
-    arm.set_force_control(control_frame='tool',max_vz_tool_m_s=.010)
-    arm.set_force_raw_override(icra_contact_payload())
+    arm.set_force_control(control_frame='tool',max_vz_tool_m_s=normal)
+    arm.set_force_raw_override(dict(icra_contact_payload(),max_vz_tool_m_s=normal,v_seek_free_m_s=seek))
     return int(arm.hfpc(reference='icra_path',path_spec=spec,contact_qp=config,
         law='contact_qp' if config.get('mode')=='active' else 'tff',
         force=[0,0,4,0,0,0],force_axes=SCAN_FORCE_AXES,

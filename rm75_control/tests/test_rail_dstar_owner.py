@@ -63,9 +63,9 @@ def _yaml_inner_at_rail(q_rail_m: float) -> JointIkController:
 
 
 def test_protocol_current_layout() -> None:
-    assert P.WBC_VERSION == 10
+    assert P.WBC_VERSION == 11
     assert P.WBC_OUT_SIZE == 1496
-    assert P.WBC_IN_SIZE == 752
+    assert P.WBC_IN_SIZE == 1780
     binary = find_wbc_rt_binary()
     if binary is None:
         pytest.skip("wbc_rt binary not built")
@@ -880,3 +880,22 @@ def test_native_task_weight_parity_aniso_iso_lpf_reset_rail() -> None:
         binary, j_rep, w, dt=dt, tau=0.0, aniso=True, ticks=1
     )
     assert np.allclose(native_rep[0], w_rep, rtol=1e-5, atol=1e-6)
+
+
+def test_frozen_posture_holds_live_split_during_zero_lateral_seek() -> None:
+    inner = _yaml_inner_at_rail(0.40)
+    q = inner.q_cmd.copy()
+    inner.reset(q)
+    pose0 = inner.kin.fk_pose(q)
+    d0 = float(pose0[1]) - float(q[0])
+    inner.set_rail_posture_frozen(True)
+    inner.pin_live_stroke()
+    assert inner.posture_retarget.d_star_m == pytest.approx(d0, abs=2e-3)
+    rail0 = float(inner.q_cmd[0])
+    last = None
+    for _ in range(int(5.0 / 0.005)):
+        last = inner.update(np.zeros(6), q_meas=inner.q_cmd.copy())
+    assert last is not None
+    travel = abs(float(inner.q_cmd[0]) - rail0)
+    assert travel < 0.010
+    assert abs(float(inner.posture_retarget.d_star_m) - d0) < 0.010

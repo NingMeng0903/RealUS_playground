@@ -23,7 +23,8 @@ constexpr int kNEq1 = kTask;
 constexpr int kNEq2 = kTask;
 constexpr int kRockingRow = kNv + kMaxCbf + kMaxPrefRows + kNPref;
 constexpr int kCommandPowerRow = kRockingRow + 1;
-constexpr int kNIn = kCommandPowerRow + 1;
+constexpr int kCommandTwistRow = kCommandPowerRow + 1;
+constexpr int kNIn = kCommandTwistRow + 16;
 constexpr double kRailDriveCap = 0.40;
 constexpr double kRailPrefW = 64.0;
 constexpr double kQuietLinEnter = 0.005;
@@ -1104,19 +1105,28 @@ bool InnerLoop::solve_hqp(const Mat6x8& J, const Vec6& v_cmd, const Vec8& q_geom
     return x;
   };
   auto try_qp1 = [&](const VecX& lo_use, const VecX& hi_use) -> bool {
+    auto certify = [&]() -> bool {
+      qp1_status_ = qp_status_code(qp1_->results.info.status);
+      qp1_iter_ = static_cast<uint32_t>(qp1_->results.info.iter);
+      if (!qp_is_candidate(qp1_status_)) {
+        qp1_last_ok_ = false;
+        return false;
+      }
+      const VecX& x = qp1_->results.x;
+      // Always certify against the original hard rows. A caller may use a
+      // different numerical bound for diagnostics, but no relaxed CBF result
+      // can become a publishable QP1 candidate.
+      const bool certified = qp_eq_violation(A1, b1, x) <= cert_tol &&
+                             qp_ineq_violation(C, lo, hi, x) <= cert_tol;
+      qp1_last_ok_ = certified;
+      return certified;
+    };
     solve_dense_qp(*qp1_, &qp1_inited_, qp1_last_ok_, H1, g1, A1, b1, C, lo_use, hi_use);
-    qp1_status_ = qp_status_code(qp1_->results.info.status);
-    qp1_iter_ = static_cast<uint32_t>(qp1_->results.info.iter);
-    qp1_last_ok_ = qp_is_candidate(qp1_status_);
-    if (!qp1_last_ok_) return false;
-    const VecX& x = qp1_->results.x;
-    // Always certify against the original hard rows. A caller may use a
-    // different numerical bound for diagnostics, but no relaxed CBF result
-    // can become a publishable QP1 candidate.
-    const bool certified = qp_eq_violation(A1, b1, x) <= cert_tol &&
-                           qp_ineq_violation(C, lo, hi, x) <= cert_tol;
-    qp1_last_ok_ = certified;
-    return certified;
+    if (certify()) return true;
+    // Affine command-twist rows move every tick with rail_exec. A stale
+    // warm start then hits max_iter with an uncertified x; retry cold.
+    solve_dense_qp(*qp1_, &qp1_inited_, false, H1, g1, A1, b1, C, lo_use, hi_use);
+    return certify();
   };
 
   // Fixed task-y row. P0 joint/collision rows never change on a relaxation.
@@ -1131,6 +1141,18 @@ bool InnerLoop::solve_hqp(const Mat6x8& J, const Vec6& v_cmd, const Vec8& q_geom
     lo[kCommandPowerRow] = command_power_min_w_ +
         (power_row.squaredNorm() > 0. ? std::nextafter(cert_tol, INFINITY) : 0.);
   }
+  for (int i = 0; i < command_twist_count_; ++i) {
+    // Affine map is slack + v_cmd. Put the row on slack so it is not a
+    // second copy of J_task; that duplicate made ProxQP miss a certified x.
+    C.block(kCommandTwistRow+i, kNv, 1, kNTaskSlack) = command_twist_rows_base_.row(i);
+    const double shift = command_twist_rows_base_.row(i).dot(v_cmd);
+    const double tolerance = std::max(10.0 * cfg_.eps_abs, 1e-5);
+    const double margin = command_twist_rows_base_.row(i).squaredNorm() == 0. ? 0. :
+        std::min(2. * tolerance, (command_twist_upper_[i]-command_twist_lower_[i]) / 4.);
+    lo[kCommandTwistRow+i] = command_twist_lower_[i] - shift + margin;
+    hi[kCommandTwistRow+i] = command_twist_upper_[i] - shift - margin;
+  }
+
   auto set_rocking_tier = [&](uint32_t tier) {
     rocking_policy_tier_ = tier;
     rocking_lower_ = -std::numeric_limits<double>::infinity();
@@ -1394,6 +1416,16 @@ TickOut InnerLoop::step(const TickIn& in) {
   const auto t0 = std::chrono::steady_clock::now();
   step_t0_ = t0;
   TickOut out;
+  command_twist_count_ = in.command_twist_count;
+  command_twist_rows_base_ = in.command_twist_rows_base;
+  command_twist_lower_ = in.command_twist_lower;
+  command_twist_upper_ = in.command_twist_upper;
+  if (command_twist_count_ < 0 || command_twist_count_ > 16 ||
+      !command_twist_rows_base_.allFinite() || !command_twist_lower_.allFinite() ||
+      !command_twist_upper_.allFinite() ||
+      (command_twist_lower_.head(command_twist_count_).array() >
+       command_twist_upper_.head(command_twist_count_).array()).any())
+    throw std::invalid_argument("invalid command twist intervals");
   rocking_enabled_ = in.rocking_enabled;
   command_power_enabled_ = in.command_power_enabled;
   command_power_wrench_base_ = in.command_power_wrench_base;
@@ -2046,6 +2078,16 @@ TickOut InnerLoop::step(const TickIn& in) {
       qdot.tail<7>().setZero();
     }
   }
+  const auto command_twist_ok = [&](const Vec8& candidate) {
+    if (!candidate.allFinite()) return false;
+    Vec6 velocity = J * candidate;
+    if (has_rail_exec) velocity += J.col(0) * (rail_exec - candidate[0]);
+    for (int i = 0; i < command_twist_count_; ++i) {
+      const double value = command_twist_rows_base_.row(i).dot(velocity);
+      if (value < command_twist_lower_[i]-1e-8 || value > command_twist_upper_[i]+1e-8) return false;
+    }
+    return true;
+  };
   if (published_ok) {
     Vec8 q_shadow, dq_s;
     bool would = false;
@@ -2054,7 +2096,7 @@ TickOut InnerLoop::step(const TickIn& in) {
     if (would) {
       const Vec8 qdot_s = (q_shadow - q_prev) / dt;
       const Vec6 lock_err = last_lock_J_ * qdot_s - last_lock_v_;
-      if (lock_err.norm() <= std::max(10.0 * cfg_.eps_abs, 1e-5) &&
+      if (command_twist_ok(qdot_s) && lock_err.norm() <= std::max(10.0 * cfg_.eps_abs, 1e-5) &&
           (!command_power_enabled_ || command_power_wrench_base_.dot(J * qdot_s) >= command_power_min_w_)) {
         q_cmd_ = q_shadow;
         qdot = qdot_s;
@@ -2064,8 +2106,8 @@ TickOut InnerLoop::step(const TickIn& in) {
   uint32_t publication_pause_reason = 0;
   // Includes QP1-only numerical fallback, clipping and all rail mutations.
   // Do not send an uncertified result or hide the changed payload in telemetry.
-  if (published_ok && command_power_enabled_ &&
-      (!qdot.allFinite() || command_power_wrench_base_.dot(J * qdot) < command_power_min_w_)) {
+  if (published_ok && (!command_twist_ok(qdot) || (command_power_enabled_ &&
+      (!qdot.allFinite() || command_power_wrench_base_.dot(J * qdot) < command_power_min_w_)))) {
     published_ok = false;
     qp1_status_ = kQpFailed;
     q_cmd_ = q_prev;

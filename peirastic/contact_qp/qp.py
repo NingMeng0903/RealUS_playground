@@ -57,7 +57,6 @@ class QpConfig:
     progress_weight: float = 1.0
     slack_weight: float = 10.0
     aperture_cost_weight: float = 1.0
-    cop_weight: float = 1.0
     cop_min_force_n: float = 0.8
     cop_max_m: float = 0.025
     max_velocity: np.ndarray = field(default_factory=lambda: np.array([.04, .04, .01, .6, .28, .6]))
@@ -73,6 +72,7 @@ class QpConfig:
     subspace_tolerance: np.ndarray = field(default_factory=lambda: np.array([1e-5, 1e-5, 1e-5, 1e-4, 1e-4, 1e-4]))
     solver_tolerance: float = 1e-9
     feasibility_tolerance: float = 1e-8
+    fixed_acceleration_overshoot: float = 0.25
     max_iterations: int = 200
     inner_iterations: int = 100
     solver_preconditioning: bool = False
@@ -91,13 +91,15 @@ class QpConfig:
         if self.schema_version != SCHEMA_VERSION or float(self.force_target_n) != 4.0:
             raise ValueError("contact QP v1 requires the fixed 4 N target")
         for name in ("force_sign_band_n", "aperture_budget_m_s", "repair_speed_m_s", "keep_speed_m_s",
-                     "aperture_cost_weight", "cop_weight"):
+                     "aperture_cost_weight"):
             object.__setattr__(self, name, positive(getattr(self, name), name, zero=True))
         for name in ("max_image_age_s", "max_step_s", "certificate_horizon_s", "normal_scale_m_s",
                      "angular_scale_rad_s", "slack_scale_m_s", "normal_weight", "angular_weight",
                      "progress_weight", "slack_weight", "angle_limit_rad", "solver_tolerance",
                      "feasibility_tolerance", "cop_min_force_n", "cop_max_m"):
             object.__setattr__(self, name, positive(getattr(self, name), name))
+        object.__setattr__(self, "fixed_acceleration_overshoot",
+                           positive(self.fixed_acceleration_overshoot, "fixed_acceleration_overshoot", zero=True))
         if not math.isfinite(self.c_min) or not 0 < self.c_min < 1 or not self.quality_policy_version:
             raise ValueError("explicit policy version and c_min in (0,1) required")
         if policy.quality_objective=='deficit_only_v1' and policy.balance_deadband>=self.c_min:

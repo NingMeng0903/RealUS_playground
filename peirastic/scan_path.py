@@ -18,7 +18,7 @@ from rm75_control.control.joint_admittance_8dof.reference import _soft_start_tim
 
 SCAN_ORDER = tuple((shape, direction) for direction in ("DtP", "PtD") for shape in "LCS")
 SCAN_FORCE_AXES = [0.0, 0.0, 1.0, 0.0, 1.0, 0.0]
-TILT_PROFILE = dict(mass=0.051, damping=0.22, coulomb_nm=0.025,
+TILT_PROFILE = dict(mass=0.051, damping=0.22, coulomb_nm=0.02,
                     vmax_rad_s=0.28, a_max=3.0)
 PEAK_RANGE_M = (0.008, 0.010)
 # Stored amplitude is pre-normalization. New C/S peaks use PEAK_RANGE_M
@@ -159,6 +159,9 @@ class ForearmReference:
         if not 0.05 <= np.linalg.norm(self.delta) <= self.length_m + 1e-6 or self.length_m > 1:
             raise ValueError("invalid path length")
         self.duration_s = self.length_m / self.speed + self.ramp
+        # Half the taught scan-axis span. Distinct from ``amplitude``, which
+        # is the 8–10 mm lateral noise used to shape C/S paths.
+        self.stroke_amplitude_m = 0.5 * abs(float(self.poses[1, 1] - self.poses[0, 1]))
         self._u = PchipInterpolator(self.arc, np.linspace(0, 1, len(self.arc)))
         self._du = self._u.derivative()
         rots = Rotation.from_euler("xyz", self.poses[:, 3:])

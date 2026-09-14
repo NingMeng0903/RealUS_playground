@@ -508,7 +508,7 @@ int main(int argc, char** argv) {
     } else if (a == "--protocol-info") {
       std::cout << "version " << wbc_rt::kVersion
                 << " in " << sizeof(wbc_rt::WbcIn)
-                << " out " << sizeof(wbc_rt::WbcOut) << " capabilities rocking_interval_v1 command_power_v1\n";
+                << " out " << sizeof(wbc_rt::WbcOut) << " capabilities rocking_interval_v1 command_power_v1 command_twist_v1\n";
       return 0;
     } else if (a == "--hash") {
       std::cout << WBC_SRC_HASH << "\n";
@@ -650,6 +650,13 @@ int main(int argc, char** argv) {
         tin.rocking_enabled = in->rocking_enabled != 0;
         for (int i = 0; i < 3; ++i) tin.rocking_axis_base[i] = in->rocking_axis_base[i];
         for (int i = 0; i < 6; ++i) tin.rocking_bounds[i] = in->rocking_bounds[i];
+        if (in->command_twist_count > 16) throw std::invalid_argument("too many command twist rows");
+        tin.command_twist_count = in->command_twist_count;
+        for (int i = 0; i < 16; ++i) {
+          tin.command_twist_lower[i] = in->command_twist_lower[i];
+          tin.command_twist_upper[i] = in->command_twist_upper[i];
+          for (int j = 0; j < 6; ++j) tin.command_twist_rows_base(i,j) = in->command_twist_rows_base[i][j];
+        }
         tin.command_power_enabled = in->command_power_enabled != 0;
         tin.command_power_min_w = in->command_power_min_w;
         for (int i = 0; i < 6; ++i) tin.command_power_wrench_base[i] = in->command_power_wrench_base[i];

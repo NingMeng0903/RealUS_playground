@@ -302,6 +302,70 @@ def test_wait_for_contact_rejects_force_law_without_contact_state() -> None:
         )
 
 
+def test_icra_seek_hold_reanchors_to_live_pose() -> None:
+    pose0 = np.array([0.4, -0.2, 0.3, 0.1, -0.2, 0.3])
+    source = OldStyleReference(pose0)
+    gate = ContactGatedReference(source, lambda: False, start_force_n=4.0, start_force_s=0.1)
+    gate.set_origin(pose0)
+    taught = gate.sample(0.0)
+    assert np.array_equal(taught.pose_d, pose0)
+    live = pose0 + np.array([0.02, -0.01, 0.0, 0.0, 0.0, 0.0])
+    gate.reanchor_hold(live)
+    held = gate.sample(1.0)
+    assert np.allclose(held.pose_d, live)
+    assert np.array_equal(held.vel_ff, np.zeros(6))
+    assert not gate.started
+    gate.set_origin(pose0)
+    reset = gate.sample(2.0)
+    assert np.array_equal(reset.pose_d, pose0)
+
+
+def test_icra_gate_release_blends_hold_to_anchor() -> None:
+    pose0 = np.array([0.4, -0.2, 0.3, 0.1, -0.2, 0.3])
+    source = OldStyleReference(pose0)
+    present = False
+    gate = ContactGatedReference(
+        source,
+        lambda: present,
+        start_force_n=4.0,
+        start_force_s=0.0,
+        start_blend_s=0.5,
+    )
+    gate.set_origin(pose0)
+    live = pose0 + np.array([0.0, 0.015, 0.0, 0.0, 0.0, 0.0])
+    gate.reanchor_hold(live)
+    gate.observe_force(0.0, 0.5)
+    gate.observe_force(4.0, 1.0)
+    present = True
+    opened = gate.sample(1.0)
+    assert np.allclose(opened.pose_d[:3], live[:3])
+    assert gate.started
+    halfway = gate.sample(1.25)
+    assert halfway.pose_d[1] == pytest.approx(-0.2 + 0.0075, abs=1e-9)
+    done = gate.sample(1.5)
+    child = source.sample(0.5)
+    assert np.allclose(done.pose_d[:3], child.pose_d[:3])
+
+
+def test_icra_seek_lateral_drift_fails_the_seek() -> None:
+    pose0 = np.array([0.4, -0.2, 0.3, 0.0, 0.0, 0.0])
+    source = OldStyleReference(pose0)
+    source.spec = {"schema": "icra_path_v1"}
+    gate = ContactGatedReference(
+        source,
+        lambda: False,
+        start_force_n=4.0,
+        start_force_s=0.1,
+        max_lateral_drift_m=0.03,
+    )
+    gate.set_origin(pose0)
+    gate.guard_approach(pose0)
+    drifted = pose0.copy()
+    drifted[1] += 0.04
+    with pytest.raises(RuntimeError, match="lateral drift"):
+        gate.guard_approach(drifted)
+
+
 def test_default_hybrid_phase_does_not_wrap_reference() -> None:
     ctx = _ctx()
     pose0 = ctx.kin.fk_pose(_SEED)
@@ -310,3 +374,40 @@ def test_default_hybrid_phase_does_not_wrap_reference() -> None:
     assert not hasattr(phase.outer, "contact_gate")
     if hasattr(phase.outer, "reference"):
         assert phase.outer.reference is source
+
+
+def test_scan_stroke_is_planned_on_enter_not_first_contact() -> None:
+    from peirastic.scan_path import ForearmReference, make_spec
+
+    ctx = _ctx()
+    calls = []
+    ctx.inner.plan_scan_stroke = lambda y, amp, q_rad=None: calls.append((float(y), float(amp))) or (0.0, 0.0)
+    distal = np.array([0.12, 0.02, 0.15, 0.0, 0.0, 0.0])
+    proximal = distal.copy()
+    proximal[1] += 0.12
+    reference = ForearmReference(make_spec(distal, proximal, "L", "DtP", 3, speed=0.005))
+    phase = build_track_hybrid_phase(
+        ctx,
+        reference,
+        duration_s=reference.duration_s,
+        dt=0.005,
+        use_tff_split=True,
+        payload={
+            "wait_for_contact": True,
+            "use_tff_split": True,
+            "scan_contact_n": 4.0,
+            "scan_contact_s": 0.1,
+            "desired_z": 4.0,
+            "force_axes": [0, 0, 1, 0, 1, 0],
+        },
+    )
+    assert calls == []
+    phase.on_enter()
+    assert len(calls) == 1
+    assert calls[0][0] == pytest.approx(0.5 * (distal[1] + proximal[1]))
+    assert calls[0][1] == pytest.approx(0.06)
+    frozen = []
+    ctx.inner.set_rail_posture_frozen = lambda value: frozen.append(bool(value))
+    phase.outer.contact_gate.on_start()
+    assert len(calls) == 1
+    assert frozen == [False]

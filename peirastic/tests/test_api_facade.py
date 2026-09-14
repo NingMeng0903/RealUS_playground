@@ -322,7 +322,7 @@ def test_default_hybrid_tilt_masks_conflicting_path_rotation() -> None:
     assert outer.last_tilt_engaged
     assert not outer.last_tilt_stalled
     assert outer.last_tilt_stop_reason == ""
-    assert outer.last_tilt_deadband_nm == pytest.approx(0.025)
+    assert outer.last_tilt_deadband_nm == pytest.approx(0.02)
 
 
 def test_hover_all_force_axes_fce_yields() -> None:

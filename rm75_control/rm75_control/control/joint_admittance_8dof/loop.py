@@ -618,8 +618,11 @@ class JointIkController:
         self.core.set_q_star(self.centering_task.q_target)
         self.core.set_q_star_signs(self.centering_task.q_target)
         self.q_cmd = np.zeros(kin.nv, dtype=float)
+        self._stroke_planner_warmed = False
+        self._warm_up_stroke_planner()
         self._arm_task_suppressed = False
         self._centering_suppressed = False
+        self._rail_posture_frozen = False
         self._manipulability_active = False
         self._box_dt_last_t: float | None = None
         self._box_h1_last: float | None = None
@@ -828,6 +831,45 @@ class JointIkController:
         if self._native is not None:
             self._native.push_flags()
 
+    def set_rail_posture_frozen(self, frozen: bool) -> None:
+        """Hold mixer d* at the pinned stroke while the contact gate is closed."""
+
+        self._rail_posture_frozen = bool(frozen)
+
+    def set_stroke(self, d_star: float, psi_star: float) -> None:
+        """Pin the planned (d*, ψ*) without searching a new scan stroke."""
+
+        d = float(d_star)
+        psi = float(psi_star)
+        if self.posture_retarget is not None and np.isfinite(d):
+            self.posture_retarget._d_star = d
+            self.posture_retarget.d_star_m = d
+            self.posture_retarget._d_center_target = d
+            self.posture_retarget._planned = True
+            if np.isfinite(psi):
+                self.posture_retarget._psi_cmd = psi
+                self.posture_retarget._psi_star = psi
+                self.posture_retarget.psi_star_rad = psi
+        if self.arm_task is not None and np.isfinite(psi):
+            self.arm_task.set_reference(psi)
+        if self.rail_ext_task is not None and np.isfinite(d):
+            self.rail_ext_task.set_d_pref(d)
+        if self._native is not None:
+            self._native.set_stroke(
+                d if np.isfinite(d) else 0.0,
+                psi if np.isfinite(psi) else 0.0,
+            )
+
+    def pin_live_stroke(self) -> None:
+        """Hold the current TCP/rail split so seek cannot walk the rail."""
+
+        pose = self.kin.fk_pose(self.q_cmd)
+        d_live = float(pose[1]) - float(self.q_cmd[0])
+        psi_live = float("nan")
+        if self.arm_task is not None:
+            psi_live = float(self.arm_task.arm_angle(self.q_cmd))
+        self.set_stroke(d_live, psi_live)
+
     def set_rail_extension_active(self, active: bool) -> None:
         self._rail_ext_active = bool(active)
         if self._native is not None:
@@ -1005,6 +1047,38 @@ class JointIkController:
             else np.full(self.kin.nv, np.nan)
         )
         return step
+
+    def _warm_up_stroke_planner(self) -> None:
+        """Import torch / IRD on the startup thread; leave planner state unused."""
+        rt = self.posture_retarget
+        if rt is None:
+            return
+        keep = {
+            key: (value.copy() if isinstance(value, np.ndarray) else value)
+            for key, value in rt.__dict__.items()
+            if key not in ("kin", "cfg", "_eval", "_ird")
+        }
+        n_y, n_d, n_psi = rt.cfg.n_y, rt.cfg.n_d, rt.cfg.n_psi
+        try:
+            rt.cfg.n_y = rt.cfg.n_d = rt.cfg.n_psi = 3
+            q = np.asarray(self.centering_task.q_target, dtype=float)
+            if q.size != self.kin.nv or not np.all(np.isfinite(q)):
+                q = np.asarray(self.q_cmd, dtype=float)
+            y_c = float(self.kin.fk_placement(q).translation[1])
+            rt.plan_stroke(
+                q,
+                y_center_m=y_c,
+                amplitude_m=0.01,
+                rail_lo=float(self.limits.q_lower[0]),
+                rail_hi=float(self.limits.q_upper[0]),
+            )
+        except Exception:
+            pass
+        finally:
+            rt.cfg.n_y, rt.cfg.n_d, rt.cfg.n_psi = n_y, n_d, n_psi
+            for key, value in keep.items():
+                setattr(rt, key, value.copy() if isinstance(value, np.ndarray) else value)
+            self._stroke_planner_warmed = True
 
     def plan_scan_stroke(
         self,
@@ -1239,6 +1313,7 @@ class JointIkController:
         self.last_comp_projected_frac = 0.0
         self._direct_joint_ptp = False
         self._plan_drives_rail = False
+        self._rail_posture_frozen = False
         self._ns_enter_t = 1e9
         self._ns_homotopy_open = False
         self._press_z_mark = float("nan")
@@ -1854,6 +1929,9 @@ class JointIkController:
         rocking_bounds=None,
         command_power_wrench_base=None,
         command_power_min_w=None,
+        command_twist_rows_base=None,
+        command_twist_lower=None,
+        command_twist_upper=None,
         path_twist: np.ndarray | None = None,
         feedback_twist: np.ndarray | None = None,
         v_force_z: float | None = None,
@@ -1886,6 +1964,9 @@ class JointIkController:
                 rocking_bounds=rocking_bounds,
                 command_power_wrench_base=command_power_wrench_base,
                 command_power_min_w=command_power_min_w,
+                command_twist_rows_base=command_twist_rows_base,
+                command_twist_lower=command_twist_lower,
+                command_twist_upper=command_twist_upper,
                 path_twist=path_twist,
                 feedback_twist=feedback_twist,
                 v_force_z=v_force_z,
@@ -2430,7 +2511,7 @@ class JointIkController:
                 dt=float(dt),
                 u_max=float(self.limits.v_max[0]),
                 leave_sign=float(leave_sign),
-                hold_d_star=False,
+                hold_d_star=bool(self._rail_posture_frozen),
                 quiescent=bool(self._quiescent),
                 secondary_alpha=float(secondary_alpha),
                 in_wall=abs(float(leave_sign)) > 0.0,
@@ -2547,6 +2628,9 @@ class JointIkController:
             rocking_bounds=rocking_bounds,
             command_power_wrench_base=command_power_wrench_base,
             command_power_min_w=command_power_min_w,
+            command_twist_rows_base=command_twist_rows_base,
+            command_twist_lower=command_twist_lower,
+            command_twist_upper=command_twist_upper,
             q_meas=q_state,
             resync_err=resync_vec,
             rail_locked=locked_hold,
@@ -3234,6 +3318,9 @@ class CartesianTrackConfig:
     fb_lpf_tau_s: float = 0.0
     # 1 = count in PD / last_err_mm, 0 = force axis (ignored). Default: all track.
     track_axes: np.ndarray = field(default_factory=lambda: np.ones(6))
+    # Rate-limit linear position feedback (m/s^2). 0 disables. Softens stale
+    # rail pose jumps before they become a single-tick Cartesian step.
+    feedback_accel_limit_m_s2: float = 0.0
 
 
 class CartesianTrackOuterLoop:
@@ -3251,6 +3338,7 @@ class CartesianTrackOuterLoop:
         self._reference_override = None
         self._fb_lpf: np.ndarray | None = None
         self._last_t_s: float | None = None
+        self._last_feedback_base: np.ndarray | None = None
 
     def set_reference_override(self, reference) -> None:
         self._reference_override = reference
@@ -3260,6 +3348,7 @@ class CartesianTrackOuterLoop:
             self.reference.set_origin(pose0, t_s=t_s)
         self._fb_lpf = None
         self._last_t_s = None if t_s is None else float(t_s)
+        self._last_feedback_base = None
 
     def sample(self, t_s: float, current_pose: np.ndarray, f_ext: np.ndarray) -> np.ndarray:
         del f_ext
@@ -3306,6 +3395,18 @@ class CartesianTrackOuterLoop:
 
         path_base = cap_twist(path_base)
         feedback_base = cap_twist(feedback_base)
+        limit = float(getattr(cfg, "feedback_accel_limit_m_s2", 0.0) or 0.0)
+        if limit > 0.0:
+            if self._last_feedback_base is None:
+                self._last_feedback_base = np.asarray(feedback_base[:3], dtype=float).copy()
+            else:
+                delta = feedback_base[:3] - self._last_feedback_base
+                max_step = limit * dt
+                norm = float(np.linalg.norm(delta))
+                if norm > max_step > 0.0:
+                    feedback_base = np.asarray(feedback_base, dtype=float).copy()
+                    feedback_base[:3] = self._last_feedback_base + delta * (max_step / norm)
+                self._last_feedback_base = np.asarray(feedback_base[:3], dtype=float).copy()
         tau = float(getattr(cfg, "fb_lpf_tau_s", 0.0) or 0.0)
         if self._fb_lpf is None:
             self._fb_lpf = np.asarray(feedback_base, dtype=float).copy()
@@ -6772,13 +6873,24 @@ def run_joint_admittance_phases(
                         active_source = None
                         if publication_owner is not None:
                             wait_for_source = getattr(publication_owner, "waiting_for_retry_source", None)
-                            if callable(wait_for_source) and wait_for_source(
-                                float(getattr(snap, "t_s", float("nan"))), now_s=time.monotonic(),
-                            ):
-                                ticks += 1
-                                next_tick += dt
-                                _wait_until(next_tick)
-                                continue
+                            if callable(wait_for_source):
+                                try:
+                                    waiting = wait_for_source(
+                                        float(getattr(snap, "t_s", float("nan"))), now_s=time.monotonic(),
+                                    )
+                                except Exception as exc:
+                                    from peirastic.contact_qp.execution import ProposalDeferred
+                                    if not isinstance(exc, ProposalDeferred) or not _recover_unsent(publication_owner, str(exc)):
+                                        raise
+                                    ticks += 1
+                                    next_tick += dt
+                                    _wait_until(next_tick)
+                                    continue
+                                if waiting:
+                                    ticks += 1
+                                    next_tick += dt
+                                    _wait_until(next_tick)
+                                    continue
                             try:
                                 active_source = publication_owner.prepare_source(
                                     f"{id(obs)}:{getattr(state_bus, 'session_id', 'direct')}",
@@ -7328,13 +7440,20 @@ def run_joint_admittance_phases(
                                 proposed_rail_m=float(step.q_send[0]),
                                 published_rail_m=float(rail_pub_m), dt_s=float(inner.cfg.dt))
                             if rail_coast_active: final_qdot[0] = 0.0
-                            final_base = inner.kin.jacobian(q_meas) @ final_qdot
+                            if rail_coast_active:
+                                review_qdot = np.asarray(step.qdot, dtype=float).copy()
+                                review_qdot[0] = 0.0
+                                final_base = inner.kin.jacobian(q_meas) @ review_qdot
+                            else:
+                                final_base = np.asarray(
+                                    step.v_tcp_estimated, dtype=float
+                                ).reshape(6)
                             rotation = publication_owner.pending_rotation_base_tcp
                             final_tool = np.r_[rotation.T @ final_base[:3], rotation.T @ final_base[3:]]
                             if not publication_owner.publication_review(
                                 proposal_id, final_tool, now_s=time.monotonic(),
                                 facts={"rail_target_m": float(rail_pub_m), "rail_coast": bool(rail_coast_active),
-                                    "velocity_model": "rebased_command_delta_v2",
+                                    "velocity_model": "arm_plus_measured_rail_v1",
                                     "command_qdot": final_qdot.tolist(),
                                     "rail_proposal_m": float(step.q_send[0]),
                                     "rail_model_rate_m_s": float(final_qdot[0]),

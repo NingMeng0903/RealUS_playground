@@ -14,6 +14,7 @@ from rm75_control.control.joint_admittance_8dof.api import (
     compile_phase,
     phase_cartesian_track,
     phase_hybrid_track,
+    stroke_amplitude_m,
 )
 from rm75_control.control.admittance_common.pose_math import pose_track_error_mm_deg
 from rm75_control.control.joint_admittance_8dof.loop import (
@@ -114,6 +115,8 @@ class HybridTffOuter:
         slack_norm: float | None = None,
     ) -> np.ndarray:
         gate = getattr(self, "contact_gate", None)
+        if gate is not None and not gate.started and gate.start_force_n is not None:
+            gate.reanchor_hold(current_pose)
         if gate is not None and gate.start_force_n is not None:
             gate.guard_approach(current_pose)
             age = max(float(sensor_age_s or 0), float(feedback_age_s or 0))
@@ -133,8 +136,22 @@ class HybridTffOuter:
         if self.mask_force_from_path:
             path = path * self.selection
             v_pos = v_pos * self.selection
+        dt_s = float(dt_actual) if dt_actual is not None else self.dt
+        visual_omega = None
+        guide = getattr(self, "pad_visual", None)
+        if guide is not None:
+            present = contact
+            if present is None:
+                present = bool(getattr(getattr(self.force_law, "controller", None),
+                                       "contact_present", False))
+            visual_omega = guide.preview(
+                pose=current_pose,
+                dt_s=dt_s,
+                contact_present=bool(present),
+                tilt=getattr(self.force_law, "tilt", None),
+            )
         fout = self.force_law.update(
-            dt_s=float(dt_actual) if dt_actual is not None else self.dt,
+            dt_s=dt_s,
             pose=current_pose,
             f_ext=np.asarray(f_ext, dtype=float).reshape(6),
             f_des=self.desired_force,
@@ -147,8 +164,12 @@ class HybridTffOuter:
             v_tcp_z_actual=v_actual,
             slack_norm=slack_norm,
             euler_order=self._euler_order(),
+            visual_velocity_target_rad_s=visual_omega,
         )
         v_star = compose_tff(v_pos, fout.v_force, self.selection)
+        if guide is not None:
+            from peirastic.realman8dof.force.torque_tilt import rotation_from_pose
+            guide.commit(v_star, rotation_from_pose(current_pose, euler_order=self._euler_order()))
         telemetry = dict(getattr(fout, "telemetry", None) or {})
         self.last_tau_y = float(telemetry.get("tau_y", float("nan")))
         self.last_tau_error_y = float(telemetry.get("tau_error_y", float("nan")))
@@ -288,8 +309,13 @@ def _contact_gated_reference(
     pay = dict(payload or {})
     if pay.get("scan_contact_n") is not None and not bool(pay.get("use_tff_split", False)):
         raise ValueError("independent scan force gate requires TFF")
-    gate = ContactGatedReference(reference, start_force_n=pay.get("scan_contact_n"),
-                                 start_force_s=pay.get("scan_contact_s", 0.1))
+    gate = ContactGatedReference(
+        reference,
+        start_force_n=pay.get("scan_contact_n"),
+        start_force_s=pay.get("scan_contact_s", 0.1),
+        start_blend_s=pay.get("scan_start_blend_s", 0.5),
+        max_lateral_drift_m=pay.get("scan_max_lateral_drift_m", 0.03),
+    )
     return gate, gate
 
 
@@ -298,6 +324,7 @@ def _bind_contact_gate(
     gate: ContactGatedReference,
     *,
     duration_s: float | None,
+    inner=None,
 ) -> Phase:
     """Bind a gate to the compiled controller and install its duration predicate."""
 
@@ -314,6 +341,40 @@ def _bind_contact_gate(
     # Keep the gate discoverable by the runner/telemetry without changing the
     # existing outer class hierarchy.
     outer.contact_gate = gate
+    if inner is not None:
+        previous_enter = phase.on_enter
+        previous_exit = phase.on_exit
+
+        def _plan_scan_stroke():
+            child = getattr(gate, "reference", None)
+            if hasattr(child, "poses"):
+                poses = np.asarray(child.poses, dtype=float).reshape(-1, 6)
+                y_center = 0.5 * float(poses[0, 1] + poses[1, 1])
+            else:
+                y_center = float(inner.kin.fk_pose(inner.q_cmd)[1])
+            inner.plan_scan_stroke(y_center, stroke_amplitude_m(gate))
+
+        def _enter():
+            if previous_enter is not None:
+                previous_enter()
+            inner.set_rail_posture_frozen(True)
+            inner.pin_live_stroke()
+            # IRD on the first 4 N tick spent the 50 ms command lease (016 L_DtP/001).
+            _plan_scan_stroke()
+
+        def _exit():
+            try:
+                inner.set_rail_posture_frozen(False)
+            finally:
+                if previous_exit is not None:
+                    previous_exit()
+
+        def _on_start():
+            inner.set_rail_posture_frozen(False)
+
+        phase.on_enter = _enter
+        phase.on_exit = _exit
+        gate.on_start = _on_start
     if duration_s is not None:
         duration = float(duration_s)
 
@@ -336,6 +397,8 @@ def build_pad_hybrid_phase(
     if twist_read is None:
         raise ValueError("pad hybrid needs a live twist source")
     force_law, f_des, tilt_cfg = _hybrid_force_law(dt, payload, control_frame=ctx.control_frame)
+    from .pad_visual import attach_pad_visual
+    pad_visual = attach_pad_visual(payload, tilt_cfg, force_law=force_law)
     selection = apply_tilt_selection(selection_from_payload(payload), tilt_cfg)
     pos = ServoTwistOuter(
         twist_read,
@@ -355,6 +418,18 @@ def build_pad_hybrid_phase(
     )
     phase = Phase(outer=outer, label=label, duration_s=duration_s)
     phase.on_enter = lambda: SecondaryPolicy(preset="track").apply(ctx.inner)
+    if pad_visual is not None:
+        outer.pad_visual = pad_visual
+        previous_exit = phase.on_exit
+
+        def _exit():
+            try:
+                pad_visual.close(wait=False)
+            finally:
+                if previous_exit is not None:
+                    previous_exit()
+
+        phase.on_exit = _exit
     return phase
 
 
@@ -383,13 +458,16 @@ def build_track_hybrid_phase(
         )
         phase = compile_phase(spec, ctx).phase
         if gate is not None:
-            return _bind_contact_gate(phase, gate, duration_s=duration_s)
+            return _bind_contact_gate(phase, gate, duration_s=duration_s, inner=ctx.inner)
         return phase
     force_law, f_des, tilt_cfg = _hybrid_force_law(dt, payload, control_frame=ctx.control_frame)
     cart = compile_phase(
         phase_cartesian_track(gated_reference, label=label, duration_s=duration_s),
         ctx,
     )
+    cart.outer.cfg.feedback_accel_limit_m_s2 = 1.0
+    if dict(payload or {}).get("contact_qp") is not None:
+        cart.outer.cfg.max_lin_vel_m_s = 0.02
     outer = HybridTffOuter(
         cart.outer,
         force_law,
@@ -402,7 +480,7 @@ def build_track_hybrid_phase(
     phase.outer = outer
     phase.label = label
     if gate is not None:
-        _bind_contact_gate(phase, gate, duration_s=duration_s)
+        _bind_contact_gate(phase, gate, duration_s=duration_s, inner=ctx.inner)
     return wrap_study_phase(phase,payload or {},ctx)
 
 

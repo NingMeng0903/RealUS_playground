@@ -9,7 +9,7 @@ static constexpr uint32_t kMagic = 0x57424331u;  // 'WBC1'
 // v8 appends real-time stage timing telemetry. Existing fields keep their
 // order so readers can migrate by version rather than by heuristic size
 // checks.
-static constexpr uint32_t kVersion = 10;
+static constexpr uint32_t kVersion = 11;
 
 enum Cmd : uint32_t {
   kCmdNone = 0,
@@ -128,6 +128,10 @@ struct WbcIn {
   double command_power_wrench_base[6];
   double command_power_min_w;
   uint32_t command_power_enabled;
+  double command_twist_rows_base[16][6];
+  double command_twist_lower[16];
+  double command_twist_upper[16];
+  uint32_t command_twist_count;
 };
 
 struct WbcOut {
@@ -253,7 +257,7 @@ struct WbcOut {
 };
 #pragma pack(pop)
 
-static_assert(sizeof(WbcIn) == 752, "WbcIn layout drift");
+static_assert(sizeof(WbcIn) == 1780, "WbcIn layout drift");
 static_assert(sizeof(WbcOut) == 1496, "WbcOut layout drift");
 
 inline void clear_in(WbcIn* s) {

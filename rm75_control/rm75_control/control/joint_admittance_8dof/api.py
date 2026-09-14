@@ -758,6 +758,31 @@ def phase_hybrid_track(
     )
 
 
+def stroke_amplitude_m(reference) -> float:
+    """Scan-stroke half-span for the posture planner. Never the C/S noise amplitude."""
+
+    seen = [reference]
+    child = getattr(reference, "reference", None)
+    if child is not None and child is not reference:
+        seen.append(child)
+    for obj in seen:
+        for name in ("stroke_amplitude_m", "amplitude_m"):
+            value = getattr(obj, name, None)
+            if value is None:
+                continue
+            try:
+                amp = float(value)
+            except (TypeError, ValueError):
+                continue
+            if np.isfinite(amp) and amp >= 0.0:
+                return amp
+    return 0.0
+
+
+def _contact_gated_reference(reference) -> bool:
+    return getattr(reference, "start_force_n", None) is not None
+
+
 def _make_on_enter(spec: JointPhaseSpec, ctx: CompileContext) -> Callable[[], None] | None:
     psi = None
     if spec.secondary.arm_angle is not None:
@@ -766,9 +791,14 @@ def _make_on_enter(spec: JointPhaseSpec, ctx: CompileContext) -> Callable[[], No
     def _enter() -> None:
         spec.secondary.apply(ctx.inner, psi_rad=psi)
         if spec.mode == TaskMode.HYBRID_TRACK and spec.reference is not None:
-            amp = float(getattr(spec.reference, "amplitude_m", 0.0) or 0.0)
-            pose = ctx.inner.kin.fk_pose(ctx.inner.q_cmd)
-            ctx.inner.plan_scan_stroke(float(pose[1]), amp)
+            if _contact_gated_reference(spec.reference):
+                ctx.inner.set_rail_posture_frozen(True)
+                ctx.inner.pin_live_stroke()
+            else:
+                pose = ctx.inner.kin.fk_pose(ctx.inner.q_cmd)
+                ctx.inner.plan_scan_stroke(
+                    float(pose[1]), stroke_amplitude_m(spec.reference)
+                )
         if (
             spec.secondary.preset == "move"
             and spec.q_target_rad is not None
