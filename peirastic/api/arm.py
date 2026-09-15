@@ -313,6 +313,7 @@ class _ClientMixin:
     def _send(self, mode: Mode, payload: dict[str, Any], *, block: float | int = 0) -> int:
         req = ModeRequest(mode, self._with_aux(payload, mode=mode))
         self.last_request = req
+        self.last_send_error = None
         if mode not in (Mode.SERVO_TWIST, Mode.SERVO_TWIST_HOLD):
             self._movev_session = False
         if self.client is None:
@@ -325,9 +326,11 @@ class _ClientMixin:
             return OK
         try:
             seq = self.client.set_mode(req)
-        except ValueError:
+        except ValueError as exc:
+            self.last_send_error = str(exc)
             return ERR_SEND
-        except FileNotFoundError:
+        except FileNotFoundError as exc:
+            self.last_send_error = str(exc)
             return ERR_SEND
         self.last_seq = int(seq)
         install_timeout = ACK_TIMEOUT_S if not block else min(
@@ -1025,6 +1028,7 @@ class _ForceMixin(_ClientMixin):
         contact_qp: dict[str, Any] | str | None = None,
         scan_contact_n: float | None = None,
         scan_contact_s: float | None = None,
+        plan_path: str | None = None,
         speed_m_s: float | None = None,
         law: str = "tff",
         force=None,
@@ -1038,6 +1042,7 @@ class _ForceMixin(_ClientMixin):
         soft_start: bool | None = None,
         ramp_s: float | None = None,
         wait_for_contact: bool | None = None,
+        extra: dict[str, Any] | None = None,
     ) -> int:
         """Track a pose path with force axes.
 
@@ -1054,6 +1059,7 @@ class _ForceMixin(_ClientMixin):
         if bad is not None:
             return bad
         kind = str(reference or "polyline").lower()
+        path = None if plan_path is None else str(plan_path)
         if kind == "icra_path":
             if path_spec is None or poses is not None:
                 raise ValueError("icra_path requires path_spec and no poses")
@@ -1061,6 +1067,11 @@ class _ForceMixin(_ClientMixin):
         elif kind == "hold":
             arr = None if poses is None else _as_poses(poses)
             speed = speed_m_s
+        elif path:
+            if poses is not None:
+                raise ValueError("polyline plan_path cannot include poses")
+            arr = None
+            speed = speed_m_s if speed_m_s is not None else float(self._max_line_speed) * _check_v(v)
         else:
             v = _check_v(v)
             arr = _as_poses(poses)
@@ -1072,6 +1083,7 @@ class _ForceMixin(_ClientMixin):
             scan_contact_n=scan_contact_n,
             scan_contact_s=scan_contact_s,
             poses=arr,
+            plan_path=path,
             speed_m_s=speed,
             law=law,
             force=force,
@@ -1081,6 +1093,7 @@ class _ForceMixin(_ClientMixin):
             soft_start=soft_start,
             ramp_s=ramp_s,
             wait_for_contact=wait_for_contact,
+            extra=dict(extra or {}),
         ).to_json()
         return self._send(Mode.TRACK_HYBRID, payload, block=block)
 
@@ -1339,6 +1352,7 @@ class PeirasticArm(
         self.ctx = ctx
         self.engine = engine
         self.last_request: ModeRequest | None = None
+        self.last_send_error: str | None = None
         self.last_seq = 0
         self._qp_aux: dict[str, Any] = {}
         self._force_extra: dict[str, Any] = {}

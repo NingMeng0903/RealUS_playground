@@ -1,0 +1,16 @@
+Log file created at: 2026/09/15 02:51:40
+Running on machine: pei
+Running duration (h:mm:ss): 0:00:00
+Log line format: [IWEF]yyyymmdd hh:mm:ss.uuuuuu threadid file:line] msg
+[I20260915 02:51:40.536152 1054819 DeviceManager.cpp:54] DeviceManager init ...
+[I20260915 02:51:40.536224 1054819 LinuxPal.cpp:21] createObPal: create LinuxPal!
+[I20260915 02:51:40.538834 1054819 EnumeratorLibusb.cpp:325] queryDevicesInfo done!
+[E20260915 02:51:40.846158 1054819 ObV4lDevice.cpp:450] Metadata node for uvc device: /dev/video2 was previously assigned to /dev/video3
+[I20260915 02:51:40.846189 1054819 DeviceManager.cpp:373] Current usb device port list::
+[I20260915 02:51:40.846194 1054819 DeviceManager.cpp:375]         - 2-4.4.2.2-19.0 | Orbbec(R) Astra(TM) 3D Camera(F) Depth
+[I20260915 02:51:40.846200 1054819 DeviceManager.cpp:362] No device matched!
+[I20260915 02:51:40.846262 1054819 LinuxPal.cpp:142] Create PollingDeviceWatcher!
+[I20260915 02:51:40.846266 1054819 DeviceManager.cpp:99] DeviceManager init  done!
+[I20260915 02:51:40.846271 1054819 DeviceManager.cpp:50] DeviceManager construct done
+[I20260915 02:51:40.846274 1054819 Context.cpp:51] Context created!
+[W20260915 02:51:40.846279 1054819 ObException.cpp:5] No device found, fail to create pipeline!

@@ -26,6 +26,101 @@ MIN_ROWS = 3
 MAX_STRIDE_M = 0.040
 MIN_ROW_SPAN_M = 0.020
 _GEOM_EPS_M = 1.0e-9
+LISSAJOUS_YAW_DEG = 20.0
+MAX_NORMAL_OFFSET_DEG = 20.0
+
+
+def path_phase(positions: np.ndarray) -> np.ndarray:
+    """Monotone arc-length phase in ``[0, 1]`` along a waypoint polyline."""
+
+    pts = np.asarray(positions, dtype=np.float64).reshape(-1, 3)
+    if len(pts) < 2:
+        return np.zeros(len(pts), dtype=np.float64)
+    ds = np.linalg.norm(np.diff(pts, axis=0), axis=1)
+    arc = np.concatenate(([0.0], np.cumsum(ds)))
+    total = float(arc[-1])
+    if not np.isfinite(total) or total <= _GEOM_EPS_M:
+        return np.zeros(len(pts), dtype=np.float64)
+    return np.clip(arc / total, 0.0, 1.0)
+
+
+def apply_smooth_normal_offset(
+    normals: np.ndarray,
+    positions: np.ndarray,
+    along: np.ndarray,
+    offset_rad: float,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Tilt each outward normal about the in-plane long axis by a signed angle.
+
+    ``θ(φ) = A sin(2π φ)`` with ``φ`` the cumulative arc-length fraction, so
+    the path starts at 0 and reaches both ``+A`` and ``−A`` once. ``A = 0``
+    leaves the fitted normals unchanged.
+    """
+
+    n = np.asarray(normals, dtype=np.float64).reshape(-1, 3)
+    lengths = np.linalg.norm(n, axis=1, keepdims=True)
+    n = n / np.maximum(lengths, 1.0e-12)
+    amplitude = float(offset_rad)
+    if not np.isfinite(amplitude):
+        raise ValueError("normal offset must be finite")
+    if abs(amplitude) < 1.0e-12:
+        return n.copy(), np.zeros(len(n), dtype=np.float64)
+    theta = amplitude * np.sin(2.0 * np.pi * path_phase(positions))
+    along_u = _unit(along)
+    axis = along_u[None, :] - (n @ along_u)[:, None] * n
+    axis_len = np.linalg.norm(axis, axis=1, keepdims=True)
+    usable = axis_len.ravel() > 1.0e-12
+    axis = np.divide(axis, axis_len, out=np.zeros_like(axis), where=usable[:, None])
+    # ``axis`` is tangent, so Rodrigues reduces to n cosθ + (axis × n) sinθ.
+    out = n * np.cos(theta)[:, None] + np.cross(axis, n) * np.sin(theta)[:, None]
+    out[~usable] = n[~usable]
+    out = out / np.maximum(np.linalg.norm(out, axis=1, keepdims=True), 1.0e-12)
+    flip = np.einsum("ij,ij->i", out, n) < 0.0
+    out[flip] *= -1.0
+    return out, theta
+
+
+def orientation_mode_name(plan) -> str:
+    pattern = getattr(plan, "pattern", "raster")
+    offset = float(getattr(plan, "normal_offset_deg", 0.0) or 0.0)
+    if pattern == "lissajous":
+        name = "rotation_minimizing_local_surface_normals_plus_cyclic_tool_z_yaw"
+    else:
+        name = "rotation_minimizing_local_surface_normals"
+    if abs(offset) > 1.0e-12:
+        name += "_plus_smooth_normal_offset"
+    return name
+
+
+def apply_lissajous_tool_z_yaw(
+    rotations: np.ndarray,
+    positions: np.ndarray,
+    *,
+    origin: np.ndarray,
+    along: np.ndarray,
+    across: np.ndarray,
+    v0: float,
+    v1: float,
+    yaw_rad: float,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Spin each RMF frame about tool +Z so short-axis sides reach ±yaw.
+
+    Long-axis ends and the path start (``v_n≈0``) stay at 0.
+    """
+
+    frames = np.asarray(rotations, dtype=np.float64)
+    if abs(float(yaw_rad)) < 1.0e-12:
+        return frames, np.zeros(len(frames), dtype=np.float64)
+    uv = _uv(positions, origin, along, across)
+    half = 0.5 * (float(v1) - float(v0))
+    center = 0.5 * (float(v0) + float(v1))
+    scale = max(abs(half), _GEOM_EPS_M)
+    v_n = np.clip((uv[:, 1] - center) / scale, -1.0, 1.0)
+    psi = float(yaw_rad) * v_n
+    delta = Rotation.from_rotvec(
+        np.column_stack([np.zeros(len(psi)), np.zeros(len(psi)), psi])
+    )
+    return (Rotation.from_matrix(frames) * delta).as_matrix(), psi
 
 
 def _unit(v: np.ndarray) -> np.ndarray:
@@ -406,6 +501,11 @@ class PhantomSPlan:
     pattern: str = "raster"
     scan_center: np.ndarray | None = None
     requested_dimensions: np.ndarray | None = None
+    lissajous_yaw_deg: float = 0.0
+    lissajous_yaw_rad: np.ndarray | None = None
+    normal_offset_deg: float = 0.0
+    normal_offset_rad: np.ndarray | None = None
+    command_normals: np.ndarray | None = None
 
 
 def plan_s_scan(
@@ -425,6 +525,8 @@ def plan_s_scan(
     scan_length_m: float | None = None,
     scan_width_m: float | None = None,
     pattern: str = "raster",
+    lissajous_yaw_deg: float = LISSAJOUS_YAW_DEG,
+    normal_offset_deg: float = 0.0,
 ) -> PhantomSPlan:
     cloud = np.asarray(top_pts, dtype=np.float64).reshape(-1, 3)
     cloud = cloud[np.isfinite(cloud).all(axis=1)]
@@ -435,6 +537,20 @@ def plan_s_scan(
     pattern_name = str(pattern).strip().lower()
     if pattern_name not in {"raster", "lissajous"}:
         raise ValueError("pattern must be 'raster' or 'lissajous'")
+    yaw_deg = float(lissajous_yaw_deg)
+    if not np.isfinite(yaw_deg):
+        raise ValueError("lissajous_yaw_deg must be finite")
+    if pattern_name != "lissajous":
+        yaw_deg = 0.0
+    yaw_rad = np.deg2rad(yaw_deg)
+    offset_deg = float(normal_offset_deg)
+    if not np.isfinite(offset_deg):
+        raise ValueError("normal_offset_deg must be finite")
+    if abs(offset_deg) > MAX_NORMAL_OFFSET_DEG + 1.0e-12:
+        raise ValueError(
+            f"normal_offset_deg must be in [{-MAX_NORMAL_OFFSET_DEG:g}, {MAX_NORMAL_OFFSET_DEG:g}]"
+        )
+    offset_rad = np.deg2rad(offset_deg)
     requested_dimensions = None
     if scan_length_m is not None:
         requested_dimensions = np.asarray(
@@ -546,8 +662,23 @@ def plan_s_scan(
             point, local_normal = surface.project(np.asarray(query))
             samples.append(np.concatenate([point, local_normal]))
         samples = _dedupe(np.asarray(samples))
-        normals = samples[:, 3:6]
-        rotations = rotation_minimizing_frames(normals, initial_rotation)
+        surface_normals = samples[:, 3:6]
+        command_normals, offset_theta = apply_smooth_normal_offset(
+            surface_normals, samples[:, :3], along, offset_rad,
+        )
+        rotations = rotation_minimizing_frames(command_normals, initial_rotation)
+        yaw = np.zeros(len(rotations), dtype=np.float64)
+        if pattern_name == "lissajous" and abs(yaw_rad) > 1.0e-12:
+            rotations, yaw = apply_lissajous_tool_z_yaw(
+                rotations,
+                samples[:, :3],
+                origin=origin,
+                along=along,
+                across=across,
+                v0=v0,
+                v1=v1,
+                yaw_rad=yaw_rad,
+            )
         rpy = np.unwrap(Rotation.from_matrix(rotations).as_euler("xyz"), axis=0)
         poses = np.column_stack([samples[:, :3], rpy])
         metadata = dict(
@@ -556,15 +687,17 @@ def plan_s_scan(
             u_span_m=float(u1 - u0),
             v_span_m=float(v1 - v0),
             region_method=region_method,
+            lissajous_yaw_rad=yaw,
+            normal_offset_rad=offset_theta,
         )
-        return poses, normals, rotations, metadata
+        return poses, surface_normals, command_normals, rotations, metadata
 
     # Surface tilt changes the footprint slightly. Rebuild the inset using a
     # monotonically increasing support bound; do not silently rotate the tool
     # to make it fit. Typical near-flat surfaces settle after one refinement.
     clearance = footprint(initial_rotation[None])
     for _ in range(6):
-        poses, normals, rotations, metadata = build(clearance)
+        poses, normals, command_normals, rotations, metadata = build(clearance)
         required = footprint(rotations)
         if np.all(required <= clearance + 1e-9):
             break
@@ -581,8 +714,12 @@ def plan_s_scan(
     diagnostics["footprint_model"] = "tool_xy_square_projected_on_surface_outline"
     diagnostics["footprint_support_m"] = clearance.tolist()
     diagnostics["pattern"] = pattern_name
+    diagnostics["lissajous_yaw_deg"] = float(yaw_deg)
+    diagnostics["normal_offset_deg"] = float(offset_deg)
     if requested_dimensions is not None:
         diagnostics["requested_dimensions_m"] = requested_dimensions.tolist()
+    yaw_series = metadata.pop("lissajous_yaw_rad")
+    offset_series = metadata.pop("normal_offset_rad")
     return PhantomSPlan(
         poses=poses, standoff=standoff, lift=lift, normal=n, right=along, far=across,
         length_m=float(np.linalg.norm(np.diff(poses[:, :3], axis=0), axis=1).sum()),
@@ -595,5 +732,10 @@ def plan_s_scan(
         requested_dimensions=(
             None if requested_dimensions is None else requested_dimensions.copy()
         ),
+        lissajous_yaw_deg=float(yaw_deg),
+        lissajous_yaw_rad=yaw_series,
+        normal_offset_deg=float(offset_deg),
+        normal_offset_rad=offset_series,
+        command_normals=command_normals,
         **metadata,
     )

@@ -212,8 +212,8 @@ def study_config(payload):
 def wrap_study_phase(phase,payload,context):
     config=study_config(payload)
     if config is None:return phase
-    if str(payload.get('reference'))!='icra_path':
-        raise ValueError('contact_qp recording currently requires reference=icra_path')
+    if str(payload.get('reference')) not in ('icra_path', 'polyline'):
+        raise ValueError('contact_qp recording currently requires reference=icra_path or polyline')
     active = config.get('mode') == 'active'
     if active:
         from .contact_active import ContactQpOuter

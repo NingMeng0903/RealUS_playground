@@ -21,7 +21,9 @@ from peirastic.contact_qp.features import FeatureConfig
 from peirastic.contact_qp.reference import FiniteIntervalReference
 from peirastic.contact_qp.runtime_source import SourceClock,SourceGapContext
 from peirastic.contact_qp.execution import EXECUTION_POLICY,ProposalDeferred,QualityProgress,QualityIntervals
-from peirastic.contact_qp.rocking_smoothing import RockingSmoothing
+from peirastic.contact_qp.rocking_smoothing import (
+    OUTER_ROCKING_RELAX_REASONS, ROCKING_TIER_MECHANICAL, RockingSmoothing,
+    first_admissible_rocking_tier, published_rocking_rows)
 from peirastic.contact_qp.region_visual import region_visual_request
 from peirastic.contact_qp.confidence_fusion import (POLICIES, FEATURE_VERSION, TASK_SOURCE,
     ConfidenceAngularTask, cop_preference, task_components, accepted_loading)
@@ -232,6 +234,7 @@ class ContactQpOuter:
         self._publication_retry_source_t_s=None;self._publication_retry_count=0
         self._lease_expiry_retries=0
         self._lease_expiry_retry_limit=3
+        self._outer_rocking_tier=ROCKING_TIER_MECHANICAL
         self._recovery_started_s=None
         self.last_path_twist=np.zeros(6);self.last_feedback_twist=np.zeros(6)
         self.sink.emit('study_start',mode='active',command_authority='outer_qp_original_ik',
@@ -507,9 +510,13 @@ class ContactQpOuter:
                 or budget.pending is not None or budget.started):
             return False
         now=time.monotonic()
-        if not np.isfinite(now) or (budget.last_time_s is not None and now<=budget.last_time_s):
+        if not np.isfinite(now) or (budget.last_time_s is not None and now<budget.last_time_s):
             return False
         if not budget.advance(now) or budget.active is None or now>=budget.active.expires_s:
+            if (self._continuous_execution and self._solver_retry_reason()
+                    and self._lease_expiry_retries<self._lease_expiry_retry_limit):
+                self._forgive_solver_retry_lease(budget,now)
+                return True
             return False
         self._publication_retry_count+=1
         self._publication_retry_source_t_s=(self._deferred_source_t_s if self._deferred_source_t_s is not None
@@ -740,6 +747,7 @@ class ContactQpOuter:
             if self._quality_progress is not None and not self._delayed:
                 self._pending_alpha_target,self._pending_alpha_preferred=self._quality_progress.preview(observation,actual_dt)
             mechanical_rows=TwistConstraints()
+            rocking_tier=ROCKING_TIER_MECHANICAL
             acceleration_dt=actual_dt
             if self._delayed:
                 tf=twist_tcp_to_face(self.geometry)
@@ -780,10 +788,10 @@ class ContactQpOuter:
                 if self._rocking is not None:
                     axis,bounds,history=self._rocking.preview(rotation @ self.geometry.T_tcp_face[:3,:3],now,actual_dt)
                     self._pending_rocking=(axis,bounds,history)
-                    low=float(np.max(bounds[::2]));high=float(np.min(bounds[1::2]))
-                    if low>high:raise RuntimeError('published rocking acceleration/jerk intersection empty')
-                    mechanical_rows=TwistConstraints(tf[[4]], [low], [high],valid_until_s=now+self.config['command']['max_interval_s'],
-                        labels=('published_contact_rocking_speed_acc_jerk',))
+                    rocking_tier=first_admissible_rocking_tier(bounds)
+                    rows,_=published_rocking_rows(tf[4],bounds,now_s=now,
+                        horizon_s=self.config['command']['max_interval_s'],tier=rocking_tier)
+                    mechanical_rows=TwistConstraints() if rows is None else rows
                     # Rocking elapsed_s is only the contact-Y publication interval.
                     # Six-axis command slew stays on the control step: a 0.6 ms
                     # rocking gap after retract/MoveJ made seek QP empty.
@@ -807,13 +815,30 @@ class ContactQpOuter:
                 deadline=min(deadline,self.command_budget.active.expires_s)
             if self._command_lease is not None and self._command_lease.active is not None:
                 deadline=min(deadline,self._command_lease.active.expires_s)
-            self.pending_result=self.solver.solve(QpInput(self.geometry,nominal,path,
-                float(-env_contact[2]) if self._delayed else float(np.sign(self.baseline.desired_force[2])*f_ext[2]),dt,now,
-                observation=observation,previous_twist=previous,measured_angle=measured_angle,energy=energy_snapshot,
-                acceleration_dt_s=acceleration_dt,mechanical=mechanical_rows,
-                repair_execution_enabled=bool(self.controller.contact_present) and (self.contact_gate is None or bool(self.contact_gate.started)),
-                repair_angle_reference_reset=angle_reference_reset,alpha_preferred=self._pending_alpha_preferred,**fusion_input),
-                **(dict(deadline_s=deadline,online=True) if self._continuous_execution else {}))
+            def _solve_outer(rows):
+                return self.solver.solve(QpInput(self.geometry,nominal,path,
+                    float(-env_contact[2]) if self._delayed else float(np.sign(self.baseline.desired_force[2])*f_ext[2]),dt,now,
+                    observation=observation,previous_twist=previous,measured_angle=measured_angle,energy=energy_snapshot,
+                    acceleration_dt_s=acceleration_dt,mechanical=rows,
+                    repair_execution_enabled=bool(self.controller.contact_present) and (self.contact_gate is None or bool(self.contact_gate.started)),
+                    repair_angle_reference_reset=angle_reference_reset,alpha_preferred=self._pending_alpha_preferred,**fusion_input),
+                    **(dict(deadline_s=deadline,online=True) if self._continuous_execution else {}))
+            self.pending_result=_solve_outer(mechanical_rows)
+            while (self.pending_result.qp_twist is None and self._continuous_execution
+                   and self._rocking is not None and rocking_tier<ROCKING_TIER_MECHANICAL
+                   and str(self.pending_result.diagnostics.get('reason')) in OUTER_ROCKING_RELAX_REASONS):
+                previous_tier=rocking_tier
+                rocking_tier=first_admissible_rocking_tier(
+                    self._pending_rocking[1],start=rocking_tier+1)
+                rows,_=published_rocking_rows(twist_tcp_to_face(self.geometry)[4],
+                    self._pending_rocking[1],now_s=now,
+                    horizon_s=self.config['command']['max_interval_s'],tier=rocking_tier)
+                mechanical_rows=TwistConstraints() if rows is None else rows
+                self.sink.emit('outer_rocking_tier_relax',control_id=self._control_id,
+                    from_tier=previous_tier,to_tier=rocking_tier,
+                    reason=self.pending_result.diagnostics.get('reason'))
+                self.pending_result=_solve_outer(mechanical_rows)
+            self._outer_rocking_tier=int(rocking_tier)
             if self.pending_result.qp_twist is None:
                 self.sink.emit('qp_prepare_rejected',control_id=self._control_id,
                     nominal_twist_tool=nominal,path_twist_tool=path,previous_twist_tool=previous,
@@ -880,7 +905,9 @@ class ContactQpOuter:
                 tilt_capped=bool(self.nominal.tilt.tilt_capped),
                 tilt_stalled=bool(self.nominal.tilt.tilt_stalled),
                 tilt_on_tube=bool(self.nominal.tilt.on_tube),
-                mechanical_recovery_active=self._recovery_started_s is not None)
+                mechanical_recovery_active=self._recovery_started_s is not None,
+                outer_rocking_policy_tier=int(rocking_tier),
+                outer_rocking_limited=bool(rocking_tier>1))
             self._drain_command_energy()
             return self.pending_result.qp_twist.copy()
         except Exception:

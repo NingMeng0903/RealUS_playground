@@ -363,8 +363,11 @@ def compile_request(
         )
     if req.mode == Mode.TRACK_HYBRID:
         kind = str(payload.get("reference", "hold"))
-        if (payload.get("law")=="contact_qp" or payload.get("contact_qp") is not None) and kind!="icra_path":
-            raise ValueError("contact_qp study requires reference=icra_path")
+        if (payload.get("law") == "contact_qp" or payload.get("contact_qp") is not None) and kind not in (
+            "icra_path",
+            "polyline",
+        ):
+            raise ValueError("contact_qp study requires reference=icra_path or polyline")
         if kind in ("pad", "twist", "servo"):
             return _finish_phase(
                 ctx,

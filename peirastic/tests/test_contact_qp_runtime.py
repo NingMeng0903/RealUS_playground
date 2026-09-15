@@ -72,6 +72,9 @@ def test_baseline_recording_does_not_require_geometry_or_image_calibration():
     assert study_config(payload)=={'mode':'baseline'}
     with pytest.raises(ValueError):HfpcPayload(reference='hold',contact_qp={'mode':'baseline'}).to_json()
     with pytest.raises(ValueError):HfpcPayload(reference='icra_path',law='contact_qp').to_json()
+    polyline=HfpcPayload(reference='polyline',contact_qp={'mode':'baseline'},poses=[[0]*6]*2).to_json()
+    assert polyline['reference']=='polyline'
+    assert polyline['contact_qp']=={'mode':'baseline'}
 
 
 def test_wrapper_measurement_signature_preserves_zero_and_false():

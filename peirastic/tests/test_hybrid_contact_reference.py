@@ -302,6 +302,42 @@ def test_wait_for_contact_rejects_force_law_without_contact_state() -> None:
         )
 
 
+@pytest.mark.parametrize("law", ["admittance_1d", "ac2d", "tafac"])
+def test_comparison_wait_for_contact_binds_force_latch(law: str) -> None:
+    ctx = _ctx()
+    pose0 = ctx.kin.fk_pose(_SEED)
+    source = AbsoluteReference(pose0)
+    phase = build_track_hybrid_phase(
+        ctx,
+        source,
+        duration_s=0.50,
+        dt=0.005,
+        use_tff_split=True,
+        payload={
+            "wait_for_contact": True,
+            "law": law,
+            "desired_z": 4.0,
+            "contact_enter_n": 0.8,
+            "enter_confirm_s": 0.005,
+            "force_axes": [0.0, 0.0, 1.0, 0.0, 0.0, 0.0],
+        },
+    )
+    gate = phase.outer.contact_gate
+    controller = phase.outer.controller
+    assert controller is not None
+    assert hasattr(controller, "contact_present")
+    phase.outer.set_origin(pose0)
+    phase.outer.sample(0.0, pose0, np.array([0.0, 0.0, -2.0, 0.0, 0.0, 0.0]))
+    assert not gate.started
+    assert not controller.contact_present
+    phase.outer.sample(0.005, pose0, np.array([0.0, 0.0, 2.0, 0.0, 0.0, 0.0]))
+    assert bool(controller.contact_present)
+    assert not gate.started
+    phase.outer.sample(0.010, pose0, np.array([0.0, 0.0, 2.0, 0.0, 0.0, 0.0]))
+    assert gate.started
+    assert gate.elapsed_s == pytest.approx(0.0)
+
+
 def test_icra_seek_hold_reanchors_to_live_pose() -> None:
     pose0 = np.array([0.4, -0.2, 0.3, 0.1, -0.2, 0.3])
     source = OldStyleReference(pose0)

@@ -22,6 +22,7 @@ import json
 import sys
 import time
 from pathlib import Path
+from types import SimpleNamespace
 
 _REPO = Path(__file__).resolve().parents[3]
 for _p in (_REPO, _REPO / "rm75_control", _REPO / "src"):
@@ -44,16 +45,38 @@ from peirastic.core.ipc import Status
 from peirastic.core.modes import Mode
 from peirastic.DEMO.phathom_scanning.cloud import cloud_in_rail_base, recv_camera_cloud
 from peirastic.DEMO.phathom_scanning.detect import detect_phantom_top
-from peirastic.DEMO.phathom_scanning.preview import save_capture, save_failure, save_plan
+from peirastic.DEMO.phathom_scanning.preview import (
+    save_capture,
+    save_detect_snapshots,
+    save_failure,
+    save_plan,
+)
 from peirastic.DEMO.phathom_scanning.run import _fmt_xyz, _live_q8, _toward_mount
 from peirastic.DEMO.phathom_scanning.s_plan import (
     LIFT_M,
+    LISSAJOUS_YAW_DEG,
+    MAX_NORMAL_OFFSET_DEG,
     PROBE_WIDTH_M,
     STANDOFF_M,
     plan_s_scan,
 )
 from peirastic.DEMO.phathom_scanning.surface import MAX_FIT_RADIUS_M
 from peirastic.DEMO.phathom_scanning.force_trace import ForceTraceRecorder
+from peirastic.DEMO.phathom_scanning.comparison_run import (
+    COMPARISON_MODES,
+    COMPARISON_REUSE_MODES,
+    COMPARISON_SPEED_M_S,
+    DEFAULT_CONTACT_QP,
+    DEFAULT_DATA_ROOT,
+    allocate_run,
+    comparison_force_axes,
+    comparison_hfpc_options,
+    git_head,
+    load_reused_plan,
+    start_us_recorder,
+    write_hfpc_polyline,
+    write_meta,
+)
 from peirastic.api import PeirasticArm
 from peirastic.api.codes import CODE_NAMES, OK
 
@@ -221,8 +244,19 @@ def _monitor_hybrid_scan(arm: PeirasticArm, plan, *, duration_s: float, seq: int
         msg = str(snap.get("msg") or "")
         parts = msg.split()
         stage = parts[0] if parts else ""
-        active = (int(snap.get("mode", -1)) == int(Mode.TRACK_HYBRID)
-                  and stage in (f"{label}:approach", f"{label}:tracking"))
+        hybrid = int(snap.get("mode", -1)) == int(Mode.TRACK_HYBRID)
+        recovering = hybrid and stage == f"{label}:recovering"
+        active = hybrid and stage in (f"{label}:approach", f"{label}:tracking")
+        if recovering:
+            if tracking_wall_t0 is None and now - t0 > CLOSE_TIMEOUT_S:
+                raise RuntimeError("controller did not confirm contact (timeout)")
+            if tracking_wall_t0 is not None and now - tracking_wall_t0 > 4.0 * duration_s + 12.0:
+                raise RuntimeError("hybrid scan timed out")
+            if now >= next_print:
+                print(f"[SCAN] recovering  {msg}", flush=True)
+                next_print = now + PRINT_S
+            time.sleep(0.05)
+            continue
         if not active:
             if tracking_wall_t0 is not None or now - t0 > 2.0:
                 raise RuntimeError(f"contact-gated HFPC not active: {msg}; "
@@ -302,6 +336,15 @@ def _ok(arm: PeirasticArm, ret: int, what: str) -> bool:
     if ret == OK:
         return True
     print(f"[ERR] {what} -> {ret} ({CODE_NAMES.get(ret, ret)})", flush=True)
+    detail = getattr(arm, "last_send_error", None)
+    if detail:
+        print(f"[ERR] {detail}", flush=True)
+    try:
+        msg = (arm._snapshot() or {}).get("msg")
+        if msg:
+            print(f"[ERR] controller: {msg}", flush=True)
+    except Exception:
+        pass
     try:
         arm.set_arm_stop()
     except Exception:
@@ -316,6 +359,23 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     ap.add_argument("--force", type=float, default=4.0, help="F* (N), default 4")
     ap.add_argument("--pattern", choices=("raster", "lissajous"), default="raster",
                     help="raster (default): parallel rows; lissajous: a closed two-lobe path")
+    ap.add_argument("--mode", choices=COMPARISON_MODES, default=None,
+                    help="comparison outer law; omit for the existing TFF DEMO")
+    ap.add_argument("--data-root", type=Path, default=DEFAULT_DATA_ROOT,
+                    help="Comparison Study root when --mode is set")
+    ap.add_argument("--reuse-plan", type=Path, default=None,
+                    help="skip detect and load plan.json; required for "
+                         "admittance_1d/ac2d/tafac so they share the ultrapoc polyline")
+    ap.add_argument("--contact-qp-config", type=Path, default=DEFAULT_CONTACT_QP)
+    ap.add_argument("--lissajous-yaw-deg", type=float, default=LISSAJOUS_YAW_DEG,
+                    help="tool-Z yaw on the short-axis sides, ±20 by default; 0 at long-axis ends")
+    ap.add_argument("--normal-offset-deg", type=float, default=0.0,
+                    help="smooth signed tilt of the fitted phantom normal about the long axis, "
+                         "θ=A sin(2πφ); 0 keeps the current projection, max ±20")
+    ap.add_argument("--no-us", action="store_true",
+                    help="do not start the ICRA ultrasound recorder")
+    ap.add_argument("--cloud-snapshots", type=int, default=1,
+                    help="RGB clouds to keep at the detect instant, default 1")
     ap.add_argument("--scan-length-m", type=float, default=SCAN_LENGTH_M,
                     help="centered region length along phantom long edge, default 0.140 m")
     ap.add_argument("--scan-width-m", type=float, default=SCAN_WIDTH_M,
@@ -326,7 +386,8 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     ap.add_argument("--overlap", type=float, default=0.20)
     ap.add_argument("--surface-radius-m", type=float, default=0.030,
                     help="local surface fitting radius; smooths depth and normals together")
-    ap.add_argument("--speed-m-s", type=float, default=SCAN_SPEED_M_S)
+    ap.add_argument("--speed-m-s", type=float, default=None,
+                    help="path speed (m/s); comparison default 0.010, DEMO default 0.018")
     ap.add_argument("--ptp-v", type=float, default=PTP_V,
                     help="PTP joint speed scale (0, 1], same as DEMO.cartesian")
     ap.add_argument("--movej-v", type=float, default=MOVEJ_V)
@@ -335,6 +396,8 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     ap.add_argument("--plan-dir", type=Path, default=_REPO / "peirastic" / "logs" / "phantom",
                     help="save the cloud, controller-frame plan and preview here")
     args = ap.parse_args(argv)
+    if args.speed_m_s is None:
+        args.speed_m_s = COMPARISON_SPEED_M_S if args.mode is not None else SCAN_SPEED_M_S
     for name in ("force", "standoff_m", "lift_m", "probe_width_m", "speed_m_s", "cloud_timeout", "surface_radius_m", "scan_length_m", "scan_width_m"):
         if not np.isfinite(getattr(args, name)) or getattr(args, name) <= 0:
             ap.error(f"--{name.replace('_', '-')} must be positive and finite")
@@ -345,33 +408,69 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         ap.error("--overlap must be in [0, 1)")
     if args.surface_radius_m > MAX_FIT_RADIUS_M:
         ap.error(f"--surface-radius-m must be <= {MAX_FIT_RADIUS_M}")
+    if not np.isfinite(args.lissajous_yaw_deg):
+        ap.error("--lissajous-yaw-deg must be finite")
+    if not np.isfinite(args.normal_offset_deg):
+        ap.error("--normal-offset-deg must be finite")
+    if abs(float(args.normal_offset_deg)) > MAX_NORMAL_OFFSET_DEG:
+        ap.error(f"--normal-offset-deg must be in [{-MAX_NORMAL_OFFSET_DEG:g}, {MAX_NORMAL_OFFSET_DEG:g}]")
+    if args.reuse_plan is not None and not (args.reuse_plan / "plan.json").is_file():
+        ap.error(f"--reuse-plan needs plan.json in {args.reuse_plan}")
+    if args.mode in COMPARISON_REUSE_MODES and args.reuse_plan is None:
+        ap.error(f"{args.mode} must --reuse-plan the ultrapoc run (same polyline)")
+    if args.mode == "ultrapoc" and abs(float(args.force) - 4.0) > 1.0e-9:
+        ap.error("ultrapoc comparison keeps Fd = 4 N")
+    if int(args.cloud_snapshots) < 1:
+        ap.error("--cloud-snapshots must be >= 1")
     return args
+
+
+def _grab_still_cloud(arm: PeirasticArm, args: argparse.Namespace, *, q_ref,
+                      drain: int = 1) -> dict:
+    recv_kw = {"timeout_s": float(args.cloud_timeout), "frames": int(drain)}
+    if args.subscribe:
+        recv_kw["subscribe"] = str(args.subscribe)
+    meta, xyz_cam, rgb = recv_camera_cloud(**recv_kw)
+    q_after = _live_q8(arm)
+    rail_mm, arm_deg = _q_travel(q_ref, q_after)
+    if rail_mm > 1.0 or arm_deg > 0.2:
+        raise RuntimeError("robot moved during cloud capture; detect again from a stationary pose")
+    wall_ns = meta.get("wall_time_ns")
+    if wall_ns is not None and not -0.1 <= time.time() - float(wall_ns) * 1e-9 <= 1.0:
+        raise RuntimeError("Orbbec cloud is stale; wait for a fresh frame")
+    xyz = cloud_in_rail_base(xyz_cam, q_after)
+    live = _live_pose(arm, timeout_s=1.0)
+    return dict(xyz_cam=xyz_cam, rgb=rgb, q8=q_after, xyz=xyz, live=live, meta=meta)
 
 
 def _detect(arm: PeirasticArm, args: argparse.Namespace):
     q8 = _live_q8(arm)
-    recv_kw = {"timeout_s": float(args.cloud_timeout)}
-    if args.subscribe:
-        recv_kw["subscribe"] = str(args.subscribe)
     print("[CLOUD] waiting Orbbec …", flush=True)
-    _meta, xyz_cam, rgb = recv_camera_cloud(**recv_kw)
-    q_after = _live_q8(arm)
-    rail_mm, arm_deg = _q_travel(q8, q_after)
-    if rail_mm > 1.0 or arm_deg > 0.2:
-        raise RuntimeError("robot moved during cloud capture; detect again from a stationary pose")
-    wall_ns = _meta.get("wall_time_ns")
-    if wall_ns is not None and not -0.1 <= time.time() - float(wall_ns) * 1e-9 <= 1.0:
-        raise RuntimeError("Orbbec cloud is stale; wait for a fresh frame")
-    q8 = q_after
-    xyz = cloud_in_rail_base(xyz_cam, q8)
-    live = _live_pose(arm, timeout_s=1.0)
-    return _plan_capture(args, xyz_cam=xyz_cam, rgb=rgb, q8=q8, xyz=xyz, live=live)
+    frames = []
+    for index in range(int(args.cloud_snapshots)):
+        frames.append(_grab_still_cloud(
+            arm, args, q_ref=q8, drain=3 if index == 0 else 1,
+        ))
+        print(f"[CLOUD] snapshot {index + 1}/{int(args.cloud_snapshots)}  "
+              f"n={len(frames[-1]['xyz'])}", flush=True)
+        q8 = frames[-1]["q8"]
+    chosen = frames[-1]
+    return _plan_capture(
+        args,
+        xyz_cam=chosen["xyz_cam"], rgb=chosen["rgb"], q8=chosen["q8"],
+        xyz=chosen["xyz"], live=chosen["live"], extra_frames=frames,
+    )
 
 
-def _plan_capture(args, *, xyz_cam, rgb, q8, xyz, live=None):
-    directory = save_capture(args.plan_dir, xyz_cam=xyz_cam, rgb=rgb, q8=q8,
-                             xyz=xyz, live_pose=live)
+def _plan_capture(args, *, xyz_cam, rgb, q8, xyz, live=None, extra_frames=None):
+    directory = save_capture(
+        args.plan_dir, xyz_cam=xyz_cam, rgb=rgb, q8=q8,
+        xyz=xyz, live_pose=live, in_place=bool(getattr(args, "mode", None)),
+    )
+    snapshots = extra_frames or [dict(xyz_cam=xyz_cam, rgb=rgb, q8=q8, xyz=xyz, live=live)]
+    snap_dir = save_detect_snapshots(directory, snapshots, used_for_plan=len(snapshots) - 1)
     print(f"[CLOUD] saved measured input: {directory / 'capture.npz'}", flush=True)
+    print(f"[CLOUD] detect instant snapshots: {snap_dir}  n={len(snapshots)}", flush=True)
     yaw_axis = None
     if live is not None:
         yaw_axis = Rsc.from_euler("xyz", live[3:6], degrees=False).as_matrix()[:, 0]
@@ -392,6 +491,8 @@ def _plan_capture(args, *, xyz_cam, rgb, q8, xyz, live=None):
             pattern=args.pattern,
             scan_length_m=float(args.scan_length_m),
             scan_width_m=float(args.scan_width_m),
+            lissajous_yaw_deg=float(args.lissajous_yaw_deg),
+            normal_offset_deg=float(args.normal_offset_deg),
         )
     except Exception as exc:
         failure = save_failure(directory, xyz=xyz, rgb=rgb, hit=hit, error=exc)
@@ -411,10 +512,14 @@ def _plan_capture(args, *, xyz_cam, rgb, q8, xyz, live=None):
           f"spacing={plan.stride_m * 1000:.1f}mm", flush=True)
     angles = np.degrees(np.arccos(np.clip(plan.normals @ plan.normal, -1, 1)))
     spin = plan.orientation_diagnostics["max_tool_z_spin_deg"]
+    yaw = float(getattr(plan, "lissajous_yaw_deg", 0.0))
+    offset = float(getattr(plan, "normal_offset_deg", 0.0))
     print(f"[PLAN] orientation=minimum tilt from measured tool frame  "
           f"fit_radius={args.surface_radius_m * 1000:.0f}mm  "
           f"tilt_from_reference_max={angles.max():.1f}deg  "
-          f"max_reference_tool_z_spin={spin:.6f}deg", flush=True)
+          f"max_reference_tool_z_spin={spin:.6f}deg  "
+          f"lissajous_yaw={yaw:.1f}deg  "
+          f"normal_offset={offset:.1f}deg", flush=True)
     return hit, plan
 
 
@@ -445,8 +550,17 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     force_trace = None
+    us_recorder = None
     trace_outcome = "aborted"
     try:
+        if args.mode is not None:
+            args.plan_dir = allocate_run(Path(args.data_root) / args.mode)
+            args.capture_dir = args.plan_dir
+            print(
+                f"[COMPARE] mode={args.mode}  run={args.plan_dir}  "
+                "shuffle mode order across repeats (gel/heating bias)",
+                flush=True,
+            )
         if not args.dry_run and not _ok(arm, arm.set_dof(8, block=1), "set 8DOF"):
             return 1
         q_detect = load_detect_pose()
@@ -476,7 +590,41 @@ def main(argv: list[str] | None = None) -> int:
                 flush=True,
             )
 
-        if args.dry_run:
+        if args.reuse_plan is not None:
+            plan = load_reused_plan(args.reuse_plan)
+            hit = SimpleNamespace(
+                n_points=0, normal=plan.normal, corner=plan.poses[0, :3],
+                centroid=plan.poses[0, :3], table_z=float(plan.poses[0, 2]),
+            )
+            if args.mode is not None:
+                import shutil
+                for name in (
+                    "plan.json", "capture.npz", "cloud_and_plan.npz",
+                    "preview.png", "preview.pdf", "detect_cloud.ply", "detect_top.ply",
+                ):
+                    source = args.reuse_plan / name
+                    if source.is_file():
+                        shutil.copy2(source, args.plan_dir / name)
+                snap_src = args.reuse_plan / "snapshots"
+                if snap_src.is_dir():
+                    shutil.copytree(snap_src, args.plan_dir / "snapshots", dirs_exist_ok=True)
+            args.pattern = str(getattr(plan, "pattern", args.pattern))
+            yaw = float(getattr(plan, "lissajous_yaw_deg", 0.0))
+            offset = float(getattr(plan, "normal_offset_deg", 0.0))
+            print(
+                f"[PLAN] reused {args.reuse_plan / 'plan.json'}  "
+                f"pattern={args.pattern}  "
+                f"lissajous_yaw={yaw:.1f}deg  "
+                f"normal_offset={offset:.1f}deg",
+                flush=True,
+            )
+            if abs(float(args.normal_offset_deg)) > 1.0e-12:
+                print(
+                    "[WARN] --reuse-plan already contains orientations; "
+                    "--normal-offset-deg is ignored (apply it only when UltraPoC plans)",
+                    flush=True,
+                )
+        elif args.dry_run:
             hit, plan = _detect(arm, args)
         else:
             _wait_enter(f"detect at {DETECT_POSE_NAME}")
@@ -505,6 +653,30 @@ def main(argv: list[str] | None = None) -> int:
                 f"remain={_xyz_err_mm(live0, plan.standoff):.1f} mm",
                 flush=True,
             )
+        if args.mode is not None:
+            write_meta(args.plan_dir, {
+                "mode": args.mode,
+                "pattern": args.pattern,
+                "desired_force_n": float(args.force),
+                "speed_m_s": float(args.speed_m_s),
+                "lissajous_yaw_deg": float(getattr(plan, "lissajous_yaw_deg", args.lissajous_yaw_deg)),
+                "normal_offset_deg": float(getattr(plan, "normal_offset_deg", args.normal_offset_deg)),
+                "reuse_plan": None if args.reuse_plan is None else str(args.reuse_plan),
+                "contact_qp_config": str(args.contact_qp_config),
+                "git_sha": git_head(_REPO),
+                "run_dir": str(args.plan_dir),
+            })
+            if args.mode == "ultrapoc" and args.reuse_plan is None:
+                print(
+                    "[COMPARE] replay this exact polyline on the other three laws:\n"
+                    f"  bash scripts/run_comparison.sh --mode admittance_1d "
+                    f"--reuse-plan {args.plan_dir}\n"
+                    f"  bash scripts/run_comparison.sh --mode ac2d "
+                    f"--reuse-plan {args.plan_dir}\n"
+                    f"  bash scripts/run_comparison.sh --mode tafac "
+                    f"--reuse-plan {args.plan_dir}",
+                    flush=True,
+                )
         if args.dry_run:
             print("[OK] dry-run, no motion", flush=True)
             return 0
@@ -550,35 +722,49 @@ def main(argv: list[str] | None = None) -> int:
         if not _await_tcp(arm, plan.standoff, timeout_s=1.0, label="pre-contact standoff"):
             arm.set_arm_stop()
             return 1
-        arm.set_force_control(force_axes=FORCE_AXES, control_frame="tool",
+        force_axes = FORCE_AXES if args.mode is None else comparison_force_axes(args.mode)
+        arm.set_force_control(force_axes=force_axes, control_frame="tool",
                               max_vz_tool_m_s=CLOSE_SPEED_M_S,
                               contact_enter_n=0.8, enter_confirm_s=0.05)
         arm.set_force_raw_override({"v_seek_free_m_s": CLOSE_SPEED_M_S})
         print(f"[MODE] tool Z force: target=+{fz:.1f}N  auto-seek=+tool Z  "
               f"Z speed cap={CLOSE_SPEED_M_S * 1000:.0f}mm/s (press/retract)", flush=True)
         duration = max(2.0, plan.length_m / max(float(args.speed_m_s), 1.0e-4) + 2.0)
+        if getattr(args, "capture_dir", None) is None:
+            args.capture_dir = args.plan_dir
         force_trace = ForceTraceRecorder(
             args.capture_dir, read_status=arm._snapshot, desired_force_n=fz,
         )
         force_trace.start()
         print(f"[LOG] force CSV: {args.capture_dir / 'force_trace.csv'}\n"
               f"[LOG] force plot after finish: {args.capture_dir / 'force_trace.png'}", flush=True)
+        if args.mode is not None and not args.no_us and not args.dry_run:
+            us_recorder = start_us_recorder(args.capture_dir)
+            print(f"[LOG] ultrasound H5: {args.capture_dir / 'raw.h5'}", flush=True)
+        hfpc_kw = dict(
+            reference="polyline",
+            law="tff",
+            force=fz,
+            force_axes=force_axes,
+            speed_m_s=float(args.speed_m_s),
+            duration_s=duration,
+            label="phathom_s_scan",
+            wait_for_contact=True,
+            soft_start=True,
+            ramp_s=0.4,
+            block=0,
+        )
+        poses = plan.poses.tolist()
+        if args.mode is not None:
+            hfpc_kw.update(comparison_hfpc_options(
+                args.mode, force=fz, run_dir=args.capture_dir,
+                config_path=args.contact_qp_config,
+            ))
+            hfpc_kw["plan_path"] = str(write_hfpc_polyline(args.capture_dir, plan.poses))
+            poses = None
         if not _ok(
             arm,
-            arm.hfpc(
-                plan.poses.tolist(),
-                reference="polyline",
-                law="tff",
-                force=fz,
-                force_axes=FORCE_AXES,
-                speed_m_s=float(args.speed_m_s),
-                duration_s=duration,
-                label="phathom_s_scan",
-                wait_for_contact=True,
-                soft_start=True,
-                ramp_s=0.4,
-                block=0,
-            ),
+            arm.hfpc(poses, **hfpc_kw),
             "hfpc scan",
         ):
             return 1
@@ -665,6 +851,11 @@ def main(argv: list[str] | None = None) -> int:
                 pass
         return 1
     finally:
+        if us_recorder is not None:
+            try:
+                us_recorder.close(require_success=trace_outcome == "completed")
+            except Exception as exc:
+                print(f"[ERR] ultrasound recorder: {exc}", flush=True)
         if force_trace is not None:
             try:
                 artifacts = force_trace.finish(trace_outcome)

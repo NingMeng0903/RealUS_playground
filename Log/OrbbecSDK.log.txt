@@ -38,3 +38,63 @@
  - msg: No device found
  - type: CAMERA_DISCONNECTED
  - status: 112
+[09/15 02:48:50.668642][info][1042400][HostTimestampProvider.cpp:36] Update clock type to: realtime(0)
+[09/15 02:48:50.668789][info][1042400][LinuxUsbPal.cpp:334] Create PollingDeviceWatcher!
+[09/15 02:48:50.668792][info][1042400][DeviceManager.cpp:25] Current found device(s): (0)
+[09/15 02:48:50.668793][info][1042400][DeviceManager.cpp:463] Enable net device enumeration: true
+[09/15 02:48:51.675971][info][1042400][DeviceManager.cpp:25] Current device(s) list: (0)
+[09/15 02:48:51.675986][warning][1042400][ObException.cpp:32] A unrecoverable_exception has occurred!
+ - where: Pipeline.cpp(22)
+ - msg: No device found
+ - type: CAMERA_DISCONNECTED
+ - status: 112
+[09/15 02:49:17.534202][info][1043640][HostTimestampProvider.cpp:36] Update clock type to: realtime(0)
+[09/15 02:49:17.534478][info][1043640][LinuxUsbPal.cpp:334] Create PollingDeviceWatcher!
+[09/15 02:49:17.534482][info][1043640][DeviceManager.cpp:25] Current found device(s): (0)
+[09/15 02:49:17.534483][info][1043640][DeviceManager.cpp:463] Enable net device enumeration: true
+[09/15 02:49:18.545379][info][1043640][DeviceManager.cpp:25] Current device(s) list: (0)
+[09/15 02:49:18.545399][warning][1043640][ObException.cpp:32] A unrecoverable_exception has occurred!
+ - where: Pipeline.cpp(22)
+ - msg: No device found
+ - type: CAMERA_DISCONNECTED
+ - status: 112
+[09/15 02:49:22.266724][info][1044814][HostTimestampProvider.cpp:36] Update clock type to: realtime(0)
+[09/15 02:49:22.267130][info][1044814][LinuxUsbPal.cpp:334] Create PollingDeviceWatcher!
+[09/15 02:49:22.267134][info][1044814][DeviceManager.cpp:25] Current found device(s): (0)
+[09/15 02:49:22.267136][info][1044814][DeviceManager.cpp:463] Enable net device enumeration: true
+[09/15 02:49:23.274039][info][1044814][DeviceManager.cpp:25] Current device(s) list: (0)
+[09/15 02:49:23.274054][warning][1044814][ObException.cpp:32] A unrecoverable_exception has occurred!
+ - where: Pipeline.cpp(22)
+ - msg: No device found
+ - type: CAMERA_DISCONNECTED
+ - status: 112
+[09/15 02:49:36.762207][info][1045782][HostTimestampProvider.cpp:36] Update clock type to: realtime(0)
+[09/15 02:49:36.762513][info][1045782][LinuxUsbPal.cpp:334] Create PollingDeviceWatcher!
+[09/15 02:49:36.762516][info][1045782][DeviceManager.cpp:25] Current found device(s): (0)
+[09/15 02:49:36.762517][info][1045782][DeviceManager.cpp:463] Enable net device enumeration: true
+[09/15 02:49:37.771627][info][1045782][DeviceManager.cpp:25] Current device(s) list: (0)
+[09/15 02:49:37.771647][warning][1045782][ObException.cpp:32] A unrecoverable_exception has occurred!
+ - where: Pipeline.cpp(22)
+ - msg: No device found
+ - type: CAMERA_DISCONNECTED
+ - status: 112
+[09/15 02:50:34.589727][info][1051367][HostTimestampProvider.cpp:36] Update clock type to: realtime(0)
+[09/15 02:50:34.589876][info][1051367][LinuxUsbPal.cpp:334] Create PollingDeviceWatcher!
+[09/15 02:50:34.589879][info][1051367][DeviceManager.cpp:25] Current found device(s): (0)
+[09/15 02:50:34.589880][info][1051367][DeviceManager.cpp:463] Enable net device enumeration: true
+[09/15 02:50:35.596429][info][1051367][DeviceManager.cpp:25] Current device(s) list: (0)
+[09/15 02:50:35.596444][warning][1051367][ObException.cpp:32] A unrecoverable_exception has occurred!
+ - where: Pipeline.cpp(22)
+ - msg: No device found
+ - type: CAMERA_DISCONNECTED
+ - status: 112
+[09/15 02:55:39.562904][info][1060337][HostTimestampProvider.cpp:36] Update clock type to: realtime(0)
+[09/15 02:55:39.563052][info][1060337][LinuxUsbPal.cpp:334] Create PollingDeviceWatcher!
+[09/15 02:55:39.563055][info][1060337][DeviceManager.cpp:25] Current found device(s): (0)
+[09/15 02:55:39.563056][info][1060337][DeviceManager.cpp:463] Enable net device enumeration: true
+[09/15 02:55:40.573482][info][1060337][DeviceManager.cpp:25] Current device(s) list: (0)
+[09/15 02:55:40.573502][warning][1060337][ObException.cpp:32] A unrecoverable_exception has occurred!
+ - where: Pipeline.cpp(22)
+ - msg: No device found
+ - type: CAMERA_DISCONNECTED
+ - status: 112

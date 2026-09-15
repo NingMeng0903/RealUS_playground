@@ -2,6 +2,51 @@
 import math
 import numpy as np
 
+from .types import TwistConstraints
+
+# Same numbering as the inner QPIK envelope: drop jerk, then acceleration,
+# then the rate row. 4 leaves only the existing six-axis mechanical limits.
+ROCKING_TIER_JERK = 1
+ROCKING_TIER_ACCELERATION = 2
+ROCKING_TIER_RATE = 3
+ROCKING_TIER_MECHANICAL = 4
+OUTER_ROCKING_RELAX_REASONS = frozenset((
+    'solver_attempts_exhausted',
+    'mechanical_rows_infeasible',
+    'fixed_affine_component_outside_mechanical_interval',
+    'final_hard_constraint_residual',
+))
+
+
+def rocking_interval(bounds, tier):
+    """1 jerk, 2 acceleration, 3 rate, 4 mechanical-only, 0 disabled."""
+    if tier in (0, ROCKING_TIER_MECHANICAL):
+        return -float('inf'), float('inf')
+    pairs = np.asarray(bounds, dtype=float).reshape(3, 2)[:4 - int(tier)]
+    return float(pairs[:, 0].max()), float(pairs[:, 1].min())
+
+
+def published_rocking_rows(face_axis_row, bounds, *, now_s, horizon_s, tier):
+    """Hard tool-Y row at ``tier``, or empty constraints when the interval is open."""
+    if int(tier) in (0, ROCKING_TIER_MECHANICAL):
+        return TwistConstraints(), ROCKING_TIER_MECHANICAL
+    low, high = rocking_interval(bounds, tier)
+    if not math.isfinite(low) or not math.isfinite(high) or low > high:
+        return None, int(tier)
+    return TwistConstraints(
+        np.asarray(face_axis_row, dtype=float).reshape(1, 6),
+        [low], [high], valid_until_s=float(now_s) + float(horizon_s),
+        labels=('published_contact_rocking_speed_acc_jerk',),
+    ), int(tier)
+
+
+def first_admissible_rocking_tier(bounds, start=ROCKING_TIER_JERK):
+    for tier in range(int(start), ROCKING_TIER_MECHANICAL + 1):
+        low, high = rocking_interval(bounds, tier)
+        if low <= high:
+            return tier
+    return ROCKING_TIER_MECHANICAL
+
 
 class RockingSmoothing:
     policy = 'final_tool_y_v1'

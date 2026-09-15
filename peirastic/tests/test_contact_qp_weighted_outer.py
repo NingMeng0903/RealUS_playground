@@ -9,7 +9,8 @@ from peirastic.contact_qp.geometry import (accepted_alpha_affine, affine_contact
     contact_cop_from_wrench, twist_tcp_to_face, wrench_tcp_to_face)
 from peirastic.contact_qp.qp import ContactQp, QpConfig, QpInput
 from peirastic.contact_qp.types import ContactStatus, ProbeGeometry, TwistConstraints
-from peirastic.contact_qp.weighted_outer import merge_exact_constraint_rows
+from peirastic.contact_qp.weighted_outer import (drop_unreachable_acceleration_rows,
+    merge_exact_constraint_rows)
 
 
 def config(**kwargs):
@@ -266,3 +267,58 @@ def test_zero_row_roundoff_is_checked_in_physical_units():
     result=ContactQp(QpConfig(allocation_policy='delay_kf_cop_v1')).solve(d)
     assert result.success,result.diagnostics
     assert result.diagnostics['max_hard_violation']<1e-8
+
+
+def _hardware_accel_cfg(**kwargs):
+    return QpConfig(allocation_policy='delay_kf_cop_v1',
+                    max_velocity=np.array([.22, .22, .015, .6, .28, .6]),
+                    max_acceleration=np.array([1., 1., .8, 2., 2., 2.]), **kwargs)
+
+
+def test_path_yaw_rate_drop_relaxes_only_conflicting_acceleration_online():
+    # Previous tool-z spin is hotter than the current path feedforward band.
+    # The accel box around that history misses alpha in [0,1]; U/Omega cannot help.
+    previous = np.array([.002, 0., .001, 0., .02, .20])
+    d = datum(previous_twist=previous, path_feedback_contact=np.zeros(6),
+              path_feedforward_contact=[.002, 0., 0., 0., 0., .05],
+              mechanical_normal_m_s=.001, mechanical_omega_rad_s=.02,
+              alpha_preferred=1., dt_s=.005, acceleration_dt_s=.005, cop_m=None,
+              visual_task_valid=True, visual_request_rad_s=0.)
+    cfg = _hardware_accel_cfg()
+    online = ContactQp(cfg).solve(d, online=True)
+    assert online.success, online.diagnostics
+    assert [row['label'] for row in online.diagnostics['relaxed_acceleration_rows']] == ['acceleration_5']
+    assert online.qp_twist[5] == pytest.approx(.05, abs=1e-9)
+    offline = ContactQp(cfg).solve(d, online=False)
+    assert not offline.success
+    assert offline.diagnostics['reason'] == 'affine_motion_subspace_conflict'
+    assert 'relaxed_acceleration_rows' not in offline.diagnostics
+
+
+def test_ultrapoc_002_terminal_yaw_rate_drop_solves_online():
+    # Last rejected tick of Comparison Study/ultrapoc/002 (cid 6862, t_ref=46.22).
+    d = datum(
+        previous_twist=[0.01556837183087477, -0.0005806359386244092, -0.0006328892331416709,
+                        -0.019702226075322567, 0.1243758077418761, -0.12076660688583725],
+        path_feedback_contact=[-0.0007263466777532072, -0.0022363271384764076, 0.,
+                               -0.002423104542857868, 0., -0.026907850570618404],
+        path_feedforward_contact=[0.0021350028198943586, 0.00018967563846646632, -7.326753595774665e-05,
+                                  -0.0035220861143232234, 0.03270419814435191, -0.018514868866950324],
+        mechanical_normal_m_s=-0.0012966544122483257, mechanical_omega_rad_s=0.15828486879683273,
+        dt_s=0.005, acceleration_dt_s=0.014715763012645766, force_n=4.236630222796778,
+        cop_m=0.013525114450338454, alpha_preferred=1., visual_task_valid=True,
+        visual_request_rad_s=0., visual_gamma=0.5267395544064435,
+        measured_angle=-0.07145609948099549)
+    cfg = _hardware_accel_cfg()
+    rows = np.eye(6)
+    lo = d.previous_twist - cfg.max_acceleration * max(d.acceleration_dt_s, d.dt_s)
+    hi = d.previous_twist + cfg.max_acceleration * max(d.acceleration_dt_s, d.dt_s)
+    labels = [f'acceleration_{i}' for i in range(6)]
+    offset, basis = affine_contact_motion(d.geometry, d.path_feedback_contact, d.path_feedforward_contact)
+    _, _, _, _, dropped = drop_unreachable_acceleration_rows(
+        rows, lo, hi, labels, offset, basis, cfg)
+    assert [row['label'] for row in dropped] == ['acceleration_5']
+    online = ContactQp(cfg).solve(d, online=True)
+    assert online.success, online.diagnostics
+    assert [row['label'] for row in online.diagnostics['relaxed_acceleration_rows']] == ['acceleration_5']
+    assert -0.04543 <= online.qp_twist[5] <= -0.02690

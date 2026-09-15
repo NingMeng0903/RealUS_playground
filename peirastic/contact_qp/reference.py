@@ -46,7 +46,10 @@ class FiniteIntervalReference:
         self._duration()  # Fail before control starts for unbounded references.
 
     def _duration(self):
-        duration = _finite(self.reference.duration_s, "reference duration")
+        raw = self.reference.duration_s
+        if callable(raw):
+            raw = raw()
+        duration = _finite(raw, "reference duration")
         if duration < 0.0:
             raise ValueError("reference duration must be nonnegative")
         return duration

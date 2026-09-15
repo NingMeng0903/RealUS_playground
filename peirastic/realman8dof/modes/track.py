@@ -64,6 +64,7 @@ class HybridTffOuter:
         self.last_vel_ff = np.zeros(6, dtype=float)
         self.last_pose_d: np.ndarray | None = None
         self.last_path_twist = np.zeros(6, dtype=float)
+        self.last_path_twist_raw = np.zeros(6, dtype=float)
         self.last_feedback_twist = np.zeros(6, dtype=float)
         self.last_tau_y = float("nan")
         self.last_tau_error_y = float("nan")
@@ -132,9 +133,10 @@ class HybridTffOuter:
         v_pos = np.asarray(
             self.position.sample(t_s, current_pose, f_ext), dtype=float
         ).reshape(6)
-        path = np.asarray(self.position.last_path_twist, dtype=float).reshape(6)
+        path_raw = np.asarray(self.position.last_path_twist, dtype=float).reshape(6)
+        path = path_raw
         if self.mask_force_from_path:
-            path = path * self.selection
+            path = path_raw * self.selection
             v_pos = v_pos * self.selection
         dt_s = float(dt_actual) if dt_actual is not None else self.dt
         visual_omega = None
@@ -156,6 +158,7 @@ class HybridTffOuter:
             f_ext=np.asarray(f_ext, dtype=float).reshape(6),
             f_des=self.desired_force,
             path_twist=path,
+            path_twist_raw=path_raw,
             contact=contact,
             f_ext_raw=f_ext_raw,
             dt_actual=dt_actual,
@@ -210,6 +213,7 @@ class HybridTffOuter:
             else np.asarray(self.position.last_pose_d, dtype=float).copy()
         )
         self.last_path_twist = path
+        self.last_path_twist_raw = path_raw
         self.last_feedback_twist = np.asarray(
             self.position.last_feedback_twist, dtype=float
         ).copy()
@@ -259,6 +263,13 @@ def _hybrid_controller(dt: float, payload: dict | None = None):
 def _hybrid_force_law(
     dt: float, payload: dict | None = None, *, control_frame: str = "tool"
 ):
+    law_name = str(dict(payload or {}).get("law") or "").lower()
+    if law_name in ("admittance_1d", "ac2d", "tafac"):
+        from peirastic.realman8dof.force.comparison_laws import comparison_law_from_payload
+        from peirastic.realman8dof.force.config import desired_z_n
+
+        law = comparison_law_from_payload(dt, payload)
+        return law, _desired_force(payload, desired_z_n(payload=payload)), TorqueTiltConfig(enabled=False)
     if use_fce_law(payload):
         from peirastic.realman8dof.force.config import desired_z_n
 
@@ -267,7 +278,7 @@ def _hybrid_force_law(
     controller, f_des, raw = _hybrid_controller(dt, payload)
     law = LegacyForceLaw(controller)
     tilt_cfg = TorqueTiltConfig.from_dict(raw)
-    selection = selection_from_payload(payload)
+    selection = None if _contact_qp_payload(payload) else selection_from_payload(payload)
     if selection is not None and selection[tilt_cfg.axis] >= 1.0:
         tilt_cfg = replace(tilt_cfg, enabled=False)
     if tilt_cfg.enabled:
@@ -275,6 +286,10 @@ def _hybrid_force_law(
             raise ValueError("torque_tilt requires tool-frame hybrid control")
         law = LegacyForceWithTilt(law, TorqueTilt(tilt_cfg))
     return law, f_des, tilt_cfg
+
+
+def _contact_qp_payload(payload: dict | None) -> bool:
+    return dict(payload or {}).get("contact_qp") is not None
 
 
 def selection_from_payload(payload: dict | None) -> np.ndarray | None:
@@ -472,7 +487,10 @@ def build_track_hybrid_phase(
         cart.outer,
         force_law,
         desired_force=f_des,
-        selection=apply_tilt_selection(selection_from_payload(payload), tilt_cfg),
+        selection=apply_tilt_selection(
+            None if _contact_qp_payload(payload) else selection_from_payload(payload),
+            tilt_cfg,
+        ),
         dt=dt,
         mask_force_from_path=_mask_force_from_path(payload, True),
     )
@@ -481,6 +499,10 @@ def build_track_hybrid_phase(
     phase.label = label
     if gate is not None:
         _bind_contact_gate(phase, gate, duration_s=duration_s, inner=ctx.inner)
+    law_name = str(dict(payload or {}).get("law") or "").lower()
+    if law_name in ("admittance_1d", "ac2d", "tafac"):
+        from peirastic.realman8dof.force.comparison_laws import wrap_comparison_phase
+        return wrap_comparison_phase(phase, payload or {})
     return wrap_study_phase(phase,payload or {},ctx)
 
 

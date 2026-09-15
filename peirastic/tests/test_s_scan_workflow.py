@@ -1,6 +1,8 @@
 """Exercise the three Enter steps with a robot double; never connects to SHM."""
 
+from pathlib import Path
 from types import SimpleNamespace
+import json
 
 import numpy as np
 import pytest
@@ -209,6 +211,26 @@ def test_contact_seek_stops_below_detected_surface(monkeypatch):
         s_scan._monitor_hybrid_scan(arm, plan, duration_s=1.0, seq=1)
 
 
+def test_monitor_keeps_hybrid_scan_across_controller_recovering(monkeypatch):
+    now = [100.0]
+    monkeypatch.setattr(s_scan, "time", SimpleNamespace(
+        monotonic=lambda: now[0], sleep=lambda dt: now.__setitem__(0, now[0] + dt)))
+    monkeypatch.setattr(s_scan, "_latched", lambda arm: False)
+    snaps = [
+        dict(mode=Mode.TRACK_HYBRID, status=Status.RUNNING, t_mono=100.0,
+             msg="phathom_s_scan:tracking t=4.60 contact=1 vz_cmd=0.3", f_ext_z=3.8, done_seq=0),
+        dict(mode=Mode.TRACK_HYBRID, status=Status.RUNNING, t_mono=100.05,
+             msg="phathom_s_scan:recovering solver_attempts_exhausted", f_ext_z=3.8, done_seq=0),
+        dict(mode=Mode.TRACK_HYBRID, status=Status.RUNNING, t_mono=100.10,
+             msg="phathom_s_scan:tracking t=4.61 contact=1 vz_cmd=0.1", f_ext_z=3.9, done_seq=1),
+    ]
+    def snapshot():
+        snap = snaps.pop(0)
+        now[0] = float(snap["t_mono"])
+        return snap
+    s_scan._monitor_hybrid_scan(SimpleNamespace(_snapshot=snapshot), None, duration_s=1.0, seq=1)
+
+
 def test_stale_telemetry_cannot_confirm_contact_or_complete_scan(monkeypatch):
     monkeypatch.setattr(s_scan, "_latched", lambda arm: False)
     arm = SimpleNamespace(_snapshot=lambda: dict(
@@ -239,6 +261,162 @@ def test_failed_plan_keeps_replayable_cloud_and_detection(tmp_path, monkeypatch)
         np.testing.assert_array_equal(capture["q8"], q8)
     assert json.loads((directory / "failure.json").read_text())["stage"] == "surface_planning"
     assert (directory / "failure.png").is_file()
+
+
+def test_demo_speed_stays_eighteen_mm_s():
+    args = s_scan._parse_args(["--dry-run"])
+    assert args.mode is None
+    assert args.speed_m_s == pytest.approx(0.018)
+    assert args.normal_offset_deg == pytest.approx(0.0)
+
+
+def test_normal_offset_cli_is_capped():
+    args = s_scan._parse_args(["--dry-run", "--normal-offset-deg", "20"])
+    assert args.normal_offset_deg == pytest.approx(20.0)
+    with pytest.raises(SystemExit):
+        s_scan._parse_args(["--dry-run", "--normal-offset-deg", "21"])
+    with pytest.raises(SystemExit):
+        s_scan._parse_args(["--dry-run", "--normal-offset-deg", "nan"])
+
+
+def _arm_double():
+    class Arm:
+        def set_dof(self, *a, **k):
+            return 0
+        def close(self):
+            pass
+        def _snapshot(self):
+            return dict(status=Status.RUNNING, mode=Mode.SERVO_TWIST_HOLD, msg="", t_mono=1.0, dof=8)
+    return Arm()
+
+
+def _write_plan_json(directory: Path, poses, *, normal_offset_deg: float = 20.0) -> Path:
+    directory.mkdir(parents=True, exist_ok=True)
+    path = directory / "plan.json"
+    path.write_text(json.dumps({
+        "poses": np.asarray(poses, dtype=float).tolist(),
+        "standoff": np.asarray(poses[0], dtype=float).tolist(),
+        "preview_lift": np.asarray(poses[-1], dtype=float).tolist(),
+        "normal_outward": [0.0, 0.0, 1.0],
+        "waypoint_normals_outward": [[0.0, 0.0, 1.0]] * len(poses),
+        "rows": 0,
+        "row_spacing_m": 0.0,
+        "centerline_dimensions_m": [0.14, 0.08],
+        "length_m": 0.14,
+        "pattern": "lissajous",
+        "orientation_diagnostics": {"max_tool_z_spin_deg": 20.0},
+        "long_axis": [1.0, 0.0, 0.0],
+        "outline_dimensions_m": [0.2, 0.1],
+        "lissajous_yaw_deg": 20.0,
+        "normal_offset_deg": float(normal_offset_deg),
+    }), encoding="utf-8")
+    return path
+
+
+def test_comparison_dry_run_writes_meta(monkeypatch, tmp_path):
+    poses = np.array([[0.2, 0.2, 0.168, np.pi, 0, 0],
+                      [0.3, 0.2, 0.168, np.pi, 0, 0]])
+    plan = SimpleNamespace(
+        poses=poses, standoff=poses[0].copy(), lift=poses[-1].copy(),
+        normal=np.array([0., 0., 1.]), normals=np.array([[0., 0., 1.], [0., 0., 1.]]),
+        n_rows=0, stride_m=0.0, u_span_m=0.14, v_span_m=0.08, length_m=0.14,
+        pattern="lissajous", orientation_diagnostics={"max_tool_z_spin_deg": 20.0},
+        right=np.array([1., 0., 0.]), outline_dimensions_m=np.array([0.2, 0.1]),
+        lissajous_yaw_deg=20.0,
+        normal_offset_deg=20.0,
+    )
+    hit = SimpleNamespace(n_points=10, normal=plan.normal, corner=poses[0, :3])
+
+    monkeypatch.setattr(s_scan, "PeirasticArm", _arm_double)
+    monkeypatch.setattr(s_scan, "_detect", lambda arm, args: (hit, plan))
+    monkeypatch.setattr(s_scan, "_live_q8", lambda *a: s_scan.load_detect_pose())
+    monkeypatch.setattr(s_scan, "_live_pose", lambda *a, **kw: poses[0].tolist())
+    monkeypatch.setattr(s_scan, "_wait_enter", lambda *a, **k: None)
+    assert s_scan.main([
+        "--mode", "ultrapoc", "--pattern", "lissajous", "--data-root", str(tmp_path),
+        "--no-us", "--dry-run", "--normal-offset-deg", "20",
+    ]) == 0
+    run = next(p for p in (tmp_path / "ultrapoc").iterdir() if p.is_dir())
+    meta = json.loads((run / "meta.json").read_text())
+    assert meta["mode"] == "ultrapoc"
+    assert meta["pattern"] == "lissajous"
+    assert meta["desired_force_n"] == 4.0
+    assert meta["speed_m_s"] == pytest.approx(0.010)
+    assert meta["normal_offset_deg"] == pytest.approx(20.0)
+    assert meta["reuse_plan"] is None
+
+
+@pytest.mark.parametrize("mode", ["admittance_1d", "ac2d", "tafac"])
+def test_baseline_modes_must_reuse_ultrapoc_plan(monkeypatch, tmp_path, mode):
+    poses = np.array([[0.2, 0.2, 0.168, np.pi, 0, 0],
+                      [0.3, 0.2, 0.168, np.pi, 0, 0]])
+    source = tmp_path / "ultrapoc" / "001"
+    _write_plan_json(source, poses, normal_offset_deg=20.0)
+
+    monkeypatch.setattr(s_scan, "PeirasticArm", _arm_double)
+    monkeypatch.setattr(s_scan, "_live_q8", lambda *a: s_scan.load_detect_pose())
+    monkeypatch.setattr(s_scan, "_live_pose", lambda *a, **kw: poses[0].tolist())
+    monkeypatch.setattr(s_scan, "_wait_enter", lambda *a, **k: None)
+
+    with pytest.raises(SystemExit):
+        s_scan._parse_args([
+            "--mode", mode, "--pattern", "lissajous", "--data-root", str(tmp_path),
+            "--no-us", "--dry-run",
+        ])
+    assert s_scan.main([
+        "--mode", mode, "--pattern", "lissajous", "--data-root", str(tmp_path),
+        "--no-us", "--dry-run", "--reuse-plan", str(source),
+    ]) == 0
+    run = next(p for p in (tmp_path / mode).iterdir() if p.is_dir())
+    meta = json.loads((run / "meta.json").read_text())
+    assert meta["mode"] == mode
+    assert meta["normal_offset_deg"] == pytest.approx(20.0)
+    assert meta["reuse_plan"] == str(source)
+    copied = json.loads((run / "plan.json").read_text())
+    np.testing.assert_allclose(copied["poses"], poses)
+
+
+@pytest.mark.parametrize("mode,law", [
+    ("admittance_1d", "admittance_1d"),
+    ("ac2d", "ac2d"),
+    ("tafac", "tafac"),
+    ("ultrapoc", "contact_qp"),
+])
+def test_comparison_mode_selects_outer_law(monkeypatch, tmp_path, mode, law):
+    extra = []
+    if mode != "ultrapoc":
+        source = tmp_path / "src"
+        _write_plan_json(source, np.array([[0.2, 0.2, 0.168, np.pi, 0, 0]]))
+        extra = ["--reuse-plan", str(source)]
+    args = s_scan._parse_args([
+        "--mode", mode, "--pattern", "lissajous", "--data-root", str(tmp_path),
+        "--no-us", "--dry-run", *extra,
+    ])
+    assert args.mode == mode
+    assert args.speed_m_s == pytest.approx(s_scan.COMPARISON_SPEED_M_S)
+    run = tmp_path / "001"
+    run.mkdir()
+    options = s_scan.comparison_hfpc_options(
+        mode, force=4.0, run_dir=run, config_path=args.contact_qp_config,
+    )
+    assert options["law"] == law
+    if mode == "ultrapoc":
+        assert Path(options["contact_qp"]).is_file()
+        assert "contact_qp.jsonl" in Path(options["contact_qp"]).read_text()
+        assert s_scan.comparison_force_axes(mode) == [0.0, 0.0, 1.0, 0.0, 1.0, 0.0]
+        assert options["extra"]["hybrid_motion"]["torque_tilt"]["mass"] == pytest.approx(0.051)
+    else:
+        assert options["extra"]["comparison_log_path"].endswith("comparison_law.jsonl")
+        assert options["extra"]["admittance_mass"] == 1.0
+        assert options["extra"]["admittance_damping"] == 40.0
+        if mode == "ac2d":
+            assert s_scan.comparison_force_axes(mode) == [0.0, 0.0, 1.0, 0.0, 1.0, 0.0]
+            assert options["extra"]["admittance_inertia_yy"] == pytest.approx(0.051)
+            assert options["extra"]["admittance_damping_yy"] == pytest.approx(0.22 / 0.75)
+            assert options["extra"]["max_omega_y_rad_s"] == pytest.approx(0.21)
+            assert options["extra"]["admittance_coulomb_yy"] == pytest.approx(0.02)
+        else:
+            assert s_scan.comparison_force_axes(mode) == [0.0, 0.0, 1.0, 0.0, 0.0, 0.0]
 
 
 def test_replay_never_attaches_to_live_controller(tmp_path, monkeypatch):

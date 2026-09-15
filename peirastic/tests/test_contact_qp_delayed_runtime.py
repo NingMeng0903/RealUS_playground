@@ -71,7 +71,7 @@ def test_default_delayed_profile_uses_no_energy_and_requires_new_capability():
     config['energy_constraint_enabled']=True
     with pytest.raises(ValueError,match='removes energy'):
         validate_study_config(config)
-    assert config['qp']['repair_speed_m_s']==pytest.approx(0.008)
+    assert config['qp']['repair_speed_m_s']==pytest.approx(0.010)
 
 
 def test_stop_ramp_keeps_outer_alpha_when_path_projection_vanishes(monkeypatch):
@@ -80,7 +80,7 @@ def test_stop_ramp_keeps_outer_alpha_when_path_projection_vanishes(monkeypatch):
 
     active,pose,clock,sink=fixture(monkeypatch)
     try:
-        assert active.solver.config.repair_speed_m_s==pytest.approx(0.008)
+        assert active.solver.config.repair_speed_m_s==pytest.approx(0.010)
         distal=pose.copy();proximal=pose.copy();proximal[1]+=0.12
         source=ForearmReference(make_spec(distal,proximal,'S','PtD',5,speed=0.005))
         active.reference=FiniteIntervalReference(source,dt_s=0.005)
@@ -730,5 +730,75 @@ def test_solver_retry_lease_expiry_is_deferred_until_bound(monkeypatch):
         clock[0]=lease.expires_s
         with pytest.raises(RuntimeError,match='lease expired'):
             active.waiting_for_retry_source(lease.created_s,now_s=clock[0])
+    finally:
+        active.close()
+
+
+def test_empty_jerk_intersection_drops_outer_rocking_tier(monkeypatch):
+    active,pose,clock,sink=fixture(monkeypatch)
+    try:
+        commit(active,sample(active,pose,clock),clock)
+        rotation=np.eye(3)
+        active._rocking.seed(np.zeros(3),clock[0]-.01)
+        active._rocking.commit([0.,0.,0.,0.,1.,0.],rotation,clock[0])
+        clock[0]+=.005
+        command=sample(active,pose,clock)
+        assert command is not None
+        assert active._outer_rocking_tier>=2
+    finally:
+        active.close()
+
+
+def test_exhausted_outer_solve_retries_next_rocking_tier(monkeypatch):
+    active,pose,clock,sink=fixture(monkeypatch)
+    try:
+        commit(active,sample(active,pose,clock),clock)
+        real=active.solver.solve
+        calls=[]
+        def fail_first_rocking(data,**kwargs):
+            calls.append(len(data.mechanical.A))
+            result=real(data,**kwargs)
+            if len(calls)==1 and len(data.mechanical.A):
+                return replace(result,status=result.status,qp_twist=None,
+                               diagnostics=dict(result.diagnostics,reason='solver_attempts_exhausted'))
+            return result
+        monkeypatch.setattr(active.solver,'solve',fail_first_rocking)
+        clock[0]+=.005
+        command=sample(active,pose,clock)
+        assert command is not None
+        assert any(item['event']=='outer_rocking_tier_relax' for item in sink.records)
+        assert active._outer_rocking_tier>=2
+    finally:
+        active.close()
+
+
+def test_retry_unsent_allows_same_tick_after_solver_deferral(monkeypatch):
+    active,pose,clock,sink=fixture(monkeypatch)
+    try:
+        commit(active,sample(active,pose,clock),clock)
+        lease=active._command_lease.active
+        active._publication_rejection_reason='solver_attempts_exhausted'
+        active._command_lease.last_time_s=clock[0]
+        assert active.retry_unsent_publication()
+        assert active._command_lease.active is lease
+    finally:
+        active.close()
+
+
+def test_retry_unsent_forgives_expired_solver_deadline_lease(monkeypatch):
+    active,pose,clock,sink=fixture(monkeypatch)
+    try:
+        commit(active,sample(active,pose,clock),clock)
+        lease=active._command_lease.active
+        active._publication_rejection_reason='solver_deadline_exceeded'
+        clock[0]=lease.expires_s+1e-6
+        assert active.retry_unsent_publication()
+        assert active._lease_expiry_retries==1
+        assert active._command_lease.active is None
+        clock[0]+=.005
+        command=sample(active,pose,clock)
+        assert command is not None
+        commit(active,command,clock)
+        assert active._command_lease.active is not None
     finally:
         active.close()

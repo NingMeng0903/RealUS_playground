@@ -7,7 +7,10 @@ from scipy.spatial.transform import Rotation
 
 from peirastic.contact_qp.execution import QualityIntervals, QualityProgress
 from peirastic.contact_qp.reference import FiniteIntervalReference
-from peirastic.contact_qp.rocking_smoothing import RockingSmoothing
+from peirastic.contact_qp.rocking_smoothing import (
+    ROCKING_TIER_ACCELERATION, ROCKING_TIER_JERK, ROCKING_TIER_MECHANICAL,
+    ROCKING_TIER_RATE, RockingSmoothing, first_admissible_rocking_tier,
+    published_rocking_rows, rocking_interval)
 from rm75_control.control.admittance_common.reference import MotionReference
 
 
@@ -183,6 +186,28 @@ def test_rocking_preview_and_rejection_do_not_mutate_published_history():
     assert smooth.time_s==1.02
     assert smooth.omega_base[1]==pytest.approx(.104)
     assert smooth.acceleration_base[1]==pytest.approx(.2)
+
+
+def test_outer_rocking_interval_matches_inner_qpi_k_tiers():
+    from rm75_control.control.joint_admittance_8dof.rocking_envelope import (
+        rocking_interval as inner_interval)
+    bounds = np.array([-.28, .28, -.05, .05, -.001, .001])
+    for tier in (0, 1, 2, 3, 4):
+        assert rocking_interval(bounds, tier) == inner_interval(bounds, tier)
+    assert first_admissible_rocking_tier(bounds) == ROCKING_TIER_JERK
+    empty_jerk = np.array([-.28, .28, -.05, .05, .002, .001])
+    assert first_admissible_rocking_tier(empty_jerk) == ROCKING_TIER_ACCELERATION
+    empty_acc = np.array([-.28, .28, .06, .05, .002, .001])
+    assert first_admissible_rocking_tier(empty_acc) == ROCKING_TIER_RATE
+    rows, tier = published_rocking_rows(np.eye(6)[4], bounds, now_s=1., horizon_s=.05, tier=1)
+    assert tier == ROCKING_TIER_JERK
+    assert rows.lower[0] == pytest.approx(-.001)
+    assert rows.upper[0] == pytest.approx(.001)
+    assert published_rocking_rows(np.eye(6)[4], empty_jerk, now_s=1., horizon_s=.05,
+                                  tier=1)[0] is None
+    unconstrained, tier = published_rocking_rows(
+        np.eye(6)[4], bounds, now_s=1., horizon_s=.05, tier=ROCKING_TIER_MECHANICAL)
+    assert tier == ROCKING_TIER_MECHANICAL and len(unconstrained.A) == 0
 
 
 @pytest.mark.parametrize('inertia,damping,tau,jerk',[(.04,1.,.04,50.),(.08,1.,.08,25.),(.04,2.,.02,100.)])

@@ -103,7 +103,7 @@ qp:
     nominal_force_n: 4.0
     soft_force_n: 4.5
     hard_stop_n: 6.0
-  repair_speed_m_s: 0.008
+  repair_speed_m_s: 0.010
   normal_scale_m_s: 0.002
   angular_scale_rad_s: 0.1
   normal_weight: 1.0

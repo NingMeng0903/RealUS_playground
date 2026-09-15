@@ -41,6 +41,47 @@ def merge_exact_constraint_rows(matrix, lower, upper):
             np.asarray([bounds[1] for bounds in rows.values()]))
 
 
+def _affine_box_range(offset, basis, axis, bounds):
+    lo = hi = float(offset[axis])
+    for coeff, (b0, b1) in zip(basis[axis], bounds):
+        c = float(coeff)
+        lo += min(c * b0, c * b1)
+        hi += max(c * b0, c * b1)
+    return lo, hi
+
+
+def drop_unreachable_acceleration_rows(hard_a, hard_lo, hard_hi, labels, offset, basis, cfg):
+    """Drop accel rows whose affine image of (U, Omega, alpha) misses the slew box.
+
+    Fixed axes (zero basis row) stay; those still use the existing
+    infeasible / small-overshoot retry policy. Path-coupled axes can leave
+    the previous-command box when feedforward rate drops in one tick.
+    """
+    bounds = ((-cfg.max_velocity[2], cfg.max_velocity[2]),
+              (-cfg.max_velocity[4], cfg.max_velocity[4]), (0., 1.))
+    keep, dropped = [], []
+    tol = float(cfg.feasibility_tolerance)
+    for i, label in enumerate(labels):
+        if not str(label).startswith('acceleration_'):
+            keep.append(i)
+            continue
+        axis = int(str(label).rsplit('_', 1)[1])
+        if np.linalg.norm(basis[axis]) <= 1e-14:
+            keep.append(i)
+            continue
+        reach_lo, reach_hi = _affine_box_range(offset, basis, axis, bounds)
+        box_lo, box_hi = float(hard_lo[i]), float(hard_hi[i])
+        if reach_hi < box_lo - tol or reach_lo > box_hi + tol:
+            dropped.append(dict(label=label, axis=axis, reachable_lo=reach_lo,
+                reachable_hi=reach_hi, slew_lo=box_lo, slew_hi=box_hi))
+            continue
+        keep.append(i)
+    if not dropped:
+        return hard_a, hard_lo, hard_hi, labels, ()
+    idx = np.asarray(keep, dtype=int)
+    return hard_a[idx], hard_lo[idx], hard_hi[idx], [labels[i] for i in keep], tuple(dropped)
+
+
 def solve_weighted_outer(solver, data, *, deadline_s=None, online=False):
     # Local import avoids a cycle with ContactQp's policy dispatch.
     from .qp import QpResult, _linear_feasible, _normalize_rows, _violation
@@ -103,6 +144,11 @@ def solve_weighted_outer(solver, data, *, deadline_s=None, online=False):
         rows.extend(mech.A); lower.extend(mech.lower); upper.extend(mech.upper)
         labels.extend(mech.labels or tuple(f'mechanical_{i}' for i in range(len(mech.A))))
     hard_a, hard_lo, hard_hi = np.asarray(rows), np.asarray(lower), np.asarray(upper)
+    if online:
+        hard_a, hard_lo, hard_hi, labels, dropped = drop_unreachable_acceleration_rows(
+            hard_a, hard_lo, hard_hi, labels, offset, basis, cfg)
+        if dropped:
+            diagnostics['relaxed_acceleration_rows'] = dropped
     projected=hard_a @ scaled_basis
     shifted_lo,shifted_hi=hard_lo-hard_a@offset,hard_hi-hard_a@offset
     fixed=~np.any(projected!=0.,axis=1)
