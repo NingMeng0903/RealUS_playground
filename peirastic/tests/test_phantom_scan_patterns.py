@@ -292,6 +292,32 @@ def test_requested_rectangle_checks_probe_footprint_and_edge_margin() -> None:
         )
 
 
+def test_requested_rectangle_accepts_few_mm_orbbec_slack() -> None:
+    u = np.linspace(-0.1085, 0.1085, 45)
+    v = np.linspace(-0.0875, 0.0875, 37)
+    uu, vv = np.meshgrid(u, v, indexing="xy")
+    cloud = np.column_stack((uu.ravel(), vv.ravel(), np.full(uu.size, 0.15)))
+    normal = np.array([0.0, 0.0, 1.0])
+    toward = np.array([0.0, -1.0, 0.0])
+    plan = plan_s_scan(
+        cloud, normal, toward,
+        scan_length_m=0.14, scan_width_m=0.08,
+        pattern="lissajous", lissajous_yaw_deg=20.0, normal_offset_deg=20.0,
+    )
+    assert plan.u_span_m == pytest.approx(0.14)
+    assert plan.v_span_m == pytest.approx(0.08)
+    short_u = np.linspace(-0.089, 0.089, 31)
+    short_v = np.linspace(-0.075, 0.075, 27)
+    su, sv = np.meshgrid(short_u, short_v, indexing="xy")
+    short = np.column_stack((su.ravel(), sv.ravel(), np.full(su.size, 0.15)))
+    with pytest.raises(ValueError, match="requested scan dimensions"):
+        plan_s_scan(
+            short, normal, toward,
+            scan_length_m=0.14, scan_width_m=0.08,
+            pattern="lissajous", lissajous_yaw_deg=20.0, normal_offset_deg=20.0,
+        )
+
+
 def test_pattern_and_dimension_arguments_are_validated() -> None:
     cloud, normal, toward = _top_cloud()
     with pytest.raises(ValueError, match="provided together"):

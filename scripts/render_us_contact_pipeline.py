@@ -59,12 +59,14 @@ def draw_near_field(ax, u_edges, v_top, v_bot):
                 zorder=4, path_effects=OUTLINE)
 
 
-def style_image_axes(ax):
+def style_image_axes(ax, tag):
     ax.set_xlim(-HALF_W_MM, HALF_W_MM)
     ax.set_ylim(DEPTH_MM, 0.0)
     ax.set_xticks((-25, 0, 25))
     ax.set_yticks((0, 25, 50))
-    ax.set_xlabel("$u$ (mm)", labelpad=1)
+    ax.set_xlabel("$u$ (mm)\n" + tag, labelpad=3)
+    ax.set_ylabel("$v$ (mm)", labelpad=2)
+    ax.set_aspect("equal")
 
 
 def main():
@@ -92,38 +94,51 @@ def main():
 
     plt.rcParams.update({
         "font.family": "serif", "mathtext.fontset": "cm",
-        "font.size": 8, "axes.titlesize": 8.5, "axes.labelsize": 8,
-        "xtick.labelsize": 7, "ytick.labelsize": 7,
-        "axes.linewidth": 0.6, "xtick.major.width": 0.6, "ytick.major.width": 0.6,
-        "xtick.major.size": 2.5, "ytick.major.size": 2.5,
+        "font.size": 13, "axes.titlesize": 13, "axes.labelsize": 14,
+        "xtick.labelsize": 12, "ytick.labelsize": 12,
+        "axes.linewidth": 0.7, "xtick.major.width": 0.7, "ytick.major.width": 0.7,
+        "xtick.major.size": 3.2, "ytick.major.size": 3.2,
         "savefig.dpi": 300,
     })
-    fig, axes = plt.subplots(1, 3, figsize=(7.16, 2.35), layout="constrained",
-                             gridspec_kw={"width_ratios": [1.05, 1.18, 1.22]})
-    fig.get_layout_engine().set(wspace=0.10)
+    fig_w = 7.16
+    left, gap_ab, cbar_pad, cbar_w, gap_c, right = 0.58, 0.78, 0.08, 0.10, 1.08, 0.22
+    bottom, top = 0.72, 0.18
+    side = (fig_w - left - gap_ab - cbar_pad - cbar_w - gap_c - right) / 3.0
+    fig_h = bottom + side + top
+    fig = plt.figure(figsize=(fig_w, fig_h))
+
+    def _box(x_in):
+        return [x_in / fig_w, bottom / fig_h, side / fig_w, side / fig_h]
+
+    x_a = left
+    x_b = left + side + gap_ab
+    x_cbar = x_b + side + cbar_pad
+    x_c = x_cbar + cbar_w + gap_c
+    axes = [fig.add_axes(_box(x_a)), fig.add_axes(_box(x_b)), fig.add_axes(_box(x_c))]
+    cax = fig.add_axes([
+        x_cbar / fig_w, (bottom + 0.03) / fig_h, cbar_w / fig_w, (side - 0.06) / fig_h,
+    ])
 
     ax = axes[0]
-    ax.imshow(raw, cmap="gray", vmin=0, vmax=255, extent=extent, aspect="auto",
+    ax.imshow(raw, cmap="gray", vmin=0, vmax=255, extent=extent, aspect="equal",
               interpolation="bilinear")
     for flagged, left, right in zip(low, u_edges[:-1], u_edges[1:]):
         if flagged:
             ax.add_patch(Rectangle((left, v_top), right - left, v_bot - v_top,
                                    facecolor="#ff6b6b", edgecolor="none", alpha=0.42, zorder=2))
     draw_near_field(ax, u_edges, v_top, v_bot)
-    style_image_axes(ax)
-    ax.set_ylabel("$v$ (mm)")
-    ax.set_title("(a) B-mode frame $j$")
+    style_image_axes(ax, "(a)")
 
     ax = axes[1]
     mapped = ax.imshow(confidence, cmap="viridis", vmin=0, vmax=1, extent=extent,
-                       aspect="auto", interpolation="nearest")
+                       aspect="equal", interpolation="nearest")
     draw_near_field(ax, u_edges, v_top, v_bot)
-    style_image_axes(ax)
-    ax.set_ylabel("$v$ (mm)")
-    ax.set_title("(b) $C_j(u,v)$")
-    bar = fig.colorbar(mapped, ax=ax, fraction=0.046, pad=0.04, ticks=(0, 0.5, 1))
-    bar.outline.set_linewidth(0.6)
-    bar.ax.tick_params(labelsize=7, width=0.6, length=2.5)
+    style_image_axes(ax, "(b)")
+    bar = fig.colorbar(mapped, cax=cax, ticks=(0, 0.5, 1))
+    bar.outline.set_linewidth(0.7)
+    bar.set_ticks((0, 0.5, 1))
+    bar.set_ticklabels(["0", "0.5", "1"])
+    bar.ax.tick_params(labelsize=12, width=0.7, length=3.2, pad=2)
 
     ax = axes[2]
     centers = 0.5 * (u_edges[:-1] + u_edges[1:])
@@ -132,14 +147,16 @@ def main():
     ax.plot(u, profile, color=INK, lw=1.2, zorder=3)
     ax.axhline(threshold, color=RED, ls="--", lw=0.9, zorder=2)
     ax.text(-HALF_W_MM + 1.0, threshold + 0.03, r"$c_{\mathrm{th}}$", color=RED,
-            ha="left", va="bottom", zorder=5)
-    ax.set_xlim(-HALF_W_MM, HALF_W_MM)
+            ha="left", va="bottom", zorder=5, fontsize=13)
+    ax.set_xlim(-HALF_W_MM - 0.8, HALF_W_MM + 0.8)
     ax.set_ylim(0, 1.05)
     ax.set_xticks((-25, 0, 25))
     ax.set_yticks((0, 0.5, 1))
-    ax.set_xlabel("$u$ (mm)", labelpad=1)
-    ax.set_ylabel("confidence")
-    ax.set_title(r"(c) $\bar{C}_j(u)$ and $\mathbf{c}_j$")
+    ax.set_yticklabels(["0", "0.5", "1"])
+    ax.set_xlabel("$u$ (mm)\n(c)", labelpad=3)
+    ax.tick_params(axis="y", pad=2)
+    ax.set_ylabel("confidence", labelpad=4)
+    ax.set_box_aspect(1)
 
     for ax in axes:
         for spine in ax.spines.values():

@@ -63,9 +63,12 @@ from peirastic.DEMO.phathom_scanning.s_plan import (
 from peirastic.DEMO.phathom_scanning.surface import MAX_FIT_RADIUS_M
 from peirastic.DEMO.phathom_scanning.force_trace import ForceTraceRecorder
 from peirastic.DEMO.phathom_scanning.comparison_run import (
+    ABLATION_MODES,
+    ABLATION_REUSE_MODES,
     COMPARISON_MODES,
     COMPARISON_REUSE_MODES,
     COMPARISON_SPEED_M_S,
+    DEFAULT_ABLATION_ROOT,
     DEFAULT_CONTACT_QP,
     DEFAULT_DATA_ROOT,
     allocate_run,
@@ -361,8 +364,11 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
                     help="raster (default): parallel rows; lissajous: a closed two-lobe path")
     ap.add_argument("--mode", choices=COMPARISON_MODES, default=None,
                     help="comparison outer law; omit for the existing TFF DEMO")
-    ap.add_argument("--data-root", type=Path, default=DEFAULT_DATA_ROOT,
-                    help="Comparison Study root when --mode is set")
+    ap.add_argument("--ablation", choices=ABLATION_MODES, default=None,
+                    help="UltraPoC mechanism ablation under Ablation Study; "
+                         "full plans a new biased path, the other four reuse it")
+    ap.add_argument("--data-root", type=Path, default=None,
+                    help="Comparison/Ablation Study root when --mode or --ablation is set")
     ap.add_argument("--reuse-plan", type=Path, default=None,
                     help="skip detect and load plan.json; required for "
                          "admittance_1d/ac2d/tafac so they share the ultrapoc polyline")
@@ -396,6 +402,14 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     ap.add_argument("--plan-dir", type=Path, default=_REPO / "peirastic" / "logs" / "phantom",
                     help="save the cloud, controller-frame plan and preview here")
     args = ap.parse_args(argv)
+    if args.ablation is not None:
+        if args.mode not in (None, "ultrapoc"):
+            ap.error("--ablation only applies to UltraPoC (--mode ultrapoc)")
+        args.mode = "ultrapoc"
+        if args.ablation in ABLATION_REUSE_MODES and args.reuse_plan is None:
+            ap.error(f"{args.ablation} must --reuse-plan the Ablation Study/full run")
+    if args.data_root is None:
+        args.data_root = DEFAULT_ABLATION_ROOT if args.ablation is not None else DEFAULT_DATA_ROOT
     if args.speed_m_s is None:
         args.speed_m_s = COMPARISON_SPEED_M_S if args.mode is not None else SCAN_SPEED_M_S
     for name in ("force", "standoff_m", "lift_m", "probe_width_m", "speed_m_s", "cloud_timeout", "surface_radius_m", "scan_length_m", "scan_width_m"):
@@ -554,10 +568,12 @@ def main(argv: list[str] | None = None) -> int:
     trace_outcome = "aborted"
     try:
         if args.mode is not None:
-            args.plan_dir = allocate_run(Path(args.data_root) / args.mode)
+            folder = args.ablation if args.ablation is not None else args.mode
+            args.plan_dir = allocate_run(Path(args.data_root) / folder)
             args.capture_dir = args.plan_dir
             print(
-                f"[COMPARE] mode={args.mode}  run={args.plan_dir}  "
+                f"[COMPARE] mode={args.mode}  ablation={args.ablation or 'full'}  "
+                f"run={args.plan_dir}  "
                 "shuffle mode order across repeats (gel/heating bias)",
                 flush=True,
             )
@@ -663,10 +679,24 @@ def main(argv: list[str] | None = None) -> int:
                 "normal_offset_deg": float(getattr(plan, "normal_offset_deg", args.normal_offset_deg)),
                 "reuse_plan": None if args.reuse_plan is None else str(args.reuse_plan),
                 "contact_qp_config": str(args.contact_qp_config),
+                "ablation": args.ablation or "full",
                 "git_sha": git_head(_REPO),
                 "run_dir": str(args.plan_dir),
             })
-            if args.mode == "ultrapoc" and args.reuse_plan is None:
+            if args.ablation == "full" and args.reuse_plan is None:
+                print(
+                    "[ABLATION] replay this exact polyline on the other four arms:\n"
+                    f"  bash scripts/run_ablation.sh --mode no_cop "
+                    f"--reuse-plan {args.plan_dir}\n"
+                    f"  bash scripts/run_ablation.sh --mode fixed_alpha "
+                    f"--reuse-plan {args.plan_dir}\n"
+                    f"  bash scripts/run_ablation.sh --mode no_us_orient "
+                    f"--reuse-plan {args.plan_dir}\n"
+                    f"  bash scripts/run_ablation.sh --mode no_moment "
+                    f"--reuse-plan {args.plan_dir}",
+                    flush=True,
+                )
+            elif args.mode == "ultrapoc" and args.ablation is None and args.reuse_plan is None:
                 print(
                     "[COMPARE] replay this exact polyline on the other three laws:\n"
                     f"  bash scripts/run_comparison.sh --mode admittance_1d "
@@ -759,6 +789,7 @@ def main(argv: list[str] | None = None) -> int:
             hfpc_kw.update(comparison_hfpc_options(
                 args.mode, force=fz, run_dir=args.capture_dir,
                 config_path=args.contact_qp_config,
+                ablation=args.ablation or "full",
             ))
             hfpc_kw["plan_path"] = str(write_hfpc_polyline(args.capture_dir, plan.poses))
             poses = None

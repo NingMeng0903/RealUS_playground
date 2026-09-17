@@ -12,8 +12,11 @@ import numpy as np
 
 COMPARISON_MODES = ("ultrapoc", "admittance_1d", "ac2d", "tafac")
 COMPARISON_REUSE_MODES = ("admittance_1d", "ac2d", "tafac")
+ABLATION_MODES = ("full", "no_cop", "fixed_alpha", "no_us_orient", "no_moment")
+ABLATION_REUSE_MODES = ("no_cop", "fixed_alpha", "no_us_orient", "no_moment")
 COMPARISON_SPEED_M_S = 0.010
 DEFAULT_DATA_ROOT = Path("/media/camp/PEI_T7/icra 2027_contact/Comparison Study")
+DEFAULT_ABLATION_ROOT = Path("/media/camp/PEI_T7/icra 2027_contact/Ablation Study")
 DEFAULT_CONTACT_QP = (
     Path(__file__).resolve().parents[2] / "config" / "contact_qp" / "active_probe50_delay_kf_cop.yaml"
 )
@@ -89,14 +92,20 @@ def write_hfpc_polyline(run_dir: Path, poses) -> Path:
     return dest
 
 
-def write_contact_qp_run_config(run_dir: Path, config_path: Path | None) -> Path:
+def write_contact_qp_run_config(run_dir: Path, config_path: Path | None, *,
+                                 ablation: str = "full") -> Path:
     import yaml
     from peirastic.contact_qp.runtime_config import load_study_config
 
+    if ablation not in ABLATION_MODES:
+        raise ValueError(f"ablation must be one of {ABLATION_MODES}, got {ablation!r}")
     config = load_study_config(config_path or DEFAULT_CONTACT_QP)
     dest = Path(run_dir) / "contact_qp_run.yaml"
     dest.parent.mkdir(parents=True, exist_ok=True)
     config["log_path"] = str(Path(run_dir) / "contact_qp.jsonl")
+    qp = dict(config.get("qp") or {})
+    qp["ablation"] = str(ablation)
+    config["qp"] = qp
     dest.write_text(yaml.safe_dump(config, sort_keys=False), encoding="utf-8")
     return dest
 
@@ -112,7 +121,8 @@ def comparison_force_axes(mode: str) -> list[float]:
     return list(DEMO_FORCE_AXES)
 
 
-def comparison_hfpc_options(mode: str, *, force: float, run_dir: Path, config_path: Path | None):
+def comparison_hfpc_options(mode: str, *, force: float, run_dir: Path, config_path: Path | None,
+                            ablation: str = "full"):
     del force
     if mode not in COMPARISON_MODES:
         raise ValueError(f"mode must be one of {COMPARISON_MODES}, got {mode!r}")
@@ -121,7 +131,7 @@ def comparison_hfpc_options(mode: str, *, force: float, run_dir: Path, config_pa
 
         return dict(
             law="contact_qp",
-            contact_qp=str(write_contact_qp_run_config(run_dir, config_path)),
+            contact_qp=str(write_contact_qp_run_config(run_dir, config_path, ablation=ablation)),
             extra=dict(force_profile("icra")),
         )
     extra = {

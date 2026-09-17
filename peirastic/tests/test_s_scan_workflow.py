@@ -428,3 +428,80 @@ def test_replay_never_attaches_to_live_controller(tmp_path, monkeypatch):
     monkeypatch.setattr(s_scan, "_plan_capture", lambda *a, **kw:
                         (None, SimpleNamespace(n_rows=3, poses=np.zeros((10, 6)))))
     assert s_scan.main(["--replay", str(source), "--plan-dir", str(tmp_path)]) == 0
+
+
+def test_ablation_full_plans_new_biased_path(monkeypatch, tmp_path, capsys):
+    poses = np.array([[0.2, 0.2, 0.168, np.pi, 0, 0],
+                      [0.3, 0.2, 0.168, np.pi, 0, 0]])
+    plan = SimpleNamespace(
+        poses=poses, standoff=poses[0].copy(), lift=poses[-1].copy(),
+        normal=np.array([0., 0., 1.]), normals=np.array([[0., 0., 1.], [0., 0., 1.]]),
+        n_rows=0, stride_m=0.0, u_span_m=0.14, v_span_m=0.08, length_m=0.14,
+        pattern="lissajous", orientation_diagnostics={"max_tool_z_spin_deg": 20.0},
+        right=np.array([1., 0., 0.]), outline_dimensions_m=np.array([0.2, 0.1]),
+        lissajous_yaw_deg=20.0, normal_offset_deg=20.0,
+    )
+    hit = SimpleNamespace(n_points=10, normal=plan.normal, corner=poses[0, :3])
+    monkeypatch.setattr(s_scan, "PeirasticArm", _arm_double)
+    monkeypatch.setattr(s_scan, "_detect", lambda arm, args: (hit, plan))
+    monkeypatch.setattr(s_scan, "_live_q8", lambda *a: s_scan.load_detect_pose())
+    monkeypatch.setattr(s_scan, "_live_pose", lambda *a, **kw: poses[0].tolist())
+    monkeypatch.setattr(s_scan, "_wait_enter", lambda *a, **k: None)
+    root = tmp_path / "Ablation Study"
+    args = s_scan._parse_args([
+        "--ablation", "full", "--pattern", "lissajous", "--data-root", str(root),
+        "--no-us", "--dry-run", "--normal-offset-deg", "20",
+    ])
+    assert args.mode == "ultrapoc"
+    assert args.reuse_plan is None
+    assert args.data_root == root
+    assert s_scan.main([
+        "--ablation", "full", "--pattern", "lissajous", "--data-root", str(root),
+        "--no-us", "--dry-run", "--normal-offset-deg", "20",
+    ]) == 0
+    run = next(p for p in (root / "full").iterdir() if p.is_dir())
+    meta = json.loads((run / "meta.json").read_text())
+    assert meta["mode"] == "ultrapoc"
+    assert meta["ablation"] == "full"
+    assert meta["normal_offset_deg"] == pytest.approx(20.0)
+    assert meta["reuse_plan"] is None
+    printed = capsys.readouterr().out
+    assert "run_ablation.sh --mode no_cop" in printed
+    assert "run_comparison.sh" not in printed
+    assert not (tmp_path / "Comparison Study").exists()
+
+
+def test_ablation_variants_must_reuse_full_plan(monkeypatch, tmp_path):
+    poses = np.array([[0.2, 0.2, 0.168, np.pi, 0, 0],
+                      [0.3, 0.2, 0.168, np.pi, 0, 0]])
+    source = tmp_path / "Ablation Study" / "full" / "001"
+    _write_plan_json(source, poses, normal_offset_deg=20.0)
+    monkeypatch.setattr(s_scan, "PeirasticArm", _arm_double)
+    monkeypatch.setattr(s_scan, "_live_q8", lambda *a: s_scan.load_detect_pose())
+    monkeypatch.setattr(s_scan, "_live_pose", lambda *a, **kw: poses[0].tolist())
+    monkeypatch.setattr(s_scan, "_wait_enter", lambda *a, **k: None)
+    with pytest.raises(SystemExit):
+        s_scan._parse_args(["--ablation", "no_cop", "--pattern", "lissajous", "--no-us", "--dry-run"])
+    root = tmp_path / "Ablation Study"
+    assert s_scan.main([
+        "--ablation", "no_cop", "--pattern", "lissajous", "--data-root", str(root),
+        "--no-us", "--dry-run", "--reuse-plan", str(source),
+    ]) == 0
+    run = next(p for p in (root / "no_cop").iterdir() if p.is_dir())
+    meta = json.loads((run / "meta.json").read_text())
+    assert meta["mode"] == "ultrapoc"
+    assert meta["ablation"] == "no_cop"
+    assert meta["reuse_plan"] == str(source)
+    assert meta["normal_offset_deg"] == pytest.approx(20.0)
+    options = s_scan.comparison_hfpc_options(
+        "ultrapoc", force=4.0, run_dir=run, config_path=s_scan.DEFAULT_CONTACT_QP,
+        ablation="fixed_alpha",
+    )
+    assert options["law"] == "contact_qp"
+    assert "ablation: fixed_alpha" in Path(options["contact_qp"]).read_text()
+    args = s_scan._parse_args([
+        "--ablation", "full", "--pattern", "lissajous", "--data-root", str(root),
+        "--no-us", "--dry-run", "--reuse-plan", str(source),
+    ])
+    assert args.ablation == "full"
+    assert args.reuse_plan == source

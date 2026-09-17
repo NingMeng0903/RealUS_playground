@@ -124,8 +124,10 @@ def solve_weighted_outer(solver, data, *, deadline_s=None, online=False):
                                          data.path_feedforward_contact)
     transform = twist_tcp_to_face(data.geometry)
     zero_path = np.linalg.norm(basis[:, 2]) <= 1e-14
-    alpha_des = 1. if data.alpha_preferred is None else float(data.alpha_preferred)
-    nominal = np.array([data.mechanical_normal_m_s, data.mechanical_omega_rad_s, alpha_des, 0.])
+    ablation = str(getattr(cfg, 'ablation', 'full') or 'full')
+    omega_m = 0. if ablation == 'no_moment' else float(data.mechanical_omega_rad_s)
+    alpha_des = 1. if (data.alpha_preferred is None or ablation == 'fixed_alpha') else float(data.alpha_preferred)
+    nominal = np.array([data.mechanical_normal_m_s, omega_m, alpha_des, 0.])
     scale = np.array([cfg.normal_scale_m_s, cfg.angular_scale_rad_s, 1., cfg.angular_scale_rad_s])
     scaled_basis = np.column_stack((basis * scale[:3], np.zeros(6)))
     target = nominal / scale
@@ -179,7 +181,8 @@ def solve_weighted_outer(solver, data, *, deadline_s=None, online=False):
     request = 0. if data.visual_request_rad_s is None else float(data.visual_request_rad_s)
     image_valid = bool(data.visual_task_valid)
     visual_active = bool(cfg.enable_visual and image_valid and data.repair_execution_enabled
-                         and data.visual_gamma > 0. and abs(request) > 0.)
+                         and data.visual_gamma > 0. and abs(request) > 0.
+                         and ablation != 'no_us_orient')
     request_sign = float(np.sign(request)) if visual_active else 0.
     requested = float(data.visual_gamma*abs(request)) if visual_active else 0.
     if visual_active:
@@ -191,11 +194,12 @@ def solve_weighted_outer(solver, data, *, deadline_s=None, online=False):
     cop_valid = bool(data.cop_m is not None and data.force_n >= cfg.cop_min_force_n
                      and abs(data.cop_m) <= cop_limit)
     cop = float(data.cop_m) if cop_valid else 0.
+    pair_cop = bool(cop_valid and ablation != 'no_cop')
     weights = np.array([0., cfg.angular_weight, cfg.progress_weight, cfg.slack_weight])
     # The factor two converts the published squared objective to 1/2 x'Hx+g'x.
     hessian = 2.*np.diag(weights)
     gradient = -2.*weights*target
-    r_row = np.array([1., -cop*scale[1]/scale[0], 0., 0.]) if cop_valid else np.array([1., 0., 0., 0.])
+    r_row = np.array([1., -cop*scale[1]/scale[0], 0., 0.]) if pair_cop else np.array([1., 0., 0., 0.])
     hessian += 2.*cfg.normal_weight*np.outer(r_row, r_row)
     gradient -= 2.*cfg.normal_weight*r_row*float(r_row@target)
     diagnostics.update(mechanical_normal_m_s=nominal[0], mechanical_omega_rad_s=nominal[1],
@@ -204,7 +208,9 @@ def solve_weighted_outer(solver, data, *, deadline_s=None, online=False):
         zero_path=zero_path, image_valid=image_valid, visual_rows_active=visual_active,
         visual_request_rad_s=request, visual_request_gated_rad_s=request_sign*requested,
         visual_gamma=data.visual_gamma, cop_valid=cop_valid, cop_m=data.cop_m,
-        cop_limit_m=cop_limit, repair_force_gate=data.visual_gamma)
+        cop_limit_m=cop_limit, repair_force_gate=data.visual_gamma,
+        ablation=ablation, cop_pairing=('coupled_normal_task_v1' if pair_cop
+                                        else 'normal_reference_hold_v1'))
 
     transparent = _violation(constraints, lo, hi, target) <= cfg.solver_tolerance
     solver_time = 0.

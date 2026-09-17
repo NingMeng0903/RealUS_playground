@@ -11,8 +11,8 @@ import numpy as np
 STUDY = Path("/media/camp/PEI_T7/icra 2027_contact/Comparison Study")
 UNBIASED_DIR = STUDY / "ultrapoc" / "009"
 BIASED_DIR = STUDY / "ultrapoc" / "010"
-DEFAULT_CAPTURE = Path("/tmp/orbbec_live_plan_capture.npz")
-DEFAULT_OUT = STUDY / "figures" / "plan_scene"
+DEFAULT_CAPTURE = STUDY / "figures" / "orbbec_live_plan_capture.npz"
+DEFAULT_OUT = STUDY / "figures" / "scan_path"
 
 UNBIASED_COLOR = "#56B4E9"
 BIASED_COLOR = "#CC79A7"
@@ -26,10 +26,13 @@ TIME_CMAP = "coolwarm"
 
 RC = {
     "font.family": ["Nimbus Sans", "Liberation Sans", "DejaVu Sans", "sans-serif"],
-    "font.size": 18,
-    "axes.labelsize": 18,
+    "font.size": 20,
+    "axes.labelsize": 22,
+    "xtick.labelsize": 16,
+    "ytick.labelsize": 16,
     "axes.linewidth": 1.6,
     "legend.frameon": False,
+    "legend.fontsize": 20,
     "svg.fonttype": "none",
 }
 
@@ -369,6 +372,29 @@ def _enlarge_3d(ax, factor=1.65):
     ax.get_proj = _proj
 
 
+def _place_square_panels(fig, ax3, ax, cax=None):
+    """Give both content axes the same on-page square and park the colorbar beside them."""
+    fig_w, fig_h = fig.get_size_inches()
+    margin_l, margin_r, margin_b, margin_t, gap, cbar_w, cbar_pad = (
+        0.82, 0.60, 0.80, 0.44, 0.28, 0.22, 0.10,
+    )
+    side = min((fig_w - margin_l - margin_r - gap - cbar_w - cbar_pad) / 2.0,
+               fig_h - margin_b - margin_t)
+    y0 = margin_b + 0.5 * (fig_h - margin_b - margin_t - side)
+    x3 = margin_l
+    x2 = margin_l + side + gap
+    ax3.set_position([x3 / fig_w, y0 / fig_h, side / fig_w, side / fig_h])
+    ax.set_position([x2 / fig_w, y0 / fig_h, side / fig_w, side / fig_h])
+    if cax is not None:
+        cax.set_position([
+            (x2 + side + cbar_pad) / fig_w,
+            (y0 + 0.06 * side) / fig_h,
+            cbar_w / fig_w,
+            0.88 * side / fig_h,
+        ])
+    return side
+
+
 def _arrow3d(ax3, start, direction, length_m, color, *, zorder=12, lw=1.35):
     start = np.asarray(start, dtype=np.float64).reshape(3)
     d = _unit(direction)
@@ -403,8 +429,109 @@ def _surface_cloud(plan):
     return xyz, colors, top
 
 
+def _smooth_nan(field, mask, sigma):
+    from scipy.ndimage import gaussian_filter
+
+    weight = mask.astype(np.float64)
+    filled = np.where(mask, field, 0.0)
+    num = gaussian_filter(filled, sigma, mode="nearest")
+    den = gaussian_filter(weight, sigma, mode="nearest")
+    out = num / np.maximum(den, 1e-8)
+    out[~mask] = np.nan
+    return out
+
+
+def _inside_support(u, v, samples_u, samples_v, *, radius_m):
+    from matplotlib.path import Path
+    from scipy.ndimage import binary_closing
+    from scipy.spatial import ConvexHull, cKDTree
+
+    pts = np.column_stack([np.asarray(samples_u, dtype=np.float64).ravel(),
+                           np.asarray(samples_v, dtype=np.float64).ravel()])
+    pts = pts[np.isfinite(pts).all(axis=1)]
+    uu, vv = np.broadcast_arrays(np.asarray(u, dtype=np.float64), np.asarray(v, dtype=np.float64))
+    query = np.column_stack([uu.ravel(), vv.ravel()])
+    if len(pts) < 3:
+        return np.ones(uu.shape, dtype=bool)
+    dist, _ = cKDTree(pts).query(query, k=1)
+    mask = dist.reshape(uu.shape) <= float(radius_m)
+    try:
+        ring = pts[ConvexHull(pts).vertices]
+        mask |= Path(ring, closed=True).contains_points(query, radius=1e-6).reshape(uu.shape)
+    except Exception:
+        pass
+    return binary_closing(mask, iterations=2)
+
+
+def colored_surface_grid(xyz, colors, right, far, normal, *,
+                         pitch_m=0.0032, smooth_sigma=1.7, min_count=4):
+    """Interpolate a tangent-plane height/RGB surface and Gaussian-smooth it."""
+    del min_count
+    from scipy.interpolate import LinearNDInterpolator, NearestNDInterpolator
+
+    pts = np.asarray(xyz, dtype=np.float64).reshape(-1, 3)
+    rgb = np.clip(np.asarray(colors, dtype=np.float64).reshape(-1, 3), 0.0, 1.0)
+    if len(pts) != len(rgb):
+        raise ValueError("xyz and colors must have the same length")
+    keep = np.isfinite(pts).all(axis=1) & np.isfinite(rgb).all(axis=1)
+    pts, rgb = pts[keep], rgb[keep]
+    if len(pts) < 16:
+        raise ValueError("need a dense colored cloud to fit a surface")
+    if len(pts) > 8000:
+        pick = np.linspace(0, len(pts) - 1, 8000, dtype=int)
+        pts, rgb = pts[pick], rgb[pick]
+    origin = pts.mean(axis=0)
+    axis_u, axis_v, axis_n = _unit(right), _unit(far), _unit(normal)
+    uvh = (pts - origin) @ np.column_stack([axis_u, axis_v, axis_n])
+    u, v, h = uvh[:, 0], uvh[:, 1], uvh[:, 2]
+    u0, u1 = np.quantile(u, [0.012, 0.988])
+    v0, v1 = np.quantile(v, [0.012, 0.988])
+    core = (u >= u0) & (u <= u1) & (v >= v0) & (v <= v1)
+    if int(core.sum()) >= 16:
+        u, v, h, rgb = u[core], v[core], h[core], rgb[core]
+    nu = max(12, int(np.ceil((u1 - u0) / float(pitch_m))) + 1)
+    nv = max(12, int(np.ceil((v1 - v0) / float(pitch_m))) + 1)
+    uc = np.linspace(u0, u1, nu)
+    vc = np.linspace(v0, v1, nv)
+    uu, vv = np.meshgrid(uc, vc, indexing="ij")
+    mask = _inside_support(uu, vv, u, v, radius_m=1.6 * float(pitch_m))
+    sample = np.column_stack([u, v])
+    height = LinearNDInterpolator(sample, h)(uu, vv)
+    hole = mask & ~np.isfinite(height)
+    if hole.any():
+        height[hole] = NearestNDInterpolator(sample, h)(uu[hole], vv[hole])
+    shade = np.empty(uu.shape + (3,))
+    for ch in range(3):
+        field = LinearNDInterpolator(sample, rgb[:, ch])(uu, vv)
+        miss = mask & ~np.isfinite(field)
+        if miss.any():
+            field[miss] = NearestNDInterpolator(sample, rgb[:, ch])(uu[miss], vv[miss])
+        shade[..., ch] = field
+    height = _smooth_nan(height, mask, smooth_sigma)
+    for ch in range(3):
+        shade[..., ch] = _smooth_nan(shade[..., ch], mask, smooth_sigma)
+    mask = mask & np.isfinite(height) & np.isfinite(shade).all(axis=2)
+    rows = np.flatnonzero(mask.any(axis=1))
+    cols = np.flatnonzero(mask.any(axis=0))
+    if rows.size < 2 or cols.size < 2:
+        raise ValueError("need a dense colored cloud to fit a surface")
+    sl = np.s_[rows[0]:rows[-1] + 1, cols[0]:cols[-1] + 1]
+    uu, vv, height, shade, mask = uu[sl], vv[sl], height[sl], shade[sl], mask[sl]
+    fill_h = float(np.nanmedian(height[mask])) if mask.any() else 0.0
+    height = np.where(mask, height, fill_h)
+    xyz_grid = (origin
+                + uu[..., None] * axis_u
+                + vv[..., None] * axis_v
+                + height[..., None] * axis_n)
+    vertex = np.clip(np.nan_to_num(shade, nan=0.75), 0.0, 1.0)
+    vertex = np.concatenate([vertex, np.ones(mask.shape + (1,))], axis=2)
+    face = 0.25 * (vertex[:-1, :-1] + vertex[1:, :-1] + vertex[:-1, 1:] + vertex[1:, 1:])
+    face[..., 3] = 1.0
+    return SimpleNamespace(xyz=xyz_grid, facecolors=face, mask=mask, origin=origin)
+
+
 def render(fig, *, image, xyz_rb, colors, K, T_rb_cam, T_cam_rb, unbiased, biased,
-           hit=None, dist=None):
+           hit=None, dist=None, annotated_rgb=False):
     from matplotlib.patches import Patch
 
     if hit is not None:
@@ -416,25 +543,36 @@ def render(fig, *, image, xyz_rb, colors, K, T_rb_cam, T_cam_rb, unbiased, biase
         xyz_u0, xyz_b0 = unbiased.poses[:, :3], biased.poses[:, :3]
         right, far, normal = biased.right, biased.far, _unit(biased.normals.mean(axis=0))
         top = None
+        top_ply = Path(biased.directory) / "detect_top.ply"
+        if top_ply.is_file():
+            top, _ = _read_ascii_ply(top_ply)
         center = xyz_b0.mean(axis=0)
     xyz_line = resample_polyline(xyz_u0, 360)
     xyz_u = resample_polyline(xyz_u0, 220)
     xyz_b = resample_polyline(xyz_b0, 220)
     kw = dict(dist=dist)
-    uv_line, _, _ = project_points(xyz_line, K, T_cam_rb, **kw)
-    uv_top = None
-    if top is not None and len(top):
-        uv_top, _, _ = project_points(top[::max(1, len(top) // 2500)], K, T_cam_rb, **kw)
-    crop_uv = (uv_line,) if uv_top is None else (uv_line, uv_top)
-    x0, x1, y0, y1 = _square_lr(_crop(image, crop_uv, pad=40, extra_right=36, extra_bottom=28))
-    faded = np.clip(0.22 + 0.78 * np.asarray(image, dtype=np.float64) / (
-        255.0 if np.asarray(image).max() > 1.5 else 1.0), 0, 1)
+    uv_line = None
+    if annotated_rgb:
+        faded = np.clip(np.asarray(image, dtype=np.float64) / (
+            255.0 if np.asarray(image).max() > 1.5 else 1.0), 0, 1)
+        h_img, w_img = faded.shape[:2]
+        x0, x1, y0, y1 = 0, w_img, 0, h_img
+    else:
+        uv_line, _, _ = project_points(xyz_line, K, T_cam_rb, **kw)
+        uv_top = None
+        if top is not None and len(top):
+            uv_top, _, _ = project_points(top[::max(1, len(top) // 2500)], K, T_cam_rb, **kw)
+        crop_uv = (uv_line,) if uv_top is None else (uv_line, uv_top)
+        x0, x1, y0, y1 = _square_lr(_crop(image, crop_uv, pad=22, extra_right=14, extra_bottom=10))
+        faded = np.clip(0.22 + 0.78 * np.asarray(image, dtype=np.float64) / (
+            255.0 if np.asarray(image).max() > 1.5 else 1.0), 0, 1)
 
     if top is not None and len(top):
         lo, hi = top.min(axis=0) - 0.010, top.max(axis=0) + 0.010
         lo[2] -= 0.018
         keep = np.all((xyz_rb >= lo) & (xyz_rb <= hi), axis=1)
-        pts, col = xyz_rb[keep], np.asarray(colors)[keep]
+        near, near_col = xyz_rb[keep], np.asarray(colors)[keep]
+        pts, col = (near, near_col) if len(near) else (xyz_rb, np.asarray(colors))
     else:
         pts, col = xyz_rb, np.asarray(colors)
     elev, azim, R = camera_elev_azim(T_rb_cam, center, right)
@@ -444,21 +582,28 @@ def render(fig, *, image, xyz_rb, colors, K, T_rb_cam, T_cam_rb, unbiased, biase
     n_v = normal @ R
     lift = 0.006 * n_v
 
-    gs = fig.add_gridspec(
-        2, 2, height_ratios=[1.0, 0.07], width_ratios=[1.08, 1.0],
-        left=0.00, right=0.99, top=1.00, bottom=0.00, wspace=0.03, hspace=0.00,
-    )
-    ax3 = fig.add_subplot(gs[0, 0], projection="3d")
-    ax = fig.add_subplot(gs[0, 1])
-    leg_ax = fig.add_subplot(gs[1, 0])
-    leg_ax.set_axis_off()
+    ax3 = fig.add_subplot(121, projection="3d")
+    ax = fig.add_subplot(122)
+    cax = fig.add_axes([0.9, 0.2, 0.015, 0.6])
 
     ax3.computed_zorder = False
-    if len(pts_v):
-        ax3.scatter(
-            *(pts_v * 1000).T, c=np.clip(col, 0, 1), s=5.5, alpha=0.62,
-            linewidths=0, depthshade=False, zorder=1,
-        )
+    surface_xyz = None
+    if len(pts):
+        try:
+            mesh = colored_surface_grid(pts, col, right, far, normal)
+            surface_xyz = (mesh.xyz.reshape(-1, 3)[mesh.mask.ravel()] - center) @ R
+            verts = (mesh.xyz - center) @ R
+            ax3.plot_surface(
+                verts[:, :, 0] * 1000, verts[:, :, 1] * 1000, verts[:, :, 2] * 1000,
+                facecolors=mesh.facecolors, linewidth=0, antialiased=True,
+                shade=False, zorder=1, rstride=1, cstride=1,
+            )
+        except ValueError:
+            ax3.scatter(
+                *(pts_v * 1000).T, c=np.clip(col, 0, 1), s=5.5, alpha=0.62,
+                linewidths=0, depthshade=False, zorder=1,
+            )
+            surface_xyz = pts_v
     ax3.plot(*(path_u + lift).T * 1000, color=UNBIASED_COLOR, lw=2.6, zorder=8, solid_capstyle="round")
     ax3.plot(*(path_b + lift).T * 1000, color=BIASED_COLOR, lw=2.2, zorder=9, solid_capstyle="round")
     idx = np.linspace(0, len(xyz_u0) - 1, min(9, len(xyz_u0)), dtype=int)
@@ -473,12 +618,12 @@ def render(fig, *, image, xyz_rb, colors, K, T_rb_cam, T_cam_rb, unbiased, biase
         ax3, (xyz_b0[idx] - center) @ R + lift,
         x_b[idx] @ R, y_b[idx] @ R, z_b[idx] @ R, BIASED_FRAME, length_m=frame_len, zorder=15,
     )
-    ax3.set_xlabel("X (mm)", labelpad=14)
-    ax3.set_ylabel("Y (mm)", labelpad=14)
-    ax3.set_zlabel("Z (mm)", labelpad=12)
-    ax3.view_init(elev=26.0, azim=azim)
+    ax3.set_xlabel("")
+    ax3.set_ylabel("")
+    ax3.set_zlabel("")
+    ax3.view_init(elev=26.0, azim=-90.0)
     try:
-        ax3.dist = 7.8
+        ax3.dist = 7.4
     except Exception:
         pass
     ax3.xaxis.pane.set_facecolor("#f4f4f4")
@@ -493,56 +638,60 @@ def render(fig, *, image, xyz_rb, colors, K, T_rb_cam, T_cam_rb, unbiased, biase
         frame_tips.append(o - frame_len * (z_ax @ R))
         frame_tips.append(o + frame_len * (x_ax @ R))
         frame_tips.append(o + frame_len * (y_ax @ R))
-    bounds = np.vstack([pts_v, path_u, path_b, *frame_tips]) if len(pts_v) else np.vstack([path_u, path_b, *frame_tips])
+    cloud_bounds = surface_xyz if surface_xyz is not None and len(surface_xyz) else pts_v
+    bounds = np.vstack([cloud_bounds, path_u, path_b, *frame_tips]) if len(cloud_bounds) else np.vstack([path_u, path_b, *frame_tips])
     span = np.maximum(np.ptp(bounds, axis=0), 0.04)
     ax3.set_box_aspect(np.maximum(span, 0.05))
-    pad = 0.006
+    pad = 0.003
     ax3.set_xlim((bounds[:, 0].min() - pad) * 1000, (bounds[:, 0].max() + pad) * 1000)
     ax3.set_ylim((bounds[:, 1].min() - pad) * 1000, (bounds[:, 1].max() + pad) * 1000)
-    ax3.set_zlim((bounds[:, 2].min() - pad) * 1000, (bounds[:, 2].max() + 0.012) * 1000)
-    ax3.tick_params(labelsize=11, pad=3)
-    ax3.locator_params(nbins=4)
-    ax3.xaxis._axinfo["label"]["space_factor"] = 2.4
-    ax3.yaxis._axinfo["label"]["space_factor"] = 2.4
-    ax3.zaxis._axinfo["label"]["space_factor"] = 2.2
-    leg_ax.legend(
-        handles=[
-            Patch(facecolor=UNBIASED_COLOR, edgecolor=UNBIASED_COLOR, alpha=0.6, label="unbiased"),
-            Patch(facecolor=BIASED_COLOR, edgecolor=BIASED_COLOR, alpha=0.6, label="biased"),
-        ],
-        loc="center", bbox_to_anchor=(0.5, 1.28), ncols=2, fontsize=22,
-        handlelength=1.6, columnspacing=2.0, handletextpad=0.7, frameon=False,
-    )
+    ax3.set_zlim((bounds[:, 2].min() - pad) * 1000, (bounds[:, 2].max() + 0.008) * 1000)
+    ax3.tick_params(labelsize=15, pad=3)
+    ax3.set_xticks([-50, 0, 50])
+    ax3.set_yticks([])
+    ax3.set_zticks([-40, -20, 0, 20, 40])
+    _enlarge_3d(ax3, 1.52)
 
     ax.imshow(faded, origin="upper")
-    lc = _time_line_collection(uv_line, path_s(xyz_line), lw=3.0, z=7)
+    lc = None if uv_line is None else _time_line_collection(uv_line, path_s(xyz_line), lw=3.2, z=7)
     ax.set_xlim(x0, x1)
     ax.set_ylim(y1, y0)
     ax.set_aspect("equal")
     ax.set_axis_off()
-    pos = ax.get_position()
-    fig_w, fig_h = fig.get_size_inches()
-    box = min(pos.width * fig_w, 0.72 * fig_h) / fig_w
-    box_h = box * fig_w / fig_h
-    ax.set_position([
-        pos.x0 + 0.5 * (pos.width - box) - 0.01,
-        pos.y0 + 0.5 * (pos.height - box_h),
-        box, box_h,
-    ])
     if lc is not None:
-        from mpl_toolkits.axes_grid1 import make_axes_locatable
-
         ax.add_collection(lc)
-        cax = make_axes_locatable(ax).append_axes("right", size="5.5%", pad=0.08)
-        cbar = fig.colorbar(lc, cax=cax)
-        cbar.set_label(r"$s$", fontsize=16)
-        cbar.set_ticks([0.0, 0.5, 1.0])
-        cbar.ax.tick_params(labelsize=12)
+        mappable = lc
+    else:
+        from matplotlib.cm import ScalarMappable
+        from matplotlib.colors import Normalize
+
+        mappable = ScalarMappable(cmap=TIME_CMAP, norm=Normalize(0.0, 1.0))
+    cbar = fig.colorbar(mappable, cax=cax)
+    cbar.set_label(r"$s$", fontsize=20, labelpad=6)
+    cbar.set_ticks([0.0, 0.5, 1.0])
+    cbar.ax.tick_params(labelsize=15, pad=2)
+    cbar.outline.set_linewidth(1.0)
+    _place_square_panels(fig, ax3, ax, cax)
     pos3 = ax3.get_position()
-    ax3.set_position([pos3.x0 - 0.045, pos3.y0, pos3.width + 0.03, pos3.height])
+    fig.text(pos3.x0 + 0.52 * pos3.width, pos3.y0 - 0.055, "X (mm)",
+             ha="center", va="top", fontsize=22)
+    fig.text(pos3.x1 - 0.010, pos3.y0 + 0.10 * pos3.height, "Y (mm)",
+             ha="right", va="center", fontsize=22)
+    fig.text(pos3.x1 - 0.048, pos3.y0 + 0.88 * pos3.height, "Z (mm)",
+             ha="right", va="center", fontsize=22)
+    fig.legend(
+        handles=[
+            Patch(facecolor=UNBIASED_COLOR, edgecolor=UNBIASED_COLOR, alpha=0.6, label="unbiased"),
+            Patch(facecolor=BIASED_COLOR, edgecolor=BIASED_COLOR, alpha=0.6, label="biased"),
+        ],
+        loc="lower center", bbox_to_anchor=(pos3.x0 + 0.5 * pos3.width, pos3.y1 + 0.012),
+        ncols=2, fontsize=20, handlelength=1.5, columnspacing=1.8,
+        handletextpad=0.55, frameon=False, borderaxespad=0.0,
+    )
 
 
-def write_figure(path: Path, *, unbiased, biased, capture=None, run_fallback=None):
+def write_figure(path: Path, *, unbiased, biased, capture=None, run_fallback=None,
+                 annotated_rgb=None):
     from matplotlib import pyplot as plt
     from peirastic.DEMO.phathom_scanning.cloud import cloud_in_rail_base
 
@@ -566,23 +715,32 @@ def write_figure(path: Path, *, unbiased, biased, capture=None, run_fallback=Non
         xyz_rb, colors, image, K = scene.xyz_rb, scene.colors, scene.image, scene.K
         T_rb_cam, T_cam_rb = camera_from_rail(scene.q8)
 
+    use_annotated = False
+    rgb_path = Path(annotated_rgb) if annotated_rgb is not None else STUDY / "figures" / "scan_path_rgb.png"
+    if capture is None and rgb_path.is_file():
+        from matplotlib.image import imread
+
+        image = imread(rgb_path)
+        use_annotated = True
+
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    fig = plt.figure(figsize=(16.2, 7.2))
+    fig = plt.figure(figsize=(13.8, 6.70))
     render(
         fig, image=image, xyz_rb=xyz_rb, colors=colors, K=K,
         T_rb_cam=T_rb_cam, T_cam_rb=T_cam_rb,
         unbiased=unbiased, biased=biased, hit=hit, dist=dist,
+        annotated_rgb=use_annotated,
     )
     fig.canvas.draw()
     tight = fig.get_tightbbox(fig.canvas.get_renderer())
     from matplotlib.transforms import Bbox
 
-    cut_left = 0.62
     box = Bbox.from_extents(
-        tight.x0 + cut_left, tight.y0 - 0.04, tight.x1 + 0.06, tight.y1 + 0.04,
+        tight.x0 - 0.02, tight.y0 - 0.02, tight.x1 + 0.03, tight.y1 + 0.02,
     )
     fig.savefig(path.with_suffix(".png"), dpi=260, bbox_inches=box)
     fig.savefig(path.with_suffix(".pdf"), bbox_inches=box)
+    fig.savefig(path.with_suffix(".svg"), bbox_inches=box)
     plt.close(fig)
     return path.with_suffix(".png")

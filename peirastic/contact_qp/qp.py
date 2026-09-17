@@ -77,10 +77,13 @@ class QpConfig:
     inner_iterations: int = 100
     solver_preconditioning: bool = False
     solver_policy: str = "legacy_v1"
+    ablation: str = "full"
 
     def __post_init__(self):
         if self.solver_policy not in ("legacy_v1", "bounded_retry_v1"):
             raise ValueError("unknown contact QP solver policy")
+        if self.ablation not in ("full", "no_cop", "fixed_alpha", "no_us_orient", "no_moment"):
+            raise ValueError("unknown contact QP ablation")
         if self.allocation_policy not in ('legacy_v7','differential_repair_v8',
                                         'confidence_angular_v1','confidence_cop_v1','delay_kf_cop_v1'):
             raise ValueError('unknown allocation policy')

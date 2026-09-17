@@ -19,6 +19,9 @@ from peirastic.DEMO.phathom_scanning.orientation import rotation_minimizing_fram
 PROBE_WIDTH_M = 0.05
 OVERLAP = 0.20
 EDGE_EXTRA_M = 0.010
+# Orbbec rims are a few millimetres short of the conservative probe+edge
+# inset. Keep the requested 140×80 mm region; do not reject a 5–8 mm miss.
+SUPPORT_SLACK_M = 0.010
 STANDOFF_M = 0.040
 LIFT_M = 0.010
 SAMPLE_DS_M = 0.008
@@ -406,7 +409,7 @@ def _fixed_rectangle(
     corners = _rectangle_corners(bounds)
     residual = np.asarray(equations[:, :2]) @ corners.T + np.asarray(equations[:, 2])[:, None]
     worst = float(np.max(residual))
-    if not np.isfinite(worst) or worst > 2.0e-8:
+    if not np.isfinite(worst) or worst > SUPPORT_SLACK_M:
         raise ValueError(
             "requested scan dimensions cannot fit the measured phantom after "
             f"probe footprint and edge margin (support residual={worst:.3g} m)"

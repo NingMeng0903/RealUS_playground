@@ -8,6 +8,7 @@ from peirastic.DEMO.phathom_scanning.plan_rgb_figure import (
     _square_lr,
     _splat_image,
     camera_elev_azim,
+    colored_surface_grid,
     path_s,
     path_time_s,
     project_points,
@@ -68,6 +69,33 @@ def test_path_time_and_tool_axes():
     np.testing.assert_allclose(np.linalg.norm(x_axis, axis=1), 1.0, atol=1e-9)
     np.testing.assert_allclose(np.linalg.norm(y_axis, axis=1), 1.0, atol=1e-9)
     np.testing.assert_allclose(np.linalg.norm(z_axis, axis=1), 1.0, atol=1e-9)
+
+
+def test_colored_surface_grid_smooths_plane_and_color():
+    uu, vv = np.meshgrid(np.linspace(-0.06, 0.06, 24), np.linspace(-0.04, 0.04, 18), indexing="ij")
+    rng = np.random.default_rng(0)
+    xyz = np.column_stack([
+        uu.ravel(), vv.ravel(), 0.02 + 0.15 * uu.ravel() + 0.003 * rng.normal(size=uu.size),
+    ])
+    colors = np.column_stack([
+        0.55 + 0.4 * (uu.ravel() + 0.06) / 0.12,
+        np.full(uu.size, 0.35),
+        np.full(uu.size, 0.28),
+    ])
+    mesh = colored_surface_grid(
+        xyz, colors, np.array([1.0, 0.0, 0.0]), np.array([0.0, 1.0, 0.0]),
+        np.array([0.0, 0.0, 1.0]), pitch_m=0.008, smooth_sigma=1.0, min_count=1,
+    )
+    assert mesh.xyz.ndim == 3 and mesh.xyz.shape[2] == 3
+    assert mesh.facecolors.shape[2] == 4
+    assert mesh.facecolors.shape[:2] == (mesh.xyz.shape[0] - 1, mesh.xyz.shape[1] - 1)
+    finite = mesh.xyz[mesh.mask]
+    assert finite.shape[0] > 20
+    # Recovered surface stays close to the generating plane z = 0.02 + 0.15 x.
+    np.testing.assert_allclose(finite[:, 2], 0.02 + 0.15 * finite[:, 0], atol=0.012)
+    shown = mesh.facecolors[..., 3] > 0.5
+    assert shown.any()
+    assert np.ptp(mesh.facecolors[shown, 0]) > 0.15
 
 
 def test_camera_view_looks_at_center():

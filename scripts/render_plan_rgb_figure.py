@@ -32,7 +32,13 @@ def main() -> int:
 
     if args.grab:
         grab_orbbec(args.capture)
-    capture = None if args.offline or not args.capture.is_file() else args.capture
+    legacy = Path("/tmp/orbbec_live_plan_capture.npz")
+    capture = None
+    if not args.offline:
+        if args.capture.is_file():
+            capture = args.capture
+        elif legacy.is_file():
+            capture = legacy
     written = write_figure(
         args.out,
         unbiased=load_plan(args.unbiased),

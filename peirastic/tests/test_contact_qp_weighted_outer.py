@@ -17,6 +17,11 @@ def config(**kwargs):
     return QpConfig(allocation_policy='delay_kf_cop_v1', max_acceleration=np.full(6, 1e6), **kwargs)
 
 
+def test_unknown_ablation_is_rejected():
+    with pytest.raises(ValueError, match='unknown contact QP ablation'):
+        config(ablation='no_ft')
+
+
 def datum(**kwargs):
     values = dict(geometry=ProbeGeometry.synthetic(), nominal_twist=np.zeros(6),
         path_twist=np.array([.01, 0, 0, 0, 0, 0]), force_n=4., dt_s=.005, now_s=1.,
@@ -322,3 +327,44 @@ def test_ultrapoc_002_terminal_yaw_rate_drop_solves_online():
     assert online.success, online.diagnostics
     assert [row['label'] for row in online.diagnostics['relaxed_acceleration_rows']] == ['acceleration_5']
     assert -0.04543 <= online.qp_twist[5] <= -0.02690
+
+
+def test_no_cop_keeps_normal_reference_instead_of_pairing():
+    result = ContactQp(config(ablation='no_cop')).solve(datum(
+        visual_task_valid=True, visual_request_rad_s=0., cop_m=.018))
+    assert result.success, result.diagnostics
+    assert result.diagnostics['ablation'] == 'no_cop'
+    assert result.diagnostics['cop_valid'] is True
+    assert result.diagnostics['cop_pairing'] == 'normal_reference_hold_v1'
+    assert result.diagnostics['U_m_s'] == pytest.approx(.001)
+    assert result.diagnostics['Omega_rad_s'] == pytest.approx(.02)
+
+
+def test_fixed_alpha_tracks_unity_not_image_progress():
+    result = ContactQp(config(ablation='fixed_alpha')).solve(datum(alpha_preferred=.4))
+    assert result.success, result.diagnostics
+    assert result.diagnostics['alpha_preferred'] == 1.
+    assert result.alpha == pytest.approx(1.)
+    assert result.diagnostics['ablation'] == 'fixed_alpha'
+
+
+def test_no_us_orient_keeps_moment_and_image_progress():
+    result = ContactQp(config(ablation='no_us_orient')).solve(datum(
+        mechanical_omega_rad_s=.02, visual_task_valid=True, visual_request_rad_s=.12,
+        alpha_preferred=.55, cop_m=.018))
+    assert result.success, result.diagnostics
+    assert result.diagnostics['visual_rows_active'] is False
+    assert result.diagnostics['Omega_rad_s'] == pytest.approx(.02)
+    assert result.diagnostics['U_m_s'] == pytest.approx(.001)
+    assert result.alpha == pytest.approx(.55)
+
+
+def test_no_moment_regularizes_omega_about_zero_and_pairs_cop():
+    result = ContactQp(config(ablation='no_moment')).solve(datum(
+        mechanical_omega_rad_s=.12, visual_task_valid=True, visual_request_rad_s=0.,
+        cop_m=.018))
+    assert result.success, result.diagnostics
+    assert result.diagnostics['mechanical_omega_rad_s'] == 0.
+    assert result.diagnostics['Omega_rad_s'] == pytest.approx(0.)
+    assert result.diagnostics['U_m_s'] == pytest.approx(.001)
+    assert result.diagnostics['cop_pairing'] == 'coupled_normal_task_v1'

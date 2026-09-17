@@ -39,21 +39,27 @@ CONDITION_LABEL = {"clean": "unbiased", "noisy": "biased"}
 INK = "#272727"
 
 RC = {
-    "font.family": ["Nimbus Sans", "Liberation Sans", "DejaVu Sans", "sans-serif"],
-    "font.size": 26,
-    "axes.labelsize": 28,
+    "font.family": "serif",
+    # Nimbus Roman / Liberation Serif / Tinos are Times New Roman metric clones.
+    "font.serif": ["Nimbus Roman", "Times New Roman", "Liberation Serif", "Tinos",
+                   "DejaVu Serif", "serif"],
+    "mathtext.fontset": "stix",
+    "font.size": 33,
+    "axes.labelsize": 35,
     "axes.linewidth": 2.8,
     "axes.spines.top": False,
     "axes.spines.right": False,
-    "xtick.labelsize": 24,
-    "ytick.labelsize": 24,
-    "xtick.major.size": 6,
-    "ytick.major.size": 6,
+    "xtick.labelsize": 30,
+    "ytick.labelsize": 30,
+    "xtick.major.size": 7,
+    "ytick.major.size": 7,
     "xtick.major.width": 2.2,
     "ytick.major.width": 2.2,
     "legend.frameon": False,
     "svg.fonttype": "none",
 }
+TAG_SIZE = 33
+LEGEND_SIZE = 30
 
 FORCE_YLIM = (0.0, 6.0)
 FORCE_XLIM = (0.0, 50.0)
@@ -148,8 +154,8 @@ def _display_law(name):
 
 
 def tag_panel(ax, text):
-    ax.text(0.5, 1.06, text, transform=ax.transAxes, ha="center", va="bottom",
-            fontsize=24, color=INK)
+    ax.text(0.5, 1.04, text, transform=ax.transAxes, ha="center", va="bottom",
+            fontsize=TAG_SIZE, color=INK)
 
 
 def path_axis(ax):
@@ -216,25 +222,28 @@ def box_panel(ax, series, law, key):
 
 
 def condition_pair(ax, series, law, key, window):
-    # Noisy first so the flat noise-free reference stays visible on top.
+    # Noisy first and thicker so the flat noise-free reference stays visible
+    # on top where the two conditions coincide near C-bar = 1.
+    width = {"noisy": 3.6, "clean": 2.4}
     for condition in reversed(CONDITIONS):
         entry = series[(law, condition)]
         ax.plot(entry["s_us"], smooth(entry[key], window),
-                color=CONDITION_COLOR[condition], linewidth=1.9)
+                color=CONDITION_COLOR[condition], linewidth=width[condition],
+                solid_capstyle="round")
 
 
 def build(series, out: Path, formats, force_bands=True):
     plt.rcParams.update(RC)
     fig = plt.figure(figsize=(31.5, 8.8))
-    row_ratios = [1.0, 0.70, 1.0, 0.36, 0.22]
+    row_ratios = [1.0, 0.66, 1.0, 0.38, 0.20]
     left = gridspec.GridSpec(
         5, 2,
         width_ratios=[1.0, 1.0],
         height_ratios=row_ratios,
-        left=0.040,
-        right=0.345,
-        top=0.88,
-        bottom=0.04,
+        left=0.042,
+        right=0.356,
+        top=0.925,
+        bottom=0.030,
         wspace=0.40,
         hspace=0.05,
     )
@@ -242,10 +251,10 @@ def build(series, out: Path, formats, force_bands=True):
         5, 4,
         width_ratios=[1.0, 1.0, 1.0, 1.0],
         height_ratios=row_ratios,
-        left=0.422,
-        right=0.996,
-        top=0.88,
-        bottom=0.04,
+        left=0.404,
+        right=0.997,
+        top=0.925,
+        bottom=0.030,
         wspace=0.18,
         hspace=0.05,
     )
@@ -277,7 +286,8 @@ def build(series, out: Path, formats, force_bands=True):
         box_panel(ax, series, law, "e_force")
         ax.set_ylim(*ERROR_YLIM)
         ax.set_yticks([-0.8, -0.4, 0.0, 0.4, 0.8])
-        path_axis(ax)
+        ax.set_xticks([])
+        ax.set_xlabel("")
         tag_panel(ax, law)
         if column > 2:
             ax.set_yticklabels([])
@@ -324,7 +334,7 @@ def build(series, out: Path, formats, force_bands=True):
         handles=law_handles,
         loc="center",
         ncols=4,
-        fontsize=22,
+        fontsize=LEGEND_SIZE,
         handlelength=2.2,
         columnspacing=1.2,
         handletextpad=0.5,
@@ -333,7 +343,7 @@ def build(series, out: Path, formats, force_bands=True):
         handles=condition_handles,
         loc="center left",
         ncols=2,
-        fontsize=22,
+        fontsize=LEGEND_SIZE,
         handlelength=1.4,
         columnspacing=1.8,
         handletextpad=0.65,
