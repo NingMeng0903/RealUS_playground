@@ -63,9 +63,15 @@ qpik:
     collision:
       enabled: true
       d_safe: 0.01
+      # Keep 4 cm.  Only ~2 pairs sit inside it, while 8 cm puts 13 pairs on
+      # 8 slots for links that are simply routed close together, costing
+      # solve time on rows the barrier never binds.
       d_activate: 0.04
       gamma: 5.0
       max_pairs: 8
+      # Soft CBF.  0 restores the hard rows that latched STOP when jerk
+      # forbade a halt.  2000 is 10× sigma slack: clearance is still dear.
+      slack_weight: 2000.0
     rail:
       mode: coupled
       locked_style: hold
@@ -95,8 +101,12 @@ inner:
     backend: proxqp
     use_cpp_kernel: true
     eps_abs: 1.0e-6
-    max_iter: 400
-    max_iter_cap: 400
+    # ~20.7 us per ProxQP iteration measured on the fault snapshots, and a
+    # failed solve is retried cold, so 400 let one tick spend 15.7 ms on a
+    # 5 ms loop.  150 bounds the warm solve to ~3.1 ms; the retry is skipped
+    # once max_solve_ms is gone.
+    max_iter: 150
+    max_iter_cap: 150
     max_solve_ms: 5.0
     fail_qdot_decay: 0.85
     twist_sigma_floor: 0.02
@@ -171,6 +181,7 @@ inner:
     d_activate: 0.04
     gamma: 5.0
     max_pairs: 8
+    slack_weight: 2000.0
 
   nullspace:
     k_center: 1.0
@@ -234,6 +245,19 @@ inner:
     psi_return_dwell_s: 1.0
     # >110° collapses J6 on this family.  Never cross ψ=0.
     psi_envelope_deg: [40.0, 110.0]
+    # J4 = acos(f(|W−S|)), so ψ self-motion cannot move it and the nullspace
+    # has no authority over the elbow at all — only a rail re-split does.
+    # Floor for that one channel while J4 is out of band, so contact slack
+    # cannot fade it to zero and park the elbow on the 130° damper.  0 = off.
+    elbow_rescue_alpha: 0.35
+    # How the rail split is chosen.  "legacy" scores |d − d_attr|, which pins
+    # the rail to a split measured at one seed pose and pushes J4 onto the 70°
+    # edge once the TCP moves.  "comfort" drops the rail's own attractor — it
+    # has no preferred position — and spends it on the arm's Liegeois cost,
+    # the same q_nominal/weights the nullspace descends.  Then 70–115° is only
+    # a priced preference and elbow_hi_illegal_rad is the sole wall.
+    d_objective: comfort
+    d_comfort_band_weight: 300.0
     require_design_family: false
     rail_margin_m: 0.02
     # Reject cells whose wrist sits on the ~20° branch-barrier floor.

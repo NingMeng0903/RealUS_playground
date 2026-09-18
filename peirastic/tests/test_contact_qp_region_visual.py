@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 
 from peirastic.contact_qp.geometry import point_normal_row
-from peirastic.contact_qp.region_visual import region_visual_request
+from peirastic.contact_qp.region_visual import preferred_scan_alpha, region_visual_request
 from peirastic.contact_qp.types import ProbeGeometry
 
 
@@ -62,6 +62,53 @@ def test_unknown_central_region_withdraws_visual_even_with_healthy_legacy_sides(
     task=request(q,valid=valid)
     assert not task.valid and task.reason=='unknown_regions'
     assert task.request_rad_s==0. and task.alpha_preferred==.25
+
+
+def test_scan_alpha_counts_from_cmin_and_floors_at_typical_hole():
+    assert preferred_scan_alpha(0., .85, alpha_min_at_quality=.79) == pytest.approx(1.)
+    assert preferred_scan_alpha(.85 - .79, .85, alpha_min_at_quality=.79) == pytest.approx(.25)
+    q = np.full(10, .99)
+    q[0] = .85
+    task = region_visual_request(q, np.ones(10, dtype=bool), np.linspace(0., 1., 11),
+        ProbeGeometry.synthetic(image_x_sign=-1), c_min=.85, repair_speed_m_s=.03,
+        alpha_min_at_quality=.79)
+    assert task.reason == 'all_regions_sufficient'
+    assert task.request_rad_s == 0.
+    assert task.alpha_preferred == pytest.approx(1.)
+    q[0] = .79
+    task = region_visual_request(q, np.ones(10, dtype=bool), np.linspace(0., 1., 11),
+        ProbeGeometry.synthetic(image_x_sign=-1), c_min=.85, repair_speed_m_s=.03,
+        alpha_min_at_quality=.79)
+    assert task.reason == 'regional_deficit_moment'
+    assert task.alpha_preferred == pytest.approx(.25)
+    assert abs(task.request_rad_s) > 0.
+
+
+def test_rocking_reference_is_proportional_above_cmin():
+    q = np.ones(10)
+    q[0] = 0.98
+    gated = region_visual_request(
+        q, np.ones(10, dtype=bool), np.linspace(0., 1., 11),
+        ProbeGeometry.synthetic(image_x_sign=-1), c_min=0.97, repair_speed_m_s=0.09,
+        max_request_rad_s=0.20,
+    )
+    amp = region_visual_request(
+        q, np.ones(10, dtype=bool), np.linspace(0., 1., 11),
+        ProbeGeometry.synthetic(image_x_sign=-1), c_min=0.97, repair_speed_m_s=0.09,
+        max_request_rad_s=0.20, rocking_reference=1.0,
+    )
+    assert gated.request_rad_s == 0.0
+    assert gated.alpha_preferred == pytest.approx(1.0)
+    assert abs(amp.request_rad_s) > 0.0
+    assert amp.alpha_preferred == pytest.approx(1.0)
+    deeper = np.ones(10)
+    deeper[0] = 0.70
+    deep = region_visual_request(
+        deeper, np.ones(10, dtype=bool), np.linspace(0., 1., 11),
+        ProbeGeometry.synthetic(image_x_sign=-1), c_min=0.97, repair_speed_m_s=0.09,
+        max_request_rad_s=0.20, rocking_reference=1.0,
+    )
+    assert abs(deep.request_rad_s) > abs(amp.request_rad_s)
 
 
 def test_uniform_deficit_does_not_raise_force_or_invent_torque_direction():

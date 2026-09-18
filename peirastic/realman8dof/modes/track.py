@@ -80,6 +80,8 @@ class HybridTffOuter:
         self.last_cop_y = float("nan")
         self.last_cop_r = float("nan")
         self.last_on_tube = False
+        self.last_pad_alpha = 1.0
+        self.last_contact_present = False
         self.controller = getattr(force_law, "controller", None)
         cfg = getattr(self.position, "cfg", None)
         if cfg is not None and hasattr(cfg, "track_axes"):
@@ -141,17 +143,30 @@ class HybridTffOuter:
         dt_s = float(dt_actual) if dt_actual is not None else self.dt
         visual_omega = None
         guide = getattr(self, "pad_visual", None)
+        present = contact
+        if present is None:
+            present = bool(getattr(getattr(self.force_law, "controller", None),
+                                   "contact_present", False))
+        self.last_contact_present = bool(present)
         if guide is not None:
-            present = contact
-            if present is None:
-                present = bool(getattr(getattr(self.force_law, "controller", None),
-                                       "contact_present", False))
             visual_omega = guide.preview(
                 pose=current_pose,
                 dt_s=dt_s,
                 contact_present=bool(present),
                 tilt=getattr(self.force_law, "tilt", None),
             )
+        alpha = 1.0
+        published = getattr(guide, "last_alpha", None) if guide is not None else None
+        if published is not None:
+            alpha = float(published)
+            if not np.isfinite(alpha):
+                alpha = 1.0
+            else:
+                alpha = float(np.clip(alpha, 0.0, 1.0))
+            if alpha != 1.0:
+                v_pos = v_pos * alpha
+                path = path * alpha
+        self.last_pad_alpha = alpha
         fout = self.force_law.update(
             dt_s=dt_s,
             pose=current_pose,
@@ -169,6 +184,17 @@ class HybridTffOuter:
             euler_order=self._euler_order(),
             visual_velocity_target_rad_s=visual_omega,
         )
+        added = getattr(guide, "last_visual_omega", None) if guide is not None else None
+        if added is not None:
+            force = np.asarray(fout.v_force, dtype=float).reshape(6).copy()
+            force[4] = float(force[4]) + float(added)
+            tilt = getattr(self.force_law, "tilt", None)
+            vmax = getattr(getattr(tilt, "cfg", None), "vmax_rad_s", None)
+            if vmax is None:
+                vmax = getattr(guide, "omega_vmax", 0.28)
+            limit = max(float(vmax), 1.0e-6)
+            force[4] = float(np.clip(force[4], -limit, limit))
+            fout.v_force = force
         v_star = compose_tff(v_pos, fout.v_force, self.selection)
         if guide is not None:
             from peirastic.realman8dof.force.torque_tilt import rotation_from_pose
@@ -412,7 +438,7 @@ def build_pad_hybrid_phase(
     if twist_read is None:
         raise ValueError("pad hybrid needs a live twist source")
     force_law, f_des, tilt_cfg = _hybrid_force_law(dt, payload, control_frame=ctx.control_frame)
-    from .pad_visual import attach_pad_visual
+    from .pad_visual import attach_pad_visual, wrap_pad_hybrid_log
     pad_visual = attach_pad_visual(payload, tilt_cfg, force_law=force_law)
     selection = apply_tilt_selection(selection_from_payload(payload), tilt_cfg)
     pos = ServoTwistOuter(
@@ -445,6 +471,7 @@ def build_pad_hybrid_phase(
                     previous_exit()
 
         phase.on_exit = _exit
+    wrap_pad_hybrid_log(phase, payload)
     return phase
 
 

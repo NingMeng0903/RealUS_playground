@@ -58,7 +58,7 @@ EPISODE_XLIM = (0.0, 2.5)
 EPISODE_XTICKS = (0, 0.5, 1.0, 1.5, 2.0, 2.5)
 STRIP_KEYS = ("deficit_peak", "request_peak", "recovered")
 # Offset of the on-plot badge from its point (dt, dc, ha).
-BADGE_OFFSETS = ((0.10, -0.07, "left"), (-0.11, -0.05, "right"), (0.12, 0.05, "left"))
+BADGE_OFFSETS = ((0.10, -0.07, "left"), (-0.11, -0.05, "right"), (0.14, -0.07, "left"))
 BADGE = [pe.Stroke(linewidth=1.9, foreground="black", alpha=0.75), pe.Normal()]
 FS_LABEL = 14.5
 FS_TICK = 12.5

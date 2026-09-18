@@ -1,5 +1,6 @@
 """Native mesh broadphase must retain the exact CBF pairs at recorded poses."""
 from pathlib import Path
+import json
 import uuid
 
 import numpy as np
@@ -41,6 +42,58 @@ def test_native_mesh_keeps_all_exact_active_pairs():
             assert step.qpik_hard_residual_max <= 1.e-5
             assert step.qp_collision_ms > 0.
             assert step.qp_collision_ms <= step.qp_assembly_ms <= step.qpik_total_ms
+    finally:
+        controller.close()
+
+
+def test_cbf_slack_keeps_qp1_alive_on_the_j4_wall_pose() -> None:
+    """The 2026-09-19 burst: J4=130°, J6 on the stop, 7 hard CBF rows.
+
+    Jerk still forbade a halt, so box ∩ hard CBF was empty and every later
+    tick reused the same qdot_prev.  Soft CBF must publish instead of STOP.
+    """
+
+    binary = find_wbc_rt_binary()
+    if binary is None:
+        pytest.skip("native binary not built")
+    kin = RobotKinematics()
+    mesh = kin.urdf_path.parent / "RM75-6F-8dof.collision.urdf"
+    collision = CollisionConfig(
+        enabled=True,
+        collision_urdf=mesh,
+        d_safe=0.01,
+        d_activate=0.04,
+        slack_weight=2000.0,
+    )
+    cfg = JointIkConfig(
+        backend="native",
+        native_bin=str(binary),
+        native_shm_prefix="cbf_slack_" + uuid.uuid4().hex,
+        collision=collision,
+    )
+    snap = Path(__file__).resolve().parents[1] / (
+        "apps/logs/peirastic/faults/qpik_fault_1789752377255206692_271725.json"
+    )
+    if snap.is_file():
+        payload = json.loads(snap.read_text(encoding="utf-8"))
+        q = np.asarray(payload["q_meas"], dtype=float)
+        v_cmd = np.asarray(payload["step"]["v_cmd_received"], dtype=float)
+    else:
+        q = np.array(
+            [0.1918, -2.2130, -1.5587, 0.4415, 2.2689, 1.4870, 2.2288, 0.4136]
+        )
+        v_cmd = np.array([-0.0877, 0.0561, 0.0191, 0.0, 0.0, 0.0])
+    controller = JointIkController(kin, cfg)
+    try:
+        controller.reset(q)
+        latched = 0
+        for _ in range(12):
+            step = controller.update(v_cmd, q_meas=q, auto_commit=True)
+            if step.solver_fault_latched:
+                latched += 1
+        assert latched == 0
+        assert step.n_cbf_active >= 2
+        assert step.qp1_status in ("solved", "max_iter")
     finally:
         controller.close()
 

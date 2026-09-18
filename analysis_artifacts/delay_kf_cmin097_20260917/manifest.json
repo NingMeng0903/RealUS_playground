@@ -1,0 +1,413 @@
+{
+  "data_root": "/media/camp/PEI_T7/icra 2027_contact/uncalibrated/005",
+  "records": [
+    {
+      "name": "RH_Per_C_DtP",
+      "source": "/media/camp/PEI_T7/icra 2027_contact/uncalibrated/005/RH_Per_C_DtP.h5",
+      "source_sha256": "c0766d0509f39d333cd1296e0cadf31b4071d4595d74c6a90c72c676a34eb91c",
+      "cache": "/media/camp/EXT_DRIVE/RealUS_playground/analysis_artifacts/delay_kf_cmin097_20260917/RH_Per_C_DtP.npz",
+      "failed_attempt": false,
+      "frames": 965,
+      "weakside_feature_version": "confidence_weakside_column_q25_v1",
+      "region_feature_version": "confidence_equal_regions_weighted_q25_v1",
+      "region_layout_version": "82988106444c09bb21cf",
+      "region_count": 10,
+      "feature_config": {
+        "algorithm_version": "randomwalk_welleweerd2020_v3",
+        "width": 145,
+        "height": 100,
+        "attenuation": 2.0,
+        "contrast": 90.0,
+        "lateral_penalty": 0.03,
+        "min_weight": 1e-10,
+        "camp_weight_epsilon": 1e-05,
+        "near_depth": [
+          0.0,
+          0.22
+        ],
+        "lateral_windows": [
+          [
+            0.04,
+            0.34
+          ],
+          [
+            0.34,
+            0.66
+          ],
+          [
+            0.66,
+            0.96
+          ]
+        ],
+        "effective_delay_s": 0.15196365053143765,
+        "calibration_version": "probe50_center_tcp_user_20260910_v1",
+        "image_x_sign": -1,
+        "low_confidence_threshold": 0.97,
+        "unknown_scanline_range": 1.0,
+        "region_count": 10
+      },
+      "effective_delay_s": 0.15196365053143765,
+      "timestamp_semantics": "host_frame_read_complete_minus_registered_delay",
+      "received_semantics": "recorder_receive_not_confidence_worker_completion",
+      "force_max_n": 4.274494598749984,
+      "force_p95_n": 4.15953892462521
+    },
+    {
+      "name": "RH_Per_C_PtD",
+      "source": "/media/camp/PEI_T7/icra 2027_contact/uncalibrated/005/RH_Per_C_PtD.h5",
+      "source_sha256": "c93c0d7808c48c952ece33774ae69f09a27c1f39a739cfdd53b58da3f8d7a449",
+      "cache": "/media/camp/EXT_DRIVE/RealUS_playground/analysis_artifacts/delay_kf_cmin097_20260917/RH_Per_C_PtD.npz",
+      "failed_attempt": false,
+      "frames": 1006,
+      "weakside_feature_version": "confidence_weakside_column_q25_v1",
+      "region_feature_version": "confidence_equal_regions_weighted_q25_v1",
+      "region_layout_version": "82988106444c09bb21cf",
+      "region_count": 10,
+      "feature_config": {
+        "algorithm_version": "randomwalk_welleweerd2020_v3",
+        "width": 145,
+        "height": 100,
+        "attenuation": 2.0,
+        "contrast": 90.0,
+        "lateral_penalty": 0.03,
+        "min_weight": 1e-10,
+        "camp_weight_epsilon": 1e-05,
+        "near_depth": [
+          0.0,
+          0.22
+        ],
+        "lateral_windows": [
+          [
+            0.04,
+            0.34
+          ],
+          [
+            0.34,
+            0.66
+          ],
+          [
+            0.66,
+            0.96
+          ]
+        ],
+        "effective_delay_s": 0.15196365053143765,
+        "calibration_version": "probe50_center_tcp_user_20260910_v1",
+        "image_x_sign": -1,
+        "low_confidence_threshold": 0.97,
+        "unknown_scanline_range": 1.0,
+        "region_count": 10
+      },
+      "effective_delay_s": 0.15196365053143765,
+      "timestamp_semantics": "host_frame_read_complete_minus_registered_delay",
+      "received_semantics": "recorder_receive_not_confidence_worker_completion",
+      "force_max_n": 4.354202644388625,
+      "force_p95_n": 4.195547018660336
+    },
+    {
+      "name": "RH_Per_L_DtP",
+      "source": "/media/camp/PEI_T7/icra 2027_contact/uncalibrated/005/RH_Per_L_DtP.h5",
+      "source_sha256": "8e683bde361b7227a38f61c227fcdcd1a4e1d8337c066b5dc5cf00f7913c475e",
+      "cache": "/media/camp/EXT_DRIVE/RealUS_playground/analysis_artifacts/delay_kf_cmin097_20260917/RH_Per_L_DtP.npz",
+      "failed_attempt": false,
+      "frames": 970,
+      "weakside_feature_version": "confidence_weakside_column_q25_v1",
+      "region_feature_version": "confidence_equal_regions_weighted_q25_v1",
+      "region_layout_version": "82988106444c09bb21cf",
+      "region_count": 10,
+      "feature_config": {
+        "algorithm_version": "randomwalk_welleweerd2020_v3",
+        "width": 145,
+        "height": 100,
+        "attenuation": 2.0,
+        "contrast": 90.0,
+        "lateral_penalty": 0.03,
+        "min_weight": 1e-10,
+        "camp_weight_epsilon": 1e-05,
+        "near_depth": [
+          0.0,
+          0.22
+        ],
+        "lateral_windows": [
+          [
+            0.04,
+            0.34
+          ],
+          [
+            0.34,
+            0.66
+          ],
+          [
+            0.66,
+            0.96
+          ]
+        ],
+        "effective_delay_s": 0.15196365053143765,
+        "calibration_version": "probe50_center_tcp_user_20260910_v1",
+        "image_x_sign": -1,
+        "low_confidence_threshold": 0.97,
+        "unknown_scanline_range": 1.0,
+        "region_count": 10
+      },
+      "effective_delay_s": 0.15196365053143765,
+      "timestamp_semantics": "host_frame_read_complete_minus_registered_delay",
+      "received_semantics": "recorder_receive_not_confidence_worker_completion",
+      "force_max_n": 4.343252979253741,
+      "force_p95_n": 4.169892545932428
+    },
+    {
+      "name": "RH_Per_L_PtD",
+      "source": "/media/camp/PEI_T7/icra 2027_contact/uncalibrated/005/RH_Per_L_PtD.h5",
+      "source_sha256": "6ce8431db8878671f5e4c2d3ee5e29399632aa29bc77fc32bd9ceee707e48b1f",
+      "cache": "/media/camp/EXT_DRIVE/RealUS_playground/analysis_artifacts/delay_kf_cmin097_20260917/RH_Per_L_PtD.npz",
+      "failed_attempt": false,
+      "frames": 985,
+      "weakside_feature_version": "confidence_weakside_column_q25_v1",
+      "region_feature_version": "confidence_equal_regions_weighted_q25_v1",
+      "region_layout_version": "82988106444c09bb21cf",
+      "region_count": 10,
+      "feature_config": {
+        "algorithm_version": "randomwalk_welleweerd2020_v3",
+        "width": 145,
+        "height": 100,
+        "attenuation": 2.0,
+        "contrast": 90.0,
+        "lateral_penalty": 0.03,
+        "min_weight": 1e-10,
+        "camp_weight_epsilon": 1e-05,
+        "near_depth": [
+          0.0,
+          0.22
+        ],
+        "lateral_windows": [
+          [
+            0.04,
+            0.34
+          ],
+          [
+            0.34,
+            0.66
+          ],
+          [
+            0.66,
+            0.96
+          ]
+        ],
+        "effective_delay_s": 0.15196365053143765,
+        "calibration_version": "probe50_center_tcp_user_20260910_v1",
+        "image_x_sign": -1,
+        "low_confidence_threshold": 0.97,
+        "unknown_scanline_range": 1.0,
+        "region_count": 10
+      },
+      "effective_delay_s": 0.15196365053143765,
+      "timestamp_semantics": "host_frame_read_complete_minus_registered_delay",
+      "received_semantics": "recorder_receive_not_confidence_worker_completion",
+      "force_max_n": 4.306782097506654,
+      "force_p95_n": 4.170504630418288
+    },
+    {
+      "name": "RH_Per_S_DtP",
+      "source": "/media/camp/PEI_T7/icra 2027_contact/uncalibrated/005/RH_Per_S_DtP.h5",
+      "source_sha256": "a5949088e05ae2af9cbeb11934f1fd7b6f43f6aeb98b56d22c0c77179e0430f6",
+      "cache": "/media/camp/EXT_DRIVE/RealUS_playground/analysis_artifacts/delay_kf_cmin097_20260917/RH_Per_S_DtP.npz",
+      "failed_attempt": false,
+      "frames": 996,
+      "weakside_feature_version": "confidence_weakside_column_q25_v1",
+      "region_feature_version": "confidence_equal_regions_weighted_q25_v1",
+      "region_layout_version": "82988106444c09bb21cf",
+      "region_count": 10,
+      "feature_config": {
+        "algorithm_version": "randomwalk_welleweerd2020_v3",
+        "width": 145,
+        "height": 100,
+        "attenuation": 2.0,
+        "contrast": 90.0,
+        "lateral_penalty": 0.03,
+        "min_weight": 1e-10,
+        "camp_weight_epsilon": 1e-05,
+        "near_depth": [
+          0.0,
+          0.22
+        ],
+        "lateral_windows": [
+          [
+            0.04,
+            0.34
+          ],
+          [
+            0.34,
+            0.66
+          ],
+          [
+            0.66,
+            0.96
+          ]
+        ],
+        "effective_delay_s": 0.15196365053143765,
+        "calibration_version": "probe50_center_tcp_user_20260910_v1",
+        "image_x_sign": -1,
+        "low_confidence_threshold": 0.97,
+        "unknown_scanline_range": 1.0,
+        "region_count": 10
+      },
+      "effective_delay_s": 0.15196365053143765,
+      "timestamp_semantics": "host_frame_read_complete_minus_registered_delay",
+      "received_semantics": "recorder_receive_not_confidence_worker_completion",
+      "force_max_n": 4.36810271578185,
+      "force_p95_n": 4.1683475021720735
+    },
+    {
+      "name": "RH_Per_S_PtD",
+      "source": "/media/camp/PEI_T7/icra 2027_contact/uncalibrated/005/RH_Per_S_PtD.h5",
+      "source_sha256": "77689054294f53123a42027a9854e84017348584a0328239cec1f4c48755c291",
+      "cache": "/media/camp/EXT_DRIVE/RealUS_playground/analysis_artifacts/delay_kf_cmin097_20260917/RH_Per_S_PtD.npz",
+      "failed_attempt": false,
+      "frames": 987,
+      "weakside_feature_version": "confidence_weakside_column_q25_v1",
+      "region_feature_version": "confidence_equal_regions_weighted_q25_v1",
+      "region_layout_version": "82988106444c09bb21cf",
+      "region_count": 10,
+      "feature_config": {
+        "algorithm_version": "randomwalk_welleweerd2020_v3",
+        "width": 145,
+        "height": 100,
+        "attenuation": 2.0,
+        "contrast": 90.0,
+        "lateral_penalty": 0.03,
+        "min_weight": 1e-10,
+        "camp_weight_epsilon": 1e-05,
+        "near_depth": [
+          0.0,
+          0.22
+        ],
+        "lateral_windows": [
+          [
+            0.04,
+            0.34
+          ],
+          [
+            0.34,
+            0.66
+          ],
+          [
+            0.66,
+            0.96
+          ]
+        ],
+        "effective_delay_s": 0.15196365053143765,
+        "calibration_version": "probe50_center_tcp_user_20260910_v1",
+        "image_x_sign": -1,
+        "low_confidence_threshold": 0.97,
+        "unknown_scanline_range": 1.0,
+        "region_count": 10
+      },
+      "effective_delay_s": 0.15196365053143765,
+      "timestamp_semantics": "host_frame_read_complete_minus_registered_delay",
+      "received_semantics": "recorder_receive_not_confidence_worker_completion",
+      "force_max_n": 4.328176012483379,
+      "force_p95_n": 4.172874376218131
+    },
+    {
+      "name": "RH_Per_C_DtP_failed_001",
+      "source": "/media/camp/PEI_T7/icra 2027_contact/uncalibrated/005/attempts/RH_Per_C_DtP/001/raw.h5",
+      "source_sha256": "573aeea56719a918dec6e44201c13c75f8d7bac966d337d62da4d6c845094441",
+      "cache": "/media/camp/EXT_DRIVE/RealUS_playground/analysis_artifacts/delay_kf_cmin097_20260917/RH_Per_C_DtP_failed_001.npz",
+      "failed_attempt": true,
+      "frames": 941,
+      "weakside_feature_version": "confidence_weakside_column_q25_v1",
+      "region_feature_version": "confidence_equal_regions_weighted_q25_v1",
+      "region_layout_version": "82988106444c09bb21cf",
+      "region_count": 10,
+      "feature_config": {
+        "algorithm_version": "randomwalk_welleweerd2020_v3",
+        "width": 145,
+        "height": 100,
+        "attenuation": 2.0,
+        "contrast": 90.0,
+        "lateral_penalty": 0.03,
+        "min_weight": 1e-10,
+        "camp_weight_epsilon": 1e-05,
+        "near_depth": [
+          0.0,
+          0.22
+        ],
+        "lateral_windows": [
+          [
+            0.04,
+            0.34
+          ],
+          [
+            0.34,
+            0.66
+          ],
+          [
+            0.66,
+            0.96
+          ]
+        ],
+        "effective_delay_s": 0.15196365053143765,
+        "calibration_version": "probe50_center_tcp_user_20260910_v1",
+        "image_x_sign": -1,
+        "low_confidence_threshold": 0.97,
+        "unknown_scanline_range": 1.0,
+        "region_count": 10
+      },
+      "effective_delay_s": 0.15196365053143765,
+      "timestamp_semantics": "host_frame_read_complete_minus_registered_delay",
+      "received_semantics": "recorder_receive_not_confidence_worker_completion",
+      "force_max_n": 5.990271511788032,
+      "force_p95_n": 4.329560836851619
+    },
+    {
+      "name": "RH_Per_L_DtP_failed_001",
+      "source": "/media/camp/PEI_T7/icra 2027_contact/uncalibrated/005/attempts/RH_Per_L_DtP/001/raw.h5",
+      "source_sha256": "8629b6418ef0292efceb36b0f1e83f5928225f2db1cba79be48c290e29ebe346",
+      "cache": "/media/camp/EXT_DRIVE/RealUS_playground/analysis_artifacts/delay_kf_cmin097_20260917/RH_Per_L_DtP_failed_001.npz",
+      "failed_attempt": true,
+      "frames": 14,
+      "weakside_feature_version": "confidence_weakside_column_q25_v1",
+      "region_feature_version": "confidence_equal_regions_weighted_q25_v1",
+      "region_layout_version": "82988106444c09bb21cf",
+      "region_count": 10,
+      "feature_config": {
+        "algorithm_version": "randomwalk_welleweerd2020_v3",
+        "width": 145,
+        "height": 100,
+        "attenuation": 2.0,
+        "contrast": 90.0,
+        "lateral_penalty": 0.03,
+        "min_weight": 1e-10,
+        "camp_weight_epsilon": 1e-05,
+        "near_depth": [
+          0.0,
+          0.22
+        ],
+        "lateral_windows": [
+          [
+            0.04,
+            0.34
+          ],
+          [
+            0.34,
+            0.66
+          ],
+          [
+            0.66,
+            0.96
+          ]
+        ],
+        "effective_delay_s": 0.15196365053143765,
+        "calibration_version": "probe50_center_tcp_user_20260910_v1",
+        "image_x_sign": -1,
+        "low_confidence_threshold": 0.97,
+        "unknown_scanline_range": 1.0,
+        "region_count": 10
+      },
+      "effective_delay_s": 0.15196365053143765,
+      "timestamp_semantics": "host_frame_read_complete_minus_registered_delay",
+      "received_semantics": "recorder_receive_not_confidence_worker_completion",
+      "force_max_n": -0.03278182643966361,
+      "force_p95_n": -0.04890756629679901
+    }
+  ]
+}

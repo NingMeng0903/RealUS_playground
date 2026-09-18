@@ -1,0 +1,14 @@
+Log file created at: 2026/09/17 21:40:26
+Running on machine: pei
+Running duration (h:mm:ss): 0:00:00
+Log line format: [IWEF]yyyymmdd hh:mm:ss.uuuuuu threadid file:line] msg
+[I20260917 21:40:26.005555 125550 DeviceManager.cpp:54] DeviceManager init ...
+[I20260917 21:40:26.005633 125550 LinuxPal.cpp:21] createObPal: create LinuxPal!
+[I20260917 21:40:26.006933 125550 EnumeratorLibusb.cpp:325] queryDevicesInfo done!
+[I20260917 21:40:26.180526 125550 DeviceManager.cpp:373] Current usb device port list::
+[I20260917 21:40:26.180555 125550 DeviceManager.cpp:362] No device matched!
+[I20260917 21:40:26.180598 125550 LinuxPal.cpp:142] Create PollingDeviceWatcher!
+[I20260917 21:40:26.180601 125550 DeviceManager.cpp:99] DeviceManager init  done!
+[I20260917 21:40:26.180603 125550 DeviceManager.cpp:50] DeviceManager construct done
+[I20260917 21:40:26.180605 125550 Context.cpp:51] Context created!
+[W20260917 21:40:26.180609 125550 ObException.cpp:5] No device found, fail to create pipeline!

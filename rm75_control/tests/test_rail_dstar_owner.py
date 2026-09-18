@@ -62,6 +62,77 @@ def _yaml_inner_at_rail(q_rail_m: float) -> JointIkController:
     return inner
 
 
+def _settle(objective: str, j4_deg: float, secs: float = 5.0):
+    """Run the closed loop from a design-family seed; return (J4, cost, TCP mm)."""
+    raw = yaml.safe_load(_CFG.read_text(encoding="utf-8"))
+    cfg = build_joint_ik_config(raw)
+    cfg.backend = "python"
+    cfg.collision.enabled = False
+    cfg.qp.collision.enabled = False
+    cfg.ird.enabled = False
+    cfg.psi_retarget.d_objective = objective
+    inner = JointIkController(RobotKinematics(), cfg)
+    q_nom = np.asarray(cfg.psi_retarget.comfort_q_nominal_rad, dtype=float)
+    w = np.asarray(cfg.psi_retarget.comfort_weights, dtype=float)
+    half = 0.5 * (inner.kin.q_upper - inner.kin.q_lower)
+    q = q_nom.copy()
+    q[0] = 0.375
+    q[4] = np.deg2rad(j4_deg)
+    inner.reset(q)
+    SecondaryPolicy(preset="track", qdot_ff="off").apply(inner)
+    p0 = inner.kin.fk_pose(inner.q_cmd).copy()
+    worst = 0.0
+    for _ in range(int(secs / 0.005)):
+        inner.update(np.zeros(6), q_meas=inner.q_cmd.copy())
+        worst = max(worst, float(np.linalg.norm(inner.kin.fk_pose(inner.q_cmd)[:3] - p0[:3])))
+    qf = inner.q_cmd.copy()
+    cost = float(np.sum(w[1:] * ((qf[1:] - q_nom[1:]) / half[1:]) ** 2))
+    return np.degrees(abs(float(qf[4]))), cost, worst * 1000.0
+
+
+def test_comfort_objective_settles_the_arm_nearer_its_nominal_posture() -> None:
+    """The rail is free, so spending it must improve the arm — not the TCP."""
+
+    # The two objectives only separate once the homotopy completes and the
+    # d_attr pull starts walking the arm off nominal; 5 s is still identical.
+    j4_old, cost_old, tcp_old = _settle("legacy", 118.0, secs=10.0)
+    j4_new, cost_new, tcp_new = _settle("comfort", 118.0, secs=10.0)
+    assert cost_new < 0.6 * cost_old
+    # Legacy pins the split near d_attr, which drags J4 below nominal.
+    assert j4_old < 90.0 < j4_new
+    # Priority 1 is untouched: this all lives in the posture reference.
+    assert tcp_new < 1.0 and tcp_old < 1.0
+
+
+def test_comfort_objective_is_a_no_op_at_the_design_posture() -> None:
+    j4_old, cost_old, _ = _settle("legacy", 96.0)
+    j4_new, cost_new, _ = _settle("comfort", 96.0)
+    assert j4_new == pytest.approx(j4_old, abs=0.5)
+    assert cost_new == pytest.approx(cost_old, abs=2e-3)
+
+
+def test_rail_posture_alpha_is_floored_only_while_j4_is_out_of_band() -> None:
+    """Slack fades every secondary, but only the rail can unwind the elbow."""
+
+    inner = _yaml_inner_at_rail(0.40)
+    floor = float(inner.cfg.psi_retarget.elbow_rescue_alpha)
+    assert floor > 0.0
+    inner.posture_retarget._elbow_rescue = False
+    assert inner._rail_posture_alpha(0.0) == pytest.approx(0.0)
+    inner.posture_retarget._elbow_rescue = True
+    assert inner._rail_posture_alpha(0.0) == pytest.approx(floor)
+    # A task that already outranks the floor keeps its own authority.
+    assert inner._rail_posture_alpha(0.9) == pytest.approx(0.9)
+
+
+def test_rail_posture_alpha_respects_a_disabled_rescue() -> None:
+    inner = _yaml_inner_at_rail(0.40)
+    inner.cfg.psi_retarget.elbow_rescue_alpha = 0.0
+    inner.posture_retarget._elbow_rescue = True
+    assert inner._rail_posture_alpha(0.0) == pytest.approx(0.0)
+    assert inner._elbow_rescue_active() is False
+
+
 def test_protocol_current_layout() -> None:
     assert P.WBC_VERSION == 11
     assert P.WBC_OUT_SIZE == 1496

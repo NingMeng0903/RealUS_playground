@@ -123,7 +123,16 @@ def solve_weighted_outer(solver, data, *, deadline_s=None, online=False):
     offset, basis = affine_contact_motion(data.geometry, data.path_feedback_contact,
                                          data.path_feedforward_contact)
     transform = twist_tcp_to_face(data.geometry)
-    zero_path = np.linalg.norm(basis[:, 2]) <= 1e-14
+    # The exported progress row is pinv(basis)[2], so its scale is one over the
+    # path column norm. A collapsed feedforward makes the row value grow without
+    # bound: 020 reached 5.4e9 at a column norm of 2e-12, where one ULP is 1e-6,
+    # a hundred times feasibility_tolerance. The certificate then could not
+    # satisfy its own check and the scan hard-faulted 1.8 s from the endpoint.
+    # A column that small advances the reference by well under a nanometre per
+    # tick, so a row that cannot be verified is the zero path it already is.
+    progress_row = np.linalg.pinv(basis)[2]
+    zero_path = bool(np.linalg.norm(basis[:, 2]) <= 1e-14
+                     or np.spacing(abs(float(progress_row@offset))) > cfg.feasibility_tolerance)
     ablation = str(getattr(cfg, 'ablation', 'full') or 'full')
     omega_m = 0. if ablation == 'no_moment' else float(data.mechanical_omega_rad_s)
     alpha_des = 1. if (data.alpha_preferred is None or ablation == 'fixed_alpha') else float(data.alpha_preferred)
@@ -159,18 +168,29 @@ def solve_weighted_outer(solver, data, *, deadline_s=None, online=False):
         rows_info=[dict(label=labels[i],value=float(hard_a[i]@offset),
             lower=float(hard_lo[i]),upper=float(hard_hi[i])) for i in np.flatnonzero(impossible)]
         diagnostics['infeasible_fixed_rows']=rows_info
-        allow=float(cfg.fixed_acceleration_overshoot)
-        accel_only=all(str(row['label']).startswith('acceleration_') for row in rows_info)
-        small=True
-        for row in rows_info:
-            half=0.5*(row['upper']-row['lower'])
-            over=max(row['lower']-row['value'], row['value']-row['upper'])
-            if half<=0 or over/half>allow:
-                small=False
-                break
-        if online and accel_only and small and allow>0:
-            return failure(ContactStatus.DEFERRED,'fixed_affine_acceleration_retry')
-        return failure(ContactStatus.MECHANICAL_INFEASIBLE,'fixed_affine_component_outside_mechanical_interval')
+        # An acceleration row on a fixed axis is a slew bound with no decision
+        # variable behind it, so saturate to it instead of rejecting the tick.
+        # Rejecting cannot converge: the previous command stays frozen while the
+        # demand keeps moving, which is how the path end hard-faulted before.
+        if all(str(row['label']).startswith('acceleration_') for row in rows_info):
+            allow=float(cfg.fixed_acceleration_overshoot)
+            limited=[]
+            for i in np.flatnonzero(impossible):
+                axis=int(str(labels[i]).rsplit('_',1)[1])
+                requested=float(offset[axis])
+                offset[axis]=float(np.clip(requested,hard_lo[i],hard_hi[i]))
+                half=.5*(float(hard_hi[i])-float(hard_lo[i]))
+                over=abs(requested-offset[axis])
+                limited.append(dict(label=labels[i],axis=axis,requested=requested,
+                    applied=float(offset[axis]),overshoot_fraction=(over/half if half>0 else math.inf)))
+            diagnostics['rate_limited_fixed_rows']=tuple(limited)
+            diagnostics['rate_limit_beyond_declared_overshoot']=bool(
+                allow<=0 or max(row['overshoot_fraction'] for row in limited)>allow)
+            nominal_tcp=offset+basis@nominal[:3]
+            shifted_lo,shifted_hi=hard_lo-hard_a@offset,hard_hi-hard_a@offset
+            impossible=fixed & ((shifted_lo>cfg.solver_tolerance) | (shifted_hi < -cfg.solver_tolerance))
+        if np.any(impossible):
+            return failure(ContactStatus.MECHANICAL_INFEASIBLE,'fixed_affine_component_outside_mechanical_interval')
     # Exact zero rows carry no decision variable. Check them in SI units above;
     # normalizing them by 1e-12 created billion-scale residuals and futile retries.
     diagnostics['fixed_rows_checked']=int(np.count_nonzero(fixed))
@@ -256,7 +276,6 @@ def solve_weighted_outer(solver, data, *, deadline_s=None, online=False):
     # inner velocity may slow progress but cannot exceed this proposal's alpha.
     exported_a, exported_lo, exported_hi = hard_a.copy(), hard_lo.copy(), hard_hi.copy()
     if not zero_path:
-        progress_row = np.linalg.pinv(basis)[2]
         shift = float(progress_row@offset)
         exported_a = np.concatenate((exported_a, progress_row[None, :]))
         exported_lo = np.r_[exported_lo, shift]

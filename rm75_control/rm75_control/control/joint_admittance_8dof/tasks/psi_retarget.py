@@ -151,9 +151,57 @@ def psi_err_avoiding_zero(cur_rad: float, target_rad: float) -> float:
     return float(err)
 
 
+def comfort_inv_scale(kin: RobotKinematics, weights: np.ndarray | None) -> np.ndarray:
+    """``sqrt(w_i) / half_i`` for the Liegeois posture cost.
+
+    Folding the weights into the half-range keeps the native dump and this
+    module on one array, so the two backends cannot drift apart.
+    """
+    half = 0.5 * (
+        np.asarray(kin.q_upper, dtype=float) - np.asarray(kin.q_lower, dtype=float)
+    )
+    half = np.where(np.abs(half) > 1e-9, half, 1.0)
+    w = (
+        np.ones_like(half)
+        if weights is None
+        else np.asarray(weights, dtype=float).reshape(-1)
+    )
+    return np.sqrt(np.maximum(w, 0.0)) / np.abs(half)
+
+
+_GOLDEN_R = 0.6180339887498949
+# Shrinks a 2-cell bracket to ~3 mm for 10 extra IK calls (~0.9 ms).
+_GOLDEN_STEPS = 8
+
+
+def _golden_min(f, lo: float, hi: float, d_seed: float, c_seed: float) -> float:
+    """Golden-section minimum of ``f`` on ``[lo, hi]``, never worse than the seed."""
+    a, b = (lo, hi) if lo <= hi else (hi, lo)
+    if b - a <= 1.0e-9:
+        return float(d_seed)
+    c = b - _GOLDEN_R * (b - a)
+    d = a + _GOLDEN_R * (b - a)
+    fc, fd = f(c), f(d)
+    for _ in range(_GOLDEN_STEPS):
+        if fc <= fd:
+            b, d, fd = d, c, fc
+            c = b - _GOLDEN_R * (b - a)
+            fc = f(c)
+        else:
+            a, c, fc = c, d, fd
+            d = a + _GOLDEN_R * (b - a)
+            fd = f(d)
+    best_d, best_c = (c, fc) if fc <= fd else (d, fd)
+    return float(best_d if best_c < c_seed else d_seed)
+
+
 # Half-width of the first ``plan_stroke`` search around the taught plane.
 # Opposite-family search uses the same width only when this band is empty.
 _PLAN_FAMILY_HALF_SPAN_RAD = 40.0 * np.pi / 180.0
+
+# J4 must re-enter the band by this margin before the rescue latch clears, or a
+# joint parked on 115° rewrites the rail authority every tick.
+_ELBOW_RESCUE_HYSTERESIS_RAD = 3.0 * np.pi / 180.0
 
 
 def _arm7(q_arm: np.ndarray) -> np.ndarray:
@@ -278,11 +326,26 @@ class PsiRetargetConfig:
     # Design family (side-lying).  Unplanned homotopy and plan_stroke.
     psi_attr_rad: float = 68.0 * np.pi / 180.0
     d_attr_m: float = -0.185
+    # How the rail split is chosen.  "legacy" scores |d − d_attr| plus a small
+    # J4 term, which pins the rail to a split measured at one seed pose.
+    # "comfort" drops the rail's own attractor — the rail has no preferred
+    # position of its own — and spends it on the arm's Liegeois posture cost,
+    # the same preference the nullspace descends.
+    d_objective: str = "legacy"
+    # Soft penalty for leaving the J4 design band under "comfort".  The band is
+    # a preference, not a wall; only elbow_hi_illegal_rad is hard.
+    d_comfort_band_weight: float = 300.0
+    # Per-joint nullspace preference, mirrored from the nullspace config so both
+    # channels descend one cost.  None falls back to the geometric mid.
+    comfort_q_nominal_rad: np.ndarray | None = None
+    comfort_weights: np.ndarray | None = None
     # Runtime elbow band.  Open rail travel must not pick J4≈135°.
     elbow_center_rad: float = 95.0 * np.pi / 180.0
     elbow_lo_rad: float = 70.0 * np.pi / 180.0
     elbow_hi_rad: float = 115.0 * np.pi / 180.0
     elbow_hi_illegal_rad: float = 130.0 * np.pi / 180.0
+    # Rail posture authority floor while J4 is out of band.  0 disables rescue.
+    elbow_rescue_alpha: float = 0.35
     psi_return_dwell_s: float = 1.0
     require_design_family: bool = False
     # Local ψ search (unplanned).  9 srs_ik × 0.09 ms ≈ 0.8 ms at 10 Hz.
@@ -341,6 +404,13 @@ class PostureRetarget:
         self.cfg = cfg or PsiRetargetConfig()
         self.euler_order = str(euler_order)
         self._eval = _SrsEval(kin)
+        self._comfort_inv_scale = comfort_inv_scale(kin, self.cfg.comfort_weights)
+        q_nom = self.cfg.comfort_q_nominal_rad
+        self._comfort_q_nominal = (
+            0.5 * (np.asarray(kin.q_lower, float) + np.asarray(kin.q_upper, float))
+            if q_nom is None
+            else np.asarray(q_nom, dtype=float).reshape(-1)
+        )
         self._psi_cmd: float | None = None
         self._psi_star: float | None = None
         self._d_star: float | None = None
@@ -355,6 +425,7 @@ class PostureRetarget:
         self.last_psi_search_count: int = 0
         self.last_search_j6_rad: float = float("nan")
         self._planned: bool = False
+        self._elbow_rescue: bool = False
         self._z_plan: float = float("nan")
         self._y_center_m: float = float("nan")
         self._amplitude_m: float = float("nan")
@@ -378,6 +449,11 @@ class PostureRetarget:
     @property
     def planned(self) -> bool:
         return bool(self._planned)
+
+    @property
+    def elbow_rescue(self) -> bool:
+        """J4 left the design band; the rail posture channel keeps authority."""
+        return bool(self._elbow_rescue)
 
     def reset(self, q_rad: np.ndarray) -> None:
         q = np.asarray(q_rad, dtype=float)
@@ -407,6 +483,7 @@ class PostureRetarget:
         self.last_psi_search_count = 0
         self.last_search_j6_rad = float("nan")
         self._planned = False
+        self._elbow_rescue = False
         self._z_plan = float("nan")
         self._held_prev = False
         self._psi_dot = 0.0
@@ -643,19 +720,35 @@ class PostureRetarget:
         q = np.asarray(q_rad, dtype=float)
         if self._psi_cmd is None or self._d_star is None:
             self.reset(q)
-        dt = max(float(dt_s), 0.0) * float(min(max(float(rate_scale), 0.0), 1.0))
+        dt_raw = max(float(dt_s), 0.0)
+        dt = dt_raw * float(min(max(float(rate_scale), 0.0), 1.0))
         live_psi = fold_psi_to_positive(float(psi_from_q(q)))
+        # Slack fades the posture clock and a planned stroke pins d* outright,
+        # but J4 out of band is the one case that needs the rail to keep
+        # re-splitting.  Run it on raw time and ahead of both gates.
+        # Runs ahead of the planned gate, but claims d* only.  With no in-band
+        # split reachable it claims nothing, so the ordinary tick still runs.
+        rescued = self._update_elbow_rescue(q) and self._rescue_elbow_d(
+            q, dt_raw, rail_lo=float(rail_lo), rail_hi=float(rail_hi)
+        )
         if self._planned:
             psi_out = self._rate_limit_psi(dt, live_psi=live_psi)
             self._update_margins(q)
             return float(psi_out), float(self._d_star)
         self._held_prev = False
+        # ψ is a separate channel: a collapsed wrist still has to be searched
+        # out while the rail unwinds the elbow.
         self._maybe_retarget_psi(
             q,
             dt_s=dt,
             rail_lo=float(rail_lo),
             rail_hi=float(rail_hi),
         )
+        if rescued:
+            # The homotopy would drive d* straight back out of the band.
+            psi_out = self._rate_limit_psi(dt, live_psi=live_psi)
+            self._update_margins(q)
+            return float(psi_out), float(self._d_star)
         self._advance_homotopy(
             q,
             dt,
@@ -834,6 +927,7 @@ class PostureRetarget:
         psi: float,
         rail_lo: float,
         rail_hi: float,
+        strict: bool = False,
     ) -> float | None:
         """Split at ``psi`` whose IK J4 stays in the design band, near d_attr."""
         y_tcp = float(pose[1])
@@ -858,34 +952,129 @@ class PostureRetarget:
         # sign mismatch — that locked d* while ψ already folded J1.
         sign_pref = -1.0
         j4_c = float(self.cfg.elbow_center_rad)
+        comfort = str(self.cfg.d_objective).lower() == "comfort"
         best_d: float | None = None
         best_cost = float("inf")
         fallback_d: float | None = None
         fallback_cost = float("inf")
-        for d in samples:
+
+        def score(d: float) -> tuple[float, float] | None:
             pack = self._eval_at_split(pose, float(psi), float(d))
             if pack is None:
-                continue
-            q_arm = pack[0]
-            j4 = float(q_arm[3])
-            j1 = float(q_arm[0])
+                return None
+            j4 = float(pack[0][3])
+            j1 = float(pack[0][0])
             if self._j4_illegal_at_stop(j4, has_travel=has_travel):
-                continue
+                return None
             sign_pen = 0.0
             if abs(j1) > np.deg2rad(10.0) and j1 * sign_pref < 0.0:
                 sign_pen = 10.0
-            cost = abs(float(d) - d_pref) + 0.15 * abs(j4 - j4_c) + sign_pen
+            if comfort:
+                return self._posture_cost(pack[1], j4) + sign_pen, j4
+            return abs(float(d) - d_pref) + 0.15 * abs(j4 - j4_c) + sign_pen, j4
+
+        for d in samples:
+            hit = score(float(d))
+            if hit is None:
+                continue
+            cost, j4 = hit
             if cost < fallback_cost:
                 fallback_cost = float(cost)
                 fallback_d = float(d)
-            if not self._j4_in_design_band(j4, loose=False):
+            # Under "comfort" the band is already priced into the cost, and the
+            # only wall is the stop filtered above.
+            if not comfort and not self._j4_in_design_band(j4, loose=False):
                 continue
             if cost < best_cost:
                 best_cost = float(cost)
                 best_d = float(d)
         if best_d is not None:
+            if comfort:
+                # An 11-point grid is 7 cm on this window.  Legacy hid that by
+                # scoring |d − d_attr| and sampling d_attr directly; a real
+                # objective has its optimum between grid points.
+                pitch = (d_hi - d_lo) / 10.0
+                best_d = _golden_min(
+                    lambda x: (lambda h: float("inf") if h is None else h[0])(score(x)),
+                    max(d_lo, best_d - pitch),
+                    min(d_hi, best_d + pitch),
+                    best_d,
+                    best_cost,
+                )
             return float(best_d)
+        # The fallback only avoids the 130° stop, so it can settle one degree
+        # short of it.  A rescue that accepts that split never leaves the wall.
+        if strict:
+            return None
         return fallback_d
+
+    def _posture_cost(self, q_full: np.ndarray, j4_rad: float) -> float:
+        """Liegeois arm-posture cost plus a soft J4 design-band penalty.
+
+        The rail contributes nothing: its nullspace weight is 0, so the split
+        is a free resource spent on the arm.  The band is priced, not fenced —
+        only ``elbow_hi_illegal_rad`` is a wall.
+        """
+        q = np.asarray(q_full, dtype=float).reshape(-1)
+        e = (q - self._comfort_q_nominal) * self._comfort_inv_scale
+        cost = float(np.dot(e[1:], e[1:]))
+        lo = float(self.cfg.elbow_lo_rad)
+        hi = float(self.cfg.elbow_hi_rad)
+        band_half = max(0.5 * (hi - lo), 1.0e-9)
+        over = max(0.0, abs(float(j4_rad)) - hi, lo - abs(float(j4_rad))) / band_half
+        return cost + float(self.cfg.d_comfort_band_weight) * over * over
+
+    def _update_elbow_rescue(self, q_rad: np.ndarray) -> bool:
+        q_arm = np.asarray(q_rad, dtype=float).reshape(-1)
+        if q_arm.size == 8:
+            q_arm = q_arm[1:]
+        a = abs(float(q_arm[3]))
+        # SEW is degenerate near a straight elbow.  The ψ search bails there
+        # for the same reason, and a rail re-split has no well-posed target.
+        if a < float(self.cfg.psi_envelope_lo_rad):
+            self._elbow_rescue = False
+            return False
+        if self._elbow_rescue:
+            lo = float(self.cfg.elbow_lo_rad) + _ELBOW_RESCUE_HYSTERESIS_RAD
+            hi = float(self.cfg.elbow_hi_rad) - _ELBOW_RESCUE_HYSTERESIS_RAD
+            if lo <= a <= hi:
+                self._elbow_rescue = False
+        elif not self._j4_in_design_band(a, loose=False):
+            self._elbow_rescue = True
+        return bool(self._elbow_rescue)
+
+    def _rescue_elbow_d(
+        self,
+        q: np.ndarray,
+        dt_s: float,
+        *,
+        rail_lo: float,
+        rail_hi: float,
+    ) -> bool:
+        """Re-split the rail until J4 is back in band.
+
+        J4 = acos(f(|W − S|)) with S fixed by the rail split, so the arm's ψ
+        self-motion cannot move it at all.  Only a new split can.  Returns
+        False when no in-band split is reachable.
+        """
+        pose = np.asarray(self.kin.fk_pose(q), dtype=float).reshape(6)
+        psi_live = fold_psi_to_positive(float(self._psi_cmd))
+        d_goal = self._select_d_for_elbow(
+            q,
+            pose=pose,
+            psi=psi_live,
+            rail_lo=float(rail_lo),
+            rail_hi=float(rail_hi),
+            strict=True,
+        )
+        if d_goal is None or not np.isfinite(float(d_goal)):
+            return False
+        self._d_center_target = float(d_goal)
+        self._rate_limit_d(float(dt_s))
+        pack = self._eval_at_split(pose, psi_live, float(self._d_star))
+        if pack is not None:
+            self.q_star_rad = np.asarray(pack[1], dtype=float).copy()
+        return True
 
     def _maybe_retarget_psi(
         self,

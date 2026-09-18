@@ -52,7 +52,9 @@ def test_native_v8_protocol_sizes() -> None:
 
 
 def test_residual_qp1_layout_contract() -> None:
-    assert "constexpr int kNVar = kNv + kNTaskSlack + kNPref;" in SRC
+    assert "constexpr int kNVar = kNv + kNTaskSlack + kNPref + kNCbfSlack;" in SRC
+    assert "kCbfSlackCol" in SRC
+    assert "cbf_soft" in SRC
     assert "constexpr int kNEq1 = kTask;" in SRC
     assert "constexpr int kNEq2 = kTask;" in SRC
     assert "kNPreviewArm" not in SRC

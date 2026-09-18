@@ -196,6 +196,219 @@ def test_margin_floor_rejects_a_joint_on_the_stop() -> None:
     assert arm_respects_floor(q, np.deg2rad(15.0)) is True
 
 
+def _elbow_q(j4_deg: float) -> np.ndarray:
+    q = _SEED_Q.copy()
+    q[4] = np.deg2rad(float(j4_deg))
+    return q
+
+
+def _rescue_rt() -> PostureRetarget:
+    return PostureRetarget(RobotKinematics(), PsiRetargetConfig(enabled=True))
+
+
+def test_elbow_rescue_latches_out_of_band_and_needs_margin_to_clear() -> None:
+    rt = _rescue_rt()
+    rt.reset(_elbow_q(113.0))
+    assert rt._update_elbow_rescue(_elbow_q(113.0)) is False
+    assert rt._update_elbow_rescue(_elbow_q(120.0)) is True
+    # Back inside the band but within the hysteresis margin: still latched, so
+    # a joint parked on 115° cannot rewrite the rail authority every tick.
+    assert rt._update_elbow_rescue(_elbow_q(114.0)) is True
+    assert rt._update_elbow_rescue(_elbow_q(110.0)) is False
+
+
+def test_elbow_rescue_moves_d_star_after_slack_fades_the_posture_clock() -> None:
+    """Contact slack zeroes rate_scale, and that is when J4 needs the rail."""
+
+    rt = _rescue_rt()
+    q = _elbow_q(125.0)
+    rt.reset(q)
+    d0 = float(rt._d_star)
+    for _ in range(200):
+        rt.step(q, DT, rail_lo=0.005, rail_hi=0.78, rate_scale=0.0)
+    assert rt.elbow_rescue is True
+    assert abs(float(rt._d_star) - d0) > 1.0e-2
+
+
+def test_elbow_rescue_outranks_a_planned_stroke() -> None:
+    rt = _rescue_rt()
+    q = _elbow_q(125.0)
+    rt.reset(q)
+    y_c = float(rt.kin.fk_placement(q).translation[1])
+    rt.plan_stroke(q, y_center_m=y_c, amplitude_m=0.04, rail_lo=0.005, rail_hi=0.78)
+    d0 = float(rt._d_star)
+    for _ in range(200):
+        rt.step(q, DT, rail_lo=0.005, rail_hi=0.78, rate_scale=0.0)
+    assert rt.planned is True
+    assert rt.elbow_rescue is True
+    assert abs(float(rt._d_star) - d0) > 1.0e-2
+
+
+def test_in_band_planned_stroke_still_pins_d_star() -> None:
+    rt = _rescue_rt()
+    q = _elbow_q(113.0)
+    rt.reset(q)
+    y_c = float(rt.kin.fk_placement(q).translation[1])
+    rt.plan_stroke(q, y_center_m=y_c, amplitude_m=0.04, rail_lo=0.005, rail_hi=0.78)
+    d0 = float(rt._d_star)
+    for _ in range(200):
+        rt.step(q, DT, rail_lo=0.005, rail_hi=0.78, rate_scale=0.0)
+    assert rt.elbow_rescue is False
+    assert float(rt._d_star) == pytest.approx(d0)
+
+
+def test_elbow_rescue_stays_off_near_a_straight_elbow() -> None:
+    """SEW is degenerate there, so a rail re-split has no well-posed target."""
+
+    rt = _rescue_rt()
+    q = _elbow_q(21.0)
+    rt.reset(q)
+    assert rt._update_elbow_rescue(q) is False
+
+
+def test_unreachable_elbow_rescue_still_leaves_the_homotopy_tick() -> None:
+    """A rescue that cannot steer must not be worse than no rescue at all."""
+
+    rt = _rescue_rt()
+    q = _elbow_q(125.0)
+    rt.reset(q)
+    rail = float(q[0])
+    window = dict(rail_lo=rail - 0.08, rail_hi=rail + 0.08)
+    assert rt._rescue_elbow_d(q, DT, **window) is False
+    q_star0 = np.asarray(rt.q_star_rad, dtype=float).copy()
+    for _ in range(40):
+        rt.step(q, DT, rate_scale=1.0, **window)
+    assert not np.allclose(rt.q_star_rad, q_star0)
+
+
+def _comfort_rt(**over) -> PostureRetarget:
+    kin = RobotKinematics()
+    cfg = PsiRetargetConfig(
+        enabled=True,
+        d_objective="comfort",
+        comfort_q_nominal_rad=np.deg2rad(
+            np.array([0.0, -89.5, -94.5, 65.2, 96.0, 89.3, 61.0, 94.6])
+        ),
+        comfort_weights=np.array([0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]),
+        **over,
+    )
+    return PostureRetarget(kin, cfg)
+
+
+def test_comfort_objective_gives_the_rail_no_preference_of_its_own() -> None:
+    """d_attr is a split measured at one seed pose; it must not score d."""
+
+    rt = _comfort_rt()
+    q = _elbow_q(118.0)
+    rt.reset(q)
+    pose = np.asarray(rt.kin.fk_pose(q), dtype=float).reshape(6)
+    kw = dict(pose=pose, psi=float(rt._psi_cmd), rail_lo=0.005, rail_hi=0.78)
+    d_far = rt._select_d_for_elbow(q, **kw)
+    rt.cfg.d_attr_m = -0.60
+    rt._d_center_target = -0.60
+    assert rt._select_d_for_elbow(q, **kw) == pytest.approx(d_far, abs=5e-3)
+
+
+def test_comfort_objective_beats_legacy_on_the_nullspace_cost() -> None:
+    q = _elbow_q(118.0)
+    new = _comfort_rt()
+    old = _comfort_rt()
+    old.cfg.d_objective = "legacy"
+    scores = {}
+    for tag, rt in (("comfort", new), ("legacy", old)):
+        rt.reset(q)
+        pose = np.asarray(rt.kin.fk_pose(q), dtype=float).reshape(6)
+        d = rt._select_d_for_elbow(
+            q, pose=pose, psi=float(rt._psi_cmd), rail_lo=0.005, rail_hi=0.78
+        )
+        pack = rt._eval_at_split(pose, float(rt._psi_cmd), float(d))
+        e = (np.asarray(pack[1], float) - new._comfort_q_nominal) * new._comfort_inv_scale
+        scores[tag] = (float(np.dot(e[1:], e[1:])), np.degrees(abs(float(pack[0][3]))))
+    assert scores["comfort"][0] < scores["legacy"][0]
+    # Legacy pins the rail near d_attr and pushes J4 onto the lower band edge.
+    assert scores["legacy"][1] < scores["comfort"][1]
+    assert 70.0 <= scores["comfort"][1] <= 115.0
+
+
+def test_comfort_objective_keeps_only_the_stop_as_a_hard_wall() -> None:
+    """70-115 is priced, not fenced; a good split simply never nears 130."""
+
+    rt = _comfort_rt(d_comfort_band_weight=0.0)
+    q = _elbow_q(125.0)
+    rt.reset(q)
+    pose = np.asarray(rt.kin.fk_pose(q), dtype=float).reshape(6)
+    d = rt._select_d_for_elbow(
+        q, pose=pose, psi=float(rt._psi_cmd), rail_lo=0.005, rail_hi=0.78
+    )
+    j4 = abs(float(rt._eval_at_split(pose, float(rt._psi_cmd), float(d))[0][3]))
+    assert j4 < rt.cfg.elbow_hi_illegal_rad
+    # Raising the band weight may only pull J4 back toward the band.
+    tight = _comfort_rt(d_comfort_band_weight=300.0)
+    tight.reset(q)
+    d_t = tight._select_d_for_elbow(
+        q, pose=pose, psi=float(tight._psi_cmd), rail_lo=0.005, rail_hi=0.78
+    )
+    j4_t = abs(float(tight._eval_at_split(pose, float(tight._psi_cmd), float(d_t))[0][3]))
+    assert j4_t <= max(j4, tight.cfg.elbow_hi_rad)
+
+
+def test_comfort_split_holds_j4_near_nominal_across_a_stroke() -> None:
+    rt = _comfort_rt()
+    q = _elbow_q(100.0)
+    rt.reset(q)
+    pose0 = np.asarray(rt.kin.fk_pose(q), dtype=float).reshape(6)
+    j4s, ds = [], []
+    for t in np.linspace(0.0, 2.0 * np.pi, 60):
+        pose = pose0.copy()
+        pose[1] += 0.04 * np.sin(t)
+        d = rt._select_d_for_elbow(
+            q, pose=pose, psi=float(rt._psi_cmd), rail_lo=0.005, rail_hi=0.78
+        )
+        if d is None:
+            continue
+        pack = rt._eval_at_split(pose, float(rt._psi_cmd), float(d))
+        ds.append(float(d))
+        j4s.append(np.degrees(abs(float(pack[0][3]))))
+    assert np.max(np.abs(np.diff(ds))) < 0.01  # no basin hopping
+    assert 90.0 < min(j4s) and max(j4s) < 102.0
+
+
+def test_elbow_rescue_leaves_the_psi_channel_alone() -> None:
+    """d* and ψ are orthogonal; unwinding the elbow must not stall the wrist."""
+
+    rt = _rescue_rt()
+    rt.cfg.psi_replan_period_s = 0.0
+    q = _elbow_q(125.0)
+    q[6] = np.deg2rad(5.0)  # collapsed wrist, so the ψ search is due
+    rt.reset(q)
+    d0 = float(rt._d_star)
+    rt.step(q, 0.1, rail_lo=0.005, rail_hi=0.78, rate_scale=0.0)
+    assert rt.elbow_rescue is True
+    assert rt.last_psi_search_count >= 1
+    assert float(rt._d_star) != pytest.approx(d0)
+
+
+def test_strict_elbow_split_refuses_the_near_stop_fallback() -> None:
+    """The ordinary fallback only dodges 130°, so it can settle just short."""
+
+    rt = _rescue_rt()
+    q = _elbow_q(125.0)
+    rt.reset(q)
+    pose = np.asarray(rt.kin.fk_pose(q), dtype=float).reshape(6)
+    rail = float(q[0])
+    window = dict(rail_lo=rail - 0.08, rail_hi=rail + 0.08)
+    fallback = rt._select_d_for_elbow(q, pose=pose, psi=float(rt._psi_cmd), **window)
+    assert fallback is not None
+    pack = rt._eval_at_split(pose, float(rt._psi_cmd), float(fallback))
+    assert np.degrees(float(pack[0][3])) > np.degrees(rt.cfg.elbow_hi_rad)
+    assert (
+        rt._select_d_for_elbow(
+            q, pose=pose, psi=float(rt._psi_cmd), strict=True, **window
+        )
+        is None
+    )
+
+
 def test_step_does_not_replan_when_z_moves() -> None:
     kin = RobotKinematics()
     rt = PostureRetarget(

@@ -17,11 +17,14 @@
 namespace wbc_rt {
 namespace {
 
-// Residual HQP layout: qdot[8], task_slack[6], preference_slack[9].
-constexpr int kNVar = kNv + kNTaskSlack + kNPref;
+// Residual HQP layout: qdot[8], task_slack[6], preference_slack[9], cbf_slack[8].
+constexpr int kNCbfSlack = kMaxCbf;
+constexpr int kNVar = kNv + kNTaskSlack + kNPref + kNCbfSlack;
+constexpr int kCbfSlackCol = kNv + kNTaskSlack + kNPref;
 constexpr int kNEq1 = kTask;
 constexpr int kNEq2 = kTask;
-constexpr int kRockingRow = kNv + kMaxCbf + kMaxPrefRows + kNPref;
+constexpr int kCbfSlackBoundRow = kNv + kMaxCbf + kMaxPrefRows + kNPref;
+constexpr int kRockingRow = kCbfSlackBoundRow + kNCbfSlack;
 constexpr int kCommandPowerRow = kRockingRow + 1;
 constexpr int kCommandTwistRow = kCommandPowerRow + 1;
 constexpr int kNIn = kCommandTwistRow + 16;
@@ -702,6 +705,14 @@ void InnerLoop::capture_rail_ext_ref(const Vec8& q) {
 
 void InnerLoop::set_rail_ext_mode(int pose_attract) { rail_ext_mode_ = pose_attract; }
 
+double InnerLoop::rail_posture_alpha() const {
+  // Only the rail can pull J4 back into its band, so slack must not be allowed
+  // to fade that one channel to zero while the elbow sits outside.
+  const double floor_a = clip(cfg_.elbow_rescue_alpha, 0.0, 1.0);
+  if (floor_a <= 0.0 || !posture_.elbow_rescue()) return secondary_alpha_;
+  return std::max(secondary_alpha_, floor_a);
+}
+
 void InnerLoop::track_rail_authority(double d_live, double d_star_target, double v_applied,
                                      double dt) {
   const double target = std::isfinite(d_star_target) ? d_star_target : d_live;
@@ -1055,6 +1066,9 @@ bool InnerLoop::solve_hqp(const Mat6x8& J, const Vec6& v_cmd, const Vec8& q_geom
   lo.head<kNv>() = lo_box;
   hi.head<kNv>() = hi_box;
   n_cbf_active_ = 0;
+  const bool cbf_soft = cfg_.cbf_slack_w > 0.0;
+  MatX cbf_jac = MatX::Zero(kMaxCbf, kNv);
+  VecX cbf_lo = VecX::Constant(kMaxCbf, -1e20);
   if (collision_) {
     const auto t_collision0 = std::chrono::steady_clock::now();
     collision_->update(q_geom, kin_.data());
@@ -1071,6 +1085,9 @@ bool InnerLoop::solve_hqp(const Mat6x8& J, const Vec6& v_cmd, const Vec8& q_geom
         lo[kNv + i] -= cj(i, 0) * rail_exec;
         C(kNv + i, 0) = 0.0;
       }
+      cbf_jac.row(i) = C.block(kNv + i, 0, 1, kNv);
+      cbf_lo[i] = lo[kNv + i];
+      if (cbf_soft) C(kNv + i, kCbfSlackCol + i) = 1.0;
       if (std::isfinite(lo[kNv + i]) && lo[kNv + i] > -1e19) ++n_cbf_active_;
     }
   }
@@ -1079,10 +1096,27 @@ bool InnerLoop::solve_hqp(const Mat6x8& J, const Vec6& v_cmd, const Vec8& q_geom
     C(row, kNv + kNTaskSlack + k) = 1.0;
     lo[row] = 0.0;
   }
+  for (int i = 0; i < kNCbfSlack; ++i) {
+    C(kCbfSlackBoundRow + i, kCbfSlackCol + i) = 1.0;
+    lo[kCbfSlackBoundRow + i] = 0.0;
+    if (!cbf_soft) hi[kCbfSlackBoundRow + i] = 0.0;
+  }
+  // Hard CBF copy: same rows without the slack column.  admit_residual_task
+  // still refuses a box-only command that only works by spending clearance.
+  MatX C_hard = C;
+  VecX lo_hard = lo;
+  VecX hi_hard = hi;
+  for (int i = 0; i < kNCbfSlack; ++i) {
+    C_hard(kNv + i, kCbfSlackCol + i) = 0.0;
+    hi_hard[kCbfSlackBoundRow + i] = 0.0;
+  }
 
   MatX H1 = MatX::Zero(kNVar, kNVar);
   H1.topLeftCorner<kNv, kNv>().diagonal().array() += 1.0e-8;
   H1.block(kNv, kNv, kNTaskSlack, kNTaskSlack) = cfg_.task_weight.asDiagonal();
+  if (cbf_soft) {
+    for (int i = 0; i < kNCbfSlack; ++i) H1(kCbfSlackCol + i, kCbfSlackCol + i) = cfg_.cbf_slack_w;
+  }
   VecX g1 = VecX::Zero(kNVar);
   MatX A1 = MatX::Zero(kNEq1, kNVar);
   A1.leftCols(kNv) = J_task;
@@ -1125,6 +1159,12 @@ bool InnerLoop::solve_hqp(const Mat6x8& J, const Vec6& v_cmd, const Vec8& q_geom
     if (certify()) return true;
     // Affine command-twist rows move every tick with rail_exec. A stale
     // warm start then hits max_iter with an uncertified x; retry cold.
+    // The retry costs as much as the solve that just failed, so give it up
+    // rather than overrun the tick — a late command is worse than a paused
+    // one, and an overrun shows up downstream as a feedback timeout.
+    if (cfg_.max_solve_ms > 0.0 && elapsed_ms(step_t0_) >= 0.5 * cfg_.max_solve_ms) {
+      return false;
+    }
     solve_dense_qp(*qp1_, &qp1_inited_, false, H1, g1, A1, b1, C, lo_use, hi_use);
     return certify();
   };
@@ -1192,6 +1232,9 @@ bool InnerLoop::solve_hqp(const Mat6x8& J, const Vec6& v_cmd, const Vec8& q_geom
   }
   // Do not retry with CBF lower bounds removed. That path could publish a
   // result that only satisfied joint boxes while reporting QP1 as solved.
+  // Soft CBF (cbf_slack_w>0) is the priced version of that retry: ProxQP
+  // may spend clearance, but admit_residual_task still certifies the hard
+  // rows so a box-only candidate cannot skip the solver and call itself OK.
   // Admit residual task slack without dropping CBF. ProxQP failing the
   // Cartesian request is a leftover residual, not a stop, while P0/CBF/power
   // still certify the published qdot.
@@ -1202,7 +1245,7 @@ bool InnerLoop::solve_hqp(const Mat6x8& J, const Vec6& v_cmd, const Vec8& q_geom
     for (const Vec8& cand : cands) {
       const VecX x_try = pack_x(clip_qdot(cand));
       if (qp_eq_violation(A1, b1, x_try) <= cert_tol &&
-          qp_ineq_violation(C, lo, hi, x_try) <= cert_tol) {
+          qp_ineq_violation(C_hard, lo_hard, hi_hard, x_try) <= cert_tol) {
         *x_out = x_try;
         return true;
       }
@@ -1296,6 +1339,9 @@ bool InnerLoop::solve_hqp(const Mat6x8& J, const Vec6& v_cmd, const Vec8& q_geom
   H2.block(kNv, kNv, kNTaskSlack, kNTaskSlack) =
       1e-10 * Eigen::Matrix<double, 6, 6>::Identity();
   for (int k = 0; k < kNPref; ++k) H2(kNv + kNTaskSlack + k, kNv + kNTaskSlack + k) = slack_w[k];
+  if (cbf_soft) {
+    for (int i = 0; i < kNCbfSlack; ++i) H2(kCbfSlackCol + i, kCbfSlackCol + i) = cfg_.cbf_slack_w;
+  }
   VecX g2 = VecX::Zero(kNVar);
   g2.head<kNv>() = -h_reg.cwiseProduct(qdot_nom);
   if (rail_w > 0.0 && !rail_locked && !has_pin) {
@@ -1361,6 +1407,13 @@ bool InnerLoop::solve_hqp(const Mat6x8& J, const Vec6& v_cmd, const Vec8& q_geom
     const double base = pref_J.row(k).dot(qdot1);
     const double need = std::max(pref_lo[k] - base, 0.0);
     x2_seed[col] = std::max(x2_seed[col], need);
+  }
+  if (cbf_soft) {
+    for (int i = 0; i < kNCbfSlack; ++i) {
+      if (cbf_lo[i] <= -1e19) continue;
+      const double need = std::max(cbf_lo[i] - cbf_jac.row(i).dot(qdot1), 0.0);
+      x2_seed[kCbfSlackCol + i] = std::max(x2_seed[kCbfSlackCol + i], need);
+    }
   }
   const auto t_qp2_0 = std::chrono::steady_clock::now();
   qp2_->settings.max_iter = iter_nom;
@@ -1809,7 +1862,7 @@ TickOut InnerLoop::step(const TickIn& in) {
       wall_velocity_bounds(v_max_[0], leave, &u_lo, &u_hi);
     }
 
-    const double alpha = secondary_alpha_;
+    const double alpha = rail_posture_alpha();
     u_pi_raw_ = cfg_.kp_mid * e_d_ + mid_integ_;
     u_mid_cmd_ = soft_saturate(u_pi_raw_, cfg_.u_mid_max);
     u_post_raw_ = alpha * (u_mid_cmd_ - d_star_dot_cmd_);
@@ -2197,7 +2250,7 @@ TickOut InnerLoop::step(const TickIn& in) {
     u_mid_committed_ = u_post_committed_ + d_star_dot_cmd_;
     u_mid_applied_ = u_mid_committed_;
     if (published_ok && dt > 0.0) {
-      const double alpha = secondary_alpha_;
+      const double alpha = rail_posture_alpha();
       if (alpha < 1.0e-6) {
         mid_integ_ = -cfg_.kp_mid * e_d_;
       } else {

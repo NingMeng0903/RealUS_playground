@@ -53,6 +53,8 @@ class CollisionConfig:
     d_activate: float = 0.08
     gamma: float = 5.0
     max_pairs: int = 8
+    # 0 = hard CBF rows.  A large value lets QP1 spend clearance instead of STOP.
+    slack_weight: float = 2000.0
     collision_urdf: Path = DEFAULT_COLLISION_URDF
     pair_config: Path = DEFAULT_PAIR_CONFIG
 

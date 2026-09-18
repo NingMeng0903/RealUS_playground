@@ -62,6 +62,7 @@ class RockingSmoothing:
         self.time_s = None
         self.omega_base = np.zeros(3)
         self.acceleration_base = np.zeros(3)
+        self._preview_jerk_scale = 1.0
 
     def seed(self, omega_base, now_s):
         omega = np.asarray(omega_base, dtype=float).reshape(3)
@@ -71,7 +72,7 @@ class RockingSmoothing:
         self.acceleration_base = np.zeros(3)
         self.time_s = float(now_s)
 
-    def preview(self, rotation_base_tcp, now_s, default_dt_s):
+    def preview(self, rotation_base_tcp, now_s, default_dt_s, *, jerk_scale=1.0):
         rotation = np.asarray(rotation_base_tcp, dtype=float).reshape(3, 3)
         elapsed = default_dt_s if self.time_s is None else now_s-self.time_s
         dt = max(float(elapsed), float(default_dt_s))
@@ -79,6 +80,9 @@ class RockingSmoothing:
             raise ValueError('invalid final rocking frame/time')
         if not math.isfinite(dt) or dt <= 0:
             raise ValueError('invalid final rocking frame/time')
+        if not math.isfinite(jerk_scale) or jerk_scale < 1.:
+            raise ValueError('jerk_scale must be finite and >= 1')
+        self._preview_jerk_scale = float(jerk_scale)
         axis = rotation[:, 1].copy()
         previous = float(axis @ self.omega_base)
         acceleration = float(axis @ self.acceleration_base)
@@ -88,8 +92,9 @@ class RockingSmoothing:
         # label an abrupt return to a_max as jerk-constrained tier 1.
         # Floor the slew window at the control hold. A 1 ms proposal gap
         # otherwise collapses J*dt^2 by ~50x versus the real 7 ms cycle.
-        jerk_acc = [acceleration-self.jerk_limit*dt,
-                    acceleration+self.jerk_limit*dt]
+        jerk = self.jerk_limit * self._preview_jerk_scale
+        jerk_acc = [acceleration-jerk*dt,
+                    acceleration+jerk*dt]
         bounds = np.array([-self.velocity_limit, self.velocity_limit,
                            previous-a*dt, previous+a*dt,
                            previous+jerk_acc[0]*dt, previous+jerk_acc[1]*dt])
@@ -116,7 +121,8 @@ class RockingSmoothing:
         here, never silently reported as a bounded actual-publication jerk and
         never used to undo a completed device send.
         """
-        _, bounds, history = self.preview(rotation_base_tcp, now_s, default_dt_s)
+        _, bounds, history = self.preview(rotation_base_tcp, now_s, default_dt_s,
+                                         jerk_scale=self._preview_jerk_scale)
         value = float(np.asarray(final_tool)[4])
         dt = history['elapsed_s']
         acceleration = (value-history['previous_rad_s'])/dt

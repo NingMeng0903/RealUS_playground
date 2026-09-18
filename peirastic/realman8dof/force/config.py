@@ -46,6 +46,8 @@ _SKIP_PAYLOAD = {
     "rail_m",
     "max_lin_vel_m_s",
     "move_kp",
+    "pad_visual",
+    "pad_log",
 }
 
 

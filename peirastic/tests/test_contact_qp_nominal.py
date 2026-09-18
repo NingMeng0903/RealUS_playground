@@ -21,6 +21,16 @@ SCAN_PAYLOAD = dict(force_profile('icra'), force_axes=SCAN_FORCE_AXES,
 RAW = apply_force_payload(load_force_raw(), SCAN_PAYLOAD)
 
 
+def test_icra_scan_payload_overlays_z_and_my_force_axes():
+    """Record hfpc(force_axes=SCAN_FORCE_AXES) must reach the force controller.
+
+    pad_visual/pad_log stay out of force.yaml; force_axes must not.
+    """
+    assert RAW["hybrid_motion"]["force_axes"] == list(SCAN_FORCE_AXES)
+    yaml_axes = load_force_raw()["hybrid_motion"]["force_axes"]
+    assert yaml_axes != list(SCAN_FORCE_AXES)
+
+
 def make_law():
     controller = AdmittanceController(0.005, AdmittanceConfig.from_dict(deepcopy(RAW)))
     return LegacyForceWithTilt(LegacyForceLaw(controller), TorqueTilt(TorqueTiltConfig.from_dict(RAW)))

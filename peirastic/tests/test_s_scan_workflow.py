@@ -211,6 +211,38 @@ def test_contact_seek_stops_below_detected_surface(monkeypatch):
         s_scan._monitor_hybrid_scan(arm, plan, duration_s=1.0, seq=1)
 
 
+def test_monitor_waits_out_endpoint_handshake_then_completes(monkeypatch):
+    now = [100.0]
+    monkeypatch.setattr(s_scan, "time", SimpleNamespace(
+        monotonic=lambda: now[0], sleep=lambda dt: now.__setitem__(0, now[0] + dt)))
+    monkeypatch.setattr(s_scan, "_latched", lambda arm: False)
+    snaps = [
+        dict(mode=Mode.TRACK_HYBRID, status=Status.RUNNING, t_mono=100.0,
+             msg="phathom_s_scan:tracking t=46.10 contact=1 vz_cmd=-0.3", f_ext_z=4.1, done_seq=0),
+        dict(mode=Mode.TRACK_HYBRID, status=Status.RUNNING, t_mono=100.05,
+             msg="phathom_s_scan:endpoint_convergence t=46.20 contact=1 vz_cmd=-1.0",
+             f_ext_z=4.2, done_seq=0),
+        dict(mode=Mode.TRACK_HYBRID, status=Status.DONE, t_mono=100.10,
+             msg="phathom_s_scan:endpoint_convergence t=46.21 contact=1 vz_cmd=-0.2",
+             f_ext_z=4.1, done_seq=1),
+    ]
+    def snapshot():
+        snap = snaps.pop(0)
+        now[0] = float(snap["t_mono"])
+        return snap
+    s_scan._monitor_hybrid_scan(SimpleNamespace(_snapshot=snapshot), None, duration_s=46.0, seq=1)
+
+
+def test_monitor_rejects_endpoint_handshake_without_tracking(monkeypatch):
+    monkeypatch.setattr(s_scan, "_latched", lambda arm: False)
+    arm = SimpleNamespace(_snapshot=lambda: dict(
+        mode=Mode.TRACK_HYBRID, status=Status.RUNNING, t_mono=s_scan.time.monotonic(),
+        msg="phathom_s_scan:endpoint_convergence t=46.20 contact=1 vz_cmd=-1.0",
+        f_ext_z=4.0, done_seq=0))
+    with pytest.raises(RuntimeError, match="without confirmed tracking"):
+        s_scan._monitor_hybrid_scan(arm, None, duration_s=46.0, seq=1)
+
+
 def test_monitor_keeps_hybrid_scan_across_controller_recovering(monkeypatch):
     now = [100.0]
     monkeypatch.setattr(s_scan, "time", SimpleNamespace(

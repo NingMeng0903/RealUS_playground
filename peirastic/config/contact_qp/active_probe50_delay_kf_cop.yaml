@@ -1,6 +1,8 @@
 # Default outer: fixed 4 N + mechanical TorqueTilt + delayed full-width 10-region q25 confidence + coupled normal task.
 # No energy tank or task-power supply. Original mechanical and publication limits remain.
-# KF noise fitted only on session005 DtP; PtD fixed-delay prediction error is reported in the calibration JSON.
+# KF noise re-fit 2026-09-17 with scripts/calibrate_delay_kf.py all --threshold 0.97
+# on session005 DtP (PtD held out). Continuous region q25 does not depend on the
+# decision threshold, so q/r and probe50_delay_kf_005.json are unchanged.
 # New image quality is a signal proxy; same-path acquisition is needed to evaluate actual image repair.
 mode: active
 execution_policy: continuous_recovery_v1
@@ -65,12 +67,19 @@ feature:
     effective_delay_s: 0.15196365053143765
     calibration_version: probe50_center_tcp_user_20260910_v1
     image_x_sign: -1
-    low_confidence_threshold: 0.8
+    # A fully shadowed ray transmits nothing, so the random-walk map accumulates
+    # no attenuation and stays bright: measured on 012, a 9.3 mm full-depth gap
+    # only moved the near-field q25 from 0.996 to 0.927. Deepening near_depth
+    # inverts the sign (shadow reads ABOVE well-coupled tissue in 93% of frames
+    # at rows 22-50), so the fix is the threshold, not the ROI. Clean frames stay
+    # above 0.99 (p05 0.9909), so 0.97 detects 39% of hard gaps at zero false
+    # positives where 0.85 detected 1.6%.
+    low_confidence_threshold: 0.97
     unknown_scanline_range: 1.0
-  window_version: 8b51133835031ba9ee2d
+  window_version: 49eef78ea55b9020e299
   registration_version: db4c7447b3c40983e6b6
-  quality_policy_version: nearfield_equal_regions_weighted_q25_v1_cmin08
-  c_min: 0.8
+  quality_policy_version: nearfield_equal_regions_weighted_q25_v1_cmin097
+  c_min: 0.97
   verified: true
   confidence_feature_version: confidence_column_centroid_v1
   weakside_feature_version: confidence_weakside_column_q25_v1
@@ -103,7 +112,62 @@ qp:
     nominal_force_n: 4.0
     soft_force_n: 4.5
     hard_stop_n: 6.0
-  repair_speed_m_s: 0.010
+  # Image repair ω ∝ repair_speed × first spatial moment.
+  #
+  # 45 mm/s fixed the latency (median time to 1 deg/s 303 -> 17 ms in 016) but
+  # not the amplitude, and the amplitude is what closes a shadow: tilting by
+  # theta moves the aperture edge by 25 mm * sin(theta), so a 3 mm edge shadow
+  # needs 6.9 deg and a 4 mm one needs 9.2 deg. Session 016 confirms the model
+  # -- a 5.5 mm shadow closed after 15 deg of net sweep.
+  #
+  # The edge acoustic window reports that hole very weakly: in 018 a measured
+  # >=2 mm B-mode shadow moved the region q25 only to 0.938 (>=4 mm to 0.871),
+  # so the proportional law asked for 1.3 deg/s and needed 2.65 s to sweep the
+  # 6.9 deg, five times the 0.47 s sensing round trip. 90 mm/s doubles that
+  # authority at the same measured deficit; the far side had p05 0.991 while
+  # rocking, so there is headroom. alpha is untouched.
+  repair_speed_m_s: 0.090
+  alpha_min: 0.25
+  alpha_min_at_quality: 0.93
+  # Session 013 held alpha at the image-law floor for 11.0 s, but 6.6 s of that
+  # carried no measurable B-mode gap: the recover hysteresis, not a live defect.
+  # A separate open-interval clamp keeps 0.25 for a real deficit and releases the
+  # recovery tail to 0.45; replay on 013 saves 4.6 s with detection unchanged.
+  alpha_hold: 0.45
+  # Rocking one edge in unloads the other. Session 011 pinned ω at the old
+  # 6.25*repair floor through recovered dips and pushed the far region to 0.68,
+  # so cap the request and keep the stalled-interval floor well below it. The
+  # cap bound 40% of the >=4 mm shadow frames in 018 while the deep holes were
+  # the ones still open after a second, so 0.14 rad/s (8 deg/s) closes the 9.2
+  # deg they need in 1.15 s. That is still half of 011's 0.295 rad/s peak, and
+  # unlike 011 it only applies while the image moment itself asks for it.
+  max_visual_omega_rad_s: 0.14
+  escalation_omega_rad_s: 0.05
+  # Measured on 013: once a region climbs back to 0.97 a >=1 mm true gap still
+  # returns within 0.5 s in 43% of cases, against 22% at 0.985. Relaxing this
+  # threshold trades image quality for time, so it stays.
+  recover_quality: 0.985
+  recover_hold_s: 0.25
+  visual_hold_while_open: true
+  # The escalation floor above is the only thing that sustained rocking in 018:
+  # 62% of its non-zero omega ticks sat exactly on 0.05 and 20 of 21 intervals
+  # were marked. 90 mm/s then improved q25 by more than the 0.03 deadband inside
+  # the 0.3 s window, so 019 never marked 12 of its 34 intervals, lost the floor,
+  # and dropped omega to zero while 2-4 mm of shadow was still on screen -- the
+  # punch-and-release. This floor does not wait for a mark. It holds for 0.8 s
+  # past the last sub-c_min frame, just over the 0.47 s sensing round trip, so a
+  # metric that recovers before the image does cannot release it. 0.03 rad/s for
+  # 0.8 s is 1.4 deg, 0.6 mm of aperture edge; 011 needed 0.1875 rad/s held
+  # through recovered dips to lift the opposite region to 0.68.
+  visual_hold_omega_rad_s: 0.03
+  visual_hold_omega_s: 0.8
+  visual_rocking_jerk_scale: 3.0
+  # Reporting threshold only. An acceleration row on an axis the affine basis
+  # cannot reach is saturated, never rejected: the feedforward drops to zero in
+  # one tick at the last waypoint, and session 015 showed that deferring instead
+  # freezes the previous command while the demand keeps falling, so the gap only
+  # widens. 10 mm/s over a 1 m/s^2 x 5 ms box is 2 half-widths of slew.
+  fixed_acceleration_overshoot: 1.0
   normal_scale_m_s: 0.002
   angular_scale_rad_s: 0.1
   normal_weight: 1.0
@@ -128,3 +192,5 @@ kf_calibration:
   version: confidence_region_delay_kf_calibration_v1
   source: probe50_delay_kf_005.json
   sha256: 8ba6893d28e7666d39c8b215dd8aadc877d8931b7b0f1e083fe9c26b667d9b7f
+  # Official extract+fit artifact: analysis_artifacts/delay_kf_cmin097_20260917
+  # Three L-BFGS starts; best NLL -118025.14177508144 recovered the committed q/r.

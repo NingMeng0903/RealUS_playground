@@ -109,7 +109,8 @@ class PatchedSourceTest(unittest.TestCase):
         py = (
             ROOT / "rm75_control/control/joint_admittance_8dof/loop.py"
         ).read_text()
-        self.assertIn("secondary_alpha=float(secondary_alpha)", py)
+        self.assertIn("rail_posture_alpha = self._rail_posture_alpha(secondary_alpha)", py)
+        self.assertIn("secondary_alpha=float(rail_posture_alpha)", py)
         self.assertNotIn("const bool posture_hold = slack_high || task_hold;", cpp)
         self.assertIn("slack_now <= slack_exit", py)
         self.assertNotIn(

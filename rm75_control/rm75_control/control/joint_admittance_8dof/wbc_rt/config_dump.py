@@ -6,7 +6,13 @@ from pathlib import Path
 
 import numpy as np
 
-from rm75_control.control.joint_admittance_8dof.model import DEFAULT_URDF
+from rm75_control.control.joint_admittance_8dof.model import (
+    DEFAULT_URDF,
+    RobotKinematics,
+)
+from rm75_control.control.joint_admittance_8dof.tasks.psi_retarget import (
+    comfort_inv_scale,
+)
 
 
 def _f(x) -> str:
@@ -89,6 +95,7 @@ def dump_wbc_config(
         f"qp.max_iter {int(qp.max_iter)}",
         f"qp.max_iter_cap {int(qp.max_iter_cap)}",
         f"qp.max_solve_ms {_f(getattr(qp, 'max_solve_ms', 5.0))}",
+        f"qp.fail_qdot_decay {_f(getattr(qp, 'fail_qdot_decay', 0.85))}",
         f"qp.twist_sigma_floor {_f(qp.twist_sigma_floor)}",
         f"qp.task_weight_min_frac {_f(qp.task_weight_min_frac)}",
         f"qp.task_weight_lpf_tau_s {_f(qp.task_weight_lpf_tau_s)}",
@@ -145,6 +152,7 @@ def dump_wbc_config(
         f"collision.d_activate {_f(coll.d_activate)}",
         f"collision.gamma {_f(coll.gamma)}",
         f"collision.max_pairs {int(coll.max_pairs)}",
+        f"collision.slack_weight {_f(getattr(coll, 'slack_weight', 2000.0))}",
         f"nullspace.k_center {_f(ns.k_center)}",
         f"nullspace.enter_fade_s {_f(getattr(ns, 'enter_fade_s', 0.6))}",
         f"nullspace.homotopy_fade_s {_f(getattr(ns, 'homotopy_fade_s', 0.6))}",
@@ -176,6 +184,17 @@ def dump_wbc_config(
         f"psi_retarget.elbow_center_rad {_f(getattr(pr, 'elbow_center_rad', 1.6580627893946132))}",
         f"psi_retarget.elbow_hi_rad {_f(getattr(pr, 'elbow_hi_rad', 2.007128639793479))}",
         f"psi_retarget.elbow_hi_illegal_rad {_f(getattr(pr, 'elbow_hi_illegal_rad', 2.2689280275926285))}",
+        f"psi_retarget.elbow_rescue_alpha {_f(getattr(pr, 'elbow_rescue_alpha', 0.35))}",
+        f"psi_retarget.d_objective "
+        f"{1 if str(getattr(pr, 'd_objective', 'legacy')).lower() == 'comfort' else 0}",
+        f"psi_retarget.d_comfort_band_weight {_f(getattr(pr, 'd_comfort_band_weight', 300.0))}",
+        _arr(
+            "psi_retarget.comfort_inv_scale",
+            comfort_inv_scale(
+                kin if kin is not None else RobotKinematics(),
+                getattr(pr, "comfort_weights", None),
+            ),
+        ),
         f"psi_retarget.psi_cmd_lead_rad {_f(getattr(pr, 'psi_cmd_lead_rad', 0.3141592653589793))}",
         f"psi_retarget.psi_return_dwell_s {_f(getattr(pr, 'psi_return_dwell_s', 1.0))}",
         f"psi_retarget.psi_replan_period_s {_f(getattr(pr, 'psi_replan_period_s', 0.1))}",

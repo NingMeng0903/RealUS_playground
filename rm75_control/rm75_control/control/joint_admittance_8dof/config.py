@@ -162,7 +162,7 @@ def _parse_collision(raw: dict, *, name: str) -> CollisionConfig:
     section = _mapping(raw, name=name)
     _reject_unknown(
         section,
-        {"enabled", "d_safe", "d_activate", "gamma", "max_pairs"},
+        {"enabled", "d_safe", "d_activate", "gamma", "max_pairs", "slack_weight"},
         name=name,
     )
     collision = CollisionConfig(
@@ -173,11 +173,16 @@ def _parse_collision(raw: dict, *, name: str) -> CollisionConfig:
         ),
         gamma=_finite_float(section.get("gamma", 5.0), name=f"{name}.gamma"),
         max_pairs=int(section.get("max_pairs", 8)),
+        slack_weight=_finite_float(
+            section.get("slack_weight", 2000.0), name=f"{name}.slack_weight"
+        ),
     )
     if not 0.0 <= collision.d_safe < collision.d_activate:
         raise ValueError("collision distances must satisfy 0 <= d_safe < d_activate")
     if collision.gamma <= 0.0 or collision.max_pairs <= 0:
         raise ValueError("collision gamma/max_pairs must be positive")
+    if collision.slack_weight < 0.0:
+        raise ValueError("collision.slack_weight must be non-negative")
     return collision
 
 
@@ -289,6 +294,9 @@ def _parse_qp(inner: dict, collision: CollisionConfig, euler_order: str) -> QpCo
         max_iter_cap=int(c.get("max_iter_cap", 400)),
         max_solve_ms=_finite_float(
             c.get("max_solve_ms", 5.0), name="inner.qp.max_solve_ms"
+        ),
+        fail_qdot_decay=_finite_float(
+            c.get("fail_qdot_decay", 0.85), name="inner.qp.fail_qdot_decay"
         ),
         euler_order=euler_order,
         collision=collision,
@@ -577,10 +585,16 @@ def _parse_psi_retarget(inner: dict) -> PsiRetargetConfig:
             "psi_replan_period_s", "psi_search_half_span_deg", "psi_search_n",
             "psi_wrist_ok_deg", "psi_envelope_deg",
             "psi_attr_deg", "d_attr_m", "psi_return_dwell_s",
-            "require_design_family",
+            "require_design_family", "elbow_rescue_alpha",
+            "d_objective", "d_comfort_band_weight",
         },
         name="inner.psi_retarget",
     )
+    d_objective = str(p.get("d_objective", "legacy")).lower()
+    if d_objective not in ("legacy", "comfort"):
+        raise ValueError(
+            f"psi_retarget.d_objective must be 'legacy' or 'comfort', got {d_objective!r}"
+        )
     env = p.get("psi_envelope_deg", [40.0, 110.0])
     if isinstance(env, (list, tuple)) and len(env) == 2:
         env_lo, env_hi = float(env[0]), float(env[1])
@@ -632,6 +646,14 @@ def _parse_psi_retarget(inner: dict) -> PsiRetargetConfig:
         ),
         psi_return_dwell_s=_finite_float(
             p.get("psi_return_dwell_s", 1.0), name="psi_retarget.psi_return_dwell_s"
+        ),
+        elbow_rescue_alpha=_finite_float(
+            p.get("elbow_rescue_alpha", 0.35), name="psi_retarget.elbow_rescue_alpha"
+        ),
+        d_objective=d_objective,
+        d_comfort_band_weight=_finite_float(
+            p.get("d_comfort_band_weight", 300.0),
+            name="psi_retarget.d_comfort_band_weight",
         ),
         require_design_family=bool(p.get("require_design_family", False)),
         psi_replan_period_s=_finite_float(
@@ -1122,6 +1144,10 @@ def build_joint_ik_config(raw: dict) -> JointIkConfig:
     nullspace, manipulability = _parse_nullspace(inner)
     arm_angle = _parse_arm_angle(inner)
     psi_retarget = _parse_psi_retarget(inner)
+    # The rail split and the nullspace descend one posture preference, so the
+    # d* search reads it from the nullspace section rather than duplicating it.
+    psi_retarget.comfort_q_nominal_rad = nullspace.q_nominal_rad
+    psi_retarget.comfort_weights = nullspace.weights
     ird = _parse_ird(inner)
     rail_extension = _parse_rail_extension(inner)
     rail_allocator = _parse_rail_allocator(inner)

@@ -1,0 +1,254 @@
+{
+  "meaning": "quality-threshold decisions on unchanged recorded images; no counterfactual image improvement",
+  "c_min": 0.97,
+  "records": [
+    {
+      "name": "RH_Per_C_DtP",
+      "failed_attempt": false,
+      "total_frames": 965,
+      "valid_frames": 965,
+      "mean_weak_counts": [
+        667,
+        32
+      ],
+      "q25_weak_counts": [
+        681,
+        37
+      ],
+      "region_count": 10,
+      "all_regions_valid_frames": 965,
+      "region_weak_counts": [
+        685,
+        677,
+        645,
+        532,
+        122,
+        98,
+        20,
+        31,
+        36,
+        40
+      ],
+      "any_region_weak_frames": 725,
+      "all_legacy_good_region_weak_frames": 26,
+      "mean_good_q25_weak_frames": 19
+    },
+    {
+      "name": "RH_Per_C_PtD",
+      "failed_attempt": false,
+      "total_frames": 1006,
+      "valid_frames": 1006,
+      "mean_weak_counts": [
+        0,
+        439
+      ],
+      "q25_weak_counts": [
+        0,
+        496
+      ],
+      "region_count": 10,
+      "all_regions_valid_frames": 1006,
+      "region_weak_counts": [
+        0,
+        0,
+        0,
+        0,
+        103,
+        167,
+        248,
+        413,
+        490,
+        528
+      ],
+      "any_region_weak_frames": 528,
+      "all_legacy_good_region_weak_frames": 89,
+      "mean_good_q25_weak_frames": 57
+    },
+    {
+      "name": "RH_Per_L_DtP",
+      "failed_attempt": false,
+      "total_frames": 970,
+      "valid_frames": 970,
+      "mean_weak_counts": [
+        234,
+        27
+      ],
+      "q25_weak_counts": [
+        311,
+        37
+      ],
+      "region_count": 10,
+      "all_regions_valid_frames": 970,
+      "region_weak_counts": [
+        416,
+        290,
+        200,
+        115,
+        99,
+        61,
+        22,
+        25,
+        37,
+        37
+      ],
+      "any_region_weak_frames": 453,
+      "all_legacy_good_region_weak_frames": 192,
+      "mean_good_q25_weak_frames": 87
+    },
+    {
+      "name": "RH_Per_L_PtD",
+      "failed_attempt": false,
+      "total_frames": 985,
+      "valid_frames": 985,
+      "mean_weak_counts": [
+        0,
+        499
+      ],
+      "q25_weak_counts": [
+        0,
+        541
+      ],
+      "region_count": 10,
+      "all_regions_valid_frames": 985,
+      "region_weak_counts": [
+        0,
+        0,
+        0,
+        0,
+        6,
+        184,
+        394,
+        497,
+        540,
+        559
+      ],
+      "any_region_weak_frames": 559,
+      "all_legacy_good_region_weak_frames": 60,
+      "mean_good_q25_weak_frames": 42
+    },
+    {
+      "name": "RH_Per_S_DtP",
+      "failed_attempt": false,
+      "total_frames": 996,
+      "valid_frames": 996,
+      "mean_weak_counts": [
+        472,
+        0
+      ],
+      "q25_weak_counts": [
+        489,
+        0
+      ],
+      "region_count": 10,
+      "all_regions_valid_frames": 996,
+      "region_weak_counts": [
+        494,
+        487,
+        432,
+        338,
+        202,
+        150,
+        7,
+        0,
+        0,
+        1
+      ],
+      "any_region_weak_frames": 495,
+      "all_legacy_good_region_weak_frames": 23,
+      "mean_good_q25_weak_frames": 17
+    },
+    {
+      "name": "RH_Per_S_PtD",
+      "failed_attempt": false,
+      "total_frames": 987,
+      "valid_frames": 987,
+      "mean_weak_counts": [
+        0,
+        498
+      ],
+      "q25_weak_counts": [
+        0,
+        506
+      ],
+      "region_count": 10,
+      "all_regions_valid_frames": 987,
+      "region_weak_counts": [
+        0,
+        0,
+        0,
+        0,
+        2,
+        122,
+        357,
+        487,
+        505,
+        512
+      ],
+      "any_region_weak_frames": 512,
+      "all_legacy_good_region_weak_frames": 14,
+      "mean_good_q25_weak_frames": 8
+    },
+    {
+      "name": "RH_Per_C_DtP_failed_001",
+      "failed_attempt": true,
+      "total_frames": 941,
+      "valid_frames": 941,
+      "mean_weak_counts": [
+        444,
+        227
+      ],
+      "q25_weak_counts": [
+        477,
+        229
+      ],
+      "region_count": 10,
+      "all_regions_valid_frames": 941,
+      "region_weak_counts": [
+        496,
+        474,
+        415,
+        353,
+        128,
+        115,
+        130,
+        223,
+        228,
+        232
+      ],
+      "any_region_weak_frames": 615,
+      "all_legacy_good_region_weak_frames": 57,
+      "mean_good_q25_weak_frames": 35
+    },
+    {
+      "name": "RH_Per_L_DtP_failed_001",
+      "failed_attempt": true,
+      "total_frames": 14,
+      "valid_frames": 14,
+      "mean_weak_counts": [
+        14,
+        14
+      ],
+      "q25_weak_counts": [
+        14,
+        14
+      ],
+      "region_count": 10,
+      "all_regions_valid_frames": 14,
+      "region_weak_counts": [
+        14,
+        14,
+        14,
+        14,
+        14,
+        14,
+        14,
+        14,
+        14,
+        14
+      ],
+      "any_region_weak_frames": 14,
+      "all_legacy_good_region_weak_frames": 0,
+      "mean_good_q25_weak_frames": 0
+    }
+  ]
+}

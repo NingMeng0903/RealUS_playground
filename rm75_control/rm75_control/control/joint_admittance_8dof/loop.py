@@ -826,6 +826,31 @@ class JointIkController:
 
         return False
 
+    def _elbow_rescue_active(self) -> bool:
+        """J4 left its band, so only a rail re-split can bring it back.
+
+        The elbow is ``acos`` of the shoulder-wrist distance, which the arm's
+        own nullspace motion leaves invariant.
+        """
+
+        rt = self.posture_retarget
+        if rt is None or self._rail_mode != RailMode.COUPLED:
+            return False
+        if float(getattr(self.cfg.psi_retarget, "elbow_rescue_alpha", 0.0)) <= 0.0:
+            return False
+        return bool(getattr(rt, "elbow_rescue", False))
+
+    def _rail_posture_alpha(self, secondary_alpha: float) -> float:
+        """Slack must not fade the one channel that can unwind J4."""
+
+        alpha = float(secondary_alpha)
+        if not self._elbow_rescue_active():
+            return alpha
+        floor = float(
+            np.clip(float(self.cfg.psi_retarget.elbow_rescue_alpha), 0.0, 1.0)
+        )
+        return max(alpha, floor)
+
     def set_manipulability_active(self, active: bool) -> None:
         self._manipulability_active = bool(active) and self.manipulability_task is not None
         if self._native is not None:
@@ -2334,6 +2359,7 @@ class JointIkController:
             if self.rail_ext_task is not None:
                 self.rail_ext_task.set_d_pref(float(d_pref))
             self._publish_homotopy_centering()
+        rail_posture_alpha = self._rail_posture_alpha(secondary_alpha)
 
         if (
             press_stalled_timer
@@ -2511,9 +2537,11 @@ class JointIkController:
                 dt=float(dt),
                 u_max=float(self.limits.v_max[0]),
                 leave_sign=float(leave_sign),
-                hold_d_star=bool(self._rail_posture_frozen),
+                hold_d_star=bool(
+                    self._rail_posture_frozen and not self._elbow_rescue_active()
+                ),
                 quiescent=bool(self._quiescent),
-                secondary_alpha=float(secondary_alpha),
+                secondary_alpha=float(rail_posture_alpha),
                 in_wall=abs(float(leave_sign)) > 0.0,
                 defer_commit=True,
             )

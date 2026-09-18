@@ -220,7 +220,14 @@ class ContactQpOuter:
         self._quality_intervals=(QualityIntervals(self.solver.config.c_min,
             self.solver.config.differential_repair.balance_deadband,
             self.solver.config.max_image_age_s,self.sink.emit,
-            region_count=self.feature_config.region_count if self._delayed else None) if self._continuous_execution else None)
+            region_count=self.feature_config.region_count if self._delayed else None,
+            recover_quality=self.solver.config.recover_quality,
+            recover_hold_s=self.solver.config.recover_hold_s,
+            hold_while_open=self.solver.config.visual_hold_while_open,
+            escalation_omega_rad_s=self.solver.config.escalation_omega_rad_s,
+            hold_omega_rad_s=self.solver.config.visual_hold_omega_rad_s,
+            hold_omega_s=self.solver.config.visual_hold_omega_s,
+            alpha_hold=self.solver.config.alpha_hold) if self._continuous_execution else None)
         self._endpoint_started_s=None;self._deferred_source_t_s=None
         self._reference_resume_after_s=None
         self.features=feature_receiver or FeatureReceiver(config['feature_endpoint'],retain_oos=self._delayed)
@@ -259,7 +266,8 @@ class ContactQpOuter:
             print(f"[CONTACT_QP] execution={EXECUTION_POLICY}; clock=actual_success_interval; "
                   f"quality=deficit_only; alpha=0.25..1 slew=path_ramp; solver=bounded_retry_v1; "
                   f"source_gap={self.source_clock.gap_policy}; rocking={self._rocking.policy}; "
-                  f"jerk={self._rocking.jerk_limit:.6g} rad/s^3",flush=True)
+                  f"jerk={self._rocking.jerk_limit:.6g} rad/s^3"
+                  f"{'' if self.solver.config.visual_rocking_jerk_scale<=1. else f' visual_jerk_x{self.solver.config.visual_rocking_jerk_scale:g}'}",flush=True)
         if self.command_budget is not None:
             print("[CONTACT_QP] final_power=inner_qp1_qp2; velocity_model=rebased_command_delta_v2",flush=True)
 
@@ -338,10 +346,22 @@ class ContactQpOuter:
         rotation=self.pending_rotation_base_tcp
         if self._delayed:rotation=rotation @ self.geometry.T_tcp_face[:3,:3]
         axis,bounds,facts=self._rocking.preview(rotation,
-            time.monotonic(),self.pending_actual_dt)
+            time.monotonic(),self.pending_actual_dt,jerk_scale=self._visual_jerk_scale())
         self._pending_rocking=(axis,bounds,facts)
         self._rocking_export_id=self._pending_id
         return dict(rocking_axis_base=axis,rocking_bounds=bounds)
+
+    def _visual_jerk_scale(self):
+        scale=float(self.solver.config.visual_rocking_jerk_scale)
+        if scale<=1.:
+            return 1.
+        intervals=self._quality_intervals
+        if intervals is not None and intervals.active:
+            return scale
+        task=(self._pending_fusion or {}).get('region_task') or {}
+        if task.get('bad_region_indices'):
+            return scale
+        return 1.
 
     def _final_command_constraints(self):
         """Review-only slew envelope re-anchored to the last accepted final.
@@ -499,7 +519,8 @@ class ContactQpOuter:
         """
         budget=self.command_budget or self._command_lease
         retry_reasons={'wrench_source_expired','dispatch_source_expired','dispatch_certificate_expired','certificate_expired'}
-        if self._continuous_execution:retry_reasons.update(('awaiting_fresh_force','solver_deadline_exceeded','solver_attempts_exhausted','native_timeout'))
+        if self._continuous_execution:retry_reasons.update(('awaiting_fresh_force','solver_deadline_exceeded',
+            'solver_attempts_exhausted','native_timeout'))
         if (self._continuous_execution and self._publication_retry_source_t_s is None
                 and 'lease expired' in str(self._publication_rejection_reason or '')):
             self._publication_rejection_reason=None
@@ -648,6 +669,10 @@ class ContactQpOuter:
             self.contact_gate.sample(self.reference_time_s)
         ref,h_ref=self.reference.candidate(self.reference_time_s,reference_dt if reference_dt>0 else dt)
         if reference_dt<=0:h_ref=0.
+        # Past the last waypoint the only remaining job is a settled stop, and
+        # the arrival gate needs the sent joint speed to fall below its floor.
+        # Rocking or repairing here would hold that gate open indefinitely.
+        path_done=bool(self.reference.exhaustion_reason(self.reference_time_s))
         if self.contact_gate is not None and not self.contact_gate.started:
             ref=replace(ref,pose_d=np.asarray(current_pose,dtype=float).reshape(6).copy(),
                         vel_ff=np.zeros(6));h_ref=0.
@@ -692,6 +717,7 @@ class ContactQpOuter:
                 feedforward=tf @ np.asarray(self.baseline.last_path_twist)
                 self._pending_mechanical_contact=feedback+feedforward
                 self._pending_mechanical_contact[[2,4]]=np.asarray(self._preview.last_output.v_force)[[2,4]]
+                if path_done:self._pending_mechanical_contact[4]=0.
                 nominal=np.linalg.solve(tf,self._pending_mechanical_contact)
             self._pending_mechanical_tcp=nominal.copy()
             # Consume the accepted source's real LP/HP measurement once even
@@ -760,11 +786,17 @@ class ContactQpOuter:
                 region_task=region_visual_request(self._pending_prediction.quality_raw,region_mask,
                     self.feature_config.region_edges,self.geometry,c_min=self.solver.config.c_min,
                     repair_speed_m_s=self.solver.config.repair_speed_m_s,
-                    evidence_valid=self._pending_prediction.valid)
+                    evidence_valid=self._pending_prediction.valid,
+                    progress_loss_gain=self.solver.config.progress_loss_gain,
+                    alpha_min=self.solver.config.alpha_min,
+                    alpha_min_at_quality=self.solver.config.alpha_min_at_quality,
+                    max_request_rad_s=self.solver.config.max_visual_omega_rad_s)
                 request=region_task.request_rad_s;alpha_des=region_task.alpha_preferred
                 if self._quality_intervals is not None:
                     request,alpha_des=self._quality_intervals.apply_escalation(
-                        request,alpha_des,repair_speed_m_s=self.solver.config.repair_speed_m_s)
+                        request,alpha_des,repair_speed_m_s=self.solver.config.repair_speed_m_s,
+                        now_s=now)
+                if path_done:request=0.
                 self._pending_alpha_target=self._pending_alpha_preferred=alpha_des
                 # Existing control wrench is tool-on-environment. Convert all
                 # six axes together, then rotate/shift once to the contact face.
@@ -786,7 +818,8 @@ class ContactQpOuter:
                     filtered_contact_force_n=contact_force,raw_contact_force_n=contact_force_raw,
                     additional_stop_frame='tcp_tool')
                 if self._rocking is not None:
-                    axis,bounds,history=self._rocking.preview(rotation @ self.geometry.T_tcp_face[:3,:3],now,actual_dt)
+                    axis,bounds,history=self._rocking.preview(rotation @ self.geometry.T_tcp_face[:3,:3],now,actual_dt,
+                        jerk_scale=self._visual_jerk_scale())
                     self._pending_rocking=(axis,bounds,history)
                     rocking_tier=first_admissible_rocking_tier(bounds)
                     rows,_=published_rocking_rows(tf[4],bounds,now_s=now,
@@ -1226,8 +1259,11 @@ class ContactQpOuter:
     def arrived(self,pose):
         if not self.reference.exhaustion_reason(self.reference_time_s):return False
         target=self.reference.reference.sample(self.reference.duration_s).pose_d
-        rotation=Rotation.from_euler(self.controller.cfg.euler_order,np.asarray(pose)[3:]).as_matrix()
-        return bool(np.linalg.norm((rotation.T @ (np.asarray(pose)[:3]-target[:3]))*self.baseline.selection[:3])<=1e-4)
+        # Planned endpoint frame, not the rocked live tool frame: 4 N indentation
+        # stays on the unselected normal and cannot leak into the tangent check.
+        rotation=Rotation.from_euler(self.controller.cfg.euler_order,np.asarray(target)[3:]).as_matrix()
+        err=(rotation.T @ (np.asarray(pose)[:3]-np.asarray(target)[:3]))*self.baseline.selection[:3]
+        return bool(np.linalg.norm(err)<=5e-3)
 
     def record_stop(self,reason):
         if self._stop_recorded:return

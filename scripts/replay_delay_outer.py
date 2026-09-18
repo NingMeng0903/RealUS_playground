@@ -266,7 +266,9 @@ def audit(record, spec, config, log_path, output):
         q=prediction.quality_raw
         region_task=region_visual_request(q,None if latest_image is None else latest_image.region_valid,
             fc.region_edges,geometry,c_min=solver.config.c_min,repair_speed_m_s=solver.config.repair_speed_m_s,
-            evidence_valid=prediction.valid)
+            evidence_valid=prediction.valid,progress_loss_gain=solver.config.progress_loss_gain,
+            alpha_min=solver.config.alpha_min,alpha_min_at_quality=solver.config.alpha_min_at_quality,
+            max_request_rad_s=solver.config.max_visual_omega_rad_s)
         request=region_task.request_rad_s
         gamma=solver.config.differential_repair.force_gate(force)
         alpha_des=region_task.alpha_preferred

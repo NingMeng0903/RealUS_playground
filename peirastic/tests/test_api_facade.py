@@ -783,3 +783,35 @@ def test_gamepad_link_event_skips_initial_missing() -> None:
     assert pad_link_event(False, True) == "[PAD] bluetooth live"
     assert pad_link_event(True, False) == "[PAD] bluetooth lost"
     assert pad_link_event(True, True) is None
+
+
+def test_l3_accept_toggle_ignores_chatter_during_slow_install() -> None:
+    from peirastic.apps.gamepad import L3_TOGGLE_GUARD_S, l3_accept_toggle
+
+    last_s = 0.0
+    released = True
+    fire, released = l3_accept_toggle(
+        edge=True, held=True, now=10.0, last_s=last_s, released=released,
+    )
+    assert fire is True
+    assert released is False
+    last_s = 10.25  # ac2d wait_installed outlasts the old 0.15 s debounce
+    fire, released = l3_accept_toggle(
+        edge=True, held=True, now=10.26, last_s=last_s, released=released,
+    )
+    assert fire is False
+    fire, released = l3_accept_toggle(
+        edge=True, held=False, now=10.27, last_s=last_s, released=released,
+    )
+    assert fire is False
+    assert released is False
+    fire, released = l3_accept_toggle(
+        edge=False, held=False, now=last_s + L3_TOGGLE_GUARD_S, last_s=last_s, released=released,
+    )
+    assert fire is False
+    assert released is True
+    fire, released = l3_accept_toggle(
+        edge=True, held=True, now=last_s + L3_TOGGLE_GUARD_S + 0.01,
+        last_s=last_s, released=released,
+    )
+    assert fire is True

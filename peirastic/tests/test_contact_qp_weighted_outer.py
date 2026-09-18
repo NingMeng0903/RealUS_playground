@@ -186,10 +186,14 @@ def test_seek_slew_ignores_substep_rocking_gap_from_session006():
                   mechanical_omega_rad_s=0., force_n=-0.1882847475556741, cop_m=None,
                   visual_task_valid=True, visual_request_rad_s=0., alpha_preferred=.58)
     cfg = QpConfig(allocation_policy='delay_kf_cop_v1')
-    tiny = ContactQp(cfg).solve(datum(dt_s=.0006385390006471425,
-        acceleration_dt_s=.0006385390006471425, **common), online=True)
-    assert not tiny.success
-    assert tiny.diagnostics['reason'] == 'fixed_affine_component_outside_mechanical_interval'
+    substep = .0006385390006471425
+    tiny = ContactQp(cfg).solve(datum(dt_s=substep,
+        acceleration_dt_s=substep, **common), online=True)
+    # A 0.64 ms window cannot slew the leftover retract twist onto the path.
+    # The fixed axis saturates at its own slew bound instead of emptying the QP.
+    assert tiny.success, tiny.diagnostics
+    assert [row['label'] for row in tiny.diagnostics['rate_limited_fixed_rows']] == ['acceleration_1']
+    assert tiny.qp_twist[1] == pytest.approx(previous[1] + cfg.max_acceleration[1] * substep)
     held = ContactQp(cfg).solve(datum(dt_s=.005, acceleration_dt_s=.0006385390006471425,
         **common), online=True)
     assert held.success, held.diagnostics
@@ -228,30 +232,87 @@ def test_recorded_feasible_false_infeasibility_solves_with_exact_duplicate_merge
     assert abs(qp._numeric_attempts[-1]['duality_gap'])<=qp.config.solver_tolerance
 
 
-def test_impossible_fixed_feedback_is_reported_before_numerical_retries():
+def test_fixed_feedback_saturates_at_the_slew_bound_before_the_numeric_solve():
     d=datum(previous_twist=[0.,.0085,0.,0.,0.,0.],
         path_feedback_contact=[0.,-.001,0.,0.,0.,0.],path_feedforward_contact=np.zeros(6),
         dt_s=.005,acceleration_dt_s=.005,cop_m=None)
     cfg=QpConfig(allocation_policy='delay_kf_cop_v1')
     result=ContactQp(cfg).solve(d,online=True)
-    assert result.status==ContactStatus.MECHANICAL_INFEASIBLE
-    assert result.diagnostics['reason']=='fixed_affine_component_outside_mechanical_interval'
+    assert result.success,result.diagnostics
     assert result.diagnostics['infeasible_fixed_rows'][0]['label']=='acceleration_1'
-    assert not result.diagnostics['numeric_attempts']
+    limited=result.diagnostics['rate_limited_fixed_rows'][0]
+    assert limited['requested']==pytest.approx(-.001)
+    assert limited['applied']==pytest.approx(.0085-cfg.max_acceleration[1]*.005)
+    assert result.qp_twist[1]==pytest.approx(limited['applied'])
+    # The fixed row is resolved analytically, so the solver never sees an
+    # infeasible problem and needs no retry ladder.
+    assert len(result.diagnostics['numeric_attempts'])==1
 
 
-def test_small_fixed_acceleration_overshoot_is_deferred_online():
+def test_fixed_acceleration_overshoot_is_rate_limited_and_flagged_by_size():
     d=datum(previous_twist=np.zeros(6),
         path_feedback_contact=[0.,.0055,0.,0.,0.,0.],path_feedforward_contact=np.zeros(6),
         dt_s=.005,acceleration_dt_s=.005,cop_m=None,mechanical_omega_rad_s=0.)
     cfg=QpConfig(allocation_policy='delay_kf_cop_v1')
-    online=ContactQp(cfg).solve(d,online=True)
-    assert online.status==ContactStatus.DEFERRED
-    assert online.diagnostics['reason']=='fixed_affine_acceleration_retry'
-    assert online.diagnostics['infeasible_fixed_rows'][0]['label']=='acceleration_1'
-    offline=ContactQp(cfg).solve(d,online=False)
-    assert offline.status==ContactStatus.MECHANICAL_INFEASIBLE
-    assert offline.diagnostics['reason']=='fixed_affine_component_outside_mechanical_interval'
+    for online in (True,False):
+        # Replay must reproduce the command the online controller published, so
+        # the saturation is a property of the law and not of the run mode.
+        result=ContactQp(cfg).solve(d,online=online)
+        assert result.success,result.diagnostics
+        assert result.qp_twist[1]==pytest.approx(cfg.max_acceleration[1]*.005)
+        assert result.diagnostics['rate_limited_fixed_rows'][0]['overshoot_fraction']==pytest.approx(.1)
+        assert result.diagnostics['rate_limit_beyond_declared_overshoot'] is False
+    strict=ContactQp(replace(cfg,fixed_acceleration_overshoot=.05)).solve(d,online=True)
+    assert strict.success
+    assert strict.diagnostics['rate_limit_beyond_declared_overshoot'] is True
+
+
+def collapsed_path_datum(norm):
+    feedforward = np.array([.56, .035, 0., -.83, 0., .044])
+    return datum(path_feedforward_contact=feedforward/np.linalg.norm(feedforward)*norm,
+                 path_feedback_contact=np.array([.0059, .00012, 0., -.0091, 0., .00118]),
+                 previous_twist=np.array([.0142, .00084, -.00078, -.0218, .0883, .00195]),
+                 mechanical_omega_rad_s=.124, alpha_preferred=1.)
+
+
+@pytest.mark.parametrize('norm', [2e-12, 1e-11, 1e-9, 1e-7, 1e-3, .01])
+def test_exported_certificate_always_admits_its_own_solution(norm):
+    """020 hard-faulted 1.8 s from the endpoint on the progress row.
+
+    pinv scales that row by one over the path column norm, so a feedforward of
+    2e-12 put its value at 5e9, where one ULP is 1e-6 -- a hundred times
+    feasibility_tolerance -- and the certificate failed its own check.
+    """
+    result = ContactQp(config()).solve(collapsed_path_datum(norm), online=True)
+    assert result.success, result.diagnostics
+    assert result.hard_constraints.violation(result.qp_twist) <= config().feasibility_tolerance
+
+
+@pytest.mark.parametrize('norm,exported', [(2e-12, False), (1e-11, False), (1e-9, True),
+                                           (1e-7, True), (.01, True)])
+def test_progress_row_is_exported_only_while_it_can_be_verified(norm, exported):
+    result = ContactQp(config()).solve(collapsed_path_datum(norm), online=True)
+    assert result.success, result.diagnostics
+    rows = result.hard_constraints
+    assert ('progress_range' in rows.labels) is exported
+    assert result.diagnostics['zero_path'] is not exported
+    if exported:
+        index = list(rows.labels).index('progress_range')
+        value = float(np.asarray(rows.A)[index] @ result.qp_twist)
+        assert np.spacing(abs(value)) <= config().feasibility_tolerance
+
+
+def test_ordinary_path_keeps_the_unscaled_progress_row_and_its_alpha_ceiling():
+    d = datum(alpha_preferred=.7)
+    result = ContactQp(config()).solve(d, online=True)
+    assert result.success, result.diagnostics
+    rows = result.hard_constraints
+    index = list(rows.labels).index('progress_range')
+    offset, basis = affine_contact_motion(d.geometry, d.path_feedback_contact,
+                                          d.path_feedforward_contact)
+    np.testing.assert_allclose(np.asarray(rows.A)[index], np.linalg.pinv(basis)[2], rtol=0, atol=0)
+    lo, hi = float(np.asarray(rows.lower)[index]), float(np.asarray(rows.upper)[index])
+    assert hi-lo == pytest.approx(result.diagnostics['solution'][2], rel=1e-12)
 
 
 def test_fixed_velocity_row_stays_mechanically_infeasible():

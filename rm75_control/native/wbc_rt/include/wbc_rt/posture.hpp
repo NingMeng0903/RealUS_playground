@@ -31,6 +31,9 @@ class PostureRetarget {
   double psi_star() const { return psi_star_; }
   double homotopy_s() const { return s_; }
   const Vec8& q_star() const { return q_star_; }
+  // J4 left the design band.  The rail posture channel must keep authority
+  // even while slack fades every other secondary.
+  bool elbow_rescue() const { return elbow_rescue_; }
 
  private:
   struct Pack {
@@ -41,7 +44,12 @@ class PostureRetarget {
   std::optional<Pack> eval_at(const Vec6& pose, double psi, double d) const;
   std::optional<Pack> eval_at(const Vec6& pose, double psi, double d, int branch) const;
   std::optional<double> select_d_for_elbow(const Vec8& q, const Vec6& pose, double psi,
-                                           double rail_lo, double rail_hi) const;
+                                           double rail_lo, double rail_hi,
+                                           bool strict = false) const;
+  double posture_cost(const Vec8& q_full, double j4) const;
+  bool update_elbow_rescue(double j4);
+  bool rescue_elbow_d(const Vec8& q, const Vec6& pose, double dt, double rail_lo,
+                      double rail_hi);
   void advance_homotopy(const Vec8& q, const Vec6& pose, double dt, double rail_lo,
                         double rail_hi, double live_psi);
   void maybe_retarget_psi(const Vec8& q, const Vec6& pose, double dt, double rail_lo,
@@ -67,6 +75,7 @@ class PostureRetarget {
   int branch_ = 0;
   bool planned_ = false;
   bool held_prev_ = false;
+  bool elbow_rescue_ = false;
   double d_star_ = 0.0;
   double d0_ = 0.0;
   double d_center_target_ = 0.0;

@@ -16,6 +16,7 @@ from typing import Mapping
 import numpy as np
 
 from .geometry import aperture_rows, motion_basis, window_rows
+from .region_visual import preferred_scan_alpha
 from .repair_policy import DifferentialRepairConfig
 from .port_constraint import PortEnergyConstraint
 from .types import (SCHEMA_VERSION, ContactObservation, ContactStatus, ProbeGeometry,
@@ -43,6 +44,18 @@ class QpConfig:
     force_sign_band_n: float = 0.1
     aperture_budget_m_s: float = 0.00075
     c_min: float = 0.5
+    progress_loss_gain: float = 0.75
+    alpha_min: float = 0.25
+    alpha_min_at_quality: float | None = None
+    alpha_hold: float | None = None
+    recover_quality: float | None = None
+    recover_hold_s: float = 0.0
+    visual_hold_while_open: bool = False
+    visual_rocking_jerk_scale: float = 1.0
+    max_visual_omega_rad_s: float | None = None
+    escalation_omega_rad_s: float | None = None
+    visual_hold_omega_rad_s: float | None = None
+    visual_hold_omega_s: float | None = None
     quality_policy_version: str = "synthetic_quality_policy_v1_unverified_hardware"
     repair_speed_m_s: float = 0.002
     keep_speed_m_s: float = 0.004
@@ -105,6 +118,49 @@ class QpConfig:
                            positive(self.fixed_acceleration_overshoot, "fixed_acceleration_overshoot", zero=True))
         if not math.isfinite(self.c_min) or not 0 < self.c_min < 1 or not self.quality_policy_version:
             raise ValueError("explicit policy version and c_min in (0,1) required")
+        if not math.isfinite(self.progress_loss_gain) or self.progress_loss_gain <= 0:
+            raise ValueError("progress_loss_gain must be finite and positive")
+        if not math.isfinite(self.alpha_min) or not 0 < self.alpha_min < 1:
+            raise ValueError("alpha_min must be in (0,1)")
+        # Clamp applied while a weak interval is still open. It never overrides a
+        # deeper image-law demand, so it must not sit below alpha_min.
+        hold = self.alpha_min if self.alpha_hold is None else float(self.alpha_hold)
+        if not math.isfinite(hold) or not self.alpha_min <= hold <= 1.:
+            raise ValueError("alpha_hold must be in [alpha_min, 1]")
+        object.__setattr__(self, "alpha_hold", hold)
+        if self.alpha_min_at_quality is not None:
+            floor_q = float(self.alpha_min_at_quality)
+            if not math.isfinite(floor_q) or not 0 <= floor_q < self.c_min:
+                raise ValueError("alpha_min_at_quality must be in [0, c_min)")
+            object.__setattr__(self, "alpha_min_at_quality", floor_q)
+        if self.recover_quality is not None:
+            recover = float(self.recover_quality)
+            if not math.isfinite(recover) or recover < self.c_min or recover > 1.:
+                raise ValueError("recover_quality must be in [c_min, 1]")
+            object.__setattr__(self, "recover_quality", recover)
+        if not math.isfinite(self.recover_hold_s) or self.recover_hold_s < 0.:
+            raise ValueError("recover_hold_s must be finite and nonnegative")
+        if not math.isfinite(self.visual_rocking_jerk_scale) or self.visual_rocking_jerk_scale < 1.:
+            raise ValueError("visual_rocking_jerk_scale must be finite and >= 1")
+        for name in ("max_visual_omega_rad_s", "escalation_omega_rad_s",
+                     "visual_hold_omega_rad_s", "visual_hold_omega_s"):
+            value = getattr(self, name)
+            if value is not None:
+                object.__setattr__(self, name, positive(value, name))
+        if (self.max_visual_omega_rad_s is not None and self.escalation_omega_rad_s is not None
+                and self.escalation_omega_rad_s > self.max_visual_omega_rad_s):
+            raise ValueError("escalation_omega_rad_s must not exceed max_visual_omega_rad_s")
+        if self.visual_hold_omega_rad_s is not None:
+            # The open-interval floor must stay under the marked-interval floor,
+            # otherwise a recovering dip commands more rocking than a stalled one.
+            for name in ("escalation_omega_rad_s", "max_visual_omega_rad_s"):
+                bound = getattr(self, name)
+                if bound is not None and self.visual_hold_omega_rad_s > bound:
+                    raise ValueError(f"visual_hold_omega_rad_s must not exceed {name}")
+            if not self.visual_hold_while_open:
+                raise ValueError("visual_hold_omega_rad_s requires visual_hold_while_open")
+        if self.visual_hold_omega_s is not None and self.visual_hold_omega_rad_s is None:
+            raise ValueError("visual_hold_omega_s requires visual_hold_omega_rad_s")
         if policy.quality_objective=='deficit_only_v1' and policy.balance_deadband>=self.c_min:
             raise ValueError('deficit objective needs balance_deadband < c_min')
         if isinstance(self.max_iterations, bool) or not isinstance(self.max_iterations, int) or self.max_iterations < 1:
@@ -112,7 +168,8 @@ class QpConfig:
         if isinstance(self.inner_iterations, bool) or not isinstance(self.inner_iterations, int) or self.inner_iterations < 1:
             raise ValueError("positive integer inner_iterations required")
         for name in ("enable_visual", "enable_aperture", "enable_force_priority", "enable_consistency",
-                     "enable_progress_loss", "compute_interval_diagnostics", "solver_preconditioning"):
+                     "enable_progress_loss", "compute_interval_diagnostics", "solver_preconditioning",
+                     "visual_hold_while_open"):
             if not isinstance(getattr(self, name), (bool, np.bool_)):
                 raise ValueError(f"{name} must be boolean")
         for name in ("max_velocity", "max_acceleration", "subspace_tolerance"):
@@ -693,7 +750,9 @@ class ContactQp:
         deficit = np.maximum(cfg.c_min - quality, 0.) / cfg.c_min
         margin = np.maximum(quality - cfg.c_min, 0.) / (1. - cfg.c_min)
         loss = float(np.max(deficit)) if image_valid else 1.
-        alpha_preferred = 1. - .75 * loss if cfg.enable_progress_loss else 1.
+        alpha_preferred = (preferred_scan_alpha(loss * cfg.c_min, cfg.c_min,
+            progress_loss_gain=cfg.progress_loss_gain, alpha_min=cfg.alpha_min,
+            alpha_min_at_quality=cfg.alpha_min_at_quality) if cfg.enable_progress_loss else 1.)
         alpha_target=alpha_preferred
         if data.alpha_preferred is not None: alpha_preferred=data.alpha_preferred
         gamma = data.gamma if cfg.enable_consistency else np.ones(2)

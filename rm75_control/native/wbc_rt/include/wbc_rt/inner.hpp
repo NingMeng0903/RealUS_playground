@@ -382,6 +382,7 @@ class InnerLoop {
                  double sigma_arm, Vec8* qdot, Vec6* residual, double* slack);
   void track_rail_authority(double d_live, double d_star_target, double v_applied,
                             double dt);
+  double rail_posture_alpha() const;
   void fill_mixer_out(TickOut* out) const;
 
   Config cfg_;

@@ -6,6 +6,44 @@
 #include <vector>
 
 namespace wbc_rt {
+namespace {
+// J4 must re-enter the band by this margin before the rescue latch clears, or
+// a joint parked on 115° rewrites the rail authority every tick.
+constexpr double kElbowRescueHysteresis = 3.0 * M_PI / 180.0;
+constexpr double kGoldenR = 0.6180339887498949;
+// Shrinks a 2-cell bracket to ~3 mm for 10 extra IK calls.
+constexpr int kGoldenSteps = 8;
+
+// Golden-section minimum on [lo, hi]; never returns worse than the seed.
+template <typename F>
+double golden_min(F&& f, double lo, double hi, double d_seed, double c_seed) {
+  double a = std::min(lo, hi);
+  double b = std::max(lo, hi);
+  if (b - a <= 1e-9) return d_seed;
+  double c = b - kGoldenR * (b - a);
+  double d = a + kGoldenR * (b - a);
+  double fc = f(c);
+  double fd = f(d);
+  for (int i = 0; i < kGoldenSteps; ++i) {
+    if (fc <= fd) {
+      b = d;
+      d = c;
+      fd = fc;
+      c = b - kGoldenR * (b - a);
+      fc = f(c);
+    } else {
+      a = c;
+      c = d;
+      fc = fd;
+      d = a + kGoldenR * (b - a);
+      fd = f(d);
+    }
+  }
+  const double best_d = (fc <= fd) ? c : d;
+  const double best_c = std::min(fc, fd);
+  return best_c < c_seed ? best_d : d_seed;
+}
+}  // namespace
 
 PostureRetarget::PostureRetarget(const Config& cfg) : cfg_(cfg) {}
 
@@ -29,6 +67,7 @@ void PostureRetarget::reset(const Vec8& q, const Vec6& pose) {
   q_star_ = q;
   planned_ = false;
   held_prev_ = false;
+  elbow_rescue_ = false;
   psi_dot_ = 0.0;
   d_dot_ = 0.0;
   s_dot_ = 0.0;
@@ -137,7 +176,7 @@ double PostureRetarget::homotopy_T(double d0, double d_goal, double psi0, double
 
 std::optional<double> PostureRetarget::select_d_for_elbow(const Vec8& q, const Vec6& pose,
                                                          double psi, double rail_lo,
-                                                         double rail_hi) const {
+                                                         double rail_hi, bool strict) const {
   const auto w = rail_window(pose[1], rail_lo, rail_hi);
   if (!w) return std::nullopt;
   const double d_lo = w->first;
@@ -158,33 +197,104 @@ std::optional<double> PostureRetarget::select_d_for_elbow(const Vec8& q, const V
                 samples.end());
   const double sign_pref = -1.0;
   const double j4_c = cfg_.elbow_center;
+  const bool comfort = cfg_.d_objective != 0;
   double best_d = std::numeric_limits<double>::quiet_NaN();
   double best_cost = 1e300;
   double fallback_d = std::numeric_limits<double>::quiet_NaN();
   double fallback_cost = 1e300;
-  for (double d : samples) {
+  // (cost, j4); cost is +inf when the split is unusable.
+  auto score = [&](double d) -> std::pair<double, double> {
     const auto pack = eval_at(pose, psi, d);
-    if (!pack) continue;
+    const double bad = std::numeric_limits<double>::infinity();
+    if (!pack) return {bad, 0.0};
     const double j4 = pack->q_arm[3];
     const double j1 = pack->q_arm[0];
-    if (j4_illegal(j4, has_travel)) continue;
+    if (j4_illegal(j4, has_travel)) return {bad, j4};
     double sign_pen = 0.0;
     if (std::abs(j1) > 10.0 * M_PI / 180.0 && j1 * sign_pref < 0.0) sign_pen = 10.0;
-    const double cost = std::abs(d - d_pref) + 0.15 * std::abs(j4 - j4_c) + sign_pen;
+    const double cost = comfort ? posture_cost(pack->q_full, j4) + sign_pen
+                                : std::abs(d - d_pref) + 0.15 * std::abs(j4 - j4_c) + sign_pen;
+    return {cost, j4};
+  };
+  for (double d : samples) {
+    const auto [cost, j4] = score(d);
+    if (!std::isfinite(cost)) continue;
     if (cost < fallback_cost) {
       fallback_cost = cost;
       fallback_d = d;
     }
-    if (!j4_in_design(j4, false)) continue;
+    // Under "comfort" the band is already priced into the cost, and the only
+    // wall is the stop filtered above.
+    if (!comfort && !j4_in_design(j4, false)) continue;
     if (cost < best_cost) {
       best_cost = cost;
       best_d = d;
     }
   }
   (void)q;
-  if (std::isfinite(best_d)) return best_d;
+  if (std::isfinite(best_d)) {
+    if (comfort) {
+      // An 11-point grid is 7 cm on this window.  Legacy hid that by scoring
+      // |d − d_attr| and sampling d_attr directly; a real objective has its
+      // optimum between grid points.
+      const double pitch = (d_hi - d_lo) / 10.0;
+      best_d = golden_min([&](double x) { return score(x).first; },
+                          std::max(d_lo, best_d - pitch), std::min(d_hi, best_d + pitch),
+                          best_d, best_cost);
+    }
+    return best_d;
+  }
+  // The fallback only avoids the 130° stop, so it can settle one degree short
+  // of it.  A rescue that accepts that split never leaves the wall.
+  if (strict) return std::nullopt;
   if (std::isfinite(fallback_d)) return fallback_d;
   return std::nullopt;
+}
+
+double PostureRetarget::posture_cost(const Vec8& q_full, double j4) const {
+  // Liegeois arm-posture cost plus a soft J4 design-band penalty.  The rail
+  // contributes nothing: its nullspace weight is 0, so the split is a free
+  // resource spent on the arm.  The band is priced, not fenced — only
+  // elbow_illegal is a wall.
+  const Vec8 e = (q_full - cfg_.q_nominal).cwiseProduct(cfg_.comfort_inv_scale);
+  const double band_half = std::max(0.5 * (cfg_.elbow_hi - cfg_.elbow_lo), 1e-9);
+  const double a = std::abs(j4);
+  const double over = std::max(0.0, std::max(a - cfg_.elbow_hi, cfg_.elbow_lo - a)) / band_half;
+  return e.tail<7>().squaredNorm() + cfg_.d_comfort_band_weight * over * over;
+}
+
+bool PostureRetarget::update_elbow_rescue(double j4) {
+  const double a = std::abs(j4);
+  // SEW is degenerate near a straight elbow.  The ψ search bails there for the
+  // same reason, and a rail re-split has no well-posed target.
+  if (a < cfg_.psi_env_lo) {
+    elbow_rescue_ = false;
+    return false;
+  }
+  if (elbow_rescue_) {
+    if (j4_in_design(a, false) && a >= cfg_.elbow_lo + kElbowRescueHysteresis &&
+        a <= cfg_.elbow_hi - kElbowRescueHysteresis) {
+      elbow_rescue_ = false;
+    }
+  } else if (!j4_in_design(a, false)) {
+    elbow_rescue_ = true;
+  }
+  return elbow_rescue_;
+}
+
+bool PostureRetarget::rescue_elbow_d(const Vec8& q, const Vec6& pose, double dt, double rail_lo,
+                                    double rail_hi) {
+  // J4 = acos(f(|W − S|)) with S fixed by the rail split, so the arm's ψ
+  // self-motion cannot move it at all.  Re-splitting the rail is the only
+  // way back into the band.
+  const double psi_live = fold_psi_to_positive(psi_cmd_);
+  const auto d_goal = select_d_for_elbow(q, pose, psi_live, rail_lo, rail_hi, true);
+  if (!d_goal) return false;
+  d_center_target_ = *d_goal;
+  rate_limit_d(dt);
+  const auto pack = eval_at(pose, psi_live, d_star_);
+  if (pack) q_star_ = pack->q_full;
+  return true;
 }
 
 double PostureRetarget::rate_limit_d(double dt) {
@@ -356,14 +466,28 @@ std::optional<double> PostureRetarget::search_psi(const Vec8& q, const Vec6& pos
 void PostureRetarget::step(const Vec8& q, const Vec6& pose, double dt, double rail_lo,
                            double rail_hi, bool hold_setpoint, double rate_scale) {
   (void)hold_setpoint;
-  dt = std::max(dt, 0.0) * std::min(1.0, std::max(0.0, rate_scale));
+  const double dt_raw = std::max(dt, 0.0);
+  dt = dt_raw * std::min(1.0, std::max(0.0, rate_scale));
   const double live_psi = fold_psi_to_positive(srs::psi_from_q(q));
+  // Slack fades the posture clock and a planned stroke pins d* outright, but
+  // J4 out of band is the one case that needs the rail to keep re-splitting.
+  // This runs on raw time and ahead of the planned gate, yet claims d* only;
+  // with no in-band split reachable it claims nothing.
+  const bool rescued =
+      update_elbow_rescue(q[4]) && rescue_elbow_d(q, pose, dt_raw, rail_lo, rail_hi);
   if (planned_) {
     rate_limit_psi(dt, live_psi);
     return;
   }
   held_prev_ = false;
+  // ψ is a separate channel: a collapsed wrist still has to be searched out
+  // while the rail unwinds the elbow.
   maybe_retarget_psi(q, pose, dt, rail_lo, rail_hi);
+  if (rescued) {
+    // The homotopy would drive d* straight back out of the band.
+    rate_limit_psi(dt, live_psi);
+    return;
+  }
   advance_homotopy(q, pose, dt, rail_lo, rail_hi, live_psi);
 }
 

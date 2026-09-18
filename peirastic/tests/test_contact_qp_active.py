@@ -208,6 +208,23 @@ def test_geometric_endpoint_alone_does_not_confirm_settled_arrival(monkeypatch):
     active.close()
 
 
+def test_contact_arrival_ignores_normal_indent_and_allows_small_tangent(monkeypatch):
+    active,pose,clock,sink=make_active(monkeypatch)
+    active.reference_time_s=active.reference.duration_s
+    target=np.asarray(active.reference.reference.sample(active.reference.duration_s).pose_d,dtype=float)
+    indent=target.copy();indent[2]-=0.004
+    near=target.copy();near[1]+=0.002
+    rocked=target.copy();rocked[2]-=0.004;rocked[3]=np.deg2rad(8.0)
+    far=target.copy();far[1]+=0.008
+    assert active.arrived(indent)
+    assert active.arrived(near)
+    assert active.arrived(rocked)
+    assert not active.arrived(far)
+    assert not active.arrived(pose)
+    assert not active.arrival_confirmed
+    active.close()
+
+
 @pytest.mark.parametrize('settled',[False,True])
 def test_runner_settling_gate_owns_arrival_confirmation(settled):
     import ast

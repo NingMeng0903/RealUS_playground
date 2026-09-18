@@ -104,6 +104,13 @@ struct Config {
   double d_activate = 0.04;
   double cbf_gamma = 5.0;
   int max_pairs = 8;
+  // Weight on CBF slack.  0 keeps the rows hard (empty box ∩ CBF → STOP).
+  // A large value lets a tick spend a millimetre of clearance instead of
+  // latching publication_infeasible when jerk still forbids a stop.
+  double cbf_slack_w = 2000.0;
+  // After a rejected publication the jerk history is frozen, so the next
+  // tick rebuilds the same empty set.  Scale committed qdot toward zero.
+  double fail_qdot_decay = 0.85;
 
   double k_center = 1.0;
   double k_limit = 2.0;
@@ -133,6 +140,14 @@ struct Config {
   double elbow_illegal = 2.2689280275926285;  // 130°
   double elbow_lo = 1.2217304763960306;      // 70°
   double elbow_center = 1.6580627893946132;  // 95°
+  // Rail posture authority floor while J4 is out of band.  0 disables rescue.
+  double elbow_rescue_alpha = 0.35;
+  // 0 = legacy |d − d_attr| split score.  1 = the rail has no preference of its
+  // own and is spent on the arm's Liegeois posture cost instead.
+  int d_objective = 0;
+  double d_comfort_band_weight = 300.0;
+  // sqrt(w_i)/half_i, dumped from Python so both backends score one cost.
+  Vec8 comfort_inv_scale = Vec8::Ones();
   double psi_cmd_lead = 0.3141592653589793;  // 18°
   double psi_return_dwell = 1.0;
   double psi_replan_period = 0.1;

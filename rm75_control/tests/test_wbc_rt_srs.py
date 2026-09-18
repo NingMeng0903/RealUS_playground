@@ -245,6 +245,62 @@ def test_cxx_posture_homotopy_matches_python(kin, dumped_cfg) -> None:
     assert np.allclose(py[:, 4:], cxx[:, 4:], atol=1e-7)
 
 
+@pytest.fixture(scope="module")
+def dumped_cfg_comfort(kin: RobotKinematics, tmp_path_factory) -> Path:
+    raw = yaml.safe_load(_CFG.read_text())
+    cfg = build_joint_ik_config(raw)
+    cfg.psi_retarget.d_objective = "comfort"
+    path = tmp_path_factory.mktemp("wbc_rt_comfort") / "wbc.cfg"
+    dump_wbc_config(cfg, path, urdf_path=kin.urdf_path, kin=kin)
+    return path
+
+
+@pytest.mark.skipif(_BIN is None, reason="wbc_rt binary not built")
+def test_cxx_comfort_split_matches_python(kin, dumped_cfg_comfort) -> None:
+    """The comfort objective and its golden refine agree on both backends."""
+
+    raw = yaml.safe_load(_CFG.read_text())
+    cfg = build_joint_ik_config(raw)
+    cfg.psi_retarget.d_objective = "comfort"
+    dt, rail_lo, rail_hi, ticks = 0.005, 0.005, 0.78, 200
+    q = _SEED_Q.copy()
+    q[4] = np.deg2rad(118.0)
+
+    pr = PostureRetarget(kin, cfg.psi_retarget)
+    pr.reset(q)
+    py = [[pr.homotopy_s, pr.d_star_m, pr._psi_cmd, pr.psi_star_rad]]
+    for _ in range(ticks):
+        pr.step(q, dt, rail_lo=rail_lo, rail_hi=rail_hi, hold_setpoint=False)
+        py.append([pr.homotopy_s, pr.d_star_m, pr._psi_cmd, pr.psi_star_rad])
+    py = np.asarray(py, dtype=float)
+    cxx = _cxx_posture_rows(dumped_cfg_comfort, q, dt, rail_lo, rail_hi, False, ticks)
+
+    assert py.shape[0] == cxx.shape[0]
+    # The split must actually leave the legacy d_attr, or this proves nothing.
+    assert abs(float(py[-1, 1]) - float(cfg.psi_retarget.d_attr_m)) > 0.1
+    assert np.allclose(py[:, 1], cxx[:, 1], atol=1e-9)
+    assert np.allclose(py[:, 2], cxx[:, 2], atol=1e-9)
+
+
+@pytest.mark.skipif(_BIN is None, reason="wbc_rt binary not built")
+def test_cxx_elbow_rescue_matches_python(kin, dumped_cfg) -> None:
+    """J4 out of band takes the rail re-split path identically on both backends."""
+
+    dt = 0.005
+    rail_lo, rail_hi = 0.005, 0.78
+    ticks = 200
+    q = _SEED_Q.copy()
+    q[4] = np.deg2rad(125.0)
+    py = _py_posture_rows(kin, q, dt, rail_lo, rail_hi, False, ticks)
+    cxx = _cxx_posture_rows(dumped_cfg, q, dt, rail_lo, rail_hi, False, ticks)
+    assert py.shape == cxx.shape
+    # The rescue has to actually steer, or this would pass on a frozen d*.
+    assert abs(float(py[-1, 1]) - float(py[0, 1])) > 1.0e-2
+    assert np.allclose(py[:, 1], cxx[:, 1], atol=1e-9)
+    assert np.allclose(py[:, 2], cxx[:, 2], atol=1e-9)
+    assert np.allclose(py[:, 4:], cxx[:, 4:], atol=1e-7)
+
+
 @pytest.mark.skipif(_BIN is None, reason="wbc_rt binary not built")
 def test_cxx_posture_hold_matches_live_python(kin, dumped_cfg) -> None:
     dt = 0.005

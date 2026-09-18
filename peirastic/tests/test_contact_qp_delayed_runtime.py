@@ -71,7 +71,27 @@ def test_default_delayed_profile_uses_no_energy_and_requires_new_capability():
     config['energy_constraint_enabled']=True
     with pytest.raises(ValueError,match='removes energy'):
         validate_study_config(config)
-    assert config['qp']['repair_speed_m_s']==pytest.approx(0.010)
+    assert config['qp']['repair_speed_m_s']==pytest.approx(0.090)
+    # The image law must be able to reach the cap on its own; a stalled-interval
+    # floor that outranks it would rock where the moment did not ask (011).
+    assert config['qp']['escalation_omega_rad_s']<config['qp']['max_visual_omega_rad_s']
+    # The open-interval floor survives a recovered q25 but stays well under the
+    # stalled-interval floor, and its window covers the sensing round trip.
+    assert config['qp']['visual_hold_omega_rad_s']<config['qp']['escalation_omega_rad_s']
+    assert config['qp']['visual_hold_omega_s']>=0.5
+
+
+def test_hold_omega_floor_is_bounded_by_the_marked_escalation_floor():
+    from peirastic.contact_qp.qp import QpConfig
+    common=dict(allocation_policy='delay_kf_cop_v1',visual_hold_while_open=True,
+                escalation_omega_rad_s=.05,max_visual_omega_rad_s=.14)
+    assert QpConfig(visual_hold_omega_rad_s=.03,visual_hold_omega_s=.8,**common).visual_hold_omega_s==.8
+    with pytest.raises(ValueError,match='must not exceed escalation_omega_rad_s'):
+        QpConfig(visual_hold_omega_rad_s=.06,**common)
+    with pytest.raises(ValueError,match='requires visual_hold_while_open'):
+        QpConfig(allocation_policy='delay_kf_cop_v1',visual_hold_omega_rad_s=.03)
+    with pytest.raises(ValueError,match='requires visual_hold_omega_rad_s'):
+        QpConfig(allocation_policy='delay_kf_cop_v1',visual_hold_omega_s=.8)
 
 
 def test_stop_ramp_keeps_outer_alpha_when_path_projection_vanishes(monkeypatch):
@@ -80,7 +100,7 @@ def test_stop_ramp_keeps_outer_alpha_when_path_projection_vanishes(monkeypatch):
 
     active,pose,clock,sink=fixture(monkeypatch)
     try:
-        assert active.solver.config.repair_speed_m_s==pytest.approx(0.010)
+        assert active.solver.config.repair_speed_m_s==pytest.approx(0.090)
         distal=pose.copy();proximal=pose.copy();proximal[1]+=0.12
         source=ForearmReference(make_spec(distal,proximal,'S','PtD',5,speed=0.005))
         active.reference=FiniteIntervalReference(source,dt_s=0.005)
@@ -95,6 +115,52 @@ def test_stop_ramp_keeps_outer_alpha_when_path_projection_vanishes(monkeypatch):
         active.reference_time_s=1.0
         assert active._accepted_progress_alpha(0.,1e-16)==0.
         assert active._accepted_progress_alpha(0.,0.)==pytest.approx(0.9)
+    finally:
+        active.close()
+
+
+def test_path_end_rate_limits_the_fixed_axis_instead_of_faulting(monkeypatch):
+    # Session 015: the feedforward vanishes in one tick at the last waypoint, so
+    # vx becomes a fixed axis roughly 8 mm/s away from the previous command. The
+    # old deferral froze that command while the demand kept falling and the run
+    # hard-faulted 0.1 s short of the lift.
+    active,pose,clock,sink=fixture(monkeypatch)
+    try:
+        end=np.asarray(active.reference.reference.sample(active.reference.duration_s).pose_d,dtype=float)
+        active.reference_time_s=active.reference.duration_s
+        assert active.reference.exhaustion_reason(active.reference_time_s)
+        active._previous=np.array([.012,0.,0.,0.,0.,0.])
+        command=sample(active,end,clock)
+        assert active.pending_result.success,active.pending_result.diagnostics
+        limited=active.pending_result.diagnostics['rate_limited_fixed_rows']
+        assert [row['label'] for row in limited]==['acceleration_0']
+        assert command[0]==pytest.approx(.012-active.solver.config.max_acceleration[0]*.005)
+    finally:
+        active.close()
+
+
+def test_path_end_stops_rocking_and_repair_so_the_arrival_gate_can_close(monkeypatch):
+    active,pose,clock,sink=fixture(monkeypatch)
+    try:
+        prepare=active._preview.law.prepare
+        def rocking(**kwargs):
+            output=prepare(**kwargs)
+            v_force=np.asarray(output.v_force,dtype=float).copy();v_force[4]=.12
+            return replace(output,v_force=v_force)
+        monkeypatch.setattr(active._preview.law,'prepare',rocking)
+        deficit=np.full(active.feature_config.region_count,.995);deficit[:3]=.80
+        active.features.observation=frame(active,clock[0],1,deficit)
+        sample(active,pose,clock)
+        assert active._pending_fusion['visual_request_rad_s']!=0.
+        assert active.pending_result.diagnostics['mechanical_omega_rad_s']==pytest.approx(.12)
+        active.publication_abort('unsent',definitely_not_sent=True)
+        clock[0]+=.005
+        end=np.asarray(active.reference.reference.sample(active.reference.duration_s).pose_d,dtype=float)
+        active.reference_time_s=active.reference.duration_s
+        active.features.observation=frame(active,clock[0],2,deficit)
+        sample(active,end,clock)
+        assert active._pending_fusion['visual_request_rad_s']==0.
+        assert active.pending_result.diagnostics['mechanical_omega_rad_s']==0.
     finally:
         active.close()
 
@@ -234,7 +300,7 @@ def test_008_seek_final_uses_exported_rocking_interval(monkeypatch,old,updated,o
         active.pending_result=replace(active.pending_result,
             hard_constraints=replace(hard,lower=low,upper=high))
         bounds=np.array([-.28,.28,-.01,.01,*updated])
-        monkeypatch.setattr(active._rocking,'preview',lambda *a:(np.array([0.,1.,0.]),bounds.copy(),{}))
+        monkeypatch.setattr(active._rocking,'preview',lambda *a,**kw:(np.array([0.,1.,0.]),bounds.copy(),{}))
         active.rocking_constraints()
         final=command.copy();final[4]=omega
         facts=dict(rocking_policy_tier=1,rocking_lower_rad_s=updated[0],
@@ -260,7 +326,7 @@ def test_refreshed_rocking_preserves_final_guards(monkeypatch,failure):
             hi[hard.labels.index('angle_limit_contact_y')]=5e-5
         active.pending_result=replace(active.pending_result,hard_constraints=replace(hard,lower=lo,upper=hi))
         bounds=np.array([-.28,.28,-.01,.01,-.001,.001])
-        monkeypatch.setattr(active._rocking,'preview',lambda *a:(np.array([0.,1.,0.]),bounds.copy(),{}))
+        monkeypatch.setattr(active._rocking,'preview',lambda *a,**kw:(np.array([0.,1.,0.]),bounds.copy(),{}))
         active.rocking_constraints()
         final=command.copy();final[4]=1e-4
         facts=dict(rocking_policy_tier=1,rocking_lower_rad_s=-.001,
@@ -490,7 +556,7 @@ def test_visual_force_gate_uses_contact_face_load(monkeypatch):
 def test_runtime_detects_all_regional_defects_despite_healthy_legacy_statistics(monkeypatch,region_count,bad):
     active,pose,clock,sink=fixture(monkeypatch,region_count)
     try:
-        quality=np.full(region_count,.9);quality[list(bad)]=.3
+        quality=np.full(region_count,.99);quality[list(bad)]=.3
         active.features.observation=frame(active,clock[0],0,quality)
         assert np.all(active.features.observation.quality>.8)
         assert np.all(active.features.observation.confidence_lr>.8)
@@ -499,7 +565,11 @@ def test_runtime_detects_all_regional_defects_despite_healthy_legacy_statistics(
         assert task['bad_region_indices']==bad
         assert active._pending_prediction.state.shape==(2*region_count,)
         assert active._pending_fusion['visual_request_rad_s']==0.
-        assert active._pending_alpha_preferred==pytest.approx(1.-.75*(active.solver.config.c_min-.3)/active.solver.config.c_min)
+        from peirastic.contact_qp.region_visual import preferred_scan_alpha
+        cfg=active.solver.config
+        assert active._pending_alpha_preferred==pytest.approx(preferred_scan_alpha(
+            cfg.c_min-.3,cfg.c_min,progress_loss_gain=cfg.progress_loss_gain,
+            alpha_min=cfg.alpha_min,alpha_min_at_quality=cfg.alpha_min_at_quality))
         assert active.pending_result.diagnostics['visual_rows_active'] is False
         active.publication_abort('not sent',definitely_not_sent=True)
     finally:active.close()

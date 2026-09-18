@@ -128,6 +128,8 @@ Config Config::load(const std::string& path) {
     else if (key == "collision.d_activate") c.d_activate = n0();
     else if (key == "collision.gamma") c.cbf_gamma = n0();
     else if (key == "collision.max_pairs") c.max_pairs = i0();
+    else if (key == "collision.slack_weight") c.cbf_slack_w = n0();
+    else if (key == "qp.fail_qdot_decay") c.fail_qdot_decay = n0();
     else if (key == "nullspace.k_center") c.k_center = n0();
     else if (key == "nullspace.k_limit") c.k_limit = n0();
     else if (key == "nullspace.activation") c.ns_activation = n0();
@@ -154,6 +156,11 @@ Config Config::load(const std::string& path) {
     else if (key == "psi_retarget.elbow_hi_illegal_rad") c.elbow_illegal = n0();
     else if (key == "psi_retarget.elbow_lo_rad") c.elbow_lo = n0();
     else if (key == "psi_retarget.elbow_center_rad") c.elbow_center = n0();
+    else if (key == "psi_retarget.elbow_rescue_alpha") c.elbow_rescue_alpha = n0();
+    else if (key == "psi_retarget.d_objective") c.d_objective = i0();
+    else if (key == "psi_retarget.d_comfort_band_weight") c.d_comfort_band_weight = n0();
+    else if (key == "psi_retarget.comfort_inv_scale")
+      fill_vec(nums, c.comfort_inv_scale.data(), 8);
     else if (key == "psi_retarget.psi_cmd_lead_rad") c.psi_cmd_lead = n0();
     else if (key == "psi_retarget.psi_return_dwell_s") c.psi_return_dwell = n0();
     else if (key == "psi_retarget.psi_replan_period_s") c.psi_replan_period = n0();

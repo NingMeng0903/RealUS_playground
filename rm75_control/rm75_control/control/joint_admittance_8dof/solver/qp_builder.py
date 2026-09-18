@@ -134,6 +134,7 @@ class QpConfig:
     # Native InnerLoop wall-clock budget (ms).  0 disables.  After QP1, QP2
     # is skipped when the remaining budget is under 1 ms.
     max_solve_ms: float = 5.0
+    fail_qdot_decay: float = 0.85
     euler_order: str = "xyz"
     collision: CollisionConfig = field(default_factory=CollisionConfig)
     # Chiaverini 1997 SR damping for nullspace projection.

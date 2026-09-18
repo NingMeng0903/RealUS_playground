@@ -249,6 +249,7 @@ def _monitor_hybrid_scan(arm: PeirasticArm, plan, *, duration_s: float, seq: int
         stage = parts[0] if parts else ""
         hybrid = int(snap.get("mode", -1)) == int(Mode.TRACK_HYBRID)
         recovering = hybrid and stage == f"{label}:recovering"
+        finishing = hybrid and stage == f"{label}:endpoint_convergence"
         active = hybrid and stage in (f"{label}:approach", f"{label}:tracking")
         if recovering:
             if tracking_wall_t0 is None and now - t0 > CLOSE_TIMEOUT_S:
@@ -260,12 +261,14 @@ def _monitor_hybrid_scan(arm: PeirasticArm, plan, *, duration_s: float, seq: int
                 next_print = now + PRINT_S
             time.sleep(0.05)
             continue
-        if not active:
+        if not active and not finishing:
             if tracking_wall_t0 is not None or now - t0 > 2.0:
                 raise RuntimeError(f"contact-gated HFPC not active: {msg}; "
                                    "restart Window A to load the updated controller")
             time.sleep(0.05)
             continue
+        if finishing and tracking_wall_t0 is None:
+            raise RuntimeError("hybrid task reached endpoint convergence without confirmed tracking")
         fields = dict(part.split("=", 1) for part in parts[1:] if "=" in part)
         elapsed = float(fields["t"])
         contact = int(fields["contact"])
@@ -273,7 +276,7 @@ def _monitor_hybrid_scan(arm: PeirasticArm, plan, *, duration_s: float, seq: int
         fz = float(snap.get("f_ext_z", float("nan")))
         if not all(np.isfinite(x) for x in (elapsed, vz_cmd, fz)):
             raise RuntimeError("invalid hybrid force/progress telemetry")
-        tracking = stage.endswith(":tracking")
+        tracking = stage.endswith(":tracking") or finishing
         gap = float("nan")
         live = None
         if tracking:
@@ -317,8 +320,13 @@ def _monitor_hybrid_scan(arm: PeirasticArm, plan, *, duration_s: float, seq: int
                 snap.get("slack", float("nan")), *pose, *_live_q8(arm),
             ])
         if now >= next_print:
-            progress = (f"[SCAN] t_ref={elapsed:5.1f}/{duration_s:.1f}s" if tracking
-                        else f"[CLOSE] t={now - t0:5.1f}s  surface_gap={gap * 1000:+.1f}mm")
+            if finishing:
+                progress = (f"[SCAN] endpoint handshake t_ref={elapsed:5.1f}/{duration_s:.1f}s "
+                            f"— waiting to lift")
+            elif tracking:
+                progress = f"[SCAN] t_ref={elapsed:5.1f}/{duration_s:.1f}s"
+            else:
+                progress = f"[CLOSE] t={now - t0:5.1f}s  surface_gap={gap * 1000:+.1f}mm"
             print(f"{progress}  Fz={fz:+6.2f}N  contact={contact}  "
                   f"vz_cmd={vz_cmd:+.1f}mm/s (tool Z)", flush=True)
             next_print = now + PRINT_S
@@ -524,6 +532,15 @@ def _plan_capture(args, *, xyz_cam, rgb, q8, xyz, live=None, extra_frames=None):
     print(f"[PLAN] pattern={args.pattern}  centered region  rows={plan.n_rows}  "
           f"centerline_LW_mm=[{plan.u_span_m * 1000:.1f}, {plan.v_span_m * 1000:.1f}]  "
           f"spacing={plan.stride_m * 1000:.1f}mm", flush=True)
+    diag = plan.surface_diagnostics or {}
+    if diag.get("requested_region_shrunk"):
+        asked = np.asarray(diag.get("requested_dimensions_m"), dtype=float) * 1000.0
+        print(
+            f"[PLAN] requested {asked[0]:.0f}x{asked[1]:.0f} mm did not fit the "
+            f"measured support after probe/edge inset; using the largest centered "
+            f"{plan.u_span_m * 1000:.0f}x{plan.v_span_m * 1000:.0f} mm region",
+            flush=True,
+        )
     angles = np.degrees(np.arccos(np.clip(plan.normals @ plan.normal, -1, 1)))
     spin = plan.orientation_diagnostics["max_tool_z_spin_deg"]
     yaw = float(getattr(plan, "lissajous_yaw_deg", 0.0))
@@ -821,7 +838,9 @@ def main(argv: list[str] | None = None) -> int:
         delta = np.asarray(live_end[:3]) - plan.poses[-1, :3]
         end_normal = _normal_at(plan, -1)
         tangent_err = np.linalg.norm(delta - np.dot(delta, end_normal) * end_normal)
-        if tangent_err > 0.005 or _rot_err_deg(live_end, plan.poses[-1]) > ARRIVE_DEG:
+        # Image rocking is allowed to leave the planned attitude; lift from the
+        # measured TCP. Only a large tangent miss means the path did not finish.
+        if tangent_err > 0.005:
             raise RuntimeError(f"scan ended before endpoint: tangent error={tangent_err * 1000:.1f} mm")
         lift = _lift_target(live_end, args.lift_m)
         print(f"[OK] scan done — position lift {args.lift_m * 1000:.0f} mm along −tool Z", flush=True)

@@ -281,15 +281,17 @@ def test_requested_rectangle_checks_probe_footprint_and_edge_margin() -> None:
     ).sum(axis=1)
     assert float(np.max(residual + conservative_footprint[:, None])) <= 1.0e-8
 
-    with pytest.raises(ValueError, match="requested scan dimensions"):
-        plan_s_scan(
-            cloud,
-            normal,
-            toward,
-            scan_length_m=0.40,
-            scan_width_m=0.30,
-            pattern="raster",
-        )
+    oversized = plan_s_scan(
+        cloud,
+        normal,
+        toward,
+        scan_length_m=0.40,
+        scan_width_m=0.30,
+        pattern="raster",
+    )
+    assert oversized.surface_diagnostics["requested_region_shrunk"] is True
+    assert oversized.u_span_m < 0.40
+    assert oversized.v_span_m < 0.30
 
 
 def test_requested_rectangle_accepts_few_mm_orbbec_slack() -> None:
@@ -310,9 +312,22 @@ def test_requested_rectangle_accepts_few_mm_orbbec_slack() -> None:
     short_v = np.linspace(-0.075, 0.075, 27)
     su, sv = np.meshgrid(short_u, short_v, indexing="xy")
     short = np.column_stack((su.ravel(), sv.ravel(), np.full(su.size, 0.15)))
+    reduced = plan_s_scan(
+        short, normal, toward,
+        scan_length_m=0.14, scan_width_m=0.08,
+        pattern="lissajous", lissajous_yaw_deg=20.0, normal_offset_deg=20.0,
+    )
+    assert reduced.surface_diagnostics["requested_region_shrunk"] is True
+    assert reduced.u_span_m < 0.14 - 1e-6
+    assert reduced.u_span_m >= 0.08
+    assert reduced.v_span_m <= 0.08 + 1e-9
+    tiny_u = np.linspace(-0.055, 0.055, 19)
+    tiny_v = np.linspace(-0.040, 0.040, 15)
+    tu, tv = np.meshgrid(tiny_u, tiny_v, indexing="xy")
+    tiny = np.column_stack((tu.ravel(), tv.ravel(), np.full(tu.size, 0.15)))
     with pytest.raises(ValueError, match="requested scan dimensions"):
         plan_s_scan(
-            short, normal, toward,
+            tiny, normal, toward,
             scan_length_m=0.14, scan_width_m=0.08,
             pattern="lissajous", lissajous_yaw_deg=20.0, normal_offset_deg=20.0,
         )

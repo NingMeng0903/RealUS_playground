@@ -7,9 +7,12 @@ TRACK_CARTESIAN, commanded cartesian_velocity, and a running program
 outrank the sticks; R3 e-stop still wins. When the pad does not own
 the mode it must not write zeros over the command twist bus.
 
-L3 toggles force-velocity hybrid: tool-Z from peirastic/configs/force.yaml,
-other axes stay on the pad. Y starts Window-8 SMPL-X capture. B runs the
-R_SUPFEMV program. Motion requires a live Bluetooth pad.
+L3 toggles force-velocity hybrid. Default is the old TFF tool-Z plus
+icra torque_tilt My. ``--hybrid-law ultrapoc`` adds delayed-KF α on the
+stick and image ωy on top of My. ``--hybrid-log`` writes a jsonl of
+stick, α, moment, and image on each L3. Y starts Window-8 SMPL-X
+capture. B runs the R_SUPFEMV program. Motion requires a live
+Bluetooth pad.
 """
 
 from __future__ import annotations
@@ -43,6 +46,12 @@ from peirastic.core.ipc import CommandClient, Status, TwistBus
 from peirastic.core.modes import Mode, ModeRequest, try_mode
 from peirastic.core.session import pad_may_drive
 from peirastic.realman8dof.force.config import desired_z_n
+from peirastic.realman8dof.modes.pad_visual import (
+    PAD_HYBRID_LAWS,
+    allocate_pad_log_path,
+    default_pad_log_path,
+    pad_hybrid_payload,
+)
 from peirastic.sources.gamepad import GamepadTwistSource
 
 from peirastic.apps.vessel_scan import (  # noqa: E402
@@ -89,6 +98,37 @@ def pad_hybrid_active(snapshot: dict) -> bool:
             and "pad" in str(snapshot.get("msg") or "").lower())
 
 
+# ac2d TRACK_HYBRID on_enter is slow. A 150 ms debounce expires while
+# wait_installed blocks, so a stick-click bounce latched in GamepadTwistSource
+# immediately toggles back to SERVO_TWIST_HOLD.
+L3_TOGGLE_GUARD_S = 0.40
+
+
+def l3_accept_toggle(
+    *,
+    edge: bool,
+    held: bool,
+    now: float,
+    last_s: float,
+    released: bool,
+) -> tuple[bool, bool]:
+    """One physical click → one L3 toggle.
+
+    Re-arm only after L3 has been up for ``L3_TOGGLE_GUARD_S`` since the last
+    accepted edge. A brief open during mechanical chatter does not re-arm.
+    """
+    if (not held) and (now - last_s) >= L3_TOGGLE_GUARD_S:
+        released = True
+    if edge and released and (now - last_s) >= L3_TOGGLE_GUARD_S:
+        return True, False
+    return False, released
+
+
+def drain_pad_edges(src) -> None:
+    """Drop edges latched while the main loop was blocked in wait_installed."""
+    src.snapshot()
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="peirastic gamepad source")
     parser.add_argument("--shm-prefix", default="")
@@ -97,7 +137,14 @@ def main() -> int:
     parser.add_argument("--rot-rad-s", type=float, default=None)
     parser.add_argument("--hold", action="store_true", help="use servo_twist_hold")
     parser.add_argument("--force-profile", choices=("baseline", "icra"), default="baseline",
-                        help="task-local torque response; icra matches the two-point scanner")
+                        help="legacy L3 tilt overlay; ignored by --hybrid-law ac2d/ultrapoc")
+    parser.add_argument(
+        "--hybrid-law",
+        choices=PAD_HYBRID_LAWS,
+        default="legacy",
+        help="L3 hybrid: legacy = TFF Z + tilt My (default); "
+             "ultrapoc = α·v* and image/My; ac2d = comparison Z+My",
+    )
     parser.add_argument(
         "--quiet",
         action="store_true",
@@ -119,6 +166,15 @@ def main() -> int:
         action="store_true",
         help="do not bind Xbox B to the R_SUPFEMV approach/scan program",
     )
+    parser.add_argument(
+        "--hybrid-log",
+        nargs="?",
+        const="auto",
+        default=None,
+        metavar="PATH",
+        help="record pad-hybrid jsonl (stick, α, My, image ω, regions). "
+             "default apps/logs/pad_hybrid/<stamp>.jsonl; new file each L3",
+    )
     args = parser.parse_args()
     quiet = bool(args.quiet) and not bool(args.verbose)
     twist_cfg = GamepadTwistConfig()
@@ -129,18 +185,37 @@ def main() -> int:
             rot_rad_s=float(args.rot_rad_s) if args.rot_rad_s is not None else twist_cfg.rot_rad_s,
         )
     fz = float(args.desired_z) if args.desired_z is not None else desired_z_n()
-    hybrid_payload = {
-        "reference": "pad",
-        "use_tff_split": True,
-        "label": "track_hybrid_pad",
-        "filter": False,  # pad already LPF+jerk at source; force Z never filtered
-    }
-    if args.force_profile == "icra":
-        from peirastic.scan_path import force_profile
+    hybrid_law = str(args.hybrid_law)
+    log_requested = None
+    if args.hybrid_log is not None:
+        requested = args.hybrid_log
+        if str(requested).strip().lower() in ("", "auto"):
+            log_requested = default_pad_log_path(_REPO)
+        else:
+            log_requested = Path(requested).expanduser()
+            if not log_requested.is_absolute():
+                log_requested = _REPO / log_requested
+            log_requested = log_requested.resolve()
+        print(f"[PAD-LOG] L3 hybrid jsonl → {log_requested} (new file each L3)", flush=True)
 
-        hybrid_payload.update(force_profile("icra"))
-    if args.desired_z is not None:
-        hybrid_payload["desired_z"] = float(args.desired_z)
+    def make_hybrid_payload():
+        log_path = None
+        if log_requested is not None:
+            allocated = allocate_pad_log_path(log_requested)
+            log_path = {
+                "path": str(allocated),
+                "hybrid_law": hybrid_law,
+                "trans_m_s": float(twist_cfg.trans_m_s),
+                "rot_rad_s": float(twist_cfg.rot_rad_s),
+                "hold": bool(args.hold),
+            }
+            print(f"[PAD-LOG] writing {allocated}", flush=True)
+        return pad_hybrid_payload(
+            hybrid_law,
+            desired_z=fz,
+            log_path=log_path,
+            force_profile=args.force_profile,
+        )
     prefix = str(args.shm_prefix)
     client = CommandClient(prefix=prefix)
     twist_bus = TwistBus(prefix=prefix, create=False)
@@ -149,9 +224,14 @@ def main() -> int:
     vel_mode = Mode.SERVO_TWIST_HOLD if args.hold else Mode.SERVO_TWIST
     hybrid = False
     last_l3_s = 0.0
+    l3_released = True
     last_log_s = 0.0
     if not quiet:
-        print(f"[STATE] L3 hybrid Fz*={fz:.2f}N (peirastic/configs/force.yaml)", flush=True)
+        print(
+            f"[STATE] L3 hybrid law={hybrid_law} Fz*={fz:.2f}N "
+            f"(legacy=TFF Z+tilt My; ultrapoc=slew α·v* + My⊕image)",
+            flush=True,
+        )
         if args.no_capture_y:
             print("[STATE] Y capture disabled (--no-capture-y)", flush=True)
         else:
@@ -294,24 +374,43 @@ def main() -> int:
                             flush=True,
                         )
             now = time.monotonic()
-            if pad_drive and snap["l3_edge"] and (now - last_l3_s) > 0.15:
-                last_l3_s = now
+            fire_l3, l3_released = l3_accept_toggle(
+                edge=bool(snap["l3_edge"]),
+                held=bool(snap["l3"]),
+                now=now,
+                last_s=last_l3_s,
+                released=l3_released,
+            )
+            if pad_drive and fire_l3:
                 hybrid = not hybrid
-                if hybrid:
-                    try:
-                        _install_mode(client, ModeRequest(Mode.TRACK_HYBRID, hybrid_payload))
-                    except Exception as exc:
-                        hybrid = False
-                        print(f"[MODE] TRACK_HYBRID install failed: {exc}", flush=True)
-                        continue
-                    print(f"[MODE] TRACK_HYBRID pad+force Z={fz:.2f}N", flush=True)
-                else:
-                    try:
+                try:
+                    if hybrid:
+                        _install_mode(client, ModeRequest(Mode.TRACK_HYBRID, make_hybrid_payload()))
+                    else:
                         _install_mode(client, ModeRequest(vel_mode, {"filter": False}))
-                    except Exception as exc:
-                        hybrid = True
-                        print(f"[MODE] {vel_mode.name} install failed: {exc}", flush=True)
-                        continue
+                except Exception as exc:
+                    hybrid = not hybrid
+                    name = "TRACK_HYBRID" if not hybrid else vel_mode.name
+                    print(f"[MODE] {name} install failed: {exc}", flush=True)
+                    last_l3_s = time.monotonic()
+                    drain_pad_edges(src)
+                    continue
+                last_l3_s = time.monotonic()
+                drain_pad_edges(src)
+                if hybrid:
+                    if hybrid_law == "ultrapoc":
+                        print(
+                            f"[MODE] TRACK_HYBRID pad ultrapoc delay-KF α·v + My⊕image  Z={fz:.2f}N",
+                            flush=True,
+                        )
+                    elif hybrid_law == "ac2d":
+                        print(
+                            f"[MODE] TRACK_HYBRID pad ac2d Z+My  Z={fz:.2f}N",
+                            flush=True,
+                        )
+                    else:
+                        print(f"[MODE] TRACK_HYBRID pad+force Z={fz:.2f}N", flush=True)
+                else:
                     print("[MODE] " + vel_mode.name, flush=True)
             if not quiet and (now - last_log_s) >= 0.20:
                 last_log_s = now

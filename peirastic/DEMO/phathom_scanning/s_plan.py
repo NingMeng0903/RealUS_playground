@@ -22,6 +22,10 @@ EDGE_EXTRA_M = 0.010
 # Orbbec rims are a few millimetres short of the conservative probe+edge
 # inset. Keep the requested 140×80 mm region; do not reject a 5–8 mm miss.
 SUPPORT_SLACK_M = 0.010
+# If the measured hull is still short after that slack, shrink the centered
+# region rather than abort. Reject only when the reduced size is unusable.
+MIN_REQUESTED_LENGTH_M = 0.080
+MIN_REQUESTED_WIDTH_M = 0.045
 STANDOFF_M = 0.040
 LIFT_M = 0.010
 SAMPLE_DS_M = 0.008
@@ -382,6 +386,26 @@ def _rectangle_corners(bounds: tuple[float, float, float, float]) -> np.ndarray:
     )
 
 
+def _centered_bounds(center_uv: np.ndarray, dimensions: np.ndarray) -> tuple[float, float, float, float]:
+    center = np.asarray(center_uv, dtype=np.float64).reshape(-1)
+    dims = np.asarray(dimensions, dtype=np.float64).reshape(-1)
+    if center.shape != (2,) or dims.shape != (2,):
+        raise ValueError("fixed scan rectangle requires two-dimensional center and dimensions")
+    half = 0.5 * dims
+    return (
+        float(center[0] - half[0]),
+        float(center[0] + half[0]),
+        float(center[1] - half[1]),
+        float(center[1] + half[1]),
+    )
+
+
+def _support_residual(equations: np.ndarray, bounds: tuple[float, float, float, float]) -> float:
+    corners = _rectangle_corners(bounds)
+    residual = np.asarray(equations[:, :2]) @ corners.T + np.asarray(equations[:, 2])[:, None]
+    return float(np.max(residual))
+
+
 def _fixed_rectangle(
     equations: np.ndarray,
     center_uv: np.ndarray,
@@ -391,30 +415,52 @@ def _fixed_rectangle(
 
     ``equations`` already includes the per-edge probe footprint and edge
     margin erosion.  Checking all four corners is sufficient because the
-    measured support is convex.  A failure is intentionally explicit: a
-    requested scan must never be silently reduced or moved to make it fit.
+    measured support is convex.
     """
 
-    center = np.asarray(center_uv, dtype=np.float64).reshape(-1)
-    dims = np.asarray(dimensions, dtype=np.float64).reshape(-1)
-    if center.shape != (2,) or dims.shape != (2,):
-        raise ValueError("fixed scan rectangle requires two-dimensional center and dimensions")
-    half = 0.5 * dims
-    bounds = (
-        float(center[0] - half[0]),
-        float(center[0] + half[0]),
-        float(center[1] - half[1]),
-        float(center[1] + half[1]),
-    )
-    corners = _rectangle_corners(bounds)
-    residual = np.asarray(equations[:, :2]) @ corners.T + np.asarray(equations[:, 2])[:, None]
-    worst = float(np.max(residual))
+    bounds = _centered_bounds(center_uv, dimensions)
+    worst = _support_residual(equations, bounds)
     if not np.isfinite(worst) or worst > SUPPORT_SLACK_M:
         raise ValueError(
             "requested scan dimensions cannot fit the measured phantom after "
             f"probe footprint and edge margin (support residual={worst:.3g} m)"
         )
     return bounds
+
+
+def _fit_centered_rectangle(
+    equations: np.ndarray,
+    center_uv: np.ndarray,
+    dimensions: np.ndarray,
+) -> tuple[tuple[float, float, float, float], np.ndarray, bool]:
+    """Keep the requested size when it fits; otherwise shrink about the center."""
+
+    dims = np.asarray(dimensions, dtype=np.float64).reshape(-1)
+    try:
+        return _fixed_rectangle(equations, center_uv, dims), dims.copy(), False
+    except ValueError:
+        residual = _support_residual(equations, _centered_bounds(center_uv, dims))
+    lo, hi = 0.0, 1.0
+    best_dims = None
+    for _ in range(32):
+        mid = 0.5 * (lo + hi)
+        candidate = dims * mid
+        worst = _support_residual(equations, _centered_bounds(center_uv, candidate))
+        if np.isfinite(worst) and worst <= SUPPORT_SLACK_M:
+            best_dims = candidate
+            lo = mid
+        else:
+            hi = mid
+    if (
+        best_dims is None
+        or best_dims[0] + 1e-12 < MIN_REQUESTED_LENGTH_M
+        or best_dims[1] + 1e-12 < MIN_REQUESTED_WIDTH_M
+    ):
+        raise ValueError(
+            "requested scan dimensions cannot fit the measured phantom after "
+            f"probe footprint and edge margin (support residual={residual:.3g} m)"
+        )
+    return _centered_bounds(center_uv, best_dims), best_dims, True
 
 
 def _arc_resample(points: np.ndarray, step_m: float) -> np.ndarray:
@@ -612,22 +658,33 @@ def plan_s_scan(
             interpolation_guard = width * angle * angle / 8.0
         return support + edge + interpolation_guard
 
+    working_dimensions = (
+        None if requested_dimensions is None else np.asarray(requested_dimensions, dtype=np.float64).copy()
+    )
+    region_shrunk = False
+
     def build(clearance):
+        nonlocal working_dimensions, region_shrunk
         equations = hull.copy()
         equations[:, 2] += clearance
-        if requested_dimensions is None:
+        if working_dimensions is None:
             bounds = _max_area_scan_rectangle(equations)
             region_method = "maximum_area_aligned_inscribed_rectangle"
         else:
             try:
-                bounds = _fixed_rectangle(equations, center_uv, requested_dimensions)
+                bounds, working_dimensions, shrunk = _fit_centered_rectangle(
+                    equations, center_uv, working_dimensions
+                )
             except ValueError as exc:
                 raise ValueError(
                     f"requested scan dimensions {requested_dimensions.tolist()} m "
-                    "are unavailable in the measured support; dimensions were not reduced or shifted; "
+                    "are unavailable in the measured support; "
                     f"{exc}"
                 ) from exc
-            region_method = "fixed_centered_rectangle"
+            region_shrunk = bool(region_shrunk or shrunk)
+            region_method = (
+                "fixed_centered_rectangle_shrunk" if region_shrunk else "fixed_centered_rectangle"
+            )
         u0, u1, v0, v1 = bounds
         if pattern_name == "lissajous":
             queries = _lissajous_queries(bounds, ds)
@@ -721,6 +778,9 @@ def plan_s_scan(
     diagnostics["normal_offset_deg"] = float(offset_deg)
     if requested_dimensions is not None:
         diagnostics["requested_dimensions_m"] = requested_dimensions.tolist()
+        if working_dimensions is not None:
+            diagnostics["used_dimensions_m"] = working_dimensions.tolist()
+        diagnostics["requested_region_shrunk"] = bool(region_shrunk)
     yaw_series = metadata.pop("lissajous_yaw_rad")
     offset_series = metadata.pop("normal_offset_rad")
     return PhantomSPlan(

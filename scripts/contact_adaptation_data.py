@@ -27,6 +27,10 @@ ALPHA_NOMINAL = 0.99
 # alpha_us = clip(1 - 0.75 max_i d_i / c_th, 0.25, 1) in region_visual.py.
 ALPHA_GAIN = 0.75
 SETTLED_AFTER_S = 2.0
+# Scan-clock time for the "restored window" B-mode (frame 3). The first
+# full-window sample is ~1.00 s with min c_i still 0.88; 1.10 s is after
+# alpha has returned to 1 and every region is ~0.98.
+RECOVERED_SCAN_S = 1.10
 # A rocking increment worth counting, and the paired-increment bins (mm/s) used
 # to test whether that increment disturbs force regulation.
 ROCK_MIN = 1e-3
@@ -186,7 +190,10 @@ def extract(run: Path):
     in_a = tracking & (t >= episode_a["t0"]) & (t <= episode_a["t1"])
     peak = int(np.nanargmin(np.where(in_a, min_c, np.nan)))
     recovered = np.flatnonzero(tracking & (t > episode_a["t1"]) & (max_d <= 0.0))
-    recovery = int(recovered[0]) if recovered.size else int(np.argmin(np.abs(t - (t[peak] + 1.0))))
+    scan0 = float(t[tracking].min()) if tracking.any() else float(t[peak])
+    recovery = int(np.argmin(np.abs(t - (scan0 + RECOVERED_SCAN_S))))
+    if recovered.size == 0:
+        recovery = int(np.argmin(np.abs(t - (t[peak] + 1.0))))
     request_peak = int(np.nanargmax(np.where(in_a, np.abs(omega_us), np.nan)))
     settled = int(np.argmin(np.abs(t - (t[recovery] + SETTLED_AFTER_S))))
 

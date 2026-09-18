@@ -299,6 +299,6 @@ def test_regression_script_points_at_this_repo() -> None:
         path = Path(__file__).resolve().parent / "controller_fix_regression.py"
     text = path.read_text(encoding="utf-8")
     assert "reconstructed/rm75_control" not in text
-    assert "secondary_alpha=float(secondary_alpha)" in text
+    assert "secondary_alpha=float(rail_posture_alpha)" in text
     assert "b_task = v_cmd - rail_contrib" in text
     assert "slack_now <= slack_exit" in text

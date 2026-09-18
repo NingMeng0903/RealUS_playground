@@ -1,4 +1,5 @@
 """Numerical execution-policy contracts, without hardware or transport mocks."""
+import math
 from types import SimpleNamespace
 
 import numpy as np
@@ -7,6 +8,8 @@ from scipy.spatial.transform import Rotation
 
 from peirastic.contact_qp.execution import QualityIntervals, QualityProgress
 from peirastic.contact_qp.reference import FiniteIntervalReference
+from peirastic.contact_qp.region_visual import region_visual_request
+from peirastic.contact_qp.types import ProbeGeometry
 from peirastic.contact_qp.rocking_smoothing import (
     ROCKING_TIER_ACCELERATION, ROCKING_TIER_JERK, ROCKING_TIER_MECHANICAL,
     ROCKING_TIER_RATE, RockingSmoothing, first_admissible_rocking_tier,
@@ -115,6 +118,120 @@ def test_marked_region_interval_escalates_alpha_and_omega_floor():
     assert request==pytest.approx(-0.05)
     held,held_alpha=monitor.apply_escalation(0.,1.,repair_speed_m_s=0.008)
     assert held_alpha==0.25 and held==pytest.approx(-0.05)
+
+
+def test_quality_hysteresis_holds_until_recover_quality_and_hold_time():
+    events=[]
+    monitor=QualityIntervals(.85,.03,.2,lambda event,**facts:events.append((event,facts)),
+        region_count=10,recover_quality=.92,recover_hold_s=.4,hold_while_open=True)
+    weak=np.full(10,.99);weak[0]=.79
+    mid=weak.copy();mid[0]=.88
+    good=weak.copy();good[0]=.93
+    def region_obs(frame,quality):
+        return SimpleNamespace(source_id='camera',frame_seq=frame,effective_time_s=frame,
+            region_confidence=quality,region_valid=np.ones(10,dtype=bool),quality=None)
+    monitor.observe(region_obs(1,weak),0.,())
+    request,alpha=monitor.apply_escalation(0.,1.,repair_speed_m_s=0.03)
+    assert alpha==0.25 and request==0.
+    # Without a configured hold floor an open interval holds alpha only; it must
+    # not invent omega of its own.
+    monitor.last_request_sign=-1.
+    request,alpha=monitor.apply_escalation(0.,1.,repair_speed_m_s=0.03)
+    assert alpha==0.25 and request==0.
+    monitor.observe(region_obs(2,mid),.2,())
+    assert 'region_0' in monitor.active
+    monitor.observe(region_obs(3,good),.3,())
+    assert 'region_0' in monitor.active
+    monitor.observe(region_obs(4,good),.71,())
+    assert 'region_0' not in monitor.active
+    ends=[facts for event,facts in events if event=='quality_interval_end']
+    assert ends and ends[-1]['end_reason']=='quality_recovered'
+
+
+def hold_floor_monitor():
+    return QualityIntervals(.85,.03,.2,lambda event,**facts:None,region_count=10,
+        recover_quality=.92,recover_hold_s=.4,hold_while_open=True,
+        escalation_omega_rad_s=.05,hold_omega_rad_s=.03,hold_omega_s=.5)
+
+
+def hold_floor_frame(frame,quality):
+    return SimpleNamespace(source_id='camera',frame_seq=frame,effective_time_s=frame,
+        region_confidence=quality,region_valid=np.ones(10,dtype=bool),quality=None)
+
+
+def test_open_interval_holds_omega_after_the_metric_recovers():
+    """Region q25 returns over c_min while the B-mode shadow is still open."""
+    monitor=hold_floor_monitor()
+    weak=np.full(10,.99);weak[0]=.79
+    recovered=np.full(10,.99);recovered[0]=.93
+    monitor.observe(hold_floor_frame(1,weak),0.,())
+    # A live deficit larger than the floor passes through untouched.
+    assert monitor.apply_escalation(-.08,.4,repair_speed_m_s=.09,now_s=0.)[0]==pytest.approx(-.08)
+    monitor.observe(hold_floor_frame(2,recovered),.3,())
+    assert 'region_0' in monitor.active
+    # The image law now asks for nothing, but the shadow has not been re-imaged.
+    request,alpha=monitor.apply_escalation(0.,1.,repair_speed_m_s=.09,now_s=.3)
+    assert alpha==.25 and request==pytest.approx(-.03)
+
+
+def test_hold_floor_expires_one_sensing_round_trip_after_the_last_weak_frame():
+    monitor=hold_floor_monitor()
+    weak=np.full(10,.99);weak[0]=.79
+    recovered=np.full(10,.99);recovered[0]=.93
+    monitor.observe(hold_floor_frame(1,weak),0.,())
+    monitor.apply_escalation(-.08,.4,repair_speed_m_s=.09,now_s=0.)
+    monitor.observe(hold_floor_frame(2,recovered),.3,())
+    assert monitor.apply_escalation(0.,1.,repair_speed_m_s=.09,now_s=.49)[0]==pytest.approx(-.03)
+    # Past the window the interval is still open, but omega is released: an
+    # indefinite floor is how 011 lifted the opposite region out of contact.
+    assert 'region_0' in monitor.active
+    request,alpha=monitor.apply_escalation(0.,1.,repair_speed_m_s=.09,now_s=.61)
+    assert alpha==.25 and request==0.
+
+
+def test_hold_floor_never_outranks_the_marked_escalation_floor():
+    monitor=hold_floor_monitor()
+    weak=np.full(10,.99);weak[0]=.79
+    monitor.observe(hold_floor_frame(1,weak),0.,())
+    monitor.observe(hold_floor_frame(2,weak),.3,())
+    assert monitor.escalation_active
+    assert monitor.apply_escalation(-.01,.9,repair_speed_m_s=.09,now_s=.3)[0]==pytest.approx(-.05)
+
+
+def test_marked_interval_uses_configured_omega_floor_not_repair_speed():
+    monitor=QualityIntervals(.85,.03,.2,lambda event,**facts:None,region_count=10,
+        escalation_omega_rad_s=.05,hold_while_open=True)
+    weak=np.full(10,.99);weak[0]=.79
+    def region_obs(frame):
+        return SimpleNamespace(source_id='camera',frame_seq=frame,effective_time_s=frame,
+            region_confidence=weak,region_valid=np.ones(10,dtype=bool),quality=None)
+    monitor.observe(region_obs(1),0.,())
+    monitor.observe(region_obs(2),.3,())
+    assert monitor.escalation_active
+    request,alpha=monitor.apply_escalation(-0.01,0.9,repair_speed_m_s=0.03)
+    assert alpha==0.25
+    assert request==pytest.approx(-0.05)
+
+
+def test_region_request_is_capped_at_the_configured_maximum():
+    q=np.full(10,.99);q[0]=.1
+    uncapped=region_visual_request(q,np.ones(10,dtype=bool),np.linspace(0.,1.,11),
+        ProbeGeometry.synthetic(image_x_sign=-1),c_min=.85,repair_speed_m_s=.02)
+    capped=region_visual_request(q,np.ones(10,dtype=bool),np.linspace(0.,1.,11),
+        ProbeGeometry.synthetic(image_x_sign=-1),c_min=.85,repair_speed_m_s=.02,
+        max_request_rad_s=.10)
+    assert abs(uncapped.request_rad_s)>.10
+    assert capped.request_rad_s==pytest.approx(math.copysign(.10,uncapped.request_rad_s))
+    assert capped.reason=='regional_deficit_moment'
+
+
+def test_visual_jerk_scale_widens_published_jerk_envelope():
+    smooth=RockingSmoothing(.8,2.,.04,1.)
+    smooth.seed(np.zeros(3),0.)
+    _,nominal,_=smooth.preview(np.eye(3),.01,.005)
+    _,scaled,_=smooth.preview(np.eye(3),.01,.005,jerk_scale=8.)
+    assert scaled[5]==pytest.approx(8.*nominal[5])
+    assert scaled[3]==pytest.approx(nominal[3])
 
 
 def test_improving_weak_quality_is_not_marked_and_scan_close_is_diagnostic():
