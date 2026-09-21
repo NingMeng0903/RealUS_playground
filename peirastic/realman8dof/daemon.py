@@ -1048,7 +1048,18 @@ class ControllerService:
                 err_code: int | None = None,
                 announce: bool = True,
                 install_seq: int | None = None,
+                applied_twist_base: np.ndarray | None = None,
             ) -> None:
+                pad_seed = None
+                if getattr(new.outer, "command_lifecycle", None) is not None:
+                    # Hot entry must inherit the last successful publication's
+                    # arm + execution-rail model, just like pad final review.
+                    # Validate before replacing the current outer or running
+                    # its exit/entry hooks; never invent a missing estimate.
+                    pad_seed = np.asarray(applied_twist_base, dtype=float)
+                    if pad_seed.shape != (6,) or not np.isfinite(pad_seed).all():
+                        raise ValueError("pad handoff requires a finite applied base twist of shape (6,)")
+                    pad_seed = pad_seed.copy()
                 _arm_install_ack(new, parsed_req.mode, install_seq)
                 if phase.on_exit is not None:
                     phase.on_exit()
@@ -1063,7 +1074,8 @@ class ControllerService:
                 if hasattr(new.outer, "begin_hybrid_episode"):
                     q = np.asarray(self.inner.q_cmd, dtype=float)
                     applied_qdot = self.inner.core.qdot_prev
-                    applied_twist = self.inner.kin.jacobian(q) @ applied_qdot
+                    applied_twist = (pad_seed if pad_seed is not None else
+                                     self.inner.kin.jacobian(q) @ applied_qdot)
                     self.inner.begin_hybrid_episode(q, applied_qdot)
                     proxy.begin_hybrid_episode(applied_twist, pose_now)
                 self.mode = parsed_req.mode
@@ -1116,6 +1128,7 @@ class ControllerService:
                 t_ref: float = 0.0,
                 *,
                 install_seq: int | None = None,
+                applied_twist_base: np.ndarray | None = None,
             ) -> None:
                 # Joint PTP runner is not a velocity proxy: any new mode rebuilds.
                 if self._pending_dof is not None:
@@ -1151,6 +1164,7 @@ class ControllerService:
                     pose,
                     t_ref,
                     install_seq=install_seq,
+                    applied_twist_base=applied_twist_base,
                 )
 
             def _stop() -> bool:
@@ -1214,7 +1228,8 @@ class ControllerService:
                             )
                     elif cmd == Cmd.SET_MODE and parsed is not None:
                         try:
-                            _apply(parsed, pose, t_ref, install_seq=int(seq))
+                            _apply(parsed, pose, t_ref, install_seq=int(seq),
+                                   applied_twist_base=getattr(step, "v_tcp_estimated", None))
                             self._clear_compile_fault()
                         except Exception as exc:
                             self._note_compile_fault(parsed, exc, commanded=True)

@@ -1,0 +1,42 @@
+{
+  "date": "2026-09-21",
+  "incident": "pad contact 16:22 hybrid exits",
+  "git_head": "994742bb0424e8228aee74dad967adbff189b7b1",
+  "working_tree_changes": true,
+  "source_sha256": {
+    "peirastic/realman8dof/modes/pad_contact.py": "4d3b5e44782f2cad533d18598d760157cf9b8089df9a7e284685f4309c74d79a",
+    "peirastic/realman8dof/modes/pad_publication.py": "1c94d41f33e8e316a79a0a4e166638bfc2ad4d913068a43eb6eefc2036bfe472",
+    "peirastic/realman8dof/modes/pad_contact_config.py": "23be28555caaeef09573d7e31aa3d877248334e4d3f408bfc4a5bd29694bf3f8",
+    "peirastic/realman8dof/modes/pad_contact_evidence.py": "d116db6e35b26af60046197471cb242396a2e7684f54b81e2e288e9b79482106",
+    "peirastic/config/contact_qp/pad_contact.yaml": "9df7502b18772c7d117d04da033fc5959565371297cfce70a74f1ee0530bc94a",
+    "peirastic/realman8dof/force/torque_tilt.py": "c4240ac0a8ddc3a3d22d12ff233e0db30b6ad197d8213e9ed15322a27fd850b3",
+    "rm75_control/rm75_control/control/joint_admittance_8dof/command_lifecycle.py": "0be18a8998981896855f820a37d4469dd9c0b66c47281a8625fee4342f34737d",
+    "rm75_control/rm75_control/control/joint_admittance_8dof/loop.py": "2fcd81fe75e11745cd2a08fec315413c65f0337a4fd5f82f2d0a8ae0ce00d809",
+    "rm75_control/rm75_control/hw/lw100/modbus_rtu_tcp.py": "8bd51d2d99fce00ef94d19e7009f884a707a14a3dc6ec38eed9b763564ee1dc6",
+    "peirastic/tests/data/pad_contact_1622.json": "662670f746b9415efe5aa10ddf26d2668f66427615bcc698339df7cd60f6d4dd"
+  },
+  "pytest": {
+    "passed": 458,
+    "deselected": 2,
+    "elapsed_s": 184.75,
+    "excluded_preexisting_failures": [
+      "test_backend_failure_rejects_publication_and_keeps_history",
+      "test_numerical_fallback_latches_and_rejects_publication"
+    ],
+    "includes_legacy_nominal_equivalence_ticks": 100000,
+    "backends": [
+      "python",
+      "native"
+    ]
+  },
+  "hardware_started": false,
+  "robot_closed_loop_verified": false,
+  "native_binary_changed_this_incident": false,
+  "publication_time_semantics": "arm_call_admission_not_physical_receipt",
+  "independent_review": "completed, findings corrected, no remaining blocker reported",
+  "remaining_uncertainty": [
+    "Inter-session rail target/feedback changed from about 235 to 116 mm; recordings do not cover the gap.",
+    "Image invalid was compatible with missing/incompatible echo contract; previous logs omitted version detail.",
+    "Physical bounce/contact recovery remains unverified."
+  ]
+}

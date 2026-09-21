@@ -1124,6 +1124,23 @@ bool InnerLoop::solve_hqp(const Mat6x8& J, const Vec6& v_cmd, const Vec8& q_geom
   VecX b1 = b_task;
 
   const double cert_tol = std::max(10.0 * cfg_.eps_abs, 1.0e-5);
+  // Publication checks Cartesian rows to 1e-8. An equality/very narrow
+  // interval cannot use the usual 1e-6 solve tolerance: QP1/QP2 can both
+  // report SOLVED yet their combined residual is not publishable. Tighten
+  // the solve, never the final admission test. Restore ordinary precision
+  // each tick when these explicitly requested rows are absent.
+  bool narrow_command = false;
+  for (int i = 0; i < command_twist_count_; ++i) {
+    const double norm = command_twist_rows_base_.row(i).norm();
+    if (norm > 0. && (command_twist_upper_[i]-command_twist_lower_[i])/norm <= 2.000001e-5)
+      narrow_command = true;
+  }
+  const double command_eps = narrow_command ? std::min(cfg_.eps_abs, 1e-10) : cfg_.eps_abs;
+  for (auto* qp : {qp1_.get(), qp2_.get()}) {
+    qp->settings.eps_abs = command_eps;
+    qp->settings.eps_primal_inf = std::min(command_eps * .01, 1e-8);
+    qp->settings.eps_dual_inf = std::min(command_eps * .01, 1e-8);
+  }
   auto clip_qdot = [&](Vec8 qd) {
     for (int i = 0; i < kNv; ++i) {
       if (std::isfinite(lo_box[i]) && std::isfinite(hi_box[i])) {
@@ -1640,7 +1657,7 @@ TickOut InnerLoop::step(const TickIn& in) {
     box_last_t_ = now;
     box_h1_ = dt_nom;
   } else {
-    h2 = dt_nom;
+    h2 = box_h1_;
     box_last_t_ = now;
     box_h1_ = dt_nom;
     h1 = dt_nom;

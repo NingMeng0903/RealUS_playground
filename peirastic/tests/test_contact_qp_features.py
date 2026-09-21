@@ -328,6 +328,7 @@ def test_cached_paper_features_match_original_observation_and_payload(monkeypatc
         image /= 512.
     expected_map = feat.random_walk_confidence(image, cfg)
     expected_features = feat.confidence_features(image, expected_map, cfg)
+    expected_features.update(feat.nearfield_echo_features(image, cfg))
     # Reconstruct the pre-optimization extraction path independently of its cache.
     quality = feat.window_quality(expected_map, cfg)
     known = ~feat.unknown_scanlines(image, cfg)
@@ -346,7 +347,9 @@ def test_cached_paper_features_match_original_observation_and_payload(monkeypatc
         weakside_feature_version=feat.WEAK_SIDE_FEATURE_VERSION,
         timestamp_semantics='effective_image_time',
         **{key: expected_features[key] for key in ('region_confidence', 'region_valid', 'region_edges',
-                                                  'region_feature_version', 'region_layout_version')})
+                                                  'region_feature_version', 'region_layout_version',
+                                                  'echo_feature_version', 'nearfield_echo',
+                                                  'nearfield_echo_valid', 'nearfield_echo_depth')})
     calls = dict(confidence_features=0, window_quality=0, unknown_scanlines=0)
     for name in calls:
         original = getattr(feat, name)

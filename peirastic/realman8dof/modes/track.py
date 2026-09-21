@@ -82,6 +82,9 @@ class HybridTffOuter:
         self.last_on_tube = False
         self.last_pad_alpha = 1.0
         self.last_contact_present = False
+        self.last_facts = {}
+        self._pad_scan_qp = None
+        self._pad_previous_twist = np.zeros(6, dtype=float)
         self.controller = getattr(force_law, "controller", None)
         cfg = getattr(self.position, "cfg", None)
         if cfg is not None and hasattr(cfg, "track_axes"):
@@ -96,10 +99,14 @@ class HybridTffOuter:
     def set_origin(self, pose0: np.ndarray, *, t_s: float | None = None) -> None:
         self.position.set_origin(pose0, t_s=t_s)
         self.force_law.reset(pose=pose0, f_ext=np.zeros(6))
+        self._pad_previous_twist = np.zeros(6, dtype=float)
+        self.last_facts = {}
 
     def begin_hybrid_episode(self, applied_twist_base, current_pose) -> None:
         del applied_twist_base
         self.force_law.reset(pose=current_pose, f_ext=np.zeros(6))
+        self._pad_previous_twist = np.zeros(6, dtype=float)
+        self.last_facts = {}
 
     def sample(
         self,
@@ -155,6 +162,11 @@ class HybridTffOuter:
                 contact_present=bool(present),
                 tilt=getattr(self.force_law, "tilt", None),
             )
+        fuse = (
+            guide is not None
+            and bool(getattr(guide, "progress", False))
+            and getattr(self.controller, "cfg", None) is not None
+        )
         alpha = 1.0
         published = getattr(guide, "last_alpha", None) if guide is not None else None
         if published is not None:
@@ -163,7 +175,7 @@ class HybridTffOuter:
                 alpha = 1.0
             else:
                 alpha = float(np.clip(alpha, 0.0, 1.0))
-            if alpha != 1.0:
+            if alpha != 1.0 and not fuse:
                 v_pos = v_pos * alpha
                 path = path * alpha
         self.last_pad_alpha = alpha
@@ -172,7 +184,7 @@ class HybridTffOuter:
             pose=current_pose,
             f_ext=np.asarray(f_ext, dtype=float).reshape(6),
             f_des=self.desired_force,
-            path_twist=path,
+            path_twist=path if fuse else path,
             path_twist_raw=path_raw,
             contact=contact,
             f_ext_raw=f_ext_raw,
@@ -182,20 +194,31 @@ class HybridTffOuter:
             v_tcp_z_actual=v_actual,
             slack_norm=slack_norm,
             euler_order=self._euler_order(),
-            visual_velocity_target_rad_s=visual_omega,
+            visual_velocity_target_rad_s=None if fuse else visual_omega,
         )
-        added = getattr(guide, "last_visual_omega", None) if guide is not None else None
-        if added is not None:
-            force = np.asarray(fout.v_force, dtype=float).reshape(6).copy()
-            force[4] = float(force[4]) + float(added)
-            tilt = getattr(self.force_law, "tilt", None)
-            vmax = getattr(getattr(tilt, "cfg", None), "vmax_rad_s", None)
-            if vmax is None:
-                vmax = getattr(guide, "omega_vmax", 0.28)
-            limit = max(float(vmax), 1.0e-6)
-            force[4] = float(np.clip(force[4], -limit, limit))
-            fout.v_force = force
-        v_star = compose_tff(v_pos, fout.v_force, self.selection)
+        allocated = self._allocate_pad_scan_qp(
+            current_pose, f_ext, fout, path_raw, guide, bool(present), dt_s,
+        ) if fuse else None
+        if allocated is not None:
+            v_star = allocated
+        else:
+            failed_facts = dict(self.last_facts)
+            added = getattr(guide, "last_visual_omega", None) if guide is not None else None
+            if added is not None:
+                force = np.asarray(fout.v_force, dtype=float).reshape(6).copy()
+                force[4] = float(force[4]) + float(added)
+                tilt = getattr(self.force_law, "tilt", None)
+                vmax = getattr(getattr(tilt, "cfg", None), "vmax_rad_s", None)
+                if vmax is None:
+                    vmax = getattr(guide, "omega_vmax", 0.28)
+                limit = max(float(vmax), 1.0e-6)
+                force[4] = float(np.clip(force[4], -limit, limit))
+                fout.v_force = force
+            if fuse and alpha != 1.0:
+                v_pos = v_pos * alpha
+                path = path * alpha
+            v_star = compose_tff(v_pos, fout.v_force, self.selection)
+            self.last_facts = failed_facts
         if guide is not None:
             from peirastic.realman8dof.force.torque_tilt import rotation_from_pose
             guide.commit(v_star, rotation_from_pose(current_pose, euler_order=self._euler_order()))
@@ -238,12 +261,124 @@ class HybridTffOuter:
             if self.position.last_pose_d is None
             else np.asarray(self.position.last_pose_d, dtype=float).copy()
         )
-        self.last_path_twist = path
+        if allocated is None:
+            self.last_path_twist = path
+        else:
+            self.last_vel_ff = np.asarray(self.last_path_twist, dtype=float).copy()
         self.last_path_twist_raw = path_raw
         self.last_feedback_twist = np.asarray(
             self.position.last_feedback_twist, dtype=float
         ).copy()
+        self._pad_previous_twist = np.asarray(v_star, dtype=float).reshape(6).copy()
         return v_star
+
+    def _pad_scan_solver(self, guide):
+        if self._pad_scan_qp is not None:
+            return self._pad_scan_qp
+        from dataclasses import fields
+        from peirastic.contact_qp.qp import ContactQp, QpConfig
+        raw = dict((guide.config or {}).get("qp") or {})
+        feature = dict((guide.config or {}).get("feature") or {})
+        settings = {key: raw[key] for key in raw if key in {item.name for item in fields(QpConfig)}}
+        settings["allocation_policy"] = "delay_kf_cop_v1"
+        settings["enable_aperture"] = False
+        if feature.get("c_min") is not None:
+            settings["c_min"] = feature["c_min"]
+        if feature.get("quality_policy_version"):
+            settings["quality_policy_version"] = feature["quality_policy_version"]
+        vmax = np.asarray(self.controller.cfg.max_velocity, dtype=float).copy()
+        vmax[2] = min(vmax[2], self.controller.cfg.max_vz_tool_m_s)
+        tilt = self.force_law.tilt.cfg
+        vmax[4] = min(vmax[4], tilt.vmax_rad_s)
+        accel = np.asarray(self.controller.cfg.max_acceleration, dtype=float).copy()
+        accel[4] = min(accel[4], tilt.a_max)
+        settings["max_velocity"] = vmax
+        settings["max_acceleration"] = accel
+        settings["angle_limit_rad"] = tilt.theta_max_rad
+        self._pad_scan_qp = ContactQp(QpConfig(**settings))
+        return self._pad_scan_qp
+
+    def _allocate_pad_scan_qp(self, pose, f_ext, fout, path_raw, guide, contact, dt_s):
+        """Same delay-KF COP / My / α / visual allocation as phantom Lissajous.
+
+        Publish the resulting tool twist on the 994742bb handheld path. Do not
+        re-inject Cartesian rows into native IK.
+        """
+        try:
+            from peirastic.contact_qp.geometry import (
+                contact_cop_from_wrench, twist_tcp_to_face, wrench_tcp_to_face,
+            )
+            from peirastic.contact_qp.qp import QpInput
+            solver = self._pad_scan_solver(guide)
+            cfg = solver.config
+            geometry = guide.geometry
+            transform = twist_tcp_to_face(geometry)
+            wrench = np.asarray(f_ext, dtype=float).reshape(6)
+            env = wrench_tcp_to_face(-wrench, geometry)
+            cop, cop_reason = contact_cop_from_wrench(
+                env, min_force_n=cfg.cop_min_force_n,
+                max_abs_m=min(geometry.half_length_m, cfg.cop_max_m),
+            )
+            mechanical = np.asarray(fout.v_force, dtype=float).reshape(6)
+            feedback = np.asarray(self.position.last_feedback_twist, dtype=float).reshape(6).copy()
+            moving = np.asarray(path_raw, dtype=float).reshape(6).copy()
+            if self.mask_force_from_path:
+                feedback = feedback * self.selection
+                moving = moving * self.selection
+            feedback[[2, 4]] = 0.
+            moving[[2, 4]] = 0.
+            if np.linalg.norm(moving[:2]) < float(np.min(cfg.subspace_tolerance[:2])):
+                moving[:2] = 0.
+            hold = min(float(self.dt), float(dt_s) if np.isfinite(dt_s) and dt_s > 0 else self.dt)
+            slew = max(hold, float(dt_s) if np.isfinite(dt_s) and dt_s > 0 else hold)
+            # Slewed pad α (994742bb). Image ω is the scan request; QP slews Ω.
+            alpha_des = float(np.clip(getattr(guide, "last_alpha", getattr(guide, "alpha_cmd", 1.)), 0., 1.))
+            request = float(getattr(guide, "omega_target", 0.) or 0.)
+            visual_valid = bool(contact) and bool(np.isfinite(request))
+            tilt = getattr(self.force_law, "tilt", None)
+            measured = float(getattr(tilt, "theta_tilt", 0.) or 0.)
+            stick = feedback + alpha_des * moving
+            previous = np.asarray(self._pad_previous_twist, dtype=float).reshape(6).copy()
+            # Scan's 5 ms accel box would clip a 20 mm/s stick to a_max*dt.
+            # Keep the handheld path instant; only Z / My slew from last publish.
+            if not np.any(np.abs(previous) > 1e-12):
+                previous = compose_tff(stick, mechanical, self.selection)
+            else:
+                previous = np.where(self.selection > 0.5, stick, previous)
+            result = solver.solve(QpInput(
+                geometry=geometry, nominal_twist=mechanical, path_twist=moving,
+                force_n=float(-env[2]), dt_s=hold, now_s=time.monotonic(),
+                previous_twist=previous, measured_angle=measured,
+                acceleration_dt_s=slew, alpha_preferred=alpha_des,
+                mechanical_normal_m_s=float((transform @ mechanical)[2]),
+                mechanical_omega_rad_s=float((transform @ mechanical)[4]),
+                path_feedback_contact=transform @ feedback,
+                path_feedforward_contact=transform @ moving,
+                visual_request_rad_s=request if visual_valid else 0.,
+                visual_task_valid=visual_valid,
+                visual_gamma=cfg.differential_repair.force_gate(float(-env[2])),
+                cop_m=cop,
+                repair_execution_enabled=bool(contact),
+            ), online=True, deadline_s=time.monotonic() + min(0.004, hold))
+            if result.qp_twist is None:
+                self.last_facts = dict(getattr(guide, "last_facts", None) or {},
+                    visual_policy="pad_scan_delay_kf_cop_v1",
+                    allocation_diagnostics=dict(result.diagnostics))
+                return None
+            self.last_pad_alpha = float(result.alpha)
+            self.last_path_twist = feedback + float(result.alpha) * moving
+            self.last_facts = dict(getattr(guide, "last_facts", None) or {},
+                cop_m=cop, cop_valid=cop is not None, cop_reason=cop_reason,
+                alpha=self.last_pad_alpha, alpha_target=alpha_des,
+                visual_request_rad_s=request, visual_task_valid=visual_valid,
+                allocation_diagnostics=dict(result.diagnostics),
+                visual_policy="pad_scan_delay_kf_cop_v1")
+            return np.asarray(result.qp_twist, dtype=float).reshape(6)
+        except (TypeError, ValueError, RuntimeError) as exc:
+            self.last_facts = dict(getattr(guide, "last_facts", None) or {},
+                visual_policy="pad_scan_delay_kf_cop_v1",
+                allocation_diagnostics={"reason": type(exc).__name__, "detail": str(exc)})
+            return None
 
 
 def build_track_cartesian_phase(

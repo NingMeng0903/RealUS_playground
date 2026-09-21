@@ -24,7 +24,7 @@ from scipy import sparse
 from scipy.sparse.linalg import spsolve
 from scipy.ndimage import zoom
 
-from .types import CONFIDENCE_FEATURE_VERSION, WEAK_SIDE_FEATURE_VERSION, REGION_FEATURE_VERSION, ContactObservation
+from .types import CONFIDENCE_FEATURE_VERSION, WEAK_SIDE_FEATURE_VERSION, REGION_FEATURE_VERSION, ECHO_FEATURE_VERSION, ContactObservation
 
 
 def revision(raw):
@@ -344,6 +344,30 @@ def confidence_features(image, confidence, config):
                               "Centroid x uses all ROI column means and pixel centers relative to image half-width; positive is image right."])
 
 
+
+def nearfield_echo_features(image, config):
+    """Full-aperture column p75 on the display scale, independent of q.
+
+    Input is the registered acoustic crop. Only its fixed image border should
+    be removed by registration; the side columns remain observable. A dark
+    column is valid evidence when the frame contains an image, including when
+    the confidence-map unknown-scanline heuristic marks that column unknown.
+    """
+    raw = np.asarray(image, dtype=float)
+    if raw.ndim != 2 or min(raw.shape) < 2 or not np.isfinite(raw).all():
+        raise ValueError("finite grayscale B-mode image required")
+    if raw.min() < 0 or raw.max() > 255:
+        raise ValueError("B-mode intensity must be on the [0,255] display scale")
+    resized = zoom(raw / 255., (config.height/raw.shape[0], config.width/raw.shape[1]),
+                   order=1, prefilter=False)
+    depth = (.04, .22)
+    y0, y1 = int(config.height*depth[0]), max(int(config.height*depth[0])+1, int(config.height*depth[1]))
+    return dict(echo_feature_version=ECHO_FEATURE_VERSION,
+                nearfield_echo=np.quantile(resized[y0:y1], .75, axis=0).tolist(),
+                nearfield_echo_valid=np.full(config.width, np.ptp(raw) >= 1., dtype=bool).tolist(),
+                nearfield_echo_depth=list(depth))
+
+
 def effective_image_time(recorded_time_s, delay_s, *, already_aligned=False):
     """Aligned H5 rows already use image-effective time; never subtract again."""
     if not math.isfinite(recorded_time_s) or not math.isfinite(delay_s) or delay_s < 0:
@@ -379,6 +403,7 @@ class FeatureExtractor:
         weakside = {}
         if cfg.algorithm_version == "randomwalk_welleweerd2020_v3":
             self.last_features = confidence_features(image, c, cfg)
+            self.last_features.update(nearfield_echo_features(image, cfg))
             centroid = {name: self.last_features[name] for name in
                         ("confidence_centroid_x", "confidence_centroid_valid", "confidence_feature_version")}
             q = np.asarray(self.last_features["quality_lcr"], dtype=float)
@@ -393,7 +418,8 @@ class FeatureExtractor:
                             timestamp_semantics="effective_image_time")
             weakside.update({key: self.last_features[key] for key in
                              ('region_confidence', 'region_valid', 'region_edges',
-                              'region_feature_version', 'region_layout_version')})
+                              'region_feature_version', 'region_layout_version', 'echo_feature_version',
+                              'nearfield_echo', 'nearfield_echo_valid', 'nearfield_echo_depth')})
         else:
             self.last_features = None
             q = window_quality(c, cfg)

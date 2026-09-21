@@ -167,6 +167,7 @@ def test_pad_hybrid_payload_ultrapoc_requests_progress():
 
     payload = pad_hybrid_payload('ultrapoc', desired_z=4.0)
     assert payload['pad_visual'] == {'progress': True}
+    assert 'pad_contact' not in payload
     assert payload['force_axes'] == list(SCAN_FORCE_AXES)
     assert payload['hybrid_motion'] == force_profile('icra')['hybrid_motion']
     assert payload.get('law') != 'ac2d'
@@ -212,6 +213,8 @@ def test_pad_progress_gates_then_steps_when_a_region_crosses_cmin():
     pose = np.zeros(6)
     n = FeatureConfig(**load_study_config(CONFIG)['feature']['config']).region_count
     assert guide.rocking_reference is None
+    assert guide.deficit_mode == 'relative'
+    assert guide.brake_on_sided is False
     assert guide.max_visual_omega_rad_s == pytest.approx(0.16)
     assert guide.ramp_s == pytest.approx(0.12)
     assert guide.omega_step_rad_s == pytest.approx(0.06)
@@ -223,17 +226,44 @@ def test_pad_progress_gates_then_steps_when_a_region_crosses_cmin():
     assert guide.omega_target == pytest.approx(0.0)
     assert guide.alpha_target == pytest.approx(1.0)
     just_under = np.ones(n)
-    just_under[0] = 0.94
+    just_under[0] = 0.85
     receiver.observation = _region_frame(just_under, now=10.005)
     assert guide.preview(pose=pose, dt_s=.005, contact_present=True, tilt=tilt, now_s=10.005) is None
-    assert abs(guide.omega_target) >= guide.omega_step_rad_s - 1e-12
-    assert guide.alpha_target == pytest.approx(guide.alpha_min)
+    assert abs(guide.omega_target) > 0.0
+    assert guide.alpha_target < 1.0
+    assert guide.last_facts['deficit_mode'] == 'relative'
+    assert guide.last_facts['quality_reference'] == pytest.approx(1.0)
     deeper = np.ones(n)
     deeper[0] = 0.70
     receiver.observation = _region_frame(deeper, now=10.01)
     assert guide.preview(pose=pose, dt_s=.005, contact_present=True, tilt=tilt, now_s=10.01) is None
     assert abs(guide.omega_target) >= abs(0.06)
     assert abs(guide.omega_target) <= guide.max_visual_omega_rad_s + 1e-12
+    assert guide.alpha_target == pytest.approx(guide.alpha_min)
+
+
+def test_pad_relative_keeps_human_on_moment_and_still_publishes_omega_alpha():
+    receiver = SimpleNamespace(observation=None)
+    guide = PadVisualGuide(load_study_config(CONFIG), TorqueTiltConfig(),
+                           receiver=receiver, progress=True)
+    tilt = TorqueTilt(TorqueTiltConfig())
+    pose = np.zeros(6)
+    n = FeatureConfig(**load_study_config(CONFIG)['feature']['config']).region_count
+    human = np.linspace(0.867, 0.901, n)
+    receiver.observation = _region_frame(human, now=10.)
+    assert guide.preview(pose=pose, dt_s=.005, contact_present=True, tilt=tilt, now_s=10.) is None
+    assert guide.omega_target == pytest.approx(0.0)
+    assert guide.alpha_target == pytest.approx(1.0)
+    assert guide.last_visual_omega == pytest.approx(0.0)
+    assert guide.last_alpha == pytest.approx(1.0)
+    assert guide.last_facts['deficit_mode'] == 'relative'
+    phantom = np.ones(n)
+    phantom[0] = 0.70
+    receiver.observation = _region_frame(phantom, now=10.01)
+    assert guide.preview(pose=pose, dt_s=.005, contact_present=True, tilt=tilt, now_s=10.01) is None
+    assert abs(guide.omega_target) > 0.0
+    assert guide.alpha_target < 1.0
+    assert guide.last_facts['quality_reference'] > 0.9
 
 
 def test_pad_progress_kf_predicts_sided_hole_before_raw_gate():
@@ -245,18 +275,17 @@ def test_pad_progress_kf_predicts_sided_hole_before_raw_gate():
     pose = np.zeros(6)
     n = FeatureConfig(**load_study_config(CONFIG)['feature']['config']).region_count
     stamps = (9.80, 9.90, 10.00)
-    left = (1.00, 0.99, 0.980)
+    left = (1.00, 0.88, 0.76)
     for seq, (stamp, q0) in enumerate(zip(stamps, left), start=1):
         quality = np.ones(n)
         quality[0] = q0
         receiver.observation = _region_frame(quality, now=stamp, seq=seq)
         assert guide.preview(pose=pose, dt_s=.005, contact_present=True, tilt=tilt, now_s=stamp) is None
-    assert guide.omega_target == pytest.approx(0.0)
-    receiver.observation = _region_frame(np.concatenate(([0.980], np.ones(n - 1))), now=10.00, seq=3)
+    receiver.observation = _region_frame(np.concatenate(([0.76], np.ones(n - 1))), now=10.00, seq=3)
     assert guide.preview(pose=pose, dt_s=.005, contact_present=True, tilt=tilt, now_s=10.23) is None
     assert guide.last_facts['kf_valid'] is True
     predicted = np.asarray(guide.last_facts['kf_quality'], dtype=float)
-    assert predicted[0] < guide.c_min
+    assert predicted[0] < 0.70
     assert abs(guide.omega_target) >= guide.omega_step_rad_s - 1e-12
     assert guide.alpha_target == pytest.approx(guide.alpha_min)
 
@@ -373,7 +402,7 @@ def test_hybrid_adds_visual_omega_on_top_of_moment():
     assert command[4] == pytest.approx(0.09)
 
 
-def test_ultrapoc_pad_phase_attaches_progress_guide():
+def test_explicit_legacy_pad_phase_retains_progress_guide():
     from peirastic.core.modes import Mode, ModeRequest
     from peirastic.realman8dof.session import compile_request
     from peirastic.tests.test_api_facade import _SEED, _ctx
@@ -554,10 +583,16 @@ def test_ultrapoc_pad_phase_writes_hybrid_log(tmp_path):
     payload['v_cmd'] = [0.02, 0.0, 0.0, 0.0, 0.0, 0.0]
     phase = compile_request(ctx, ModeRequest(Mode.TRACK_HYBRID, payload), raw=raw)
     try:
+        import time
+        clock = [time.monotonic()]
+        phase.outer.clock = lambda: clock[0]
         pose = ctx.kin.fk_pose(_SEED)
         phase.outer.set_origin(pose)
         wrench = np.array([0., 0., 4., 0., 0.2, 0.])
-        phase.outer.sample(0., pose, wrench, contact=True, dt_actual=.005)
+        command = phase.outer.sample(0., pose, wrench, contact=True, dt_actual=.005,
+                                     sensor_age_s=.001, feedback_age_s=.001)
+        assert command.shape == (6,)
+        assert np.isfinite(command).all()
     finally:
         if phase.on_exit is not None:
             phase.on_exit()
@@ -568,3 +603,73 @@ def test_ultrapoc_pad_phase_writes_hybrid_log(tmp_path):
     assert samples
     assert samples[0]['v_stick'][0] == pytest.approx(0.02)
     assert 'alpha' in samples[0]
+    assert samples[0]['command_semantics'] == 'delay_kf_cop_v1'
+    assert samples[0].get('cop_reason') is not None
+
+
+def test_allocate_pad_analysis_dir_uniquifies(tmp_path, monkeypatch):
+    from peirastic.realman8dof.modes.pad_analysis import allocate_pad_analysis_dir
+
+    monkeypatch.setattr('peirastic.realman8dof.modes.pad_analysis.time.strftime', lambda *_a, **_k: '20260921_150000')
+    first = allocate_pad_analysis_dir(tmp_path)
+    second = allocate_pad_analysis_dir(tmp_path)
+    assert first == tmp_path / 'apps/logs/pad_hybrid/20260921_150000'
+    assert second == tmp_path / 'apps/logs/pad_hybrid/20260921_150000_001'
+    assert first.is_dir() and second.is_dir()
+
+
+def test_pad_analysis_recorder_writes_session_and_stops(tmp_path, monkeypatch):
+    from peirastic.realman8dof.modes.pad_analysis import PadAnalysisRecorder
+
+    created = {}
+
+    class _Proc:
+        def __init__(self):
+            self._code = None
+
+        def poll(self):
+            path = created['raw']
+            if not path.exists():
+                path.write_bytes(b'h5')
+            return self._code
+
+        def send_signal(self, sig):
+            created['sig'] = sig
+            self._code = 0
+
+        def wait(self, timeout=None):
+            return 0
+
+        def terminate(self):
+            self._code = 0
+
+        def kill(self):
+            self._code = 0
+
+    def fake_popen(command, **_kwargs):
+        created['command'] = command
+        created['raw'] = Path(command[command.index('--output-file') + 1])
+        return _Proc()
+
+    monkeypatch.setattr('peirastic.realman8dof.modes.pad_analysis.subprocess.Popen', fake_popen)
+    directory = tmp_path / 'session'
+    recorder = PadAnalysisRecorder(
+        repo=tmp_path, record_script=tmp_path / 'record.py', python='/bin/true',
+    )
+    raw = recorder.start(directory, extra={'hybrid_law': 'ultrapoc'})
+    assert raw.exists()
+    session = json.loads((directory / 'session.json').read_text())
+    assert session['schema'] == 'pad_hybrid_analysis_v1'
+    assert session['hybrid_law'] == 'ultrapoc'
+    assert session['raw_h5'] == str(raw)
+    assert '--raw-only' in created['command']
+    assert recorder.close_if_inactive(True) is None
+    assert recorder.proc is not None
+    assert recorder.close_if_inactive(False) == raw
+    import signal
+    assert created['sig'] == signal.SIGINT
+    assert recorder.path is None and recorder.proc is None
+    assert recorder.close_if_inactive(False) is None
+    second = recorder.start(tmp_path / 'second_session')
+    assert second != raw and second.exists()
+    recorder.stop()

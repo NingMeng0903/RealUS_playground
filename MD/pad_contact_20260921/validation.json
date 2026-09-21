@@ -1,0 +1,38 @@
+{
+  "git_baseline": "994742bb0424e8228aee74dad967adbff189b7b1",
+  "dirty_implementation_sha256": {
+    "peirastic/realman8dof/modes/pad_contact.py": "47344e3cf725a8e2142b908f0108a607148eda14670abb3e373b8bac454fd2ab",
+    "peirastic/realman8dof/modes/pad_contact_config.py": "ede88d3609cfcdd51893b16df6b85128d72ff25b11422efbf6ce920634b8070c",
+    "peirastic/realman8dof/modes/pad_contact_evidence.py": "ca86d5897da60597d224609d2ea937d9054ccf100fb158d1476643eceeadf190",
+    "peirastic/realman8dof/modes/pad_visual.py": "514dc194763c1df24a510e7786461a82a125618c2c6e2176cfd2519ce72f385f",
+    "peirastic/realman8dof/modes/track.py": "9c2c2344e569cf42418b751bfc5a537ddfecf635355d8a98c3f4a92ee7a3c2d3",
+    "peirastic/contact_qp/features.py": "a7c54bb833779ca0d6676b7fefa91e09ba5801ed601a7436b02d9a28eb17364e",
+    "peirastic/contact_qp/types.py": "bbdb0634d64309a1ae6957dae6e743c5a6e26691e3c576c57942060f779c7c39",
+    "peirastic/config/contact_qp/pad_contact.yaml": "7753274275f35984cbdfa0a5c7bdf43dd6b1b78319e3017b9fc52a46c3a22220",
+    "rm75_control/rm75_control/control/joint_admittance_8dof/loop.py": "fabd1e54c0b408521dabee4cf47ca1dd0a5cdc2a75593ff22578aed0142a9495",
+    "rm75_control/rm75_control/control/joint_admittance_8dof/command_lifecycle.py": "015f803937fa77a2f1d4b71e5f0f00721f54f4ab651f2f7154232c9733b9d0cd",
+    "rm75_control/rm75_control/control/joint_admittance_8dof/hw/rail_servo.py": "fe6de9015762dd0843ce201ab69a58caa82c9fbe691b7539a8a557198be6f3ea",
+    "scripts/replay_pad_contact.py": "7836ca0448ea55a7f7d894797f0a0312875751db02ce905861fc99ac6f6ee7a8"
+  },
+  "regression": {
+    "passed": 332,
+    "deselected": 2,
+    "reason": "Two pre-existing solver-injection failures reproduced against original HEAD loop.",
+    "deselected_tests": [
+      "test_backend_failure_rejects_publication_and_keeps_history",
+      "test_numerical_fallback_latches_and_rejects_publication"
+    ],
+    "backends": [
+      "python",
+      "native"
+    ],
+    "native_environment": "Outside restricted filesystem sandbox for offline shared-memory IPC."
+  },
+  "final_review": {
+    "reasoning_effort": "ultra",
+    "critical_findings_remaining": 0,
+    "additional_mixed_axis_publications": 67
+  },
+  "hardware_validation_performed": false,
+  "replay_note": "Saved replay used numerically identical force stability constants before they were exposed in YAML; see README."
+}

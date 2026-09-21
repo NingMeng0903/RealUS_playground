@@ -1109,6 +1109,19 @@ class QpIkController:
         from ..command_twist import validate_command_twist
         command_rows, command_lo, command_hi = validate_command_twist(
             command_twist_rows_base, command_twist_lower, command_twist_upper)
+        row_norm = np.linalg.norm(command_rows, axis=1)
+        narrow_command = bool(np.any((row_norm > 0.) &
+            (command_hi-command_lo <= 2.000001e-5*row_norm)))
+        # Match native precision to final Cartesian admission (1e-8), without
+        # loosening any hard row or changing ordinary no-row/scan settings.
+        for backend in (self.backend, self._backend_qp2):
+            if isinstance(backend, _ProxQpWbcBackend):
+                eps = min(float(self.cfg.eps_abs), 1e-10) if narrow_command else float(self.cfg.eps_abs)
+                backend._eps_tight = eps
+                backend._eps_loose = eps if narrow_command else max(eps*100., 1e-4)
+                backend.qp.settings.eps_abs = eps
+                backend.qp.settings.eps_primal_inf = min(eps*.01, 1e-8)
+                backend.qp.settings.eps_dual_inf = min(eps*.01, 1e-8)
         self._last_command_twist_rows = np.zeros((0, self.kin.nv))
         self._last_command_twist_base = np.zeros((0, 6))
         self._last_command_twist_lower = command_lo

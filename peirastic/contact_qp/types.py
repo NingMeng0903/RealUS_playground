@@ -12,6 +12,7 @@ SCHEMA_VERSION = 1
 CONFIDENCE_FEATURE_VERSION = "confidence_column_centroid_v1"
 WEAK_SIDE_FEATURE_VERSION = "confidence_weakside_column_q25_v1"
 REGION_FEATURE_VERSION = "confidence_equal_regions_weighted_q25_v1"
+ECHO_FEATURE_VERSION = "nearfield_column_echo_v1"
 WINDOW_NAMES = ("left", "center", "right")
 REQUIRED_WINDOWS = (0, 2)
 
@@ -86,6 +87,11 @@ class ContactObservation:
     region_edges: np.ndarray | None = None
     region_feature_version: str | None = None
     region_layout_version: str | None = None
+    # Independent raw B-mode evidence; does not modify confidence policies.
+    echo_feature_version: str | None = None
+    nearfield_echo: np.ndarray | None = None
+    nearfield_echo_valid: np.ndarray | None = None
+    nearfield_echo_depth: np.ndarray | None = None
 
     def __post_init__(self):
         if self.schema_version != SCHEMA_VERSION or self.frame_seq < 0:
@@ -127,7 +133,7 @@ class ContactObservation:
         lr_valid.setflags(write=False)
         object.__setattr__(self, "confidence_lr_valid", lr_valid)
         if self.weakside_feature_version is None:
-            if self.confidence_lr is not None or lr_valid.any() or (self.timestamp_semantics is not None and self.region_feature_version is None):
+            if self.confidence_lr is not None or lr_valid.any() or (self.timestamp_semantics is not None and self.region_feature_version is None and self.echo_feature_version is None):
                 raise ValueError("weak-side evidence requires an explicit feature version")
         else:
             if not isinstance(self.weakside_feature_version, str) or not self.weakside_feature_version.strip():
@@ -164,6 +170,30 @@ class ContactObservation:
             object.__setattr__(self, "region_valid", flags)
             object.__setattr__(self, "region_edges", edges)
 
+        if self.echo_feature_version is None:
+            if any(v is not None for v in (self.nearfield_echo, self.nearfield_echo_valid, self.nearfield_echo_depth)):
+                raise ValueError("near-field echo requires an explicit feature version")
+        else:
+            if (not isinstance(self.echo_feature_version, str) or not self.echo_feature_version.strip()
+                    or self.timestamp_semantics != "effective_image_time"):
+                raise ValueError("near-field echo requires a version and effective image time")
+            raw = np.asarray(self.nearfield_echo)
+            if raw.ndim != 1 or len(raw) < 8:
+                raise ValueError("nearfield_echo requires at least eight columns")
+            echo = vector(raw, raw.shape, name="nearfield_echo")
+            if np.any((echo < 0) | (echo > 1)):
+                raise ValueError("nearfield_echo must be in [0,1]")
+            valid = np.asarray(self.nearfield_echo_valid)
+            if valid.shape != echo.shape or valid.dtype.kind != "b":
+                raise ValueError("nearfield_echo_valid must contain per-column boolean flags")
+            valid = valid.copy(); valid.setflags(write=False)
+            depth = vector(self.nearfield_echo_depth, (2,), name="nearfield_echo_depth")
+            if not 0 <= depth[0] < depth[1] <= 1:
+                raise ValueError("nearfield_echo_depth must be an ordered depth fraction")
+            object.__setattr__(self, "nearfield_echo", echo)
+            object.__setattr__(self, "nearfield_echo_valid", valid)
+            object.__setattr__(self, "nearfield_echo_depth", depth)
+
     @property
     def version(self):
         return self.registration_version, self.window_version, self.calibration_version
@@ -195,6 +225,12 @@ class ContactObservation:
                           region_valid=self.region_valid.tolist(), region_edges=self.region_edges.tolist(),
                           region_feature_version=self.region_feature_version,
                           region_layout_version=self.region_layout_version,
+                          timestamp_semantics=self.timestamp_semantics)
+        if self.echo_feature_version is not None:
+            result.update(echo_feature_version=self.echo_feature_version,
+                          nearfield_echo=self.nearfield_echo.tolist(),
+                          nearfield_echo_valid=self.nearfield_echo_valid.tolist(),
+                          nearfield_echo_depth=self.nearfield_echo_depth.tolist(),
                           timestamp_semantics=self.timestamp_semantics)
         return result
 

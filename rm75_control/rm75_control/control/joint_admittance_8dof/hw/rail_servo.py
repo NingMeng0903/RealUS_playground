@@ -1226,7 +1226,16 @@ class RailServoBridge:
             }
         return True
 
-    def commit_reservation(self) -> bool:
+    def commit_reservation(self, *, acknowledge=False, timeout_s=0.04) -> bool:
+        """Publish a reserved target; optionally await its device-worker result.
+
+        The default preserves the asynchronous scan/record contract. Handheld
+        transactions request acknowledgement: a successful drive write, or a
+        completed drive call retaining the already-written quantized command.
+        Waiting can reduce the handheld update rate to the rail worker rate.
+        """
+        if acknowledge and (not math.isfinite(timeout_s) or not 0 < timeout_s <= .04):
+            raise ValueError('rail acknowledgement timeout must be in (0,.04] seconds')
         with self._lock:
             # Recheck states that can change while the arm frame is in flight.
             if (
@@ -1248,6 +1257,40 @@ class RailServoBridge:
                 float(reserved["rx_mono"]),
             )
             self._reserved = None
+            published_seq = int(self._command_seq)
+            published_hold_count = int(self._hold_count)
+        if acknowledge:
+            deadline = time.monotonic() + float(timeout_s)
+            self.last_publication_receipt = None
+            while time.monotonic() < deadline:
+                with self._lock:
+                    sample = self._servo_sample
+                    if (self._stop.is_set() or self._abort.is_set() or self._panic
+                            or not self._armed or not self._calibrated
+                            or int(self._hold_count) != published_hold_count
+                            or int(self._command_seq) != published_seq):
+                        return False
+                    # A servo sample is installed only after set_velocity_rpm
+                    # returns successfully. Processing alone before that call
+                    # must not be mistaken for device acknowledgement.
+                    if int(sample.command_processed_seq) == published_seq:
+                        if (not sample.follow or not sample.armed or sample.panic
+                                or not sample.feedback_valid or int(sample.drive_write_seq) <= 0):
+                            return False
+                        self.last_publication_receipt = dict(
+                            command_seq=published_seq,
+                            command_written_seq=int(sample.command_written_seq),
+                            drive_write_seq=int(sample.drive_write_seq),
+                            command_write_mono_s=float(sample.command_write_mono_s),
+                            completion_mono_s=time.monotonic(),
+                            outcome=('written' if int(sample.command_written_seq) == published_seq
+                                     else 'retained_device_command'),
+                            velocity_command_m_s=float(sample.v_cmd_m_s),
+                            hold_reason=str(sample.hold_reason), feedback_valid=bool(sample.feedback_valid),
+                        )
+                        return True
+                time.sleep(.001)
+            return False
         return True
 
     def abort_reservation(self) -> None:

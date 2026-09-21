@@ -1,12 +1,13 @@
-"""Pad-mode visual ωy guide, plus optional UltraPoC α on the stick velocity.
+"""Pad-mode visual ωy guide, plus UltraPoC α and scan-style contact fusion.
 
-The pad never runs the outer CAM-QP. ``pad_visual=True`` only injects the
-three-window angular task. ``pad_visual.progress`` adds the region first-moment
-request, preferred-scan α, and the same region delay KF as the planned scan.
+The pad never owns inner publication. ``pad_visual.progress`` supplies the
+region first-moment request and preferred-scan α; HybridTffOuter runs the
+same delay-KF COP QP as the phantom Lissajous scan.
 """
 from __future__ import annotations
 
 import time
+from functools import wraps
 from pathlib import Path
 
 import numpy as np
@@ -31,15 +32,15 @@ def pad_hybrid_payload(
     label=None,
     log_path=None,
     force_profile="icra",
+    contact_config=None,
 ) -> dict:
     """L3 TRACK_HYBRID payload for pad speed-mode scanning.
 
     ``legacy`` is the old pad hybrid: TFF tool-Z plus optional icra
     torque_tilt My→ωy. ``ac2d`` is the comparison Z+My law.
-    ``ultrapoc`` keeps that split, slews stick α from the delayed-KF
-    region law, and adds a gated image ωy on top of My.
-    ``log_path`` is a jsonl path or a dict with at least ``path``; the
-    controller writes stick / α / My / image samples.
+    ``ultrapoc`` keeps that 994742bb split for install, then replaces the
+    additive My⊕image sum with the scan delay-KF COP / α / visual QP.
+    ``log_path`` is a jsonl path or a dict with at least ``path``.
     """
 
     name = str(law or "legacy").lower()
@@ -143,12 +144,14 @@ def wrap_pad_hybrid_log(phase, payload):
     control_id = 0
     previous_exit = phase.on_exit
 
+    @wraps(original_sample)
     def sample(t_s, current_pose, f_ext, **kwargs):
         nonlocal control_id
         twist = original_sample(t_s, current_pose, f_ext, **kwargs)
         control_id += 1
         guide = getattr(baseline, "pad_visual", None)
         facts = dict(getattr(guide, "last_facts", None) or {})
+        facts.update(getattr(baseline, "last_facts", None) or {})
         observation = None
         receiver = getattr(guide, "_receiver", None) if guide is not None else None
         if receiver is not None:
@@ -187,6 +190,16 @@ def wrap_pad_hybrid_log(phase, payload):
             omega_visual=facts.get("visual_omega_rad_s"),
             omega_visual_target=facts.get("visual_request_rad_s"),
             omega_cmd=float(command[4]),
+            command_semantics=(
+                "delay_kf_cop_v1"
+                if (facts.get("allocation_diagnostics") or {}).get("allocation_policy") == "delay_kf_cop_v1"
+                else "legacy_additive"
+            ),
+            frame_seq=facts.get("frame_seq"),
+            effective_image_time_s=facts.get("effective_time_s"),
+            cop_m=facts.get("cop_m"),
+            cop_valid=facts.get("cop_valid"),
+            cop_reason=facts.get("cop_reason"),
             tau_y=getattr(baseline, "last_tau_y", None),
             tau_error_y=getattr(baseline, "last_tau_error_y", None),
             visual_reason=facts.get("visual_reason"),
@@ -197,12 +210,20 @@ def wrap_pad_hybrid_log(phase, payload):
             image_age_s=image_age,
             region_quality=region_quality,
             max_deficit=facts.get("max_deficit"),
+            quality_reference=facts.get("quality_reference"),
+            deficit_mode=facts.get("deficit_mode"),
             bad_region_indices=facts.get("bad_region_indices"),
             pose_tcp_base=current_pose,
         )
         return twist
 
     baseline.sample = sample
+    # The loop caches explicit keyword names for feedback injection.
+    baseline.__dict__.pop("_sample_params", None)
+    lifecycle = getattr(baseline, "command_lifecycle", None)
+    if lifecycle is not None:
+        lifecycle.record_sink = sink
+        sink.emit("pad_configuration", **lifecycle.configuration_snapshot())
 
     def on_exit():
         try:
@@ -295,11 +316,15 @@ class PadVisualGuide:
         self._hold_omega = 0.0
         self._hold_until_s = None
         if progress:
-            # Discrete c_min gate for left/right switch. A small on-step makes
-            # the crossing feel like the old threshold; amplitude still grows
-            # with deficit up to the cap. No peak hold (181143 bounced).
+            # Relative good-side deficit: ω and α still use the first-moment
+            # plant, but ref is this frame's better half, not phantom c_min.
+            # Uniform tissue/gel stays on My*=0. No peak hold (181143 bounced).
             raw_ref = qp.get("pad_rocking_reference")
             self.rocking_reference = None if raw_ref is None else float(raw_ref)
+            self.deficit_mode = str(qp.get("pad_deficit_mode", "relative")).lower()
+            self.relative_alpha_span = float(qp.get("pad_relative_alpha_span", 0.15))
+            self.balance_deadband = deadband
+            self.omega_step_deficit = float(qp.get("pad_omega_step_deficit", 0.08))
             self.repair_speed_m_s = float(qp.get("pad_repair_speed_m_s", self.repair_speed_m_s))
             self.alpha_min = float(qp.get("pad_alpha_min", 0.25))
             self.alpha_min_at_quality = qp.get(
@@ -308,13 +333,17 @@ class PadVisualGuide:
             self.ramp_s = float(qp.get("pad_alpha_ramp_s", 0.12))
             self.ramp_up_s = float(qp.get("pad_alpha_ramp_up_s", 0.30))
             self.omega_step_rad_s = float(qp.get("pad_omega_step_rad_s", 0.06))
-            self.brake_on_sided = bool(qp.get("pad_brake_on_sided", True))
+            self.brake_on_sided = bool(qp.get("pad_brake_on_sided", False))
             pad_max = qp.get("pad_max_visual_omega_rad_s")
             self.max_visual_omega_rad_s = float(pad_max) if pad_max is not None else 0.16
             self.visual_hold_s = float(qp.get("pad_visual_hold_s", 0.0))
             self.visual_hold_floor = float(qp.get("pad_visual_hold_omega_rad_s", 0.03))
         else:
             self.rocking_reference = None
+            self.deficit_mode = "absolute"
+            self.relative_alpha_span = 0.15
+            self.balance_deadband = 0.0
+            self.omega_step_deficit = 0.0
             self.max_visual_omega_rad_s = scan_max
             self.ramp_s = float(qp.get("pad_alpha_ramp_s", qp.get("path_ramp_s", 0.4)))
             self.ramp_up_s = self.ramp_s
@@ -520,6 +549,8 @@ class PadVisualGuide:
         reason = "no_contact"
         region_quality = None if quality is None else np.asarray(quality, dtype=float)
         max_deficit = None
+        quality_reference = None
+        task = None
         bad_indices = ()
         image_age = kf_facts.get("kf_age_s")
         if image_age is None and observation is not None:
@@ -545,7 +576,10 @@ class PadVisualGuide:
                     alpha_min=self.alpha_min,
                     alpha_min_at_quality=self.alpha_min_at_quality,
                     max_request_rad_s=self.max_visual_omega_rad_s,
-                    rocking_reference=self.rocking_reference,
+                    rocking_reference=None if self.deficit_mode == "relative" else self.rocking_reference,
+                    deficit_mode=self.deficit_mode,
+                    balance_deadband=self.balance_deadband if self.deficit_mode == "relative" else 0.0,
+                    relative_alpha_span=self.relative_alpha_span,
                 )
             except ValueError:
                 reason = "version_mismatch"
@@ -558,16 +592,17 @@ class PadVisualGuide:
                     region_quality = np.asarray(task.region_quality, dtype=float)
                 if task.region_deficits is not None:
                     max_deficit = float(np.max(task.region_deficits))
+                quality_reference = task.quality_reference
                 bad_indices = tuple(task.bad_region_indices)
                 if task.valid:
                     self.alpha_target = float(task.alpha_preferred)
                     self.omega_target = float(task.request_rad_s)
-                    if (self.omega_step_rad_s > 0.0 and task.reason == "regional_deficit_moment"
+                    sided = task.reason == "regional_deficit_moment"
+                    deep = max_deficit is not None and max_deficit >= self.omega_step_deficit
+                    if (self.omega_step_rad_s > 0.0 and sided and deep
                             and 0.0 < abs(self.omega_target) < self.omega_step_rad_s):
                         self.omega_target = float(np.copysign(self.omega_step_rad_s, self.omega_target))
-                    if self.brake_on_sided and task.reason == "regional_deficit_moment":
-                        # Fast scan cannot wait for the operator to stop: a
-                        # sided hole already has a rocking direction, so dwell.
+                    if self.brake_on_sided and sided and deep:
                         self.alpha_target = self.alpha_min
                     reason = self._apply_visual_hold(now_s, task.reason)
                 else:
@@ -600,6 +635,8 @@ class PadVisualGuide:
             visual_reason=reason,
             visual_policy="pad_ultrapoc_delay_kf" if self._image_kf is not None else "pad_ultrapoc_gated_step",
             rocking_reference=self.rocking_reference,
+            deficit_mode=self.deficit_mode,
+            quality_reference=quality_reference,
             omega_step_rad_s=self.omega_step_rad_s,
             alpha=self.alpha_cmd, alpha_target=self.alpha_target,
             visual_request_rad_s=self.omega_target, visual_omega_rad_s=self.omega_cmd,

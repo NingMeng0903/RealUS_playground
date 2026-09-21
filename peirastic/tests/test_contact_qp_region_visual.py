@@ -2,7 +2,9 @@ import numpy as np
 import pytest
 
 from peirastic.contact_qp.geometry import point_normal_row
-from peirastic.contact_qp.region_visual import preferred_scan_alpha, region_visual_request
+from peirastic.contact_qp.region_visual import (
+    better_half_reference, preferred_relative_alpha, preferred_scan_alpha, region_visual_request,
+)
 from peirastic.contact_qp.types import ProbeGeometry
 
 
@@ -118,3 +120,38 @@ def test_uniform_deficit_does_not_raise_force_or_invent_torque_direction():
         assert task.request_rad_s==0.
         assert task.alpha_preferred<1.
         assert not any('force' in field for field in task.to_dict())
+
+
+def _relative(quality, **kwargs):
+    n = len(quality)
+    return region_visual_request(
+        quality, np.ones(n, dtype=bool), np.linspace(0., 1., n + 1),
+        ProbeGeometry.synthetic(image_x_sign=-1), c_min=0.97, repair_speed_m_s=0.09,
+        max_request_rad_s=0.16, deficit_mode='relative', balance_deadband=0.03,
+        relative_alpha_span=0.15, **kwargs,
+    )
+
+
+def test_relative_deficit_adapts_to_tissue_and_phantom_and_still_emits_omega_and_alpha():
+    human = np.linspace(0.867, 0.901, 10)
+    tissue = _relative(human)
+    assert tissue.deficit_mode == 'relative'
+    assert tissue.quality_reference == pytest.approx(better_half_reference(human))
+    assert tissue.request_rad_s == pytest.approx(0.0)
+    assert tissue.alpha_preferred == pytest.approx(1.0)
+    assert tissue.reason == 'all_regions_sufficient'
+
+    uniform = _relative(np.full(10, 0.72))
+    assert uniform.request_rad_s == pytest.approx(0.0)
+    assert uniform.alpha_preferred == pytest.approx(1.0)
+
+    phantom = np.full(10, 0.995)
+    phantom[0] = 0.70
+    hole = _relative(phantom)
+    assert hole.reason == 'regional_deficit_moment'
+    assert abs(hole.request_rad_s) > 0.0
+    assert hole.alpha_preferred < 1.0
+    assert hole.quality_reference == pytest.approx(better_half_reference(phantom))
+
+    assert preferred_relative_alpha(0.0, 0.15) == pytest.approx(1.0)
+    assert preferred_relative_alpha(0.15, 0.15) == pytest.approx(0.25)

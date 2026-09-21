@@ -227,14 +227,18 @@ class TorqueTilt:
         self._pending_command = (after, self.theta_tilt, float(kwargs["dt_s"]))
         return proposed
 
-    def commit_applied(self, omega_y: float) -> None:
+    def commit_applied(self, omega_y: float, *, dt_s: float | None = None) -> None:
         if self._pending_command is None:
             raise RuntimeError("no tilt proposal to commit")
         omega = float(omega_y)
         if not math.isfinite(omega):
             raise ValueError("accepted omega_y must be finite")
         after, origin, dt = self._pending_command
-        if omega == after[0]:
+        if dt_s is not None:
+            if not math.isfinite(dt_s) or dt_s <= 0:
+                raise ValueError('accepted angular interval must be finite and positive')
+            dt = float(dt_s)
+        if dt_s is None and omega == after[0]:
             self._w, self.omega_y, self.theta_tilt, self.stuck = after
         else:
             self._w = self.omega_y = omega
@@ -513,10 +517,14 @@ class LegacyForceWithTilt:
 
     def commit_applied(
         self, final_force_twist, *, final_full_twist=None, accepted_normal_z=None,
+        accepted_angular_dt_s=None,
     ) -> None:
         final = finite_twist(final_force_twist, "accepted force twist")
         if self.tilt._pending_command is None:
             raise RuntimeError("no tilt proposal to commit")
+        if accepted_angular_dt_s is not None and (
+                not math.isfinite(accepted_angular_dt_s) or accepted_angular_dt_s <= 0):
+            raise ValueError('accepted angular interval must be finite and positive')
         if accepted_normal_z is None:
             accepted_normal_z = (
                 self._pending_normal_z
@@ -527,7 +535,7 @@ class LegacyForceWithTilt:
             final, final_full_twist=final_full_twist,
             accepted_normal_z=accepted_normal_z,
         )
-        self.tilt.commit_applied(final[self.tilt.cfg.axis])
+        self.tilt.commit_applied(final[self.tilt.cfg.axis], dt_s=accepted_angular_dt_s)
 
     def abort(self) -> None:
         self.z_law.abort()

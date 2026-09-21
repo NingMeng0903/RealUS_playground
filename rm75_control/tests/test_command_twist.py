@@ -103,3 +103,19 @@ def test_rail_does_not_chase_its_own_execution(backend):
             rail_exec+=.3*(step.qdot[0]-rail_exec)
             previous=final
     finally:close(obj)
+
+
+def test_narrow_interval_precision_is_restored_for_ordinary_commands():
+    obj = controller('python')
+    try:
+        obj.update(np.zeros(6), .005, q_meas=Q, rail_exec_vel_m_s=0.,
+            command_twist_rows_base=np.eye(6)[[4]], command_twist_lower=[0.], command_twist_upper=[0.],
+            auto_commit=False, commit_history=False)
+        assert obj.core.backend._eps_tight <= 1e-10
+        assert obj.core._backend_qp2._eps_tight <= 1e-10
+        obj.abort_publication()
+        obj.update(np.zeros(6), .005, q_meas=Q, auto_commit=False, commit_history=False)
+        assert obj.core.backend._eps_tight == obj.cfg.qp.eps_abs
+        assert obj.core._backend_qp2._eps_tight == obj.cfg.qp.eps_abs
+    finally:
+        close(obj)

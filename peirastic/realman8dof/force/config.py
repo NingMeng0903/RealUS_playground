@@ -48,6 +48,7 @@ _SKIP_PAYLOAD = {
     "move_kp",
     "pad_visual",
     "pad_log",
+    "pad_contact",
 }
 
 

@@ -1,0 +1,269 @@
+{
+  "session": "apps/logs/pad_hybrid/20260921_144554",
+  "frames": 1978,
+  "stride": 2,
+  "processing_delay_s": 0.077,
+  "image_age_s": 0.22896365053143763,
+  "alignment": "modelled capture+processing delay; nearest preceding original control sample",
+  "temporal_split": "first half calibration; second half validation; no parameter fitting in this script",
+  "caveat": "Offline evidence only. Force/stick are the original recorded trajectory, not a new-policy physical response.",
+  "segments": {
+    "calibration": {
+      "contact_unavailable": 24,
+      "bilateral_missing_echo": 225,
+      "direction_unconfirmed": 248,
+      "force_unstable": 52,
+      "unilateral_missing_echo": 382,
+      "baseline_warming": 58
+    },
+    "validation": {
+      "baseline_warming": 86,
+      "direction_unconfirmed": 198,
+      "bilateral_missing_echo": 117,
+      "force_unstable": 40,
+      "unilateral_missing_echo": 508,
+      "recovery_confirming": 36,
+      "healthy": 4
+    }
+  },
+  "baseline_ready_frames": 729,
+  "selected": [
+    {
+      "row": 1132,
+      "time_s": 37.952791252999305,
+      "segment": "calibration",
+      "reason": "unilateral_missing_echo",
+      "alpha_target": 0.0,
+      "omega_request_rad_s": -0.0336390360422364,
+      "contact": true,
+      "force_n": 3.976973202552869,
+      "stick_m_s": 1.6531752572122382e-12,
+      "image_age_s": 0.22896365053202317,
+      "q_min": 0.9753695363191858,
+      "echo_min": 0.027503383508285472,
+      "dark_columns": "[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25]",
+      "baseline_ready": false,
+      "selected": true
+    },
+    {
+      "row": 1882,
+      "time_s": 63.101861713999824,
+      "segment": "calibration",
+      "reason": "unilateral_missing_echo",
+      "alpha_target": 0.0,
+      "omega_request_rad_s": 0.014925365775603442,
+      "contact": true,
+      "force_n": 3.897117348702923,
+      "stick_m_s": 1.8936516232171312e-05,
+      "image_age_s": 0.22896365053202317,
+      "q_min": 0.994951516483801,
+      "echo_min": 0.019053896811249638,
+      "dark_columns": "[100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118]",
+      "baseline_ready": false,
+      "selected": true
+    },
+    {
+      "row": 1939,
+      "time_s": 65.01191090999964,
+      "segment": "calibration",
+      "reason": "baseline_warming",
+      "alpha_target": 0.0,
+      "omega_request_rad_s": 0.0,
+      "contact": true,
+      "force_n": 3.7378421545888303,
+      "stick_m_s": 0.05040214002936419,
+      "image_age_s": 0.22896365053202317,
+      "q_min": 0.9954181655671988,
+      "echo_min": 0.06134878193701722,
+      "dark_columns": "[]",
+      "baseline_ready": false,
+      "selected": true
+    },
+    {
+      "row": 2128,
+      "time_s": 71.35146497299957,
+      "segment": "validation",
+      "reason": "direction_unconfirmed",
+      "alpha_target": 0.0,
+      "omega_request_rad_s": 0.0,
+      "contact": true,
+      "force_n": 4.025606874245589,
+      "stick_m_s": 0.060130293261033904,
+      "image_age_s": 0.22896365053202317,
+      "q_min": 0.9435933155448725,
+      "echo_min": 0.031194295900178214,
+      "dark_columns": "[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36]",
+      "baseline_ready": false,
+      "selected": true
+    },
+    {
+      "row": 2684,
+      "time_s": 89.99686367300001,
+      "segment": "validation",
+      "reason": "unilateral_missing_echo",
+      "alpha_target": 0.0,
+      "omega_request_rad_s": 0.016246566446046884,
+      "contact": true,
+      "force_n": 3.9330119371209937,
+      "stick_m_s": 2.9961650482161116e-06,
+      "image_age_s": 0.22896365053202317,
+      "q_min": 0.9919897131183093,
+      "echo_min": 0.11706278470984333,
+      "dark_columns": "[121, 122, 123, 124, 125, 126, 134, 135, 136, 137, 138, 139, 140, 141, 142, 143, 144]",
+      "baseline_ready": true,
+      "selected": true
+    },
+    {
+      "row": 3025,
+      "time_s": 101.434265633,
+      "segment": "validation",
+      "reason": "direction_unconfirmed",
+      "alpha_target": 0.0,
+      "omega_request_rad_s": 0.0,
+      "contact": true,
+      "force_n": 3.9714638658716557,
+      "stick_m_s": 1.2489754216409314e-05,
+      "image_age_s": 0.22896365053202317,
+      "q_min": 0.9918544810381533,
+      "echo_min": 0.03508615567439096,
+      "dark_columns": "[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42]",
+      "baseline_ready": true,
+      "selected": true
+    }
+  ],
+  "configuration": {
+    "geometry": {
+      "half_length_m": 0.025,
+      "T_tcp_face": [
+        [
+          1,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          1,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          1
+        ]
+      ],
+      "image_x_sign": -1,
+      "face_normal_convention": "into_contact",
+      "calibration_version": "probe50_center_tcp_user_20260910_v1",
+      "verified": true
+    },
+    "feature_endpoint": "tcp://127.0.0.1:17361",
+    "feature": {
+      "required": true,
+      "dropout_policy": "pause_visual",
+      "registration": {
+        "source_id": "realus.us_framegrab",
+        "crop_box": [
+          753,
+          1417,
+          154,
+          880
+        ],
+        "hflip": false,
+        "clock_domain": "host_monotonic",
+        "already_aligned": false
+      },
+      "config": {
+        "algorithm_version": "randomwalk_welleweerd2020_v3",
+        "width": 145,
+        "region_count": 10,
+        "height": 100,
+        "attenuation": 2.0,
+        "contrast": 90.0,
+        "lateral_penalty": 0.03,
+        "min_weight": 1e-10,
+        "camp_weight_epsilon": 1e-05,
+        "near_depth": [
+          0.0,
+          0.22
+        ],
+        "lateral_windows": [
+          [
+            0.04,
+            0.34
+          ],
+          [
+            0.34,
+            0.66
+          ],
+          [
+            0.66,
+            0.96
+          ]
+        ],
+        "effective_delay_s": 0.15196365053143765,
+        "calibration_version": "probe50_center_tcp_user_20260910_v1",
+        "image_x_sign": -1,
+        "low_confidence_threshold": 0.97,
+        "unknown_scanline_range": 1.0
+      },
+      "window_version": "49eef78ea55b9020e299",
+      "registration_version": "db4c7447b3c40983e6b6",
+      "quality_policy_version": "nearfield_equal_regions_weighted_q25_v1_cmin097",
+      "c_min": 0.97,
+      "verified": true,
+      "confidence_feature_version": "confidence_column_centroid_v1",
+      "weakside_feature_version": "confidence_weakside_column_q25_v1",
+      "region_feature_version": "confidence_equal_regions_weighted_q25_v1",
+      "region_layout_version": "82988106444c09bb21cf"
+    },
+    "image_kf": {
+      "channels": 10,
+      "observation_kind": "regions",
+      "q": 0.012965973869995408,
+      "r": 7.747925143660531e-05,
+      "max_age_s": 0.3,
+      "history_s": 0.3,
+      "initial_rate_variance": 1.0
+    },
+    "pad": {
+      "policy": "pad_contact_v1",
+      "normal_max_m_s": 0.015,
+      "max_visual_omega_rad_s": 0.1,
+      "angular_max_rad_s": 0.28,
+      "angular_acceleration_rad_s2": 2.0,
+      "cop_min_force_n": 0.8,
+      "cop_max_m": 0.025,
+      "repair_speed_cap_m_s": 0.01,
+      "repair_pause_after_s": 0.5,
+      "recover_hold_s": 0.25,
+      "alpha_ramp_down_s": 0.12,
+      "alpha_ramp_up_s": 0.3,
+      "max_image_age_s": 0.3,
+      "max_feedback_age_s": 0.08,
+      "command_max_age_s": 0.05,
+      "hard_stop_n": 6.0,
+      "evidence": {
+        "near_depth": [
+          0.04,
+          0.22
+        ],
+        "baseline_hold_s": 1.0,
+        "baseline_tau_s": 5.0,
+        "noise_sigma": 3.0,
+        "minimum_dark_columns": 2,
+        "echo_ratio": 0.45,
+        "absolute_echo_floor": 0.035,
+        "direction_confirm_frames": 2
+      }
+    }
+  }
+}

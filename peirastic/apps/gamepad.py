@@ -8,11 +8,12 @@ outrank the sticks; R3 e-stop still wins. When the pad does not own
 the mode it must not write zeros over the command twist bus.
 
 L3 toggles force-velocity hybrid. Default is the old TFF tool-Z plus
-icra torque_tilt My. ``--hybrid-law ultrapoc`` adds delayed-KF α on the
-stick and image ωy on top of My. ``--hybrid-log`` writes a jsonl of
-stick, α, moment, and image on each L3. Y starts Window-8 SMPL-X
-capture. B runs the R_SUPFEMV program. Motion requires a live
-Bluetooth pad.
+icra torque_tilt My. ``--hybrid-law ultrapoc`` uses the 994742bb handheld
+install, then the phantom Lissajous delay-KF QP for COP / My / α / image.
+``--hybrid-log`` writes a jsonl of stick, α, moment, and image on each L3. ``--analysis`` also records
+ultrasound JPEG/TCP/force with the existing ICRA raw.h5 next to that
+jsonl. Y starts Window-8 SMPL-X capture. B runs the R_SUPFEMV
+program. Motion requires a live Bluetooth pad.
 """
 
 from __future__ import annotations
@@ -46,6 +47,10 @@ from peirastic.core.ipc import CommandClient, Status, TwistBus
 from peirastic.core.modes import Mode, ModeRequest, try_mode
 from peirastic.core.session import pad_may_drive
 from peirastic.realman8dof.force.config import desired_z_n
+from peirastic.realman8dof.modes.pad_analysis import (
+    PadAnalysisRecorder,
+    allocate_pad_analysis_dir,
+)
 from peirastic.realman8dof.modes.pad_visual import (
     PAD_HYBRID_LAWS,
     allocate_pad_log_path,
@@ -79,7 +84,11 @@ def _install_mode(client: CommandClient, req: ModeRequest) -> None:
     seq = client.set_mode(req)
     ret = client.wait_installed(seq, req.mode)
     if ret != 0:
-        raise RuntimeError(f"{req.mode.name} install failed ({ret})")
+        try:
+            detail = str(client.snapshot().get('msg') or '')
+        except Exception:
+            detail = ''
+        raise RuntimeError(f"{req.mode.name} install failed ({ret})" + (f": {detail}" if detail else ''))
 
 
 def pad_link_event(prev: bool | None, live: bool) -> str | None:
@@ -94,6 +103,9 @@ def pad_link_event(prev: bool | None, live: bool) -> str | None:
 
 def pad_hybrid_active(snapshot: dict) -> bool:
     """Resync L3 after an external program has returned control to the pad."""
+    status = snapshot.get('status')
+    if status is not None and status != int(Status.RUNNING):
+        return False
     return (try_mode(snapshot.get("mode")) == Mode.TRACK_HYBRID
             and "pad" in str(snapshot.get("msg") or "").lower())
 
@@ -143,8 +155,10 @@ def main() -> int:
         choices=PAD_HYBRID_LAWS,
         default="legacy",
         help="L3 hybrid: legacy = TFF Z + tilt My (default); "
-             "ultrapoc = α·v* and image/My; ac2d = comparison Z+My",
+             "ultrapoc = scan delay-KF COP/My/α/image QP; ac2d = comparison Z+My",
     )
+    parser.add_argument("--pad-contact-config", default=None,
+                        help="independent ultrapoc gamepad contact YAML (default: pad_contact.yaml)")
     parser.add_argument(
         "--quiet",
         action="store_true",
@@ -175,6 +189,12 @@ def main() -> int:
         help="record pad-hybrid jsonl (stick, α, My, image ω, regions). "
              "default apps/logs/pad_hybrid/<stamp>.jsonl; new file each L3",
     )
+    parser.add_argument(
+        "--analysis",
+        action="store_true",
+        help="each L3 also records ultrasound JPEG+TCP+force (ICRA raw.h5) "
+             "next to the pad jsonl; implies --hybrid-log",
+    )
     args = parser.parse_args()
     quiet = bool(args.quiet) and not bool(args.verbose)
     twist_cfg = GamepadTwistConfig()
@@ -186,7 +206,18 @@ def main() -> int:
         )
     fz = float(args.desired_z) if args.desired_z is not None else desired_z_n()
     hybrid_law = str(args.hybrid_law)
+    analysis = bool(args.analysis)
+    if analysis and args.hybrid_log is None:
+        args.hybrid_log = "auto"
     log_requested = None
+    analysis_recorder = None
+    if analysis:
+        analysis_recorder = PadAnalysisRecorder(repo=_REPO, shm_prefix=str(args.shm_prefix))
+        print(
+            "[PAD-LOG] analysis mode: each L3 writes pad.jsonl + raw.h5 "
+            "(JPEG/TCP/force) under apps/logs/pad_hybrid/<stamp>/",
+            flush=True,
+        )
     if args.hybrid_log is not None:
         requested = args.hybrid_log
         if str(requested).strip().lower() in ("", "auto"):
@@ -198,16 +229,17 @@ def main() -> int:
             log_requested = log_requested.resolve()
         print(f"[PAD-LOG] L3 hybrid jsonl → {log_requested} (new file each L3)", flush=True)
 
-    def make_hybrid_payload():
+    def make_hybrid_payload(jsonl_path=None):
         log_path = None
-        if log_requested is not None:
-            allocated = allocate_pad_log_path(log_requested)
+        if jsonl_path is not None or log_requested is not None:
+            allocated = Path(jsonl_path) if jsonl_path is not None else allocate_pad_log_path(log_requested)
             log_path = {
                 "path": str(allocated),
                 "hybrid_law": hybrid_law,
                 "trans_m_s": float(twist_cfg.trans_m_s),
                 "rot_rad_s": float(twist_cfg.rot_rad_s),
                 "hold": bool(args.hold),
+                "analysis": analysis,
             }
             print(f"[PAD-LOG] writing {allocated}", flush=True)
         return pad_hybrid_payload(
@@ -215,7 +247,36 @@ def main() -> int:
             desired_z=fz,
             log_path=log_path,
             force_profile=args.force_profile,
+            contact_config=args.pad_contact_config,
         )
+
+    def begin_analysis_l3():
+        if analysis_recorder is None:
+            return None
+        # Controller faults can end hybrid before another L3 arrives. Always
+        # retire that session before allocating a new recorder.
+        end_analysis_l3()
+        directory = allocate_pad_analysis_dir(_REPO)
+        jsonl = directory / "pad.jsonl"
+        print(f"[PAD-LOG] analysis session {directory}", flush=True)
+        analysis_recorder.start(
+            directory,
+            extra={
+                "hybrid_law": hybrid_law,
+                "desired_z": fz,
+                "pad_jsonl": str(jsonl),
+            },
+        )
+        print(f"[PAD-LOG] ultrasound raw.h5 → {analysis_recorder.path}", flush=True)
+        return jsonl
+
+    def end_analysis_l3():
+        if analysis_recorder is None:
+            return
+        path = analysis_recorder.path
+        analysis_recorder.stop()
+        if path is not None:
+            print(f"[PAD-LOG] closed ultrasound {path}", flush=True)
     prefix = str(args.shm_prefix)
     client = CommandClient(prefix=prefix)
     twist_bus = TwistBus(prefix=prefix, create=False)
@@ -229,7 +290,7 @@ def main() -> int:
     if not quiet:
         print(
             f"[STATE] L3 hybrid law={hybrid_law} Fz*={fz:.2f}N "
-            f"(legacy=TFF Z+tilt My; ultrapoc=slew α·v* + My⊕image)",
+            f"(legacy=TFF Z+tilt My; ultrapoc=joint COP/visual allocation)",
             flush=True,
         )
         if args.no_capture_y:
@@ -281,6 +342,10 @@ def main() -> int:
             program = program_is_running()
             tel = client.snapshot()
             hybrid = pad_hybrid_active(tel)
+            if analysis_recorder is not None:
+                closed = analysis_recorder.close_if_inactive(hybrid)
+                if closed is not None:
+                    print(f"[PAD-LOG] closed ultrasound {closed} (hybrid exited)", flush=True)
             pad_drive = live and pad_may_drive(
                 int(tel.get("mode") or 0),
                 program=program,
@@ -383,12 +448,18 @@ def main() -> int:
             )
             if pad_drive and fire_l3:
                 hybrid = not hybrid
+                jsonl_path = None
                 try:
                     if hybrid:
-                        _install_mode(client, ModeRequest(Mode.TRACK_HYBRID, make_hybrid_payload()))
+                        if analysis:
+                            jsonl_path = begin_analysis_l3()
+                        _install_mode(client, ModeRequest(Mode.TRACK_HYBRID, make_hybrid_payload(jsonl_path)))
                     else:
                         _install_mode(client, ModeRequest(vel_mode, {"filter": False}))
+                        end_analysis_l3()
                 except Exception as exc:
+                    if hybrid:
+                        end_analysis_l3()
                     hybrid = not hybrid
                     name = "TRACK_HYBRID" if not hybrid else vel_mode.name
                     print(f"[MODE] {name} install failed: {exc}", flush=True)
@@ -400,7 +471,7 @@ def main() -> int:
                 if hybrid:
                     if hybrid_law == "ultrapoc":
                         print(
-                            f"[MODE] TRACK_HYBRID pad ultrapoc delay-KF α·v + My⊕image  Z={fz:.2f}N",
+                            f"[MODE] TRACK_HYBRID pad ultrapoc scan COP/My/α QP  Z={fz:.2f}N",
                             flush=True,
                         )
                     elif hybrid_law == "ac2d":
@@ -434,6 +505,8 @@ def main() -> int:
         print("[STOP] interrupted", flush=True)
         return 0
     finally:
+        if analysis_recorder is not None:
+            analysis_recorder.stop()
         src.close()
         twist_bus.close()
         client.close()

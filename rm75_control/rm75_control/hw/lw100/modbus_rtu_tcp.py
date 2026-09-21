@@ -88,7 +88,10 @@ class ModbusRtuTcpClient:
     def __init__(self, config: ModbusRtuTcpConfig) -> None:
         self.config = config
         self._sock: socket.socket | None = None
-        # One TCP/RTU link — all callers (rail worker, safety, start) must serialize.
+        # Serialize complete RTU transactions, including receive and recovery.
+        # Socket ownership has a separate lock so emergency close can interrupt
+        # a blocked receive without waiting for the transaction to finish.
+        self._transaction_lock = threading.RLock()
         self._io_lock = threading.RLock()
 
     def __enter__(self) -> ModbusRtuTcpClient:
@@ -154,7 +157,14 @@ class ModbusRtuTcpClient:
     def recover(self) -> None:
         """Drain + short quiet period after a framing error."""
         with self._io_lock:
-            if self._sock is None:
+            sock = self._sock
+        with self._transaction_lock:
+            self._recover_on(sock)
+
+    def _recover_on(self, sock: socket.socket | None) -> None:
+        """Recover only the connection belonging to the failed transaction."""
+        with self._io_lock:
+            if sock is None or self._sock is not sock:
                 return
             try:
                 self._drain_rx()
@@ -162,7 +172,7 @@ class ModbusRtuTcpClient:
                 pass
         time.sleep(max(0.005, float(self.config.inter_frame_delay_s) * 3.0))
         with self._io_lock:
-            if self._sock is None:
+            if self._sock is not sock:
                 return
             try:
                 self._drain_rx()
@@ -174,6 +184,16 @@ class ModbusRtuTcpClient:
         return self._send_receive(request)
 
     def _send_receive(self, request: bytes) -> bytes:
+        # Bind even queued requests to their original connection. An emergency
+        # reconnect must invalidate a command waiting behind another receive.
+        with self._io_lock:
+            sock = self._sock
+        with self._transaction_lock:
+            return self._send_receive_serialized(request, transaction_sock=sock)
+
+    def _send_receive_serialized(
+        self, request: bytes, *, transaction_sock: socket.socket | None
+    ) -> bytes:
         req = append_crc(request)
         expected = _expected_response_len(request)
         last_err: Exception | None = None
@@ -183,14 +203,20 @@ class ModbusRtuTcpClient:
                 with self._io_lock:
                     if self._sock is None:
                         raise ModbusRtuError("not connected")
-                    self._drain_rx()
-                    self._sock.sendall(req)
+                    if self._sock is not transaction_sock:
+                        raise ModbusRtuError("connection changed during transaction")
                     sock = self._sock
-                # Recv OUTSIDE the lock so close()/Ctrl+C can shutdown the socket.
+                    self._drain_rx()
+                    sock.sendall(req)
+                # Retain transaction ownership, but release socket ownership so
+                # close()/Ctrl+C can shutdown this exact socket during receive.
                 time.sleep(self.config.inter_frame_delay_s)
                 response = self._read_response_on(
                     sock, expected_len=expected
                 )
+                with self._io_lock:
+                    if self._sock is not sock:
+                        raise ModbusRtuError("connection changed during transaction")
                 if response[0] != request[0]:
                     raise ModbusRtuError(
                         f"slave mismatch: sent id={request[0]}, got id={response[0]}"
@@ -208,11 +234,15 @@ class ModbusRtuTcpClient:
                 return response
             except (TimeoutError, socket.timeout, OSError, ModbusRtuError, AttributeError) as err:
                 last_err = err if isinstance(err, ModbusRtuError) else ModbusRtuError(str(err))
-                # Brief recover without holding lock across long sleeps.
-                try:
-                    self.recover()
-                except Exception:
-                    pass
+                # Never retry a pre-stop command on a reconnected socket or
+                # drain the new connection while unwinding the old receive.
+                with self._io_lock:
+                    if sock is None or self._sock is not sock:
+                        raise ModbusRtuError(str(last_err)) from last_err
+                self._recover_on(sock)
+                with self._io_lock:
+                    if self._sock is not sock:
+                        raise ModbusRtuError(str(last_err)) from last_err
                 if attempt + 1 < self.config.retries:
                     continue
                 raise ModbusRtuError(str(last_err)) from last_err
@@ -270,17 +300,19 @@ class ModbusRtuTcpClient:
         return bytes(buf)
 
     def _read_response_raw(self, *, expected_len: int | None = None) -> bytes:
-        with self._io_lock:
-            sock = self._sock
-        try:
-            return self._read_response_on(sock, expected_len=expected_len)
-        except ModbusRtuError:
-            return b""
+        with self._transaction_lock:
+            with self._io_lock:
+                sock = self._sock
+            try:
+                return self._read_response_on(sock, expected_len=expected_len)
+            except ModbusRtuError:
+                return b""
 
     def _read_response(self, *, expected_len: int | None = None) -> bytes:
-        with self._io_lock:
-            sock = self._sock
-        return self._read_response_on(sock, expected_len=expected_len)
+        with self._transaction_lock:
+            with self._io_lock:
+                sock = self._sock
+            return self._read_response_on(sock, expected_len=expected_len)
 
     def read_holding_registers(self, address: int, count: int = 1) -> list[int]:
         addr = int(address) & 0xFFFF

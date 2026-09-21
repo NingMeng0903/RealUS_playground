@@ -23,6 +23,7 @@ from typing import Protocol
 import numpy as np
 from scipy.spatial.transform import Rotation as Rsc
 from .command_power import final_command_qdot
+from .command_lifecycle import CommandLifecycleTransaction
 
 from rm75_control.control.admittance_common.async_state import arm_qdot_rad_s_from_snap
 from rm75_control.control.joint_admittance_8dof.collision_model import CollisionConfig
@@ -6313,6 +6314,16 @@ def path_reference_should_freeze(step: JointIkStep) -> bool:
     return str(getattr(step, "fallback_reason", "")) == "native_timeout_coast"
 
 
+def pad_inner_should_hold_without_send(step: JointIkStep) -> bool:
+    """Hold the last sent pad command when this inner solve cannot publish.
+
+    A failed QP1 zeros qdot. The 5 ms jerk box cannot certify that stop, so
+    native reports ``publication_infeasible``. That is a skipped tick, not
+    an ESTOP; the next 200 Hz sample retries.
+    """
+    return str(getattr(step, "fallback_reason", "") or "") == "publication_infeasible"
+
+
 def _save_stopped_qpik_fault(inner, step, q_meas, phase, reason) -> None:
     """Persist the rejected tick after the arm/rail stop requests were issued."""
     from rm75_control.control.joint_admittance_8dof.fault_diagnostics import (
@@ -6570,8 +6581,18 @@ def run_joint_admittance_phases(
             phase_stopped = False
             stop_reason = ""
             rail_feedback_ready = False
+            command_transaction = None
             try:
                 for phase_idx, phase in enumerate(phases):
+                    if command_transaction is not None:
+                        command_transaction.abort("phase_transition")
+                    command_owner = getattr(phase.outer, "command_lifecycle", None)
+                    command_transaction = (
+                        CommandLifecycleTransaction(command_owner)
+                        if command_owner is not None else None
+                    )
+                    if command_owner is not None and getattr(phase.outer, "publication_owner", None) is not None:
+                        raise RuntimeError("only one command publication owner may be active")
                     if stop_check is not None and stop_check():
                         phase_stopped = True
                         if verbose:
@@ -6898,6 +6919,15 @@ def run_joint_admittance_phases(
 
                         # Capture the actual child before callbacks can swap the proxy.
                         publication_owner = getattr(phase.outer, "publication_owner", None)
+                        next_command_owner = getattr(phase.outer, "command_lifecycle", None)
+                        if next_command_owner is not command_owner:
+                            if command_transaction is not None:
+                                command_transaction.abort("outer_changed")
+                            command_owner = next_command_owner
+                            command_transaction = (CommandLifecycleTransaction(command_owner)
+                                if command_owner is not None else None)
+                        if command_owner is not None and publication_owner is not None:
+                            raise RuntimeError("only one command publication owner may be active")
                         active_source = None
                         if publication_owner is not None:
                             wait_for_source = getattr(publication_owner, "waiting_for_retry_source", None)
@@ -7052,6 +7082,8 @@ def run_joint_admittance_phases(
                             sample_kwargs["slack_norm"] = float(
                                 getattr(inner, "last_slack_norm", 0.0) or 0.0
                             )
+                        if command_transaction is not None:
+                            command_transaction.begin_candidate()
                         try:
                             twist = np.asarray(
                                 phase.outer.sample(t_ref, pose_pin, f_ext, **sample_kwargs),
@@ -7137,6 +7169,10 @@ def run_joint_admittance_phases(
                         feedback_twist = getattr(
                             phase.outer, "last_feedback_twist", None
                         )
+                        # Scan Lissajous and pad hybrid share the 5 ms command
+                        # hold. Wall time is diagnostic only (dt_wall_s).
+                        # Integrating pad on the rail-worker period dropped
+                        # handheld force from 200 Hz to ~50 Hz.
                         control_dt = dt
                         ctrl = getattr(phase.outer, "controller", None)
                         f_des_z = float(
@@ -7152,6 +7188,8 @@ def run_joint_admittance_phases(
                         if publication_owner is not None:
                             rocking_kwargs = publication_owner.rocking_constraints()
                             rocking_kwargs.update(publication_owner.command_power_constraints())
+                        if command_transaction is not None:
+                            rocking_kwargs.update(command_transaction.owner.command_constraints())
                         step = inner.update(
                             twist,
                             control_dt,
@@ -7219,6 +7257,32 @@ def run_joint_admittance_phases(
                             time.perf_counter() - _t_inner0
                         ) * 1000.0
                         step.pre_solve_feedback_age_s = sensor_age_s
+                        if (
+                            command_transaction is not None
+                            and pad_inner_should_hold_without_send(step)
+                        ):
+                            # Must run before the QPIK guard: publication_infeasible
+                            # is fallback_level=stop and would otherwise ESTOP.
+                            command_transaction.abort(
+                                str(step.fallback_reason),
+                                definitely_not_sent=True,
+                                latch=False,
+                            )
+                            abort_pub = getattr(inner, "abort_publication", None)
+                            if callable(abort_pub):
+                                abort_pub()
+                            last_hold = float(getattr(inner, "_pad_hold_warn_t", -1.0))
+                            if last_hold < 0.0 or now - last_hold >= 0.050:
+                                inner._pad_hold_warn_t = now
+                                _rt_print(
+                                    f"[WARN] pad inner hold {step.fallback_reason} "
+                                    f"qp1={qp_status_name(getattr(step, 'qp1_status', ''))} "
+                                    f"solve_ms={float(getattr(step, 'qp_solver_solve_ms', float('nan'))):.2f}"
+                                )
+                            ticks += 1
+                            next_tick += dt
+                            _wait_until(next_tick)
+                            continue
                         # A hard-construction/final-validation fault is acted on before the
                         # rail target or CANFD joint command can be published.
                         sendable, qpik_stop_reason = _guard_qpik_step_before_send(
@@ -7227,6 +7291,21 @@ def run_joint_admittance_phases(
                                 inner, step, q_meas, phase, reason,
                             ),
                         )
+                        if command_transaction is not None and str(getattr(step, "fallback_reason", "")) == "native_timeout_coast":
+                            # A single missed native wakeup is a hold, same as
+                            # scan. ESTOP only on a latched native_timeout.
+                            command_transaction.abort(
+                                "native_timeout_coast",
+                                definitely_not_sent=True,
+                                latch=False,
+                            )
+                            abort_pub = getattr(inner, "abort_publication", None)
+                            if callable(abort_pub):
+                                abort_pub()
+                            ticks += 1
+                            next_tick += dt
+                            _wait_until(next_tick)
+                            continue
                         if publication_owner is not None and str(getattr(step, "fallback_reason", "")) == "native_timeout_coast":
                             if _recover_unsent(publication_owner, "native_timeout"):
                                 ticks += 1
@@ -7428,6 +7507,17 @@ def run_joint_admittance_phases(
                             stop_reason = "contact_qp_rail_transaction_unavailable"
                             _fault_stop(stop_reason)
                             break
+                        if command_transaction is not None and (
+                            rail_coast_active or (rail_bridge is not None and getattr(rail_bridge, "enabled", False)
+                            and not callable(getattr(rail_bridge, "reserve_target_m", None)))
+                        ):
+                            phase_stopped = True
+                            stop_reason = "pad_rail_transaction_unavailable"
+                            _fault_stop(stop_reason)
+                            command_transaction.abort(stop_reason, definitely_not_sent=True)
+                            abort_pub = getattr(inner, "abort_publication", None)
+                            if callable(abort_pub): abort_pub()
+                            break
                         if rail_coast_active:
                             qdot0_pub = 0.0
                             step.v_r_ref = 0.0
@@ -7460,6 +7550,28 @@ def run_joint_admittance_phases(
                             if callable(abort_pub):
                                 abort_pub()
                             break
+                        if command_transaction is not None:
+                            dispatch_wait = getattr(command_transaction.owner, 'dispatch_wait_s', None)
+                            if callable(dispatch_wait):
+                                delay = float(dispatch_wait(time.monotonic()))
+                                if delay > 0.:
+                                    _wait_until(time.perf_counter()+delay)
+                            if not command_transaction.review(
+                                step, published_rail_m=rail_pub_m, dt_s=control_dt,
+                                now_s=time.monotonic(),
+                            ):
+                                phase_stopped = True
+                                stop_reason = "pad_final_review_rejected"
+                                detail = getattr(command_transaction.owner, 'last_review_reason', None)
+                                if detail:
+                                    stop_reason += ':'+str(detail)
+                                _fault_stop(stop_reason)
+                                abort_reservation = getattr(rail_bridge, "abort_reservation", None)
+                                if callable(abort_reservation): abort_reservation()
+                                command_transaction.abort(stop_reason, definitely_not_sent=True)
+                                abort_pub = getattr(inner, "abort_publication", None)
+                                if callable(abort_pub): abort_pub()
+                                break
                         final_tool = None
                         proposal_id = None
                         if publication_owner is not None:
@@ -7541,11 +7653,40 @@ def run_joint_admittance_phases(
                                 stop_reason = "contact_qp_dispatch_rejected"
                                 _fault_stop(stop_reason)
                                 break
+                        if command_transaction is not None and (
+                            wd.fired or fault_epoch[0] > 0 or (stop_check is not None and stop_check())
+                        ):
+                            phase_stopped = True
+                            stop_reason = "pad_stop_before_dispatch"
+                            _fault_stop(stop_reason)
+                            break
+                        if command_transaction is not None and canfd_proxy is not None:
+                            raise RuntimeError('pad contact requires acknowledged direct arm transport')
+                        if command_transaction is not None and not command_transaction.started():
+                            phase_stopped = True
+                            stop_reason = "pad_dispatch_rejected"
+                            _fault_stop(stop_reason)
+                            abort_reservation = getattr(rail_bridge, "abort_reservation", None)
+                            if callable(abort_reservation): abort_reservation()
+                            command_transaction.abort(stop_reason, definitely_not_sent=True)
+                            abort_pub = getattr(inner, "abort_publication", None)
+                            if callable(abort_pub): abort_pub()
+                            break
                         try:
-                            step.arm_send_mono_ns = time.monotonic_ns()
+                            arm_command_deg = rad2deg(arm_q_from_full(step.q_send))
+                            dispatch_s = time.monotonic()
+                            if command_transaction is not None and not command_transaction.arm_dispatch(now_s=dispatch_s):
+                                phase_stopped = True
+                                stop_reason = 'pad_arm_dispatch_expired'
+                                _fault_stop(stop_reason)
+                                command_transaction.abort(stop_reason, definitely_not_sent=True)
+                                abort_pub = getattr(inner, 'abort_publication', None)
+                                if callable(abort_pub): abort_pub()
+                                break
+                            step.arm_send_mono_ns = int(dispatch_s*1e9)
                             _send_joint_canfd_cmd(
                                 robot,
-                                rad2deg(arm_q_from_full(step.q_send)),
+                                arm_command_deg,
                                 follow,
                                 canfd_proxy,
                             )
@@ -7557,6 +7698,10 @@ def run_joint_admittance_phases(
                                 except Exception:
                                     pass
                             phase_stopped = True
+                            if command_transaction is not None:
+                                _fault_stop("pad_arm_send_unknown")
+                                command_transaction.abort("arm_send_unknown", definitely_not_sent=False,
+                                    facts={"arm": "unknown", "rail": "not_committed"})
                             if publication_owner is not None:
                                 publication_owner.publication_abort("arm_send_unknown", facts={"arm": "unknown", "rail": "not_committed"})
                             stop_reason = (
@@ -7568,15 +7713,43 @@ def run_joint_admittance_phases(
                                 abort_pub()
                             _fault_stop(stop_reason)
                             break
+                        if command_transaction is not None and (
+                            wd.fired or fault_epoch[0] > 0 or (stop_check is not None and stop_check())
+                        ):
+                            phase_stopped = True
+                            stop_reason = "pad_stop_after_arm"
+                            _fault_stop(stop_reason)
+                            command_transaction.abort(stop_reason, definitely_not_sent=False,
+                                facts={"arm": "sent", "rail": "not_committed"})
+                            break
                         if (
                             rail_bridge is not None
                             and getattr(rail_bridge, "enabled", False)
                             and not rail_coast_active
                         ):
                             commit = getattr(rail_bridge, "commit_reservation", None)
-                            if callable(commit) and not commit():
+                            if command_transaction is not None:
+                                try:
+                                    # Enqueue like scan. Waiting 40 ms for the
+                                    # 50 Hz rail worker drops the force loop
+                                    # to ~37 ms and limit-cycles ±15 mm/s.
+                                    rail_committed = bool(callable(commit) and commit())
+                                    command_transaction.facts['rail_receipt'] = getattr(
+                                        rail_bridge, 'last_publication_receipt', None)
+                                except Exception:
+                                    _fault_stop("pad_partial_publish")
+                                    command_transaction.abort("partial_publish", definitely_not_sent=False,
+                                        facts={"arm": "sent", "rail": "failed_or_unknown"})
+                                    raise
+                            else:
+                                rail_committed = not callable(commit) or bool(commit())
+                            if not rail_committed:
                                 phase_stopped = True
                                 stop_reason = "PARTIAL_ARM:rail_commit_failed"
+                                if command_transaction is not None:
+                                    _fault_stop(stop_reason)
+                                    command_transaction.abort("partial_publish", definitely_not_sent=False,
+                                        facts={"arm": "sent", "rail": "failed_or_unknown"})
                                 if publication_owner is not None:
                                     publication_owner.publication_abort("partial_publish", facts={"arm": "sent", "rail": "failed_or_unknown"})
                                 abort_pub = getattr(inner, "abort_publication", None)
@@ -7584,6 +7757,17 @@ def run_joint_admittance_phases(
                                     abort_pub()
                                 _fault_stop(stop_reason)
                                 break
+                        if command_transaction is not None and (
+                            wd.fired or fault_epoch[0] > 0 or (stop_check is not None and stop_check())
+                        ):
+                            phase_stopped = True
+                            stop_reason = "pad_stop_during_transport"
+                            _fault_stop(stop_reason)
+                            command_transaction.abort(stop_reason, definitely_not_sent=False,
+                                facts={"arm": "sent", "rail": "acknowledged_then_stopped"})
+                            abort_pub = getattr(inner, "abort_publication", None)
+                            if callable(abort_pub): abort_pub()
+                            break
                         commit_pub = getattr(inner, "commit_publication", None)
                         if callable(commit_pub):
                             commit_pub(step.qdot)
@@ -7593,6 +7777,9 @@ def run_joint_admittance_phases(
                             else:
                                 publication_owner.publication_commit(proposal_id, final_tool, now_s=time.monotonic(),
                                     facts={"arm": "sent", "rail": "sent" if rail_bridge is not None and rail_bridge.enabled else "disabled"})
+                        if command_transaction is not None:
+                            command_transaction.commit(now_s=time.monotonic(),
+                                rail_enabled=rail_bridge is not None and bool(rail_bridge.enabled))
                         if not wd.fired:
                             wd.beat()
                         step.tick_send_ms = (
@@ -7728,6 +7915,10 @@ def run_joint_admittance_phases(
                         next_tick += dt
                         _wait_until(next_tick)
 
+                    if command_transaction is not None:
+                        command_transaction.abort(stop_reason or "phase_exit")
+                        abort_pub = getattr(inner, "abort_publication", None)
+                        if callable(abort_pub): abort_pub()
                     if getattr(phase.outer, 'contact_study_enabled', False):
                         study_reason = stop_reason or study_termination_reason or (
                             f'arrival_timeout:{phase.label or phase_idx}'
@@ -7768,9 +7959,10 @@ def run_joint_admittance_phases(
                         break
             except Exception as exc:
                 active_owner = getattr(getattr(locals().get("phase"), "outer", None), "publication_owner", None)
-                if active_owner is None:
+                if active_owner is None and command_transaction is None:
                     raise
-                stop_reason = f"contact_qp_exception:{type(exc).__name__}:{exc}"
+                prefix = "pad" if command_transaction is not None else "contact_qp"
+                stop_reason = f"{prefix}_exception:{type(exc).__name__}:{exc}"
                 phase_stopped = True
                 # Stop FIRST: logging or proposal cleanup must never postpone it.
                 _fault_stop(stop_reason)
@@ -7778,16 +7970,35 @@ def run_joint_admittance_phases(
                 if callable(abort_inner):
                     try: abort_inner()
                     except Exception: pass
-                try: active_owner.publication_abort(stop_reason)
-                except Exception: pass
+                if command_transaction is not None:
+                    try: command_transaction.abort(stop_reason)
+                    except Exception: pass
+                    abort_reservation = getattr(rail_bridge, "abort_reservation", None)
+                    if callable(abort_reservation):
+                        try: abort_reservation()
+                        except Exception: pass
+                if active_owner is not None:
+                    try: active_owner.publication_abort(stop_reason)
+                    except Exception: pass
             except KeyboardInterrupt:
                 active_owner = getattr(getattr(locals().get("phase"), "outer", None), "publication_owner", None)
-                if active_owner is not None:
-                    stop_reason = "contact_qp_interrupted"
+                if active_owner is not None or command_transaction is not None:
+                    stop_reason = "pad_interrupted" if command_transaction is not None else "contact_qp_interrupted"
                     _fault_stop(stop_reason)
                 if verbose:
                     print("\nStopped.", flush=True)
         finally:
+            if locals().get("command_transaction") is not None:
+                try: command_transaction.abort(locals().get("stop_reason") or "runner_exit")
+                except Exception: pass
+                abort_pub = getattr(inner, "abort_publication", None)
+                if callable(abort_pub):
+                    try: abort_pub()
+                    except Exception: pass
+                abort_reservation = getattr(rail_bridge, "abort_reservation", None)
+                if callable(abort_reservation):
+                    try: abort_reservation()
+                    except Exception: pass
             current_phase=locals().get("phase")
             current_outer=getattr(current_phase,"outer",None)
             if bool(getattr(current_outer,"contact_study_enabled",False)):
