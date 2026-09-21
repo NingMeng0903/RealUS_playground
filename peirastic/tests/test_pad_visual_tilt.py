@@ -166,7 +166,9 @@ def test_pad_hybrid_payload_ultrapoc_requests_progress():
     from peirastic.scan_path import SCAN_FORCE_AXES, force_profile
 
     payload = pad_hybrid_payload('ultrapoc', desired_z=4.0)
-    assert payload['pad_visual'] == {'progress': True}
+    assert payload['pad_visual']['progress'] is True
+    assert payload['pad_visual']['feature']['config']['region_count'] == 20
+    assert payload['pad_scan_config']['pad']['policy'] == 'pad_scan_v1'
     assert 'pad_contact' not in payload
     assert payload['force_axes'] == list(SCAN_FORCE_AXES)
     assert payload['hybrid_motion'] == force_profile('icra')['hybrid_motion']
@@ -409,6 +411,9 @@ def test_explicit_legacy_pad_phase_retains_progress_guide():
 
     raw, ctx = _ctx()
     payload = pad_hybrid_payload('ultrapoc', desired_z=4.0)
+    # Explicit historical config remains supported, without the new lifecycle.
+    payload.pop('pad_scan_config')
+    payload['pad_visual'] = dict(load_study_config(CONFIG), progress=True)
     payload['v_cmd'] = [0.02, 0.0, 0.0, 0.0, 0.0, 0.0]
     phase = compile_request(
         ctx, ModeRequest(Mode.TRACK_HYBRID, payload), raw=raw,
@@ -589,10 +594,13 @@ def test_ultrapoc_pad_phase_writes_hybrid_log(tmp_path):
         pose = ctx.kin.fk_pose(_SEED)
         phase.outer.set_origin(pose)
         wrench = np.array([0., 0., 4., 0., 0.2, 0.])
+        assert getattr(phase.outer, 'command_lifecycle', None) is None
         command = phase.outer.sample(0., pose, wrench, contact=True, dt_actual=.005,
                                      sensor_age_s=.001, feedback_age_s=.001)
         assert command.shape == (6,)
         assert np.isfinite(command).all()
+        assert command[0] == pytest.approx(0.02, abs=0.003)
+        assert phase.outer.last_pad_alpha == pytest.approx(1.0)
     finally:
         if phase.on_exit is not None:
             phase.on_exit()

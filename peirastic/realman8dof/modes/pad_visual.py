@@ -18,10 +18,9 @@ from peirastic.contact_qp.geometry import window_rows
 from peirastic.contact_qp.region_visual import region_visual_request
 from peirastic.contact_qp.runtime_config import calibrated_geometry, load_study_config
 from peirastic.realman8dof.force.torque_tilt import rotation_from_pose
+from .pad_scan_config import default_pad_scan_config_path, load_pad_scan_config
 
-DEFAULT_PAD_VISUAL_CONFIG = (
-    Path(__file__).resolve().parents[2] / "config/contact_qp/active_probe50_delay_kf_cop.yaml"
-)
+DEFAULT_PAD_VISUAL_CONFIG = default_pad_scan_config_path()
 PAD_HYBRID_LAWS = ("legacy", "ac2d", "ultrapoc")
 
 
@@ -66,7 +65,9 @@ def pad_hybrid_payload(
         payload["law"] = "ac2d"
         return payload
     payload.update(scan_force_profile("icra"))
-    payload["pad_visual"] = {"progress": True}
+    config = load_pad_scan_config(contact_config)
+    payload["pad_visual"] = dict(config, progress=True)
+    payload["pad_scan_config"] = config
     return payload
 
 
@@ -135,6 +136,8 @@ def wrap_pad_hybrid_log(phase, payload):
         law=dict(payload or {}).get("law"),
         label=dict(payload or {}).get("label"),
         pad_visual=dict(payload or {}).get("pad_visual"),
+        pad_scan_config=dict(payload or {}).get("pad_scan_config"),
+        config_version=(dict(payload or {}).get("pad_scan_config") or {}).get("config_version"),
         pad_log=request,
         resolved_path=str(path),
         **clock_metadata(),
@@ -142,16 +145,22 @@ def wrap_pad_hybrid_log(phase, payload):
     baseline = phase.outer
     original_sample = baseline.sample
     control_id = 0
+    evidence_key = None
     previous_exit = phase.on_exit
 
     @wraps(original_sample)
     def sample(t_s, current_pose, f_ext, **kwargs):
-        nonlocal control_id
+        nonlocal control_id, evidence_key
         twist = original_sample(t_s, current_pose, f_ext, **kwargs)
         control_id += 1
         guide = getattr(baseline, "pad_visual", None)
         facts = dict(getattr(guide, "last_facts", None) or {})
         facts.update(getattr(baseline, "last_facts", None) or {})
+        key = (facts.get('source_id'), facts.get('frame_seq'), facts.get('effective_time_s'))
+        if key != evidence_key and key[1] is not None:
+            evidence_key = key
+            sink.emit('pad_image_evidence', record_kind='pad_hybrid', control_id=control_id,
+                      **dict(getattr(guide, 'last_facts', None) or {}))
         observation = None
         receiver = getattr(guide, "_receiver", None) if guide is not None else None
         if receiver is not None:
@@ -183,6 +192,7 @@ def wrap_pad_hybrid_log(phase, payload):
             v_stick=stick,
             v_scaled=scaled,
             v_cmd=command,
+            command_stage='outer_candidate_before_ik_and_publication',
             stick_speed_m_s=float(np.linalg.norm(stick[:3])),
             alpha=getattr(baseline, "last_pad_alpha", None),
             alpha_target=facts.get("alpha_target"),
@@ -204,11 +214,30 @@ def wrap_pad_hybrid_log(phase, payload):
             tau_error_y=getattr(baseline, "last_tau_error_y", None),
             visual_reason=facts.get("visual_reason"),
             visual_policy=facts.get("visual_policy"),
+            echo_reason=facts.get("echo_reason"),
+            echo_omega_rad_s=facts.get("echo_omega_rad_s"),
             kf_valid=facts.get("kf_valid"),
             kf_reason=facts.get("kf_reason"),
             kf_age_s=facts.get("kf_age_s"),
             image_age_s=image_age,
             region_quality=region_quality,
+            region_count=facts.get("region_count"),
+            region_edges=facts.get("region_edges"),
+            region_layout_version=facts.get("region_layout_version"),
+            region_feature_version=facts.get("region_feature_version"),
+            region_quality_raw=facts.get("region_quality_raw"),
+            quality_predicted=facts.get("quality_predicted"),
+            source_id=facts.get("source_id"),
+            received_image_time_s=facts.get("received_time_s"),
+            timestamp_semantics=facts.get("timestamp_semantics"),
+            evidence_valid=facts.get("evidence_valid", facts.get("valid")),
+            echo_classification=facts.get("echo_classification"),
+            image_compatibility_reason=facts.get("image_compatibility_reason"),
+            allocation_status=facts.get("allocation_status", (facts.get('allocation_diagnostics') or {}).get('solver_status')),
+            allocation_success=facts.get('allocation_success'),
+            allocation_diagnostics=facts.get("allocation_diagnostics"),
+            normal_shortfall=facts.get("normal_shortfall", (facts.get('allocation_diagnostics') or {}).get('normal_shortfall_m_s')),
+            config_version=facts.get("config_version"),
             max_deficit=facts.get("max_deficit"),
             quality_reference=facts.get("quality_reference"),
             deficit_mode=facts.get("deficit_mode"),
@@ -220,6 +249,7 @@ def wrap_pad_hybrid_log(phase, payload):
     baseline.sample = sample
     # The loop caches explicit keyword names for feedback injection.
     baseline.__dict__.pop("_sample_params", None)
+    baseline.pad_log_sink = sink
     lifecycle = getattr(baseline, "command_lifecycle", None)
     if lifecycle is not None:
         lifecycle.record_sink = sink
@@ -262,7 +292,7 @@ def resolve_pad_visual_config(payload: dict | None) -> dict | None:
         return dict(visual)
     if visual is True or isinstance(visual, dict):
         if DEFAULT_PAD_VISUAL_CONFIG.is_file():
-            return load_study_config(DEFAULT_PAD_VISUAL_CONFIG)
+            return load_pad_scan_config(DEFAULT_PAD_VISUAL_CONFIG)
     return None
 
 
@@ -387,6 +417,14 @@ class PadVisualGuide:
         self.last_facts = {}
         self.last_alpha = 1.0 if self.progress else None
         self.last_visual_omega = 0.0 if self.progress else None
+        self.evidence_valid = False
+        self._pad_evidence = None
+        if progress and (self.config.get('pad') or {}).get('policy') == 'pad_scan_v1':
+            # Handheld stick is the path. α starts at 1; image may slow it.
+            # Echo evidence must not park the sticks at zero waiting for a
+            # baseline, and it does not own the region KF.
+            self.ramp_s = self.config['pad']['alpha_ramp_down_s']
+            self.ramp_up_s = self.config['pad']['alpha_ramp_up_s']
 
     def _ensure_receiver(self):
         if self._receiver is not None or not self._owns_receiver or not self._endpoint:
@@ -501,7 +539,8 @@ class PadVisualGuide:
         self._clear_visual_hold()
         return reason
 
-    def preview(self, *, pose, dt_s, contact_present, tilt, now_s=None) -> float | None:
+    def preview(self, *, pose, dt_s, contact_present, tilt, now_s=None,
+                force_n=float('nan'), stick_speed_m_s=0.0) -> float | None:
         if tilt is None:
             if self.progress:
                 self.last_alpha = 1.0
@@ -511,12 +550,17 @@ class PadVisualGuide:
             return None
         now = float(now_s if now_s is not None else time.monotonic())
         if self.progress:
-            return self._preview_progress(
+            visual = self._preview_progress(
                 self._region_observation(now),
                 contact_present=bool(contact_present),
                 now_s=now,
                 dt_s=float(dt_s),
             )
+            if (self.config.get("pad") or {}).get("policy") == "pad_scan_v1":
+                self._overlay_echo_visual(
+                    now_s=now, dt_s=float(dt_s), contact_present=bool(contact_present),
+                    force_n=force_n, stick_speed_m_s=stick_speed_m_s)
+            return visual
         observation = self._fresh_observation(now)
         self.last_alpha = None
         if observation is None:
@@ -541,6 +585,87 @@ class PadVisualGuide:
             return None
         self.last_facts = facts
         return float(omega)
+
+    def _preview_scan_evidence(self, *, now_s, dt_s, contact_present, force_n, stick_speed_m_s):
+        from .pad_contact_evidence import PadContactEvidence
+        self._ensure_receiver()
+        if self._pad_evidence is None:
+            self._pad_evidence = PadContactEvidence(self.config, self._receiver)
+            self._image_kf = self._pad_evidence.kf
+        result = self._pad_evidence.update(
+            now_s=now_s, dt_s=dt_s, contact_present=bool(contact_present),
+            force_n=float(force_n), stick_speed_m_s=float(stick_speed_m_s))
+        self.evidence_valid = result.valid
+        self.alpha_target = result.alpha_target
+        self.omega_target = result.omega_request_rad_s
+        # Safety pauses are immediate. Confirmed repair ramps toward the live
+        # speed cap; recovery increases smoothly, with no saved displacement.
+        if self.alpha_target == 0. or not np.isfinite(dt_s) or dt_s <= 0.:
+            self.alpha_cmd = 0.
+        else:
+            ramp = self.ramp_s if self.alpha_target < self.alpha_cmd else self.ramp_up_s
+            self.alpha_cmd = self._slew(self.alpha_cmd, self.alpha_target, 1. / ramp, dt_s)
+        ramped_alpha = self.alpha_cmd
+        # A faster current stick request must not defeat a confirmed repair's
+        # physical speed cap while the preferred alpha ramps downward. Keep
+        # the accepted alpha as the recovery origin, not the unclipped ramp.
+        if result.valid and result.reason == 'unilateral_missing_echo':
+            cap = self.config['pad']['repair_speed_cap_m_s']
+            self.alpha_cmd = min(self.alpha_cmd, cap/max(abs(float(stick_speed_m_s)), 1e-12))
+        self.last_alpha = self.alpha_cmd
+        # The outer QP owns angular acceleration and total angular limiting.
+        self.omega_cmd = self.last_visual_omega = self.omega_target
+        self.last_facts = dict(result.facts, evidence_valid=result.valid,
+            visual_reason=result.reason, visual_policy='pad_scan_nearfield_v1',
+            alpha=self.last_alpha, visual_request_rad_s=self.omega_target,
+            alpha_before_speed_cap=ramped_alpha,
+            repair_speed_cap_limited=self.alpha_cmd < ramped_alpha,
+            visual_omega_rad_s=self.last_visual_omega,
+            stick_speed_m_s=stick_speed_m_s,
+            path_speed_target_m_s=abs(stick_speed_m_s)*self.alpha_target,
+            path_speed_requested_m_s=abs(stick_speed_m_s)*self.last_alpha,
+            config_version=self.config.get('config_version', 'pad_scan_v1'))
+        return None
+
+    def _overlay_echo_visual(self, *, now_s, dt_s, contact_present, force_n, stick_speed_m_s):
+        """Use 145-column near-field echo for ω. Do not park the stick at α=0.
+
+        Residual edge wedges stay above c_min in 20-region Q25. Echo sees them.
+        """
+        from .pad_contact_evidence import PadContactEvidence
+        self._ensure_receiver()
+        if self._pad_evidence is None:
+            self._pad_evidence = PadContactEvidence(self.config, self._receiver)
+        result = self._pad_evidence.update(
+            now_s=now_s, dt_s=dt_s, contact_present=bool(contact_present),
+            force_n=float(force_n), stick_speed_m_s=float(stick_speed_m_s))
+        facts = dict(self.last_facts)
+        facts.update(
+            echo_reason=result.reason, echo_valid=result.valid,
+            echo_omega_rad_s=result.omega_request_rad_s, evidence_valid=result.valid)
+        if result.reason == 'unilateral_missing_echo' and abs(float(result.omega_request_rad_s)) > 0.:
+            self.omega_target = float(result.omega_request_rad_s)
+            self.omega_cmd = float(np.clip(
+                self._slew(self.omega_cmd, self.omega_target, self.omega_accel, dt_s),
+                -self.omega_vmax, self.omega_vmax))
+            self.last_visual_omega = self.omega_cmd
+            if float(result.alpha_target) > 0.:
+                self.alpha_target = min(float(self.alpha_target), float(result.alpha_target))
+                if self.alpha_target < self.alpha_cmd:
+                    alpha_rate = 0.75 / self.ramp_s
+                else:
+                    alpha_rate = 0.75 / max(self.ramp_up_s, 1.0e-6)
+                self.alpha_cmd = float(np.clip(
+                    self._slew(self.alpha_cmd, self.alpha_target, alpha_rate, dt_s),
+                    self.alpha_min, 1.0))
+                cap = self.config['pad']['repair_speed_cap_m_s']
+                self.alpha_cmd = min(self.alpha_cmd, cap / max(abs(float(stick_speed_m_s)), 1e-12))
+                self.last_alpha = self.alpha_cmd
+            facts.update(
+                visual_reason=result.reason, visual_policy='pad_scan_nearfield_v1',
+                visual_request_rad_s=self.omega_target, visual_omega_rad_s=self.omega_cmd,
+                alpha=self.last_alpha, alpha_target=self.alpha_target)
+        self.last_facts = facts
 
     def _preview_progress(self, observation, *, contact_present, now_s, dt_s):
         """Slew region α and an additive ωy. Moment keeps the continuous plant."""

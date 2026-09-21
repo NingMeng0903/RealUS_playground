@@ -20,9 +20,10 @@ from __future__ import annotations
 
 import argparse
 import os
+import shlex
 import sys
 import time
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 if __name__ == "__main__":
@@ -110,6 +111,48 @@ def pad_hybrid_active(snapshot: dict) -> bool:
             and "pad" in str(snapshot.get("msg") or "").lower())
 
 
+@dataclass
+class PadHybridExitReporter:
+    """Report each observed exit, even if hybrid ends before the next poll."""
+
+    expected_active: bool = False
+
+    def installed(self, *, hybrid: bool) -> None:
+        # A successful L3 exit disarms reporting; a successful entry arms it
+        # without requiring a subsequent RUNNING telemetry sample.
+        self.expected_active = hybrid
+
+    def observe(self, snapshot: dict) -> str | None:
+        active = pad_hybrid_active(snapshot)
+        exited = self.expected_active and not active
+        self.expected_active = active
+        if not exited:
+            return None
+        status = snapshot.get("status")
+        try:
+            status_label = f"{Status(status).name}({status})"
+        except (ValueError, TypeError):
+            status_label = repr(status)
+        mode = snapshot.get("mode")
+        parsed_mode = try_mode(mode)
+        mode_label = f"{parsed_mode.name}({mode})" if parsed_mode is not None else repr(mode)
+        msg = str(snapshot.get("msg") or "")
+        warning = (
+            "[MODE] WARNING: pad TRACK_HYBRID exited unexpectedly; "
+            f"observed status={status_label} mode={mode_label} "
+            f"msg={msg!r} err_code={snapshot.get('err_code')!r}"
+        )
+        # A newer idle/command publication can replace the actual fault.
+        # Report only the sample we saw, never infer a lost stop reason.
+        if (
+            status not in (int(Status.ERROR), int(Status.STOPPED), int(Status.ESTOP))
+            or not msg
+            or "idle" in msg.lower()
+        ):
+            warning += "; exit reason unavailable in current telemetry"
+        return warning
+
+
 # ac2d TRACK_HYBRID on_enter is slow. A 150 ms debounce expires while
 # wait_installed blocks, so a stick-click bounce latched in GamepadTwistSource
 # immediately toggles back to SERVO_TWIST_HOLD.
@@ -158,7 +201,7 @@ def main() -> int:
              "ultrapoc = scan delay-KF COP/My/α/image QP; ac2d = comparison Z+My",
     )
     parser.add_argument("--pad-contact-config", default=None,
-                        help="independent ultrapoc gamepad contact YAML (default: pad_contact.yaml)")
+                        help="independent ultrapoc gamepad contact YAML (default: pad_scan.yaml; 20 regions)")
     parser.add_argument(
         "--quiet",
         action="store_true",
@@ -206,6 +249,32 @@ def main() -> int:
         )
     fz = float(args.desired_z) if args.desired_z is not None else desired_z_n()
     hybrid_law = str(args.hybrid_law)
+    pad_settings = None
+    feature_child = None
+    if hybrid_law == "ultrapoc":
+        from peirastic.apps.pad_contact_features import feature_identity
+        from peirastic.realman8dof.modes.pad_scan_config import load_pad_scan_config
+        pad_settings = load_pad_scan_config(args.pad_contact_config)
+        identity = feature_identity(pad_settings)
+        print(
+            f"[PAD-CONFIG] regions={identity['region_count']} "
+            f"layout={identity['region_layout_version']} "
+            f"endpoint={identity['feature_endpoint']}", flush=True,
+        )
+        feature_command = ["bash", str(_REPO / "scripts/run_icra_outer.sh"), "pad-confidence"]
+        if args.pad_contact_config is not None:
+            feature_command.extend(["--pad-contact-config", str(Path(args.pad_contact_config).expanduser().resolve())])
+        print("[PAD-CONFIG] matching features: " + shlex.join(feature_command), flush=True)
+        from peirastic.apps.pad_contact_features import ensure_pad_feature_publisher
+        feature_child, feature_state = ensure_pad_feature_publisher(
+            pad_settings, config_path=args.pad_contact_config, repo=_REPO)
+        print(f"[PAD-FEATURE] {feature_state} {identity['feature_endpoint']}", flush=True)
+        if feature_state == "started_no_frames":
+            print(
+                "[WARN] 20-region publisher is up but no frames yet; "
+                "start ultrasound on tcp://127.0.0.1:17359 or black-edge repair stays blind",
+                flush=True,
+            )
     analysis = bool(args.analysis)
     if analysis and args.hybrid_log is None:
         args.hybrid_log = "auto"
@@ -247,7 +316,7 @@ def main() -> int:
             desired_z=fz,
             log_path=log_path,
             force_profile=args.force_profile,
-            contact_config=args.pad_contact_config,
+            contact_config=pad_settings,
         )
 
     def begin_analysis_l3():
@@ -265,6 +334,7 @@ def main() -> int:
                 "hybrid_law": hybrid_law,
                 "desired_z": fz,
                 "pad_jsonl": str(jsonl),
+                "pad_configuration": pad_settings,
             },
         )
         print(f"[PAD-LOG] ultrasound raw.h5 → {analysis_recorder.path}", flush=True)
@@ -284,6 +354,7 @@ def main() -> int:
     src.start()
     vel_mode = Mode.SERVO_TWIST_HOLD if args.hold else Mode.SERVO_TWIST
     hybrid = False
+    hybrid_exit_reporter = PadHybridExitReporter()
     last_l3_s = 0.0
     l3_released = True
     last_log_s = 0.0
@@ -341,6 +412,9 @@ def main() -> int:
             live = bool(snap["connected"]) and bool(snap["armed"])
             program = program_is_running()
             tel = client.snapshot()
+            warning = hybrid_exit_reporter.observe(tel)
+            if warning is not None:
+                print(warning, flush=True)
             hybrid = pad_hybrid_active(tel)
             if analysis_recorder is not None:
                 closed = analysis_recorder.close_if_inactive(hybrid)
@@ -457,6 +531,7 @@ def main() -> int:
                     else:
                         _install_mode(client, ModeRequest(vel_mode, {"filter": False}))
                         end_analysis_l3()
+                    hybrid_exit_reporter.installed(hybrid=hybrid)
                 except Exception as exc:
                     if hybrid:
                         end_analysis_l3()
@@ -496,6 +571,9 @@ def main() -> int:
                     flush=True,
                 )
             tel = client.snapshot()
+            warning = hybrid_exit_reporter.observe(tel)
+            if warning is not None:
+                print(warning, flush=True)
             if int(tel["status"]) == int(Status.ESTOP):
                 print("[ESTOP] " + str(tel["msg"]), flush=True)
                 return 130
@@ -507,6 +585,8 @@ def main() -> int:
     finally:
         if analysis_recorder is not None:
             analysis_recorder.stop()
+        if feature_child is not None and feature_child.poll() is None:
+            feature_child.terminate()
         src.close()
         twist_bus.close()
         client.close()

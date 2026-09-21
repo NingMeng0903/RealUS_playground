@@ -18,6 +18,9 @@ Usage: bash scripts/run_icra_outer.sh ACTION [options]
   controller   Start controller in its own terminal.
   ultrasound   Start ultrasound with the registered saved crop.
   confidence   Start the versioned weak-side confidence worker.
+  pad-confidence Start independent 20-region handheld features (port 17362).
+  pad-check    Read-only check of the independent handheld feature stream.
+  pad-validate Validate handheld configuration without device access.
   gamepad      Start teaching/teleoperation gamepad.
   check        Read-only preflight of fresh, compatible confidence frames.
   validate     Offline profile validation; no device access.
@@ -28,8 +31,20 @@ Historical energy profiles must be migrated; this entry never selects them.
 HELP
     exit 0
     ;;
-  controller|ultrasound|confidence|gamepad|check|validate|record) ;;
+  controller|ultrasound|confidence|gamepad|check|validate|record|pad-confidence|pad-check|pad-validate) ;;
   *) echo "Unknown action: $OUTER_ACTION" >&2; exit 2 ;;
+esac
+# Pad resolves its own profile, independent of CONTACT_QP_CONFIG and scan IPC.
+case "$OUTER_ACTION" in
+  pad-confidence)
+    exec "$OUTER_PYTHON" -m peirastic.apps.pad_contact_features "$@"
+    ;;
+  pad-check)
+    exec "$OUTER_PYTHON" -m peirastic.apps.pad_contact_features --check "$@"
+    ;;
+  pad-validate)
+    exec "$OUTER_PYTHON" -m peirastic.apps.pad_contact_features --validate-only "$@"
+    ;;
 esac
 # Reject stale profiles before any acquisition or robot-facing entry is opened.
 "$OUTER_PYTHON" - "$OUTER_CONFIG" <<'PY'

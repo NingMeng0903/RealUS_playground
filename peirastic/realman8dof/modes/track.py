@@ -97,18 +97,54 @@ class HybridTffOuter:
         return str(getattr(self.position, "euler_order", "xyz"))
 
     def set_origin(self, pose0: np.ndarray, *, t_s: float | None = None) -> None:
+        lifecycle = getattr(self, "command_lifecycle", None)
+        if lifecycle is not None:
+            lifecycle.abort("set_origin", definitely_not_sent=True, latch=False)
         self.position.set_origin(pose0, t_s=t_s)
         self.force_law.reset(pose=pose0, f_ext=np.zeros(6))
         self._pad_previous_twist = np.zeros(6, dtype=float)
         self.last_facts = {}
+        lifecycle = getattr(self, "command_lifecycle", None)
+        if lifecycle is not None:
+            lifecycle.reset(pose0)
 
     def begin_hybrid_episode(self, applied_twist_base, current_pose) -> None:
-        del applied_twist_base
+        lifecycle = getattr(self, "command_lifecycle", None)
+        if lifecycle is not None:
+            lifecycle.abort("episode_reset", definitely_not_sent=True, latch=False)
         self.force_law.reset(pose=current_pose, f_ext=np.zeros(6))
         self._pad_previous_twist = np.zeros(6, dtype=float)
         self.last_facts = {}
+        lifecycle = getattr(self, "command_lifecycle", None)
+        if lifecycle is not None:
+            lifecycle.reset(current_pose, applied_twist_base=applied_twist_base)
 
     def sample(
+        self, t_s, current_pose, f_ext, *, contact=None, f_ext_raw=None,
+        dt_actual=None, sensor_age_s=None, feedback_age_s=None,
+        feedback_fresh_tick=None, feedback_velocity_valid=None,
+        v_tcp_z_actual=None, slack_norm=None, wrench_source_time_s=None,
+        wrench_source_id=None, wrench_source_wall_time_ns=None,
+        measured_twist_base=None, measured_twist_valid=False,
+        measured_twist_fresh=False, measurement_time_s=None,
+        measured_twist_metadata=None,
+    ):
+        kwargs = dict(contact=contact, f_ext_raw=f_ext_raw, dt_actual=dt_actual,
+            sensor_age_s=sensor_age_s, feedback_age_s=feedback_age_s,
+            feedback_fresh_tick=feedback_fresh_tick,
+            feedback_velocity_valid=feedback_velocity_valid,
+            v_tcp_z_actual=v_tcp_z_actual, slack_norm=slack_norm)
+        lifecycle = getattr(self, "command_lifecycle", None)
+        if lifecycle is None:
+            return self._sample(t_s, current_pose, f_ext, **kwargs)
+        return lifecycle.sample(self._sample, t_s, current_pose, f_ext, kwargs,
+            wrench_source_time_s=wrench_source_time_s, wrench_source_id=wrench_source_id,
+            wrench_source_wall_time_ns=wrench_source_wall_time_ns,
+            measured_twist_base=measured_twist_base, measured_twist_valid=measured_twist_valid,
+            measured_twist_fresh=measured_twist_fresh, measurement_time_s=measurement_time_s,
+            measured_twist_metadata=measured_twist_metadata)
+
+    def _sample(
         self,
         t_s: float,
         current_pose: np.ndarray,
@@ -156,11 +192,20 @@ class HybridTffOuter:
                                    "contact_present", False))
         self.last_contact_present = bool(present)
         if guide is not None:
+            lifecycle = getattr(self, "command_lifecycle", None)
+            preview_kwargs = dict(
+                force_n=float(np.asarray(f_ext, dtype=float).reshape(6)[2]),
+                stick_speed_m_s=float(np.linalg.norm(path_raw[:2])),
+            )
+            if lifecycle is not None:
+                preview_kwargs['force_n'] = lifecycle.force_n
             visual_omega = guide.preview(
                 pose=current_pose,
                 dt_s=dt_s,
-                contact_present=bool(present),
+                contact_present=(bool(present) if lifecycle is None else
+                                 lifecycle._pending['preview_contact']),
                 tilt=getattr(self.force_law, "tilt", None),
+                **preview_kwargs,
             )
         fuse = (
             guide is not None
@@ -179,7 +224,9 @@ class HybridTffOuter:
                 v_pos = v_pos * alpha
                 path = path * alpha
         self.last_pad_alpha = alpha
-        fout = self.force_law.update(
+        lifecycle = getattr(self, "command_lifecycle", None)
+        force_update = self.force_law.update if lifecycle is None else lifecycle.prepare_force
+        fout = force_update(
             dt_s=dt_s,
             pose=current_pose,
             f_ext=np.asarray(f_ext, dtype=float).reshape(6),
@@ -196,7 +243,8 @@ class HybridTffOuter:
             euler_order=self._euler_order(),
             visual_velocity_target_rad_s=None if fuse else visual_omega,
         )
-        allocated = self._allocate_pad_scan_qp(
+        allocate = self._allocate_pad_scan_qp if lifecycle is None else lifecycle.allocate
+        allocated = allocate(
             current_pose, f_ext, fout, path_raw, guide, bool(present), dt_s,
         ) if fuse else None
         if allocated is not None:
@@ -219,7 +267,7 @@ class HybridTffOuter:
                 path = path * alpha
             v_star = compose_tff(v_pos, fout.v_force, self.selection)
             self.last_facts = failed_facts
-        if guide is not None:
+        if guide is not None and lifecycle is None:
             from peirastic.realman8dof.force.torque_tilt import rotation_from_pose
             guide.commit(v_star, rotation_from_pose(current_pose, euler_order=self._euler_order()))
         telemetry = dict(getattr(fout, "telemetry", None) or {})
@@ -269,7 +317,8 @@ class HybridTffOuter:
         self.last_feedback_twist = np.asarray(
             self.position.last_feedback_twist, dtype=float
         ).copy()
-        self._pad_previous_twist = np.asarray(v_star, dtype=float).reshape(6).copy()
+        if lifecycle is None:
+            self._pad_previous_twist = np.asarray(v_star, dtype=float).reshape(6).copy()
         return v_star
 
     def _pad_scan_solver(self, guide):

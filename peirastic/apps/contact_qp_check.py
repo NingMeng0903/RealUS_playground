@@ -26,8 +26,18 @@ def observation_problem(observation, config, *, now_s):
         if (observation.region_feature_version!=REGION_FEATURE_VERSION
                 or observation.region_layout_version!=fc.region_layout_version
                 or not np.array_equal(observation.region_edges,fc.region_edges)
+                or observation.region_confidence is None
+                or len(observation.region_confidence)!=fc.region_count
                 or observation.timestamp_semantics!='effective_image_time'):
             return 'N-region confidence layout/version or effective image timestamp mismatch; restart the configured worker'
+        if (config.get('pad') or {}).get('policy') == 'pad_scan_v1':
+            from peirastic.contact_qp.types import ECHO_FEATURE_VERSION
+            if (observation.echo_feature_version != ECHO_FEATURE_VERSION
+                    or observation.nearfield_echo is None
+                    or len(observation.nearfield_echo) != fc.width
+                    or not np.array_equal(observation.nearfield_echo_depth,
+                                          config['pad']['evidence']['near_depth'])):
+                return 'pad full-aperture near-field echo feature/version mismatch; restart the configured worker'
     if ((config.get('qp') or {}).get('allocation_policy') in POLICIES
             and observation.confidence_feature_version!=FEATURE_VERSION):
         return 'confidence centroid worker version mismatch; restart worker with the experimental config'

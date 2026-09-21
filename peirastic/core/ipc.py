@@ -471,20 +471,25 @@ class CommandClient:
             except (KeyError, TypeError, ValueError, OverflowError):
                 return ERR_CONTROLLER
             installed = int(snap.get("install_seq", 0))
+            if installed > int(seq):
+                return ERR_CONTROLLER
+            st = int(snap.get("status", -1))
+            if bool(snap.get("estop")) or st in (int(Status.ESTOP), int(Status.STOPPED)):
+                return ERR_STOPPED
+            # Installation can succeed and the first control tick can fail
+            # before this client polls. Do not acknowledge that as success.
+            # An error from before this command was consumed remains stale.
+            if st == int(Status.ERROR) and (
+                installed == int(seq) or int(snap.get("ack_seq", 0)) >= int(seq)
+            ):
+                err = int(snap.get("err_code", 0))
+                return ERR_CONTROLLER if err == 0 else err
             if installed == int(seq):
                 return (
                     OK
                     if int(snap.get("mode", -1)) == expected_mode
                     else ERR_CONTROLLER
                 )
-            if installed > int(seq):
-                return ERR_CONTROLLER
-            st = int(snap.get("status", -1))
-            if st in (int(Status.ESTOP), int(Status.STOPPED)):
-                return ERR_STOPPED
-            if st == int(Status.ERROR) and int(snap.get("ack_seq", 0)) >= int(seq):
-                err = int(snap.get("err_code", 0))
-                return ERR_CONTROLLER if err == 0 else err
             time.sleep(0.01)
         return ERR_NO_ACK
 
