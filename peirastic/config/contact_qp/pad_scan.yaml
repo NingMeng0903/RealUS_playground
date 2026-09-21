@@ -97,10 +97,10 @@ qp:
     soft_force_n: 4.5
     hard_stop_n: 6.0
   repair_speed_m_s: 0.09
-  alpha_min: 0.25
+  alpha_min: 0.12
   alpha_min_at_quality: 0.93
-  alpha_hold: 0.45
-  max_visual_omega_rad_s: 0.1
+  alpha_hold: 0.25
+  max_visual_omega_rad_s: 0.16
   escalation_omega_rad_s: null
   recover_quality: 0.985
   recover_hold_s: 0.25
@@ -120,7 +120,7 @@ qp:
   enable_aperture: false
   max_image_age_s: 0.3
   pad_omega_step_rad_s: 0.0
-  pad_visual_hold_s: 0.0
+  pad_visual_hold_s: 0.25
 command:
   max_interval_s: 0.05
 image_kf:
@@ -142,16 +142,30 @@ pad:
   # Reserve 0.1 mm/s in the outer target for IK task realization error.
   # The final command still passes the separate 15 mm/s admission limit.
   normal_allocation_margin_m_s: 0.0001
-  max_visual_omega_rad_s: 0.1
-  angular_max_rad_s: 0.28
-  angular_acceleration_rad_s2: 2.0
+  max_visual_omega_rad_s: 0.16
+  angular_max_rad_s: 0.22
+  angular_acceleration_rad_s2: 1.2
   cop_min_force_n: 0.8
   cop_max_m: 0.025
-  repair_speed_cap_m_s: 0.01
+  repair_speed_cap_m_s: 0.02
   repair_pause_after_s: 0.5
   recover_hold_s: 0.25
-  alpha_ramp_down_s: 0.12
-  alpha_ramp_up_s: 0.3
+  alpha_min: 0.12
+  # Good-side MAD below this is treated as this wide. A 0.11 tissue
+  # imbalance then stays a small cubic; a phantom hole past the floor does not.
+  relative_spread_floor: 0.12
+  alpha_ramp_down_s: 0.20
+  alpha_ramp_up_s: 0.4
+  visual_hold_s: 0.25
+  visual_hold_omega_rad_s: 0.03
+  # Parked residual echo still creeps a leftover wedge; full 0.16 + hold
+  # hunts left/right on an already-full window (234620 t=3–14 s).
+  static_stick_m_s: 0.01
+  static_visual_omega_rad_s: 0.04
+  # Hunt half-cycles in 234620 were 0.5–0.75 s. A leftover static wedge
+  # keeps one echo sign; only then raise parked Ω. Never hold while parked.
+  static_commit_s: 0.80
+  static_committed_omega_rad_s: 0.12
   max_image_age_s: 0.3
   max_feedback_age_s: 0.08
   command_max_age_s: 0.08
@@ -167,12 +181,16 @@ pad:
     baseline_tau_s: 5.0
     noise_sigma: 3.0
     minimum_dark_columns: 2
-    echo_ratio: 0.45
+    echo_ratio: 0.55
     absolute_echo_floor: 0.035
+    echo_moment_compress: 0.0
+    echo_moment_cubic_knee: 0.25
     direction_confirm_frames: 2
-    force_step_max_n: 0.35
+    force_step_max_n: 0.80
+    force_step_release_n: 0.40
+    force_unstable_hold_s: 0.08
     force_window_s: 0.25
-    force_window_range_n: 0.7
+    force_window_range_n: 1.4
   force_gate_start_n: 4.0
-  force_gate_end_n: 4.5
+  force_gate_end_n: 5.5
   hard_stop_policy: fresh_immediate_v1

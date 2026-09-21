@@ -97,9 +97,9 @@ def test_guide_current_speed_pause_and_raw_reversal_confirmation():
     step(1.3, echo)
     assert guide.last_alpha == guide.omega_target == 0.
     step(1.35, echo)
-    assert guide.evidence_valid and -.02 < guide.omega_target < 0.
+    assert guide.evidence_valid and -0.10 <= guide.omega_target < 0.
     step(1.4, echo, speed=.08)
-    assert guide.last_alpha <= .125
+    assert guide.last_alpha <= config['pad']['repair_speed_cap_m_s'] / .08 + 1e-12
     for t in (1.5, 1.6, 1.7, 1.81): step(t, echo)
     assert guide.last_alpha == 0.
     step(1.85, echo[::-1])
@@ -125,7 +125,62 @@ def test_high_q25_left_wedge_still_requests_echo_omega_without_parking_alpha():
                       now_s=t + .02, force_n=4., stick_speed_m_s=0.)
     assert guide.last_facts.get('echo_reason') == 'unilateral_missing_echo'
     assert abs(guide.omega_target) > 0.
+    assert abs(guide.omega_target) <= config['pad']['static_visual_omega_rad_s'] + 1e-12
     assert guide.last_alpha > 0.9
+    assert guide._hold_until_s is None
+
+
+def test_moving_echo_keeps_full_omega_and_parked_echo_does_not_hold():
+    config, receiver, frame = setup()
+    guide = PadVisualGuide(config, TorqueTiltConfig(), receiver=receiver, progress=True)
+    tilt = TorqueTilt(TorqueTiltConfig())
+    echo = np.full(145, .5)
+    echo[:16] = .01
+    pose = np.zeros(6)
+    for t in (1.0, 1.05):
+        obs = frame(t, echo)
+        object.__setattr__(obs, 'region_confidence', np.full(20, .99))
+        guide.preview(pose=pose, dt_s=.005, contact_present=True, tilt=tilt,
+                      now_s=t + .02, force_n=4., stick_speed_m_s=.05)
+    assert abs(guide.omega_target) > config['pad']['static_visual_omega_rad_s']
+    assert guide._hold_until_s is not None
+    guide.preview(pose=pose, dt_s=.005, contact_present=True, tilt=tilt,
+                  now_s=1.12, force_n=4., stick_speed_m_s=0.)
+    assert abs(guide.omega_target) <= config['pad']['static_visual_omega_rad_s'] + 1e-12
+    assert guide._hold_until_s is None
+
+
+def test_parked_stable_wedge_raises_omega_after_commit_but_flips_stay_capped():
+    config, receiver, frame = setup()
+    guide = PadVisualGuide(config, TorqueTiltConfig(), receiver=receiver, progress=True)
+    tilt = TorqueTilt(TorqueTiltConfig())
+    left = np.full(145, .5)
+    left[:16] = .01
+    right = left[::-1]
+    pose = np.zeros(6)
+    def tick(t, echo, speed=0.):
+        obs = frame(t, echo)
+        object.__setattr__(obs, 'region_confidence', np.full(20, .99))
+        guide.preview(pose=pose, dt_s=.005, contact_present=True, tilt=tilt,
+                      now_s=t + .02, force_n=4., stick_speed_m_s=speed)
+    for t in np.arange(1.0, 1.40, .05):
+        tick(t, left)
+    assert abs(guide.omega_target) <= config['pad']['static_visual_omega_rad_s'] + 1e-12
+    for t in np.arange(1.40, 1.95, .05):
+        tick(t, left)
+    assert abs(guide.omega_target) > config['pad']['static_visual_omega_rad_s']
+    assert abs(guide.omega_target) <= config['pad']['static_committed_omega_rad_s'] + 1e-12
+    assert guide._hold_until_s is None
+    flipper = PadVisualGuide(config, TorqueTiltConfig(), receiver=receiver, progress=True)
+    def flip_tick(t, echo):
+        obs = frame(t, echo)
+        object.__setattr__(obs, 'region_confidence', np.full(20, .99))
+        flipper.preview(pose=pose, dt_s=.005, contact_present=True, tilt=tilt,
+                        now_s=t + .02, force_n=4., stick_speed_m_s=0.)
+    for i, t in enumerate(np.arange(2.0, 3.6, .05)):
+        flip_tick(t, left if (i // 6) % 2 == 0 else right)
+    assert abs(flipper.omega_target) <= config['pad']['static_visual_omega_rad_s'] + 1e-12
+    assert flipper._hold_until_s is None
 
 
 def test_publisher_twenty_regions_keeps_full_echo_under_envelope():
@@ -148,14 +203,21 @@ def test_live_stick_jump_cannot_exceed_repair_cap_during_five_ms_ramp():
                                     force_n=4., stick_speed_m_s=speed)
     tick(1., .04)
     tick(1.05, .04)
-    for i in range(20):
+    for i in range(80):
         tick(1.055+i*.005, .04)
-    assert guide.last_alpha == pytest.approx(.25)
-    tick(1.16, .08)
-    assert guide.last_alpha*.08 <= config['pad']['repair_speed_cap_m_s']+1e-12
+    assert guide.last_alpha == pytest.approx(.5, abs=.03)
+    previous = guide.last_alpha
+    tick(1.46, .16)
+    cap = config['pad']['repair_speed_cap_m_s']
+    step = .005 / config['pad']['alpha_ramp_down_s']
+    assert previous - guide.last_alpha <= step + 1e-12
+    assert guide.last_alpha <= previous
+    for i in range(80):
+        tick(1.465+i*.005, .16)
+    assert guide.last_alpha*.16 <= cap + 1e-12
     assert guide.last_facts['repair_speed_cap_limited']
     previous = guide.last_alpha
-    tick(1.165, .04)
+    tick(1.87, .04)
     assert guide.last_alpha-previous <= .005/config['pad']['alpha_ramp_up_s']+1e-12
 
 
@@ -163,9 +225,9 @@ def test_raw_healthy_recovery_does_not_require_force_stable_baseline():
     config, receiver, frame = setup()
     config['pad']['evidence']['baseline_hold_s'] = 1.
     evidence = PadContactEvidence(config, receiver)
-    # Each force step is valid, but the rolling range repeatedly exceeds .7 N,
-    # so this stream cannot supply the continuous 1 s baseline learning hold.
-    forces = (3., 3.3, 3.6, 3.9, 3.6, 3.3)
+    # Each force step is valid, but the rolling range repeatedly exceeds the
+    # 1.4 N window, so this stream cannot supply the 1 s baseline learning hold.
+    forces = (3., 3.5, 4., 4.5, 4., 3.5)
     for i in range(31):
         t = 1.+i*.05
         frame(t)
@@ -215,7 +277,7 @@ def test_confirmed_restore_starts_a_new_half_second_repair_episode():
     for t in (1.9, 2.1, 2.3):
         frame(t, echo)
         result = update(evidence, t)
-        assert result.alpha_target == pytest.approx(.25)
+        assert result.alpha_target == pytest.approx(.5)
     frame(2.36, echo)
     assert update(evidence, 2.36).alpha_target == 0.
 
@@ -243,3 +305,55 @@ def test_invalid_or_blank_frames_cannot_complete_raw_recovery(interruption):
         assert result.reason == 'recovery_confirming' and result.alpha_target == 0.
     frame(1.65)
     assert update(evidence, 1.65).alpha_target == 1.
+
+
+def test_loader_keeps_visual_hold_and_pad_force_band():
+    config = load_pad_scan_config()
+    assert config['qp']['pad_visual_hold_s'] == pytest.approx(.25)
+    assert config['pad']['alpha_min'] == pytest.approx(.12)
+    assert config['qp']['alpha_min'] == config['qp']['pad_alpha_min'] == pytest.approx(.12)
+    assert config['pad']['max_visual_omega_rad_s'] == pytest.approx(.16)
+    assert config['pad']['static_stick_m_s'] == pytest.approx(.01)
+    assert config['pad']['static_visual_omega_rad_s'] == pytest.approx(.04)
+    assert config['pad']['static_commit_s'] == pytest.approx(.80)
+    assert config['pad']['static_committed_omega_rad_s'] == pytest.approx(.12)
+    assert config['pad']['relative_spread_floor'] == pytest.approx(.12)
+    assert config['pad']['evidence']['echo_moment_cubic_knee'] == pytest.approx(.25)
+    assert config['pad']['evidence']['echo_moment_compress'] == pytest.approx(0.)
+    assert config['pad']['force_gate_end_n'] == pytest.approx(5.5)
+    assert config['qp']['differential_repair']['soft_force_n'] == 4.5
+    from peirastic.realman8dof.modes.pad_scan_config import pad_visual_force_gate
+    assert pad_visual_force_gate(4., 4., 5.5) == pytest.approx(1.)
+    assert pad_visual_force_gate(5.5, 4., 5.5) == pytest.approx(0.)
+    assert pad_visual_force_gate(4.75, 4., 5.5) == pytest.approx(.5)
+
+
+def test_two_column_wedge_is_cubic_and_wide_edge_keeps_linear_omega():
+    config, receiver, frame = setup()
+    linear = dict(config)
+    linear['pad'] = dict(config['pad'])
+    linear['pad']['evidence'] = dict(config['pad']['evidence'], echo_moment_cubic_knee=0.)
+    narrow = np.full(145, .5)
+    narrow[:2] = .01
+    wide = np.full(145, .5)
+    wide[:40] = .01
+    shaped = PadContactEvidence(config, receiver)
+    raw = PadContactEvidence(linear, receiver)
+    for t in (1., 1.05, 1.1):
+        frame(t, narrow)
+        update(shaped, t)
+        update(raw, t)
+    frame(1.15, narrow)
+    small = update(shaped, 1.15)
+    plain = update(raw, 1.15)
+    assert small.reason == plain.reason == 'unilateral_missing_echo'
+    assert abs(small.omega_request_rad_s) < abs(plain.omega_request_rad_s)
+    for t in (1.2, 1.25):
+        frame(t, wide)
+        update(shaped, t)
+        update(raw, t)
+    frame(1.3, wide)
+    deep = update(shaped, 1.3)
+    deep_plain = update(raw, 1.3)
+    assert abs(deep.omega_request_rad_s) == pytest.approx(abs(deep_plain.omega_request_rad_s), rel=.05)
+    assert abs(deep.omega_request_rad_s) > abs(small.omega_request_rad_s)

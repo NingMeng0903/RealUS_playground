@@ -657,7 +657,7 @@ def phase_cartesian_goto(
     # posture behavior; attach_joint_move_rail then follows the committed
     # structure when deciding whether to freeze the rail interpolator.
     preset = str(secondary_preset or "move")
-    if preset != "payload_id":
+    if preset not in ("move", "track", "hold", "off", "payload_id"):
         preset = "move"
     sec = SecondaryPolicy(
         preset=preset,
@@ -779,10 +779,6 @@ def stroke_amplitude_m(reference) -> float:
     return 0.0
 
 
-def _contact_gated_reference(reference) -> bool:
-    return getattr(reference, "start_force_n", None) is not None
-
-
 def _make_on_enter(spec: JointPhaseSpec, ctx: CompileContext) -> Callable[[], None] | None:
     psi = None
     if spec.secondary.arm_angle is not None:
@@ -791,14 +787,14 @@ def _make_on_enter(spec: JointPhaseSpec, ctx: CompileContext) -> Callable[[], No
     def _enter() -> None:
         spec.secondary.apply(ctx.inner, psi_rad=psi)
         if spec.mode == TaskMode.HYBRID_TRACK and spec.reference is not None:
-            if _contact_gated_reference(spec.reference):
-                ctx.inner.set_rail_posture_frozen(True)
-                ctx.inner.pin_live_stroke()
-            else:
-                pose = ctx.inner.kin.fk_pose(ctx.inner.q_cmd)
-                ctx.inner.plan_scan_stroke(
-                    float(pose[1]), stroke_amplitude_m(spec.reference)
-                )
+            # IRD may be cached, but never publish d*. Homotopy stays live.
+            ctx.inner.set_rail_posture_frozen(False)
+            if hasattr(ctx.inner, "release_planned_stroke"):
+                ctx.inner.release_planned_stroke()
+            pose = ctx.inner.kin.fk_pose(ctx.inner.q_cmd)
+            ctx.inner.plan_scan_stroke(
+                float(pose[1]), stroke_amplitude_m(spec.reference), apply=False
+            )
         if (
             spec.secondary.preset == "move"
             and spec.q_target_rad is not None

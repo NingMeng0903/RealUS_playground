@@ -36,6 +36,18 @@ from peirastic.realman8dof.modes.contact_reference import ContactGatedReference
 from peirastic.realman8dof.modes.servo import ServoTwistOuter, slew_kwargs
 
 
+def _pad_visual_gamma(guide, force_n, cfg):
+    """Pad smoothstep γ when pad.force_gate_* is set; otherwise the v8 linear gate."""
+
+    pad = dict((getattr(guide, "config", None) or {}).get("pad") or {})
+    start = pad.get("force_gate_start_n")
+    end = pad.get("force_gate_end_n")
+    if start is not None and end is not None:
+        from peirastic.realman8dof.modes.pad_scan_config import pad_visual_force_gate
+        return pad_visual_force_gate(force_n, start, end)
+    return cfg.differential_repair.force_gate(force_n)
+
+
 class HybridTffOuter:
     """Position axes: k e + v_ff. Force axes: ForceLaw. Compose with TFF."""
 
@@ -341,6 +353,11 @@ class HybridTffOuter:
         vmax[4] = min(vmax[4], tilt.vmax_rad_s)
         accel = np.asarray(self.controller.cfg.max_acceleration, dtype=float).copy()
         accel[4] = min(accel[4], tilt.a_max)
+        pad = dict((guide.config or {}).get("pad") or {})
+        if pad.get("angular_max_rad_s") is not None:
+            vmax[4] = min(vmax[4], float(pad["angular_max_rad_s"]))
+        if pad.get("angular_acceleration_rad_s2") is not None:
+            accel[4] = min(accel[4], float(pad["angular_acceleration_rad_s2"]))
         settings["max_velocity"] = vmax
         settings["max_acceleration"] = accel
         settings["angle_limit_rad"] = tilt.theta_max_rad
@@ -405,7 +422,7 @@ class HybridTffOuter:
                 path_feedforward_contact=transform @ moving,
                 visual_request_rad_s=request if visual_valid else 0.,
                 visual_task_valid=visual_valid,
-                visual_gamma=cfg.differential_repair.force_gate(float(-env[2])),
+                visual_gamma=_pad_visual_gamma(guide, float(-env[2]), cfg),
                 cop_m=cop,
                 repair_execution_enabled=bool(contact),
             ), online=True, deadline_s=time.monotonic() + min(0.004, hold))
@@ -570,6 +587,8 @@ def _bind_contact_gate(
         previous_enter = phase.on_enter
         previous_exit = phase.on_exit
 
+        planned = []
+
         def _plan_scan_stroke():
             child = getattr(gate, "reference", None)
             if hasattr(child, "poses"):
@@ -577,25 +596,34 @@ def _bind_contact_gate(
                 y_center = 0.5 * float(poses[0, 1] + poses[1, 1])
             else:
                 y_center = float(inner.kin.fk_pose(inner.q_cmd)[1])
-            inner.plan_scan_stroke(y_center, stroke_amplitude_m(gate))
+            planned[:] = inner.plan_scan_stroke(
+                y_center, stroke_amplitude_m(gate), apply=False
+            )
 
         def _enter():
             if previous_enter is not None:
                 previous_enter()
-            inner.set_rail_posture_frozen(True)
-            inner.pin_live_stroke()
-            # IRD on the first 4 N tick spent the 50 ms command lease (016 L_DtP/001).
+            inner.set_rail_posture_frozen(False)
+            if hasattr(inner, "release_planned_stroke"):
+                inner.release_planned_stroke()
+            # IRD on enter for the lease, but never publish: a pinned d* let
+            # J4 walk to 126° on the 005 L retract (005 L_DtP/001).
             _plan_scan_stroke()
 
         def _exit():
             try:
                 inner.set_rail_posture_frozen(False)
+                if hasattr(inner, "release_planned_stroke"):
+                    inner.release_planned_stroke()
             finally:
                 if previous_exit is not None:
                     previous_exit()
 
         def _on_start():
+            # Keep homotopy live through contact, path, and the retract handoff.
             inner.set_rail_posture_frozen(False)
+            if hasattr(inner, "release_planned_stroke"):
+                inner.release_planned_stroke()
 
         phase.on_enter = _enter
         phase.on_exit = _exit

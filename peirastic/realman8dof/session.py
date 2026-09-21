@@ -349,6 +349,10 @@ def compile_request(
         track_dur = payload.get("duration_s")
         if kind in ("ellipse", "tool_z_sine"):
             track_dur = getattr(ref, "duration_s", track_dur)
+        if str(payload.get("label") or "").startswith("icra_") and hasattr(
+            ctx.inner, "release_planned_stroke"
+        ):
+            ctx.inner.release_planned_stroke()
         return _finish_phase(
             ctx,
             payload,
@@ -430,6 +434,9 @@ def compile_request(
                 payload,
                 build_goto_joints_phase(ctx, q, q_start=q_start, duration_s=dur, v=v),
             )
+        icra = str(payload.get("label") or "").startswith("icra_")
+        if icra and hasattr(ctx.inner, "release_planned_stroke"):
+            ctx.inner.release_planned_stroke()
         return _finish_phase(
             ctx,
             payload,
@@ -440,7 +447,9 @@ def compile_request(
                 duration_s=dur,
                 v=v,
                 label=str(payload.get("label") or "movej"),
-                secondary=_task_policy(payload, dof=dof, default="move"),
+                secondary=_task_policy(
+                    payload, dof=dof, default="track" if icra else "move"
+                ),
             ),
         )
     if req.mode == Mode.CARTESIAN_PTP:

@@ -13,6 +13,15 @@ from peirastic.contact_qp.geometry import contact_cop_from_wrench, twist_tcp_to_
 from peirastic.contact_qp.qp import ContactQp, QpConfig, QpInput
 from peirastic.contact_qp.rocking_smoothing import RockingSmoothing
 from peirastic.realman8dof.force.torque_tilt import rotation_from_pose
+from peirastic.realman8dof.modes.pad_scan_config import pad_visual_force_gate
+
+
+def _pad_lifecycle_gamma(settings, cfg, force_n):
+    start = settings.get('force_gate_start_n')
+    end = settings.get('force_gate_end_n')
+    if start is not None and end is not None:
+        return pad_visual_force_gate(force_n, start, end)
+    return cfg.differential_repair.force_gate(force_n)
 
 
 class PadScanLifecycle:
@@ -22,7 +31,7 @@ class PadScanLifecycle:
         self.baseline, self.config, self.clock = baseline, config, clock
         self.settings = dict(config.get('pad') or {})
         ceilings = dict(normal_max_m_s=.015, angular_max_rad_s=.28,
-            angular_acceleration_rad_s2=2., max_visual_omega_rad_s=.10,
+            angular_acceleration_rad_s2=2., max_visual_omega_rad_s=.18,
             cop_min_force_n=.8, cop_max_m=.025, hard_stop_n=6.)
         for name, ceiling in ceilings.items():
             value = float(self.settings.get(name, ceiling))
@@ -261,7 +270,7 @@ class PadScanLifecycle:
             mechanical_omega_rad_s=float((self.transform@mechanical)[4]),
             path_feedback_contact=self.transform@feedback, path_feedforward_contact=self.transform@moving,
             visual_request_rad_s=request, visual_task_valid=visual_valid,
-            visual_gamma=cfg.differential_repair.force_gate(self.force_n), cop_m=cop,
+            visual_gamma=_pad_lifecycle_gamma(self.settings, cfg, self.force_n), cop_m=cop,
             repair_execution_enabled=bool(contact)), online=True,
             deadline_s=time.monotonic()+min(.004, self.baseline.dt))
         self.baseline.last_facts = dict(guide.last_facts or {}, cop_m=cop, cop_valid=cop is not None,

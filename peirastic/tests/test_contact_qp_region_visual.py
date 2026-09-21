@@ -155,3 +155,19 @@ def test_relative_deficit_adapts_to_tissue_and_phantom_and_still_emits_omega_and
 
     assert preferred_relative_alpha(0.0, 0.15) == pytest.approx(1.0)
     assert preferred_relative_alpha(0.15, 0.15) == pytest.approx(0.25)
+
+
+def test_spread_floor_shrinks_tissue_imbalance_and_keeps_a_phantom_hole():
+    tissue = np.full(20, 0.92)
+    tissue[:10] = 0.81
+    mild = _relative(tissue, relative_spread_floor=0.12)
+    raw = _relative(tissue)
+    assert abs(mild.request_rad_s) < abs(raw.request_rad_s)
+    assert mild.alpha_preferred > raw.alpha_preferred
+    phantom = np.full(20, 0.995)
+    phantom[:4] = 0.60
+    hole = _relative(phantom, relative_spread_floor=0.12)
+    bare = _relative(phantom)
+    assert hole.reason == 'regional_deficit_moment'
+    assert abs(hole.request_rad_s) == pytest.approx(abs(bare.request_rad_s), rel=1e-6)
+    assert hole.alpha_preferred == pytest.approx(bare.alpha_preferred)

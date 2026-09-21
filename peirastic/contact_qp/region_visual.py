@@ -61,6 +61,19 @@ def better_half_reference(quality):
     return float(max(np.median(q[:half]), np.median(q[half:])))
 
 
+def better_half_spread(quality):
+    """Median absolute deviation of the better half. A flat gel side is ~0."""
+
+    q = np.asarray(quality, dtype=float).reshape(-1)
+    half = q.size // 2
+    if half == 0:
+        return 0.
+    left, right = q[:half], q[half:]
+    side = left if float(np.median(left)) >= float(np.median(right)) else right
+    center = float(np.median(side))
+    return float(np.median(np.abs(side - center)))
+
+
 @dataclass(frozen=True)
 class RegionVisualRequest:
     request_rad_s: float
@@ -91,7 +104,7 @@ def region_visual_request(quality, region_valid, region_edges, geometry: ProbeGe
                           progress_loss_gain=0.75, alpha_min=0.25, alpha_min_at_quality=None,
                           max_request_rad_s=None, rocking_reference=None,
                           deficit_mode='absolute', balance_deadband=0.0,
-                          relative_alpha_span=0.15):
+                          relative_alpha_span=0.15, relative_spread_floor=None):
     """Least-squares rocking fit to per-region indentation deficits.
 
     v_z(x)=U-x*Omega and rocking d_i=max(ref-c_i,0). The scan default
@@ -145,7 +158,19 @@ def region_visual_request(quality, region_valid, region_edges, geometry: ProbeGe
     if q is None:
         deficits=None
     elif mode=='relative':
-        deficits=vector(np.maximum(rocking_ref-q-deadband,0.),(n,),name='region_deficits')
+        excess=np.maximum(rocking_ref-q-deadband,0.)
+        # Scale by this frame's good-side spread. Differences inside that
+        # spread stay small; a hole deeper than the floor keeps full excess.
+        # Cubic in the ratio is Welleweerd's small-error weight, setpoint
+        # stays the better-half median (zero imbalance), not phantom c_min.
+        if relative_spread_floor is not None:
+            floor=float(relative_spread_floor)
+            if not math.isfinite(floor) or floor<=0.:
+                raise ValueError('relative_spread_floor must be finite and positive')
+            scale=max(better_half_spread(q), floor)
+            ratio=np.clip(excess/scale, 0., 1.)
+            excess=excess*ratio*ratio
+        deficits=vector(excess,(n,),name='region_deficits')
     else:
         deficits=vector(np.maximum(rocking_ref-q,0.),(n,),name='region_deficits')
     if q is None:

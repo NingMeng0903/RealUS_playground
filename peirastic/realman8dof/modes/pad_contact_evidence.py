@@ -42,6 +42,8 @@ class PadContactEvidence:
         self._stable_since = None
         self._last_force = None
         self._force_history = deque()
+        self._force_tripped = False
+        self._force_unstable_until = None
         self._last_echo_time = None
         self._direction = 0
         self._candidate_direction = 0
@@ -58,6 +60,10 @@ class PadContactEvidence:
         self._last_now = None
 
     def _validate_settings(self):
+        self.settings.setdefault('echo_moment_compress', 0.)
+        self.settings.setdefault('echo_moment_cubic_knee', 0.)
+        self.settings.setdefault('force_step_release_n', self.settings['force_step_max_n'])
+        self.settings.setdefault('force_unstable_hold_s', 0.)
         for name in ('baseline_hold_s', 'baseline_tau_s', 'noise_sigma', 'echo_ratio', 'absolute_echo_floor',
                      'force_step_max_n', 'force_window_s', 'force_window_range_n'):
             v = self.settings[name]
@@ -88,6 +94,8 @@ class PadContactEvidence:
         if self.strict_layout:
             self._last_force = None
             self._force_history.clear()
+            self._force_tripped = False
+            self._force_unstable_until = None
 
     def _pause(self, reason):
         self._stable_since = self._recovery_since = None
@@ -180,8 +188,18 @@ class PadContactEvidence:
                 kind, direction = 'conflicting_spatial_evidence', 0
         # Continuous spatial moment: a two-column hole has a small request,
         # with no fixed step or remembered angular peak.
-        omega = -self.config['geometry']['image_x_sign']*self.pad['max_visual_omega_rad_s']*float(
-            np.dot(deficit, x)/np.dot(x, x))
+        moment = float(np.dot(deficit, x)/np.dot(x, x))
+        knee = float(self.settings.get('echo_moment_cubic_knee', 0.) or 0.)
+        compress = float(self.settings.get('echo_moment_compress', 0.) or 0.)
+        if knee > 0. and moment != 0.:
+            # |m| below the knee shrinks as m^3. A wide edge at or above the
+            # knee keeps its linear moment. tanh(m/0.06) did the opposite.
+            weight = min(1., abs(moment) / knee)
+            moment = math.copysign(abs(moment) * weight * weight, moment)
+        elif compress > 0.:
+            gain = math.tanh(abs(moment) / compress)
+            moment = math.copysign(gain, moment) if moment != 0. else 0.
+        omega = -self.config['geometry']['image_x_sign']*self.pad['max_visual_omega_rad_s']*moment
         omega = float(np.clip(omega, -self.pad['max_visual_omega_rad_s'], self.pad['max_visual_omega_rad_s']))
         self._observation_facts = dict(
             nearfield_echo=echo.tolist(), echo_reference=reference.tolist(), echo_noise=noise.tolist(),
@@ -248,14 +266,32 @@ class PadContactEvidence:
             return self._result(now, False, 0., reason, obs, fresh)
         force_valid = bool(math.isfinite(force_n) and self.pad['cop_min_force_n'] <= force_n
                            < self.pad.get('force_gate_end_n', 4.5))
-        force_stable = bool(force_valid and (self._last_force is None or
-                            abs(force_n-self._last_force) <= self.settings['force_step_max_n']))
+        step = 0. if self._last_force is None else abs(force_n - self._last_force)
+        enter = float(self.settings['force_step_max_n'])
+        leave = min(enter, float(self.settings.get('force_step_release_n', enter)))
+        hold_s = float(self.settings.get('force_unstable_hold_s', 0.) or 0.)
         self._last_force = float(force_n) if math.isfinite(force_n) else None
         self._force_history.append((now, float(force_n)))
         while self._force_history and self._force_history[0][0] < now-self.settings['force_window_s']:
             self._force_history.popleft()
         force_range = float(np.ptp([f for _, f in self._force_history]))
-        baseline_force_stable = force_stable and force_range <= self.settings['force_window_range_n']
+        window = float(self.settings['force_window_range_n'])
+        over_enter = (not force_valid) or step > enter
+        over_leave = (not force_valid) or step > leave
+        if over_enter:
+            self._force_tripped = True
+            if hold_s > 0.:
+                self._force_unstable_until = now + hold_s
+            force_stable = False
+        elif self._force_unstable_until is not None and now < self._force_unstable_until:
+            force_stable = False
+        elif self._force_tripped and over_leave:
+            force_stable = False
+        else:
+            self._force_tripped = False
+            self._force_unstable_until = None
+            force_stable = True
+        baseline_force_stable = force_stable and force_range <= window
         if not baseline_force_stable:
             self._stable_since = None
             self._warming_mean = self._warming_noise = None

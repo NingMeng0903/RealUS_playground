@@ -412,12 +412,34 @@ def test_default_hybrid_phase_does_not_wrap_reference() -> None:
         assert phase.outer.reference is source
 
 
+def test_preview_scan_stroke_leaves_homotopy_unplanned() -> None:
+    ctx = _ctx()
+    inner = ctx.inner
+    assert inner.posture_retarget is not None
+    pose = inner.kin.fk_pose(inner.q_cmd)
+    inner.plan_scan_stroke(float(pose[1]), 0.04, apply=True)
+    assert inner.posture_retarget.planned is True
+    inner.plan_scan_stroke(float(pose[1]), 0.04, apply=False)
+    assert inner.posture_retarget.planned is False
+
+
 def test_scan_stroke_is_planned_on_enter_not_first_contact() -> None:
     from peirastic.scan_path import ForearmReference, make_spec
 
     ctx = _ctx()
     calls = []
-    ctx.inner.plan_scan_stroke = lambda y, amp, q_rad=None: calls.append((float(y), float(amp))) or (0.0, 0.0)
+    ctx.inner.plan_scan_stroke = (
+        lambda y, amp, q_rad=None, apply=True: calls.append((float(y), float(amp), bool(apply)))
+        or (0.03, 1.2)
+    )
+    pins = []
+    strokes = []
+    frozen = []
+    released = []
+    ctx.inner.pin_live_stroke = lambda: pins.append("pin")
+    ctx.inner.set_stroke = lambda d, psi: strokes.append((float(d), float(psi)))
+    ctx.inner.set_rail_posture_frozen = lambda value: frozen.append(bool(value))
+    ctx.inner.release_planned_stroke = lambda: released.append("release")
     distal = np.array([0.12, 0.02, 0.15, 0.0, 0.0, 0.0])
     proximal = distal.copy()
     proximal[1] += 0.12
@@ -442,8 +464,47 @@ def test_scan_stroke_is_planned_on_enter_not_first_contact() -> None:
     assert len(calls) == 1
     assert calls[0][0] == pytest.approx(0.5 * (distal[1] + proximal[1]))
     assert calls[0][1] == pytest.approx(0.06)
-    frozen = []
-    ctx.inner.set_rail_posture_frozen = lambda value: frozen.append(bool(value))
+    assert calls[0][2] is False
+    assert pins == []
+    assert strokes == []
+    assert released == ["release"]
+    assert True not in frozen
     phase.outer.contact_gate.on_start()
     assert len(calls) == 1
-    assert frozen == [False]
+    assert strokes == []
+    assert released == ["release", "release"]
+    assert True not in frozen
+    phase.on_exit()
+    assert strokes == []
+    assert released[-1] == "release"
+
+
+def test_ungated_hybrid_compile_does_not_pin_stroke() -> None:
+    from rm75_control.control.admittance_common.controller import (
+        AdmittanceConfig,
+        AdmittanceController,
+    )
+    from rm75_control.control.joint_admittance_8dof.api import (
+        compile_phase,
+        phase_hybrid_track,
+    )
+    from rm75_control.control.joint_admittance_8dof.reference import SinToolYReference
+
+    ctx = _ctx()
+    calls = []
+    released = []
+    frozen = []
+    ctx.inner.plan_scan_stroke = (
+        lambda y, amp, q_rad=None, apply=True: calls.append(bool(apply)) or (0.03, 1.2)
+    )
+    ctx.inner.release_planned_stroke = lambda: released.append("release")
+    ctx.inner.set_rail_posture_frozen = lambda value: frozen.append(bool(value))
+    spec = phase_hybrid_track(
+        SinToolYReference(0.02, period_s=4.0),
+        AdmittanceController(0.005, AdmittanceConfig.from_dict({})),
+        desired_force=np.array([0.0, 0.0, 4.0, 0.0, 0.0, 0.0]),
+    )
+    compile_phase(spec, ctx).phase.on_enter()
+    assert calls == [False]
+    assert released == ["release"]
+    assert True not in frozen

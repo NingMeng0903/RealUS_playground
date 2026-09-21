@@ -15,6 +15,7 @@ class PostureRetarget {
 
   void reset(const Vec8& q, const Vec6& pose);
   void set_planned_stroke(double d_star, double psi_star);
+  void clear_planned();
   void begin_unplanned(const Vec8& q, const Vec6& pose);
   void follow_live(const Vec8& q, const Vec6& pose, double dt);
   double nudge_d_star(double delta_m, double y_des_m, double rail_lo, double rail_hi,

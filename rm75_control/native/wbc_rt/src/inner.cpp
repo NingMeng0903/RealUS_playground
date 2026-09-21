@@ -662,6 +662,11 @@ void InnerLoop::set_flags(uint32_t bits) {
 }
 
 void InnerLoop::set_stroke(double d_star, double psi_star) {
+  if (!std::isfinite(d_star) && !std::isfinite(psi_star)) {
+    planned_ = false;
+    posture_.clear_planned();
+    return;
+  }
   d_star_ = d_star;
   d_pref_ = d_star;
   psi_star_ = psi_star;

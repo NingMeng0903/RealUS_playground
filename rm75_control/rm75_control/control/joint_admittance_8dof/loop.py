@@ -1111,13 +1111,19 @@ class JointIkController:
         y_center_m: float,
         amplitude_m: float,
         q_rad: np.ndarray | None = None,
+        *,
+        apply: bool = True,
     ) -> tuple[float, float]:
-        """One-shot min-max (d*, ψ*) at scan start.  Raises if infeasible."""
+        """One-shot min-max (d*, ψ*) at scan start.  Raises if infeasible.
+
+        ``apply=False`` computes IRD and immediately drops the pin so homotopy
+        stays live. ``apply=True`` still publishes d* for offline tests only.
+        """
         q = self.q_cmd if q_rad is None else np.asarray(q_rad, dtype=float)
         if self.posture_retarget is None:
             y_tcp = float(self.kin.fk_placement(q).translation[1])
             d_star = y_tcp - float(q[0])
-            if self.rail_ext_task is not None:
+            if apply and self.rail_ext_task is not None:
                 self.rail_ext_task.set_d_pref(d_star)
             return d_star, float("nan")
         d_star, psi_star = self.posture_retarget.plan_stroke(
@@ -1127,13 +1133,23 @@ class JointIkController:
             rail_lo=float(self.limits.q_lower[0]),
             rail_hi=float(self.limits.q_upper[0]),
         )
-        if self.arm_task is not None:
-            self.arm_task.set_reference(float(psi_star))
-        if self.rail_ext_task is not None:
-            self.rail_ext_task.set_d_pref(float(d_star))
-        if self._native is not None:
-            self._native.set_stroke(float(d_star), float(psi_star))
+        if apply:
+            if self.arm_task is not None:
+                self.arm_task.set_reference(float(psi_star))
+            if self.rail_ext_task is not None:
+                self.rail_ext_task.set_d_pref(float(d_star))
+            if self._native is not None:
+                self._native.set_stroke(float(d_star), float(psi_star))
+        else:
+            self.release_planned_stroke()
         return float(d_star), float(psi_star)
+
+    def release_planned_stroke(self) -> None:
+        """Drop the planned d* pin so homotopy can hold the design family."""
+        if self.posture_retarget is not None:
+            self.posture_retarget._planned = False
+        if self._native is not None:
+            self._native.set_stroke(float("nan"), float("nan"))
 
     def _check_design_family(self, q_meas: np.ndarray) -> None:
         qn = np.asarray(self.centering_task._q_target_default, dtype=float)

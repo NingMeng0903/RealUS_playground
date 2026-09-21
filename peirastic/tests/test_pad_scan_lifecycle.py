@@ -8,6 +8,7 @@ from scipy.spatial.transform import Rotation
 
 from peirastic.core.modes import Mode, ModeRequest
 from peirastic.realman8dof.session import compile_request
+from peirastic.realman8dof.modes.pad_scan_config import load_pad_scan_config
 from peirastic.realman8dof.modes.pad_visual import pad_hybrid_payload
 from peirastic.tests.test_api_facade import _ctx, _SEED
 from rm75_control.control.joint_admittance_8dof.command_lifecycle import CommandLifecycleTransaction
@@ -19,7 +20,6 @@ def outer(omega=.08, stick=None, log_path=None, config=None):
     phase = compile_request(ctx, ModeRequest(Mode.TRACK_HYBRID, payload), raw=raw,
         twist_read=lambda: np.zeros(6) if stick is None else np.asarray(stick))
     obj = phase.outer
-    from peirastic.realman8dof.modes.pad_scan_config import load_pad_scan_config
     from peirastic.realman8dof.modes.pad_scan_lifecycle import PadScanLifecycle
     if getattr(obj, 'command_lifecycle', None) is None:
         obj.command_lifecycle = PadScanLifecycle(
@@ -153,8 +153,9 @@ def test_native_selected_interval_is_reviewed_without_narrow_recomputation(tier)
                                 'command_twist_rows_base', 'command_twist_lower', 'command_twist_upper'}
     rows = constraints['command_twist_rows_base']
     assert rows.shape == (2, 6)
-    np.testing.assert_allclose(constraints['command_twist_lower'], [-.015, -.28])
-    np.testing.assert_allclose(constraints['command_twist_upper'], [.015, .28])
+    omega = load_pad_scan_config()['pad']['angular_max_rad_s']
+    np.testing.assert_allclose(constraints['command_twist_lower'], [-.015, -omega])
+    np.testing.assert_allclose(constraints['command_twist_upper'], [.015, omega])
     rotation = owner.pending_rotation_base_tcp
     probe_tool = np.array([.01, -.02, .013, -.04, .19, .06])
     probe_base = np.r_[rotation @ probe_tool[:3], rotation @ probe_tool[3:]]
@@ -195,8 +196,9 @@ def test_guarded_mechanical_interval_is_sent_to_ik_before_publication(seed_omega
     sample(obj, pose, clock)
     assert not owner._pending['guarded']
     released = owner.command_constraints()
-    np.testing.assert_allclose(released['command_twist_lower'], [-.015, -.28])
-    np.testing.assert_allclose(released['command_twist_upper'], [.015, .28])
+    omega = load_pad_scan_config()['pad']['angular_max_rad_s']
+    np.testing.assert_allclose(released['command_twist_lower'], [-.015, -omega])
+    np.testing.assert_allclose(released['command_twist_upper'], [.015, omega])
     owner.abort('test', definitely_not_sent=True)
 
 
@@ -270,8 +272,11 @@ def test_force_gate_applies_once_and_visual_cap_is_soft_request():
     obj, owner, pose, clock = outer(omega=.2)
     sample(obj, pose, clock, fz=4.25)
     diag = obj.last_facts['allocation_diagnostics']
-    assert diag['visual_request_rad_s'] == pytest.approx(.10)
-    assert diag['visual_request_gated_rad_s'] == pytest.approx(.05)
+    from peirastic.realman8dof.modes.pad_scan_config import pad_visual_force_gate
+    gate = pad_visual_force_gate(4.25, 4., 5.5)
+    visual_cap = load_pad_scan_config()['pad']['max_visual_omega_rad_s']
+    assert diag['visual_request_rad_s'] == pytest.approx(visual_cap)
+    assert diag['visual_request_gated_rad_s'] == pytest.approx(visual_cap * gate)
     assert diag['visual_shortfall_rad_s'] > 0.
     owner.abort('test', definitely_not_sent=True)
 

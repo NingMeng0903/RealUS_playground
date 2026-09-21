@@ -82,6 +82,8 @@ void PostureRetarget::set_planned_stroke(double d_star, double psi_star) {
   planned_ = true;
 }
 
+void PostureRetarget::clear_planned() { planned_ = false; }
+
 void PostureRetarget::begin_unplanned(const Vec8& q, const Vec6& pose) {
   reset(q, pose);
 }

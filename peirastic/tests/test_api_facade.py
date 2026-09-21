@@ -503,8 +503,14 @@ def test_movej_p_label_reaches_compiled_phase() -> None:
     assert req.mode == Mode.MOVEJ
     assert req.payload["label"] == "icra_movej"
 
+    released = []
+    ctx.inner.release_planned_stroke = lambda: released.append(1)
     phase = compile_request(ctx, req, raw=raw)
     assert phase.label == "icra_movej"
+    assert released == [1]
+    phase.on_enter()
+    assert ctx.inner._centering_suppressed is False
+    assert ctx.inner._arm_task_suppressed is False
 
 
 def test_icra_completion_hold_anchors_pose_and_ignores_pad() -> None:
@@ -528,7 +534,7 @@ def test_icra_completion_hold_anchors_pose_and_ignores_pad() -> None:
     assert req.mode == Mode.TRACK_CARTESIAN
     assert req.payload == {
         "reference": "hold",
-        "task_policy": "off",
+        "task_policy": "track",
         "label": "icra_wait",
     }
     assert not pad_may_drive(req.mode, label=req.payload["label"])
@@ -538,8 +544,8 @@ def test_icra_completion_hold_anchors_pose_and_ignores_pad() -> None:
     assert phase.label == "icra_wait"
     assert phase.duration_s is None
     phase.on_enter()
-    assert ctx.inner._arm_task_suppressed is True
-    assert ctx.inner._centering_suppressed is True
+    assert ctx.inner._arm_task_suppressed is False
+    assert ctx.inner._centering_suppressed is False
     assert ctx.inner._manipulability_active is False
 
     phase.outer.set_origin(pose, t_s=0.0)

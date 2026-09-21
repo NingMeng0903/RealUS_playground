@@ -180,7 +180,7 @@ def test_idle_request_forwards_icra_completion_label() -> None:
     icra = svc._idle_request(completed_label="icra_movej")
     assert icra.mode == Mode.TRACK_CARTESIAN
     assert icra.payload["reference"] == "hold"
-    assert icra.payload["task_policy"] == "off"
+    assert icra.payload["task_policy"] == "track"
     assert icra.payload["label"] == "icra_wait"
 
     ordinary = svc._idle_request()
@@ -264,7 +264,7 @@ def test_finite_movej_completion_installs_expected_idle(
     if completed_label.startswith("icra_"):
         assert compiled[2].payload == {
             "reference": "hold",
-            "task_policy": "off",
+            "task_policy": "track",
             "label": "icra_wait",
         }
     else:

@@ -353,6 +353,7 @@ class PadVisualGuide:
             self.rocking_reference = None if raw_ref is None else float(raw_ref)
             self.deficit_mode = str(qp.get("pad_deficit_mode", "relative")).lower()
             self.relative_alpha_span = float(qp.get("pad_relative_alpha_span", 0.15))
+            self.relative_spread_floor = None
             self.balance_deadband = deadband
             self.omega_step_deficit = float(qp.get("pad_omega_step_deficit", 0.08))
             self.repair_speed_m_s = float(qp.get("pad_repair_speed_m_s", self.repair_speed_m_s))
@@ -366,12 +367,34 @@ class PadVisualGuide:
             self.brake_on_sided = bool(qp.get("pad_brake_on_sided", False))
             pad_max = qp.get("pad_max_visual_omega_rad_s")
             self.max_visual_omega_rad_s = float(pad_max) if pad_max is not None else 0.16
-            self.visual_hold_s = float(qp.get("pad_visual_hold_s", 0.0))
-            self.visual_hold_floor = float(qp.get("pad_visual_hold_omega_rad_s", 0.03))
+            pad_hold = (self.config.get("pad") or {}).get("visual_hold_s")
+            self.visual_hold_s = float(
+                pad_hold if pad_hold is not None else qp.get("pad_visual_hold_s", 0.0)
+            )
+            pad_floor = (self.config.get("pad") or {}).get("visual_hold_omega_rad_s")
+            self.visual_hold_floor = float(
+                pad_floor if pad_floor is not None else qp.get("pad_visual_hold_omega_rad_s", 0.03)
+            )
+            pad_block = dict(self.config.get("pad") or {})
+            if pad_block.get("policy") == "pad_scan_v1":
+                self.static_stick_m_s = float(pad_block.get("static_stick_m_s", 0.01))
+                self.static_visual_omega_rad_s = float(pad_block.get("static_visual_omega_rad_s", 0.04))
+                self.static_commit_s = float(pad_block.get("static_commit_s", 0.80))
+                self.static_committed_omega_rad_s = float(
+                    pad_block.get("static_committed_omega_rad_s", 0.12)
+                )
+                spread = float(pad_block.get("relative_spread_floor", 0.12) or 0.)
+                self.relative_spread_floor = spread if spread > 0. else None
+            else:
+                self.static_stick_m_s = 0.0
+                self.static_visual_omega_rad_s = float("inf")
+                self.static_commit_s = 0.0
+                self.static_committed_omega_rad_s = float("inf")
         else:
             self.rocking_reference = None
             self.deficit_mode = "absolute"
             self.relative_alpha_span = 0.15
+            self.relative_spread_floor = None
             self.balance_deadband = 0.0
             self.omega_step_deficit = 0.0
             self.max_visual_omega_rad_s = scan_max
@@ -379,11 +402,26 @@ class PadVisualGuide:
             self.ramp_up_s = self.ramp_s
             self.omega_step_rad_s = 0.0
             self.brake_on_sided = False
+            self.static_stick_m_s = 0.0
+            self.static_visual_omega_rad_s = float("inf")
+            self.static_commit_s = 0.0
+            self.static_committed_omega_rad_s = float("inf")
+        self._static_dir = 0
+        self._static_dir_since = None
         self.max_image_age_s = float(qp.get("max_image_age_s", 0.3))
         if not np.isfinite(self.ramp_s) or self.ramp_s <= 0.0:
             raise ValueError("pad alpha ramp_s must be finite and positive")
-        self.omega_accel = float(tilt_cfg.a_max)
-        self.omega_vmax = float(tilt_cfg.vmax_rad_s)
+        pad_limits = dict(self.config.get("pad") or {})
+        accel = float(tilt_cfg.a_max)
+        vmax = float(tilt_cfg.vmax_rad_s)
+        pad_accel = pad_limits.get("angular_acceleration_rad_s2")
+        pad_vmax = pad_limits.get("angular_max_rad_s")
+        if pad_accel is not None:
+            accel = min(accel, float(pad_accel))
+        if pad_vmax is not None:
+            vmax = min(vmax, float(pad_vmax))
+        self.omega_accel = accel
+        self.omega_vmax = vmax
         self.alpha_cmd = 1.0
         self.omega_cmd = 0.0
         self.alpha_target = 1.0
@@ -514,6 +552,59 @@ class PadVisualGuide:
         step = float(rate) * float(dt_s)
         return float(value) + float(np.clip(float(target) - float(value), -step, step))
 
+    def _repair_limited_alpha(self, preferred, stick_speed_m_s):
+        """Physical path-speed ceiling. Preferred α already ramps; do not slew twice."""
+
+        cap = float(self.config['pad']['repair_speed_cap_m_s'])
+        limited = cap / max(abs(float(stick_speed_m_s)), 1e-12)
+        return min(float(preferred), limited), limited < 1.0 - 1e-12
+
+    def _parked_stick(self, stick_speed_m_s):
+        return self.static_stick_m_s > 0.0 and abs(float(stick_speed_m_s)) < self.static_stick_m_s
+
+    def _reset_static_dwell(self):
+        self._static_dir = 0
+        self._static_dir_since = None
+
+    def _parked_omega_cap(self, now_s, stick_speed_m_s, request, *, active):
+        """0.04 until the same echo sign lasts past a hunt half-cycle, then 0.12."""
+
+        if not self._parked_stick(stick_speed_m_s):
+            self._reset_static_dwell()
+            return None
+        if not active or abs(float(request)) < 1e-9:
+            self._reset_static_dwell()
+            return float(self.static_visual_omega_rad_s)
+        direction = int(np.sign(request))
+        if direction != self._static_dir:
+            self._static_dir = direction
+            self._static_dir_since = float(now_s)
+        elapsed = float(now_s) - float(self._static_dir_since)
+        if self.static_commit_s > 0.0 and elapsed + 1e-12 >= self.static_commit_s:
+            return float(self.static_committed_omega_rad_s)
+        return float(self.static_visual_omega_rad_s)
+
+    def _limit_parked_visual(self, stick_speed_m_s, now_s, request=None, *, active=None):
+        """Parked residuals do not hold. A stable one-sided wedge may raise the cap."""
+
+        if request is None:
+            request = self.omega_target
+        if active is None:
+            active = abs(float(request)) > 0.0
+        cap = self._parked_omega_cap(now_s, stick_speed_m_s, request, active=active)
+        if cap is None or not np.isfinite(cap):
+            return False
+        self.omega_target = float(np.clip(self.omega_target, -cap, cap))
+        self.omega_cmd = float(np.clip(self.omega_cmd, -cap, cap))
+        self.last_visual_omega = self.omega_cmd
+        self._clear_visual_hold()
+        if self.last_facts:
+            self.last_facts['visual_request_rad_s'] = self.omega_target
+            self.last_facts['visual_omega_rad_s'] = self.omega_cmd
+            self.last_facts['parked_visual_limited'] = True
+            self.last_facts['parked_visual_cap_rad_s'] = cap
+        return True
+
     def _clear_visual_hold(self):
         self._hold_omega = 0.0
         self._hold_until_s = None
@@ -560,6 +651,10 @@ class PadVisualGuide:
                 self._overlay_echo_visual(
                     now_s=now, dt_s=float(dt_s), contact_present=bool(contact_present),
                     force_n=force_n, stick_speed_m_s=stick_speed_m_s)
+            echo_reason = (self.last_facts or {}).get('echo_reason')
+            self._limit_parked_visual(
+                stick_speed_m_s, now, self.omega_target,
+                active=echo_reason == 'unilateral_missing_echo')
             return visual
         observation = self._fresh_observation(now)
         self.last_alpha = None
@@ -600,18 +695,16 @@ class PadVisualGuide:
         self.omega_target = result.omega_request_rad_s
         # Safety pauses are immediate. Confirmed repair ramps toward the live
         # speed cap; recovery increases smoothly, with no saved displacement.
+        target = self.alpha_target
+        cap_limited = False
+        if result.valid and result.reason == 'unilateral_missing_echo':
+            target, cap_limited = self._repair_limited_alpha(target, stick_speed_m_s)
         if self.alpha_target == 0. or not np.isfinite(dt_s) or dt_s <= 0.:
             self.alpha_cmd = 0.
         else:
-            ramp = self.ramp_s if self.alpha_target < self.alpha_cmd else self.ramp_up_s
-            self.alpha_cmd = self._slew(self.alpha_cmd, self.alpha_target, 1. / ramp, dt_s)
+            ramp = self.ramp_s if target < self.alpha_cmd else self.ramp_up_s
+            self.alpha_cmd = self._slew(self.alpha_cmd, target, 1. / ramp, dt_s)
         ramped_alpha = self.alpha_cmd
-        # A faster current stick request must not defeat a confirmed repair's
-        # physical speed cap while the preferred alpha ramps downward. Keep
-        # the accepted alpha as the recovery origin, not the unclipped ramp.
-        if result.valid and result.reason == 'unilateral_missing_echo':
-            cap = self.config['pad']['repair_speed_cap_m_s']
-            self.alpha_cmd = min(self.alpha_cmd, cap/max(abs(float(stick_speed_m_s)), 1e-12))
         self.last_alpha = self.alpha_cmd
         # The outer QP owns angular acceleration and total angular limiting.
         self.omega_cmd = self.last_visual_omega = self.omega_target
@@ -619,12 +712,15 @@ class PadVisualGuide:
             visual_reason=result.reason, visual_policy='pad_scan_nearfield_v1',
             alpha=self.last_alpha, visual_request_rad_s=self.omega_target,
             alpha_before_speed_cap=ramped_alpha,
-            repair_speed_cap_limited=self.alpha_cmd < ramped_alpha,
+            repair_speed_cap_limited=cap_limited,
             visual_omega_rad_s=self.last_visual_omega,
             stick_speed_m_s=stick_speed_m_s,
             path_speed_target_m_s=abs(stick_speed_m_s)*self.alpha_target,
             path_speed_requested_m_s=abs(stick_speed_m_s)*self.last_alpha,
             config_version=self.config.get('config_version', 'pad_scan_v1'))
+        self._limit_parked_visual(
+            stick_speed_m_s, now_s, self.omega_target,
+            active=result.reason == 'unilateral_missing_echo')
         return None
 
     def _overlay_echo_visual(self, *, now_s, dt_s, contact_present, force_n, stick_speed_m_s):
@@ -644,27 +740,48 @@ class PadVisualGuide:
             echo_reason=result.reason, echo_valid=result.valid,
             echo_omega_rad_s=result.omega_request_rad_s, evidence_valid=result.valid)
         if result.reason == 'unilateral_missing_echo' and abs(float(result.omega_request_rad_s)) > 0.:
-            self.omega_target = float(result.omega_request_rad_s)
+            request = float(result.omega_request_rad_s)
+            parked = self._parked_stick(stick_speed_m_s)
+            if parked:
+                cap = self._parked_omega_cap(now_s, stick_speed_m_s, request, active=True)
+                request = float(np.clip(request, -cap, cap))
+            self.omega_target = request
             self.omega_cmd = float(np.clip(
                 self._slew(self.omega_cmd, self.omega_target, self.omega_accel, dt_s),
                 -self.omega_vmax, self.omega_vmax))
             self.last_visual_omega = self.omega_cmd
+            if (not parked and self.visual_hold_s > 0.
+                    and abs(self.omega_target) >= self.visual_hold_floor):
+                self._hold_omega = float(self.omega_target)
+                self._hold_until_s = float(now_s) + float(self.visual_hold_s)
             if float(result.alpha_target) > 0.:
                 self.alpha_target = min(float(self.alpha_target), float(result.alpha_target))
-                if self.alpha_target < self.alpha_cmd:
+                limited, _ = self._repair_limited_alpha(self.alpha_target, stick_speed_m_s)
+                if limited < self.alpha_cmd:
                     alpha_rate = 0.75 / self.ramp_s
                 else:
                     alpha_rate = 0.75 / max(self.ramp_up_s, 1.0e-6)
                 self.alpha_cmd = float(np.clip(
-                    self._slew(self.alpha_cmd, self.alpha_target, alpha_rate, dt_s),
-                    self.alpha_min, 1.0))
-                cap = self.config['pad']['repair_speed_cap_m_s']
-                self.alpha_cmd = min(self.alpha_cmd, cap / max(abs(float(stick_speed_m_s)), 1e-12))
+                    self._slew(self.alpha_cmd, limited, alpha_rate, dt_s),
+                    min(self.alpha_min, limited), 1.0))
                 self.last_alpha = self.alpha_cmd
             facts.update(
                 visual_reason=result.reason, visual_policy='pad_scan_nearfield_v1',
                 visual_request_rad_s=self.omega_target, visual_omega_rad_s=self.omega_cmd,
                 alpha=self.last_alpha, alpha_target=self.alpha_target)
+        elif result.reason == 'force_unstable' or self._parked_stick(stick_speed_m_s):
+            self._clear_visual_hold()
+        elif (self.visual_hold_s > 0. and self._hold_until_s is not None
+              and float(now_s) < float(self._hold_until_s)
+              and result.reason in ('healthy', 'recovery_confirming')):
+            self.omega_target = float(self._hold_omega)
+            self.omega_cmd = float(np.clip(
+                self._slew(self.omega_cmd, self.omega_target, self.omega_accel, dt_s),
+                -self.omega_vmax, self.omega_vmax))
+            self.last_visual_omega = self.omega_cmd
+            facts.update(
+                visual_reason='visual_hold', visual_policy='pad_scan_nearfield_v1',
+                visual_request_rad_s=self.omega_target, visual_omega_rad_s=self.omega_cmd)
         self.last_facts = facts
 
     def _preview_progress(self, observation, *, contact_present, now_s, dt_s):
@@ -705,6 +822,7 @@ class PadVisualGuide:
                     deficit_mode=self.deficit_mode,
                     balance_deadband=self.balance_deadband if self.deficit_mode == "relative" else 0.0,
                     relative_alpha_span=self.relative_alpha_span,
+                    relative_spread_floor=self.relative_spread_floor,
                 )
             except ValueError:
                 reason = "version_mismatch"

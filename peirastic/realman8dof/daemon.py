@@ -161,7 +161,8 @@ def idle_after_command(
     velocity command never ends a continuous SERVO task by itself.  The
     acquisition supervisor marks its finite commands with an ``icra_`` label;
     those commands enter a pose hold so a live gamepad cannot resume motion
-    during recorder startup.
+    during recorder startup. The hold keeps the track nullspace so a rail
+    re-split can still unwind J4; ``off`` parked the elbow on the 130° wall.
     """
     _reject_legacy_dof_kwargs(legacy)
     if dof is None:
@@ -172,7 +173,7 @@ def idle_after_command(
             Mode.TRACK_CARTESIAN,
             {
                 "reference": "hold",
-                "task_policy": "off",
+                "task_policy": "track",
                 "label": "icra_wait",
             },
         )
