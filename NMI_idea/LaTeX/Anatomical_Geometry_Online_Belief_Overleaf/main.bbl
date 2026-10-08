@@ -1,0 +1,269 @@
+\begin{thebibliography}{33}
+\providecommand{\natexlab}[1]{#1}
+\providecommand{\url}[1]{\texttt{#1}}
+\expandafter\ifx\csname urlstyle\endcsname\relax
+  \providecommand{\doi}[1]{doi: #1}\else
+  \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
+
+\bibitem[Huang et~al.(2019)Huang, Rozo, Silv{\'e}rio, and Caldwell]{Huang2019}
+Yanlong Huang, Leonel Rozo, Jo{\~a}o Silv{\'e}rio, and Darwin~G. Caldwell.
+\newblock Kernelized movement primitives.
+\newblock \emph{The International Journal of Robotics Research}, 38\penalty0
+  (7):\penalty0 833--852, 2019.
+\newblock \doi{10.1177/0278364919846363}.
+\newblock 用户文件名标为2018；此处采用正式期刊出版信息。.
+
+\bibitem[Li et~al.(2022)Li, Jin, Volpp, Otto, Lioutikov, and Neumann]{Li2022}
+Ge~Li, Zeqi Jin, Michael Volpp, Fabian Otto, Rudolf Lioutikov, and Gerhard
+  Neumann.
+\newblock {ProDMPs}: A unified perspective on dynamic and probabilistic
+  movement primitives.
+\newblock arXiv:2210.01531, 2022.
+\newblock URL \url{https://arxiv.org/abs/2210.01531}.
+
+\bibitem[Calinon(2020)]{Calinon2020}
+Sylvain Calinon.
+\newblock Gaussians on riemannian manifolds: Applications for robot learning
+  and adaptive control.
+\newblock \emph{IEEE Robotics \& Automation Magazine}, 27\penalty0
+  (2):\penalty0 33--45, 2020.
+\newblock \doi{10.1109/MRA.2020.2980548}.
+\newblock URL \url{https://arxiv.org/abs/1909.05946}.
+
+\bibitem[Silv{\'e}rio et~al.(2019)Silv{\'e}rio, Huang, Abu-Dakka, Rozo, and
+  Caldwell]{Silverio2019}
+Jo{\~a}o Silv{\'e}rio, Yanlong Huang, Fares~J. Abu-Dakka, Leonel Rozo, and
+  Darwin~G. Caldwell.
+\newblock Uncertainty-aware imitation learning using kernelized movement
+  primitives.
+\newblock In \emph{IEEE/RSJ International Conference on Intelligent Robots and
+  Systems}, 2019.
+\newblock URL \url{https://eprints.whiterose.ac.uk/id/eprint/154628/}.
+
+\bibitem[Hartikainen and S{\"a}rkk{\"a}(2010)]{Hartikainen2010}
+Jouni Hartikainen and Simo S{\"a}rkk{\"a}.
+\newblock Kalman filtering and smoothing solutions to temporal {Gaussian}
+  process regression models.
+\newblock In \emph{IEEE International Workshop on Machine Learning for Signal
+  Processing}, pages 379--384, 2010.
+\newblock \doi{10.1109/MLSP.2010.5589113}.
+\newblock URL \url{https://users.aalto.fi/~ssarkka/pub/gp-ts-kfrts.pdf}.
+
+\bibitem[S{\"a}rkk{\"a} and Solin(2019)]{SarkkaSolin2019}
+Simo S{\"a}rkk{\"a} and Arno Solin.
+\newblock \emph{Applied Stochastic Differential Equations}.
+\newblock Cambridge University Press, 2019.
+\newblock \doi{10.1017/9781108186735}.
+\newblock URL \url{https://users.aalto.fi/~asolin/sde-book/sde-book.pdf}.
+
+\bibitem[Bayer et~al.(2018)]{Bayer2018}
+Jason~D. Bayer et~al.
+\newblock Universal ventricular coordinates: A generic framework for describing
+  position within the heart and transferring data.
+\newblock \emph{Medical Image Analysis}, 45:\penalty0 83--93, 2018.
+\newblock \doi{10.1016/j.media.2018.01.005}.
+
+\bibitem[Schuler et~al.(2021)Schuler, Pilia, Potyagaylo, and
+  Loewe]{Schuler2021}
+Steffen Schuler, Nicolas Pilia, Danila Potyagaylo, and Axel Loewe.
+\newblock Cobiveco: Consistent biventricular coordinates for precise and
+  intuitive description of position in the heart---with {MATLAB}
+  implementation.
+\newblock \emph{Medical Image Analysis}, 74:\penalty0 102247, 2021.
+\newblock \doi{10.1016/j.media.2021.102247}.
+\newblock URL \url{https://arxiv.org/abs/2102.02898}.
+
+\bibitem[Jin et~al.(2008)Jin, Kim, Luo, and Gu]{Jin2008}
+Miao Jin, Junho Kim, Feng Luo, and Xianfeng Gu.
+\newblock Discrete surface {Ricci} flow.
+\newblock \emph{IEEE Transactions on Visualization and Computer Graphics},
+  14\penalty0 (5):\penalty0 1030--1043, 2008.
+\newblock \doi{10.1109/TVCG.2008.57}.
+
+\bibitem[Floater(2003)]{Floater2003}
+Michael~S. Floater.
+\newblock One-to-one piecewise linear mappings over triangulations.
+\newblock \emph{Mathematics of Computation}, 72\penalty0 (242):\penalty0
+  685--696, 2003.
+\newblock \doi{10.1090/S0025-5718-02-01466-7}.
+
+\bibitem[Floater and Pham-Trong(2006)]{Floater2006}
+Michael~S. Floater and Val{\'e}rie Pham-Trong.
+\newblock Convex combination maps over triangulations, tilings, and tetrahedral
+  meshes.
+\newblock \emph{Advances in Computational Mathematics}, 25:\penalty0 347--356,
+  2006.
+\newblock \doi{10.1007/s10444-004-7620-5}.
+
+\bibitem[{用户提供}(2026)]{UserDraft}
+{用户提供}.
+\newblock Manifold-conditioned diffusion policy for morphologically-agnostic
+  robotic ultrasound, 2026.
+\newblock 本轮上传Pasted
+  text.txt，共199行；未发表技术草稿。本文保留其解剖坐标动机，核查并修订数学主张；不采用其中神经网络和扩散部分。.
+
+\bibitem[Laugesen(1996)]{Laugesen1996}
+Richard~S. Laugesen.
+\newblock Injectivity can fail for higher-dimensional harmonic extensions.
+\newblock \emph{Complex Variables, Theory and Application}, 28\penalty0
+  (4):\penalty0 357--369, 1996.
+\newblock \doi{10.1080/17476939608814865}.
+
+\bibitem[Goates and Shepherd(2025)]{Goates2025}
+Caleb Goates and Kendrick~M. Shepherd.
+\newblock Counterexamples to proofs for volumetric parameterization of
+  topological sweeps.
+\newblock arXiv:2503.01573, 2025.
+\newblock URL \url{https://arxiv.org/abs/2503.01573}.
+
+\bibitem[Huynh and Gingold(2015)]{Huynh2015}
+Lisa Huynh and Yotam Gingold.
+\newblock Bijective deformations in {R}$^n$ via integral curve coordinates.
+\newblock arXiv:1505.00073, 2015.
+\newblock URL \url{https://arxiv.org/abs/1505.00073}.
+
+\bibitem[Hinderink and Campen(2023)]{Hinderink2023}
+Steffen Hinderink and Marcel Campen.
+\newblock Galaxy maps: Localized foliations for bijective volumetric mapping.
+\newblock \emph{ACM Transactions on Graphics}, 42\penalty0 (4):\penalty0
+  129:1--129:16, 2023.
+\newblock \doi{10.1145/3592410}.
+
+\bibitem[Hinderink et~al.(2024)Hinderink, Br{\"u}ckler, and
+  Campen]{Hinderink2024}
+Steffen Hinderink, Hendrik Br{\"u}ckler, and Marcel Campen.
+\newblock Bijective volumetric mapping via star decomposition.
+\newblock \emph{ACM Transactions on Graphics}, 43\penalty0 (6):\penalty0
+  168:1--168:11, 2024.
+\newblock \doi{10.1145/3687950}.
+\newblock URL \url{https://ris.uni-paderborn.de/record/60314}.
+
+\bibitem[Jones et~al.(2000)Jones, Buchbinder, and Aharon]{Jones2000}
+Stephen~E. Jones, Bradley~R. Buchbinder, and Itzhak Aharon.
+\newblock Three-dimensional mapping of cortical thickness using {Laplace's}
+  equation.
+\newblock \emph{Human Brain Mapping}, 11\penalty0 (1):\penalty0 12--32, 2000.
+\newblock \doi{10.1002/1097-0193(200009)11:1<12::AID-HBM20>3.0.CO;2-K}.
+\newblock URL \url{https://pubmed.ncbi.nlm.nih.gov/10997850/}.
+
+\bibitem[Yezzi and Prince(2003)]{Yezzi2003}
+Anthony~J. Yezzi and Jerry~L. Prince.
+\newblock An {Eulerian} {PDE} approach for computing tissue thickness.
+\newblock \emph{IEEE Transactions on Medical Imaging}, 22\penalty0
+  (10):\penalty0 1332--1339, 2003.
+\newblock \doi{10.1109/TMI.2003.817775}.
+
+\bibitem[{NingMeng0903}(2026{\natexlab{a}})]{AmongCode}
+{NingMeng0903}.
+\newblock {AMONG\_US}: anatomical coordinates and
+  {DMP\_playground/kmp\_honest}, 2026{\natexlab{a}}.
+\newblock URL
+  \url{https://github.com/NingMeng0903/AMONG_US/tree/f1ffc5078d6a08c32b59107ab16086a7bbde488e}.
+\newblock
+  本文代码审计固定提交f1ffc5078d6a08c32b59107ab16086a7bbde488e。.
+
+\bibitem[Wang et~al.(2008)Wang, J{\"u}ttler, Zheng, and Liu]{Wang2008}
+Wenping Wang, Bert J{\"u}ttler, Dayue Zheng, and Yang Liu.
+\newblock Computation of rotation minimizing frames.
+\newblock \emph{ACM Transactions on Graphics}, 27\penalty0 (1):\penalty0
+  2:1--2:18, 2008.
+\newblock \doi{10.1145/1330511.1330513}.
+
+\bibitem[Hutchinson et~al.(2021)Hutchinson, Terenin, Borovitskiy, Takao, Teh,
+  and Deisenroth]{Hutchinson2021}
+Michael Hutchinson, Alexander Terenin, Viacheslav Borovitskiy, So~Takao,
+  Yee~Whye Teh, and Marc~Peter Deisenroth.
+\newblock Vector-valued {Gaussian} processes on {Riemannian} manifolds via
+  gauge independent projected kernels.
+\newblock In \emph{Advances in Neural Information Processing Systems}, 2021.
+\newblock URL \url{https://arxiv.org/abs/2110.14423}.
+\newblock 题名采用arXiv v4首页。.
+
+\bibitem[{NingMeng0903}(2026{\natexlab{b}})]{RealUSCode}
+{NingMeng0903}.
+\newblock {RealUS\_playground}: differentiable inverse-reachability operators,
+  2026{\natexlab{b}}.
+\newblock URL
+  \url{https://github.com/NingMeng0903/RealUS_playground/tree/cd6b0cea1ae1983e55c1c732d0429b1bfd32218a/ird_playground}.
+\newblock
+  仅作既有系统接口；固定提交cd6b0cea1ae1983e55c1c732d0429b1bfd32218a。.
+
+\bibitem[Abu-Dakka et~al.(2024)Abu-Dakka, Saveriano, and Kyrki]{AbuDakka2024}
+Fares~J. Abu-Dakka, Matteo Saveriano, and Ville Kyrki.
+\newblock A unified formulation of geometry-aware discrete dynamic movement
+  primitives, 2024.
+\newblock
+  用户提供的18页论文版本；题名依PDF首页，文件名省略Discrete。.
+
+\bibitem[Bakker et~al.(2026)Bakker, Schonger, L{\"o}w, Alonso-Mora, and
+  Calinon]{Bakker2026}
+Saray Bakker, Martin Schonger, Tobias L{\"o}w, Javier Alonso-Mora, and Sylvain
+  Calinon.
+\newblock Curve-induced dynamical systems on riemannian manifolds and lie
+  groups.
+\newblock arXiv:2603.05268, 2026.
+\newblock URL \url{https://arxiv.org/abs/2603.05268}.
+
+\bibitem[Cohen et~al.(2021)Cohen, Bar-Shira, and Berman]{Cohen2021}
+Yosef Cohen, Or~Bar-Shira, and Sigal Berman.
+\newblock Motion adaptation based on learning the manifold of task and dynamic
+  movement primitive parameters.
+\newblock \emph{Robotica}, 39:\penalty0 1299--1315, 2021.
+\newblock \doi{10.1017/S0263574720001186}.
+
+\bibitem[Cuervo~Espinosa et~al.(2026)Cuervo~Espinosa, Anand, and
+  Schoellig]{Espinosa2026}
+Diana Cuervo~Espinosa, Mahathi Anand, and Angela~P. Schoellig.
+\newblock Learning from demonstrations over riemannian manifolds using neural
+  {ODEs}: An extended abstract.
+\newblock arXiv:2606.05422, 2026.
+\newblock URL \url{https://arxiv.org/abs/2606.05422}.
+
+\bibitem[Mitchell-Heggs et~al.(2022)Mitchell-Heggs, Prado, Gava, Go, and
+  Schultz]{Mitchell2022}
+Rufus Mitchell-Heggs, Seigfred Prado, Giuseppe~P. Gava, Mary~Ann Go, and
+  Simon~R. Schultz.
+\newblock Neural manifold analysis of brain circuit dynamics in health and
+  disease.
+\newblock arXiv:2203.11874, 2022.
+\newblock URL \url{https://arxiv.org/abs/2203.11874}.
+
+\bibitem[Goel et~al.(2022)Goel, Abhimanyu, Patel, Galeotti, and
+  Choset]{Goel2022}
+Raghavv Goel, FNU Abhimanyu, Kirtan Patel, John Galeotti, and Howie Choset.
+\newblock Autonomous ultrasound scanning using bayesian optimization and hybrid
+  force control.
+\newblock In \emph{IEEE International Conference on Robotics and Automation},
+  pages 8396--8402, 2022.
+
+\bibitem[Merouche et~al.(2016)Merouche, Allard, Montagnon, Soulez, Bigras, and
+  Cloutier]{Merouche2016}
+Sofiane Merouche, Louis Allard, Emmanuel Montagnon, Gilles Soulez, Pascal
+  Bigras, and Guy Cloutier.
+\newblock A robotic ultrasound scanner for automatic vessel tracking and
+  three-dimensional reconstruction of {B-Mode} images.
+\newblock \emph{IEEE Transactions on Ultrasonics, Ferroelectrics, and Frequency
+  Control}, 63\penalty0 (1):\penalty0 35--46, 2016.
+\newblock \doi{10.1109/TUFFC.2015.2499084}.
+
+\bibitem[Zeestraten(2017)]{Zeestraten2017}
+Martijn J.~A. Zeestraten.
+\newblock \emph{Programming by Demonstration on Riemannian Manifolds}.
+\newblock PhD thesis, University of Genova, 2017.
+\newblock 以用户提供的完整博士论文为阅读版本。.
+
+\bibitem[Murooka et~al.(2025)Murooka, Kumagai, Morisawa, and
+  Kanehiro]{Murooka2025}
+Masaki Murooka, Iori Kumagai, Mitsuharu Morisawa, and Fumio Kanehiro.
+\newblock Learning differentiable reachability maps for optimization-based
+  humanoid motion generation.
+\newblock arXiv:2508.11275, 2025.
+\newblock URL \url{https://arxiv.org/abs/2508.11275}.
+
+\bibitem[Rudorfer(2024)]{RudorferRM4D}
+Martin Rudorfer.
+\newblock {RM4D}: A combined reachability and inverse reachability map for
+  common 6-/7-axis robot arms by dimensionality reduction to 4d, 2024.
+\newblock 用户Library所提供版本。.
+
+\end{thebibliography}

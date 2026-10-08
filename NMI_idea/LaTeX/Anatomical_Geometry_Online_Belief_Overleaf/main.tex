@@ -1,0 +1,1348 @@
+% !TeX program = ./compile.sh
+% !TeX options = -outdir=build
+% Overleaf: Compiler = XeLaTeX.  latexmkrc in this project also forces XeLaTeX.
+% This is a theoretical research-design manuscript, not a report of patient experiments.
+\documentclass[UTF8,11pt,a4paper,fontset=fandol]{ctexart}
+\usepackage[margin=24mm,headheight=16pt,headsep=8mm,footskip=12mm]{geometry}
+\usepackage{amsmath,amssymb,amsthm,bm,mathtools}
+\usepackage{graphicx,booktabs,array,longtable,tabularx,multirow,float}
+\usepackage[numbers,sort&compress]{natbib}
+\usepackage{xcolor,hyperref,xurl,fancyhdr,enumitem,caption}
+\hypersetup{colorlinks=true,linkcolor=black,citecolor=black,urlcolor=blue!45!black,
+ pdftitle={正则调和流图册与在线解剖信念},pdfauthor={Research design manuscript}}
+\usepackage{microtype}
+\setlength{\emergencystretch}{3em}
+\setlength{\parskip}{0.3em}
+\setlength{\parindent}{2em}
+\renewcommand{\baselinestretch}{1.12}
+\ctexset{section={format=\Large\bfseries},subsection={format=\large\bfseries},subsubsection={format=\normalsize\bfseries}}
+\pagestyle{fancy}\fancyhf{}
+\fancyhead[L]{\small 正则调和流图册与在线解剖信念}
+\fancyhead[R]{\small 研究方案与推导稿}
+\fancyfoot[C]{\thepage}
+\setlength{\abovedisplayskip}{9pt}\setlength{\belowdisplayskip}{9pt}
+\numberwithin{equation}{section}
+\theoremstyle{plain}
+\newtheorem{proposition}{命题}[section]
+\newtheorem{theorem}[proposition]{定理}
+\newtheorem{lemma}[proposition]{引理}
+\newtheorem{corollary}[proposition]{推论}
+\theoremstyle{definition}
+\newtheorem{definition}[proposition]{定义}
+\newtheorem{assumption}[proposition]{假设}
+\theoremstyle{remark}
+\newtheorem{remark}[proposition]{说明}
+\renewcommand{\proofname}{证明}
+\DeclareMathOperator{\Exp}{Exp}\DeclareMathOperator{\Log}{Log}
+\DeclareMathOperator{\Cov}{Cov}\DeclareMathOperator{\Var}{Var}
+\DeclareMathOperator{\diag}{diag}\DeclareMathOperator{\rank}{rank}
+\DeclareMathOperator{\tr}{tr}\DeclareMathOperator{\wrap}{wrap}
+\DeclareMathOperator{\argmin}{argmin}\DeclareMathOperator{\argmax}{argmax}
+\DeclareMathOperator{\dist}{dist}\DeclareMathOperator{\diver}{div}
+\newcommand{\R}{\mathbb R}\newcommand{\E}{\mathbb E}
+\newcommand{\SO}{\operatorname{SO}}\newcommand{\SE}{\operatorname{SE}}
+\newcommand{\Normal}{\mathcal N}\newcommand{\dd}{\mathrm d}
+\newcommand{\Id}{\mathbf I}\newcommand{\T}{^{\mathsf T}}
+\newcommand{\hatcross}[1]{[#1]_\times}
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+\newcolumntype{P}[1]{>{\raggedright\arraybackslash}p{#1}}
+\captionsetup{font=small,labelfont=bf}
+\setlist{nosep,leftmargin=2em}
+\newcommand{\safegraphic}[2][]{\IfFileExists{#2}{\includegraphics[#1]{#2}}{\fbox{\parbox{0.85\linewidth}{图文件未包含：\texttt{\detokenize{#2}}。请使用完整源码包编译。}}}}
+
+\begin{document}
+\begin{titlepage}
+\centering
+\vspace*{12mm}
+{\small\sffamily ANATOMICAL GEOMETRY \quad / \quad ONLINE INFERENCE}\par
+\vspace{12mm}
+{\LARGE\bfseries 正则调和流图册与在线解剖信念}\par
+\vspace{5mm}
+{\Large 面向多部位机器人超声的坐标、声学视角与相关未来轨迹}\par
+\vspace{8mm}
+{\large Regular Harmonic-Flow Atlases and Gauge-Consistent\par Anatomical Beliefs for Robotic Ultrasound}\par
+\vspace{12mm}
+{\normalsize 单一路线研究方案、完整推导与反方审查}\par
+{\small 版本 1.0 \qquad 2026年10月5日}\par
+\vspace{10mm}
+\begin{minipage}{0.92\textwidth}
+\textbf{范围。}本稿聚焦两个尚需统一的部分：患者解剖几何表示，以及由在线超声观测更新的目标轨迹信念。既有分割网络作为外部观测器，IRD作为既有可达性查询接口，接触控制和QP作为固定执行器。本文不引入扩散模型、神经隐式坐标、神经弹性场或学习型策略。
+
+\textbf{单一选择。}采用“经正则性验证的调和流图册＋声学视角纤维＋沿目标参考曲线的协变Mat\'ern-$5/2$高斯--马尔可夫残差过程”。空间状态方程、核形式和贝叶斯更新属于同一个模型；KMP和ProDMP用于严格对照，不作为额外串联模块。
+
+\textbf{证据状态。}文献结论、固定提交的代码审计、本文提出的建模选择，以及本次运行的合成数学检查分别标明。命题中的保证均受所列假设约束。本稿没有患者实验、机器人闭环效果或期刊录用结论；实验章节给出待执行协议。
+\end{minipage}
+\vfill
+{\small 交付内容：可编辑LaTeX、参考文献、PDF、合成图与可复现检查脚本。}\par
+\end{titlepage}
+
+\begin{abstract}
+机器人超声扫描需要把人体外部形状、体内粗解剖先验与局部、延迟且可能失真的超声观测联系起来。已有基于解剖坐标的路径迁移能够保持部分跨姿态对应，但三个核心问题仍需明确：独立调和坐标的联合可逆性并无一般三维保证；体内目标到体表的几何投影不等于有效声学视角；预规划曲线或示教散布不等于真实患者未扫描区域的后验不确定性。本稿提出一条不依赖新增神经网络的研究路线。首先，以一个标量调和势定义正则流，通过沿流运输表面标签构造局部体积坐标，并在流覆盖域内推导逆映射、变分Jacobian和条件性单射保证；多个部位通过真实重叠区的过渡映射组成图册，而非将全身强制映射到单一圆柱。其次，保留体内目标本体，独立表示从候选接触点出发的声束方向、成像平面与绕束角度，建立角度的规范变换及几何敏感性。再次，把目标相对参考曲线的偏差定义为法丛上的随机截面，以三阶空间高斯--马尔可夫过程获得二阶连续的未来曲线、完整跨位置协方差和有限远期先验。通过曲线与成像平面的隐式交点构造观测似然，进行固定滞后在线更新；近处收缩、远处展开的预测区域由该模型计算，而不靠人为画锥。最后，将坐标正则性、声学横截性和后验协方差结合为可计算的可信前视域，并仅向既有IRD和执行器输出目标与视角分布。本文给出模型取舍、完整推导、实现边界、合成一致性检查及实验方案，以区分数学正确性、统计校准和真实扫描性能。
+\end{abstract}
+\noindent\textbf{关键词：}解剖图册；调和流；声学视角；规范协变；高斯--马尔可夫过程；超声目标跟踪；不确定性传播
+\setcounter{tocdepth}{1}
+\tableofcontents
+\clearpage
+
+\section{问题、范围与最终决策}\label{sec:intro}
+\subsection{研究对象不是一条机器人轨迹，而是一个正在被观察的解剖目标}
+在已有系统中，SMPL-X及几何映射提供身体表面和姿态对应，内部预定义血管提供粗定位，DMP与KMP相关脚本已经展示了弯腿条件下的参考迁移和闭环纠偏。下一项工作的缺口不是再造一个接触控制器，而是回答：\emph{当粗先验不完全符合患者，并且只有当前及过去的超声切片时，系统应当相信什么、怎样向前预测，以及这种预测如何在不同部位与坐标图之间保持同一含义？}
+
+本文将真实目标记为$\Gamma$，把由有限观测形成的信念记为
+\begin{equation}
+ b_k=p(\Gamma,\eta_k,\beta_k\mid \mathcal H_k),
+ \label{eq:belief-object}
+\end{equation}
+其中$\eta_k$是配准、标定或缓慢内部运动等共享干扰状态，$\beta_k$为必要时使用的离散分支身份，$\mathcal H_k$包括已接受的超声观测、采集时刻的探头位姿以及身体几何。探头运动参考是根据该信念选择的\emph{实现}，而不是$\Gamma$本身。机器人可达性可以改变选择哪种实现，却不能改变血管的后验使其变得更容易到达。
+
+这一分离不是为了引入更多层级，而是防止一个常见语义错误：机器人被扰动后的位置是执行状态，不是血管位置的新证据；用机器人当前位置强制锚定未来运动是合理的，用它将体内目标方差归零则不合理。
+
+\subsection{本稿作出的单一决定}
+本稿推荐并完整展开如下路线：
+\begin{equation}
+\boxed{\begin{gathered}
+\text{正则调和流图册与材料对应}\\
+\Downarrow\\
+\text{体内参考目标＋规范一致的法向残差过程}\\
+\Downarrow\\
+\text{切片交点观测似然＋固定滞后贝叶斯更新}\\
+\Downarrow\\
+\text{联合未来目标样本＋声学视角分布＋可信前视域}.
+\end{gathered}}
+\label{eq:single-route}
+\end{equation}
+概率过程具体选定为\textbf{Mat\'ern-$5/2$的状态空间实现}。不是因为它比KMP或ProDMP的名称更“高级”，而是本任务要求：无示教分布也能规定先验；未知区段继续出现新信息缺口；在线计算量不随全部历史无限增加；采样曲线具有连续位置、切向和曲率；分布在更换局部坐标与框架后代表同一几何对象。第\ref{sec:selection}节说明这些要求如何筛选模型，第\ref{sec:process}节给出所选模型的完整参数化。
+
+\subsection{对“无学习”的具体解释}
+本文不增加需要训练的坐标编码器、策略网络、扩散模型或图像潜空间。分割网络只作为已有传感器。有限元求解、确定性数值平滑、先验协方差设定和在线Bayes更新不是本文新增的学习策略。先验尺度可以最初取自明确的误差假设；其概率覆盖必须在独立验证数据上校准。没有数据支持时，本文将它称为\emph{模型条件下的不确定性}，不冒充已经验证的患者置信度。
+
+\subsection{哪些旧设计保留，哪些删除}
+保留的对象是解剖材料对应、体内目标先验、既有图像观测与固定执行接口。需要替换的是三个分量独立调和的全局可逆性论证、以单条体表投影代替体内目标的存储方式，以及把参考形变散布或核回归方差直接解释为患者未来误差的做法。DMP若仍在既有执行器内部工作，不必删除；但本稿不再增加一个DMP层来“包装”已由状态空间模型表达的目标概率。
+
+\section{从必要性质选择概率模型，而不是从算法名称出发}\label{sec:selection}
+\subsection{四类运动表示实际上解决不同的优化问题}
+标准DMP通过一个带强迫项的吸引子系统表达运动形状，其动力学可用于执行反应。KMP从概率参考和局部任务坐标出发，匹配分布并适配经过点。ProDMP将DMP微分方程积分为线性基函数，从随机权重获得相关的整段轨迹分布。GP则直接规定未知函数的联合概率，并使用观测似然进行条件化。这些是模型构造方式的区别，并不意味着某个名称天然“属于血管”，另一个天然“属于机器人”\cite{Huang2019,Li2022,Calinon2020}。
+
+特别应纠正一个不公平比较：KMP并非不能表示跨位置相关性。其公共随机权重本来就诱导联合协方差；后续工作也明确讨论了数据变异性与缺少观测时的不确定性\cite{Silverio2019}。ProDMP也不必须使用神经网络；把它的线性基模型配上测量似然即可进行Bayes更新。本文不以这些错误限制来排除它们。
+
+\subsection{本任务的五项设计要求}
+\textbf{R1：先验与证据可分。}预定义目标曲线应作为均值函数，不能因离散采样更密而被当成更多真实观测。传感器协方差$R_k$、患者残差先验$S$和允许执行误差必须有不同含义。
+
+\textbf{R2：未观察区段保留新生不确定性。}即使已知当前的位置、切向和曲率，下一小段组织仍不能被固定有限个已估计参数完全确定。模型需要在空间推进中加入过程创新，并允许远处回到有限的解剖先验尺度。
+
+\textbf{R3：整条曲线而非独立位置。}下游需要连续未来样本及其视角变化。由每个位置独立采样的点云既不表示一条血管，也不能检验未来姿态变化。
+
+\textbf{R4：二阶路径规则性与因果计算。}本稿将切向、局部曲率和成像平面变化作为几何量，故要求样本路径至少$C^2$；在线主推断在固定维度状态或固定大小滞后窗口中完成。
+
+\textbf{R5：几何与观测一致。}换一张坐标图或旋转法向基后，世界坐标中的后验不能变化；观测是曲线与切片的交点，不是已知相位的无误差三维经过点。
+
+这些要求不足以在所有随机模型中唯一导出Mat\'ern族。本文的\emph{设计选择}是再限制到稳定、重复实极点、线性高斯的局部空间过程。在这一受限模型族中，三阶状态是满足$C^2$路径要求的最小阶数。这个有限的最小性主张将在命题\ref{prop:minimal-order}证明；不会扩张为“其他任何模型都不可能”。
+
+\subsection{KMP：为什么不作为本稿的主要估计器}
+把KMP写成核形式，典型预测为
+\begin{align}
+ \mu_*(s)&=K_{sX}(K_{XX}+\lambda\widehat\Sigma)^{-1}\widehat\mu,\\
+ P_*(s,t)&=\frac{N}{\lambda}\left[K(s,t)-K_{sX}(K_{XX}+\lambda\widehat\Sigma)^{-1}K_{Xt}\right].
+ \label{eq:kmp-comparison}
+\end{align}
+在原始用途里，$\widehat\Sigma$可以来自示教变异，经过点的协方差也可代表设计的匹配容差；修改数据库允许替换相冲突的参考点\cite{Huang2019}。这不等于对一个固定的患者生成模型进行顺序测量更新。对本任务直接使用时，必须重新明确数据库的先验/证据角色、$N/\lambda$尺度、传感器误差及历史相关性。
+
+如果这些部分都重新定义为一个固定GP先验和观测似然，所得方法可以是GP的核对偶实现。此时再把它命名为一个额外的“GP-KMP层”并无必要。因此本文不串联KMP；保留它作为\emph{带约束参考适配}的对照。删除KMP不是说其方法不强，而是当前目标不是从多次动作示教学一组可变执行容差。
+
+\subsection{ProDMP：为什么不把平滑重规划误当成解剖后验}
+对ProDMP式表示，写作
+\begin{equation}
+ e(s)=c(s;z_b)+B(s)w,\qquad w\sim\Normal(\mu_w,\Sigma_w),
+ \label{eq:prodmp-basis}
+\end{equation}
+则$K(s,t)=B(s)\Sigma_wB(t)\T$。给定线性观测$y=Hw+\epsilon$，当然可以更新$w$。这与有限秩GP的统计解释一致。ProDMP的特殊优势是$B$来自DMP动力学的解，且$c$显式满足运动的位置和速度边界\cite{Li2022}。
+
+但是，对未知目标的扫描不能把\emph{机器人当前边界}直接当成\emph{血管无误差边界}。同时，如果整条未来只由固定有限维$w$决定，那么观测充分识别这些权重后，未扫区域的剩余方差可能过度消失。可以给$w$增加空间演化或给强迫项加入过程噪声，但这已经走向本文选择的随机状态过程。这里的差别是\textbf{固定全局参数的不确定性}与\textbf{未观察局部结构的过程创新}，不是“高斯权重不能表示血管”。
+
+\subsection{确定选择：状态空间是GP的计算形式，不是换一个不相干算法}
+选定一个Mat\'ern核后，批量GP条件化与相应状态空间滤波/平滑在相同线性模型下是等价推断\cite{Hartikainen2010,SarkkaSolin2019}。我们选后者实现，是因为它的状态直接含有残差、斜率和曲率，能用真实采集位置顺序更新，并保持跨未来位置的联合关系。神经网络、示教样本族和硬终点均不是其成立条件。
+
+\begin{table}[H]
+\centering\small
+\caption{为本稿目标作出的单一选择。表中的否定是“该原始用途并不直接给出”，不是“不可能扩展”。}
+\begin{tabularx}{\textwidth}{P{22mm}YYY}
+\toprule
+方法 & 直接优势 & 为当前解剖估计还需补充 & 本稿地位\\
+\midrule
+确定性DMP & 动态运动生成与恢复 & 概率生成模型、测量似然、未来创新 & 固定执行端，非估计器\\
+KMP & 概率参考、经过点及局部任务适配 & 先验/测量语义与固定概率尺度 & 参考适配对照\\
+ProDMP & 有边界的整段相关轨迹分布 & 不确定目标边界、空间创新与几何观测 & 有限基概率对照\\
+协变Mat\'ern-$5/2$过程 & $C^2$相关曲线、局部创新、有限状态Bayes & 图册、规范运输及切片似然 & \textbf{唯一主估计模型}\\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{拓扑设计：胸腹和腿不用硬连成一个圆柱}\label{sec:topology}
+\subsection{圆柱只是一个部位的方便参数域}
+肢体的一个不含端盖的体表带可与$S^1\times I$同胚。然而，包含中心的实体体积接近$D^2\times I$，不等于$S^1\times I\times[0,1]$：把径向坐标缩到核心时，整圈角度必须合并，圆周参数在轴上退化。若去掉一个\emph{有限厚度}内核心，剩余壳层才可能使用圆柱式厚化域。零厚度medial axis也不是普通的二维Dirichlet边界面。
+
+因此，“只有二维圆柱才能使用解剖坐标”并不成立；成立的是“单个特定全局参数化只能覆盖其匹配拓扑的区域”。一般人体与器官可使用局部坐标图册。心室坐标UVC及Cobiveco已经示范了解剖标志、Laplace场、局部框架和数据迁移的结合，但其成功依赖具体结构及设计，不是一个全身圆柱保证\cite{Bayer2018,Schuler2021}。
+
+\subsection{统一使用可重叠的二维种子片与三维流图}
+每个图$a$包含一个二维种子面片$\Sigma_a$和局部三维覆盖域$\mathcal U_a$。靠近皮肤时，种子片选择皮肤上的圆盘型扫描窗口；腿部可以在圆周上设置相互重叠的窗口，仍保留$\theta$作为用户可读标签，但实际计算具有明确的接缝分支。胸腹部使用覆盖前侧、侧面及其他所需扫描窗口的面片。内部仍未覆盖的区域可用内部规则种子面片继续覆盖，\emph{不要求每张体内坐标图的种子都是皮肤}。
+
+该组织方式有两个直接后果。首先，几何坐标用于表示目标的位置，不承担声线必须沿该坐标到达皮肤的责任。其次，胸腔和腿若是分开的检查任务，其图册共享数据接口即可，无需在它们之间建立一条人工连续扫描曲线。真正跨腹股沟或其他交界扫描时，只使用共同几何上的重叠区域转图。
+
+\subsection{Ricci flow不是连接体积坐标的必要操作}
+离散Ricci flow主要用于表面度量与共形参数化\cite{Jin2008}。它可以作为一种二维图的构造方法，但不会自动确定不同器官之间的解剖语义，不会把不同拓扑的域变成同一域，也不会为三维体积映射提供无折叠保证。
+
+本文明确\textbf{不采用Ricci flow拼接多个圆柱}。二维初始面片使用正权重凸组合参数化：将圆盘边界按一致顺序映到凸多边形，内部顶点满足
+\begin{equation}
+ u_i=\sum_{j\in\mathcal N(i)}w_{ij}u_j,
+ \qquad w_{ij}>0,\qquad \sum_jw_{ij}=1.
+ \label{eq:surface-barycentric}
+\end{equation}
+在适当的圆盘三角剖分和一一边界映射条件下，可使用已有的分片线性单射结果\cite{Floater2003,Floater2006}。这不是给体积做三个凸组合插值：同一保证不能直接推广到四面体体积。
+
+\subsection{图之间通过共同对象连接，而不是通过角度名称连接}
+设$\Psi_a$为图坐标到参考物理域的映射，$\chi_a=\Psi_a^{-1}$。重叠区域上唯一正确的过渡映射是
+\begin{equation}
+ T_{ba}=\chi_b\circ\Psi_a.
+ \label{eq:chart-transition}
+\end{equation}
+它满足$T_{aa}=\Id$、$T_{ab}=T_{ba}^{-1}$，以及三重重叠上的
+\begin{equation}
+ T_{ca}=T_{cb}\circ T_{ba}.
+ \label{eq:cocycle}
+\end{equation}
+胸部图中的第一个坐标与腿部的$\theta$无须具有相同数值范围，更不能仅因它们都叫“角度”便直接相减。本文的目标对象、框架与概率过程在参考物理空间中共享定义，坐标图只是这些对象的局部表达。
+
+\section{修正调和设计：一个势场与两个运输标签}\label{sec:harmonic}
+\subsection{为什么三个独立调和场不足够}
+草稿将“每个分量满足Laplace方程”和最大值原理用于推导联合全局微分同胚\cite{UserDraft}。这个推导缺少关键条件。一个直接反例是
+\begin{equation}
+ F(x,y,z)=\begin{bmatrix}x&y&z^3-3x^2z\end{bmatrix}\T.
+ \label{eq:harmonic-counterexample}
+\end{equation}
+每个分量均满足$\Delta F_i=0$，但
+\begin{equation}
+ \det DF=3(z^2-x^2)
+\end{equation}
+在$z=\pm x$处为零，并在区域中改变符号。最大值原理约束极值，不排除鞍点，也不约束多个标量梯度线性独立。更强的既有反例表明，即使边界对应良好，三维调和延拓也可不单射\cite{Laugesen1996}；甚至“两个端面同胚、域是拓扑乘积”的调和扫掠仍可出现可相互抵消的鞍点\cite{Goates2025}。
+
+积分曲线生成坐标不是新的数学技巧：Huynh与Gingold已经以积分曲线坐标讨论双射形变；Galaxy Maps和后续星形分解则研究带构造性双射性质的分片线性体积映射\cite{Huynh2015,Hinderink2023,Hinderink2024}。本文不声称只有调和流才能修复三维映射，也不把一个已有流盒论证包装为首创。本文选择局部正则流，是因为需要连续的变分Jacobian、可读的种子对应和显式的失效域；不是以通用分片线性全体积映射为研究目标。上述工作仍应作为几何对照，而不是被文献综述忽略。
+
+修正的关键不是再给三个标量加一次平滑，而是\textbf{只求一个纵深势场，再沿同一条流运输两个表面标签}。这样坐标相容性由构造决定，其可逆性由明确的正则流条件决定。
+
+\subsection{局部边界问题}
+在参考域的一个任务局部子域$\Omega_a$中，设外种子侧为$\Sigma_{a,0}$，深侧为一个\emph{二维有限面}$\Sigma_{a,1}$，侧壁为$\Sigma_{a,N}$。计算
+\begin{equation}
+\begin{cases}
+ \Delta d_a=0,&p\in\Omega_a,\\
+ d_a=0,&p\in\Sigma_{a,0},\\
+ d_a=1,&p\in\Sigma_{a,1},\\
+ n\T\nabla d_a=0,&p\in\Sigma_{a,N}.
+\end{cases}
+\label{eq:depth-pde}
+\end{equation}
+这是相应Dirichlet能量最小化问题。深侧面是为坐标计算选择的几何锚，不是假定存在一层真实组织，也不是零厚度中轴。厚度测量中用Laplace场构造组织间轨迹已有明确先例\cite{Jones2000,Yezzi2003}，所以本文不将“Laplace流线”本身声称为新技术。
+
+混合边界交接可能降低边界正则性。理论与在线有效域均选在远离角点、奇异边界交接和不适定细薄结构的区域；不能把边界有限元近似直接当作全域光滑函数。
+
+\begin{assumption}[正则流域]\label{ass:regular}
+在紧致扩展区域$\mathcal D_a$上，$d_a\in C^3$，且$\|\nabla d_a\|\geq m_a>0$。种子参数化$X_a:U_a\subset\R^2\to\Sigma_{a,0}$为$C^2$嵌入。由下面定义的流从$X_a(U_a)$出发，在所采用的$0\leq\zeta\leq\zeta_a^{\max}$内存在、保持在$\mathcal D_a$内，并不穿越未授权边界。
+\end{assumption}
+
+这是需验证的假设，不是式\eqref{eq:depth-pde}的自动结果。本文的保证针对\emph{所覆盖的正则流域}，不是未经检查的全身内部。
+
+\subsection{流映射、深度恒等式与逆映射}
+定义归一化梯度场
+\begin{equation}
+ V_a(p)=\frac{\nabla d_a(p)}{\|\nabla d_a(p)\|^2},
+ \qquad \frac{\partial\Psi_a(u,\zeta)}{\partial\zeta}
+ =V_a(\Psi_a(u,\zeta)),\quad \Psi_a(u,0)=X_a(u).
+ \label{eq:flow-definition}
+\end{equation}
+它不是单位速度场；归一化是为了使$\zeta$恰好等于势值。链式法则给出
+\begin{equation}
+ \frac{\dd}{\dd\zeta}d_a(\Psi_a)
+ =\nabla d_a\T V_a=1,
+ \qquad d_a(\Psi_a(u,\zeta))=\zeta.
+ \label{eq:depth-identity}
+\end{equation}
+令$\varphi_a^r$为$V_a$的流。对其覆盖域内一点$p$，有
+\begin{equation}
+ \boxed{
+ \chi_a(p)=
+ \left(X_a^{-1}\bigl(\varphi_a^{-d_a(p)}(p)\bigr),\ d_a(p)\right).
+ }
+ \label{eq:inverse-flow}
+\end{equation}
+这给出可计算的逆：先读势值，再沿同一个流回到种子面，最后使用二维逆参数化，而不是分别拟合一个不一定互逆的神经编码器和解码器。
+
+\begin{theorem}[正则流图的条件性单射]\label{thm:flow-diffeo}
+在假设\ref{ass:regular}下，$\Psi_a$在其定义的开参数域上是到其像的$C^2$微分同胚，逆由式\eqref{eq:inverse-flow}给出。含种子/深侧边界时，结论按带边界的相应限制理解。
+\end{theorem}
+\begin{proof}
+若$\Psi_a(u_1,\zeta_1)=\Psi_a(u_2,\zeta_2)$，由式\eqref{eq:depth-identity}可得$\zeta_1=\zeta_2$。沿局部Lipschitz场的反向流唯一性，使$X_a(u_1)=X_a(u_2)$；由$X_a$嵌入可得$u_1=u_2$。因此全局单射在这一流图的像内成立。接下来，$D_u\Psi_a$沿流保持秩二，且它的列向量与$\nabla d_a$正交，而$V_a$与$\nabla d_a$的内积为一，所以完整Jacobian秩三。逆函数定理给出局部光滑逆；其单射和显式逆式\eqref{eq:inverse-flow}使这些局部逆一致。所需存在时间、边界保持和非临界性均由假设给出，证明不使用错误的“调和必无鞍点”推断。
+\end{proof}
+
+这个结论也说明如何修正当前设计：将原本独立求解的$\theta,h$改为$u^1,u^2$的运输标签，满足
+\begin{equation}
+ V_a\cdot\nabla u^\alpha=0,\qquad
+ u^\alpha(X_a(u))=u^\alpha,\quad\alpha=1,2.
+ \label{eq:advected-labels}
+\end{equation}
+两个标签不再要求各自体积调和。这一取舍是必要的结构选择：优先保证三个坐标由同一个可逆流产生，而不是追求三个标量都带有“调和”名称。
+
+\subsection{Jacobian不需要对离散查询结果盲目差分}
+记$U_a=D_u\Psi_a\in\R^{3\times2}$、$a=\nabla d_a$、$H_d=\nabla^2d_a$，则
+\begin{align}
+ D V_a&=\frac{H_d}{a\T a}-\frac{2a(a\T H_d)}{(a\T a)^2},\\
+ \partial_\zeta U_a&=D V_a(\Psi_a)U_a,
+ \qquad U_a(u,0)=D X_a(u),\\
+ J_a&=D_{(u,\zeta)}\Psi_a=[\,U_a\quad V_a(\Psi_a)\,].
+ \label{eq:jac-variational}
+\end{align}
+因此位置与Jacobian可以同时积分。第三列也满足变分方程，故
+\begin{equation}
+ \boxed{
+ \det J_a(u,\zeta)=\det J_a(u,0)
+ \exp\!\left[\int_0^\zeta \diver V_a(\Psi_a(u,r))\,\dd r\right].
+ }
+ \label{eq:liouville}
+\end{equation}
+在精确模型的正则域内，Jacobian行列式不会穿零。数值实现仍需误差界与独立检查；有限个采样点的正行列式不能代替整个连续域的正则性验证。
+
+\subsection{参考域的块正交度量，以及三个不同的“深度”}
+由式\eqref{eq:depth-identity}对$u$求导，$a\T U_a=0$。参考域的拉回度量因此为
+\begin{equation}
+ G_a=J_a\T J_a=
+ \begin{bmatrix}
+ U_a\T U_a&0\\
+ 0&\|\nabla d_a\|^{-2}
+ \end{bmatrix}.
+ \label{eq:reference-metric}
+\end{equation}
+这是一项构造带来的实际收益：参考域中，改变运输标签与沿势流推进在物理长度意义下正交。但$\zeta$仍不是米制距离。沿流的长度为
+\begin{equation}
+ a_{\rm flow}(u,\zeta)=\int_0^\zeta\frac{\dd r}{\|\nabla d_a(\Psi_a(u,r))\|}.
+ \label{eq:flow-distance}
+\end{equation}
+另有超声声线上的距离$\ell_{\rm US}=\|p_v-q\|$。势值$\zeta$、流线长度$a_{\rm flow}$、声学深度$\ell_{\rm US}$必须分别存储，不能相互替换。Cobiveco使用沿轨迹的归一化距离来改进坐标的几何含义，也提示了原始Laplace值与真实距离的区别\cite{Schuler2021}。
+
+若选择用归一化流线长度代替$\zeta$显示深度，由于总长度随$u$变化，新坐标的度量可能出现交叉项；不能继续无条件使用式\eqref{eq:reference-metric}的块对角结构。本文固定$\zeta$为内部坐标，长度只作为辅助物理量。
+
+\begin{figure}[htbp]
+\centering
+\safegraphic[width=.86\textwidth]{figures/flow_vs_ray.pdf}
+\caption{解析调和场$d=z+0.35(x^2-y^2)$在$y=0$平面上的示例。曲线是运输解剖标签的坐标流；虚线是连接端点的直弦，用于说明声学视线和坐标流是不同对象。图为解析示意，不是人体或声传播实验。}
+\label{fig:flowray}
+\end{figure}
+
+\subsection{如何处理检测到的临界区：修图，不掩盖}
+实际算法先生成候选局部壳层/扫掠域，求$d_a$，然后计算其正则流覆盖。遇到梯度下界不足、流出界或高度压缩时，缩小该图的深度或横向范围，在邻近区域建立重叠种子片。需要覆盖旧场的临界点附近时，使用\emph{新的局部势场和新的种子}，不能继续穿越同一场的临界点。
+
+从微分几何角度，一个内部规则小邻域总可选取局部流盒；在足够小的欧氏球中，线性势本身也是调和函数。因而全身不必被一个皮肤到中轴的全局势覆盖。实践中应优先使用具有解剖边界意义的图，只有未覆盖区域才用局部补图，并保留图身份与真实过渡。这样牺牲的是“每个点有同一种全局深度解释”，保留的是更重要的可逆性与一致性。
+
+\section{材料形变、坐标过渡与确定性数值实现}\label{sec:deformation}
+\subsection{形变映射不是另一张未经验证的神经网络}
+令$\Phi_t$把参考几何映射到当前人体，则
+\begin{equation}
+ p=\Psi_{a,t}(\xi)=\Phi_t(\Psi_a(\xi)),\qquad
+ J_{a,t}=D\Phi_t\,J_a.
+ \label{eq:live-map}
+\end{equation}
+\begin{assumption}[任务区域内的材料映射]
+在使用的覆盖域内，$\Phi_t$为足够光滑的单射映射，且$\sigma_{\min}(D\Phi_t)\geq m_\Phi>0$。其时间戳、误差界和有效域由现有人体追踪/配准提供。该假设不由SMPL-X或LBS的名称自动保证。
+\end{assumption}
+
+LBS中空间变化的权重会进入Jacobian；逆LBS不等于对骨骼矩阵分别求逆再按原权重相加。可用上一帧对应作初值，配合解析Jacobian和线搜索解$\Phi_t(p_0)=p$，并检查残差、局部条件数与图覆盖。不能把未知的受压组织形变写成一个已知精确“卸载算子”。本文将尚未解释的共享运动或压缩误差保留为$\eta_t$或验证中的模型误差，而不新增神经弹性场。
+
+\subsection{材料对应、调和性与度量不变性不同}
+材料标签满足
+\begin{equation}
+ \chi_{a,t}=\chi_a\circ\Phi_t^{-1},\qquad
+ \partial_t\chi_{a,t}+D\chi_{a,t}\,v_{\rm body}=0.
+ \label{eq:material-advection}
+\end{equation}
+这保证标签跟随材料；它不意味着当前Euclidean域中的标签仍满足原Laplace方程。当前物理度量是
+\begin{equation}
+ G_{a,t}=J_a\T(D\Phi_t)\T D\Phi_t J_a.
+ \label{eq:live-metric}
+\end{equation}
+一般形变会破坏式\eqref{eq:reference-metric}的块正交性。等深面法向应从对偶变换得到：
+\begin{equation}
+ n_{\zeta,t}=\frac{J_{a,t}^{-\mathsf T}e_3}{\|J_{a,t}^{-\mathsf T}e_3\|},
+ \qquad\text{通常 }n_{\zeta,t}\not\parallel J_{a,t}e_3.
+ \label{eq:normal-dual}
+\end{equation}
+
+\subsection{坐标切换下的向量和协方差}
+令$B_{ba}=DT_{ba}$。同一个小位移在不同图中满足
+\begin{equation}
+ \delta\xi_b=B_{ba}\delta\xi_a,\quad
+ G_b=B_{ba}^{-\mathsf T}G_aB_{ba}^{-1},\quad
+ P_b=B_{ba}P_aB_{ba}\T.
+ \label{eq:chart-tensors}
+\end{equation}
+前两式是精确微分变换，第三式是切向扰动协方差的精确线性变换；如果$P$表示\emph{有限幅度坐标随机变量}的协方差，则该式只是一阶近似。对较宽分布，使用样本经$T_{ba}$推送，而不是把非线性变换后分布强行叫作高斯。
+
+\begin{proposition}[刚体场景变换的相容性]\label{prop:rigid}
+若参考/患者几何、种子和测量位姿共同经$g(p)=Qp+b$变换，且标量边界问题一并运输，则理想唯一调和解满足$d^g(gp)=d(p)$，流图满足$\Psi^g=g\circ\Psi$，Jacobian满足$J^g=QJ$，因而$G^g=G$。
+\end{proposition}
+\begin{proof}
+刚体变换保持Euclidean Laplacian、Dirichlet值与法向边界关系，唯一性给出标量解的运输。$\nabla d^g(gp)=Q\nabla d(p)$，故归一化场亦按$Q$变换。利用相同初值下的流唯一性得到映射关系，链式法则给出后两式。
+\end{proof}
+
+这是一种明确的等变性，不需要等变策略网络。若只移动患者而机器人基座固定，机器人相对任务的可达性已经变化，不属于应被消掉的信息。左右人体器官也不能未经任务定义就视为镜像等价。
+
+\subsection{离散实现必须和理论对象对齐}
+当前四面体分片线性场是$C^0$，其梯度跨单元可能不连续。它不能直接支撑$C^1$向量场流唯一性与连续Jacobian的主张。本文选定的确定性实现是：离线求解FEM标量场，在任务覆盖域内构造至少$C^3$的分片多项式势近似$\widetilde d$，例如四次张量B样条的确定性有限元后处理；以$\widetilde d$计算流和变分方程。没有神经网络或数据集训练。
+
+二维凸组合参数化只用于初始标签和网格对应，不能把其分片线性逆直接称为$C^2$种子。实际发布的种子在足够小的窗口中采用确定性平滑后的局部图面$X(u^1,u^2)=(u^1,u^2,f(u^1,u^2))$（再施加局部刚体框架），其中$f$至少$C^2$。该形式在窗口内自动嵌入；若皮肤相对所选平面出现翻转或多值，则拆成更多重叠窗口。原来的解剖$\theta,h$作为材料标签保留，并通过有效的二维重参数化查询，不能用含零Jacobian的标签取代图面坐标。种子、势零水平集与原始皮肤的差异需要共同计入近似误差。
+
+理论保证作用于经过验证的$\widetilde d$及其种子面。若拟合只近似满足真实皮肤边界，不能仍声称种子\emph{恰好}在真实皮肤上。可使用$\widetilde d=0$的近似种子面并报告其与皮肤的距离。若$|\widetilde d(p_{\rm skin})|\leq\epsilon_\partial$且附近梯度下界为$m$，沿流回到零水平集所需路程不超过$\epsilon_\partial/m$；这个误差必须进入几何预算。
+
+对一个中心为$c$、半径上界为$r$的数值单元，如果存在严格Hessian范数上界$L_H$，则
+\begin{equation}
+ \inf_{p\ \mathrm{in\ cell}}\|\nabla\widetilde d(p)\|
+ \geq \|\nabla\widetilde d(c)\|-L_Hr.
+ \label{eq:gradient-certificate}
+\end{equation}
+当右侧大于$m$时，该单元获得非临界性证书。$L_H$可由分片多项式的区间或Bernstein界计算；以采样最大值代替上界只能算诊断，不能叫严格证书。还需结合流积分误差与边界包含性检查。验证失败即不发布该图，而不是最近点填值或裁剪后继续声称可逆。
+
+\subsection{平直体域与真正使用的流形结构}
+若$\Psi$是三维Euclidean域之间的微分同胚，$G=J\T J$的内禀曲率局部为零；坐标线弯曲本身不会创造非零曲率。本文真正需要的几何结构是：弯曲的二维种子/皮肤面、坐标图过渡、曲线的法丛、声束方向球面与姿态群，以及这些对象之间的微分映射。将这些量按其类型处理，比给三维位置路径添加没有任务收益的Christoffel计算更重要。
+
+\section{体内目标不能被体表投影取代：声学视角的正确几何}\label{sec:acoustic}
+\subsection{内部目标与接触点分开存储}
+设参考体内目标为$\Gamma_0(s)$，以参考弧长$s$参数化。当前患者中目标为$p_v=\Phi_t(\Gamma(s))$；候选接触点为$q=\Phi_t(X_a(u_q))$。同一个体内目标可从不同$q$获得不同深度、入射角和切面。于是
+\begin{equation}
+ \mathcal V(p_v,t)=\left\{(q,b,R):\ b=\frac{p_v-q}{\|p_v-q\|},\ R e_3=b,\ \mathcal C(q,b,R,p_v,t)\leq0\right\}
+ \label{eq:view-set}
+\end{equation}
+表示允许的声学视角集合。$\mathcal C$包含任务切面范围、几何遮挡、允许深度和声窗条件；它不能仅由坐标场推导。这里采用已标定直线声束近似；若折射或明显的声速失配破坏此近似，应在似然中计入误差或拒绝该视图，而非由“调和性”假定声线弯曲。
+
+\textbf{必须保留的是$\Gamma_0(s)$、目标身份、参考切向与图身份；体表路径只是$\mathcal V$中的一个已选择实现。}旧投影可用来初始化$q$或提供候选，但不能覆盖/改写内部目标。这样，改变IRD选择的接触点后，系统仍知道自己原本要看哪个体内位置。
+
+\subsection{三类向量不能混为一谈}
+调和流$V_a$是材料坐标传播方向；皮肤法向$n$描述局部表面；声束方向$b$是从$q$看向$p_v$的几何方向。三者在一般形状中不同。一个内部目标的固定$u$流线落在皮肤的位置，是解剖对应上的足点，不必是临床有效或机器人最优的视点。
+
+同时，非刚性映射通常不会把直线映为直线。因此应先在当前人体中构造真实声学几何，再把观测拉回参考域。不能在canonical空间连一条直线，经形变后仍把它当作同一条物理声束。
+
+\subsection{姿态应编码在声束方向上的局部框架，而不是原始皮肤角度}
+令$B_a(b)=[b_{1,a},b_{2,a},b]\in\SO(3)$为某个局部参考框架。固定$b$的所有有向成像姿态可以写成
+\begin{equation}
+ R=B_a(b)R_z(\phi_a),\qquad \phi_a\in S^1.
+ \label{eq:beam-fiber}
+\end{equation}
+这是真正的绕束$\SO(2)$纤维。不同局部参考框架满足$B_b=B_aR_z(\psi_{ba})$时，同一物理姿态的角度必须变为
+\begin{equation}
+ \boxed{\phi_b=\wrap(\phi_a-\psi_{ba}).}
+ \label{eq:roll-gauge}
+\end{equation}
+改变框架是改变数值表示，不是让探头真的转动。也不能在整个方向球面上选一个无奇异的统一参考轴；工程上保留局部框架、连续过渡和必要的姿态矩阵即可。
+
+对于横截血管任务，令$t$为当前血管有向切向，$P_b=\Id-bb\T$，选择
+\begin{equation}
+ y_{\rm img}=\frac{P_bt}{\|P_bt\|},\qquad
+ x_{\rm img}=y_{\rm img}\times b,\qquad
+ R=[x_{\rm img},y_{\rm img},b].
+ \label{eq:transverse-frame}
+\end{equation}
+这里$y_{\rm img}$是成像平面法向。它是在“声束必须位于成像平面”约束下，最接近$t$的平面法向；只有$b\T t=0$时才完全横截。若$\|P_bt\|$很小，方向不适定；若$|b\T t|$超出允许横截误差，则该视点本身应被判为不合适，而不是靠roll修正假装完成了横截。
+
+对器官纵向切面等其他任务，参考切面由相应解剖标志或任务轴指定。\emph{绕束自由度的几何表示是通用的，其允许范围和目标角不是通用常数。}完整位姿若已被成像任务固定，roll就不再是可自由优化的变量。
+
+\subsection{当前皮肤纤维角编码可能丢失的信息}
+当前\path{kmp_honest/prior.py}使用皮肤局部框架计算
+$\phi=\operatorname{atan2}(t\T e_h,t\T e_\theta)$，并另存局部see方向\cite{AmongCode}。若框架是正交切向基，$\phi$表达的是$P_nt$的方向，其中$P_n=\Id-nn\T$。重建后再投影到垂直$b$的平面，得到$P_bP_nt$；直接按真实体内切向定义视角则需要$P_bt$。两者差为
+\begin{equation}
+ \boxed{P_bP_nt-P_bt=-(n\T t)P_bn.}
+ \label{eq:double-projection-error}
+\end{equation}
+只有$t$完全沿皮肤切向或$b$与$n$平行等特例，向量差才消失。这里不能仅因每个向量已经normalize就认为角度完全等价。在一个纯几何数值例子中，取$n=(0,0,1)^T$，$b$和$t$分别为$(0.45,0,0.89)^T$与$(0.4,0.8,0.45)^T$的单位化方向，两种投影后单位方向相差约$13.16^\circ$；这只是合成反例，不是患者实验误差。
+
+因此本稿明确替换存储语义：\textbf{目标切向由完整体内曲线及其后验导数产生；声束由当前接触点与目标位置产生；roll在声束框架中计算。}不再只保存一个皮肤切向角来代替体内方向。皮肤框架仍可作为局部参考$B_a$的种子，但不是目标信息本体。如果实际传入的$e_\theta,e_h$不正交，必须先按物理度量正交化；直接对非正交坐标基取两个点积再用atan2，还会增加另一类误差。
+
+\subsection{声学方向、深度与皮肤投影的微分}
+记$r=p_v-q$、$\ell=\|r\|$、$b=r/\ell$，则
+\begin{equation}
+ \delta\ell=b\T(\delta p_v-\delta q),\qquad
+ \delta b=\frac{P_b}{\ell}(\delta p_v-\delta q).
+ \label{eq:beam-differential}
+\end{equation}
+若$E_b\in\R^{3\times2}$为$b$处的正交切基，方向小扰动$\delta\vartheta=E_b\T\delta b$的协方差为
+\begin{equation}
+ P_\vartheta=\frac{1}{\ell^2}E_b\T P_b
+ P_{p_v-q}P_b E_b.
+ \label{eq:angle-cov}
+\end{equation}
+必须保留$p_v$与$q$之间的交叉协方差；它们共享配准误差时，简单把两者方差相加会重复计算或错误取消信息。
+
+若反过来选定$b$，通过射线$q=p_v-\ell b$与皮肤$f(q)=0$确定接触点，则令$n=\nabla f/\|\nabla f\|$，有
+\begin{align}
+ \delta\ell&=\frac{n\T(\delta p_v-\ell\delta b)}{n\T b},\\
+ \boxed{\delta q=\left(\Id-\frac{bn\T}{n\T b}\right)
+ (\delta p_v-\ell\delta b).}
+ \label{eq:skin-projection-jac}
+\end{align}
+该式由$\delta q=\delta p_v-b\delta\ell-\ell\delta b$和$n\T\delta q=0$直接得到。它说明掠入射$n\T b\approx0$时，“投到皮肤”本身就高度病态。以后给IRD的姿态/位置容差应由这样的几何敏感性传播，而不只是固定位置盒和角度锥。
+
+
+\subsection{把目标位置和切向的联合误差传播到绕束角}
+在一个有效局部声束框架$B_a(b)=[b_1,b_2,b]$中，以式\eqref{eq:transverse-frame}给出的$x,y$为成像轴，定义
+\begin{equation}
+ c_\phi=b_1^Tx,\quad s_\phi=b_2^Tx,\qquad
+ \phi=\operatorname{atan2}(s_\phi,c_\phi).
+ \label{eq:roll-extraction}
+\end{equation}
+这与$R=B_aR_z(\phi)$的第一列一致；不能在一个文件中按$x$定义角度，另一个文件中按$y$使用同样的零点。
+
+令$w=P_bt$、$\gamma=\|w\|$，则对于单位切向$t$，
+\begin{align}
+ \delta y&=\frac{I-yy^T}{\gamma}
+ \left[P_b\delta t-(\delta b\,b^T+b\,\delta b^T)t\right],\\
+ \delta x&=\delta y\times b+y\times\delta b,\\
+ \delta\phi&=c_\phi\,\delta s_\phi-s_\phi\,\delta c_\phi,\\
+ \delta c_\phi&=(D_bb_1[\delta b])^Tx+b_1^T\delta x,\\
+ \delta s_\phi&=(D_bb_2[\delta b])^Tx+b_2^T\delta x.
+ \label{eq:roll-jac}
+\end{align}
+其中$\delta t=(I-tt^T)\delta p_s/\|p_s\|$，$\delta p_s$由式\eqref{eq:target-derivatives}和完整状态协方差传播。于是位置、方向、深度和绕束角来自\emph{同一个联合后验}；并非独立给roll添加一个角度方差。
+
+若框架切换角$\psi_{ba}$依赖$b$，则式\eqref{eq:roll-gauge}的微分是
+\begin{equation}
+ \delta\phi_b=\delta\phi_a-D_b\psi_{ba}\,\delta b.
+ \label{eq:roll-gauge-cov}
+\end{equation}
+因此在角度和声束都不确定时，换框架会混合其交叉协方差。只改角度均值而保留原独立方差是不一致的。实际输出可优先保留$R$样本；局部统计使用$\delta\omega=(R^T\delta R)^\vee$及其协方差，以避免周期接缝造成的均值误读。
+
+\subsection{统一坐标约定}
+本文$R$为\emph{成像框架}到世界框架的旋转，$e_3$指向组织内，B模平面为$(x,z)$，平面法向为$e_2$。当前代码的探头$z$采用与声束相反的约定。实现时使用固定已标定的刚体变换连接TCP与成像框架；不可只翻一个轴造成左手系。所有后文观测公式均作用在该成像框架，而不猜测不同脚本的TCP轴语义。
+
+\section{将未知目标写成参考曲线法丛上的随机截面}\label{sec:bundle}
+\subsection{为什么不直接给三个圆柱坐标加独立高斯噪声}
+直接对$(\theta,h,d)$分别加高斯噪声，会把角度周期、不同物理尺度以及沿程关联混在一起。更重要的是，曲线沿自身方向的偏移常与“扫描进度变化”不可辨识。本文选择一个局部规则的参考曲线管：以$s$标识沿程位置，用二维法向残差描述其横截面内的形状偏差，数据关联负责$s$和分支身份。
+
+设参考目标$\Gamma_0:[0,L]\to\R^3$为$C^3$正则弧长曲线，$t_0=\Gamma_0'$。选取$E(s)=[e_1(s),e_2(s)]$使
+\begin{equation}
+ E\T E=\Id_2,\qquad E\T t_0=0.
+\end{equation}
+在不发生自交且半径小于参考曲线局部管状邻域有效尺度时，定义
+\begin{equation}
+ \boxed{\Gamma(s)=\Gamma_0(s)+E(s)e(s),\qquad e(s)\in\R^2.}
+ \label{eq:normal-residual}
+\end{equation}
+这不是说患者血管一定只有两个自由度，而是选取了曲线局部几何的一个无重复表示。大变形、分支和对应失败必须换参考区段或改变离散关联，不能让单个高斯无限增宽跨越不同分支。
+
+参考空间在这里是现有解剖模板的物理体域，故式\eqref{eq:normal-residual}直接使用欧氏法丛。若希望在另一个已知非欧氏目标流形上表达，可用相应retraction替换加法；本稿不为了术语而增加不必要的测地线求解。
+
+\subsection{用Bishop框架避免Frenet框架在直线段失效}
+一个计算方便的选择是旋转最小框架，满足
+\begin{equation}
+ e_i'=-((t_0')\T e_i)t_0,\quad i=1,2.
+ \label{eq:bishop}
+\end{equation}
+它在曲率为零时仍可使用，不需要Frenet法向。数值上可用框架ODE或稳定的旋转最小框架算法\cite{Wang2008}。式\eqref{eq:bishop}给出$E\T E'=0$，即沿参考曲线的法向连接在该框架下为零。
+
+在一般局部框架中，定义
+\begin{equation}
+ \Omega(s)=E(s)\T E'(s),\qquad
+ \mathcal D_s e=e'+\Omega e.
+ \label{eq:normal-connection}
+\end{equation}
+$\Omega$为反对称矩阵。$\mathcal D_s e$是法向截面变化的几何量，而普通$e'$还混入了坐标基自身旋转。
+
+\subsection{规范变换不是额外的物理运动}
+若更换法向基$\widetilde E=E Q(s)$，其中$Q(s)\in\SO(2)$，同一物理残差必须表示为
+\begin{equation}
+ \widetilde e=Q\T e,\qquad
+ \widetilde\Omega=Q\T\Omega Q+Q\T Q'.
+ \label{eq:gauge-connection}
+\end{equation}
+直接代入得
+\begin{equation}
+ \widetilde{\mathcal D}_s\widetilde e
+ =Q\T\mathcal D_s e.
+ \label{eq:gauge-derivative}
+\end{equation}
+因此过程应该作用在协变导数上，而不是仅在旧、新框架中复用同一组标量斜率。
+
+向量GP的规范一致核已有一般理论\cite{Hutchinson2021}。本文所需的是更小、更可计算的特例：只在\emph{一个已知参考曲线的拉回法丛}上建立过程，不需要学习整个身体流形上的向量场或计算全身谱核。
+
+\subsection{当前人体中的目标与导数}
+实际目标为
+\begin{equation}
+ p_v(s,t)=\Phi_t\bigl(\Gamma_0(s)+E(s)e(s)\bigr).
+ \label{eq:physical-target}
+\end{equation}
+在Bishop框架中，$e'=v$，于是
+\begin{equation}
+ \partial_s p_v
+ =D\Phi_t\left(t_0+E'e+Ev\right),\qquad
+ \partial_t p_v=\partial_t\Phi_t(\Gamma).
+ \label{eq:target-derivatives}
+\end{equation}
+它们分别是空间沿程变化与身体随时间运动，不能用同一个DMP时间相位替代。动态身体下观测必须按采集时间拉回。若真实器官还有$\Phi_t$没有解释的运动，该成分属于模型误差或共享干扰状态，不应静默吸收到越来越自信的静态血管形状中。
+
+\section{唯一概率模型：协变Mat\'ern-$5/2$空间过程}\label{sec:process}
+\subsection{从正则性需求确定过程阶数}
+在Bishop框架中定义
+\begin{equation}
+ z(s)=\begin{bmatrix}e(s)\\v(s)\\a(s)\end{bmatrix},
+ \qquad v=e',\qquad a=e''.
+\end{equation}
+取空间状态方程
+\begin{equation}
+ \boxed{\dd z=A z\,\dd s+B L\,\dd W_s,}
+ \quad
+ A=\begin{bmatrix}0&1&0\\0&0&1\\-\lambda^3&-3\lambda^2&-3\lambda\end{bmatrix}\otimes\Id_2,
+ \quad B=\begin{bmatrix}0\\0\\1\end{bmatrix}\otimes\Id_2.
+ \label{eq:ssm}
+\end{equation}
+其中$\lambda>0$的单位为长度的倒数，$W_s$是沿\emph{空间弧长}的二维Wiener过程。这不是组织运动的动力学，也不是向患者施加的力。它是关于“沿目标走一段距离后，未知形状增加多少变化”的先验。
+
+在任意法向框架中，同一个模型写成
+\begin{equation}
+ \boxed{(\mathcal D_s+\lambda)^3e=Lw_s.}
+ \label{eq:covariant-process}
+\end{equation}
+令$z=(e,\mathcal D_se,\mathcal D_s^2e)$，矩阵$A$增加$-\Id_3\otimes\Omega(s)$项，噪声协方差按相同框架旋转。实现可在Bishop框架中积分，转图时进行规范变换，避免在线显式计算高阶连接展开。
+
+\begin{proposition}[在所选重复实极点模型族中的最小阶数]\label{prop:minimal-order}
+考虑非退化白噪声驱动的标量过程$(D_s+\lambda)^m e=\sqrt q\,w_s$，$q>0$。用其自然状态$(e,e',\ldots,e^{(m-1)})$表示时，样本的最高状态分量连续但一般不可微，而$e$具有$m-1$阶连续导数。因而，在此模型族中，要求$C^2$样本轨迹至少需要$m=3$。
+\end{proposition}
+\begin{proof}
+自然状态的最高分量为含非退化Brownian驱动的It\^o过程，具有连续样本但非零二次变差，因此不能具有通常意义的连续导数。每一低阶状态都是上一状态的时间（此处为空间）积分，增加一阶路径可微性。故$m=1$仅给出连续路径，$m=2$给出$C^1$路径，$m=3$给出$C^2$路径。此证明不排除其他核、随机基或非马尔可夫模型同样满足$C^2$要求；它只支持本文为有限状态局部模型选择最小阶数。
+\end{proof}
+
+相比之前可以用于位置/切向估计的Mat\'ern-$3/2$，本稿明确选择$5/2$，原因就是\emph{未来样本还要提供曲率与连续视角变化}。不是随着讨论随意更换方法，而是把此前未明确的路径规则性要求列入模型契约。
+
+\subsection{平稳协方差、核与归一化常数}
+给定二维残差远期协方差$S\succ0$，取
+\begin{equation}
+ Q_c=LL\T=\frac{16}{3}\lambda^5 S.
+ \label{eq:spectral-noise}
+\end{equation}
+则式\eqref{eq:ssm}的平稳状态协方差为
+\begin{equation}
+ \boxed{
+ P_\infty=
+ \begin{bmatrix}
+ S&0&-\lambda^2S/3\\
+ 0&\lambda^2S/3&0\\
+ -\lambda^2S/3&0&\lambda^4S
+ \end{bmatrix}.}
+ \label{eq:stationary-cov}
+\end{equation}
+\begin{proof}
+将矩阵代入$AP_\infty+P_\infty A\T+BQ_cB\T=0$。除最后一块外，各项相互抵消；最后一块恰为$-(16/3)\lambda^5S+Q_c=0$。$A$所有特征值为$-\lambda$，故稳定系统的平稳解唯一。$P_\infty$正定可由正定$S$及对应$3\times3$无量纲矩阵的正定性确认。
+\end{proof}
+
+对一个标量通道，传递函数为$H(i\omega)=(i\omega+\lambda)^{-3}$。采用$k(r)=(2\pi)^{-1}\int e^{i\omega r}\mathsf S(\omega)\dd\omega$的Fourier约定，功率谱与位置核为
+\begin{align}
+ \mathsf S(\omega)&=\frac{Q_c}{(\lambda^2+\omega^2)^3},\\
+ \boxed{K_e(s,t)=S\left(1+\lambda|s-t|+\frac{\lambda^2|s-t|^2}{3}\right)e^{-\lambda|s-t|}.}
+ \label{eq:matern-kernel}
+\end{align}
+这就是Mat\'ern-$5/2$核；通常长度尺度$\ell_c$与$\lambda$的关系是$\lambda=\sqrt5/\ell_c$。状态空间与核表示的对应是既有GP理论\cite{Hartikainen2010,SarkkaSolin2019}。上式的矩阵系数与归一化在随附脚本中分别通过符号Lyapunov方程和核函数独立检查。
+
+$S$表达参考法向平面中的物理误差尺度；$\ell_c$表达偏差沿解剖路径持续的空间尺度。二者不能从一条确定性模板自动读出。没有数据校准时，应明确给出所假定的毫米尺度和相关长度，并报告敏感性，而不是声称已经学得患者分布。
+
+\subsection{精确离散化及数值条件}
+对$\Delta=s_{i+1}-s_i>0$，
+\begin{equation}
+ z_{i+1}=F_\Delta z_i+\epsilon_i,
+ \qquad F_\Delta=e^{A\Delta},\quad
+ \epsilon_i\sim\Normal(0,Q_\Delta),
+\end{equation}
+\begin{equation}
+ \boxed{Q_\Delta=P_\infty-F_\Delta P_\infty F_\Delta\T
+ =\int_0^\Delta e^{Ar}BQ_cB\T e^{A\T r}\dd r.}
+ \label{eq:discretization}
+\end{equation}
+矩阵$N=A+\lambda\Id$满足$N^3=0$，故
+\begin{equation}
+ F_\Delta=e^{-\lambda\Delta}\left(\Id+\Delta N+\tfrac12\Delta^2N^2\right).
+ \label{eq:transition-closed}
+\end{equation}
+高阶导数以米为单位时可能造成数值尺度差异。固定使用
+\begin{equation}
+ \widetilde z=D_\lambda z,\quad
+ D_\lambda=\diag(1,\lambda^{-1},\lambda^{-2})\otimes\Id_2.
+ \label{eq:state-scaling}
+\end{equation}
+则$\widetilde A=\lambda A_0\otimes\Id_2$，其中$A_0$对应$\lambda=1$，且
+\begin{equation}
+ \widetilde P_\infty=
+ \begin{bmatrix}1&0&-1/3\\0&1/3&0\\-1/3&0&1\end{bmatrix}\otimes S.
+\end{equation}
+这不是额外超参数，而是同一状态的数值缩放。很小$\Delta$下以两个近似相等矩阵相减计算$Q_\Delta$可能丢失精度，应采用积分/Van Loan离散化或经过验证的级数，而不能把明显负特征值一律裁为零掩盖错误。
+
+
+\subsection{无需新训练时，先验参数怎样确定}
+所选模型只需一个二维位置尺度$S$和一个空间尺度$\ell_c$，不需要从一族示教轨迹拟合DMP权重。第一版按以下顺序固定参数：首先用解剖知识或明确的仿体偏置设计给出两个法向方向的允许先验误差尺度；例如设$1-\varepsilon$先验椭圆半轴为$r_1,r_2$，则在所选解剖法向基中可取
+\begin{equation}
+ S=\diag(r_1^2,r_2^2)/\chi^2_{2,1-\varepsilon}.
+ \label{eq:prior-scale-choice}
+\end{equation}
+这里的$1-\varepsilon$是模型概率，不是未经验证的人群覆盖率。若没有可靠方向性依据，先取各向同性$S$，避免任意选定法向基改变先验语义。
+
+其次指定偏差能够持续的空间相关尺度$\ell_c$，并利用模型强制的关系
+\begin{equation}
+ \Var(v)=\lambda^2S/3,\qquad \Var(a)=\lambda^4S,
+ \qquad \lambda=\sqrt5/\ell_c
+ \label{eq:prior-derivative-scales}
+\end{equation}
+检查是否与预期方向/曲率变化相容。位置、方向、曲率三个尺度不能在这个两参数族中任意独立指定；不相容时说明模型假设不合适，而不是偷偷改某个协方差块破坏过程一致性。
+
+最后，由独立标定实验规定图像定位噪声和共享配准状态。主实验开始前固定这些参数，在留出偏置、弯曲和失检条件下测覆盖率与敏感性。本文不以测试轨迹最小误差为目标逐例调参，不把相邻帧反复拍摄产生的样本数当作患者数量。这个流程没有新增学习型策略，但仍需要统计验证；数学模型不能代替真实误差的校准。
+
+\subsection{规范一致的跨位置核}
+对$\widetilde E(s)=E(s)Q(s)$，位置核应变为
+\begin{equation}
+ \boxed{\widetilde K_e(s,t)=Q(s)\T K_e(s,t)Q(t).}
+ \label{eq:kernel-gauge}
+\end{equation}
+其正定性直接继承自$K_e$：任意有限向量$a_i$的二次型，经$b_i=Q(s_i)a_i$后是原核的非负二次型。物理残差跨位置协方差
+\begin{equation}
+ K_{\rm phys}(s,t)=E(s)K_e(s,t)E(t)\T
+ \label{eq:physical-cross-cov}
+\end{equation}
+保持不变。这个构造不依赖“把RBF中的欧氏距离换成任意测地距离”，后者一般并不保证核正定\cite{Hutchinson2021}。
+
+完整状态使用$G_i=\Id_3\otimes Q(s_i)\T$变换，则
+\begin{equation}
+ \widetilde m_i=G_i m_i,\quad \widetilde P_i=G_iP_iG_i\T,\quad
+ \widetilde F_{i+1,i}=G_{i+1}F_{i+1,i}G_i\T,\quad
+ \widetilde Q_i=G_{i+1}Q_iG_{i+1}\T.
+ \label{eq:state-gauge}
+\end{equation}
+如果$S$具有方向性，也必须作为张量一并旋转。只旋转框架却复用旧对角$S$，相当于改变了物理先验，并非同一个模型。
+
+\section{观测模型：超声看到的是曲线与切片的交点}\label{sec:observation}
+\subsection{观测输入与基本标定}
+外部分割器输出目标中心或相关解剖特征$y_k=(u_k,d_k)$、目标身份候选和有效性。已标定探头成像位姿为$(o_k,R_k^{\rm img})$，像素到米制特征的变换必须包括图像原点、采样间距及成像几何。在线只使用采集时刻的位姿和身体形态，而非数据到达时刻的几何。
+
+分割mask的二阶矩主要反映血管截面的大小和形状，并不是中心估计协方差。$R_k^{\rm obs}$应来自检测误差校准、重复测量或明确的保守定位模型；一个softmax置信分数不能直接当作$R_k^{-1}$。同一帧派生的中心、切线和形状特征也不能当作独立传感器重复增加信息。
+
+\subsection{不能假定观测相位就是机器人命令相位}
+设$\vartheta$汇总局部曲线隐状态、固定滞后节点或参数。当前物理目标曲线为$p(s;\vartheta,t_k)$。成像平面法向$n_k=R_k^{\rm img}e_2$，其交点相位满足
+\begin{equation}
+ F(s,\vartheta)=n_k\T[p(s;\vartheta,t_k)-o_k]=0.
+ \label{eq:slice-root}
+\end{equation}
+只在由预测进度与分支身份限制的局部窗口中求根；多个符合条件的根必须保留多假设或拒绝关联，不能拿最接近真值的根作为在线输入。
+
+\begin{assumption}[局部横截与唯一关联]\label{ass:transverse}
+在被接受的分支和局部窗口内，式\eqref{eq:slice-root}有唯一相关根$s^*$，且$|n_k\T p_s(s^*)|\geq\eta_{\rm slice}>0$。成像特征在视野和有效深度内，配准与标定误差模型适用于该窗口。
+\end{assumption}
+
+该条件把“血管切面足够横截”和估计问题的数值条件联系起来。若切片几乎沿血管方向，交点位置对小扰动可以极其敏感；这不是换一个核函数就能解决的。
+
+\subsection{隐式求导给出正确观测Jacobian}
+对暂时固定的探头位姿，记$B_p=\partial p/\partial\vartheta$。隐函数定理给出
+\begin{equation}
+ \frac{\partial s^*}{\partial\vartheta}
+ =-\frac{n_k\T B_p}{n_k\T p_s}.
+ \label{eq:root-jac}
+\end{equation}
+因此，交点本身的导数不是$B_p$，而是
+\begin{equation}
+ \boxed{
+ \frac{\partial p(s^*;\vartheta)}{\partial\vartheta}
+ =\left(\Id-\frac{p_s n_k\T}{n_k\T p_s}\right)B_p.
+ }
+ \label{eq:intersection-jac}
+\end{equation}
+若$C_{xz}=[e_1\ e_3]\T$，预测图像特征及其Jacobian为
+\begin{align}
+ h_k(\vartheta)&=C_{xz}(R_k^{\rm img})\T[p(s^*;\vartheta,t_k)-o_k],\\
+ \boxed{H_k=C_{xz}(R_k^{\rm img})\T
+ \left(\Id-\frac{p_sn_k\T}{n_k\T p_s}\right)B_p.}
+ \label{eq:image-jac}
+\end{align}
+$B_p$可以由曲线法向表示、材料映射Jacobian和状态桥接共同计算。若位姿或标定也属于$\vartheta$，还要对$n_k,o_k,R_k^{\rm img}$求导；式\eqref{eq:image-jac}只表达固定成像位姿时的曲线状态部分。
+
+\subsection{边界条件与真实信息量}
+对于一条局部直线，在同一点反复拍摄，中心观测不能单独识别未来切向和曲率；它们先由先验约束，随着实际推进形成新的切片基线而被估计。使用历史重建点拟合切线有价值，但若再把该切线与其原始点同时作为独立观测，就会重复使用同一证据。本文默认直接保留中心观测和空间过程，由联合后验产生导数，不另增加一个假独立切线传感器。
+
+同样，接触失效、目标出视野和分割失败时没有有效中心观测。正确更新是保持过程预测，必要时降低可用前视范围；不是把模型中知道的几何交点继续传给估计器。
+
+\subsection{共享配准误差不应被每帧重新当成独立噪声}
+引入共享状态$\eta$，局部线性观测为
+\begin{equation}
+ y_k\simeq h_k(\bar z,\bar\eta)+H_{z,k}\delta z+H_{\eta,k}\delta\eta+\epsilon_k,
+ \qquad\epsilon_k\sim\Normal(0,R_k^{\rm obs}).
+ \label{eq:nuisance-model}
+\end{equation}
+将$(z,\eta)$联合估计，或在积分掉$\eta$后保留跨帧相关噪声。若$y_i=e+b+\epsilon_i$，$e\sim\Normal(0,\sigma_e^2)$、共享偏差$b\sim\Normal(0,\sigma_b^2)$、$\epsilon_i$独立，则$n$次重复观测后的残差方差是
+\begin{equation}
+ \Var(e\mid y_{1:n})=
+ \sigma_e^2-\frac{\sigma_e^4}{\sigma_e^2+\sigma_b^2+\sigma_\epsilon^2/n}
+ \longrightarrow
+ \frac{\sigma_e^2\sigma_b^2}{\sigma_e^2+\sigma_b^2}>0.
+ \label{eq:registration-floor}
+\end{equation}
+把$\sigma_b^2$每次独立加入$R$会错误地把该方差压到零。这个简单例子说明，漂亮收缩的锥形可能恰好掩盖了过度自信。本文要求报告共享误差和重复观测下的方差下限。
+
+\section{在线推断、图切换与完整未来分布}\label{sec:inference}
+\subsection{线性观测下的精确更新}
+对已经通过关联和有效性检查的局部线性观测，预测与更新为
+\begin{align}
+ m_k^-&=F_km_{k-1}^+,&
+ P_k^-&=F_kP_{k-1}^+F_k\T+Q_k,\\
+ S_k^{\rm inn}&=H_kP_k^-H_k\T+R_k^{\rm obs},&
+ K_k&=P_k^-H_k\T(S_k^{\rm inn})^{-1},\\
+ m_k^+&=m_k^-+K_k(y_k-H_km_k^-),\\
+ P_k^+&=(\Id-K_kH_k)P_k^-(\Id-K_kH_k)\T+K_kR_k^{\rm obs}K_k\T.
+ \label{eq:kalman}
+\end{align}
+最后一式用Joseph形式保证数值上的对称与半正定。$\eta$若被显式估计，矩阵扩展到联合状态。对非线性切片似然使用固定先验的迭代线性化/固定滞后平滑；其高斯输出是局部Laplace近似，不是非线性问题的精确后验。
+
+\begin{proposition}[固定线性模型下的后验收缩]
+对$R_k^{\rm obs}\succ0$且固定的线性观测模型，
+\begin{equation}
+ P_k^- -P_k^+=P_k^-H_k\T(S_k^{\rm inn})^{-1}H_kP_k^-\succeq0.
+ \label{eq:contraction}
+\end{equation}
+\end{proposition}
+\begin{proof}
+右侧为$BB\T$型矩阵，其中可取$B=P_k^-H_k\T(S_k^{\rm inn})^{-1/2}$，故半正定。收缩只发生在被该观测及先验关联支持的方向。
+\end{proof}
+
+迭代线性化的每次迭代不能把同一图像当作新独立观测再次执行收缩。门限关联、非线性、多分支切换和超参数变化也不自动继承式\eqref{eq:contraction}的全局单调性。
+
+\subsection{有延迟或局部回扫时，采用固定滞后窗口}
+空间过程使用$s$而非时钟。机器人暂停时$\Delta s=0$，不能因为时间流逝而按空间过程反复增加$Q$。身体残差随时间变化若需要建模，由$\eta_t$的明确时间模型负责。回扫或迟到图像也不能用负$\Delta s$做普通正向滤波，应插入保留的路径窗口并重新平滑。
+
+对两个空间节点$s_i<s_j$，设$\Delta=s_j-s_i$，中间位置为$s_i+\tau$，$0<\tau<\Delta$。在给定端状态时，线性过程桥为
+\begin{align}
+ L_\tau&=Q_\tau F_{\Delta-\tau}\T Q_\Delta^{-1},\\
+ \E[z_{i+\tau}\mid z_i,z_j]
+ &=F_\tau z_i+L_\tau(z_j-F_\Delta z_i),\\
+ P_{\rm bridge}&=Q_\tau-L_\tau Q_\Delta L_\tau\T.
+ \label{eq:gp-bridge}
+\end{align}
+由此可以在实际切片交点处构造$B_p$，而不是把观测随意吸附到最近网格节点。工程上对固定窗口使用平方根信息形式或稀疏因子图；本稿选择的是同一空间过程的滤波/平滑实现，不额外引入另一种轨迹模型。
+
+\subsection{与批量GP的一致性}
+将所有有效线性观测记为$y_X$，使用由式\eqref{eq:matern-kernel}及其导数生成的矩阵核，则
+\begin{align}
+ m_*&=m_{0,*}+K_{*X}(K_{XX}+R_X)^{-1}(y_X-m_{0,X}),\\
+ P_{**}&=K_{**}-K_{*X}(K_{XX}+R_X)^{-1}K_{X*}.
+ \label{eq:batch-gp}
+\end{align}
+状态空间与式\eqref{eq:batch-gp}对应同一个高斯联合分布的不同消元顺序；在线性、同先验、同观测条件下应产生相同结果。这为实现提供了一个可独立验证的强对照，而不只是检查曲线看起来平滑。
+
+\subsection{Bayes更新与规范变换应可交换}
+\begin{proposition}[线性局部框架变换下的推断相容性]\label{prop:bayes-gauge}
+若$\widetilde z=Gz$，同步变换先验、过程和观测矩阵为
+$\widetilde m=Gm$、$\widetilde P=GPG\T$、$\widetilde H=HG^{-1}$，则在新框架更新再变回，与在旧框架直接更新所得后验一致。
+\end{proposition}
+\begin{proof}
+创新协方差保持不变：$\widetilde H\widetilde P\widetilde H\T+R=HPH\T+R$。增益满足$\widetilde K=GK$，均值和Joseph协方差分别满足$\widetilde m^+=Gm^+$和$\widetilde P^+=GP^+G\T$。式\eqref{eq:state-gauge}使预测步骤也满足相同关系。
+\end{proof}
+
+对一般非线性图变换$T$，应在概率\emph{测度}层面写为$\widetilde b=T_\#b$。只要似然表示同一物理观测，先条件化再推送，与先推送再条件化精确相容；若只保留局部均值和协方差，则这种相容性仅达到相应线性化精度。本文不使用未含Jacobian因子的Euclidean高斯归一化常数，冒充任意流形上的精确密度。
+
+\subsection{完整未来协方差与连续样本}
+从当前已更新状态$m_k^+,P_k^+$预测到$s_i\geq s_k$：
+\begin{equation}
+ m_i=F_{i-k}m_k^+,
+ \qquad P_i=F_{i-k}P_k^+F_{i-k}\T+Q_{i-k}.
+ \label{eq:forecast-state}
+\end{equation}
+对于$s_i\leq s_j$，Markov性质给出
+\begin{equation}
+ \boxed{\Cov(z_i,z_j\mid\mathcal H_k)=P_iF_{j-i}\T.}
+ \label{eq:future-cross}
+\end{equation}
+位置块由$C_e=[\Id_2\ 0\ 0]$提取。一次抽样应先采当前联合状态，再沿同一过程依次加入创新，或对完整块协方差作联合采样；不能在每个未来点独立抽取$\Normal(m_e(s_i),P_e(s_i))$。
+
+\begin{figure}[htbp]
+\centering
+\safegraphic[width=.90\textwidth]{figures/joint_samples.pdf}
+\caption{同一已条件化Mat\'ern-$5/2$过程产生的相关未来样本。当前位置仍有测量不确定性，远处逐渐接近参考先验尺度。图仅用合成观测。}
+\label{fig:joint}
+\end{figure}
+\begin{figure}[htbp]
+\centering
+\safegraphic[width=.90\textwidth]{figures/independent_samples.pdf}
+\caption{保持与图\ref{fig:joint}相同的位置边际方差，但逐点独立采样。所得折线不代表选定模型的曲线分布。区别在联合统计，而不在每个位置椭圆画得多大。}
+\label{fig:independent}
+\end{figure}
+
+\section{“近处清晰、远处模糊”的可计算含义}\label{sec:tube}
+\subsection{锥形来自方向误差的传播，不是预设形状}
+未来位置协方差的精确表达是
+\begin{equation}
+ \boxed{P_e(\Delta)=C_e\bigl(F_\Delta P_k^+F_\Delta\T+Q_\Delta\bigr)C_e\T.}
+ \label{eq:exact-cone}
+\end{equation}
+它自然把当前状态不确定性和未知区段的新生不确定性分开。对$\lambda\Delta\ll1$的短程，路径的条件运动学近似为
+\begin{equation}
+ e(\Delta)=e_0+\Delta v_0+\tfrac12\Delta^2a_0
+ +O(\Delta^3\|z_0\|)
+ +\int_0^\Delta\left[\tfrac12(\Delta-r)^2+O((\Delta-r)^3)\right]L\dd W_r.
+ \label{eq:short-horizon}
+\end{equation}
+因此，初始状态项的主导传播是$B_\Delta P_k^+B_\Delta\T$，其中$B_\Delta=[\Id,\Delta\Id,\Delta^2\Id/2]$；新生位置方差满足
+\begin{equation}
+ C_eQ_\Delta C_e\T=\frac{\Delta^5}{20}Q_c+O(\Delta^6).
+ \label{eq:innovation-small}
+\end{equation}
+若主要误差是方向$v_0$，标准差近似随$\Delta$线性增加，呈锥状；若曲率不确定性占主导，标准差包含$\Delta^2$项，预测区更像张开的弯曲管道。完整计算使用式\eqref{eq:exact-cone}，而不是将短程近似当作所有距离的公式。
+
+由于$F_\Delta\to0$，有
+\begin{equation}
+ m_e(\Delta)\to0,\qquad P_e(\Delta)\to S\quad(\Delta\to\infty).
+ \label{eq:prior-reversion}
+\end{equation}
+这里均值零指\emph{相对内部模板的残差}趋向先验，不是血管向世界原点返回。预测区域也不会无限发散。当前与未来状态的相关性、可靠远端锚点或新观测可以造成局部收窄，因此不能宣称任意观测条件下方差一定对距离严格单调。
+
+\subsection{为什么固定参数族和空间创新不是同一种不确定性}
+如果$z_k$恰好已知，式\eqref{eq:discretization}仍有$Q_\Delta\succ0$（对$\Delta>0$，非退化噪声与可控状态对成立），所以未知未来不可能因当前信息充分而完全确定。相反，一个有限随机权重模型在所有权重被精确识别后，未观察区段可能只剩测量噪声。这个差别正对应本任务“不知道下一段组织会怎样偏离模板”的需求。
+
+这不表示ProDMP不能扩展出空间创新；而是扩展后本质上也需要某种动态随机状态。本文直接对解剖残差规定这样的状态，避免为保持运动原型名称而添加一套并不需要的终点吸引与示教参数。
+
+\subsection{点态可信管道与整段可信集合不能混用}
+对单个位置$s$，二维残差的$1-\varepsilon$高斯椭圆为
+\begin{equation}
+ \mathcal E_k(s)=\left\{e:\ (e-m_e)\T P_e^{-1}(e-m_e)
+ \leq\chi^2_{2,1-\varepsilon}\right\}.
+ \label{eq:marginal-ellipse}
+\end{equation}
+把它通过式\eqref{eq:normal-residual}、\eqref{eq:physical-target}推送，得到物理空间中弯曲的目标管道。逐位置95\%并不等于整条路径同时95\%。对有限的$N$个查询位置，可使用联合高斯状态的可信椭球；保守实现也可用联合界，把每个位置的失效概率分配为$\varepsilon/N$。连续路径的覆盖还需对网格间变化作界或用最大偏差的独立校准，不能只画阴影便声称全程保证。
+
+\subsection{高斯尾部不能被静默裁到有效图内}
+未截断高斯分布有无界支持，而曲线管和图册的可靠覆盖是有限的。本文始终保存所定义的高斯/局部高斯后验，并另行报告其落出有效域的概率估计。操作时可以拒绝不合法样本或缩短发布前视域，但必须标明输出的是条件/截断后的样本，不能一边裁剪、一边沿用“精确高斯后验”的表述。显著质量落在多个分支或图册外时，应降低信任、重新定位或补图，而不是用最近点填充把失败隐藏起来。
+
+\begin{figure}[htbp]
+\centering
+\safegraphic[width=.93\textwidth]{figures/posterior_update.pdf}
+\caption{合成示例：在同一个未来联合分布上增加40\,mm位置处的观测，更新附近及其相关区段，而不是仅改变一个经过点。阴影是逐位置约95\%区间，不是整段同时覆盖保证。}
+\label{fig:update}
+\end{figure}
+
+\section{几何可信前视域：把图册有效性和统计预测真正连起来}\label{sec:trusted-horizon}
+\subsection{坐标可计算，不代表所有未来假设都可信}
+仅检查均值路径在有效图内是不够的。如果预测管道的一部分接近$\|\nabla d\|=0$、图册边缘、法向管自重叠或掠入射区域，那么对应的坐标、交点或视角Jacobian可能病态。本文建议把这些失效条件写成同一组\emph{几何裕量函数}，而不把它们塞进某个运动primitive的权重。
+
+对某个已定义视角方案$a$、未来联合隐状态$Z$与查询位置$i$，例如定义
+\begin{align}
+ c_{1i}(Z)&=\|\nabla\widetilde d(p_{0,i}(Z))\|-m_{\min},\\
+ c_{2i}(Z)&=\sigma_{\min}(D\Phi_t(p_{0,i}(Z)))-\sigma_{\min}^{\rm req},\\
+ c_{3i}(Z)&=|n_i\T p_s(s_i;Z)|-\eta_{\rm slice},\\
+ c_{4i}(Z)&=|n_{{\rm skin},i}\T b_i(Z)|-\eta_{\rm incidence}.
+ \label{eq:validity-functions}
+\end{align}
+还需包含实际图覆盖、声学视野与法向管半径的限制。这些函数描述几何/观测是否处于已经定义的有效模型域，不是新的接触安全控制律。对非光滑最小奇异值或距离函数，只要求局部Lipschitz界，不强行使用不存在的普通导数。
+
+\subsection{一个有限查询集的可信性充分条件}
+\begin{proposition}[后验椭球内的几何有效性]\label{prop:trusted}
+设当前近似/精确联合后验为$Z\sim\Normal(m,P)$，$P=LL\T$的秩为$r$，取$\rho=\sqrt{\chi^2_{r,1-\varepsilon}}$。对所有被检查的有限位置与条件，若在$\|w\|\leq\rho$上具有经过验证的Lipschitz常数$\mathcal L_{ji}$，使
+\begin{equation}
+ |c_{ji}(m+Lw)-c_{ji}(m)|\leq\mathcal L_{ji}\|w\|,
+\end{equation}
+并满足
+\begin{equation}
+ \boxed{c_{ji}(m)-\rho\mathcal L_{ji}>0,\quad\forall j,i,}
+ \label{eq:trusted-margin}
+\end{equation}
+则在\emph{所采用后验模型下}，这些有限查询点同时位于规定几何有效域的概率至少为$1-\varepsilon$。
+\end{proposition}
+\begin{proof}
+可写$Z=m+Lw$，$w\sim\Normal(0,\Id_r)$。事件$\|w\|\leq\rho$的概率为$1-\varepsilon$。在该事件上，由Lipschitz界和式\eqref{eq:trusted-margin}，所有$c_{ji}(Z)>0$同时成立。
+\end{proof}
+
+这是一个充分条件，不是高效性的保证。宽联合椭球可能保守，局部区间界也可能难以取得。在第一版中可先用它规定\emph{应当认证什么}，再以场景采样作性能估计，并明确区分严格上界与经验覆盖。非线性后验只取Laplace近似时，概率保证同样只是该近似模型的保证。
+
+\subsection{可信前视距离不是人为常数}
+发布的前视距离定义为从当前扫描位置开始的最长连续区段，使式\eqref{eq:trusted-margin}或所采用的已说明经验有效性标准持续成立：
+\begin{equation}
+ H_k^{\rm valid}=\sup\left\{H:\ \text{在}[s_k,s_k+H]\text{内全部已要求的有效性条件通过}\right\}.
+ \label{eq:trusted-horizon}
+\end{equation}
+当新US提高近处目标定位和方向估计时，可信范围可能向前延长；当人体形变使某个图病态，或预测分支扩散到不同声窗时，可用范围缩短。\textbf{这把“近处清楚、远处模糊”从展示效果变成了一个与几何可解释性有关的输出量。}
+
+式\eqref{eq:trusted-horizon}不应直接触发患者端动作；它向既有规划器提供“当前可信到哪里”的信息。缩短前视不等于立即停止一切运动，更不意味着在同一位置重复采图必然解决方向不可辨识。需要哪些额外观测动作属于既有扫描策略的接口问题。
+
+\subsection{为什么这个结论不依赖某张图的数值尺度}
+$c_{ji}$基于物理几何对象定义，$Z$表示同一个法丛随机截面。对规范变换同步推送$P$和全部映射后，事件“同一几何对象落在有效域”不变。用不同坐标计算可能得到不同松紧程度的数值Lipschitz上界，但真实事件及其精确概率不应变化。实验应同时区分模型层的相容性与数值认证界的保守性。
+
+\section{从目标信念输出声学视角：只保留与现有IRD的接口}\label{sec:interface}
+\subsection{概率先在目标上，再经几何推送到视角}
+给定一组既有规划器提出的视角规则$a$，令$\mathcal D_a$把相关目标样本与共享干扰状态映为整段接触点、声束、姿态和深度：
+\begin{equation}
+ \mathcal D_a: (\Gamma,\eta)\longmapsto
+ \{q_i,b_i,R_i,\ell_i\}_{i=1}^{N}.
+\end{equation}
+则输出分布为
+\begin{equation}
+ \boxed{p(V_{1:N}\mid a,\mathcal H_k)=(\mathcal D_a)_\#b_k.}
+ \label{eq:view-pushforward}
+\end{equation}
+这是由目标后验和声学几何\emph{诱导}出的实现需求，不是重新训练的动作策略。在局部小扰动下可计算$P_V\simeq J_{\mathcal D}P_{Z,\eta}J_{\mathcal D}\T$；所有共享误差和交叉相关通过完整联合矩阵处理。较宽分布直接使用相关轨迹样本及姿态矩阵，避免角度跨接缝后错误平均。
+
+\subsection{体表投影已考虑IRD，并不消除在线估计的作用}
+初始化的IRD投影是在粗先验与当时机器人状态下选择一个实现。在线US改变的是$\Gamma$的后验，故同一视角规则的风险与可达裕量都会改变。重新查询的是更新后的\emph{目标分布}，不是将目标向高IRD分数区域拖动。
+
+现有\path{TrajectoryTaskOperator}可以消费相关场景而不是独立扰动；\path{DifferentiableTrajectoryEnergy}可以继续优化已有自由变量\cite{RealUSCode}。本稿只要求保留场景身份、位置/角度联合关系和全程有效性标志。不能为每个未观察到的场景提前选择不同的当前动作，再声称机器人能够因果地应对所有未来。
+
+\subsection{最小数据接口}
+几何接口应输出$(\Psi,\chi,J,\partial_t\Psi,\mathcal D_{\rm valid},T_{ba})$以及数值误差预算。目标接口输出参考对象、法向框架、任务切面类型与分支身份。信念接口输出$(m,P)$、跨位置块或可复现采样器，以及共享干扰状态。视角接口输出$(q,b,R,\ell)$和其有效域。既有执行器接收所选参考，不因本稿改变接触控制参数或额外串入一个运动primitive。
+
+\section{胸部、肢体与多器官的通用性：共享结构，不共享错误语义}\label{sec:generality}
+\subsection{同一图册算法，部位相关的锚与任务窗口}
+腿部常适合环带式皮肤语义，胸腹部常适合若干局部圆盘窗口。两者统一采用第\ref{sec:harmonic}节的种子面、局部势与正则流检查。若同一任务跨图，按式\eqref{eq:chart-transition}切换；若两项检查本就分离，分别维护任务先验和后验，使用同一算法库。\emph{通用性不需要人为让“胸部坐标0.5”和“腿部坐标0.5”代表相同器官语义。}
+
+具体初始设计为：肢体环带设两个以上重叠角度窗口，保证任何实际扫描段都不跨未展开接缝；胸腹任务按可用皮肤窗口设置面片并选择合适深侧面；交界处加重叠图。对深部目标，体积图册可以含内部种子图，而声学接触点仍从皮肤视角集合获得。不要为了全局圆柱形式把内部轴、分叉或器官开口强压成同一个拓扑。
+
+\subsection{本文推广的是有序扫描目标，不是任意未知器官的完整形状恢复}
+对于血管，$\Gamma_0(s)$是中心线，US提供截面定位。对于某器官的一条已规划扫描条带，$\Gamma_0(s)$可定义为该序列中目标区域/解剖标志的中心轨迹，任务附带期望切面或可观测轴。相同的空间残差过程估计该有序目标序列的个体偏差。
+
+但若任务是从零重建未知器官的整个二维边界或三维体积，仅有一个一维法向残差过程并不充分。那需要额外的形状场或多条扫描轨迹约束，超出本稿主路线。本文的通用性应表述为\textbf{多个部位、多个目标类型的曲线条件化扫描与定位接口}，不夸大为一个状态空间GP解决所有器官建模。
+
+\subsection{内部解剖先验与外部SMPL-X的边界}
+SMPL-X式外部形态与姿态对应不能单独确定内部器官真实位置、呼吸相位或滑移。粗内部模板提供均值和任务范围；有效US不断纠正该先验。对相对材料坐标快速变化的器官，应缩短估计窗口，并由明确的共享运动状态$\eta_t$解释这部分时间变化。模型无法解释的长期创新偏差必须触发重配准或降低信任，不能用更小观测噪声把错误固定下来。
+
+\section{与已有文献的定位及最小新意}\label{sec:novelty}
+\subsection{哪些不是新贡献}
+调和流线、体表参数化、旋转最小框架、Mat\'ern状态空间GP、规范协方差运输，以及Bayes条件化均有既有基础\cite{Jones2000,Yezzi2003,Floater2003,Wang2008,Hartikainen2010,Hutchinson2021}。本文不能把这些标准构件分别包装成“新定理”。命题\ref{thm:flow-diffeo}和\ref{prop:bayes-gauge}是对所选接口的条件性论证，作用是排除错误组合，而非宣称发明一般流理论或高斯滤波。
+
+同样，KMP、G-DMP、CDSM的主张是特定运动表示或执行规律\cite{Huang2019,AbuDakka2024,Bakker2026}。Cohen讨论任务参数与DMP参数映射；Espinosa讨论神经潜几何中的近似测地运动；神经流形综述讨论高维数据的低维表示\cite{Cohen2021,Espinosa2026,Mitchell2022}。这些工作帮助区分几何表达和学习，但没有要求当前任务新增latent manifold。本文不引入它们的学习模块。
+
+\subsection{最值得凝聚成期刊主张的三个相连问题}
+第一，构造一个\emph{被实际有效域约束的材料图册}，使体内定位、身体运动和跨图换基一致，而不依赖错误的全局调和单射主张。第二，把\emph{体内目标、表面实现和声学平面}分开，通过同一个几何映射和交点似然连接，消除表面投影与纤维角信息损失。第三，沿该材料目标维护\emph{规范一致、包含新生空间创新的联合未来信念}，将概率管道与坐标/声学有效性组合为可信前视域。
+
+可以据此写贡献，而不是“We combine KMP, DMP and IRD”：
+\begin{quote}
+本文研究一种保持材料对应与声学观测一致的在线解剖推断方法：在经验证的局部调和流图册上表示粗目标，用切片交点似然更新法丛中的相关残差过程，并将其推送为具有几何有效性判据的未来目标与声学视角分布。
+\end{quote}
+
+这一主张是否达到IJRR的贡献强度，取决于能否在复杂形变、跨图、偏先验、失视及多部位实测中证明显著且可解释的收益；现阶段不能仅凭公式数量或算法名称确认。最重要的论文结果应是\textbf{几何不一致如何破坏后验与视角预测，以及一致构造怎样避免这些失败}，而不是给标准GP换一个流形名称。
+
+\subsection{Goel血管密度方法为何不直接采用}
+Goel等\cite{Goel2022}通过主动探测更新一个由分割回报构成的信息图，达到收敛/迭代上限后，提取高密度区域中的参考轨迹再扫描。它不是完整栅格预扫描，但仍有先行探索阶段，其估计对象是位置到密度回报，而非某一条血管未来的中心线后验。本文借用顺序概率更新的思想，不采用密度最大化目标，也不需要先完整扫描目标区域。初始目标完全不可见时仍需局部寻找或可信初始化；“无预扫描”不等于不需要任何有效初始观测。
+
+自动血管跟踪也有基于图像定位与重建的长期研究\cite{Merouche2016}，因此没有证据支持“超声只能选择DMP/KMP”这样的类别限制。本文选择估计模型由所需随机对象和可观测性决定，既有控制器继续使用其已经验证的实现。
+
+\section{算法与工程实施顺序}\label{sec:implementation}
+\subsection{离线一次性构建}
+对每个任务部位，输入参考表面、粗内部目标、必要解剖锚与可用扫描窗口。建立正权重二维面片图，选择局部深侧面并求标量势，进行确定性光滑后处理。积分流与变分方程，生成逆查询初值索引、过渡映射和有效性描述。检查梯度下界、流覆盖、往返误差、Jacobian条件数与重叠一致性；失败区域缩图或补图。
+
+对内部目标保留参考空间曲线，计算弧长、Bishop框架、合法法向管半径与任务切面定义。固定$S,\ell_c$及外部观测误差模型，构建归一化状态矩阵和$P_\infty$。这一步不把模板采样点放进“测量数据库”；改变模板离散密度不应改变相同连续均值和先验的统计含义。
+
+\subsection{每个有效US帧的在线循环}
+收到图像后，先查询采集时刻的实际探头位姿、成像标定及身体形态。对分割候选执行身份和可见性检查，在当前分支局部窗口中求切片交点并检查横截性。构造式\eqref{eq:image-jac}与共享干扰项，插入固定滞后状态窗口，进行一次使用该帧证据的迭代更新。重复迭代只改线性化，不重复计算观测信息。
+
+随后从当前后验生成相关未来样本和导数，将样本经材料几何映射到患者空间，对指定的候选视角计算接触点、声束与姿态。评估图覆盖和声学条件，确定可发布前视域，并把目标/视角场景交给既有规划与控制接口。不可见帧只传播已定义过程与干扰模型，不生成假中心观测。图切换只作精确对象转换与规范运输，不重置目标后验。
+
+\subsection{初始化、失视与分支的确定处理}
+第一次有效横截图像更新位置，切向和曲率仍由先验及后续基线估计；不将其强行置零方差。暂时失视保留当前分支预测及其增长的不确定性。若未来质量大量越出有效域，停止发布过远的精确参考，保留近处可信目标与不确定性标志供现有策略处理。
+
+若存在多个真实候选分支，对每个离散分支使用同一种空间过程和似然，权重按
+\begin{equation}
+ \pi_{b,k}\propto p(y_k\mid b,\mathcal H_{k-1})\pi_{b,k-1}
+ \label{eq:branch-weight}
+\end{equation}
+更新。不能把两个分支的均值当成一条穿过两者中间组织的“最可能血管”。这是一种局部混合假设扩展，不引入第二种连续运动模型或生成网络。不同分支、不同器官需有任务身份约束，不能只按距离最近关联。
+
+\subsection{建议的模块边界}
+\begin{table}[H]
+\centering\small
+\caption{主实现只新增两大模块；列出可审计的内部组件，而非多个控制器。}
+\begin{tabularx}{\textwidth}{P{29mm}YY}
+\toprule
+模块 & 必须提供 & 必须拒绝/报告的情况\\
+\midrule
+\texttt{anatomical\_atlas} & 正逆映射、流Jacobian、材料变形、过渡映射、beam/roll解码 & 未认证梯度、反向求解失败、图外点、掠入射、框架退化\\
+\path{anatomical_belief} & 协变$5/2$过程、交点似然、固定滞后后验、相关样本、前视域 & 失检、分支歧义、共享偏差未辨识、过宽分布、模型创新异常\\
+既有IRD/执行器 & 消费样本及所选视角、执行已有参考 & 不改变解剖后验，不将代理分数当新几何观测\\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{可复现数学检查与尚未执行的实验}\label{sec:experiments}
+\subsection{本次实际运行的检查}
+随附\path{code/verify_derivations.py}由两个互相独立的表达验证核心关系：调和标量与ODE变分、核矩阵条件化与状态空间条件化、原框架与随位置旋转的框架、隐式交点Jacobian与有限差分。它们都是解析/合成数据，不是人体或机器人性能结果。
+
+\begin{table}[H]
+\centering\small
+\caption{本次合成数学检查的实测误差。极小负特征值处于浮点舍入尺度。}
+\begin{tabularx}{\textwidth}{YP{37mm}}
+\toprule
+检查 & 实际结果\\
+\midrule
+调和反例每个分量的Laplacian & 符号结果均为$0$\\
+调和反例Jacobian行列式 & $3(z^2-x^2)$\\
+$d(\Psi(u,\zeta))=\zeta$最大绝对误差 & $9.86\times10^{-13}$\\
+参考度量深度交叉项最大绝对值 & $1.21\times10^{-11}$\\
+Liouville行列式关系误差 & $5.44\times10^{-12}$\\
+反向流往返误差 & $1.46\times10^{-12}$\\
+Mat\'ern平稳Lyapunov方程 & 符号恒等成立\\
+批量GP与状态空间未来均值误差 & $2.82\times10^{-18}$ m\\
+二者联合协方差最大差值 & $5.51\times10^{-21}$ m$^2$\\
+规范变换后验均值误差 & $9.76\times10^{-19}$\\
+切片交点Jacobian与有限差分差 & $3.63\times10^{-12}$\\
+绕束角方向导数与有限差分差 & $7.70\times10^{-11}$\\
+把交点错当固定标记点的Jacobian差 & $5.80\times10^{-2}$\\
+共享偏差下1000次观测后的标准差 & $2.400$ mm\\
+错误独立偏差模型对应标准差 & $0.0974$ mm\\
+\bottomrule
+\end{tabularx}
+\label{tab:checks}
+\end{table}
+
+示例先验的第一法向通道标准差为4\,mm，相关长度为70\,mm。接受六个合成观测后，当前和不同前视距离的标准差为表\ref{tab:forecast}。这些数值只验证模型按预期传播与条件化，不能用来宣称真实患者也服从同一范围。
+\begin{table}[H]
+\centering\small
+\caption{合成后验在未观察未来的标准差；使用精确状态转移。}
+\begin{tabular}{rrrrrrr}
+\toprule
+前视距离(mm) & 0 & 5 & 20 & 50 & 100 & 160\\
+标准差(mm) & 0.584 & 0.732 & 1.380 & 2.697 & 3.742 & 3.977\\
+\bottomrule
+\end{tabular}
+\label{tab:forecast}
+\end{table}
+
+\subsection{第一组实验：坐标几何是否真的被修正}
+在同一参考体表与内部目标上，对比原独立标量/距离比实现与本稿流图册。测试腿部弯曲、胸腹局部窗口、圆周接缝和交界图切换。报告覆盖率、往返误差、$\sigma_{\min}(J)$、体内目标位置误差、标签保持误差、皮肤/声束角度误差，以及图失败被正确拒绝的比例。有效域小而误差低不能单独算胜利，必须同时报告被拒绝的目标比例。
+
+强对照应包括一个使用相同材料映射、正确Jacobian和同等观测似然的参考物理坐标实现。它与几何一致图册在数学上可能等价，不能把“不比这个实现更准”解释为失败。图册的价值还包括语义对应、局部有效性、跨任务接口和数值条件，而不是坐标改名后必然提升误差指标。
+
+\subsection{第二组实验：误差分布是否经过校准}
+对同样的有效观测、相同内部模板和固定执行器，比较固定模板、本文后验、KMP式概率参考，以及带明确测量似然的ProDMP有限基模型。固定基模型也应得到公平的先验尺度与观测噪声，不可只给本文真实测量而让对照开环。
+
+主要指标是留出前视距离的负对数似然、中心误差、切向/曲率误差、点态覆盖率、整段最大偏差覆盖率、失视后恢复所需观测数量与计算时间。横向形变、持续偏移、局部弯折、标定共同偏差、随机分割失检和分支歧义需分开测试。对于过程不满足Mat\'ern假设的病例，报告创新统计、失配率及误置信事件，而不是只展示平均成功案例。
+
+\subsection{第三组实验：相关性与声学似然的必要性}
+在保持相同边际协方差的条件下，分别使用完整相关场景与逐位置独立场景，比较未来视角的角速度/曲率统计与既有IRD风险判断。另做“固定三维标记点似然”对照，以隔离式\eqref{eq:intersection-jac}对斜切、旋转和目标深度变化的作用。还应对照“仅存皮肤纤维角”与“完整目标切向＋声束纤维”两种编码，直接检验式\eqref{eq:double-projection-error}预测的误差。
+
+\subsection{第四组实验：规范、图切换与多部位一致性}
+对完整场景作全局刚体变换、改变同一图的坐标尺度、随位置旋转法向框架、改变圆柱接缝位置，检验物理后验和视角输出的不变量。评估至少两个结构不同的部位；腿部环带与胸腹圆盘窗口是合理的第一对。相同部位的不同摆放姿态不应被当成已经完成多器官验证。
+
+\subsection{数据拆分与无泄漏要求}
+控制器所用输入不得包含未扫区域真值或测试形变的真值切线。患者/仿体按身份拆分，不以同一患者相邻帧随机拆分冒充跨个体泛化。调参集与最终覆盖率测试集分开。确定性模板不能通过大量重复采样被当作更多患者数据。所有方法使用同样的采集时间、丢帧模式、校准和执行器；对比的差别只在目标表示/估计模型。
+
+\section{局限、可证明范围与结论}\label{sec:conclusion}
+本稿的单射结论依赖经验证的非临界流域及材料映射；它不是一个自动覆盖全身的三维调和参数化定理。统计收缩和可信域结论依赖正确或明确采用的近似后验；它们不能抵消分割失配、错误分支和未建模组织滑移。直线声束和局部切片交点只是有边界的成像模型。器官完整形状重建、多分支全树探索和患者端安全性均不由本文新增模型单独保证。
+
+在这些边界内，推荐路线是确定的：\textbf{修正为一个势场加运输标签的正则调和流图册；保留体内目标，不把投影等同解剖；在目标参考曲线的法丛中维护协变Mat\'ern-$5/2$信念；用切片交点而不是无误差经过点更新；输出相关目标及声学视角分布和可信前视域。}不加diffusion，不加坐标神经网络，不串联KMP和ProDMP，也不重做已完成的接触QP。
+
+这条路线的直觉可以压缩成一句话：\emph{坐标告诉系统“这还是同一个身体位置”，观测告诉系统“真实目标相对先验偏到哪里”，相关空间过程告诉系统“这条偏差向前能相信多远”，而声学几何告诉系统“要看到它，探头的方向与位置必须怎样共同变化”。}
+
+\clearpage
+\appendix
+\section{草稿主张的逐项校正与保留原则}\label{app:draft}
+本附录对应用户上传的199行技术草稿\cite{UserDraft}。原稿提供了有价值的研究动机：把外部身体姿态、内部粗目标和超声图像放入相容的解剖表示。它并未提供下列强保证所需的证明或实验，因此本文将其分别修订，而非把它们当成已成立的前提。
+
+\small
+\begin{longtable}{P{27mm}P{48mm}P{71mm}}
+\caption{原稿与本稿的明确差别。行号指用户上传文本。}\label{tab:draft-audit}\\
+\toprule 原稿位置 & 原主张 & 本稿决定与理由\\\midrule\endfirsthead
+\toprule 原稿位置 & 原主张 & 本稿决定与理由\\\midrule\endhead
+\bottomrule\endfoot
+第14、19--22行 & 整个分支人体体积可由独立圆柱域全局表示 & 改为任务局部图册。实体圆柱有角度核心退化；全身分支不要求共享一套数值坐标。Reeb图可辅助区域组织，但不是单射证明。\\
+第25--34行 & 将medial axis作为深侧Dirichlet边界；调和深度自动无交叉 & 深侧采用有限二维面。求解后验证梯度非零、覆盖和边界保持；只在验证域内构造流图。\\
+第36--48行 & 三个独立调和场由最大值原理保证全局微分同胚 & 删除此推断。一个势场配两个沿流运输的标签；定理\ref{thm:flow-diffeo}依赖明确的正则流条件。\\
+第50--68行 & 用INN/FlowMatching在不同拓扑域间保证可逆，纯MSE即可 & 本稿不使用任何坐标神经网络。不同拓扑、边界条件与覆盖问题不能由一个网络类别消除。数值前后向都使用同一流算子。\\
+第72--88行 & 逆LBS与精确卸载场已知，可直接得到真实canonical位置 & 材料映射只在有效域使用；逆问题用数值求解并验证。未知受压组织偏差进入共享干扰或模型误差，不能写成已知精确解。\\
+第90--116行 & 神经弹性场及$3\times3$度量形成统一六自由度张量 & 不引入神经弹性场。链式法则在已定义可微映射下成立，但$3\times3$位置度量有六个独立系数，不等于六自由度位姿度量或组织本构模型。\\
+第124--136行 & 在圆柱坐标中作普通差分和二阶DMP，即严格流形动力学 & 不把普通坐标DMP等同内禀二阶系统。本文只定义解剖随机曲线与观测更新，已完成的执行器不在新方法中重建。\\
+第138--187行 & 由DiT生成forcing或动作，并注入度量保证弹性与等变 & 全部删除。既不需要它表达本稿的Bayes更新，也没有证据表明度量注入能单独保证物理弹性或安全。\\
+第159--166行 & 像素按固定平面坐标直接映到体积 & 保留已标定像素到物理点的思想，但采用明确的成像坐标、采集时间和切片交点似然。不存在未经标定的统一像素平面约定。\\
+第189--197行 & 新策略与接触FSM相接 & 作为既有执行接口，不纳入本文创新和证明范围。\\
+\end{longtable}
+\normalsize
+
+\section{固定代码版本审计：可直接对应到修改位置}\label{app:code}
+\subsection{版本和阅读范围}
+AMONG\_US审计固定在\path{f1ffc5078d6a08c32b59107ab16086a7bbde488e}；IRD接口固定在\path{cd6b0cea1ae1983e55c1c732d0429b1bfd32218a}\cite{AmongCode,RealUSCode}。这些是可复查快照，不代表用户本地或后来远端分支没有变化。本稿做了源码阅读和数学检查，\textbf{没有重跑完整SMPL-X/超声/机器人benchmark}。
+
+下表中的H表示路径\path{src/projects/genesis_ue_sync/anatomy_retarget/leg_volume_coordinates/}，K表示\path{DMP_playground/kmp_honest/}，C表示\path{DMP_playground/core_algorithms/}。
+\begin{table}[H]
+\centering\small
+\caption{从代码事实到需要修正的接口。}
+\begin{tabularx}{\textwidth}{P{30mm}YY}
+\toprule 文件 & 可核对的当前行为 & 本稿建议\\\midrule
+H/\texttt{harmonic.py} & \texttt{skin\_h}作表面Dirichlet求解；\texttt{skin\_theta}来自几何角度种子；\texttt{vol\_theta}对标量角度作FEM后取模；\texttt{vol\_d}为距离比。 & 不写“三维三个调和坐标”。改为单势流与标签运输；验证接缝，不用取模修复已经错误混合的角度。\\
+H/\texttt{harmonic.py} & 体积查询含分片线性插值及无效点最近顶点回退。 & 无效查询返回明确失败；需连续导数的范围采用已验证的平滑势、流和变分Jacobian。\\
+H/\texttt{projection.py} & 候选皮肤三角投影与动态规划连续性代价生成一条表面路径。 & 保留为候选生成器；内部目标另存。此文件本身不证明声线有效或路径全局最优，也不能据此推断其他IRD模块不存在。\\
+K/\texttt{prior.py} & 由皮肤框架记录纤维角，再结合see方向重建姿态；\texttt{query}返回KMP均值和ensemble散布。 & 保留目标完整切向；改为绕实际声束的成像平面角。参考散布、回归方差与患者残差后验分开。\\
+K/\texttt{kmp.py} & 使用$k(s,t)I_6$回归位置与导数输出；存在$N/\lambda$协方差因子。 & 若作KMP对照，说明这不是自动满足导数关系的核；新主方法用同一SDE的导数状态。\\
+K/\texttt{servo.py} & 运行时插值\texttt{prior.mu\_xi}；横向P-IBVS和因果切向估计负责纠偏。 & 不能把成功全部归因于运行时KMP条件化。保持执行器相同再比较估计器。\\
+K/\texttt{servo.py} & 仿真不可见时仍能从几何相交获得\texttt{image\_u}并参与横向修正；切向重建接收可见性门控。 & 做失视实验时彻底屏蔽现实不可用的图像坐标；无效帧只作预测或进入明确的重新寻找状态。\\
+C/\path{module_b_geometry.py} & 锚点局部Jacobian近似连续接触位置，返回存储框架；另有显式正交框架构造。 & 不武断认为所有框架都非正交。发布接口时验证$B^TB=I$；锚点切换的连续性需要单独检查。\\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{角度表示的两个不同问题}
+第一种问题是\emph{坐标基不正交}。将两个单位化但不正交的坐标方向当成正交基，用点积取分量，再用同样向量线性组合回去，一般不能得到原方向。若已有接口返回真正正交框架，则这一问题不适用，不能仅凭函数名推断有错。
+
+第二种问题是\emph{投影平面改变}。即使原皮肤基完全正交，先保留$P_nt$的角度，再用声束平面构造姿态，仍会丢掉原切向的法向分量。式\eqref{eq:double-projection-error}说明误差何时为零、何时必须保留完整切向。这是本稿更具体、也更与目标深度和探头倾斜相关的修正。
+
+\subsection{一次版本迁移的建议顺序}
+首先在现有数据结构中并存保存内部曲线与旧表面候选，保证新旧实现能对同一目标比较。然后引入独立的\texttt{chart\_validity}、\texttt{view\_validity}和\path{observation_validity}，不把三个失败标志合成一个置信度。再替换体积正逆映射与声束框架，最后接入新的信念更新。不要同时修改控制增益、扫描速度和估计器，否则无法隔离几何修正的收益。
+
+\section{若从头重建推导，必须通过的闭合检查}\label{app:derivations}
+\subsection{参考曲线管的正则性与目标的唯一局部表示}
+在Bishop框架中令$\kappa=E^Tt_0'$。由$E'=-t_0\kappa^T$，对式\eqref{eq:normal-residual}求导：
+\begin{equation}
+ \Gamma'=(1-\kappa^Te)t_0+Ev,
+ \qquad
+ \|\Gamma'\|^2=(1-\kappa^Te)^2+\|v\|^2.
+ \label{eq:target-regularity}
+\end{equation}
+所以$|\kappa^Te|\leq1-\epsilon$是一个简单的局部正则性充分条件。这不是全部自交条件：不同$s$处的横截面仍可能在全局接近，故图册还应限制参考曲线的管状邻域与分支区间。这个条件可以与式\eqref{eq:validity-functions}一同用于可信前视检验。
+
+“同一血管在另一个姿态中保持同一个$s$”要求先存在材料对应或解剖沿程关联。曲线重参数化不是自然消失的误差。本文不在每帧用最近世界坐标点强制重置$s$，而是在一个有限进度窗口内通过切片似然解决关联；歧义大时保持多假设或拒绝更新。
+
+\subsection{核的导数块不是六个互不相关的回归输出}
+若$e(s)$的核为$K(s,t)$，对均方可微过程，联合状态$z=(e,e',e'')$的核块为
+\begin{equation}
+ K_z^{ij}(s,t)=\partial_s^i\partial_t^jK(s,t),
+ \qquad i,j\in\{0,1,2\}.
+ \label{eq:derivative-kernel}
+\end{equation}
+式\eqref{eq:stationary-cov}正是该关系在$s=t$处的结果。特别地，$\Cov(e,e'')=-\lambda^2S/3$而不是零。把位置、速度、加速度的边际分别拟合得平滑，不能保证它们来自同一条随机曲线；状态方程和式\eqref{eq:derivative-kernel}给出两种互相校验的表达。
+
+对于ProDMP形式$e(s)=B(s)w$，同样有$K_z^{ij}=B^{(i)}(s)\Sigma_w B^{(j)}(t)^T$。因此导数一致性不是本文模型独有的优势，真正的取舍仍是局部创新、先验范围、有限计算与边界语义。
+
+\subsection{Mat\'ern-5/2的谱归一化独立推导}
+考虑标量过程$(D+\lambda)^3e=\sqrt q\,w$。令
+\begin{equation}
+ I_m(r)=\frac1{2\pi}\int_{-\infty}^{\infty}
+ \frac{e^{i\omega r}}{(\omega^2+\lambda^2)^m}\,\dd\omega.
+\end{equation}
+已知$I_1(r)=e^{-\lambda|r|}/(2\lambda)$，对$\lambda$求导得到递推
+\begin{equation}
+ I_{m+1}(r)=-\frac1{2m\lambda}\frac{\partial I_m(r)}{\partial\lambda}.
+\end{equation}
+依次计算
+\begin{equation}
+ I_2(r)=\frac{e^{-\lambda|r|}(1+\lambda|r|)}{4\lambda^3},\qquad
+ I_3(r)=\frac{e^{-\lambda|r|}(3+3\lambda|r|+\lambda^2r^2)}{16\lambda^5}.
+\end{equation}
+令位置平稳方差为$\sigma^2$，则$qI_3(0)=\sigma^2$要求$q=(16/3)\lambda^5\sigma^2$。对两个相关通道，将$\sigma^2$替换为正定矩阵$S$即可。这与Lyapunov推导不依赖同一个计算步骤，可检测常数、长度尺度和单位上的错误。
+
+\subsection{状态空间GP、有限基与一般核的关系}
+线性高斯的三个表达不应被写成互斥的“物理含义”。有限基$e=Bw$诱导有限秩核；白噪声驱动SDE通过其Green函数诱导核；给定相应核，所有有限查询共同服从同一个高斯分布。所选模型的一个构造式是
+\begin{equation}
+ e(s)=C_eF_{s-s_0}z_0+
+ \int_{s_0}^{s}C_eF_{s-r}BL\,\dd W_r.
+ \label{eq:green-model}
+\end{equation}
+第一项携带进入该区段时的不确定边界，第二项是后续未知局部结构的创新。使用有限个随机forcing权重逼近该积分可以获得低秩模型；随着分辨率改变，必须同时保持对应先验，而不是只增减基函数数目。
+
+据此，“为什么不用ProDMP”的严格回答是：\emph{可以在相同似然下把它构造成替代先验，但本稿需要新生的空间创新和局部Markov更新，因此直接选择具有这些性质的SDE，而不是先选固定权重再追加一层空间噪声。}这是一条设计决策，不是对ProDMP表达能力的否定。
+
+\subsection{测量噪声、过程创新与任务容差的单位}
+若$e$以米计，$s$也以米计，则$v=e'$无量纲，$a=e''$单位为m$^{-1}$，$\lambda$单位为m$^{-1}$。$S$单位为m$^2$；式\eqref{eq:spectral-noise}中的$Q_c$单位为m$^{-3}$，使$Q_c\Delta^5/20$具有位置方差单位m$^2$。图像观测若已从像素转换到米，其$R_k^{\rm obs}$单位为m$^2$。成像质量阈值和允许路径误差是约束或代价尺度，不应与这些随机变量混加。
+
+若使用归一化相位$\sigma=s/L$，所有导数和状态矩阵必须按$L$变换。只把输入缩放到$[0,1]$而不变换过程强度，相当于为不同长度的扫描使用不同物理先验。
+
+\subsection{非线性切片似然的迭代不能重复计算证据}
+对当前窗口隐状态$Z$、先验$\Normal(m_0,P_0)$和所有保留测量，固定模型下的MAP目标为
+\begin{equation}
+ \mathcal J(Z)=\frac12\|Z-m_0\|_{P_0^{-1}}^2+
+ \frac12\sum_k\|y_k-h_k(Z)\|_{(R_k^{\rm obs})^{-1}}^2.
+ \label{eq:fixed-prior-map}
+\end{equation}
+每次Gauss--Newton迭代只重新线性化$h_k$，不把前一轮同一图像生成的后验再当成新的先验收缩一次。收敛后可用局部Hessian近似协方差；真实残差过大、关联不唯一或遮挡概率高时，单高斯近似应被标记为不可靠。共享标定状态应以一个共同变量或相关测量协方差参与该目标。
+
+\subsection{参考均值更新与参考图册重建是不同操作}
+后验均值$\bar e_k(s)$改变时，本文保持$\Gamma_0,E,S,\lambda$的定义不变，更新的是同一随机残差的后验。不能每帧把后验均值重命名为“新模板”，再保留原$P,S$而忽略重参数化。若确实因大偏差需要重建参考曲线，应将已有曲线样本映到新法丛，重新确定关联和矩阵运输，并说明高斯近似误差；这属于显式重初始化事件。
+
+\section{顺序反方审查：只保留能够被证据支持的主张}\label{app:review}
+本附录是分角色的\emph{顺序反方审查}，不是实际调用独立模型代理的记录。本次可用工具未提供独立代理执行，故不声称完成了用户提出的“清空上下文后独立模型复推”。替代执行的是：从定义重列假设，以谱/状态空间、流/逆流、解析/有限差分等不同计算路径交叉验证，并把尚缺的外部审查明确保留。
+
+\subsection{几何与拓扑审查}
+\textbf{最强攻击：}把一个可能有临界点的调和场换成梯度流，并没有消除三维非单射问题；“流线不会相交”也不能保证流覆盖整个目标体积。\textbf{修改：}定理只覆盖同一非临界场的流像，并显式要求种子嵌入、存在时间和边界包含。失败区域缩图或使用新场，不把全身覆盖写进定理。度量块正交仅在参考域成立。
+
+\textbf{再次攻击：}数值代码用$C^0$FEM和最近点回退，理论却假设$C^2$流。\textbf{修改：}指定确定性平滑势与种子近似、单元导数界、数值积分验证和显式无效返回。边界拟合误差进入预算。\textbf{剩余问题：}严格区间证书对复杂实际几何的成本，以及发布有效域的覆盖率，需要实现和实验；本文不宣称已经完成。
+
+\subsection{概率与流形统计审查}
+\textbf{最强攻击：}用手设协方差描出一个锥，不能证明它是患者后验；旋转两个轴后输出也可能改变。\textbf{修改：}指定完整生成模型、测量似然、共享偏差和规范变换。参数的假设性质与独立校准明确分开，点态与整段覆盖分开。
+
+\textbf{再次攻击：}Mat\'ern-$5/2$只是一个常用核，为什么需要如此复杂的术语？\textbf{修改：}不把核本身作为新贡献；用最小空间状态解释曲率连续和局部创新，规范连接只用于防止换基后改变物理分布。\textbf{剩余问题：}真实血管可能有持续偏置、局部非平稳弯折及分支，单平稳核并非真理。对这类失配必须报告，并明确限制第一篇论文的目标群体和前视范围。
+
+\subsection{机器人与实现审查}
+\textbf{最强攻击：}已有DMP和KMP都能扫，你的估计器是否只是更复杂？\textbf{修改：}所有对照保持观测、几何映射和执行器相同，只比较后验校准、目标/切向预测和失视后的因果恢复。KMP与ProDMP获得公平的测量似然，不故意只提供开环参考。
+
+\textbf{再次攻击：}你使用不同未来场景下不同最优rail，是不是有预知未来？\textbf{修改：}本稿只输出相关目标和视角场景，不主张每个场景独立优化的结果是可实施策略。既有IRD规划接收共同当前状态及场景身份，最终连续IK和碰撞检查仍独立。\textbf{剩余问题：}完整实时延迟预算及身体追踪到超声的时间同步性能，必须在真机测量。
+
+\subsection{医学超声审查}
+\textbf{最强攻击：}从2D分割并不能直接获得精确3D目标与任意有效声窗，内脏也不等同于SMPL-X蒙皮。\textbf{修改：}以曲线与实际切片的局部交点建模，记录层厚、关联和标定误差；体内模板只作为先验；声束遮挡、肋骨和空气等条件由视角有效性处理。多器官主张限制到具有明确可观测目标的有序扫描。
+
+\textbf{再次攻击：}在失视时仍使用仿真真值图像坐标，可能把最难的恢复问题隐藏了。\textbf{修改：}基准输入严格屏蔽无效观测，未知方向不由真值切线补齐。\textbf{剩余问题：}真实分割错误、压力诱导位移与病变导致的异常形态必须出现在测试中；不能用合成验证代替临床证据。
+
+\subsection{期刊新颖性审查}
+\textbf{最强攻击：}积分曲线坐标、旋转最小框架、Mat\'ern过程、Bayes更新和声学几何都已有先例，组合没有理论创新。\textbf{保留的主张：}不声称其中任一基础工具新颖。论文应集中检验“坐标/观测正则性与统计可信前视域的连接”，以及“内部目标后验经过声学视角映射后，如何保持表示一致性并显式暴露失效模式”。对应数学命题必须与覆盖、校准和扫描收益共同出现。
+
+\textbf{去除的包装：}“全身任意拓扑全局微分同胚”“所有器官天然统一”“高斯方差就是可信医学概率”“更换成流形后必然优于正确Cartesian实现”“使用IRD所以安全”等均不保留。若实验证明规范处理或可信前视不能带来可解释优势，应进一步收缩论文主张，而不是叠加diffusion来增加复杂度。
+
+\section{文献证据表与阅读边界}\label{app:reading}
+本稿使用用户原文与补充检索的原始研究。下面记录\emph{用于论证的具体部分}，不把“检索到文件”说成“逐页精读”。长篇博士论文和综述只针对相关章节复读；不需要的神经模型部分不进入推荐方法。
+\small
+\begin{longtable}{P{32mm}P{65mm}P{49mm}}
+\caption{主要文献如何影响最终单一路线。}\\
+\toprule 文献 & 核查重点 & 本稿中的取舍\\\midrule\endfirsthead
+\toprule 文献 & 核查重点 & 本稿中的取舍\\\midrule\endhead
+\bottomrule\endfoot
+Huang等，KMP\cite{Huang2019} & 概率参考、KL匹配、$N/\lambda$协方差、数据库适配、局部坐标和导数核 & 公平比较，不把KMP自动等同传感器Bayes后验。\\
+Silv\'erio等，uncertainty-aware KMP\cite{Silverio2019} & 数据变异与观测不足两种不确定性 & 承认已有相关扩展，避免“只有GP能表达未知区域”的错误主张。\\
+Li等，ProDMP\cite{Li2022} & 边界条件、解析基、随机权重与整段协方差 & 作为有限秩过程的强对照，不因名称排除血管建模用途。\\
+Calinon\cite{Calinon2020}；Zeestraten\cite{Zeestraten2017} & 切空间统计、运输、任务局部表示、协同与控制 & 使用几何对象与统计量的一致性，不复制造成未知流形的神经网络。\\
+Abu-Dakka等\cite{AbuDakka2024} & G-DMP及协变导数近似、定义域 & 不把普通图坐标二阶差分自动称为严格内禀动力学。\\
+Bakker等\cite{Bakker2026} & 曲线传播/吸引、投影与运输条件 & 执行层参照，非本稿新增控制模块。\\
+Cohen等\cite{Cohen2021} & 任务参数到运动参数的映射 & 研究对象不同，不作为解剖坐标本身学习的必要依据。\\
+Espinosa等\cite{Espinosa2026} & VAE度量、NODE近似测地线及其限制 & 神经路线明确删除；其几何推导不构成全局不变性证据。\\
+Mitchell-Heggs等\cite{Mitchell2022} & 低维表示、行为解码与表示评价 & 不以嵌入可视化代替任务有效性；不进入主算法。\\
+Huynh--Gingold及Hinderink等\cite{Huynh2015,Hinderink2023,Hinderink2024} & 原文摘要、作者发布的范围说明及机构出版记录；未逐页复核全部算法 & 识别积分曲线与构造性体积双射的已有先例，避免把正则流图本身声称首创。\\
+Laugesen\cite{Laugesen1996}；Goates--Shepherd\cite{Goates2025} & 三维调和延拓与扫掠的反例 & 强制增加非临界/覆盖验证，而不是从最大值原理假设单射。\\
+Floater等\cite{Floater2003,Floater2006} & 正权重平面参数化及三维推广限制 & 用于二维种子初始化，不能作为四面体映射保证。\\
+Jones等；Yezzi--Prince\cite{Jones2000,Yezzi2003} & Laplace流线与组织厚度 & 明确流线/深度思想已有先例。\\
+UVC与Cobiveco\cite{Bayer2018,Schuler2021} & 解剖坐标、数据迁移、势值与归一化路径距离 & 强调解剖一致性和真实距离不同；多器官需要不同锚与图。\\
+Jin等，Ricci flow\cite{Jin2008} & 表面共形度量/参数化 & 不作为体积图拼接机制。\\
+Wang等\cite{Wang2008} & 旋转最小框架 & 用于直线段仍稳定的法向框架。\\
+Hartikainen--S\"arkk\"a；S\"arkk\"a--Solin\cite{Hartikainen2010,SarkkaSolin2019} & Mat\'ern谱、状态空间与GP等价 & 提供选定过程基础；本稿补足目标类型和观测几何。\\
+Hutchinson等\cite{Hutchinson2021} & 向量GP及规范一致核 & 为核变换提供一般背景；本文仅用参考曲线法丛特例。\\
+Goel等\cite{Goel2022} & 主动probing更新信息图，随后生成轨迹 & 原文为先探索后扫描；本稿不将密度奖励当中心线后验。\\
+Merouche等\cite{Merouche2016} & 在线血管跟踪与三维重建任务 & 证明在线追踪并非只能由movement primitive定义；本文仍需额外预测校准。\\
+Murooka等与RM4D\cite{Murooka2025,RudorferRM4D} & 可达域表示及约化 & 仅定位既有IRD接口，非本稿重新设计对象。\\
+\end{longtable}
+\normalsize
+
+\section{实现清单、复现与结论交付}\label{app:implementation}
+\subsection{推荐的固定接口}
+\begin{table}[H]
+\centering\small
+\begin{tabularx}{\textwidth}{P{37mm}Y}
+\toprule 接口 & 需要返回的信息\\\midrule
+\path{atlas.decode(a,xi,t)} & 位置、$J$、$J^{-1}$、材料速度、图与材料有效性，以及数值误差估计。\\
+\path{atlas.encode(p,t)} & 一组有效图候选、各自坐标和逆残差；没有有效图时返回失败而非最近点。\\
+\path{target.predict(s)} & 参考/后验位置、切向、曲率和与其他查询的联合关系；分支身份。\\
+\path{observation.factor(frame)} & 原始图像特征、采集位姿和时间、交点关联、似然Jacobian及共享干扰项。\\
+\path{belief.update(factor)} & 固定窗口的联合后验、创新检验、失败/歧义标志；每张图只计算一次证据。\\
+\path{belief.sample(grid,M)} & 保持场景身份的相关目标轨迹，不返回独立逐点样本冒充曲线。\\
+\path{view.decode(target,q)} & 声束、米制深度、成像姿态、绕束角规范、入射/切片条件与必要敏感性。\\
+\path{validity.horizon(belief)} & 有限查询域的严格或经验有效性等级、可信前视距离及失败位置。\\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{计算量和需要真机测量的项目}
+对固定六维状态和固定尺寸观测，顺序线性Kalman更新的单步矩阵代数成本固定，不随全部历史增加；保留共享干扰和固定大小平滑窗口时维度相应增加，但仍由窗口上限决定。生成$M$条、每条$N$位置的状态空间场景，成本随$MN$线性增长，前提是每步固定维矩阵因子已缓存。对所有查询显式形成并分解完整联合矩阵则会更昂贵，这不是在线采样的必要步骤。
+
+以上是规模分析，\textbf{不是对当前电脑已测得的实时频率承诺}。最可能的瓶颈是材料逆映射、流/变分求解、切片根搜索和几何有效性检查，而非六维滤波本身。应分别记录采集延迟、每项P50/P95耗时、最坏处理时长和失败率，再决定缓存密度与前视长度。
+
+\subsection{附带脚本检验了什么，没有检验什么}
+\path{code/verify_derivations.py}使用NumPy、SciPy与SymPy，分别验证解析调和反例、流值恒等式、变分Jacobian、逆流、度量变换、Mat\'ern谱/状态归一化、批量GP等价、后验收缩、规范变换、切片交点有限差分、绕束角微分、双投影恒等式与共享偏差下限。结果保存在\path{verification_results.json}，图数据为\path{synthetic_arrays.npz}。
+
+\path{code/make_figures.py}只绘制解析或合成示意。完整源码包可重新生成这些图。脚本没有SMPL-X资产、患者图像、真实机器人动力学、分割训练或完整实验日志；因此不把检查通过称为整套方法已被实验证明。
+
+\clearpage
+\bibliographystyle{unsrtnat}
+\bibliography{references}
+\end{document}

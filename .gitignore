@@ -12,6 +12,9 @@
 *.7z
 *.rar
 
+# NMI workspace: keep portable Overleaf source archives with the documents.
+!/NMI_idea/archives/*.zip
+
 # Model weights & serialized arrays
 *.pt
 *.pth

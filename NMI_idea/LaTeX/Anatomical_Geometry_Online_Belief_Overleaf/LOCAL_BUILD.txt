@@ -1,0 +1,21 @@
+本地编译说明
+============
+主文件：main.tex
+编译器：XeLaTeX（保留原项目 latexmkrc 设置）
+
+在本目录运行：
+    ./compile.sh
+
+输出文件：build/main.pdf
+编译中间文件：build/
+
+本机缺少的 XeLaTeX 中文依赖保存在：
+    ~/.local/share/latex-support/texlive2021/
+compile.sh 会自动加载这些依赖；在装有完整 TeX Live 的机器上也可直接使用 latexmk。
+
+原始 Overleaf 压缩包保存在 ../../archives/ 下。
+原始 main.tex、references.bib 和 figures/ 保持压缩包中的内容。
+
+LaTeX Workshop：main.tex 顶部的 TeX program/options 注释让插件调用 compile.sh，
+使用相同的 XeLaTeX 依赖，并从 build/ 读取 PDF 和 SyncTeX 文件。
+修改后执行 Build LaTeX project（Ctrl+Alt+B）。
