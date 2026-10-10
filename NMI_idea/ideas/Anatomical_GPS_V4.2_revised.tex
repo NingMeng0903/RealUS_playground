@@ -1,0 +1,979 @@
+ % !TeX program = xelatex
+\documentclass[11pt,a4paper]{article}
+\usepackage[margin=23mm,headheight=16pt]{geometry}
+\usepackage{fontspec}
+\setmainfont{Noto Sans CJK SC}[AutoFakeBold=1.5,AutoFakeSlant=.15]
+\setsansfont{Noto Sans CJK SC}[AutoFakeBold=1.5]
+\XeTeXlinebreaklocale "zh"
+\XeTeXlinebreakskip=0pt plus 1pt
+\usepackage{amsmath,amssymb,amsthm,bm,mathtools}
+\usepackage{booktabs,tabularx,array,graphicx,xcolor}
+\usepackage{xurl,hyperref,fancyhdr,enumitem}
+\hypersetup{colorlinks=true,linkcolor=blue!45!black,urlcolor=blue!45!black,citecolor=blue!45!black,pdftitle={Anatomical GPS V4.2: 实现选择与最小任务校准}}
+\setlength{\emergencystretch}{4em}
+\setlength{\parskip}{.35em}
+\setlength{\parindent}{1.4em}
+\linespread{1.06}
+\setlist{nosep,leftmargin=2em}
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+\numberwithin{equation}{section}
+\newtheorem{theorem}{定理}[section]
+\newtheorem{proposition}[theorem]{命题}
+\newtheorem{lemma}[theorem]{引理}
+\newtheorem{corollary}[theorem]{推论}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{定义}
+\newtheorem{assumption}[theorem]{假设}
+\newtheorem{remark}[theorem]{说明}
+\renewcommand{\proofname}{证明}
+\renewcommand{\abstractname}{摘要}
+\renewcommand{\refname}{参考文献}
+\renewcommand{\contentsname}{目录}
+\DeclareMathOperator{\rank}{rank}
+\DeclareMathOperator{\range}{range}
+\DeclareMathOperator{\diag}{diag}
+\newcommand{\R}{\mathbb R}
+\newcommand{\norm}[1]{\left\lVert#1\right\rVert}
+\pagestyle{fancy}\fancyhf{}
+\fancyhead[L]{\small Anatomical GPS V4.2 · 理论补篇}
+\fancyhead[R]{\small 实现选择与最小任务校准}
+\fancyfoot[C]{\thepage}
+\begin{document}
+\title{Anatomical GPS V4.2\\[2mm]\Large 材料任务保持下的实现选择与最小反馈校准\\[2mm]\large 不可消除耦合谱、首次任务恢复下界与可执行修复}
+\author{详细理论推导与独立代理审读修订稿}
+\date{2026年10月8日}
+\maketitle
+\begin{abstract}
+本文将迁移的单位定义为材料任务及其允许的机器人实现，而非固定轨迹或完整人体反馈模型。对局部结构化响应 $J=H+\Theta N$，通过任务保持右逆、校准数据子空间与任务零空间的商空间，构造不可消除耦合谱。给出零残差历史上任意共同首次物理校正动作的精确最小最大误差、最优有效校准方向预算，以及精确单位任务响应的必要充分方向数。带噪声时，将实际探查数据直接转换为凸修复约束、输入能力验收和闭环误差管。材料调和圆柱图册与姿态纤维负责跨人体运输任务；可微逆可达性负责生成可执行实现候选；两者均不能替代内部结构与误差界的验证。超声切片交点几何给出未知血管斜率通道的真实来源，允许的小幅离中心实现可降低对该通道的校准需求，且存在明确的有限运动与接触代价。本文给出代数和几何数值核验，不报告真人或机器人扫描实验。独立代理的 $4/5$ 评价针对本文的明确理论机制，不是已完成论文的外部同行评价。
+\end{abstract}
+\noindent\textbf{研究主张：}在材料任务及观测质量条件保持时，选择允许的物理实现以降低必须重新校准的反馈方向；以实际可执行探查补足必要方向，并验收修复后的任务恢复性能。
+\newpage
+\begingroup
+\footnotesize
+\setlength{\parskip}{0pt}
+\tableofcontents
+\endgroup
+\newpage
+
+\section{需要保持的是任务，而非一个唯一探头姿态}
+令 $\mathcal M$ 为有效材料体积图册，任务为 $\mathcal T=(\tau,\mathcal A_\tau,\mathcal Q_\tau)$：$\tau$ 指定血管、器官、材料片段及扫描目的；$\mathcal A_\tau$ 是允许的探头位置、姿态、相位偏差和机器人实现；$\mathcal Q_\tau$ 指定可信目标关联、视野、声窗与特征质量。允许关系必须在优化前定义。若任务要求图像横向坐标严格为零，则把目标改成离中心点不是合法任务保持；若任务只要求同一片段与合格切面、允许横向偏置，则不同偏置可以是等价实现。
+
+对每个实现 $a\in\mathcal A_\tau$，局部可信特征误差 $e\in\R^m$ 描述完成条件；维数 $m$ 必须保持。选取新的 $a$ 可以改变特征参考值，但不能删掉难控制的特征后声称降低了校准维数。下文的保证首先是局部首次单位响应或统一收缩合同；完整长扫描仍需沿路径反复验收。
+
+\section{材料调和圆柱图册、SMPL-X 与姿态纤维的接口}
+\subsection{保留圆柱设计，并区分图册和内部解剖}
+在每个有效环壳材料子域 $\Omega_a$ 上，保留
+\begin{equation}
+ \xi=(\varphi,h,d),\qquad
+ \Delta_{g_0}h=0,\quad \Delta_{g_0}d=0,\quad
+ \Delta_{g_0}\widetilde\varphi=0.
+\end{equation}
+轴向与径向场取各自端面或边界上的 Dirichlet 条件；角度场在切开的域上取两岸相差 $2\pi$ 的周期 lift，跨缝使用转移图。圆柱核心退化域需要独立图，腿和躯干可以是不同圆柱图；不强行制造一个覆盖整个人体的单图。调和性不保证三维坐标无折叠，必须验收 $\det D_\xi F_{a,0}\ne0$、方向一致性及自交。
+
+SMPL-X 表面采用标准蒙皮形式\cite{pavlakos2019}
+\begin{align}
+ \bar v_i(c)&=\bar v_i+B_{S,i}(\beta)+B_{E,i}(\psi)+B_{P,i}(\vartheta),\\
+ v_i(c)&=\sum_k w_{ik}\bigl(R_k(c)\bar v_i(c)+t_k(c)\bigr).
+\end{align}
+这里 $c$ 含体型、姿态、表情和世界位姿，骨架变换含静止姿态校正。体积内部需要另外给出权重 $w_k(p_0)$ 和修正场 $b_c(p_0)$；表面 SMPL-X 不会自动提供它们，也不会给出患者内部血管的准确位置。体积延拓与接触形变为
+\begin{align}
+ L_c(p_0)&=\sum_k w_k(p_0)\bigl[R_{k,c}(p_0+b_c(p_0))+t_{k,c}\bigr],\\
+ P_{a,c,f}(\xi)&=C_{c,f}\bigl(L_c(F_{a,0}(\xi))\bigr).
+\end{align}
+已知身体运输只保持材料地址。内部滑移、压迫、注册误差与目标形态差异仍进入独立未知量或误差界。
+
+\subsection{实际动作的材料拉回必须扣除人体运动}
+记 $J_P=D_\xi P_{a,c,f}$，则
+\begin{align}
+ \dot p&=J_P\dot\xi+b_p,
+ &b_p&=D_cP\dot c+D_fP\dot f,\\
+ \dot\xi&=J_P^{-1}(v_{\rm CoP}-b_p).
+\end{align}
+使用实际接触作用点 CoP 的运动，不能把位于体外的 TCP 硬塞进体积逆映射。由此校准数据中的输入来自实际动作和身体运动补偿，而非计划中的命令。
+
+姿态纤维取 $R=Q_{a,c,f}(\xi)\rho$，$\rho\in SO(3)$。定义
+\begin{equation}
+ A_i=(Q^\top\partial_iQ)^\vee,\qquad
+ a_c=(Q^\top(D_cQ\dot c+D_fQ\dot f))^\vee .
+\end{equation}
+若 $\omega_R=(R^\top\dot R)^\vee$，则纤维的相对角速度为
+\begin{equation}
+ \omega_\rho=\omega_R-\rho^\top(A_\xi\dot\xi+a_c).
+\end{equation}
+这使探查的平移、姿态和材料位置能够共同记录。更换局部标架 $Q'=QS$ 时，$\rho'=S^\top\rho$，实际姿态仍为同一个 $R$。
+
+\subsection{校准谱必须在物理度量下计算}
+输入、任务、不确定通道分别赋正定度量 $W,M,S$。对下文矩阵定义
+\begin{equation}
+ \widetilde H=M^{1/2}HW^{-1/2},\quad
+ \widetilde N=S^{1/2}NW^{-1/2},\quad
+ \widetilde\Theta=M^{1/2}\Theta S^{-1/2}.
+\end{equation}
+全文伪逆、正交投影和奇异值都在这个白化模型中理解。为简洁，后文省略波浪号。度量需要固定到真实的毫米、弧度、任务容差与通道尺度，不能为了获得收益而重设。
+
+被动换坐标 $u'=Tu$, $e'=Pe$, $z'=Vz$ 给出
+\begin{equation}
+ H'=PHT^{-1},\quad N'=VNT^{-1},\quad
+ \Theta'=P\Theta V^{-1},\quad B'=TBP^{-1}.
+\end{equation}
+度量同步作协变变换，例如 $W'=T^{-\top}WT^{-1}$。白化前后算子由正交基变换关联，故诱导奇异值与任务下界不变。\textbf{重画圆柱坐标不能省校准；真实改变接触姿态、输入分配或传感支持才可能省校准。}
+
+若接触的线性约束是 $E_cu=0$，先取 $\ker E_c$ 的正交基 $Z_c$，将输入写成 $u=Z_c\bar u$，对 $HZ_c,NZ_c$ 推导。实际能力多面体、关节约束和碰撞仍需后续验收。
+
+\subsection{坐标设计服务的理论对象是一个任务耦合商空间}
+在材料位置、探头姿态和实现组成的基点 $a$ 上，取允许命令空间 $\mathcal V_a$、任务反馈空间 $\mathcal Y_a$ 与不确定通道空间 $\mathcal Z_a$，映射为
+\begin{equation}
+ H_a:\mathcal V_a\longrightarrow\mathcal Y_a,\qquad
+ N_a:\mathcal V_a\longrightarrow\mathcal Z_a.
+\end{equation}
+任务零空间可以抵消的通道是 $\mathcal C_a=N_a\ker H_a$。将它商掉，定义与右逆选择无关的诱导映射
+\begin{equation}
+ \overline D_a:\mathcal Y_a\longrightarrow\mathcal Z_a/\mathcal C_a,
+ \qquad \overline D_av=[N_aB_av],\quad H_aB_a=I.
+\end{equation}
+任何两个右逆之差都在 $\ker H_a$ 中，因此上述等价类相同。在物理度量下选取正交代表，就得到后文 $D_\star$。完成探查后的信息子空间 $Q_a$ 再被商掉，对应 $\mathcal Z_a/(\mathcal C_a+Q_a)$ 和后文 $D_Q$。
+
+这才是调和图册与纤维的理论用途：在各人体、各图和姿态标架中记录同一个任务与通道等价类；允许不同机器人用不同动作重新实现它。各映射及其像保持常秩的区域可以构成商向量丛；秩变化处应分层处理并重新验收，不能声称存在覆盖所有姿态的光滑固定秩丛。超声的中心与偏心切换恰是这样的秩变化例。
+
+\section{局部响应模型：任务保持与不确定通道}
+\label{sec:cal-local}
+
+本节讨论一个明确且可检验的局部模型类。所有变量已经按物理运动度量与任务容差归一化，因而下文的欧氏范数、正交投影和奇异值具有相同的物理解释。固定允许的机器人实现后，省略其索引，令
+\begin{equation}
+  \dot y=Ju+w,\qquad
+  J=H+\Theta N+E_{\mathrm{geo}},
+  \label{eq:cal-model}
+\end{equation}
+其中 $y\in\mathbb R^m$ 是实际提取的有效任务特征，$u\in\mathbb R^n$ 是扣除人体运动并运输到材料标架后的实际命令。$H\in\mathbb R^{m\times n}$ 是已知名义响应，$N\in\mathbb R^{r\times n}$ 是已知的不确定物理通道，$\Theta\in\mathbb R^{m\times r}$ 是患者相关的未知响应。$E_{\mathrm{geo}}$ 汇集几何运输、模型遗漏和局部线性化的误差。扰动 $w$ 可以包括不能解释为命令响应的目标漂移、人体运动估计残差以及参考变化。
+
+\begin{assumption}[局部模型、有效观测与物理执行]
+\label{ass:cal-model}
+在本次校准和验收的局部窗口内，$H$ 满行秩，$N$ 已知，且
+\begin{equation}
+  \|\Theta\|_2\le\delta,\quad\delta>0,\qquad
+  \|E_{\mathrm{geo}}\|_2\le\eta .
+\end{equation}
+校准测量来自有效的目标特征；被实际执行的命令、而非理想规划命令，被用于构造数据。模型只在明确的控制与观测可信区间内使用。失锁或关联未确定的图像不产生新的有效任务响应测量。
+\end{assumption}
+
+$N$ 必须来自物理响应结构或经过验证的辨识结果。例如，特定接触变形通道可以由明确的接触模型给出。SMPL-X 对应关系和坐标不变性本身不会给出已知 $N$，也不会保证小的 $\eta$。若所有命令方向都任意未知，应取 $N=I_n$；此时不能预期以下结构产生省校准收益。首先在 $E_{\mathrm{geo}}=0$、无噪声且局部 $\Theta$ 固定的模型内证明精确结论，再给出带误差的验收条件。
+
+\subsection{保持任务的物理实现}
+
+名义任务保持的线性实现 $B\in\mathbb R^{n\times m}$ 满足
+\begin{equation}
+  HB=I_m,\qquad u=Bv ,
+  \label{eq:cal-lift}
+\end{equation}
+其中 $v\in\mathbb R^m$ 是同一个材料任务命令。实际响应为
+\begin{equation}
+  JB=I_m+\Theta NB .
+  \label{eq:cal-exposure}
+\end{equation}
+因此，需要校准的是 $\Theta$ 在 $\operatorname{range}(NB)$ 上的作用，称 $NB$ 为该实现的不确定曝光。这里不要求未知矩阵 $\Theta$ 低秩；低维性来自可选择的实际机器人实现。
+
+若精确接触条件要求 $Eu=0$，令 $Z_E$ 是 $\ker E$ 的正交基，在允许的命令空间内使用
+\begin{equation}
+  H_E=HZ_E,\qquad N_E=NZ_E .
+  \label{eq:cal-contact-reduction}
+\end{equation}
+只有 $H_E$ 满行秩时，才能继续实现全部任务方向。以下代数结果可以对 $(H_E,N_E)$ 使用。速度、关节、碰撞和接触的不等式能力限制则需要另外验收；它们不能从右逆关系推得。
+
+\section{任务实现如何减少必须校准的方向}
+\label{sec:cal-realization}
+
+\subsection{同时最小化所有奇异值的实现}
+
+取 $Z_H$ 为 $\ker H$ 的正交基。由于 $H$ 满行秩，$HH^\dagger=I_m$，而任意右逆都有形式
+\begin{equation}
+  B=H^\dagger+Z_HK .
+  \label{eq:cal-all-lifts}
+\end{equation}
+记
+\begin{equation}
+  A=NH^\dagger,\qquad C_0=NZ_H,\qquad
+  \mathcal C=\operatorname{range}(C_0)=N\ker H .
+\end{equation}
+令 $P_{\mathcal C}=C_0C_0^\dagger$ 为到 $\mathcal C$ 的正交投影，并定义
+\begin{equation}
+  B_*=
+  H^\dagger-Z_HC_0^\dagger A,\qquad
+  D_*=
+  NB_*=(I-P_{\mathcal C})A .
+  \label{eq:cal-optimal-lift}
+\end{equation}
+
+\begin{theorem}[最小不确定曝光]
+\label{thm:cal-singular-opt}
+在无额外物理不等式约束的右逆集合 $HB=I_m$ 中，$B_*$ 同时最小化 $NB$ 的所有奇异值：
+\begin{equation}
+  \sigma_j(NB)\ge\sigma_j(D_*),
+  \qquad j=1,\ldots,\min\{r,m\}.
+  \label{eq:cal-singular-order}
+\end{equation}
+特别地，它同时最小化谱范数、任意奇异值尾和曝光的秩。
+\end{theorem}
+
+\begin{proof}
+对任意 $B=H^\dagger+Z_HK$，
+\begin{align}
+  NB
+  &= A+C_0K\\
+  &= (I-P_{\mathcal C})A+
+     \big(P_{\mathcal C}A+C_0K\big)\\
+  &=D_*+E_B .
+\end{align}
+$D_*$ 的列属于 $\mathcal C^\perp$，$E_B$ 的列属于 $\mathcal C$，故 $D_*^\top E_B=0$。于是
+\begin{equation}
+  (NB)^\top NB
+  =D_*^\top D_*+E_B^\top E_B
+  \succeq D_*^\top D_* .
+\end{equation}
+由对称矩阵的特征值单调性得到~\eqref{eq:cal-singular-order}。选择 $K=-C_0^\dagger A$ 时 $E_B=0$，从而各个下界均达到。
+\end{proof}
+
+这个结论区分了两种改变：被动坐标变化不会创造新的曝光收益；主动改变物理命令实现，可以用 $N\ker H$ 中的额外自由度抵消不确定曝光，而同时保留 $HB=I_m$。
+
+\subsection{最低精确校准维数}
+
+\begin{theorem}[任务保持实现的结构秩]
+\label{thm:cal-rank}
+最低不确定曝光秩为
+\begin{equation}
+  \boxed{
+  k_*=
+  \min_{HB=I_m}\operatorname{rank}(NB)
+  =m-\dim(H\ker N)
+  =m+\operatorname{rank}N-
+  \operatorname{rank}
+  \begin{bmatrix}H\\N\end{bmatrix}.}
+  \label{eq:cal-kstar}
+\end{equation}
+\end{theorem}
+
+\begin{proof}
+因为 $HB=I_m$，$B$ 是单射，而且 $H$ 在 $\operatorname{range}(B)$ 上是到 $\mathbb R^m$ 的同构。因此
+\begin{align}
+  \operatorname{rank}(NB)
+  &=m-\dim\big(\operatorname{range}(B)\cap\ker N\big)\\
+  &\ge m-\dim(H\ker N).
+  \label{eq:cal-rank-lower}
+\end{align}
+另一方面，$D_*v=0$ 当且仅当 $NH^\dagger v\in N\ker H$。这等价于存在 $z\in\ker H$ 使
+\begin{equation}
+  N(H^\dagger v-z)=0,\qquad
+  H(H^\dagger v-z)=v ,
+\end{equation}
+即 $v\in H\ker N$。因而
+\begin{equation}
+  \ker D_*=H\ker N,\qquad
+  \operatorname{rank}D_*=m-\dim(H\ker N),
+\end{equation}
+下界由 $B_*$ 达到。最后，对从命令空间到联合输出 $(Hu,Nu)$ 的线性映射，先取 $Nu$ 的像，再加入 $Nu=0$ 时的 $Hu$，得到
+\begin{equation}
+  \operatorname{rank}
+  \begin{bmatrix}H\\N\end{bmatrix}
+  =\operatorname{rank}N+\dim(H\ker N).
+\end{equation}
+\end{proof}
+
+当 $N=I_n$ 时，$H\ker N=\{0\}$，故 $k_*=m$。因此，结构收益依赖实际不确定通道与任务通道之间的关系，而不能由改变参数化自动获得。$B_*$ 也可能增加所需物理运动幅度；受约束的实际问题必须保留这一代价。
+
+\section{允许重新选择任意物理动作的首次任务下界}
+\label{sec:cal-minimax}
+
+这一节不预先锁定 $u=Bv$。校准以后，控制器可以根据数据重新选择右逆，甚至使用任意非线性的静态规则 $u(v)$。因此，需要剔除任务零空间提供的所有绕开机会，不能把固定 $B$ 的谱尾直接当作全体实现的任务下界。
+
+\subsection{校准信息与正确的剩余空间}
+
+一条无噪声局部校准记录给出实际响应增量 $\Delta y_i$（或对冻结 Jacobian 积分的局部响应）。输入 $u_i$ 对应相同时间尺度的实际积分运动，因此
+\begin{equation}
+  r_i=\Delta y_i-Hu_i=\Theta x_i,\qquad x_i=Nu_i .
+  \label{eq:cal-probe-oracle}
+\end{equation}
+记 $Q=\operatorname{span}\{x_1,\ldots,x_s\}$。这里计数的是独立激励方向 $\dim Q$，不是图像帧数、探查持续时间或动作片段数。长片段可以提供多个独立激励。
+
+考虑所有校准残差均为零的历史。数据一致模型满足
+\begin{equation}
+  \Theta Q=0,\qquad \|\Theta\|_2\le\delta .
+  \label{eq:cal-zero-history}
+\end{equation}
+定义
+\begin{equation}
+  D_Q=P_{\mathcal C+Q}^{\perp}NH^\dagger,
+  \qquad \mathcal C=N\ker H .
+  \label{eq:cal-DQ}
+\end{equation}
+正确剩余矩阵是 $D_Q$，一般不是 $(I-P_Q)D_*$。实际控制器还能够通过 $\ker H$ 中的命令，把未校准曝光移动到已校准空间。
+
+\begin{lemma}[给定名义任务输出的最小剩余曝光]
+\label{lem:cal-DQ}
+对任意 $z\in\mathbb R^m$，
+\begin{equation}
+  \min_{Hu=z}\|(I-P_Q)Nu\|_2
+  =\|D_Qz\|_2 .
+  \label{eq:cal-exposure-z}
+\end{equation}
+\end{lemma}
+
+\begin{proof}
+所有满足 $Hu=z$ 的命令为 $u=H^\dagger z+Z_H\ell$。记 $P_Q^\perp=I-P_Q$，则
+\begin{align}
+  \min_{Hu=z}\|P_Q^\perp Nu\|_2
+  &=
+  \min_\ell
+  \|P_Q^\perp Az+P_Q^\perp C_0\ell\|_2\\
+  &=
+  \operatorname{dist}
+  \big(P_Q^\perp Az,P_Q^\perp\mathcal C\big)\\
+  &=\|P_{\mathcal C+Q}^\perp Az\|_2 .
+\end{align}
+最后一步因为 $Q^\perp$ 内再剔除 $P_Q^\perp\mathcal C$，等价于在原空间同时剔除 $\mathcal C+Q$。
+\end{proof}
+
+\subsection{非线性共同动作也不能绕开的下界}
+
+定义零校准历史之后首次重新实现任务的最小最大误差
+\begin{equation}
+  \mathcal L(Q)=
+  \inf_{u(\cdot)}
+  \sup_{\|v\|_2=1}
+  \sup_{\substack{\Theta Q=0\\\|\Theta\|_2\le\delta}}
+  \|(H+\Theta N)u(v)-v\|_2 .
+  \label{eq:cal-first-loss}
+\end{equation}
+这里允许任意静态非线性命令规则 $u(v)$，且暂时放松所有物理输入限制。因而获得的下界对有约束系统仍然有效；匹配的上界只有在相应命令确实可执行时才能使用。
+
+\begin{theorem}[首次任务响应的精确条件最小最大误差]
+\label{thm:cal-first-loss}
+在~\eqref{eq:cal-zero-history} 的数据一致模型中，
+\begin{equation}
+  \boxed{\mathcal L(Q)=
+  \min\{1,\delta\|D_Q\|_2\}.}
+  \label{eq:cal-first-exact}
+\end{equation}
+\end{theorem}
+
+\begin{proof}
+对固定物理命令 $u$，令 $z=Hu$。由于 $\Theta Q=0$，$\Theta Nu=\Theta P_Q^\perp Nu$。范数球内的矩阵可以把 $P_Q^\perp Nu$ 映射到任意半径为 $\delta\|P_Q^\perp Nu\|_2$ 的任务输出向量。因此
+\begin{equation}
+  \sup_{\Theta Q=0,\;\|\Theta\|_2\le\delta}
+  \|(H+\Theta N)u-v\|_2
+  =
+  \|z-v\|_2+\delta\|P_Q^\perp Nu\|_2 .
+  \label{eq:cal-task-ball}
+\end{equation}
+利用引理~\ref{lem:cal-DQ}，逐个任务命令的最优值为
+\begin{equation}
+  \inf_z\big(\|z-v\|_2+\delta\|D_Qz\|_2\big).
+  \label{eq:cal-task-prox}
+\end{equation}
+令 $v_*$ 为 $D_Q$ 的最大右奇异向量，$w_*$ 为相应左奇异向量，$s=\|D_Q\|_2$。当 $s>0$ 时，对任意 $z$，
+\begin{align}
+  \|z-v_*\|_2+\delta\|D_Qz\|_2
+  &\ge
+  |v_*^\top z-1|
+  +\delta|w_*^\top D_Qz|\\
+  &=
+  |t-1|+\delta s|t|,
+  \qquad t=v_*^\top z\\
+  &\ge\min\{1,\delta s\}.
+\end{align}
+若 $\delta s\le1$，选择满足 $HB_Q=I_m$ 且 $P_Q^\perp NB_Q=D_Q$ 的最小曝光右逆，例如
+\begin{equation}
+  B_Q=
+  H^\dagger-
+  Z_H(P_Q^\perp NZ_H)^\dagger
+  P_Q^\perp NH^\dagger ,
+  \label{eq:cal-BQ}
+\end{equation}
+并令 $u(v)=B_Qv$，其最大误差不超过 $\delta s$。若 $\delta s\ge1$，选择零增量命令 $u(v)=0$，其误差为 $1$。当 $s=0$，$B_Q$ 实现零误差。故上下界匹配。
+\end{proof}
+
+可以直接构造一对限制任何物理动作的模型。选 $w_*\in(\mathcal C+Q)^\perp$ 满足 $D_Q^\top w_*=sv_*$。因为 $w_*^\top N$ 在 $\ker H$ 上为零，
+\begin{equation}
+  w_*^\top N
+  =w_*^\top NH^\dagger H
+  =sv_*^\top H .
+  \label{eq:cal-adversary-factor}
+\end{equation}
+令
+\begin{equation}
+  \Theta_\pm=\pm\delta v_*w_*^\top .
+\end{equation}
+两模型都满足校准数据，但
+\begin{equation}
+  J_\pm=
+  (I_m\pm\delta s v_*v_*^\top)H .
+  \label{eq:cal-adversary-J}
+\end{equation}
+对任意物理命令 $u$，任务 $v_*$ 的误差投影都满足
+\begin{equation}
+  \max_{\pm}
+  \left|
+  (1\pm\delta s)v_*^\top Hu-1
+  \right|
+  \ge\min\{1,\delta s\}.
+  \label{eq:cal-anyphysical-lower}
+\end{equation}
+这个构造同时约束全部任务零空间动作，消除了预先固定 $B$ 所产生的漏洞。
+
+\subsection{最优探查方向与谱尾}
+
+\begin{theorem}[最优独立校准方向的条件谱尾]
+\label{thm:cal-width}
+在无物理探查限制的零校准历史模型内，
+\begin{equation}
+  \min_{\dim Q\le k}\|D_Q\|_2
+  =\sigma_{k+1}(D_*),
+  \label{eq:cal-quotient-width}
+\end{equation}
+其中超过矩阵秩的奇异值取为零。因此
+\begin{equation}
+  \boxed{
+  \min_{\dim Q\le k}\mathcal L(Q)
+  =\min\{1,\delta\sigma_{k+1}(D_*)\}.}
+  \label{eq:cal-minimax-width}
+\end{equation}
+\end{theorem}
+
+\begin{proof}
+因为 $D_*$ 的列在 $\mathcal C^\perp$ 中，
+\begin{equation}
+  D_Q=P_{\mathcal C+Q}^\perp D_* .
+\end{equation}
+投影掉 $\mathcal C$ 后，$Q$ 只能提供至多 $k$ 维的额外空间 $P_{\mathcal C}^\perp Q$。因此，左投影消除 $D_*$ 的至多 $k$ 个方向后，谱残差至少为 $\sigma_{k+1}(D_*)$。选择 $Q$ 为 $D_*$ 的前 $k$ 个左奇异向量张成的空间可以达到该下界。这些向量位于 $\operatorname{range}(N)$ 中，故存在物理命令满足 $Nu_i=q_i$。定理~\ref{thm:cal-first-loss} 完成最后一步。
+\end{proof}
+
+若验收要求首次任务误差不超过 $\epsilon<1$，零历史模型中最低方向数为
+\begin{equation}
+  k_\epsilon=
+  \#\{j:\delta\sigma_j(D_*)>\epsilon\}.
+  \label{eq:cal-epsilon-dimension}
+\end{equation}
+边界等号是否接受需与实验验收规则一致。
+
+\begin{remark}[自适应探查、非零历史与闭环边界]
+\label{rem:cal-width-scope}
+对任何自适应校准算法，考虑其全部残差为零的历史。最终 $Q$ 的维数不超过独立激励次数，而上述对手在该算法已经执行的全部探查上均返回零。因此~\eqref{eq:cal-minimax-width} 给出原始全模型类的必要最坏情况首次任务误差下界。
+
+条件等式及其匹配上界仅针对零历史。非零观测会改变已知响应，并可能使数据一致不确定集合变为非对称或椭球集合，不能继续把原始 $D_*$ 的谱尾当作所有历史的精确上界。此外，首次任务响应下界不等于任意最终闭环恢复性能的下界；容许等待、继续适应或接受暂态误差的控制器解决的是另一个任务。
+\end{remark}
+
+\section{精确单位任务响应的校准复杂度}
+\label{sec:cal-exact-complexity}
+
+前一节已经给出零历史的精确近似响应结果。下面证明在完整无噪声模型类内，一个限定明确的任务保证具有匹配的校准复杂度。
+
+\begin{theorem}[精确任务重新实现的必要与充分方向数]
+\label{thm:cal-exact-task}
+假定 $\delta\|D_*\|_2<1$。考虑校准后对一个非空任务命令邻域实现精确单位响应
+\begin{equation}
+  Ju(v)=v
+  \label{eq:cal-unit-task}
+\end{equation}
+的规则，并要求该保证对所有 $\|\Theta\|_2\le\delta$ 成立。无约束模型类内，最坏情况下必须且只需 $k_*=\operatorname{rank}(D_*)$ 个独立校准方向。
+
+物理限制不会削弱必要下界；充分性还要求相应探查和修复后的任务命令位于实际可执行可信区间内。
+\end{theorem}
+
+\begin{proof}
+必要性可由定理~\ref{thm:cal-width} 在零误差下直接得到，也可用维数证明。取有效真实模型 $\Theta=0$。全部校准残差为零，任何满足 $\Delta Q=0$ 的小范数矩阵均与数据一致。若对全部这些模型都满足~\eqref{eq:cal-unit-task}，必须有
+\begin{equation}
+  Hu(v)=v,\qquad Nu(v)\in Q .
+\end{equation}
+因此能实现的任务命令属于 $H(N^{-1}Q)$，而
+\begin{equation}
+  \dim H(N^{-1}Q)
+  \le\dim(H\ker N)+\dim Q .
+\end{equation}
+覆盖一个 $m$ 维邻域要求 $\dim Q\ge m-\dim(H\ker N)=k_*$。该证明允许任意静态非线性 $u(v)$，并适用于自适应算法的零历史。
+
+充分性选用 $B_*$，令 $Q=\operatorname{range}(D_*)$，并校准 $\Theta$ 在 $Q$ 上的作用。由数据可完整知道
+\begin{equation}
+  G=JB_*=I_m+\Theta D_* .
+\end{equation}
+因为 $\|\Theta D_*\|_2\le\delta\|D_*\|_2<1$，$G$ 可逆。修复实现
+\begin{equation}
+  C_{\mathrm{exact}}=B_*G^{-1}
+  \label{eq:cal-exact-repair}
+\end{equation}
+满足 $JC_{\mathrm{exact}}=I_m$。只需 $k_*$ 个独立校准方向即可识别 $G$，无需识别整个 $\Theta$。
+\end{proof}
+
+修复后的实际命令代价不能省略。例如
+\begin{equation}
+  \|C_{\mathrm{exact}}\|_2
+  \le
+  \frac{\|B_*\|_2}{1-\delta\|D_*\|_2}.
+  \label{eq:cal-exact-command-bound}
+\end{equation}
+当分母小或 $B_*$ 运动幅度大时，校准方向减少仍可能以不可执行的命令为代价。
+
+\subsection{零偏离探查为何不足}
+
+\begin{proposition}[名义任务中性探查的最坏历史限制]
+\label{prop:cal-neutral}
+若所有探查均满足 $Hu_i=0$，则在零校准历史上 $Q\subseteq\mathcal C=N\ker H$，因而
+\begin{equation}
+  D_Q=D_*,
+  \qquad
+  \mathcal L(Q)=\min\{1,\delta\|D_*\|_2\}.
+  \label{eq:cal-neutral-no-width}
+\end{equation}
+无论增加多少这种探查，都无法缩减该历史上的不可避免首次任务曝光。
+\end{proposition}
+
+\begin{proof}
+$Hu_i=0$ 意味着 $u_i\in\ker H$，所以 $Nu_i\in\mathcal C$。于是 $\mathcal C+Q=\mathcal C$，直接得到结论。
+\end{proof}
+
+这使允许的有限任务偏离获得明确职责：它提供激励 $\mathcal C^\perp$ 中任务耦合通道的权限。该结论是最坏历史限制，而不是断言名义任务中性探查在每个实际患者上都无用。非零观测可能揭示能够用于新实现的任务零空间响应；仍须重新计算数据一致模型和实际能力。
+
+\subsection{所有观测历史的一个充分上界}
+
+取 $Q$ 为 $D_*$ 的前 $k$ 个左奇异方向，在任意无噪声历史上定义
+\begin{equation}
+  \widehat\Theta=\Theta P_Q,\qquad
+  \widehat G=I_m+\widehat\Theta D_*,
+  \qquad C_k=B_*\widehat G^{-1}.
+\end{equation}
+若 $\delta\|P_QD_*\|_2<1$，则
+\begin{align}
+  JC_k-I_m
+  &=\Theta(I-P_Q)D_*\widehat G^{-1},\\
+  \|JC_k-I_m\|_2
+  &\le
+  \delta\sigma_{k+1}(D_*)\,
+  \|\widehat G^{-1}\|_2\\
+  &\le
+  \frac{\delta\sigma_{k+1}(D_*)}
+  {1-\delta\|P_QD_*\|_2}.
+  \label{eq:cal-nonzero-upper}
+\end{align}
+这是所有历史上的充分上界。它与零历史的必要下界通常存在间隙；不能将二者写成一个未经证明的精确样本复杂度。
+
+\section{有噪声的实际探查与凸响应修复}
+\label{sec:cal-noisy}
+
+\subsection{使用实际执行量构造估计}
+
+将经过物理验收并实际执行的探查命令堆叠为 $U$，令
+\begin{equation}
+  X=NU,\qquad
+  R_{\mathrm{data}}=\Delta Y-HU=\Theta X+W,
+  \qquad\|W\|_2\le\nu .
+  \label{eq:cal-data}
+\end{equation}
+$W$ 包含测量噪声、重复探查间的未抵消漂移以及 $E_{\mathrm{geo}}U$。如果两次探查共享相同初始状态或有可信的基线消除，可降低漂移项；不能默认它自动消失。由此定义
+\begin{equation}
+  \widehat\Theta=R_{\mathrm{data}}X^\dagger,
+  \qquad
+  \widehat J=H+\widehat\Theta N,
+  \qquad P_X=XX^\dagger .
+  \label{eq:cal-estimate}
+\end{equation}
+因为
+\begin{equation}
+  \widehat\Theta
+  =\Theta P_X+WX^\dagger,
+\end{equation}
+对任意修复实现 $C$，
+\begin{align}
+  (J-\widehat J)C
+  &=
+  \Theta(I-P_X)NC
+  -WX^\dagger NC+E_{\mathrm{geo}}C,\\
+  \|(J-\widehat J)C\|_2
+  &\le
+  \underbrace{
+  \delta\|(I-P_X)NC\|_2}_{\text{未激励方向}}
+  +
+  \underbrace{
+  \nu\|X^\dagger NC\|_2}_{\text{估计误差放大}}
+  +
+  \underbrace{
+  \eta\|C\|_2}_{\text{结构外误差}} .
+  \label{eq:cal-q}
+\end{align}
+记右侧为 $q(C,X)$。它同时检查是否激励了正确方向，以及激励是否具有足够的数值条件。单纯提高 $\operatorname{rank}(X)$ 不保证少量低幅度探查在噪声中有效。
+
+\subsection{固定探查数据后的可计算修复}
+
+设一个经实际运动学、碰撞和接触检查得到的输入内近似为
+\begin{equation}
+  \mathcal U=
+  \{u:a_i^\top u\le b_i,\ i=1,\ldots,p\}.
+\end{equation}
+局部误差可信区间为 $\|e\|_2\le r_{\mathrm{task}}$，已知前馈命令为 $u_{\mathrm{ff}}$。固定实际探查数据后可解
+\begin{equation}
+\begin{aligned}
+  \min_C\quad&
+  \|C-C_{\mathrm{transported}}\|_{W_C}^2+
+  \lambda\|C\|_F^2\\
+  \text{s.t.}\quad&
+  \widehat JC=I_m,\\
+  &q(C,X)\le q_{\mathrm{goal}}<1,\\
+  &EC=0,\\
+  &a_i^\top u_{\mathrm{ff}}
+   +\kappa r_{\mathrm{task}}\|a_i^\top C\|_2
+   \le b_i,\quad i=1,\ldots,p.
+\end{aligned}
+\label{eq:cal-convex-repair}
+\end{equation}
+其中 $W_C$ 为固定正定代价度量，$EC=0$ 表达要求保留的线性接触约束。该问题是凸的：等式为仿射约束，$q$ 是线性矩阵映射的谱范数之和，能力条件是行范数约束。最后一组不等式保证所有可信误差下
+\begin{equation}
+  u=u_{\mathrm{ff}}-\kappa Ce\in\mathcal U .
+\end{equation}
+
+若模型与物理检查使可行集为空，应增加有依据的探查、改变允许实现或报告该保证不可实现，而不是放宽未验证的误差半径。dIRD 的梯度可以用于提出候选实现，但其密度或可达性代理值不代替 $\mathcal U$ 的真实验收。
+
+\section{修复后的闭环恢复与滚动未来管}
+\label{sec:cal-recovery}
+
+\subsection{连续时间恢复保证}
+
+\begin{theorem}[任务恢复率与残差管]
+\label{thm:cal-recovery}
+假定修复实现满足 $\widehat JC=I_m$，且在可信窗口内
+\begin{equation}
+  \|(J-\widehat J)C\|_2\le q<1 .
+\end{equation}
+将前馈不匹配和外部漂移合并为 $\widetilde w$ 后，反馈误差满足
+\begin{equation}
+  \dot e=-\kappa(I_m+\Delta)e+\widetilde w,
+  \quad\|\Delta\|_2\le q,\quad
+  \|\widetilde w\|_2\le w_{\max}.
+  \label{eq:cal-error-dynamics}
+\end{equation}
+则
+\begin{equation}
+\begin{aligned}
+  \|e(t)\|_2
+  \le\;&
+  e^{-\kappa(1-q)t}\|e(0)\|_2\\
+  &+
+  \frac{w_{\max}}{\kappa(1-q)}
+  \big(1-e^{-\kappa(1-q)t}\big).
+\end{aligned}
+\label{eq:cal-continuous-tube}
+\end{equation}
+\end{theorem}
+
+\begin{proof}
+取 $V(e)=\frac12\|e\|_2^2$，有
+\begin{align}
+  \dot V
+  &=-\kappa\|e\|_2^2
+    -\kappa e^\top\Delta e
+    +e^\top\widetilde w\\
+  &\le
+  -\kappa(1-q)\|e\|_2^2
+  +\|e\|_2w_{\max}.
+\end{align}
+在 $\|e\|_2>0$ 时除以 $\|e\|_2$，在零点使用上 Dini 导数，得到
+\begin{equation}
+  D^+\|e\|_2
+  \le-\kappa(1-q)\|e\|_2+w_{\max}.
+\end{equation}
+与标量线性微分方程比较并积分，即得~\eqref{eq:cal-continuous-tube}。
+\end{proof}
+
+因此，如果任务要求最低恢复率 $\lambda_{\mathrm{task}}>0$ 和稳态误差半径 $\epsilon_{\mathrm{task}}>0$，一个直接可验收条件是
+\begin{equation}
+  \kappa(1-q)\ge\lambda_{\mathrm{task}},
+  \qquad
+  \frac{w_{\max}}{\kappa(1-q)}
+  \le\epsilon_{\mathrm{task}} .
+  \label{eq:cal-task-rate}
+\end{equation}
+这说明校准误差不是孤立的预测指标，而是进入任务恢复速度、误差半径与能力约束的共同验收量。
+
+\subsection{离散时间边界与未来管}
+
+若局部采样模型为
+\begin{equation}
+  e_{j+1}=
+  [I_m-h\kappa(I_m+\Delta_j)]e_j+d_j,
+  \qquad\|d_j\|_2\le\omega_j,
+\end{equation}
+则
+\begin{equation}
+  \|I_m-h\kappa(I_m+\Delta_j)\|_2
+  \le |1-h\kappa|+h\kappa q_j .
+  \label{eq:cal-discrete-general}
+\end{equation}
+只有在 $0<h\kappa\le1$ 时，才能写成
+\begin{equation}
+  \rho_j=1-h\kappa(1-q_j)<1 .
+  \label{eq:cal-discrete-rho}
+\end{equation}
+若 $h\kappa>1$，充分收缩条件应使用
+\begin{equation}
+  |1-h\kappa|+h\kappa q_j<1,
+\end{equation}
+而不能继续使用~\eqref{eq:cal-discrete-rho}。对于固定 $q$，它相当于 $h\kappa<2/(1+q)$。机器人延迟与采样近似误差需要包含在模型或 $d_j$ 中；连续时间证明不能自动覆盖这些因素。
+
+从当前证据半径 $r_t$ 出发，时变未来管可递推为
+\begin{equation}
+  r_{j+1}=\rho_jr_j+\omega_j .
+  \label{eq:cal-tube-recursion}
+\end{equation}
+当 $\rho_j=\rho$ 时，
+\begin{equation}
+  r_{t+k}
+  \le\rho^kr_t+
+  \sum_{\ell=0}^{k-1}
+  \rho^{k-1-\ell}\omega_{t+\ell}.
+  \label{eq:cal-future-tube}
+\end{equation}
+新的实际探查会更新 $X,\widehat J,q$，从而修改整条未来管，而不是只调整下一步动作。材料管经当前有效的人体映射与姿态纤维运输后，得到物理空间中的位置和姿态管。该管不必在每个时刻单调变宽；它由恢复能力、扰动与观测证据共同决定。
+
+\subsection{沿材料路径的有限校准有效区间}
+
+一处校准不能保证整段长血管的响应。若经过独立验证，可以在共同运输标架内使用局部变化界
+\begin{equation}
+  \|\Theta(\xi)-\Theta(\xi_0)\|_2
+  \le Ld_g(\xi,\xi_0),
+  \label{eq:cal-spatial-variation}
+\end{equation}
+则在当前 $N(\xi)$ 下，证书可增加
+\begin{equation}
+  q_{\mathrm{variation}}=
+  Ld_g(\xi,\xi_0)\|N(\xi)C\|_2 .
+  \label{eq:cal-variation-q}
+\end{equation}
+预测位置距最近有效校准锚点越远，证书通常越弱；新的探查更新锚点，可以收紧后续管。变化界不是坐标构造自动赋予的性质。若没有这类界，应使用局部窗口保证，并在新窗口重新验收。
+
+在观测无效时，不能把缺失特征写成零误差。应使用显式的预测或保持运动界扩张误差管，并在超过可信阈值时恢复观测。上述恢复定理不保证图像始终有效，也不证明目标分叉关联始终正确；这些状态必须在观测规则中单独处理。
+
+\section{有限候选算法的可实现与完备性边界}
+\label{sec:cal-finite}
+
+对每个保持材料任务的允许实现，生成有限且经过物理检查的探查库 $\{u_1,\ldots,u_M\}$。定义
+\begin{equation}
+  \mathcal L_N=
+  \operatorname{span}\{Nu_1,\ldots,Nu_M\},
+  \qquad r_{\mathrm{lib}}=\dim\mathcal L_N .
+\end{equation}
+实际算法依次执行探查并解~\eqref{eq:cal-convex-repair}。当验收失败时，可用当前候选的 $(I-P_X)NC$ 的主要左奇异方向提出下一条探查，再由实际能力检查和有限库选择决定是否执行。此贪心选择是启发式，不能声称最少探查最优。
+
+在无噪声固定模型内，选择该库的一个实际可执行基，只需至多 $r_{\mathrm{lib}}$ 个独立方向。若某个实际可行任务实现 $C$ 满足
+\begin{equation}
+  JC=I_m,\qquad
+  \operatorname{range}(NC)\subseteq\mathcal L_N ,
+\end{equation}
+则全部库基校准以后 $(I-P_X)NC=0$，其响应可由数据精确得到；凸可行性验收能够包含该实现。这个结论是对指定有限库和局部模型的条件完备性。噪声存在时，额外重复采样可能必要；它不能被独立方向秩的上界代替。
+
+若没有独立安全探查可用，或允许实现均无法满足任务恢复证书，算法应明确返回不可验收，而不是继续执行一个只有名义可达性的方案。
+
+\section{合法混合探查与后续实现可以相互适配}
+以下是代数机制例，尚不是人体实验。取
+\begin{equation}
+ H=\begin{bmatrix}1&0&0\\0&1&0\end{bmatrix},\qquad
+ N=\begin{bmatrix}1&0&1\\0&1&0\end{bmatrix}.
+\end{equation}
+任务零空间通道为 $\mathcal C=\operatorname{span}(1,0)$，最小曝光实现及其矩阵为
+\begin{equation}
+ B_\star=[e_1-e_3,e_2],\qquad
+ D_\star=NB_\star=\begin{bmatrix}0&0\\0&1\end{bmatrix}.
+\end{equation}
+假设最便宜或唯一合法的探查为 $u_p=e_2+e_3$，则实际激励是 $q=Nu_p=(1,1)^\top$。若固定 $B_\star$，投影后曝光仍有
+\begin{equation}
+ \norm{(I-P_Q)D_\star}=1/\sqrt2,
+ \qquad Q=\operatorname{span}(q).
+\end{equation}
+但 $\mathcal C+Q=\R^2$，正确剩余 $D_Q=0$。选择
+\begin{equation}
+ B_Q=[e_1-e_3,e_2+e_3],\quad
+ HB_Q=I_2,\quad NB_Q=\begin{bmatrix}0&1\\0&1\end{bmatrix}
+\end{equation}
+即可把未来曝光放到已校准的混合方向。测到的向量 $g=\Theta q$ 给出
+\begin{equation}
+ JB_Q=I_2+[0,g],\qquad
+ C_{\rm repair}=B_Q(I_2+[0,g])^{-1}.
+\end{equation}
+当该增益可逆且实际能力验收通过时，一次合法混合方向探查足够修复全部任务响应；若 $\delta\sqrt2<1$，可逆性对整个范数球成立。代价是 $\norm{B_Q}=\sqrt3$ 而 $\norm{B_\star}=\sqrt2$。
+
+这里不要求 IRD 产生恰好等于理想 SVD 的动作。实际探查可以受约束；机器人也可以改变后续实现，使未来所需反馈落入真实已经校准的方向。这一双向匹配由 $D_Q$ 定理描述，而不是额外增加一个学习模块。
+
+\section{超声中的真实不确定通道：由切片交点直接推导}
+\subsection{面内动作和面外动作需要不同的未知量}
+在有效、关联正确的局部窗口，血管切向为 $t$，探头原点为 $p$，切片法向为 $n$，面内单位基为 $E=[e_x,e_z]$。局部交点由
+\begin{equation}
+ \gamma(s)=\gamma_0+ts,\qquad
+ n^\top(\gamma(s)-p)=0,\qquad
+ y=E^\top(\gamma(s)-p)
+\end{equation}
+给出。固定姿态对时间微分，若 $n^\top t\ne0$，则
+\begin{align}
+ \dot s&=\frac{n^\top v}{n^\top t},\\
+ \dot y&=-E^\top v+\beta n^\top v,
+ &\beta&=\frac{E^\top t}{n^\top t}.
+\end{align}
+二维单切片看不到完整面外血管切向，因此 $\beta$ 需要先验或校准。若 $n^\top t$ 太小，交点模型病态，应拒绝该窗口而非宣布小样本可修复。绕切片法向的转角符号取 $\dot y=(z,-x)^\top\dot\alpha$，该动作不改变切片本身。
+
+局部平面皮肤下，选择面内切向平移、绕切片法向摇摆、面外皮肤切向平移三种控制，得到
+\begin{equation}
+ J(y)=
+ \begin{bmatrix}-1&z&\beta_x\\0&-x&\beta_z\end{bmatrix}
+ =H+\theta N,\quad
+ H=\begin{bmatrix}-1&z&\bar\beta_x\\0&-x&\bar\beta_z\end{bmatrix},\quad
+ N=\begin{bmatrix}0&0&1\end{bmatrix}.
+\end{equation}
+这里 $\theta=\beta-\bar\beta\in\R^{2\times1}$，不是人为添加的低秩未知模型：面外斜率只在面外位移时进入，具有实际几何来源。若两分量均未知，任意有限 $\beta$ 都对应真实单位切向
+\begin{equation}
+ t(\beta)=\frac{E\beta+n}{\sqrt{1+\norm{\beta}^2}},
+\end{equation}
+因此局部斜率球可作为明示的物理模型类。若另有解剖约束使未知量只有一个标量或更小集合，谱范数球只是保守包络：修复上界仍有效，精确最小最大下界不能直接宣称在缩小后的物理类中仍紧。未知的接触变形、传感标定误差、关联错误不能由这个因式分解自动消除；前三者的可界定部分进入剩余项，关联错误则使模型无效。
+
+中心实现 $x=0$、$\bar\beta_z\ne0$ 时，$H$ 满行秩，但 $H\ker N$ 只能产生一维面内任务作用。因此局部首次单位响应的结构校准方向数为一。若任务允许 $x=\ell\ne0$，则
+\begin{equation}
+ B_\ell=
+ \begin{bmatrix}
+ -1&-z/\ell\\0&-1/\ell\\0&0
+ \end{bmatrix},\qquad
+ JB_\ell=I_2,\qquad NB_\ell=0.
+\end{equation}
+两维任务仍被控制，而未知 $\beta$ 不被调用。这不是被动换坐标，而是换了实际机器人实现与真实杠杆。另一方面，$1/|\ell|$ 放大了运动需求；太小的偏移可能违反角速度、接触和关节能力约束。
+
+\subsection{有限动作必须用精确接触几何验收}
+固定切片平面、静止目标交点和局部平面皮肤；CoP 沿固定皮肤切向平移 $d$，探头在该平面中转动 $\alpha$。则
+\begin{equation}
+ y'=R_2(-\alpha)\begin{bmatrix}x-d\\z\end{bmatrix},\qquad
+ R_2(\alpha)=\begin{bmatrix}\cos\alpha&-\sin\alpha\\\sin\alpha&\cos\alpha\end{bmatrix}.
+\end{equation}
+目标 $y'=(\ell,z_\star)$ 等价于
+\begin{align}
+ z&=\ell\sin\alpha+z_\star\cos\alpha,\\
+ d&=x-\ell\cos\alpha+z_\star\sin\alpha.
+\end{align}
+第一式在零角附近的导数为 $\ell$；$\ell\ne0$ 时由隐函数定理得到局部小角解。无角度限制下仍有正深度偏差硬界
+\begin{equation}
+ z-z_\star\le\sqrt{\ell^2+z_\star^2}-z_\star.
+\end{equation}
+若有 $|\alpha|\le\alpha_{\max}$，需要取该区间上 $\ell\sin\alpha+z_\star\cos\alpha$ 的实际极值。不能只用一阶 Jacobian 宣称任意有限动作可达。
+
+全路径接触约束下的已知交互矩阵为
+\begin{equation}
+ H_0(\alpha)=\begin{bmatrix}-\cos\alpha&z'\\\sin\alpha&-x'\end{bmatrix},\qquad
+ \det H_0=x'\cos\alpha-z'\sin\alpha=x-d.
+\end{equation}
+持续可控需要物理横向杠杆 $|x-d|$ 全程有下界；图像横向偏移本身不是完整条件。有限控制可以直接求解上述精确几何，避免把已知的大转角非线性误差塞成不必要的校准。
+
+\noindent\textbf{纯几何核验。}取 $x=\ell=5\,\mathrm{mm}$、$z_\star=30\,\mathrm{mm}$，正深度硬界为 $0.41381265\,\mathrm{mm}$。$\pm0.5\,\mathrm{mm}$ 的对称修复不成立。对 $\pm0.1\,\mathrm{mm}$，精确解为
+\begin{center}
+\begin{tabular}{rrrr}
+\toprule
+初始深度差 & 转角 & CoP 平移 & 终点目标误差\\
+\midrule
+$-0.1\,\mathrm{mm}$ & $-1.08441^\circ$ & $-0.566866\,\mathrm{mm}$ & $<10^{-12}\,\mathrm{mm}$\\
+$+0.1\,\mathrm{mm}$ & $+1.22452^\circ$ & $+0.642248\,\mathrm{mm}$ & $<10^{-12}\,\mathrm{mm}$\\
+\bottomrule
+\end{tabular}
+\end{center}
+这些是精确刚体模型的数值核验，不是真实探头实验。声学耦合、压力、组织变形、IK 和碰撞仍需独立验收。
+
+\subsection{同一任务、首次合同与总成本的边界}
+面外移动会改变交点的材料相位，故共同任务必须允许同一血管片段内的有限相位偏差。若要求严格固定材料截面，则不能将面外中心纠偏与固定平面偏心纠偏当成同一任务。
+
+中心时的一方向下界只对应冻结局部模型与首次合同。任意多步策略可以先平移形成杠杆再摇摆，因此不能声称所有从中心出发的扫描策略都必须校准 $\beta$。这条重构路径本身也是可选实现，其耗时必须计入。
+
+长血管的推进通常仍含面外前馈 $u_{\rm ff}$，产生未知漂移 $\Theta Nu_{\rm ff}$；它进入恢复定理中的 $\widetilde w$，例如需要纳入 $\delta\norm{Nu_{\rm ff}}$ 的界。$NB_\ell=0$ 免去的是这两个局部特征纠偏的斜率校准，不是免去全扫描的所有未知量。若任务合同还要求精确控制推进相位或额外切面特征，应把这些要求加入任务模型，重新计算 $H,N,D_\star$，不能搬用二维结论。
+
+按横向速度上限 $15\,\mathrm{mm/s}$，从中心转到 $5\,\mathrm{mm}$ 偏移至少要 $0.333\,\mathrm{s}$。免去一个校准方向不保证总时间降低；只有
+\begin{equation}
+ T_{\rm switch}+T_{\rm probe}+T_{\rm repair}+T_{\rm execute}
+\end{equation}
+在同一任务质量和真实预算下更小，才构成工程收益。
+
+\section{可微 IRD 怎样进入完整算法，而不膨胀系统}
+\subsection{候选生成与硬验收分开}
+令 $a$ 包括材料允许偏离、探头姿态纤维、rail 配置和机器人实现分支。变换到 IRD 的完整探头目标为
+\begin{equation}
+ T_{\rm rel}(a)=T_{\rm base}(a)^{-1}T_{\rm probe}(a).
+\end{equation}
+对可微 IRD 得分 $\mathcal I(T_{\rm rel},a)$，用链式法则
+\begin{equation}
+ D_a\mathcal I=D_T\mathcal I\,D_aT_{\rm rel}+\partial_a\mathcal I
+\end{equation}
+搜索能保留任务且具有足够纠偏能力的候选。校准尾谱可作目标项：
+\begin{equation}
+ \min_{a\in\mathcal A_\tau}
+ c_{\rm switch}(a)+c_{\rm probe}(a,k)
+ +\lambda\,\sigma_{k+1}(D_\star(a))
+ -\mu\,\mathcal I(T_{\rm rel}(a),a).
+\end{equation}
+奇异值重合处用次梯度、光滑近似或直接枚举小候选库。IRD 是提议器；接受条件来自完整 IK 分支、接触、多面体输入能力、碰撞和有效观测，而非一个软得分。选姿态时 $H,N$ 也可能改变，必须逐候选重算，不搬用旧的 $D_\star$。
+
+\subsection{有限候选库中的可审查算法}
+\begin{enumerate}
+\item 由材料任务及纤维记录运输任务目的，建立当前允许实现集合；检查动捕、图册与可信目标关联。
+\item 由实际几何计算 $H_a,N_a$ 与剩余误差界，先纳入接触约束，再白化度量。
+\item 对每个真实可行候选计算 $D_\star(a)$，由谱尾得到必要有效激励方向数的放宽下界。
+\item 生成可执行的短探查库。每条候选存储实际可激励通道、时间、幅度、接触变化和观测有效区间；不是只存一列理想 SVD 向量。
+\item 在库内枚举或分支定界探查组合；使用预期噪声界与激励条件排除无法达成目标性能的组合。这里的最优性仅相对于声明的有限库。
+\item 执行选定短探查，记录实际材料拉回动作。失锁段不能作为可信特征回归数据；模型有效性被破坏时重新获取目标。
+\item 用实际数据求解修复实现 $C$ 的凸验收问题。证书不通过时，补探查、换实现或停止推进；不能把不可行结果剪掉后声称完备。
+\item 执行闭环短段，按沿途变化界更新未来管，并在证书到期前重算或探查。
+\end{enumerate}
+对每个候选得到可行总代价上界 $U_a$。无约束谱给出方向下界；若每有效方向确有统一代价下界 $c_{\min}>0$，可转为 $L_a=c_{\rm switch}^{\rm lb}+c_{\min}k_{\rm necessary}$。没有实际时间或能量下界时，不能把方向数直接当作时间下界。选出的 $U$ 与放宽 $L$ 构成可报告差距；它不是整个连续非线性扫描问题的全球最优证明。
+
+\section{未来锥、局部失锁与运动基元的位置}
+局部辨识不自动保证整条血管。为避免增加独立大模块，给已有通道加一个经过验证的短窗口变化界即可。设 $\xi_0$ 是最后校准锚点，按图册与纤维转移同一通道后有
+\begin{equation}
+ \norm{\Theta(\xi)-\mathsf T_{\xi_0\to\xi}\Theta(\xi_0)}
+ \le Ld_g(\xi,\xi_0).
+\end{equation}
+其中运输 $\mathsf T$ 来自明示的物理通道标架。被动换图可严格变换；不同位置的真实模型是否接近，需要该经验或物理界，不能由调和性推出。
+
+修复证书增加
+\begin{equation}
+ q_{\rm drift}(\xi,C)=Ld_g(\xi,\xi_0)\norm{N_\xi C}.
+\end{equation}
+由同一策略的递推 $r_{j+1}\le\rho_jr_j+\omega_j$ 得到未来误差管；距离远、变化界大时管扩张，新探查更新锚点后整条预测管重算。它可以是确定性鲁棒管，无须额外引入概率模型，也不一定单调长成几何圆锥。
+
+可信特征丢失时，$e$ 不可用，收缩保证暂停。最多按已验收的无反馈短段和扰动界膨胀误差集；重新关联后再使用校准合同。局部视野与错误目标关联不是这个局部定理已经解决的问题。若今后扩展到失锁切换系统，应独立证明关联和重捕获条件，避免把本稿膨胀成未完成的全系统理论。
+
+GP、KMP、ProDMP 或几何 DMP 继续提供材料路径先验、动作候选和局部形状插值；核心决策改成选实现、选必要探查与修复反馈。GP 方差不能代替 $\delta,\eta,L$ 的已验证界。少样本学习的合理对象是局部 $\Theta$ 的作用、剩余误差尺度或候选排序；本核心不依赖新增网络，也不要求 VLM 或图像表征模型。
+
+\section{当前贡献、文献边界与独立评分}
+\subsection{哪些是经典基础，哪个组合构成当前主贡献}
+任务导向探索已有实例相关样本复杂度\cite{wagenmaker2021}，无需完整模型即可识别属性的最低激励子空间也已有理论\cite{kang2023}。不确定控制分配已利用控制效能协方差选择保持目标作用的加权伪逆\cite{grauer2022}；针对鲁棒性能优化探查亦已有顺序学习与控制\cite{venkata2024}。部分线性信息、最坏情形恢复及零历史对手也属于最优恢复的经典基础\cite{foucart2024}。2026 年任务兼容主动校准研究进一步说明可辨识性与下游终端可控性不能混为一谈\cite{kobayashi2026}。超声交互矩阵和自适应视觉伺服本身也不是新发现\cite{krupa2005}。
+
+本稿争取的明确贡献是：\textbf{以真实不确定通道为前提，把任务零空间与已校准数据共同商掉，得到任意共同首次物理校正动作的精确最小最大任务误差；再由该对象推导每个校准预算的谱前沿、必要有效方向数及可执行修复上界。} 它回答的是允许换实现时究竟还必须知道什么，而非重新命名控制分配、Fisher 信息或低秩近似。
+
+\subsection{独立代理评价及其范围}
+\begin{center}
+\begin{tabularx}{\linewidth}{YccY}
+\toprule
+审读职责 & 原创性 & 理论深度 & 评价对象\\
+\midrule
+严苛独立审稿 & $4/5$ & $4/5$ & 商空间首次性能定理与谱前沿\\
+最终独立数学审稿 & $4/5$ & $4/5$ & 相同核心及物理验收边界\\
+文献与近邻审读 & $4/5$ & $4/5$ & 任务实现、校准需求与恢复合同机制\\
+超声物理机制审读 & $3.5/5$ & $4/5$ & 超声应用机制；与经典 IBVS 仍较近\\
+\bottomrule
+\end{tabularx}
+\end{center}
+这些分数是代理对当前明确构造的研究评价，不是概率、投稿保证或外部同行评审。两位独立主审的 $4$ 分是在修复任意物理首动作的零空间绕过漏洞后给出的；物理审读的保留意见必须保留，不能用平均分掩盖。
+
+\subsection{最有辨别力的验证}
+必须与相同可信特征、接触模型、实现自由度、观测与计算预算的 belief-space/dual MPC 比较；基线也可选择偏心目标、rail 和相同探查。不承诺它原则上不能找到同样的最优动作。报告任务质量、真实探查时间、切换代价、反馈恢复率、约束违规与总计算时间。
+
+最重要的消融包括：只优化 IRD 能力；只校准固定实现；只优化不确定分配但没有性能驱动探查；有探查而不允许任务等价实现。成功证据应表现为同一任务合同下的有效谱尾降低，并对应更低真实校准成本或更可靠恢复。若只减少方向而总时间变差，应报告负结果。
+
+\subsection{本次独立核验}
+对三个矩阵规模、75 个随机 $H,N$、750 个随机右逆，核验 $HB_\star=I$、正交分解与 Gram 半正定差；最大右逆误差 $1.91\times10^{-14}$，最小差矩阵特征值为 $-2.32\times10^{-14}$，符合浮点舍入。上述超声两条有限运动的终点误差均小于 $10^{-12}\,\mathrm{mm}$。这些仅为公式与几何核验；未实现完整真实机器人算法，也未采集新真人数据。
+
+\begin{thebibliography}{9}
+\bibitem{pavlakos2019} G. Pavlakos et al. Expressive Body Capture: 3D Hands, Face, and Body from a Single Image. CVPR, 2019. \url{https://arxiv.org/abs/1904.05866}
+\bibitem{wagenmaker2021} A. Wagenmaker, M. Simchowitz, K. Jamieson. Task-Optimal Exploration in Linear Dynamical Systems. ICML, PMLR 139:10641--10652, 2021. \url{https://proceedings.mlr.press/v139/wagenmaker21a.html}
+\bibitem{kang2023} S. Kang, K. You. Minimum input design for direct data-driven property identification of unknown linear systems. Automatica 156:111130, 2023. \url{https://doi.org/10.1016/j.automatica.2023.111130}
+\bibitem{grauer2022} J. A. Grauer, J. Pei. Minimum-Variance Control Allocation Considering Parametric Model Uncertainty. AIAA SciTech, 2022. NASA NTRS 20210023819. \url{https://ntrs.nasa.gov/citations/20210023819}
+\bibitem{venkata2024} J. Venkatasubramanian, J. K\"ohler, J. Berberich, F. Allg\"ower. Sequential learning and control: Targeted exploration for robust performance. arXiv:2301.07995, version 3, 2024. \url{https://arxiv.org/abs/2301.07995}
+\bibitem{kobayashi2026} J. Kobayashi. When Identifiability Is Not Enough: Terminal Controllability in Task-Compatible Active Calibration. IEEE Robotics and Automation Letters 11(10):11039--11045, 2026. \url{https://doi.org/10.1109/LRA.2026.3719194}
+\bibitem{krupa2005} A. Krupa, F. Chaumette. Control of an ultrasound probe by adaptive visual servoing. IROS, 2005. \url{https://doi.org/10.1109/IROS.2005.1545272}
+\bibitem{foucart2024} S. Foucart, C. Liao. Radius of Information for Two Intersected Centered Hyperellipsoids and Implications in Optimal Recovery from Inaccurate Data. arXiv:2401.11112, 2024. \url{https://arxiv.org/abs/2401.11112}
+\end{thebibliography}
+\end{document}
