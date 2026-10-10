@@ -1,0 +1,1221 @@
+% !TeX program = xelatex
+% Compile twice with XeLaTeX. Bibliography is included below.
+% The accompanying source archive supplies fonts, figures, proofs and verification.
+\documentclass[11pt,a4paper]{article}
+\usepackage{fontspec}
+\IfFontExistsTF{Noto Sans CJK SC}{
+  \setmainfont{Noto Sans CJK SC}[AutoFakeBold=2,AutoFakeSlant=.12]
+  \setsansfont{Noto Sans CJK SC}[AutoFakeBold=2]
+}{
+  \setmainfont{NotoSansCJKsc-Regular.otf}[Path=fonts/,AutoFakeBold=2,AutoFakeSlant=.12]
+  \setsansfont{NotoSansCJKsc-Regular.otf}[Path=fonts/,AutoFakeBold=2]
+}
+\setmonofont{Latin Modern Mono}
+\XeTeXlinebreaklocale "zh"
+\XeTeXlinebreakskip=0pt plus 1pt
+\usepackage[margin=23mm,headheight=15pt]{geometry}
+\usepackage{amsmath,amssymb,amsthm,mathtools,bm}
+\usepackage{booktabs,tabularx,longtable,array,graphicx}
+\usepackage{xcolor,hyperref,xurl,fancyhdr,enumitem}
+\definecolor{inkblue}{HTML}{174C65}
+\definecolor{accent}{HTML}{A6502B}
+\hypersetup{colorlinks=true,linkcolor=inkblue,citecolor=inkblue,urlcolor=inkblue,
+  pdftitle={Anatomical GPS V5.1: Compiled Material Task Primitives},
+  pdfauthor={Research design and independent technical review}}
+\setlength{\emergencystretch}{4em}
+\setlength{\parskip}{.3em}
+\linespread{1.04}
+\setlist{nosep,leftmargin=2em}
+\pagestyle{fancy}\fancyhf{}
+\fancyhead[L]{\small\color{inkblue}Anatomical GPS V5.1}
+\fancyhead[R]{\small 可编译的材料概率任务基元}
+\fancyfoot[C]{\thepage}
+\numberwithin{equation}{section}
+\newtheorem{theorem}{定理}[section]
+\newtheorem{proposition}[theorem]{命题}
+\newtheorem{lemma}[theorem]{引理}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{定义}
+\newtheorem{assumption}[theorem]{条件}
+\newtheorem{remark}[theorem]{说明}
+\renewcommand{\proofname}{证明}
+\renewcommand{\abstractname}{摘要}
+\renewcommand{\refname}{参考文献}
+\renewcommand{\contentsname}{目录}
+\renewcommand{\tablename}{表}
+\renewcommand{\figurename}{图}
+\widowpenalty=10000
+\clubpenalty=10000
+\newcommand{\R}{\mathbb R}
+\newcommand{\E}{\mathbb E}
+\newcommand{\Prob}{\mathbb P}
+\newcommand{\N}{\mathcal N}
+\newcommand{\D}{\mathcal D}
+\newcommand{\Q}{\mathcal Q}
+\newcommand{\norm}[1]{\left\|#1\right\|}
+\DeclareMathOperator{\rank}{rank}
+\DeclareMathOperator{\range}{range}
+\DeclareMathOperator{\row}{row}
+\DeclareMathOperator{\diag}{diag}
+\DeclareMathOperator{\Cov}{Cov}
+\DeclareMathOperator{\Var}{Var}
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+\setcounter{tocdepth}{1}
+\newcommand{\optionalfigure}[2]{\IfFileExists{#1}{\includegraphics[width=\linewidth]{#1}}{\fbox{\parbox{.93\linewidth}{#2；完整图见 PDF 或源代码包。}}}}
+
+\begin{document}
+\title{\color{inkblue}Anatomical GPS V5.1\\[3mm]
+\LARGE 可编译的材料概率任务基元\\[3mm]
+\large 局部观测、器官曲面与机器人执行查询的共同表示}
+\author{理论设计、可复现验证与独立交叉审读工作稿}
+\date{2026年10月10日}
+\maketitle
+\begin{abstract}
+局部超声只能逐步揭示当前对象，而仿真可以预先规定连续材料任务的形状与变化规律。
+连接两者的困难，是几何不确定性与任务不确定性相乘后，普通高斯运动基元不再闭合，
+而手工选择哪些变量必须采样又难以跨任务复用。
+本文提出一种由\emph{完整观测与执行查询族}驱动的材料概率任务表示：
+自动构造保留全部允许查询的共同条件坐标，对可验证的双线性模型给出表示类内的最小条件维数证书，
+并支持保留患者后验的查询扩展。
+在调和基图与正深度伸缩构成的明确几何类中，曲线位置、器官表面位置、切向量、面积法向及局部体积查询共享此结构；
+增加高维加性几何细节和任务权重不会增加所需的非高斯条件维数。
+另一方面，独立局部耦合的反例会强制该维数增长，编译器可以拒绝虚假的压缩主张。
+对静态患者潜模型，有限次多项式自然参数使新增条件点与嵌套查询升级不必重新遍历历史观测。
+局部超声与符合条件的慢速几何测量更新同一后验；dIRD 提议物理实现，完整机器人查询与原有误差接口承担验收。
+本稿给出解析证明、跨曲线与曲面的自动编译原型、合成推断比较、调和图册和八自由度运动学检查。
+精确性针对声明的模型与查询族；真实声学、失锁、接触控制和跨器官临床迁移仍需实体验证。
+\end{abstract}
+
+\noindent\textbf{版本定位。}
+本稿从 V4.4--V4.5 的标量能力与探查资源主线转向\textbf{任务概率表示的自动构造与复用}。
+保留共同材料意义、完整执行需求和统一误差预算；精确探查跨度不再列为主贡献。
+基线稿为 RealUS\_playground 的提交 \texttt{2e95325f}，并核对 AMONG\_US 中的调和坐标、概率参考与伺服接口。
+本稿是完整方法工作稿，独立审读记录在附录；其证据等级不等同于真实 IJRR 评审或机器人实验通过。
+
+\newpage
+\tableofcontents
+\newpage
+
+\section{研究对象与最重要的贡献}
+\label{sec:main}
+
+\subsection{应该被复用的是哪些知识}
+仿真可以给出平滑度、允许的材料路径形状、扫描速度规律以及几何变形模型；
+它不能预先知道当前患者的真实血管深度、器官边界、局部变形和成像偏差。
+因此，本文将任务写为一个关于\emph{未知患者目标}的联合概率对象，随后由当前患者的局部观测更新。
+选定的机器人指令、轨道位置和构型分支是决策变量，不应与这些未知目标混淆。
+
+核心问题是：给定同一材料目标的观测和执行算子，能否自动发现一组共同条件变量，
+把其余高维随机信息解析保留；换任务或机器人查询后，还能检查并延续这个表示？
+这个问题允许清楚区分三种维数：人体网格和场基数、保留的高斯状态维数，以及必须数值处理的非高斯条件维数。
+本文只对第三种维数给出最小性结论，绝不声称把完整患者信念压缩为几个数。
+
+\subsection{三项贡献及其证据责任}
+\begin{enumerate}
+\item \textbf{完整查询族上的材料概率基元。}
+把局部观测、连续材料任务和候选实现的线性需求交给同一个编译接口。
+在调和基图与正深度伸缩模型中，给出覆盖曲线、局部器官曲面和体积任务的具体构造，
+包括面积法向的闭合性质和无法压缩的反例。
+\item \textbf{具有维数证据的自动构造。}
+从算子生成器得到共同线性条件坐标，输出残余二次项检查、先验兼容性检查与实际查询的秩见证。
+在见证匹配时证明条件维数最小；未匹配时只报告安全候选及上下界。
+\item \textbf{保留证据的运行时复用。}
+在同一患者静态模型内支持嵌套查询扩展，并用多项式自然参数保存历史证据。
+同一实现用于不同任务基、几何基旋转、局部更新和机器人线性需求；以可复现实验检验精度与计算代价。
+\end{enumerate}
+
+条件高斯递推、Rao--Blackwell 化、共轭统计量和谱分解均有成熟先例。
+本文的方法增量须由上述\emph{同一个对象的完整闭合}承担，不能把几个经典公式各自算作新贡献。
+尤其，自动推断手工可写的 RBPF 已由概率程序工作明确研究\cite{murray2018,atkinson2022,autoconj2018}。
+
+\section{材料、任务、概率与观测语义}
+\label{sec:model}
+
+\subsection{一个与器官类别无关的输入接口}
+令材料域 \(\Omega\) 的维数为 2 或 3，并配备经验证的有限图册。
+任务索引域 \(\mathcal S\) 可是一维曲线、二维局部曲面或三维局部体积；
+索引 \(\sigma\) 与机器人时间 \(t\) 是不同变量。
+任务场为
+\begin{equation}
+ X_c(\sigma,z)=\Phi_c\bigl(a(\sigma,z)\bigr),\qquad
+ z=(\theta,w)\in\R^{N},\quad N=r+n .
+\end{equation}
+其中 \(c\) 是当前预测时段已记录的名义上下文，\(\theta\) 表示剩余几何未知量，
+\(w\) 表示当前患者的材料目标或目标场系数。实际任务命令另记作 \(u_t\)，实现选择记作 \(\rho\)。
+
+\begin{table}[ht]
+\centering\small
+\begin{tabularx}{\linewidth}{p{.17\linewidth}YY}
+\toprule
+对象 & 本文的职责 & 不能由该对象代替的职责\\
+\midrule
+调和材料图册 & 给出跨形状一致的材料地址及可检查的物理算子 & 真实目标重建、任意三维图册的自动无翻折保证\\
+GP／ProDMP & 指定连续目标场的先验与跨位置相关性 & 真实患者后验、选择控制指令的许可\\
+局部超声 & 用当前对象的登记特征更新潜变量 & 在未知切面交点下直接给出真实材料站位\\
+SMPL-X 慢更新 & 已测上下文，或带相关噪声的几何证据 & 独立重复样本、自动感知内部器官\\
+dIRD & 提议轨道、构型或可达性候选 & 未校准的网络分数作为完整执行证书\\
+控制器与验证器 & 使用完整需求、输入限制与误差裕量执行 & 把概率表示的精确性直接变成接触与碰撞保证\\
+\bottomrule
+\end{tabularx}
+\caption{沿用现有系统，但给各模块明确的数学接口。}
+\end{table}
+
+\subsection{无需真人示教的先验，以及它能保证什么}
+可以直接规定一个材料 GP，或由线性权重基构成
+\begin{equation}
+ d(\sigma,w)=d_0(\sigma)+B(\sigma)w,\qquad
+ w\sim\N(\mu_w,\Sigma_w).
+ \label{eq:field}
+\end{equation}
+这里首先定义底层高斯先验。若随后对相关联合先验乘以几何截断因子，
+\(w\) 的边缘一般不再高斯；应使用式\eqref{eq:prior} 的联合先验和条件分布，
+不能继续套用未截断边缘的矩。
+这允许从任务规则、程序化几何变化和仿真约束构造先验，而无需收集大量真人示教。
+同一个 \(w\) 作用于全部位置；在未截断的底层高斯模型中，
+\(\Cov(d(\sigma),d(\sigma'))=B(\sigma)\Sigma_wB(\sigma')^\top\)，
+不会把一条连续任务的每一帧独立化。
+
+对曲线运动，可以把 DMP forcing 写成 \(f(t)=\phi(t)^\top w\)，
+求解线性受迫动力学得到
+\begin{equation}
+ d(t)=d_{\rm hom}(t)+\Psi(t)^\top w,
+ \qquad \Psi(t)=\int_0^tG(t,\tau)\phi(\tau)\,d\tau .
+\end{equation}
+这里复用的是连续场的线性权重表达：当该场描述未知患者目标时，其权重才归入 \(w\)；
+机器人可自由设计的参考轨迹参数仍属于任务决策，不能作为待识别的患者事实。
+这正是 ProDMP 允许复用的线性权重接口\cite{prodmp}；本稿不重新宣称其发明。
+曲面任务使用同一材料场的多条采样轨迹，而不是给每条 raster 独立拟合不一致的 DMP。
+KMP 的核表示也可提供连续均值与协方差，但进入本框架前必须形成一致的联合场模型\cite{kmp}。
+
+Genesis 或 SMPL-X 生成的数据用于构造、检查或选定这个模型先验。
+它们的样本量不等于真实患者证据量；仿真中很小的误差不自动构成真实成像似然的误差界。
+无需示教不意味着无需确定目标规则、噪声和模型范围。
+在固定生成模型下，合成数据用于选择基、先验、形变范围与预计算，不作为该患者的附加似然项重复进入更新。
+当前患者观测更新的是 \((\theta,w)\) 的联合后验；少量局部观测未必唯一识别每个系数，
+因此必须保留几何与目标之间仍影响任务查询的相关性。
+站位、未知切片交点及系统成像偏差只有在相应潜变量和似然被明确加入、并通过编译验收后，才属于已覆盖的未知量。
+
+\subsection{允许的观测与完整查询族}
+设 \(\mathcal I\) 包含所有声明的局部观测、任务输出及候选执行需求。
+本稿的精确类要求每一个标量算子均可写为
+\begin{equation}
+ f_\iota(z)=c_\iota+\ell_\iota^\top z+z^\top Q_\iota z,
+ \qquad Q_\iota=Q_\iota^\top .
+ \label{eq:q}
+\end{equation}
+主要可计算输入类是
+\begin{equation}
+ f_\iota(\theta,w)=c_\iota+a_\iota^\top\theta+b_\iota^\top w+
+          \theta^\top M_\iota w,
+ \quad Q_\iota=\frac12\begin{bmatrix}0&M_\iota\\M_\iota^\top&0\end{bmatrix}.
+ \label{eq:bilinear}
+\end{equation}
+相同潜变量跨所有位置与查询共享。一次登记观测满足
+\begin{equation}
+ y_t=F_{\iota_t}(z)+\varepsilon_t,
+ \quad \varepsilon_t\sim\N(0,R_t),\quad R_t\succ0 .
+ \label{eq:obs}
+\end{equation}
+行动和观测索引 \(\iota_t\) 可以依赖已记录历史，但不能依赖未观测的真实目标。
+\(R_t\) 需要包含同源特征的相关性；从同一图像推导的位置与切向不能当作独立证据重复计数。
+
+\textbf{材料登记是显式前提。}
+本模型从可登记的局部特征开始；任意 raw B-mode、未知斜切面交点、依赖潜变量的失锁与删失，
+一般不满足式\eqref{eq:obs}。
+相位未知时，BIP 已有联合相位估计方法\cite{bip}；不能在对比中把它的难题默认为已解决。
+后面的射线构造给出一个不使用真实未知深度来登记站位的精确实例。
+
+\section{从血管曲线推广到器官曲面与局部体积}
+\label{sec:geometry}
+
+\subsection{调和基图与正深度伸缩}
+在名义材料表面的一块可投影区域上求解调和坐标，记作
+\begin{equation}
+ \nabla\!\cdot\!\bigl(A(x)\nabla H_j(x)\bigr)=0,
+ \qquad H_j|_{\partial V}=g_j^{\partial},\quad A(x)\succ0 .
+ \label{eq:harmonic}
+\end{equation}
+\(A\) 可以来自曲面诱导度量。光滑模型假设为 \(C^2\)；离散 P1 实现的导数结论逐单元成立。
+图册需验收一一性、方向与边界对应，令 \(g=H^{-1}:U\to V\)。
+离散实现采用对应的有限元能量；不能仅由“调和”二字推断任意三维体映射无翻折。
+凸组合平面映射的条件与三维反例已有经典结果\cite{floater2003,floater2006}。
+
+固定已登记姿态 \(R\in SO(3),t\in\R^3\)，定义
+\begin{align}
+ b_\beta(u)&=\sum_{j=1}^{m}\beta_j\phi_j(u),&
+ \lambda_\gamma(u)&=1+\sum_{j=1}^{k_0}\gamma_j\psi_j(u),\\
+ \Phi_{\beta,\gamma}(u,d)
+ &=R\begin{bmatrix}g_1(u)\\g_2(u)\\h_0(u)+b_\beta(u)+\lambda_\gamma(u)d\end{bmatrix}+t .
+ \label{eq:organ}
+\end{align}
+这里 \(h_0\) 可以是弯曲的名义器官图块，\(\beta\) 可以有很多加性细节模式；
+\(\gamma\) 表示与未知目标深度相乘的伸缩模式。
+\(d\) 是沿固定图块射线的材料深度，不是沿空间变化的表面法向的欧氏距离。
+
+若 \(\psi_j\ge0\)、\(\sum_j\psi_j=1\)，且
+\(\lambda_{\min}-1\le\gamma_j\le\lambda_{\max}-1\)，则全域都有
+\(\lambda_{\min}\le\lambda_\gamma\le\lambda_{\max}\)。
+这是结构证据，强于在若干网格点检查正值。
+高斯先验可乘以这个只依赖 \(\gamma\) 的截断因子；条件于 \(\gamma\) 后，\((\beta,w)\) 仍是联合高斯。
+
+\begin{proposition}[可逆图块与共同非线性维数]
+\label{prop:organ}
+若 \(g\) 为方向保持的微分同胚且 \(\lambda_\gamma\ge\lambda_{\min}>0\)，
+式\eqref{eq:organ} 在 \(U\times\R\) 上到其像一一可逆，且
+\begin{equation}
+ \det D\Phi=\lambda_\gamma\det Dg>0 .
+\end{equation}
+对式\eqref{eq:field} 的目标，位置、材料导数及曲面的未归一化面积法向都属于
+只含 \(\gamma_jw_l\) 混合乘积的双线性查询族。
+因此条件维数至多为 \(k_0\)，与加性几何基数 \(m\)、目标基数 \(n\) 无直接依赖。
+若实际查询组合给出秩 \(k_0\) 的混合矩阵，则这个维数在本文表示类内最小。
+\end{proposition}
+
+\textbf{构造的关键。}
+令 \(Z(u)=h_0(u)+b_\beta(u)+\lambda_\gamma(u)[d_0(u)+B(u)w]\)。
+曲面的面积法向满足
+\begin{equation}
+ \partial_1X\times\partial_2X
+ =R\begin{bmatrix}
+ -g_{2,2}Z_1+g_{2,1}Z_2\\
+ g_{1,2}Z_1-g_{1,1}Z_2\\
+ \det Dg
+ \end{bmatrix} .
+ \label{eq:normal}
+\end{equation}
+叉积中两项高度导数的乘积抵消，因而表面朝向的\emph{齐次线性锥约束}
+可以与位置、速度共用同一分解。
+对面积法向再除以其范数，或生成完整随机 \(SO(3)\) 姿态，通常不再属于该精确类。
+
+\subsection{三类任务与无需深度真值的站位}
+曲线取已登记的基底路径 \(u=u(s)\)，而未知深度仍为 \(d_0(s)+B(s)w\)。
+局部曲面直接取 \(u\in U\)；局部体积可以用 \(\sigma=(u,\nu)\) 并令
+\(d=d_0(u,\nu)+B(u,\nu)w\)。
+体积有向 Jacobian 为
+\begin{equation}
+ \det D_{(u,\nu)}X=\det Dg\;\lambda_\gamma
+ \bigl(\partial_\nu d_0+\partial_\nu B\,w\bigr),
+\end{equation}
+也处于相同双线性类。若需要保证体积扫描的单调覆盖，还应验收括号在全域为正这一事件。
+覆盖到体积算子并不等于已经证明所有三维扫描路线都无碰撞可执行。
+
+记 \(y=R^\top(x-t)\)，则
+\begin{equation}
+ u=H(y_1,y_2),\qquad
+ d=\frac{y_3-h_0(u)-b_\beta(u)}{\lambda_\gamma(u)} .
+ \label{eq:inverse}
+\end{equation}
+射线横向位置 \((y_1,y_2)\) 决定材料站位 \(u\)，不依赖未知目标深度。
+这是与原管状例子 \(x_1=s\) 同一职责的二维推广。
+需要图块横向登记和投影单值性；若两者未知，不能继续引用这个站位保证。
+完整闭合器官应使用多个兼容图块，同一潜场在重叠处一致；独立拟合几块任意高斯面不能自动拼成一份一致解剖。
+
+\subsection{方法必须承认不能压缩的几何}
+若不同局部区域分别出现 \(\gamma_jw_j\)，并且允许查询能独立检验这些区域，
+则某个实际查询之和的混合矩阵为 \(I_r\)。后面的下界给出 \(k_{\min}\ge r\)。
+每个单独标量查询的混合秩都可以只有 1，但\emph{共同查询族}的条件维数会增长。
+因此不能以一个标量的低秩替代整个任务的共同低维性。
+调和坐标解决共同材料意义，不保证所有现实变形都落在少数耦合模式中。
+
+\section{自动编译：候选、验收与最小性}
+\label{sec:compile}
+
+\subsection{从连续算子到有限证据}
+编译输入应包含一个经验证的展开
+\begin{equation}
+ M_\iota=\sum_{\alpha=1}^{p}a_{\iota\alpha}\overline M_\alpha,
+ \qquad \iota\in\mathcal I .
+ \label{eq:generators}
+\end{equation}
+它可由多项式、Bernstein 基、已知线性有限元单元或其他有精确算子展开的模型产生。
+如果只需上界，生成器的超集足够；如果要证明实际任务的最小维数，
+还需证明这些生成器由允许查询张成。
+在已知次数的多项式族中，一组非奇异插值点可完成此证书。
+未经次数证明的稠密采样网格不构成连续族证书。
+
+\begin{definition}[条件仿射表示]
+设 \(L\) 满行秩，\(\xi=Lz\)，\(V\) 的列张成 \(\ker L\)。
+若每个声明查询在每条残余纤维上均为仿射函数，称 \(L\) 为条件仿射证书。
+该表示保留其余变量 \(v\)，不将其替换为条件均值。
+\end{definition}
+
+\begin{theorem}[完整查询族的条件结构]
+\label{thm:compiler}
+对式\eqref{eq:q} 的查询族，\(L\) 是条件仿射证书当且仅当
+\begin{equation}
+ V^\top Q_\iota V=0\quad\text{对全部 }\iota\in\mathcal I .
+ \label{eq:zero}
+\end{equation}
+假设先验为
+\begin{equation}
+ p_0(z)=Z_0^{-1}\N(z;\mu,\Sigma)h(Pz),\quad
+ \Sigma\succ0,\quad \row(P)\subseteq\row(L),
+ \label{eq:prior}
+\end{equation}
+其中 \(h\ge0\)、\(0<Z_0<\infty\)，且观测满足式\eqref{eq:obs} 的完整、条件独立高斯模型。
+则任意有限合法自适应历史后的精确后验均可写成
+\begin{equation}
+ p(\xi,v\mid\D_t)=\pi_t(\xi)\N\bigl(v;m_t(\xi),C_t(\xi)\bigr).
+ \label{eq:posterior}
+\end{equation}
+任意有限组允许任务与实现查询在同一 \((\xi,\D_t)\) 下联合高斯，
+而 \(\pi_t\) 不要求高斯或单峰。该陈述也适用于几乎必然有限的合法停止历史。
+\end{theorem}
+
+条件 \eqref{eq:zero} 的 Hessian 解释与高斯递推都是基础工具，
+条件高斯系统已有系统研究\cite{chen2018}。
+本稿关心从\emph{全体物理查询}自动构造 \(L\)，并同时带上先验与最小性证据。
+先验截断若依赖未被条件化的方向，则高斯闭合会失效；这必须成为编译验收的一部分。
+
+\subsection{可实际实现的双线性编译器}
+把混合矩阵横向拼接为 \(\mathsf M=[\overline M_1\ \cdots\ \overline M_p]\)，
+求其共同几何范围 \(\mathcal E=\range(\mathsf M)\)，维数 \(k\)，基矩阵为 \(E\)。
+候选条件坐标为
+\begin{equation}
+ \xi=E^\top\theta .
+ \label{eq:conditioning}
+\end{equation}
+若先验支撑需要更多方向，则可把相应行空间加入 \(L\)，再验收残余。
+也可以从全部 \(M_\iota^\top\) 的共同范围构造任务侧候选，并比较两个先验兼容的候选。
+原型实现采用已声明的几何／任务语义分块及几何侧候选；没有实现任意混合输入下的全局子空间搜索。
+
+\begin{theorem}[匹配秩见证与不能压缩的下界]
+\label{thm:minimal}
+若一个\emph{实际允许查询}的有限线性组合
+\begin{equation}
+ M_* =\sum_{j=1}^{J}\alpha_j M_{\iota_j}
+ \label{eq:witness}
+\end{equation}
+具有秩 \(s\)，则任意条件仿射表示至少需要 \(s\) 个条件维数，
+即使允许混合几何与任务坐标也是如此。
+如果通过先验验收的候选有 \(k=s\)，它在本表示类内最小。
+否则仅得到 \(s\le k_{\rm aff}\le k\)，不能称候选最优。
+\end{theorem}
+
+其证明使用 \(Q_*\) 的惯性 \((s,s,N-2s)\)：
+任何剩余二次项为零的共同子空间至多有 \(N-s\) 维。
+数值 SVD 用于提出可执行坐标；有理数消元、结构恒等式或区间证据才可承担精确秩主张。
+有限随机组合未找到匹配见证不等于不存在见证。
+
+\begin{quote}
+\textbf{算法 1：带验收状态的任务基元编译。}
+\begin{enumerate}
+\item 从材料映射与声明算子生成 \((c_\iota,\ell_\iota,Q_\iota)\) 及有限族张成证据。
+\item 在双线性类内构造共同范围候选；加入先验支撑方向。
+\item 检查全部残余二次项及先验兼容性，保存变换与逆变换。
+\item 搜索实际查询组合的秩见证；匹配时输出最小证书，未匹配时输出上下界。
+\item 初始化联合条件高斯对象与历史证据累加器；允许查询、加入观测和扩展查询族均经过同一个接口。
+\end{enumerate}
+输出还应携带生成器版本、算术类型、容差、支撑条件和未覆盖算子列表。
+\end{quote}
+算法允许增补先验方向；本次原型仅验收已有候选的先验兼容性，
+不兼容时拒绝认证，没有实现一般的先验方向自动增补。
+严格最小性标志要求有理数秩、残余结构及先验行空间证据同时通过；
+纯浮点匹配仅输出数值状态。
+
+\subsection{基不变性与可复用范围}
+已知可逆潜坐标变换把 \(Q_\iota\) 共同作合同变换，式\eqref{eq:zero} 与物理查询分布不变。
+几何／任务分别换基时，共同范围候选的维数也不变。
+这防止“恰好把第一维命名为非线性变量”成为手工隐藏结构。
+但已知变换下搬运证书，与在完全未知混合潜变量中自动发现双线性语义，是不同问题。
+本原型验证前者与分块内自动发现。
+
+\section{后验更新、历史证据与任务升级}
+\label{sec:reuse}
+
+\subsection{同一联合后验的局部更新}
+条件化后，观测写成
+\(y_t=a_t(\xi)+H_t(\xi)v+\varepsilon_t\)。
+令 \(S_t=H_tC H_t^\top+R_t\)，则
+\begin{align}
+ K_t&=C H_t^\top S_t^{-1},\nonumber\\
+ m^+&=m+K_t(y_t-a_t-H_tm),\quad
+ C^+=C-K_tH_tC,\\
+ \pi^+(\xi)&\propto\pi(\xi)\N(y_t;a_t+H_tm,S_t).
+ \label{eq:update}
+\end{align}
+内层高斯更新精确，外层 \(\pi\) 可用自适应求积、SMC 或其他数值方法。
+用有限节点得到的是精确表示的数值近似；表示定理不消除积分误差。
+
+\subsection{不随历史长度增长的证据对象}
+在静态 \(z\) 模型中，\(H_t(\xi)\) 对 \(\xi\) 为一次，\(a_t(\xi)\) 至多为二次。
+本节要求 \(R_t\) 只依赖已记录历史、对潜变量固定。
+设先验条件高斯为 \(v\mid\xi\sim\N(m_0(\xi),C_0)\)，\(m_0\) 仿射，\(C_0\) 固定。
+定义
+\begin{align}
+ \Lambda_t(\xi)&=C_0^{-1}+\sum_{j\le t}H_j^\top R_j^{-1}H_j,\label{eq:statsL}\\
+ \eta_t(\xi)&=C_0^{-1}m_0+\sum_{j\le t}H_j^\top R_j^{-1}(y_j-a_j),\label{eq:statsh}\\
+ c_t(\xi)&=m_0^\top C_0^{-1}m_0+
+       \sum_{j\le t}(y_j-a_j)^\top R_j^{-1}(y_j-a_j).
+ \label{eq:statsc}
+\end{align}
+这些量的次数分别至多为 2、3、4，可以直接累积系数，不需要拟合样本处的后验。
+新的 \(\xi\) 处有
+\begin{align}
+ C_t&=\Lambda_t^{-1},\quad m_t=\Lambda_t^{-1}\eta_t,\\
+ \pi_t(\xi)&\propto\pi_0(\xi)|C_0|^{-1/2}|\Lambda_t|^{-1/2}
+ \exp\!\left[-\frac12\bigl(c_t-\eta_t^\top\Lambda_t^{-1}\eta_t\bigr)\right].
+ \label{eq:evidence}
+\end{align}
+与 \(\xi\) 无关的观测归一化常数被省略；若需绝对边际似然，可另存相应常数。
+
+\begin{proposition}[静态证据的多项式闭合]
+\label{prop:stats}
+在上述条件及固定历史观测模型下，式\eqref{eq:statsL}--\eqref{eq:statsc} 是精确的有限系数证据对象。
+它可在未见过的 \(\xi\) 处计算式\eqref{eq:evidence}，无须重放全部观测。
+若高斯残余有 \(m_v\) 维，一个对称存储的系数数目上界为
+\begin{equation}
+ \frac{m_v(m_v+1)}2\binom{k+2}{2}
+   +m_v\binom{k+3}{3}+\binom{k+4}{4}.
+ \label{eq:storage}
+\end{equation}
+该数目与历史长度无关，但依赖 \(k\) 与高斯状态维数。
+\end{proposition}
+
+本命题将经典高斯自然参数用于这个可升级的任务对象。
+自动共轭与充分统计量提取已有 Autoconj 等直接先例\cite{autoconj2018}，不能独立宣称首次。
+它在此处的作用是：新增查询或外层粒子 rejuvenation 后，仍能在新的条件位置计算旧证据。
+如果旧几何模型、噪声或数据关联被重拟合，原统计量不保证可继续使用。
+
+\subsection{同一患者内的后验保持扩展}
+新任务可能引入原分解未覆盖的二次项。先把旧观测族与新查询族一起编译，
+选取 \(\row(L)\subseteq\row(L')\) 的嵌套条件空间。
+取新增条件 \(\delta=A v\)，以 \(\omega=Cv\) 完成可逆残余坐标，则
+\begin{align}
+ \pi'_t(\xi,\delta)
+ &=\pi_t(\xi)\N(\delta;A m_t,A C_t A^\top),\label{eq:upgrade}\\
+ m'_\omega&=C m_t+C C_t A^\top(A C_t A^\top)^{-1}(\delta-A m_t),\nonumber\\
+ C'_\omega&=C C_t C^\top-C C_tA^\top(A C_t A^\top)^{-1}A C_t C^\top .\nonumber
+\end{align}
+这改变的是同一后验的坐标，不删除旧证据，也不生成新患者证据。
+多项式自然形式经过相同线性替换后仍为上述有限次数，因此升级后的新条件点仍可复用历史累加器。
+
+升级仅保证\emph{扩大}条件空间；缩小、替换或丢弃历史观测可能破坏条件高斯性。
+一个曲面潜场先查询某条路径，随后加入表面法向或新机器人需求，是这里的患者内复用。
+不同患者、不同器官使用同一编译器是模型与软件复用，不能继承上一患者的后验。
+
+\section{局部超声、慢更新与八自由度实现}
+\label{sec:robot}
+
+\subsection{dIRD 进入需求接口，而非替代它}
+用户仓库的机器人包含轨道和平移底座上的七关节，共八自由度。
+在已测构型 \(q\) 处，TCP Jacobian 为 \(J(q)\in\R^{6\times8}\)。
+对一个已固定候选与局部支路，若 \(\rank J(q)=6\) 且所需 twist \(\nu(z)\) 已编译，
+固定线性输入见证可写作
+\begin{equation}
+ \dot q_{\rm req}(z)=J(q)^\dagger\nu(z)+N(q)v_{\rm null},
+ \label{eq:robotquery}
+\end{equation}
+其中 \(J(q)N(q)=0\)，\(v_{\rm null}\) 为已选择的确定量。
+因此八个关节／轨道速度需求仍是原查询的线性组合，不增加混合方向。
+这并不声称随机 IK 解、任意主动集 QP 或反馈后的整条随机轨迹都是双线性。
+
+dIRD 可以根据同一患者后验提议轨道位置和构型候选，再由完整需求、FK／IK、
+输入限制、连续支路和接触／碰撞余量验收。
+在当前仓库实现中，\texttt{ird\_adapter.py} 主要为扫查起点提议一次轨道偏置，
+利用路径上场分数的 soft-min 排序；它不是已经存在的逐关节速度证书。
+本稿补的是供此类候选查询和验收的概率表示接口。
+
+对一个固定标量需求 \(G_\rho\)，设条件均值与方差为 \(\mu_\rho(\xi),s_\rho^2(\xi)\)，则
+\begin{equation}
+ \Prob(G_\rho>b\mid\D_t)=
+ \int\overline\Phi\!\left(\frac{b-\mu_\rho(\xi)}{s_\rho(\xi)}\right)
+ \pi_t(\xi)\,d\xi .
+ \label{eq:tail}
+\end{equation}
+当条件方差为零时使用对应确定性事件。
+外层积分是 \(k\) 维，但多时刻联合事件仍涉及高维相关高斯概率。
+不能把各时刻独立相乘，也不能让优化针对每个真实 \(w\) 单独选择一条 oracle 控制输入。
+
+\subsection{沿用 V4.4--V4.5 的可靠落地接口}
+旧稿的共同材料表示、完整输入需求和统一误差预算仍然必要。
+例如，若在同一验证事件上真实需求与模型需求满足
+\(\forall\rho,\ |G_\rho^{\rm true}-G_\rho|\le\epsilon_\rho\)，
+验证事件的后验失效概率至多为 \(\delta_{\rm model}\)，
+且数值风险上界误差统一不超过 \(\delta_{\rm num}\)，则
+\begin{equation}
+ \widehat{\Prob}(G_\rho>b-\epsilon_\rho\mid\D_t)
+ +\delta_{\rm num}+\delta_{\rm model}\le\delta
+ \label{eq:riskmargin}
+\end{equation}
+足以给出该标量真实需求的后验风险上界 \(\delta\)。
+需要对优化后可选的全部 \(\rho\) 有统一保证；平均网络误差不足以保证式\eqref{eq:riskmargin}。
+完整路径还应加入控制器的跟踪、接触和连续实现条件。
+这部分作为可靠性接口，不再把精确最少探查跨度放回主线。
+
+\subsection{SMPL-X 慢更新：有用但有限的扩展}
+若慢更新给出一个登记的线性几何测量
+\begin{equation}
+ y_{\rm slow}=A_{\rm slow}z+b_{\rm slow}+\varepsilon_{\rm slow},
+ \label{eq:slow}
+\end{equation}
+其二次矩阵为零，不增加条件维数，可与超声历史一起更新加性几何与目标。
+它的作用取决于该测量和未来任务量的后验相关性。
+条件全方差公式（附录式\eqref{eq:slowvalue}）说明，
+它在预期平方误差意义下有非负信息价值；只有确实改变任务的条件均值时才严格改善。
+不能据此声称每一次实现后的混合后验方差都下降。
+
+慢测量必须保留采集时间。来自同一 RGB 片段的重复网络输出有相关噪声；
+已经条件于原图像后，再把其确定性 SMPL-X 输出作为独立测量不会创造信息。
+真实几何在两个采样时刻发生变化时，应增加时间潜模型或建立新时段，
+不能把真实运动当作一个静态坐标改名。
+因此该模块保留为可检查的多速率观测入口，不承担核心新颖性。
+
+\section{可复现实验：自动性、复用与计算收益}
+\label{sec:experiments}
+
+\subsection{实验范围和无需示教的生成协议}
+所有本节概率实验使用程序化有限维先验和合成局部特征；
+没有采集真人示教，也没有运行 Genesis 声学、raw B-mode、ProDMP 训练或真实患者扫查。
+曲线与曲面共用 \texttt{compiler.py} 和 \texttt{inference.py}，
+目标基分别使用 8 与 12 个权重，几何为 4 个加性模式和 2 个伸缩模式。
+实际基为 Legendre／Bernstein；与权重仿射的 GP／ProDMP 可使用同一接口，
+但本实验没有把未运行的方法作为已验证实现。
+
+主实验各含 64 个独立合成对象，共 128 个，主随机种子为 \texttt{20261010}。
+每类任务覆盖 4 种有理正交几何换基。先验伸缩系数标准差为 0.32，
+截断于 \([-0.75,0.75]^2\)，正单位分解保证 \(0.25\le\lambda\le1.75\)。
+其余几何与任务权重允许相关，深度是名义内部目标周围的有符号残差，\(d_0=0\)。
+曲线得到 7 次局部深度观测，站位介于 0.035 与 0.525；
+曲面得到 8 次观测，第一材料坐标不超过 0.43。独立观测噪声标准差为 0.12 mm。
+未来位置查询位于尚未观察的材料区域，需求查询为
+\(G=0.1\partial_{u_1}Z\)，即固定射线深度方向的线性速度需求；
+它不是表面单位法向速度。
+阈值由同一任务先验的 20\% 双侧尾事件确定，不用测试对象真值挑选。
+
+这里把风险写为 \(p=\Prob(|G|>b\mid\D)\)，检验与高阶数值参考之间的误差。
+这个设计隔离了\emph{推断表示是否丢失执行信息}，不能把数值参考当作真实患者概率真值。
+
+\subsection{自动编译与应当拒绝的案例}
+编译器只接收几何／任务分块、算子矩阵、连续族证据和先验支撑，
+不接收用于核对的手工最优条件坐标。
+曲线、曲面各取 \(k=1,2,4\)，并各作 4 种稠密有理换基，得到 24 个实例。
+全部通过残余块、精确先验行空间和实际秩见证检查。
+连续族证据来自已知次数的非奇异有理插值集合，而不是未知函数的采样猜测。
+
+还检查四种不能误报成功的情形：共同几何范围维数为 2、已找到秩见证仅为 1 时，
+不声明最小；只对局部观测建立的一维分解遇到族外任务查询时拒绝；
+截断先验的支撑方向未被条件化时拒绝；有理矩阵与浮点输入不匹配时拒绝。
+最终先验验收还检查了一个只有 \(10^{-13}\) 系数、但在代数上独立的额外支撑方向，
+避免仅用数值容差把它错误忽略。
+
+对 \(k=1,2,3,4\) 的独立局部相乘反例，最小条件维数确实依次增长。
+每方向 12 节点的张量求积分别需要 12、144、1728、20736 个节点。
+这同时说明方法的边界：它识别能解析消去的方向，也会诚实报告不能继续压缩的模型。
+不能把该结果改写为对任意组织形变都能维持低成本。
+
+\subsection{模型内尾概率精度与强基线}
+自动 RB 使用二维 12 阶张量求积，共 144 节点。
+对照包括：手工最优 RB；对全部 6 个几何变量作 QMC、仅解析任务权重的 RB；
+带 tempering、重采样和 pCN 更新的完整潜变量 SMC；
+EKF、UKF，以及使用精确二次矩更新的 Gaussian ADF（QADF）。
+所有 Gaussian 方法使用相同截断先验矩，并对完整二次需求作数值推送，
+不把它们限制为只线性化最终查询。
+主表中全几何 RB 为 1024 节点、SMC 为 512 粒子、Gaussian 查询为 16384 个 QMC 样本；
+下一节另作公平的查询预算扫描。
+
+\begin{table}[ht]
+\centering\small
+\begin{tabular}{lrrrr}
+\toprule
+ & \multicolumn{2}{c}{曲线：64 个对象} & \multicolumn{2}{c}{曲面：64 个对象}\\
+方法 & 风险 MAE & 总耗时 / ms & 风险 MAE & 总耗时 / ms\\
+\midrule
+自动 RB & \(3.05\!\times\!10^{-10}\) & 14.17 & \(6.15\!\times\!10^{-9}\) & 18.86\\
+全几何 RB & 0.00438 & 26.77 & 0.00333 & 42.84\\
+完整 SMC & 0.05608 & 197.21 & 0.09977 & 350.69\\
+EKF & 0.01686 & 21.44 & 0.02232 & 29.56\\
+UKF & 0.01760 & 25.09 & 0.02384 & 33.01\\
+QADF & 0.02437 & 20.02 & 0.02311 & 26.86\\
+\bottomrule
+\end{tabular}
+\caption{相对高阶求积参考的风险误差。耗时是节点和后验准备、全部局部更新及一次风险查询的中位总耗时；
+不含模型建立、结构证书编译和额外区间分位数。它不是硬实时期限。}
+\label{tab:inference}
+\end{table}
+
+正式参考使用每方向 64 阶求积；在 8 个检查对象上提高到 96 阶，
+尾概率最大变化为 \(4.44\times10^{-16}\)。这是数值一致性检查，不是统一积分误差证明。
+自动与手工最优 RB 的标量统计及跨位置协方差最大差均为 \(2.22\times10^{-16}\)。
+另外，独立的整段联合高斯观测似然与序贯条件更新比较，参数最大差约 \(1.01\times10^{-14}\)。
+在线性高斯负对照中，EKF、UKF、QADF 与精确结果一致到 \(4.9\times10^{-15}\) 内。
+因此结果没有依赖让基线在其应当精确的情形下故意失败。
+
+\textbf{校准结论必须分开。}
+自动方法 95\% 区间覆盖为曲线 61/64、曲面 60/64，Wilson 95\% 区间分别为
+\([0.871,0.984]\) 与 \([0.850,0.975]\)，与多数 Gaussian 对照相同。
+曲线自动方法 Brier score 为 0.14348，完整 SMC 为 0.14027；
+曲面自动方法为 0.13691，UKF 为 0.13574。
+有限样本下这些对照的该项分数略好，不能声称本方法所有统计指标都最佳。
+表\ref{tab:inference} 支持模型内尾概率数值精度的收益，未证明临床概率校准改善。
+
+\subsection{相同小预算下是否仍有收益}
+另取每类 3 个独立对象，扫描节点、粒子与 Gaussian 查询样本数，共 144 次配置运行。
+对给定预算，选择\emph{中位实测耗时合格的最大已测样本数}，不依据误差挑选配置。
+Gaussian 方法包含 256、1024、4096、16384 个查询样本，避免固定过大查询开销形成不公平对比。
+15 ms 中位预算的探索性结果见表\ref{tab:budget}。
+
+\begin{table}[ht]
+\centering\small
+\begin{tabular}{lrrrr}
+\toprule
+ & \multicolumn{2}{c}{曲线} & \multicolumn{2}{c}{曲面}\\
+方法（已选配置） & 风险 MAE & 耗时 / ms & 风险 MAE & 耗时 / ms\\
+\midrule
+自动 RB（100 节点） & \(7.16\!\times\!10^{-9}\) & 10.97 & \(2.64\!\times\!10^{-8}\) & 12.89\\
+EKF（4096 查询样本） & 0.02888 & 7.26 & 0.02196 & 10.75\\
+UKF（1024 查询样本） & 0.02515 & 9.44 & 0.02187 & 13.18\\
+QADF（4096 查询样本） & 0.03149 & 8.41 & 0.02183 & 11.62\\
+\bottomrule
+\end{tabular}
+\caption{15 ms 中位预算下的探索性比较；每类仅 3 个新对象。自动 RB 在两类中各有 1/3 次实际运行超过 15 ms，
+部分 Gaussian 配置也超时，因此不能据此声称逐次期限满足。}
+\label{tab:budget}
+\end{table}
+
+全几何 RB 在曲线选中 128 节点，风险 MAE 为 0.02318、耗时 13.25 ms；
+曲面没有已测配置满足此预算，完整 SMC 也没有。
+完整 15／30／60 ms 原始结果一并提供。
+这些结果支持当前模型中的精度与代价折衷，不支持“比所有 Gaussian 方法更快”。
+例如主实验 EKF 的更新中位时间仅为 1.41／2.14 ms，明显低于自动 RB 的 9.41／14.33 ms。
+小样本、共享主机波动和有限配置搜索都限制了预算结论的外推。
+
+\subsection{同一个基元的后验保持任务升级}
+\texttt{CompiledMaterialPrimitive} 将编译器、相关 Gaussian 先验、
+系数证据、查询检查、方向扩展和继续更新连成同一个对象。
+在一个 6 维静态潜模型中，初始条件维数为 1；
+加入 20 次观测后，新的任务算子被旧分解拒绝。
+编译器自动加入一个方向，使条件维数变为 2，再搬运自然参数。
+升级没有重放旧观测，也没有重置先验。
+
+在 25 个此前未访问的条件点，与独立完整批处理公式比较，
+条件均值／协方差最大差为 \(1.94\times10^{-15}\)，
+中心化外层 log density 最大差为 \(1.42\times10^{-14}\)。
+这里特别保留\emph{最初条件变量的先验边缘}；新增条件变量的先验已经包含在自然形式中，不能再乘一次。
+继续通过同一接口加入 5 次新观测后，条件参数最大差仍为 \(7.77\times10^{-16}\)。
+此结果验证同一静态后验的算法保持；曲线／曲面主实验另行验证了截断先验接口。
+它还不是把旧患者后验移植给新患者。
+
+\subsection{长历史时，证据对象能节省多少计算}
+独立试验固定 \(k=2\)、高斯残余维数 10，比较 64 个新条件点的评估。
+自然参数直接累积系数，不拟合后验。数值系数存储均为 5720 字节，
+精度、信息向量和常数分别有 6、10、15 个非零单项式；Python 对象管理开销另计。
+
+\begin{table}[ht]
+\centering\small
+\begin{tabular}{rrrrr}
+\toprule
+历史观测数 & 系数累积 / ms & 系数评估 / ms & 向量化重放 / ms & 重放／评估\\
+\midrule
+32 & 0.95 & 25.77 & 7.43 & 0.29\\
+512 & 0.87 & 27.33 & 19.93 & 0.73\\
+8192 & 5.62 & 28.08 & 98.66 & 3.51\\
+\bottomrule
+\end{tabular}
+\caption{64 个新条件点；评估时间为三次试验的中位数，累积成本另列。
+短历史下向量化重放更快，长历史下证据对象有明确收益。}
+\label{tab:evidence}
+\end{table}
+
+最大后验／log factor 数值差从 \(2.84\times10^{-13}\) 到 \(4.37\times10^{-11}\)。
+另将条件维数从 2 扩到 3，自然形式恒等式最大差为 \(5.82\times10^{-11}\)。
+这里 8192 条是合成静态观测流，用于检查计算复杂度；
+不能当作“超少患者数据”的论证，也不能把相关视频帧当作同等数量的独立证据。
+
+\subsection{调和图块与真实八自由度模型的离线接口}
+在弯曲图块上实际求解了含 775 个顶点、1440 个三角形的 P1 调和图册。
+离散方程最大残差为 \(3.58\times10^{-15}\)，材料三角形最小有向双面积为 0.001082。
+逆图逐单元 \(\det Dg\) 最小值为 0.8392；
+在 \(\gamma\in[-0.45,0.45]^2\) 下，正单位分解给出解析伸缩下界 0.55，
+因此该数值图册对应的逐单元行列式下界约为 0.4616。
+该数字使用浮点网格；它不是对未测器官或浮点舍入的区间认证。
+500 个采样点的逆映射、面积法向和体积恒等式差均不超过 \(2.22\times10^{-16}\)。
+连续构造由命题\ref{prop:organ} 承担，采样仅作实现核对。
+
+\begin{figure}[ht]
+\centering
+\optionalfigure{figures/harmonic_patch.pdf}{调和曲面图块及材料网格}
+\caption{实际有限元调和图块：弯曲名义曲面、求解后的材料网格与材料坐标。
+固定射线深度构造把这些材料地址用于曲线、表面和局部体积算子；不是全器官重建结果。}
+\label{fig:harmonic}
+\end{figure}
+
+机器人检查直接使用仓库的 \texttt{RM75-6F-8dof.urdf}，包括 0--0.8 m 轨道与七个转动关节。
+在 \(q=(0.4,0.2,0.6,0.3,1.0,0.3,0.5,0.2)\) 处，
+第一分量单位为 m，其余为 rad；全部位于模型限位内。
+TCP Jacobian 为满行秩 \(6\times8\)，有限差分最大差为 \(9.66\times10^{-11}\)，
+右逆恒等式残差为 \(2.83\times10^{-15}\)。
+经此线性映射生成的八个需求仍有共同混合秩 2，
+编译范围外残差为 \(3.55\times10^{-15}\)。
+
+这支持真实仓库模型的固定构型需求接口。
+没有运行学习到的 dIRD checkpoint、连续 IK、接触／碰撞或本方法驱动的超声伺服；
+不能把这里的离线运动学结果与合成概率表拼接成真实扫查完成保证。
+
+\section{先例边界与适用范围}
+\label{sec:related}
+
+\begin{table}[ht]
+\centering\small
+\begin{tabularx}{\linewidth}{p{.24\linewidth}YY}
+\toprule
+相关路线 & 已有职责 & V5.1 需要提供的具体增量\\
+\midrule
+KMP、ProDMP、BIP & 核／概率运动表示、连续相关性、部分观测与相位更新 & 完整物理查询族决定的共同条件坐标和检查接口\\
+超声 iProMP／enBIP & 局部图像与概率基元用于自主标准切面或肝脏扫查 & 条件维数证书、证据对象和跨任务算法复用\\
+Transportation Maps & 非线性几何运输及相关运动量、不确定性 & 当前患者联合后验的查询完整性与自动条件分解\\
+条件高斯系统、自动 RB & 解析高斯块与非高斯采样混合推断 & 从物理算子产生新的共同线性方向并证明可达最小维数\\
+Autoconj & 自动提取共轭与自然参数、计算条件／边缘分布 & 与查询族扩展、材料登记和维数证书闭合的同一任务对象\\
+PRIMP、概率约束基元 & 机器人工作空间适配、概率约束与技能分布调整 & 保留同一患者后验并让完整 dIRD 候选需求使用它\\
+\bottomrule
+\end{tabularx}
+\caption{边界依据原始论文，不以某篇论文假设简单就否认其已经完成的职责。}
+\end{table}
+
+超声概率基元已有直接前例\cite{uspromp,usenbip}；
+几何运输\cite{transport}、工作空间感知基元\cite{primp}、概率约束适配\cite{constrained}
+和无需真人示教的 ProMP 构造\cite{demofree}也不宜另列独立创新。
+本方向的可发表性应由自动编译、可核查最小性、任务升级与实际机器人收益共同判断。
+二次函数的谱降维及条件期望近似已有结果\cite{zahm}；本文保留高斯残余的完整分布，
+并不把条件期望投影重新命名为新方法。
+
+\subsection{调和构造的真实职责}
+调和材料图册让不同物理几何中的局部数据约束同一目标场，
+其能量定义与边界条件提供可复现的坐标构造。
+本文证明的条件维数优势来自\emph{几何与任务的相乘结构}。
+没有证明调和图册在所有有效图册中使条件维数、配准误差或校准数据量最小。
+已知材料重标记若同时运输任务、图册、导数与密度，物理查询及其条件维数应保持一致。
+只更换坐标再独立拟合新高斯先验，不具有这个不变性。
+
+\subsection{可移植的范围与不能直接外推的结论}
+本框架的通用性在算子接口层：局部成像、表面接触扫描和器官局部采样，
+只要能形成同类登记观测、材料场和执行查询，就可以使用同一编译器。
+具体的低维精确优势已在正深度图块类中构造；一般器官不必都满足此类。
+未知对应、一般声学传播、随位置变化的法向挤出、任意大形变与隐含接触状态可能引入新的非线性方向。
+方法应报告增长、重新编译或拒绝认证。
+这种可拒绝性是表示方法的组成部分，不能在不满足条件时仅加任意扰动而沿用原来的精确结果。
+
+\section{核心结论与研究取舍}
+本文保留一个中心：\textbf{从局部观测和机器人真正要查询的任务量，自动构造可检查、可升级的材料概率基元。}
+在明确几何类中，高维加性形状和目标细节留在条件高斯部分，
+非高斯条件维数由相乘的任务耦合决定。
+同一表示还必须承认独立耦合增多时不能继续压缩。
+
+主文只需要三类数学结构：共同材料图册、查询族的条件仿射结构，以及可保持证据的高斯自然形式。
+精确标量能力阈值、探查跨度优化、谱尾界与其他可选近似可用于后续实现，
+不应淹没本稿的对象和贡献。
+完成理论与合成验证后，最关键的下一份证据应是固定计算预算下、含有限声学窗口和真实跟踪需求的机器人扫查结果。
+增加无关定理无法替代这个证据。
+
+\appendix
+\section{完整查询、后验闭合与维数下界的证明}
+\label{app:compiler}
+
+\subsection{有限生成器为什么能覆盖连续族}
+若式\eqref{eq:generators} 成立，所有实际矩阵都在生成器张成空间内。
+若系数函数向量 \(a_\iota=(a_{\iota1},\ldots,a_{\iota p})\) 张成 \(\R^p\)，
+则存在 \(p\) 个实际查询，使矩阵 \(A_{j\alpha}=a_{\iota_j\alpha}\) 非奇异，且
+\[
+ \overline M_\alpha=\sum_{j=1}^{p}(A^{-1})_{\alpha j}M_{\iota_j}.
+\]
+于是两个张成空间相同，也能把生成器上的秩见证转换为实际查询的线性组合。
+反之，若所有系数向量都不张满，则存在非零线性组合在全部允许索引上恒为零，
+说明所取函数并不独立，应先消去冗余。
+
+已知次数的单变量多项式可用不同插值点验收；张量多项式使用相应非奇异张量插值网格。
+在环境空间独立的多项式限制到一条曲线后不一定独立，因此证书必须使用实际任务索引域。
+已知 P1 单元函数的导数只在单元内部定义，拼接时应保留单元标签及边界条件。
+
+\subsection{定理\ref{thm:compiler}：必要充分条件与后验}
+取一个可逆线性坐标完成 \(z=T_\xi\xi+T_vv\)，其中 \(\range(T_v)=\ker L\)。
+将其代入式\eqref{eq:q}，关于 \(v\) 的 Hessian 为
+\[
+ \nabla_v^2 f_\iota=2T_v^\top Q_\iota T_v.
+\]
+故该 Hessian 对所有查询为零当且仅当每个查询在纤维上为仿射。
+多项式在开残余集合上相等就足够；这个代数结论不依赖先验是否高斯。
+
+由式\eqref{eq:prior}，存在矩阵 \(D\) 使 \(Pz=D\xi\)。
+固定 \(\xi\) 后，先验因子 \(h(D\xi)\) 在条件密度的分子与分母中抵消。
+因此先验残余是底层联合高斯的条件分布。按 \((\xi,v)\) 分块，
+\begin{align*}
+ m_0(\xi)&=\mu_v+\Sigma_{v\xi}\Sigma_{\xi\xi}^{-1}(\xi-\mu_\xi),\\
+ C_0&=\Sigma_{vv}-\Sigma_{v\xi}\Sigma_{\xi\xi}^{-1}\Sigma_{\xi v}\succ0 .
+\end{align*}
+这给出仿射条件均值与常条件协方差，允许几何和任务在先验中相关。
+
+若上一步 \(v\mid\xi,\D_{t-1}\) 高斯，则当前登记观测对 \(v\) 仿射。
+高斯条件公式直接给出式\eqref{eq:update}，新残余继续高斯。
+边际似然只更新 \(\pi_t\)，不要求它属于有限维高斯族。
+从先验归纳便得到式\eqref{eq:posterior}。
+由于不同查询都是\emph{同一个}高斯 \(v\) 的仿射像，任意有限组的联合分布也高斯，
+其中交叉协方差为 \(H_iC_tH_j^\top\)，而不是独立噪声拼接。
+
+合法自适应选择是已记录历史的可测函数，在条件于该历史时是已知的。
+它不会额外产生一个遗漏的潜变量相关选择似然。
+几乎必然有限的停止时间只挑选一个有限合法历史，因此同样结论成立。
+如果停止或删失使用未记录的信号、或者主动排除失锁世界，上述理由不再成立。
+这证明定理\ref{thm:compiler}。
+
+\subsection{候选与匹配最小性的完整证明}
+共同几何范围给出 \(M_\iota=E\widetilde M_\iota\)，所以
+\[
+ \theta^\top M_\iota w=(E^\top\theta)^\top\widetilde M_\iota w .
+\]
+固定 \(E^\top\theta\) 后，所有混合项对残余仿射。
+扩大条件行空间只会缩小核空间，仍满足式\eqref{eq:zero}，
+因此加入先验支撑方向得到兼容候选。任务侧构造同理。
+
+对于定理\ref{thm:minimal}，对 \(M_*\) 作奇异值分解可知
+\[
+ Q_* =\tfrac12\begin{bmatrix}0&M_*\\M_*^\top&0\end{bmatrix}
+\]
+具有 \(s\) 个正特征值、\(s\) 个负特征值和 \(N-2s\) 个零特征值。
+任意合法残余空间 \(\mathcal V\) 对所有查询都满足双线性限制为零，故对其组合 \(Q_*\) 也是全迷向的。
+在标准坐标中，二次型为 \(\|x_+\|^2-\|x_-\|^2\)，另有零坐标 \(x_0\)。
+从 \(\mathcal V\) 投影到 \((x_-,x_0)\) 是单射：若该投影为零，
+迷向性迫使 \(\|x_+\|^2=0\)。因此
+\[
+ \dim\mathcal V\le s+(N-2s)=N-s,
+ \qquad \rank L=N-\dim\ker L\ge s .
+\]
+一个通过验收的 \(k=s\) 候选达到此下界，故在全部线性条件仿射表示中最小。
+先验兼容性只限制候选集合，下界依然有效。
+如果证书只有 \(s<k\)，可能存在更好的共同混合子空间；本算法没有证明不存在。
+
+一般代数最优值可写作
+\[
+ k_{\rm aff}=N-\max\{\dim\mathcal V:
+       v^\top Q_\iota v'=0,\ \forall v,v'\in\mathcal V,\ \forall\iota\}.
+\]
+这是表示类的刻画，不是声称存在高效求解任意共同迷向空间的算法。
+对几何／任务分别作可逆变换，混合矩阵变为 \(A^{-\top}M_\iota B^{-1}\)，
+共同范围与先验行空间对应搬运，维数不变。
+任意已知可逆全潜坐标变换以共同合同方式搬运 \(Q_\iota\) 和证书；
+这不要求编译器能从未知混合输入重新发现语义分块。
+
+\subsection{见证搜索、正例与反例}
+若真实矩阵空间含一个秩至少 \(k\) 的元素，则某个 \(k\times k\) 子式是
+生成器组合系数 \(\alpha\) 的非零多项式，每个变量次数至多为 \(k\)。
+它不能在整个 \(\{0,1,\ldots,k\}^p\) 网格上为零，否则反复用一元插值会推出恒为零。
+所以穷举该有限网格可以找到见证，但成本可能指数增长；
+实践中搜索少量组合并诚实返回“未证最小”是允许的。
+
+在正深度图块中，若任务基包含线性独立的 \(\psi_1,\ldots,\psi_{k_0}\)，
+选取 \(\psi(u_j)\) 张满 \(\R^{k_0}\) 的实际高度查询，其混合矩阵之和包含
+\[
+ \sum_j\psi(u_j)\psi(u_j)^\top\succ0 .
+\]
+这给出秩 \(k_0\) 的实际查询见证。增加任意数量的加性 \(\beta\) 模式不改变该秩。
+另一方面，局部独立查询 \(f_j=\gamma_jw_j\) 的总和产生混合矩阵 \(I_r\)，
+从而强制 \(k_{\rm aff}=r\)。这是一族可检验的不可压缩情况。
+若新增查询 \(g=\gamma_2w_2\) 而旧分解只条件于 \(\gamma_1\)，
+则旧残余中仍有非零二次块，编译器应拒绝复用原分解。
+
+\section{材料图块与表面任务构造的证明}
+\label{app:geometry}
+由式\eqref{eq:inverse} 可直接得到唯一光滑逆。
+在乘以 \(R\) 前，\(D\Phi\) 具有对角块 \(Dg\) 与 \(\lambda_\gamma\) 的块三角结构；
+\(\det R=1\)，故 Jacobian 行列式为 \(\lambda_\gamma\det Dg\)。
+\(\lambda_\gamma>0\) 与 \(g\) 的一一性保证全图块逆，而不只是每一点 Jacobian 非零。
+在有界深度区间上限制该映射得到到其像的同胚与光滑逆。
+
+代入目标场后，物理高度展开为
+\begin{align*}
+ Z(\sigma,z)={}&h_0(u(\sigma))+b_\beta(u(\sigma))+d_0(\sigma)+B(\sigma)w\\
+ &+\psi(u(\sigma))^\top\gamma\,d_0(\sigma)
+ +\psi(u(\sigma))^\top\gamma\,B(\sigma)w .
+\end{align*}
+所有系数函数均为确定的；唯一潜变量乘积是 \(\gamma_jw_l\)。
+对已知任务索引求导或在已知材料支撑上作线性积分，只改变这些确定系数，
+不会产生新的潜变量乘积。
+
+对曲面求叉积，写 \(\partial_i X=R(g_{1,i},g_{2,i},Z_i)^\top\)，
+逐分量展开便得到式\eqref{eq:normal}。
+该式对 \((Z_1,Z_2)\) 线性且第三个旋转前分量 \(\det Dg\) 非零。
+因此法向不退化，任意已知齐次线性锥测试仍在原双线性族中。
+归一化法向及可变法向挤出没有这一证明。
+对体积的第三列求导则得到主文的体积 Jacobian 公式。
+
+非负单位分解使 \(\lambda_\gamma\) 是 \(1+\gamma_j\) 的凸组合，给出全域正性。
+取先验 \(\N(\beta,\gamma,w)\,h(\gamma)\) 时，条件于 \(\gamma\) 后截断因子抵消，
+由定理\ref{thm:compiler} 获得高斯闭合。若任务深度必须留在有界 ROI，
+高斯 \(w\) 仍可能离开该 ROI；必须把这部分质量作为任务事件处理。
+映射可逆性没有取消有限声学窗口或有界目标域的问题。
+
+离散数值部分使用 P1 调和图块。每个三角形内部的逆基图为仿射，
+上述导数与法向证明逐单元成立；全局是连续、分片光滑对象。
+有限元数值例子的正 Jacobian 是该离散图册的浮点验收，
+并未自动证明现实器官的光滑图册或所有连续参数的不确定配准。
+
+\section{历史证据与嵌套任务扩展的证明}
+\label{app:evidence}
+
+\subsection{自然参数形式}
+固定 \(\xi\) 后，将条件高斯先验与全部观测似然相乘，指数中关于 \(v\) 的项为
+\[
+ -\tfrac12\bigl(v^\top\Lambda_t(\xi)v-2\eta_t(\xi)^\top v+c_t(\xi)\bigr).
+\]
+由于先验精度正定、观测精度贡献半正定，\(\Lambda_t\succ0\)。
+配方可得
+\[
+ (v-\Lambda_t^{-1}\eta_t)^\top\Lambda_t
+ (v-\Lambda_t^{-1}\eta_t)+c_t-\eta_t^\top\Lambda_t^{-1}\eta_t.
+\]
+对 \(v\) 高斯积分给出式\eqref{eq:evidence}；均值和协方差也直接得到。
+\(H_t\) 一次、\(a_t\) 二次、\(m_0\) 一次，
+因此精度、信息向量和常数项分别至多二、三、四次。
+\(k\) 个变量总次数不超过 \(d\) 的单项式数为 \(\binom{k+d}{d}\)，
+按精度对称存储计数即式\eqref{eq:storage}。
+系数可以一次观测一次观测地相加；合法自适应选择只改变已记录的确定系数。
+这证明命题\ref{prop:stats}。
+
+若 \(R_t\) 依赖未知 \(\xi\)，逆协方差和行列式通常不是有限次多项式。
+若有潜变量相关的失锁似然，或实际状态存在未建模时间变化，
+同样不能使用本存储保证。
+小条件维数时多项式系数可很紧凑，大条件维数时该表也会变大。
+
+\subsection{后验保持扩展与自然形式搬运}
+假设 \(A\) 满行秩，\((Av,Cv)\) 为可逆线性坐标。
+在固定 \((\xi,\D_t)\) 下，它是一个联合高斯的线性像；
+其边缘与条件公式正好给出式\eqref{eq:upgrade}。
+因此被扩展的联合密度与原密度完全相同。
+嵌套行空间保持旧二次块为零，新增查询经过检查后也为零，后续更新继续闭合。
+对于有限粒子或求积表示，该操作仅对当前近似分布无额外解析损失，
+不能恢复之前已由数值近似丢掉的质量。
+
+若新增条件与旧条件存在已知线性偏移，可先减去该偏移。
+取 \(v=T_\delta\delta+T_\omega\omega\)，把原自然参数搬到此残余基，记为
+\[
+ \Lambda=\begin{bmatrix}\Lambda_{\delta\delta}&\Lambda_{\delta\omega}\\
+ \Lambda_{\omega\delta}&\Lambda_{\omega\omega}\end{bmatrix},
+ \qquad \eta=\begin{bmatrix}\eta_\delta\\\eta_\omega\end{bmatrix}.
+\]
+固定 \((\xi,\delta)\) 后，新残余的自然参数为
+\begin{align}
+ \Lambda'&=\Lambda_{\omega\omega},\\
+ \eta'&=\eta_\omega-\Lambda_{\omega\delta}\delta,\\
+ c'&=c-2\eta_\delta^\top\delta+
+           \delta^\top\Lambda_{\delta\delta}\delta .
+ \label{eq:naturalupgrade}
+\end{align}
+次数仍不超过 2、3、4。旧 \(\pi_0(\xi)\) 及常归一化系数一并保留，
+可以在新条件空间任意位置计算同一旧证据，随后追加新观测。
+新患者、新潜变量或重拟合的旧似然不属于这个坐标替换。
+
+\subsection{材料重标记、慢观测及风险接口}
+对已知材料微分同胚 \(\kappa:\Omega\to\Omega'\)，
+同时设置 \(a'=\kappa\circ a\)、\(\Phi'=\Phi\circ\kappa^{-1}\)，
+则 \(\Phi'(a')=\Phi(a)\)。
+链式法则和积分变量替换说明一致运输后的导数、密度及物理查询也相同。
+所以证书与后验物理规律保持；独立重新拟合一个新高斯不满足这个恒等式。
+
+对平方可积任务查询 \(G\) 与新增慢观测 \(Y\)，条件全方差公式为
+\begin{equation}
+ \E\!\left[\Var(G\mid\D,Y)\mid\D\right]
+ =\Var(G\mid\D)-\Var\!\left(\E[G\mid\D,Y]\mid\D\right).
+ \label{eq:slowvalue}
+\end{equation}
+其证明是将
+\(G-\E[G\mid\D]\) 分解为
+\(G-\E[G\mid\D,Y]\) 与 \(\E[G\mid\D,Y]-\E[G\mid\D]\)，
+两项条件正交，平方后取条件期望即可。
+若慢测量为线性算子，其 \(Q=0\)，所以不增加共同二次限制。
+
+对式\eqref{eq:riskmargin}，在验证事件内
+\(G^{\rm true}_\rho>b\) 蕴含 \(G_\rho>b-\epsilon_\rho\)。
+用该包含关系及验证事件外的概率上界，得
+\[
+ \Prob(G^{\rm true}_\rho>b\mid\D)
+ \le\Prob(G_\rho>b-\epsilon_\rho\mid\D)+\delta_{\rm model}.
+\]
+再加入统一数值风险误差即得到主文条件。
+统一性让数据后选择的 \(\rho(\D)\) 仍适用；
+仅对训练均值或预先某一个候选成立的误差不能代替这个条件。
+
+\section{复现文件、版本与下一项判别性验证}
+\label{app:reproduce}
+
+\subsection{材料与代码来源}
+本次读取的 RealUS\_playground 固定提交为
+\path{2e95325f6b248a2a0c9a2ce0c1d01292fb99fe3b}；
+AMONG\_US 核对提交为 \path{f1ffc5078d6a08c32b59107ab16086a7bbde488e}。
+V5.1 验证代码独立提供，没有修改原仓库或上传新提交。
+八自由度模型取自
+\path{rm75_control/rm75_control/assets/robots/rm75_6f_8dof/RM75-6F-8dof.urdf}，
+SHA-256 为 \path{41562c78f0a3fb970c68a0119bc185417905064f91f3bd76832da397ec3e095b}。
+源代码包包含这份运动学输入；离线检查不需要 meshes、机器人驱动或 dIRD 权重。
+
+Python 实验环境为 3.12.14，NumPy 2.3.5、SciPy 1.17.0；
+调和图册绘图额外使用 Matplotlib。所有性能记录使用 BLAS／OMP 单线程。
+完整主概率实验运行约 142 s，但共享主机上的重新运行时间会变化。
+推断完成后，仅精化了有理先验支撑证书和固定射线术语，核心 \texttt{inference.py} 未变。
+\texttt{validation\_summary.json} 与 \texttt{provenance.json} 同时保留推断运行时与最终源码哈希，
+没有把证书修订冒充新的概率或计时实验。
+
+\begin{table}[ht]
+\centering\small
+\begin{tabularx}{\linewidth}{p{.43\linewidth}Y}
+\toprule
+源代码包内的文件／目录 & 用途\\
+\midrule
+\path{Anatomical_GPS_V5.1.tex} & 本稿完整中文正文、证明、参考文献\\
+\path{proofs_detail.tex} & 更细的英文证明文本；正文证明已经自洽完整\\
+\path{verification/implementation/} & 两任务模型、编译器、推断、基线及全部原始结果\\
+\path{verification/robot_harmonic/} & 调和／八自由度检查、系数累加与统一对象升级\\
+\path{verification/inputs/} & 检查所需的原始八自由度 URDF\\
+\path{reviews/} & 三路审读原始记录、修改意见与评分分歧\\
+\path{figures/}、\path{fonts/} & 排版图与中文字体\\
+\path{manifest.json} & 交付文件版本和校验值\\
+\bottomrule
+\end{tabularx}
+\caption{独立可复现的交付结构。原始 JSON 保留未在正文展开的全部指标。}
+\end{table}
+
+从源代码包根目录运行：
+\par\noindent
+\begin{minipage}{\linewidth}\small
+\begin{verbatim}
+export OPENBLAS_NUM_THREADS=1
+export OMP_NUM_THREADS=1
+python verification/implementation/run_validation.py \
+  --datasets-per-task 64
+python verification/implementation/independent_checks.py
+python verification/robot_harmonic/evidence_upgrade.py
+python verification/robot_harmonic/primitive_integration.py
+python verification/robot_harmonic/verify_bridge.py
+xelatex Anatomical_GPS_V5.1.tex
+xelatex Anatomical_GPS_V5.1.tex
+\end{verbatim}
+\end{minipage}
+脚本会覆盖自身目录的结果，需另存原始交付记录才能比较不同环境。
+快速模式用于排查安装，不替代 \texttt{quick\_run=false}、每类 64 个对象的正式结果。
+PDF 可直接阅读；从头排版推荐使用带字体和图片的完整源代码包。
+
+\subsection{尚未完成但足以决定路线价值的实验}
+下一步只需要围绕本对象验证真实任务收益，不需要扩大真人示教数据集。
+一个可执行的小规模起点是：同一已知几何的超声模型上设置长曲线与器官图块 raster 两类任务，
+各取 3 个几何条件、3 次重复；这些试验用于发现机制与失效，不能承担临床总体概率声明。
+程序化先验、局部特征提取和已有控制器对所有方法保持相同，
+比较自动 RB、手工最优 RB、预算内较强的 Gaussian 方法及全几何 RB。
+预先固定风险查询时间预算、扫描停止规则及完整输入限值。
+
+判别性结果包括：新增切向／朝向／轨道需求是否触发可解释的编译或扩维，
+保存的后验是否保留未来任务相关性，需求概率差异是否实际改变 dIRD 候选排序，
+以及同一控制器下材料任务完成长度、失锁、输入饱和和实际越界的差异。
+应保留高斯方法已经足够的弱耦合情形，以及很多独立局部耦合导致方法失去计算优势的情形。
+只画更好看的参考轨迹不足以完成这一验证。
+
+\section{独立交叉审读与当前证据等级}
+\label{app:reviews}
+
+首轮由理论、先例与新颖性、实现与工程三个 agent 分别工作并交叉审读。
+新颖性审读未编写主实验；理论审读参与数学设计；工程评价由实现负责人提供，属于工程自评。
+这是内部模拟 IJRR 评价，不是外部盲审、期刊意见或录用预测。
+分数按目前实际材料给出，没有按预设的“全部达到 4”倒推。
+
+\begin{table}[ht]
+\centering\small
+\begin{tabularx}{\linewidth}{p{.18\linewidth}YYY}
+\toprule
+维度 & 理论审读：当前 & 新颖性审读：当前 & 新颖性审读：条件潜力\\
+\midrule
+新颖性 & 3.5--4 & 3.5 & 4--4.25\\
+理论严密性 & 4--4.5 & 4 & 4--4.5\\
+方法意义 & 3.5--4 & 3.5 & 4--4.5\\
+通用性 & 3.5--4 & 3.5 & 4--4.25\\
+成熟度 & 算法 3--3.5；真实执行 1.5--2.5 & 综合 3 & 完成对应实验证据后可争取 4\\
+\bottomrule
+\end{tabularx}
+\caption{保留评分分歧。条件潜力不是已经获得的分数，也不是实验完成后必然达到的分数。}
+\end{table}
+
+工程评价给声明模型内理论 4、新颖性 3.5、潜在意义 3.5--4、推断原型 3--3.5、
+超声／机器人系统成熟度 2--2.5；真实跨器官证据为 2。
+其原因是曲线／曲面算法复用已经运行，而当前患者声学、dIRD 和伺服闭环尚未接入新对象。
+
+审读中发现并完成的实质修正包括：
+浮点秩匹配与精确最小性分开；先验支撑加入有理行空间验收；
+升级保留最初条件先验，避免重复计算新增条件变量的先验；
+增加外层概率密度的独立批处理检查；预算对比纳入 Gaussian 查询配置；
+风险界改为对全部候选同时成立；Jacobian 输入见证加入满行秩及零空间条件。
+这些修正已反映在正文、源码与最终结果中。
+
+\textbf{交付续检。}
+新的独立复核者在隔离目录复跑了统一对象，正式 25 点检查逐项重现。
+再临时禁用观测更新、批量累积和先验初始化接口，扩维仍成功，实际观测计数保持 20；
+恢复接口后可继续更新到 25。这排除了仅依赖输出中“零重放”字段的核验。
+另外 100 个条件点的自然形式恒等式最大差为 \(5.68\times10^{-14}\)，
+升级后及续接新观测后的外层中心化密度差均约为 \(1.78\times10^{-14}\)。
+若错误地再乘完整扩维条件先验，负对照产生约 1.2083 的非恒定 log density 误差，
+说明保留最初条件边缘的规则具有实质必要性。复核记录与独立脚本随包提供。
+新的语义审读维持声明模型内理论 4、当前创新性 3.5 的判断，没有把复跑通过换算为全项 4 分。
+
+\textbf{审读通过的是：}声明类内的完整证明、自动编译原型、后验保持升级与合成数值检查。
+\textbf{尚未通过的是：}IJRR 所有维度稳定不低于 4，以及真实超声／跨器官扫描收益。
+V5.1 比旧标量探查主线更有可复用方法的潜力；目前最有价值的投入是上述闭环判别实验，
+而非继续增加不能改变任务结果的数学细节。
+
+\begin{thebibliography}{99}
+\bibitem{kmp} Y. Huang, L. Rozo, J. Silvério, D. G. Caldwell.
+\emph{Kernelized Movement Primitives}. IJRR, 2019.
+\url{https://arxiv.org/abs/1708.08638}. DOI: 10.1177/0278364919846363.
+\bibitem{prodmp} G. Li, Z. Jin, M. Volpp, F. Otto, R. Lioutikov, G. Neumann.
+\emph{ProDMPs: A Unified Perspective on Dynamic and Probabilistic Movement Primitives}.
+\url{https://arxiv.org/abs/2210.01531}, 2022; RA-L, 2023.
+\bibitem{bip} J. Campbell, H. Ben Amor.
+\emph{Bayesian Interaction Primitives: A SLAM Approach to Human-Robot Interaction}.
+CoRL, PMLR 78:379--387, 2017.
+\url{https://proceedings.mlr.press/v78/campbell17a.html}.
+\bibitem{murray2018} L. M. Murray, D. Lundén, J. Kudlicka, D. Broman, T. B. Schön.
+\emph{Delayed Sampling and Automatic Rao-Blackwellization of Probabilistic Programs}.
+AISTATS, PMLR 84:1037--1046, 2018.
+\url{https://proceedings.mlr.press/v84/murray18a.html}.
+\bibitem{atkinson2022} E. Atkinson, C. Yuan, G. Baudart, L. Mandel, M. Carbin.
+\emph{Semi-symbolic Inference for Efficient Streaming Probabilistic Programming}.
+PACMPL 6, OOPSLA2, 2022. DOI: 10.1145/3563347.
+\url{https://arxiv.org/abs/2209.07490}.
+\bibitem{autoconj2018} M. D. Hoffman, M. J. Johnson, D. Tran.
+\emph{Autoconj: Recognizing and Exploiting Conjugacy Without a Domain-Specific Language}.
+NeurIPS, 2018. \url{https://arxiv.org/abs/1811.11926}.
+\bibitem{chen2018} N. Chen, A. J. Majda.
+\emph{Conditional Gaussian Systems for Multiscale Nonlinear Stochastic Systems:
+Prediction, State Estimation and Uncertainty Quantification}.
+Entropy 20(7):509, 2018. DOI: 10.3390/e20070509.
+\url{https://www.mdpi.com/1099-4300/20/7/509}.
+\bibitem{floater2003} M. S. Floater.
+\emph{One-to-one Piecewise Linear Mappings over Triangulations}.
+Mathematics of Computation 72:685--696, 2003.
+DOI: 10.1090/S0025-5718-02-01466-7.
+\bibitem{floater2006} M. S. Floater, V. Pham-Trong.
+\emph{Convex Combination Maps over Triangulations, Tilings, and Tetrahedral Meshes}.
+Advances in Computational Mathematics 25:347--356, 2006.
+\url{https://doi.org/10.1007/s10444-004-7620-5}.
+\bibitem{transport} G. Franzese, R. Prakash, C. Della Santina, J. Kober.
+\emph{Generalizable Motion Policies through Keypoint Parameterization and Transportation Maps}.
+IEEE Transactions on Robotics, 2025. DOI: 10.1109/TRO.2025.3582821.
+\url{https://arxiv.org/abs/2404.13458}.
+\bibitem{uspromp} Y. Hu, M. Tavakoli.
+\emph{Autonomous Ultrasound Scanning Towards Standard Plane Using Interval Interaction Probabilistic Movement Primitives}.
+IROS, 2023. DOI: 10.1109/IROS55552.2023.10341685.
+\bibitem{usenbip} 马骥，赵悦，刘壮，胡悦，刘健行，沈毅。
+\emph{基于集合贝叶斯交互基元的机械臂自主肝脏超声扫查}。
+自动化学报 52(6):1291--1303，2026。
+\url{https://www.aas.net.cn/cn/article/doi/10.16383/j.aas.c250530}。
+\bibitem{primp} S. Ruan, W. Liu, X. Wang, X. Meng, G. S. Chirikjian.
+\emph{PRIMP: Probabilistically-Informed Motion Primitives for Efficient Affordance Learning from Demonstration}.
+IEEE Transactions on Robotics, 2024. DOI: 10.1109/TRO.2024.3390052.
+\url{https://arxiv.org/abs/2305.15761}.
+\bibitem{constrained} F. Frank, A. Paraschos, P. van der Smagt, B. Cseke.
+\emph{Constrained Probabilistic Movement Primitives for Robot Trajectory Adaptation}.
+IEEE Transactions on Robotics. DOI: 10.1109/TRO.2021.3127108.
+\url{https://arxiv.org/abs/2101.12561}.
+\bibitem{demofree} A. Colomé, C. Torras.
+\emph{Demonstration-free Contextualized Probabilistic Movement Primitives, Further Enhanced with Obstacle Avoidance}.
+IROS, 2017. DOI: 10.1109/IROS.2017.8206151.
+\bibitem{zahm} O. Zahm, P. G. Constantine, C. Prieur, Y. M. Marzouk.
+\emph{Gradient-based Dimension Reduction of Multivariate Vector-valued Functions}.
+SIAM Journal on Scientific Computing, 2020.
+\url{https://arxiv.org/abs/1801.07922}.
+\end{thebibliography}
+\end{document}
