@@ -1,0 +1,1000 @@
+% !TeX program = xelatex
+% Self-contained source. Compile twice with XeLaTeX.
+\documentclass[UTF8,11pt,a4paper,fontset=fandol]{ctexart}
+\usepackage[margin=23mm,headheight=16pt,footskip=12mm]{geometry}
+\usepackage{amsmath,amssymb,amsthm,mathtools,bm,mathrsfs}
+\usepackage{booktabs,tabularx,longtable,array}
+\usepackage{xcolor,graphicx,tikz,float}
+\usetikzlibrary{arrows.meta,positioning,calc}
+\usepackage[most]{tcolorbox}
+\usepackage{enumitem,fancyhdr,xurl,hyperref}
+\definecolor{ink}{HTML}{18354A}
+\definecolor{teal}{HTML}{176B70}
+\definecolor{muted}{HTML}{566875}
+\definecolor{pale}{HTML}{EDF4F5}
+\definecolor{rust}{HTML}{A55036}
+\hypersetup{unicode=true,colorlinks=true,linkcolor=ink,citecolor=teal,urlcolor=teal,
+ pdftitle={Anatomical GPS V8.3：面向后续检查的证据与构型关联},
+ pdfauthor={Pei Liu -- Research design working document},
+ pdfsubject={分离判据、请求相关表示、物理细化与完成证书}}
+\setlength{\emergencystretch}{3em}
+\setlength{\parskip}{.32em}
+\linespread{1.08}
+\setlist{nosep,leftmargin=2em}
+\setcounter{tocdepth}{2}
+\renewcommand{\arraystretch}{1.18}
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+\newcolumntype{P}[1]{>{\raggedright\arraybackslash}p{#1}}
+\pagestyle{fancy}\fancyhf{}
+\fancyhead[L]{\small\color{muted}Anatomical GPS\quad V8.3}
+\fancyhead[R]{\small\color{muted}证据复用的关联结构与物理兑现}
+\fancyfoot[C]{\small\thepage}
+\renewcommand{\headrulewidth}{.3pt}
+\numberwithin{equation}{section}
+\newtheorem{theorem}{定理}[section]
+\newtheorem{proposition}[theorem]{命题}
+\newtheorem{lemma}[theorem]{引理}
+\newtheorem{corollary}[theorem]{推论}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{定义}
+\newtheorem{assumption}[theorem]{条件}
+\newtheorem{remark}[theorem]{说明}
+\renewcommand{\proofname}{证明}
+\newcommand{\R}{\mathbb R}
+\newcommand{\E}{\mathbb E}
+\newcommand{\Pp}{\mathbb P}
+\newcommand{\N}{\mathcal N}
+\newcommand{\ind}{\mathbf 1}
+\newcommand{\norm}[1]{\left\lVert#1\right\rVert}
+\newcommand{\TV}{\operatorname{TV}}
+\DeclareMathOperator{\rank}{rank}
+\DeclareMathOperator{\row}{row}
+\DeclareMathOperator{\range}{range}
+\DeclareMathOperator{\spanop}{span}
+\DeclareMathOperator{\diag}{diag}
+\DeclareMathOperator{\dist}{dist}
+\DeclareMathOperator{\Cov}{Cov}
+\DeclareMathOperator{\argmax}{arg\,max}
+\newcommand{\code}[1]{\texttt{\detokenize{#1}}}
+\newcommand{\RealBase}{https://github.com/NingMeng0903/RealUS_playground/blob/43f897201724e7a94b1850dc99abc2fae1b4ba23}
+\newcommand{\AmongBase}{https://github.com/NingMeng0903/AMONG_US/blob/f1ffc5078d6a08c32b59107ab16086a7bbde488e}
+\newtcolorbox{keybox}{colback=pale,colframe=teal,boxrule=.5pt,arc=1mm,
+ left=3mm,right=3mm,top=2mm,bottom=2mm,breakable}
+\newtcolorbox{scopebox}{colback=white,colframe=muted,boxrule=.4pt,arc=.5mm,
+ left=3mm,right=3mm,top=2mm,bottom=2mm,breakable}
+\raggedbottom
+
+\begin{document}
+\begin{titlepage}
+\vspace*{6mm}
+{\Large\color{teal}\sffamily NMI\quad RESEARCH DESIGN}\par
+\vspace{11mm}
+{\fontsize{32}{40}\selectfont\bfseries\color{ink}Anatomical GPS}\par
+\vspace{3mm}
+{\fontsize{25}{33}\selectfont\bfseries\color{ink}V8.3}\par
+\vspace{9mm}
+{\LARGE\bfseries 面向后续检查的}\par
+\vspace{2mm}
+{\LARGE\bfseries 证据与构型关联}\par
+\vspace{6mm}
+{\large\color{muted}Physically Realizable Reuse of Object Evidence\\
+for Subsequent Robotic Examinations}\par
+\vspace{9mm}
+\begin{keybox}
+\textbf{核心问题}\par
+同一份对象信息，在不同实际构型和剩余资源下，何时仍具有相同的后续检查价值？
+\medskip\par
+\textbf{本版推进}\par
+从 V7.3 的关联分离见证，推进到请求相关的分离判据、最小线性关联摘要、可实现选择算法与物理完成界。
+\medskip\par
+\textbf{保留的范围}\par
+同一管状目标；短轴获取、临时长轴请求、姿态变化后的复查；已有材料图册、dIRD、Genesis 与位置/速度控制接口。
+\end{keybox}
+\vfill
+{\large 2026 年 10 月}\par
+\vspace{3mm}
+{\color{muted}完整理论与方法稿\quad|\quad 自包含证明\quad|\quad 可复现解析检查}\par
+\vspace{3mm}
+{\small 本稿报告模型内推导与实际运行的数值核验。RM75 分离见证、共享后验集成、完整 Genesis 闭环和真实超声跨请求收益仍待验证；不把这些工作写成已经取得的实验结果。}
+\end{titlepage}
+
+\begin{abstract}
+机器人对对象的认识可以按身体坐标保存，但知识的后续用途还取决于获取证据后留下的实际构型与执行资源。V8.2 建立了对象证据、检查请求与完成记录的接口；V7.3 说明，即使当前统计信息与物理模式的边缘分布相同，二者的配对仍可改变后继任务完成率。V8.3 在固定检查范围内，将这一观察发展为一个可计算的受限理论：固定信息实验，在只依据已观察证据选择认证物理模式的模型中，证明所有方案在通常 Blackwell 意义下具有相同对象信息；针对给定后续请求族，给出边缘摘要足够的必要充分条件，以及保留全部期望完成值所需的最小线性关联维数。随后构造具有连续运动、剩余时间与真实图像义务的物理细化证书，并在同一个连续双通道机构中，使物理受限统计缺陷与最优任务完成率差精确相等。方法用有限库上的线性规划选择可实现耦合，以条件证书和能力系数区间给出优化后仍有效的完成下界与最优性间隙。V5.1 提供可替换的联合后验与查询编译后端，V6.1 约束最终动作，V8.2 保留来源、时效和实际图像验收。本文的新增内容是受限操作模型中的结构判据、任务相关表示及其物理联系，不把运输多面体、一般信念状态、Blackwell 比较、线性规划或风险并集界宣称为首次提出。
+\end{abstract}
+\noindent\textbf{关键词：}机器人超声；证据复用；信息实验；物理构型；任务相关表示；有限时间完成。
+
+\begin{keybox}
+\textbf{一句话主张。}对象事实可以与获取轨迹分开保存；证据与实际构型能否分开评价，由后续检查的交互结构决定。V8.3 给出检查该结构、保留必要关联并选择可执行方案的方法。
+\medskip\par
+\textbf{理论层级。}主定理针对固定信息实验、有限证据分区与有证书的物理模式。最小性仅指该可行族上的线性能力摘要；精确优化仅指规定的有限库。全文没有宣称求解一般 POMDP，也没有宣称完整信念状态之外还必须增加一种隐藏记忆。
+\end{keybox}
+\tableofcontents
+\clearpage
+
+\section{研究命题、版本继承与新增贡献}
+\label{sec:position}
+
+\subsection{从已有问题走到一个可证明的问题}
+同一对象的短轴观测可以改善长轴定位，但不会自动完成长轴图像义务；一次成功定位留下的机器人构型，也可能无法在剩余时间内转入后续成像姿态。V8.2 已用 Update、Query、Realize 区分对象事实、检查关系与实际执行\cite{v82}。本版追问：\emph{在保持获得的信息和使用的物理资源边缘不变时，证据应当配到哪种实际构型，才有利于后续请求？哪些配对信息可以省略？}
+
+本文固定一次共享采集程序，允许其后依据观测选择真实可达的终止模式，再接收声明请求族中的检查。固定模式边缘用于严格隔离关联效应；部署时可以放开这个配额。这里的模式包含完整入口集合和剩余预算，不能只用一个 rail 或姿态标签代替真实状态。
+
+\subsection{三项相互连接的贡献}
+\begin{enumerate}
+\item \textbf{可分离性的结构判据与请求相关表示。}对同一信息实验形成的可行耦合族，刻画后续完成值何时只依赖边缘，何时必须保留关联。给出任务族所需的最小线性关联维数，并精确描述新请求何时增加该维数。
+\item \textbf{统计比较与物理完成的同实例联系。}将免费统计后处理与有耗时的实际模式转换分开；构造保留后继执行预算的细化证书。在连续双通道模型中，证明通常信息缺陷为零，而物理受限缺陷与实际最优完成率差相等。
+\item \textbf{可实现的关联选择与优化后有效的证书。}从连续执行程序产生合法边和完成值区间，在有限模型内精确优化；将证据量化、条件执行失败和系数误差显式传递至真实完成下界。未知与已证不可行使用不同状态。
+\end{enumerate}
+这些是本版的\emph{推导与方法增量}，不是对全球文献中绝对首创性的保证。基础线性代数和优化工具有明确先例；本稿的价值要由它们在这个具体操作问题中形成的必要充分判据、物理证书和真实收益共同支持。
+
+\subsection{各版本只承担必要职责}
+\begin{table}[htbp]\centering\small
+\begin{tabularx}{\linewidth}{P{24mm}YY}
+\toprule
+来源 & 本版保留 & 本版不自动继承的结论\\\midrule
+V3.2 & 带适用条件的运输、审计与修复 & 执行缓存不等于已实现跨请求对象后验\\
+V4.4 revised / V4.5 & 同一实际输入、有限行程、分支连接与时限 & 解析可重配置机构不等于 RM75 固定导轨\\
+V5.1 & 完整查询族、联合后验、合法的条件表示扩展 & 类内条件维数不等于最小患者记忆\\
+V6.1 & 后验约束任务自由度与最终动作风险 & 单步容差不推出完整检查可完成\\
+V7.3 & 关联分离、连续物理时间下界、同一程序精化 & 一般统计 deficiency 不自动对应本次 SA/LA 任务\\
+V8.2 & Update--Query--Realize、真实来源、任务类型与时效 & 接口一致性命题不单独承担主要理论新颖性\\
+\bottomrule
+\end{tabularx}
+\caption{继承用于闭合一条理论链；不把各版本全文并排拼接。}
+\end{table}
+
+\subsection{已有理论与尚待完成工作的边界}
+本文给出的结构定理、物理例子与区间界均附证明。随稿脚本独立核对有限 LP、对偶/数值结果、秩见证、强迫零边、误差抵消与解析概率。它们不能代替真实机器人证书。当前两个仓库具备材料图册、可微可达性、控制器和仿真基础，但本次没有运行实机或完整训练，也没有生成虚构的真实完成率。
+
+\section{操作模型：同一证据与真实可达模式}
+\label{sec:model}
+
+\subsection{对象、请求、证据和物理状态}
+给定合法历史 $H$，对象参数为 $\theta\in\Theta$，设计后验为 $b_H$。观测保留原始图像、源时间、实测采集位姿、目标关联和标定版本。请求 $\mathcal R$ 指定目标身份、材料区间、成像方向、质量、时效与截止时间。其完成事件 $\mathsf{Finish}_{\mathcal R}$ 由\emph{实际获取的图像及其真实材料足迹}定义。
+
+机器人状态写为
+\begin{equation}
+x=(q,\dot q,\xi_{\rm ctrl},\xi_{\rm delay},\text{contact},\mathcal L,T),
+\end{equation}
+其中 $\xi_{\rm ctrl}$ 包含影响未来动作的控制器内部状态，$\xi_{\rm delay}$ 包含未执行命令与延迟状态，$\mathcal L$ 为已验收记录，$T$ 为剩余资源。仅当这些变量在所选模型中可被可靠地省略时，才使用更小状态。相同 TCP 或相同 Jacobian 不保证相同 $x$。
+
+\subsection{固定信息实验与因果模式选择}
+固定共享采集程序 $\mathsf A$，其输出为 $Y$，似然为 $Q(y\mid\theta)$。有限模型使用事先声明的证据分区 $\mathcal Y$，并令
+\begin{equation}
+p_y=\int Q(y\mid\theta)b_H(d\theta),\qquad
+b_y(d\theta)=\frac{Q(y\mid\theta)b_H(d\theta)}{p_y}.
+\label{eq:posterior}
+\end{equation}
+零概率行可以移除；真实系统中的未知/无效观测必须另设一行并给出回退。分区并不授权丢弃原始记录；保留的完整后验可继续使用桶内信息，有限表格则需使用统一的桶内界。
+
+模式 $m\in\mathcal M$ 是一个明确的入口集合 $\mathcal X_m$、剩余预算、完成账本状态和可用后继程序族。可行边 $e=(y,m)\in E$ 必须具有一个\emph{仅使用合法观测的}连续建立程序。从公共初态经过共享采集、模式建立和稳定等待的全部时间计入预算。
+若同一构型从不同证据桶到达时剩余预算不同，应扩充模式索引，或使用统一保守预算；不能仅匹配构型出现次数，就宣称实际时间和资源相同。
+
+选择器为 $\pi(m\mid y)$，使用的随机种子独立于隐藏对象。联合记录 channel 为
+\begin{equation}
+Q_\pi(y,m\mid\theta)=Q(y\mid\theta)\pi(m\mid y),
+\qquad
+\mu_{ym}=p_y\pi(m\mid y).
+\label{eq:joint}
+\end{equation}
+这里 $M$ 首先指选择层的目标模式。在理想合同内它与实际模式一致；若建立失败，则单列失败出口，不能筛掉失败样本后继续使用原概率等式。
+
+\begin{assumption}[有限选择层的可实现性]
+\label{ass:realizable}
+对每条保留边，存在同一真实系统上的合法因果建立程序；其入口、时限、末态集合、传感权限和条件失败界已声明。理想精确模型取失败率为零。模式选择发生在 $Y$ 可观察之后；未知未来请求尚未用于选择，除非该实验明确声明请求已知。
+若要把“相同信息”推广到建立结束时，建立阶段不得向后继提供额外的对象信息：它可以使用对 $\theta$ 条件非信息性的辅助反馈，或将额外对象数据在所有对照中统一隔离。若该阶段继续同化新的对象图像，必须扩充完整观测实验并重新验收，不能沿用原来的信息等价结论。第\ref{sec:physical}节的解析重配置区对未知目标符号不含额外信息。
+\end{assumption}
+
+\begin{proposition}[对象信息不因合法模式选择而增加]
+\label{prop:blackwell}
+在式\eqref{eq:joint}中，$\theta\perp M\mid Y$，故
+\begin{equation}
+b(\theta\mid y,m)=b_y(\theta).
+\end{equation}
+观测 $(Y,M)$ 与 $Y$ 在通常 Blackwell 意义下等价；任意两个合法选择器产生的观测实验也相互等价。
+\end{proposition}
+\begin{proof}
+条件于 $y$ 后，$\pi(m\mid y)$ 在 Bayes 分子分母中抵消。从 $Y$ 可用独立随机数产生 $M$；从 $(Y,M)$ 可投影回 $Y$。这两个与 $\theta$ 无关的 Markov 核给出双向统计后处理。\end{proof}
+这一结论使用经典实验比较\cite{blackwellmodern}。它不允许把机器人的实际构型免费改成另一构型，也不允许把合成统计量记为新拍摄图像。
+
+\subsection{未来请求的完成值表}
+在有限认证后继库 $\Pi_{\rm cert}(y,m,\mathcal R)$ 中定义
+\begin{equation}
+c_{\mathcal R}(y,m)=
+\max_{\kappa\in\Pi_{\rm cert}(y,m,\mathcal R)}
+\int\Pp_\theta^{\omega_{ym}\triangleright\kappa}
+(\mathsf{Finish}_{\mathcal R}\mid H,Y=y)\,b_y(d\theta).
+\label{eq:c}
+\end{equation}
+$\omega_{ym}$ 是已固定的模式建立程序，$\triangleright$ 表示顺序执行；概率涵盖同一个真实模型中的建立、末态与后继随机性。若入口是集合，证书应对该集合统一有效；不能从集合中挑一个有利真值，也不能在没有状态分布的情况下把“条件于一个集合”当成精确概率。有限库的最大值由明确的同信息程序取得。新请求执行期间可以继续接收真实图像，但不能根据未观察的 $\theta$ 选取动作。建立阶段的耗时及风险必须包括在表项或其独立界内。
+
+接收到新请求后才选择相应后继程序。选择阶段未知请求时，同一个 $\mu$ 对全部请求适用，事前能力向量为
+\begin{equation}
+v_{\mathcal R}(\mu)=c_{\mathcal R}^{\top}\mu.
+\label{eq:value}
+\end{equation}
+这里的期望是对固定设计后验的 Bayesian 值，不与逐参数最坏值混用。若采用 robust 完成值，需要在每个表项重新使用相应量词。
+
+\subsection{固定边缘的比较域}
+为隔离关联，固定模式边缘 $r_m$，定义
+\begin{equation}
+\mathcal P(p,r,E)=\left\{\mu\ge0:
+\sum_m\mu_{ym}=p_y,\quad
+\sum_y\mu_{ym}=r_m,\quad
+\mu_{ym}=0\text{ if }(y,m)\notin E\right\}.
+\label{eq:transport}
+\end{equation}
+记约束为 $A\mu=a$。在条件\ref{ass:realizable}下，$\mu\leftrightarrow\pi(m\mid y)=\mu_{ym}/p_y$ 给出有限模型中的精确策略实现。固定 $r$ 不是所有部署必须服从的规则；无配额时只保留行边缘。额外的平均成本或风险约束写为 $G\mu\le d$，但每条边的硬物理可执行性仍须单独验收。
+
+\begin{scopebox}
+\textbf{两个层次不能混淆。}本版的关联摘要描述\emph{规划时未来证据与入口的联合结果}。运行时已有完整 $b_y,x,\mathcal L,T$ 时，无须再增加一个不可观察的耦合隐变量。本文不是对完整 POMDP 状态充分性的反例。
+\end{scopebox}
+
+\section{何时可以分开评价证据与构型}
+\label{sec:separation}
+
+\subsection{一般可行域上的必要充分判据}
+令非空可行多面体为
+\begin{equation}
+\mathcal P=\{\mu\ge0:A\mu=a,\ G\mu\le d\},\qquad
+\mathcal D=\spanop(\mathcal P-\mathcal P).
+\label{eq:diffspace}
+\end{equation}
+$\mathcal D$ 仅描述在保持所有声明约束时真正能够变化的关联方向。选择其正交列基 $C$，即 $\range C=\mathcal D$、$C^\top C=I$。若 $\mathcal P$ 是单点，$C$ 为空矩阵。
+
+\begin{theorem}[请求相关的可分离性]
+\label{thm:separable}
+对固定请求 $\mathcal R$，下列条件等价：
+\begin{enumerate}
+\item $v_{\mathcal R}(\mu)$ 对全部 $\mu\in\mathcal P$ 相同；
+\item $c_{\mathcal R}\perp\mathcal D$；
+\item $C^\top c_{\mathcal R}=0$。
+\end{enumerate}
+若条件不成立，则存在两个可行、使用同一信息实验的因果选择器，保持全部边缘和声明约束，却有严格不同的请求完成值。
+\end{theorem}
+\begin{proof}
+第一项等价于 $c_{\mathcal R}^\top(\mu_1-\mu_2)=0$ 对任意可行对成立，也就等价于它在这些差的线性张成空间上为零。第二项与第三项由 $C$ 的定义等价。若 $C^\top c_{\mathcal R}\ne0$，不可能所有可行对的值差都为零；存在严格分离的可行对。由式\eqref{eq:joint}及条件\ref{ass:realizable}将二者转换成实际选择器。\end{proof}
+
+这是一个受限操作模型中的精确判据；证明采用基本线性代数。它的研究意义是指出\emph{何时}在此问题中省略关联不会损失请求能力，而不是笼统要求所有情况下保留所有相关性。
+
+\subsection{运输图上的交互与环}
+当约束仅为式\eqref{eq:transport}时，定义真实有效边集
+\begin{equation}
+E^\star=\{e:\exists\mu\in\mathcal P,\ \mu_e>0\}.
+\end{equation}
+每条声明边都可能物理可达，但固定边缘仍可能迫使某些边的概率为零。必须先删除这些边。有限多个可行点的平均值给出一个在 $E^\star$ 上严格正的可行点 $\mu_0$。
+
+\begin{theorem}[环交互的等价形式]
+\label{thm:cycle}
+在纯运输约束及有效支持 $E^\star$ 上，
+\begin{equation}
+\mathcal D=\ker A_{E^\star}.
+\end{equation}
+请求值与关联无关，当且仅当存在节点势函数 $\alpha_y,\beta_m$，使
+\begin{equation}
+c_{\mathcal R}(y,m)=\alpha_y+\beta_m,\qquad (y,m)\in E^\star.
+\label{eq:additive}
+\end{equation}
+这又等价于每条可行二分图交替环上的正负交替和为零。若某环方向 $h$ 的增益 $c_{\mathcal R}^\top h\ne0$，则足够小的
+\begin{equation}
+\mu_\pm=\mu_0\pm\varepsilon h
+\end{equation}
+均可行，且其完成值差为 $2\varepsilon c_{\mathcal R}^\top h$。
+\end{theorem}
+\begin{proof}
+可行差必在 $\ker A_{E^\star}$。反之，任意核向量 $h$ 在充分小的正负缩放下都不破坏 $\mu_0$ 的正性，并保持等式，所以属于 $\mathcal D$。由线性代数，$c\perp\ker A$ 当且仅当 $c\in\row A$；二分图边列在两个端点行上各含一个 $1$，故该行空间正是式\eqref{eq:additive}。在每个连通分量的生成树上沿边构造势函数；非树边能与这些势兼容，当且仅当其基本环交替和为零。最后的值差由线性性直接得到。\end{proof}
+固定边缘运输图的环与关联矩阵是已有数学结构\cite{transportpoly}. 本文将它们用于具有真实完成语义的 $c_{\mathcal R}$，而不声称发现新的运输几何。
+
+若有效图有 $n_v$ 个非孤立顶点、$n_e$ 条边和 $n_c$ 个连通分量，则
+\begin{equation}
+\dim\mathcal D=n_e-n_v+n_c.
+\end{equation}
+森林上的固定边缘配对唯一，所以没有可比较的关联自由度；这不表示物理模式本身不重要。若加入成本或风险约束，并且某些不等式在整个可行域恒等取等，必须改用式\eqref{eq:diffspace}的真实差分空间，不能只计算原图的环。
+
+\subsection{最小的二乘二机制}
+取证据和模式边缘都为 $(1/2,1/2)$，则
+\begin{equation}
+\mu(s)=\begin{pmatrix}s&1/2-s\\1/2-s&s\end{pmatrix},
+\qquad 0\le s\le 1/2.
+\end{equation}
+定义请求的混合差
+\begin{equation}
+\Gamma_{\mathcal R}=c_{--}+c_{++}-c_{-+}-c_{+-}.
+\label{eq:gamma}
+\end{equation}
+于是
+\begin{equation}
+v_{\mathcal R}(\mu(s))-v_{\mathcal R}(\mu(1/4))
+=(s-1/4)\Gamma_{\mathcal R}.
+\label{eq:binarycontrast}
+\end{equation}
+因此 $\Gamma_{\mathcal R}$ 是该受限任务的可观测交互判据：为零时这一个关联方向无价值；为正时同向配对更好；为负时反向配对更好。四条边必须实际合法，不能为了得到矩阵而添加虚构模式。
+
+\begin{figure}[htbp]\centering
+\begin{tikzpicture}[>=Latex, every node/.style={font=\small}]
+\node[font=\bfseries\color{ink}] at (2,2.4) {相同信息、相同模式边缘};
+\node[draw=teal,rounded corners,minimum width=16mm,minimum height=8mm] (y1) at (0,1.3) {$Y_-$};
+\node[draw=teal,rounded corners,minimum width=16mm,minimum height=8mm] (y2) at (0,-.2) {$Y_+$};
+\node[draw=ink,rounded corners,minimum width=16mm,minimum height=8mm] (m1) at (4,1.3) {$M_-$};
+\node[draw=ink,rounded corners,minimum width=16mm,minimum height=8mm] (m2) at (4,-.2) {$M_+$};
+\draw[->,teal,thick] (y1)--node[above] {$s$}(m1);
+\draw[->,teal,thick] (y2)--node[below] {$s$}(m2);
+\draw[->,rust,dashed] (y1)--node[pos=.3,above,sloped] {$1/2-s$}(m2);
+\draw[->,rust,dashed] (y2)--node[pos=.3,below,sloped] {$1/2-s$}(m1);
+\node[align=left,text width=65mm,anchor=west] at (5.3,.7) {每条边携带真实建立程序、剩余时间与后继完成值。\par\smallskip 改变配对不增加对象信息，却可以改变实际完成率。};
+\end{tikzpicture}
+\caption{V8.3 比较的是合法观测与真实执行模式的配对。图中的箭头不能仅是统计标签变换。}
+\end{figure}
+
+\section{请求族决定需要保留哪些关联}
+\label{sec:summary}
+
+\subsection{类内最小线性摘要}
+对 $K$ 个声明请求，令
+\begin{equation}
+D=[c_{\mathcal R_1},\ldots,c_{\mathcal R_K}],\qquad
+k=\rank(C^\top D).
+\label{eq:rank}
+\end{equation}
+取 $B$ 为 $\range(C^\top D)$ 的正交列基，并取任意 $\mu_0\in\mathcal P$。定义
+\begin{equation}
+\zeta(\mu)=B^\top C^\top(\mu-\mu_0)\in\R^k.
+\label{eq:zeta}
+\end{equation}
+若 $C^\top D=BR$，所有请求能力可由
+\begin{equation}
+D^\top\mu=D^\top\mu_0+R^\top\zeta(\mu)
+\label{eq:recover}
+\end{equation}
+恢复。
+
+\begin{theorem}[请求能力的最小线性关联维数]
+\label{thm:minsummary}
+在固定可行域 $\mathcal P$ 和固定能力表 $D$ 上，$k$ 是精确保留全部 $D^\top\mu$ 所需的最小线性摘要维数。解码器可以是任意函数，但编码器必须是线性或仿射映射。式\eqref{eq:zeta}达到下界。
+\end{theorem}
+\begin{proof}
+对 $h=\mu-\mu_0\in\mathcal D$，$h=CC^\top h$；代入 $C^\top D=BR$ 得式\eqref{eq:recover}。反向，设摘要为 $S\mu$，另取 $\mu^\circ\in\operatorname{relint}\mathcal P$。若存在 $h\in\mathcal D$ 满足 $Sh=0$ 而 $D^\top h\ne0$，充分小的 $\mu^\circ\pm\varepsilon h$ 都可行；其摘要相同而目标能力不同，任何解码器都无法同时恢复。因此
+\[
+\ker(S|_{\mathcal D})\subseteq\ker(D^\top|_{\mathcal D}).
+\]
+由秩与零空间维数关系，$\rank(S|_{\mathcal D})\ge\rank(D^\top C)=k$，从而摘要维数至少为 $k$。\end{proof}
+
+最小性不针对任意神经编码器、递归 belief 状态或完整患者记忆。$\zeta$ 是规划时的请求能力接口；真正的对象后验、原始证据和当前物理状态仍按 V8.2 保存。若要让它独立承担多步递归状态，还需对观测转移及 Bellman 备份闭合，这属于 AIS 等已有理论的要求\cite{ais,constrainedais}。
+
+摘要维数降低也不自动使整个优化器只有 $k$ 个变量。$\mathcal P$ 在 $\zeta$ 空间的投影可能复杂；第一版仍在边变量 $\mu$ 上求解 LP，以 $\zeta$ 加速能力查询、比较及结构审计。
+
+\subsection{新请求何时需要扩展表示}
+\begin{corollary}[请求扩展的精确维数增量]
+\label{cor:upgrade}
+加入请求 $\mathcal R_*$ 后，所需额外线性方向数为
+\begin{equation}
+\Delta k=\rank\!\left(C^\top[D,c_{\mathcal R_*}]\right)
+-\rank(C^\top D).
+\label{eq:upgrade}
+\end{equation}
+当 $\Delta k=0$ 时，新能力值在旧摘要上可恢复；否则存在旧摘要不可区分、但新能力值不同的可行耦合。
+\end{corollary}
+\begin{proof}
+前半部分由定理\ref{thm:minsummary}直接得到。若维数增加，$C^\top c_{\mathcal R_*}$ 不在旧列空间内，存在旧能力全部为零而新能力非零的差分方向；相对内点上的正负扰动给出所需可行对。\end{proof}
+
+连续请求族只有在其能力向量有\emph{经验证的有限生成展开}时，才能使用有限 $D$ 完整覆盖。稠密采样请求不构成连续族证书；非线性优化后的 $c_{\mathcal R}$ 也未必仍在原始几何生成空间。
+
+\begin{keybox}
+\textbf{三种不同的扩展。}\par
+能力摘要缺少方向：按式\eqref{eq:upgrade}增加关联方向。\par
+对象后验缺少查询结构：在 V5.1 允许的模型内扩展条件表示。\par
+对象事实尚未被观测辨识，或请求要求新图像：实际追加测量。\par
+三者不能互相替代。$\Delta k=0$ 不意味着新鲜图像义务已经完成。
+\end{keybox}
+
+\subsection{共同误差与交互误差的不同影响}
+若两个策略差 $d=\mu_1-\mu_2\in\mathcal D$，任何 $h\in\mathcal D^\perp$ 都满足
+\begin{equation}
+(c_{\mathcal R}+h)^\top d=c_{\mathcal R}^\top d.
+\label{eq:cancel}
+\end{equation}
+纯运输情形中，行偏差 $\alpha_y$ 与列偏差 $\beta_m$ 都抵消。因而在严格匹配的关联实验中，需要准确识别的是交互误差，而不一定是每一项共同基线误差。该等式不允许省略实际模型校准，也不允许假定未知误差恰好可加。
+
+若仅有 $\ell_e\le c_e\le u_e$，则同一请求的最坏配对差恰为
+\begin{equation}
+\underline\Delta(d)=
+\sum_{d_e\ge0}d_e\ell_e+\sum_{d_e<0}d_eu_e.
+\label{eq:robustgap}
+\end{equation}
+证明是对各坐标分别取端点。$\underline\Delta>0$ 即在全部声明系数误差下仍有严格优势；它比只比较两个点估计更适合第一版真实实验。
+
+\section{从统计后处理到物理可复用性}
+\label{sec:refinement}
+
+\subsection{带资源和完成语义的细化合同}
+考虑两个有限接口实验 $E_A(i\mid\theta)$、$E_B(j\mid\theta)$。输出索引包含可观察统计量、实体入口集合、剩余资源和已验收记录。允许的转换边 $(i,j)\in\mathcal G$ 必须具备一个因果程序：从 $A$ 的任意认证入口出发，在规定耗时内进入 $B$ 的入口集合，并保留 $B$ 要求的剩余预算。
+被比较的是\emph{允许统计读出的接口实验}。账本条件是义务资格的逻辑兼容，不要求两个原始图像日志逐值同分布；不可改写的原始记录始终另行保存。若某个目标合同要求原始记录也属于精确匹配输出，则必须把它显式加入 channel，重新判断可实现性。
+
+已有记录还必须满足语义包含条件。统计模拟可以生成控制器使用的摘要，却不能把旧像素改成新时间、把短轴记录改成长轴记录，或增加不存在的合格覆盖。对于 fresh 后继任务，转换后的完成账本保留尚未完成的 fresh 义务。
+
+\begin{theorem}[有限库中的物理细化证书]
+\label{thm:refine}
+若存在与 $\theta$ 无关的随机核 $K_{ij}$，满足
+\begin{align}
+&K_{ij}\ge0,\qquad \sum_jK_{ij}=1,\qquad K_{ij}=0\text{ for }(i,j)\notin\mathcal G,\\
+&\sum_i E_A(i\mid\theta)K_{ij}=E_B(j\mid\theta)
+\quad\text{对全部声明的 }\theta,j,
+\label{eq:refineLP}
+\end{align}
+且每条转换合同对所有关系内状态都成立，则 $A$ 可实际实施 $B$ 的任意合同内后继策略。其完成率不低于该 $B$ 策略的保证。有限 $\Theta$ 和有限接口下，核的存在性是线性可行性问题，并且对规定的随机转换库是精确的。
+\end{theorem}
+\begin{proof}
+观察 $i$ 后按 $K_{ij}$ 抽样，执行该边的同一个认证转换程序。式\eqref{eq:refineLP}保证目标接口的条件分布与 $B$ 一致；状态关系、预算与账本合同保证同一个后继策略可以执行。对 $B$ 的任何允许策略作此模拟得到结论。反向只针对本节定义的随机转换库：该库任意程序的条件分支概率形成一个行随机核，并必须满足所述匹配与支持约束。\end{proof}
+
+此定理是一个\emph{充分的任务支配证书}，并非有限请求族上的完整 Blackwell 充要定理。某组任务价值不差，未必存在统一的 channel 模拟核。连续参数域下，只在证明有限生成约束足够、或提供统一余项后，才可用有限检验替代全部 $\theta$。
+
+\subsection{近似合同与风险}
+若对每个 $\theta$，匹配误差满足
+\begin{equation}
+\TV(E_A^\theta K,E_B^\theta)\le\epsilon_{\rm stat},
+\end{equation}
+且对每个被选择的合法历史，转换失败率至多为 $\epsilon_{\rm phys}$，则任意 $[0,1]$ 值的后继完成事件满足
+\begin{equation}
+P_A^{\rm simulated}(\mathsf{Finish}_{\mathcal R})
+\ge P_B(\mathsf{Finish}_{\mathcal R})
+-\epsilon_{\rm stat}-\epsilon_{\rm phys}.
+\label{eq:refineerror}
+\end{equation}
+这是同一程序的耦合/TV 及失败事件界，延续 V7.3 的证明责任\cite{v73}。若 $B$ 的保证只对特定精确状态有效而非整个入口集合有效，则不能使用该结论。
+
+定义在固定转换合同中的物理受限缺陷
+\begin{equation}
+\delta_{\mathcal G}(A\!\to\!B)
+=\inf_{K\in\mathcal K_{\mathcal G}}
+\sup_{\theta\in\Theta}
+\TV(E_A^\theta K,E_B^\theta).
+\label{eq:physdef}
+\end{equation}
+有限模型下对绝对值增加辅助变量即可求 LP。$\delta_{\mathcal G}>0$ 只说明该物理模拟合同不能精确实现；\emph{它本身不证明指定 SA/LA 请求有同样大小的成功率差}。下一节专门在同一个连续实例中构造并证明这个联系。
+
+\section{同一个连续实例中的精确统计与完成间隙}
+\label{sec:physical}
+
+本节沿用 V7.3 的连续双通道见证，并新增\emph{带保留预算的物理缺陷与任务完成差相等}的联系。机构构造和 $\Phi$ 成功率不是本版新造的 RM75 结果\cite{v73}。
+
+\subsection{有界输入和真实配置障碍}
+材料图取局部恒等图，目标为
+\begin{equation}
+\Gamma_\theta(c)=(c,\theta g(c),-d),\qquad \theta\in\{-1,+1\},
+\end{equation}
+其中 $g(c)=0$ 对 $c\le c_0$ 成立，$g$ 在 $[c_0,L]$ 单调到 $g(L)=1$，横向单位为毫米。三个平移关节与探头位置为
+\begin{equation}
+q=(c,r,a),\qquad o(q)=(c,r+a,0),
+\end{equation}
+并有
+\begin{equation}
+|r|\le2,\quad |a|\le1.5,\quad
+c>\kappa\Longrightarrow |r|\ge1,
+\qquad |\dot c|\le v_c,\quad |\dot r|,|\dot a|\le v_r.
+\label{eq:geometry}
+\end{equation}
+配置障碍使离开 $c\le\kappa$ 转场区后的两个冗余通道分开；它不是一个任意禁止切换的离散标签。探头在平面表面保持固定预压，独立预压机构使两种实现有相同接触条件。当前图像误差为
+\begin{equation}
+e=\theta g(c)-(r+a),\qquad |e|\le\varepsilon<0.5.
+\end{equation}
+检查需要实际图像足迹覆盖 $[c_0,L]$ 并到达出口 $c=L$。足迹半宽 $w>0$ 及帧间距满足 $\norm{g'}_\infty w\le\varepsilon$、相邻中心间距不超过 $2w$，并含首尾站位。本例后继图像可靠、关联正确，未给真实声学噪声或 RM75 力控作保证。
+\textbf{后继合格图像必须使用规定的回正截面，平面法向固定为 $(1,0,0)$。}倾斜端口只服务共享探查，斜视图不计入此后继请求的合格覆盖；因此控制器不能靠额外倾斜绕过出口必要条件。这是居中覆盖子任务的显式协议，不是对任意 SA/LA 朝向族的结论。
+
+共享采集在 $c=\kappa$ 使用同一有界倾斜视图观察终段，得到
+\begin{equation}
+Y=\theta+\epsilon,\qquad \epsilon\sim\N(0,\sigma^2).
+\end{equation}
+本节取 $0<\sigma<\infty$。
+倾角可选为 $\tan\alpha=(L-\kappa)/d$；采集与回正耗时相同并已扣除。随后在当前目标完全相同的区间做零空间重配置，进入
+\begin{equation}
+q_m=(c_0,mr_0,-mr_0),\qquad 1<r_0<1.5.
+\label{eq:entry}
+\end{equation}
+两个入口具有同一 TCP、同一成像关系、同一 Jacobian 和瞬时任务速度盒。模式建立可由对称有界程序以相同时间完成；该区段的图像不携带额外的 $\theta$ 信息。
+
+\subsection{直接完成和重连下界}
+假定 $\norm{g'}_\infty v_c\le v_r$，以及
+$(c_0-\kappa)/v_c\ge(r_0-1)/v_r$。定义
+\begin{equation}
+t_0=\frac{L-c_0}{v_c},\qquad
+d_0=\frac{2(c_0-\kappa)}{v_c}+\frac{2}{v_r}.
+\label{eq:times}
+\end{equation}
+
+\begin{lemma}[继承的连续物理时间见证]
+\label{lem:time}
+当 $m=\theta$ 时，存在一个只读取 $m$ 的因果程序，在 $t_0$ 内完成检查。当 $m=-\theta$ 时，任意成功控制器即使立即获知真实 $\theta$，也至少需要 $t_0+d_0$。从 $q_m$ 转到相反入口 $q_{-m}$ 至少需要 $d_0$。
+\end{lemma}
+\begin{proof}
+匹配时取 $r=mr_0$、$a=m g(c)-mr_0$、$\dot c=v_c$，则误差为零，关节限位和速度界均满足，实际连续采图覆盖完成。该程序只使用已选模式及已知 $g$。
+
+以 $\theta=+1$、$m=-1$ 为例，若一直处于负通道，则在出口有 $r+a\le0.5$，不能满足对横向位置 $1$ 的容差。任何成功路径必须穿越 $-1<r<1$，穿越期间由式\eqref{eq:geometry}必须保持 $c\le\kappa$。到达该区、跨越宽度 $2$、再到出口的三个不重叠时间段，分别至少为 $(c_0-\kappa)/v_c$、$2/v_r$、$(L-\kappa)/v_c$，总和为 $t_0+d_0$。若终点换成 $q_{+1}$，最后纵向距离改为 $c_0-\kappa$，得入口重连下界 $d_0$。另一符号对称。该下界不依赖后继估计精度或控制器形式。\end{proof}
+
+若只有速度盒，这些时间界可达到；额外加速度和 jerk 约束会增加可构造轨迹的时间，但不会使上述必要下界失效。不能直接将 $t_0$ 当成 RM75 的可达上界。
+
+\subsection{相同对象信息与模式边缘}
+在对称先验下，比较
+\begin{equation}
+A:\ M=-\operatorname{sign}Y,\qquad
+B:\ M=\operatorname{sign}Y.
+\label{eq:badgood}
+\end{equation}
+二者使用完全相同的原始记录，后验均为
+\begin{equation}
+\E[\theta\mid Y=y]=\tanh(y/\sigma^2).
+\end{equation}
+按命题\ref{prop:blackwell}，二者在通常信息意义下完全等价；设计先验下模式边缘也均为 $(1/2,1/2)$。后一个边缘等式\emph{不}表示对每个固定 $\theta$，模式的条件分布也相同。
+
+当 $t_0\le T<t_0+d_0$ 时，任何因果后继的最优完成率恰为
+\begin{equation}
+V_A(T)=1-\Phi(1/\sigma),\qquad
+V_B(T)=\Phi(1/\sigma).
+\label{eq:completePhi}
+\end{equation}
+上界来自错误通道的全控制器时间下界；匹配通道的同一个模式条件程序取得上界。这一继承结果已经比“某个控制器的收敛比较慢”更强。
+
+\subsection{新增联系：保留后继预算的物理缺陷}
+\begin{theorem}[同实例的物理缺陷与完成差]
+\label{thm:matchedgap}
+源接口为 $A$ 的 $(Y,M,q_M,T)$。目标接口为 $B$ 的 $(Y',M',q_{M'},t_0)$，其中 $t_0$ 是承诺保留的最低检查预算，允许向下承诺多余资源。允许转换耗时不超过 $T-t_0$，且 $t_0\le T<t_0+d_0$。$Y'$ 是允许后处理的控制统计量；原始 $Y$ 和图像日志不属于本定理要求逐值匹配的输出。
+
+在只允许合法统计后处理及上述入口转换的比较中，令 $\delta_{\rm res}(A\to B)$ 按式\eqref{eq:physdef}定义。则
+\begin{equation}
+\boxed{\delta_{\rm res}(A\to B)
+=2\Phi(1/\sigma)-1
+=V_B(t_0)-V_A(T)>0.}
+\label{eq:exactbridge}
+\end{equation}
+如果把实体模式只当作可免费重标记的观测标签，则通常统计 deficiency 为零。
+\end{theorem}
+\begin{proof}
+由引理\ref{lem:time}，转换到相反入口至少需要 $d_0$，而允许转换时间 $T-t_0<d_0$；所以任何合法转换核必须保持实际 $M'=M$。令 $a_\sigma=\Phi(1/\sigma)$。对 $\theta=+1$，源模式 $M=+1$ 的概率为 $1-a_\sigma$，目标为 $a_\sigma$。TV 在投影下不增，所以任意核的误差至少为 $2a_\sigma-1$；对负参数同样成立。
+
+反向取统计核 $(Y,M)\mapsto(-Y,M)$，不移动机器人。令 $Y'=-Y$，则源的 $M=-\operatorname{sign}Y$ 变为 $M=\operatorname{sign}Y'$，与目标的支持关系相同；但 $Y'\sim\N(-\theta,\sigma^2)$，目标为 $\N(\theta,\sigma^2)$。这两个对称 Gaussian 的密度在零点交叉，TV 恰为 $2\Phi(1/\sigma)-1$，故达到下界。源剩余预算至少为 $t_0$，同模式转换合法。
+
+式\eqref{eq:completePhi}给出完成率差的同一数值。若忽略实际构型，只对标签作 $(Y,M)\mapsto(Y,-M)$，即可从 $A$ 精确得到 $B$ 的统计 channel，因而通常 deficiency 为零；该核没有执行机器人所需的重连，不能作为物理转换。\end{proof}
+
+\begin{scopebox}
+\textbf{该定理没有混淆两个时限。}它没有从“来不及完成”推出“任何切换都来不及”；它先给目标后继保留 $t_0$，然后证明剩余的转换预算不足。\par
+\textbf{该定理没有伪造图像。}$Y'=-Y$ 仅用于实验比较的数学上界，不是新图像，不写入完成账本。实际扫描程序仍以合法原始记录和自己的物理模式执行。\par
+若要求“原始日志也逐值匹配，且目标原始值等于 $Y'$”，反射核不满足这个更强合同，式\eqref{eq:exactbridge}的上界不能照搬。\par
+\textbf{该定理没有解决所有任务。}正缺陷与实际完成差相等，是这个具有匹配物理见证的实例结论；不外推成任意统计 deficiency 都对应任意临床请求的性能差。
+\end{scopebox}
+
+参数取 $\kappa=40,c_0=45,L=55,r_0=1.2,v_c=v_r=1$ 时，$t_0=10$ 秒，$d_0=12$ 秒，错误通道完成下界为 $22$ 秒。取 $T=12$ 秒，转换预算只有 $2$ 秒，严格小于 $12$ 秒。$\sigma=1$ 时，两个完成率约为 $0.841345$ 和 $0.158655$，物理缺陷与差值均约为 $0.682689$。这些全部是解析机构数值。
+
+\section{从关联判据到可执行选择算法}
+\label{sec:algorithm}
+
+\subsection{有限模型的能力前沿}
+对请求权重 $w_k\ge0,\sum_kw_k=1$，可优化
+\begin{equation}
+\max_{\mu\in\mathcal P}\sum_kw_k c_k^\top\mu.
+\end{equation}
+若请求在建立模式后才揭示，且不愿指定分布，使用
+\begin{equation}
+\max_{\mu,z}\ z\quad\text{s.t. }\mu\in\mathcal P,\quad
+z\le c_k^\top\mu\quad(k=1,\ldots,K).
+\label{eq:maximin}
+\end{equation}
+能力前沿为集合 $\{D^\top\mu:\mu\in\mathcal P\}$。这是有限策略层的线性优化，属于已知的联合分布优化思想\cite{strategicmeasures}。其精确性依赖单次 $Y$ 条件化选择和固定表项，不能直接推广到一般非经典信息结构或任意长时域控制。
+
+纯运输模型对单个加权表 $c$ 的对偶为
+\begin{equation}
+\min_{\alpha,\beta}\ p^\top\alpha+r^\top\beta
+\quad\text{s.t. }\alpha_y+\beta_m\ge c_{ym}\quad\forall (y,m)\in E.
+\label{eq:dual}
+\end{equation}
+原始与对偶值一致时，可验收有限模型的最优性。对偶不能把一个未认证的物理边变成合法边，也不能用算法未找到轨迹作为不可行证据。
+
+\subsection{区间完成系数与连续系统内外界}
+真实实现优先使用
+\begin{equation}
+\ell_{k,e}\le c_{k,e}^{\rm real}\le u_{k,e},\qquad 0\le\ell_{k,e}\le u_{k,e}\le1.
+\label{eq:intervals}
+\end{equation}
+下界来自\emph{一个具体、同信息、可执行的程序}及其条件风险；上界来自全部允许程序的必要物理条件，或明确限定的有限库穷尽。只找到一个失败轨迹不能把 $u$ 设为零。完全未知边可保留为 $[0,1]$，而不能人为删去不利可能性。
+
+定义 $L^*$ 和 $U^*$ 分别为式\eqref{eq:maximin}将 $c$ 替换为 $\ell$、$u$ 的最优值，$\hat\mu$ 为下界问题的解。
+
+\begin{theorem}[认证内外界与执行后的最优性间隙]
+\label{thm:bounds}
+若共享采集、模式库及可行集合 $\mathcal P$ 固定，所有区间对被优化选择的全部边同时有效，且下界程序在每条被选边可实施，则
+\begin{equation}
+\min_k(c_k^{\rm real})^\top\hat\mu\ge L^*,
+\qquad
+V^*_{\rm real}\le U^*,
+\end{equation}
+从而该固定模型类中的真实后悔值不超过 $U^*-L^*$。若
+$\max_{k,e}(u_{k,e}-\ell_{k,e})\le\varepsilon_c$，则
+\begin{equation}
+0\le U^*-L^*\le\varepsilon_c.
+\label{eq:regret}
+\end{equation}
+若上界只覆盖有限后继库，$V^*_{\rm real}$ 也仅指该库。即便表项上界覆盖全部后继控制器，只要 $\mathcal P$ 遗漏合法建立方式或模式，就不能称整个连续系统的全控制器上界。
+\end{theorem}
+\begin{proof}
+对每个可行 $\mu$，逐项有 $\ell_k^\top\mu\le(c_k^{\rm real})^\top\mu\le u_k^\top\mu$。先对请求取最小，再对策略取最大，得到上下界。将下界最优解的真实值与真实最优值比较得后悔界。最后 $\sum_e\mu_e=1$，故对任意 $k,\mu$ 都有 $(u_k-\ell_k)^\top\mu\le\varepsilon_c$；取最小与最大仍保持此差界。\end{proof}
+
+如果所有策略的有限模型与真实公开路径分布统一相差至多 $\eta$（TV），则上述完成下界改为 $L^*-\eta$，最优上界改为 $U^*+\eta$，后悔界改为 $U^*-L^*+2\eta$。这种统一界必须覆盖优化后选出的程序；单个未选择基元的平均校准误差不够。若 $\eta$ 来自证据边缘漂移，实际模式边缘也可能偏离固定配额，需报告该偏差，不能继续声称真实频率严格相等。
+
+\subsection{怎样把上界扩展到连续策略类}
+若需要超出有限库的结论，应明确给出两个集合：可实施内域 $\mathcal P_{\rm in}$，以及外域 $\mathcal P_{\rm out}$。后者必须包含\emph{所声称连续策略类}在共同证据分区与模式分区下的全部联合结果，前者的每个点都有实际实现。两者均针对已固定的共享采集权限；换用另一种采集实验不自动被覆盖。
+
+\begin{proposition}[连续内外包络的证书]
+\label{prop:outer}
+若每个连续策略都能映射到 $\mathcal P_{\rm out}$，且 $u$ 对映射单元内的全部状态、后验及允许后继策略统一有效，而 $\ell$ 由 $\mathcal P_{\rm in}$ 中可执行程序取得，则
+\begin{equation}
+L_{\rm in}^*\le V_{\rm continuous}^*\le U_{\rm out}^*.
+\end{equation}
+因此实际选择内域下界最优程序的后悔值至多为 $U_{\rm out}^*-L_{\rm in}^*$。若进一步每个 $\mu_o\in\mathcal P_{\rm out}$ 都存在 $\mu_i\in\mathcal P_{\rm in}$ 满足 $\TV(\mu_o,\mu_i)\le\eta_{\rm lib}$，且全部表项宽度不超过 $\varepsilon_c$，则
+\begin{equation}
+U_{\rm out}^*-L_{\rm in}^*\le\eta_{\rm lib}+\varepsilon_c.
+\label{eq:outergap}
+\end{equation}
+\end{proposition}
+\begin{proof}
+内域程序给出可达到的下界；外域与统一上界包含每个被声称的真实策略，给出上界。对外域最优 $\mu_o$ 选取规定的 $\mu_i$，因 $0\le u_{k,e}\le1$，每个请求都有 $u_k^\top\mu_o\le u_k^\top\mu_i+\eta_{\rm lib}\le\ell_k^\top\mu_i+\varepsilon_c+\eta_{\rm lib}$；对请求取最小并用内域最优值控制，即得式\eqref{eq:outergap}。\end{proof}
+这是把连续证书与有限计算连接起来的证明责任。$\eta_{\rm lib}$ 的小值不是现成假设：若存在细化映射、全域采样覆盖或解析机构的匹配构造才能使用。对当前 RM75，本稿尚未建立一个紧的全连续外包络；现阶段应报告库内证书和单独的全控制器时间见证。
+
+\subsection{条件风险如何进入表项}
+对被选的每个 $(y,m)$，要求建立与执行风险界对其完整认证入口集合有效。可使用
+\begin{equation}
+\Pp(\text{任一执行失败}\mid y,m)
+\le\epsilon_{\rm build}(y,m)+\sum_{t=0}^{N-1}\epsilon_t(y,m).
+\label{eq:risk}
+\end{equation}
+这依赖条件界或对所有有限候选同时有效的统计置信事件。不得用“某基元整体测试失败率为 $\delta$”替代选择后的条件风险。风险并集界和 funnel 组合是既有工具\cite{funnel}；本版的接口要求是将其放入同一个实际被选择程序的表项，而不是证明一个统计程序存在、另一个物理程序存在。
+
+若成功条件是几何集合 $\Theta_{ym}^{\rm good}$，并存在对其中全部参数统一有效的同一个程序，则一个合法下界是
+\begin{equation}
+\ell_{\mathcal R}(y,m)
+=\max\!\left\{0,\ b_y(\Theta_{ym}^{\rm good})-\epsilon_{ym}\right\}.
+\end{equation}
+集合由证书定义，不能使用真实未知 $\theta$ 为每次试验挑选一个有利程序。若所有成功程序都必须有 $\theta\in\Theta_{ym}^{\rm necessary}$，则
+$u_{\mathcal R}(y,m)\le b_y(\Theta_{ym}^{\rm necessary})$；外层必要集必须覆盖全部被声称的控制器。
+
+\subsection{可实施算法}
+\begin{keybox}
+\textbf{算法：请求相关的可实现证据复用}\par
+1. 固定对象身份、当前真实状态、剩余时间、有效证据及候选请求族。\par
+2. 由共同后验构造证据分区；保存无效观测与失锁出口。\par
+3. 用 dIRD 提出模式与路径，再由连续 IK、输入、接触和覆盖条件验收合法边。\par
+4. 为每条边和请求生成同信息后继程序及完成值区间；区分已认证、未知、已证不可行。\par
+5. 计算真实差分空间和任务交互，形成必要的关联摘要；求解下界 LP，并保留上界和对偶间隙。\par
+6. 观察真实 $y$ 后按 $\pi(m\mid y)=\mu_{ym}/p_y$ 选择模式，执行已验收的同一程序。\par
+7. 新请求到来时检查表示是否需要扩展、对象证据是否仍有效，以及哪些图像义务仍缺失；选择并执行其后继程序。\par
+8. 以实际图像、源时间和材料足迹更新完成记录；内环更改动作或状态离开证书域时重新验收。
+\end{keybox}
+
+该算法允许规划层给出三种结果：\emph{有下界保证的方案}、\emph{当前证据/库不足以判定}、\emph{在声明模型与资源下已证不可完成}。第三种结果必须有必要条件或全类上界；不能仅依据求解失败。
+
+\section{对象表示与最终动作：V5.1、V6.1 怎样进入同一方法}
+\label{sec:backend}
+
+\subsection{身体中心目标与两种成像查询}
+用有效局部材料图 $a=(h,\varphi,d)$ 保存同一目标曲线 $\gamma(s;w)$，以当前身体映射 $\Psi_t$ 生成世界目标 $g_t(s)=\Psi_t(\gamma(s;w))$。图册、目标系数和标定不确定性进入同一对象后验。设探头图像坐标基为 $(e_x,e_y,e_z)$，其中 $e_y$ 是图像平面法向，$e_z$ 是深度方向。
+
+短轴请求约束图像平面法向与局部目标切向平行，并约束实际交点的图像居中和深度。长轴请求要求图像平面包含目标位置与切向，例如局部关系
+\begin{equation}
+e_y(q)^\top(g_t(s_0)-p(q))=0,
+\qquad e_y(q)^\top g_t'(s_0)=0.
+\label{eq:LA}
+\end{equation}
+一个长轴局部关系不自动保证整段弯曲血管都在平面内；区段长度、曲率、FOV 和图像质量必须再验收。姿态自由度来自请求关系本身，不能用任意 TCP 偏移替代任务等价。
+
+\subsection{V5.1 是后验计算后端，不是另一个主问题}
+当所声明的观测与几何/执行查询能精确写为
+\begin{equation}
+f_\iota(z)=c_\iota+\ell_\iota^\top z+z^\top Q_\iota z,
+\end{equation}
+V5.1 选择 $\xi=Lz$，令 $V$ 张成 $\ker L$，检查
+\begin{equation}
+V^\top Q_\iota V=0\quad\forall\iota.
+\label{eq:V51}
+\end{equation}
+在静态潜对象、固定关联、先验支撑兼容及完整条件独立 Gaussian 观测模型下，可保留
+\begin{equation}
+p_t(\xi,v)=\pi_t(\xi)\N(v;m_t(\xi),C_t(\xi)).
+\end{equation}
+高维残余 $v$ 及其相关性并未被丢弃。匹配的双线性秩见证只证明该类内的最小条件维数\cite{v51}；自动共轭和充分统计提取已有先例\cite{autoconj}。
+
+V8.3 中它负责给同一目标的查询与 $\ell,u$ 计算提供共同概率对象。原始 B-mode、未知切片交点、归一化方向和 dIRD 神经场本身不自动属于式\eqref{eq:V51}。能在精确类内的部分使用精确编译，其余使用明确近似或拒绝条件。特别地，对机器人后继程序取最优后的 $c_{\mathcal R}$ 未必是二次函数，不能由几何查询闭合推断能力表也闭合。
+
+两种秩必须分别报告：$k_{\rm cond}$ 是 V5.1 的条件积分维数；$k_{\rm assoc}=\rank(C^\top D)$ 是本版的线性能力关联维数。二者作用不同，不相加成一个未经证明的“最小世界模型维数”。
+
+\subsection{合法查询扩展与真实对象变化}
+新增请求属于相同潜对象、相同历史似然与关联模型时，可以扩大条件空间而保持旧后验；能力摘要按式\eqref{eq:upgrade}另行扩展。仍保留完整后验或足够的原始证据，才有可能恢复新增方向。如果先前已不可逆地丢掉这些信息，不能声称无代价升级。
+
+纯坐标改写同时运输概率测度、目标和观测函数。真实组织变化、标定修正或关联修改则改变物理模型，应重新传播/重解释因子；旧模型下的有限统计量未必继续充分。第一版使用准静态时段与显式重验收，不要求人体材料本构辨识。
+
+\subsection{V6.1 作用于最终接受的动作}
+给定对象后验，任务微分 $A(z)$ 满足
+\begin{equation}
+\E[A^\top WA]=\bar A^\top W\bar A+
+\E[(A-\bar A)^\top W(A-\bar A)].
+\end{equation}
+因此名义零空间 $\bar A\Delta q=0$ 中仍可能存在任务风险。设最终增量 $a$ 包括基础伺服、模式实现调整和物理相位推进，定义
+\begin{equation}
+\mathscr R(a)=\E\norm{r(z)+B(z)a}_W^2
+=\begin{bmatrix}1\\a\end{bmatrix}^{\!\top}
+\E\bigl[[r\ B]^\top W[r\ B]\bigr]
+\begin{bmatrix}1\\a\end{bmatrix}.
+\label{eq:fullrisk}
+\end{equation}
+交叉项必须保留。若对整个候选执行段，真实残差与 $r+\tau Ba$ 的统一余项不超过 $\rho<\epsilon$，并有
+\begin{equation}
+\E\norm{r}_W^2\le\delta_0(\epsilon-\rho)^2,
+\qquad\mathscr R(a)\le\delta_1(\epsilon-\rho)^2,
+\end{equation}
+则两端 Markov 界与仿射段范数凸性给出段内超限概率不超过 $\delta_0+\delta_1+\delta_{\rm model}$。这是继承的条件验收工具\cite{v61,v82}，没有证明全任务完成或接触无源。余项、观测统计界必须适用于实际优化后选出的动作。
+
+\subsection{接触与成像耦合必须落实到物理自由度}
+同一次绕 $y$ 轴的摇摆同时影响接触和深部目标。局部增量关系包括
+\begin{equation}
+v_{\rm contact,n}=v_n-c_{\rm CoP}\omega_y,
+\qquad
+\dot u_{\rm image}=-v_x-d_p\omega_y+v_{\rm target,x}+\text{余项}.
+\end{equation}
+所以 V8.3 的动作候选应有真实独立的侧向和姿态分量，并继承共同接触、输入、延迟和任务误差预算。风险若作为变量相关二次约束进入求解器，应称 QCQP/SOCP；若保持实时 QP，则使用已验收的固定收紧行。
+
+现有 \code{weighted_outer.py} 的变量为 $[U,\Omega,\alpha,\sigma_I]$，$\sigma_I$ 是图像松弛，不是独立侧向速度。实机 active 发布链存在，但仍明确区分任务与物理认证状态。因而本版要求在原发布/复核机制上扩展实际自由度，并对内环修改后的最终动作重新检查，而不宣称现有控制器已经完成这些保证\cite{codeqp,codeactive}。
+
+\section{连续证书怎样从当前仓库产生}
+\label{sec:code}
+
+\subsection{当前资产与待补接口}
+\begin{table}[htbp]\centering\small
+\begin{tabularx}{\linewidth}{P{24mm}YY}
+\toprule
+模块 & 已检查到的资产 & V8.3 的具体新增接口\\\midrule
+材料图册 & 调和/FEM、atlas 查询、附件与姿态运输 & 局部有效域、目标关联与对应误差合同\\
+dIRD & 可微场、B-spline 优化、风险聚合、SRS DP & 输出候选模式和轨迹；另验连续边及时间合同\\
+UltraPoC & CoP、延迟图像处理、active 命令链 & 独立侧向/姿态分配、最终命令风险回传\\
+Genesis & 物理场景、接触/FEM 和运动控制接口 & 动态执行、传感时延、失锁及条件失败校准\\
+对象状态 & V8.2 已定义共享更新与查询接口 & 联合后验、能力表区间、关联摘要及版本管理\\
+完成记录 & 已有实测一维路径覆盖基础 & 材料足迹、视图类型、请求身份和新鲜度\\
+\bottomrule
+\end{tabularx}
+\caption{这是一份只读代码审查后的实施合同；并未修改或认证仓库中的实机程序。}
+\end{table}
+
+dIRD 实机 adapter 当前是扫描开始的一次查询；SRS 求解有分支/相邻步长检查，但不能自动替代全段连续碰撞、输入与接触证书\cite{codedird,codesrs}。Genesis 的 RealUS mirror 是只读运动学查看器；AMONG\_US runtime 包含真实物理 API，但直接位置赋值路径与动态控制路径必须区分\cite{codetwin,codegenesis}。
+
+\subsection{模式与基元的最小数据合同}
+每个模式至少保存：完整入口集合、剩余时间、关节/rail 范围、接触域、控制器与延迟状态、图册及标定版本、已有有效图像义务。每个边程序至少保存：
+\begin{enumerate}
+\item 原始合法输入、程序身份和允许参数，不接受隐藏目标真值；
+\item 连续 IK/分支、碰撞与输入约束，含速度、加速度、jerk 及实际接口余项；
+\item 对全部认证入口统一有效的结束集合、最长耗时与条件失败界；
+\item 实际采图时间、视图关系、材料足迹与 quality 条件；
+\item 偏离合同后的失败出口和重验收规则。
+\end{enumerate}
+一个 rail 值、dIRD 分数或 IK 种子标签都不足以唯一确定上述模式。存在模型不确定性时可以用集合合同，而不是假装已知精确物理状态。
+
+\subsection{RM75 的最小二乘二分离实验}
+共享 SA 前缀给出后段方向或位置的合法证据桶 $Y_-,Y_+$。从同一真实初态建立两个保持当前成像关系的冗余构型 $M_-,M_+$，再执行同一个 fresh-LA 请求。四条建立边分别验收；对照使用同一证据记录和匹配的模式/剩余预算边缘。
+
+先寻找实际系统中的时间分离：
+\begin{equation}
+\overline T_{\rm good}<T_{\rm deadline}<\underline T_{\rm bad}.
+\label{eq:rm75time}
+\end{equation}
+$\overline T_{\rm good}$ 必须来自一个完整可执行程序；$\underline T_{\rm bad}$ 必须来自所有合格轨迹都要满足的必要条件。候选搜索不成功只能产生“未知”，不能产生全控制器下界。
+
+一种可检查的必要条件来自 rail 与臂展。设 rail 坐标为 $r$、基座为 $b_0+r d$，用 URDF 和关节范围得到保守最大臂展 $R_{\max}$。若请求全部合格终点集合为 $\mathcal G_{\theta,\mathcal R}$，则必要 rail 集合可取
+\begin{equation}
+\mathcal I_{\theta,\mathcal R}=
+\{r:\exists p\in\mathcal G_{\theta,\mathcal R},\
+\norm{p-(b_0+rd)}\le R_{\max}\}.
+\end{equation}
+从实测 $r_0$ 出发，任何完成至少满足
+\begin{equation}
+T\ge\frac{\dist(r_0,\mathcal I_{\theta,\mathcal R})}{\bar v_r}.
+\label{eq:railbound}
+\end{equation}
+若从静止起步且加速度上界为 $\bar a_r$，只要求到达距离 $D$ 而不要求停下的最短时间下界为
+\begin{equation}
+t_{\min}(D)=
+\begin{cases}
+\sqrt{2D/\bar a_r},&D\le\bar v_r^2/(2\bar a_r),\\
+D/\bar v_r+\bar v_r/(2\bar a_r),&D>\bar v_r^2/(2\bar a_r).
+\end{cases}
+\end{equation}
+真实初速度、rail 限位和 joint/接触约束必须按实际情况处理。这个臂展球界可能太松；若无法产生正分离，应换用更紧的保守运动学界或承认尚未找到见证，不能调整概率表来制造差异。
+
+若仅有表项区间，二乘二实验可用
+\begin{equation}
+\underline\Gamma=\ell_{--}+\ell_{++}-u_{-+}-u_{+-}>0
+\end{equation}
+证明同向配对优于反向配对。当前没有 RM75 的数值见证，式\eqref{eq:rm75time}是下一步需要实际满足的条件。
+
+\subsection{观测诚实性与完成独立验收}
+AMONG\_US 旧控制器含完整血管 oracle 路径，应单列上界。\code{kmp_honest} 的不可见横向偏移仍可能流入控制器；切向历史已有可见性门控，问题不能扩大为全部估计泄漏。本次仅静态确认路径，未量化既有 benchmark 的触发率或性能影响\cite{codehonest,codeimaging}。
+
+V8.3 的传感接口必须在无有效观测时不提供目标坐标。数据生成器可以拥有真值，但选择器、同信息教师和控制器只能接收合法观测。独立评价可使用 phantom 真值、额外跟踪或人工图像判读；不能让评价器与方法共享一个会自证正确的完成标记。
+
+\section{验证设计与本次实际核验}
+\label{sec:experiments}
+
+\subsection{主假设与对应证据}
+\begin{table}[htbp]\centering\small
+\begin{tabularx}{\linewidth}{P{10mm}YY}
+\toprule
+假设 & 可被否定的主张 & 必须匹配的对照\\\midrule
+H1 & 同信息、同模式边缘下，任务交互决定复用价值 & 同一前缀、同一真实初态、同预算的配对与打乱\\
+H2 & 请求族只需部分关联方向；扩展时旧摘要有明确失效条件 & 完整联合表、最小摘要、缺失方向的压缩\\
+H3 & 认证 LP 的下界与间隙反映真实完成能力 & 完整状态/历史规划，给予同样信息和执行自由度\\
+H4 & 共享对象认识减少新请求的搜索与非必要重扫 & 相同感知、配准、账本、控制器的完整对象地图\\
+\bottomrule
+\end{tabularx}
+\caption{H1--H3 直接检验理论机制；H4 连接 V8.2 的实际检查价值。}
+\end{table}
+
+\subsection{实际运行的解析与有限模型检查}
+随稿 \code{verify_v83.py} 使用 NumPy、SciPy/HiGHS，在本次生成过程中实际执行并通过 11 项检查。结果保存在 \code{verification_v83.json}。这些是解析/合成核验，不是训练或真实超声结果。
+
+\begin{table}[htbp]\centering\small
+\begin{tabularx}{\linewidth}{P{9mm}Y P{32mm}}
+\toprule
+编号 & 核验内容 & 结果或关键量\\\midrule
+1 & 二乘二运输 LP、解析成功率及 LP 对偶一致 & 最优 $0.841345$；最差 $0.158655$\\
+2 & 可加行列能力表的所有耦合值相同 & 环交互为 $0$\\
+3 & 匹配配对差抵消可加模型误差 & 差值保持 $0.682689$\\
+4 & 三乘三新请求的线性摘要必须扩展 & 秩从 $1$ 增至 $2$\\
+5 & 被固定边缘强迫为零的边改变差分空间 & 错用原图为 $5$ 维；正确为 $2$ 维\\
+6 & 全局恒紧资源约束进一步缩小仿射包 & 正支持仍可为零维\\
+7 & 区间 maximin 的真实值与后悔界 & 下界、真实值、上界有序\\
+8 & 鲁棒配对差与全部区间端点穷举一致 & 严格正下界\\
+9 & 自由/物理受限 deficiency 的 LP 检验 & $0$ 与 $2a-1$\\
+10 & 连续机构与保留后继预算的时间条件 & $10,12,22$ 秒；转换预算 $2$ 秒\\
+11 & 总体失败率不能替代选择后的条件风险 & $0.1$ 可被选择放大到 $0.2$\\
+\bottomrule
+\end{tabularx}
+\caption{数学证明在正文；数值检查用于发现实现、量词和边界条件错误。}
+\end{table}
+
+\begin{table}[htbp]\centering\small
+\begin{tabular}{rrrrr}\toprule
+$\sigma$ & 同向配对 & 独立配对 & 反向配对 & 物理缺陷/完成差\\\midrule
+0.25 & 0.999968 & 0.500000 & 0.000032 & 0.999937\\
+0.50 & 0.977250 & 0.500000 & 0.022750 & 0.954500\\
+1.00 & 0.841345 & 0.500000 & 0.158655 & 0.682689\\
+2.00 & 0.691462 & 0.500000 & 0.308538 & 0.382925\\
+4.00 & 0.598706 & 0.500000 & 0.401294 & 0.197413\\\bottomrule
+\end{tabular}
+\caption{同一个连续解析机构、同一物理时间窗口下的精确 Gaussian 数值。改变噪声不改变此处声明的路径几何；它不是现实传感精度与控制性能的已验证曲线。}
+\end{table}
+
+\subsection{真实任务链与组合留出}
+主链保持：SA 获取同一对象知识；临时请求局部 LA；对象姿态变化后重验收对应关系；再给出带新鲜度要求的复查。请求区间、顺序、容差与时效改变时，不重置患者后验，但也不自动保留旧完成资格。
+
+独立随机化外部形状、内部目标及机器人资源，防止身体外形或生成种子泄漏内部目标。按对象和完整序列划分训练/测试；同一证据前缀产生多个查询不能算作多个独立对象。保留旧证据完全不支持新方向的负对照，验证系统会追加真实采集而非自信复用。
+
+\subsection{强基线与指标}
+\begin{enumerate}
+\item 完整对象地图/因子图：相同原始历史、非刚性登记、联合不确定性、类型与时效账本、控制器和任务自由度。
+\item 完整历史策略与信念空间规划：允许保留 $b,x,\mathcal L,T$，不人为删除构型信息来制造优势。
+\item 完整联合能力表与最小关联摘要：检验摘要保持性，而不是与弱模型比较。
+\item 同后验、同动作空间的接触/成像分离控制：独立量化执行协调贡献。
+\item 无特权 KMP/轨迹记忆与明确标注的 oracle 上界。
+\end{enumerate}
+主要指标包括：新请求后的额外采集和搜索时间、包含前缀成本的总时间、独立完成率、错误完成率、对象误差与校准、模式边缘匹配误差、最终动作约束违例、下界覆盖及 $U^*-L^*$、查询和规划延迟。报告对象/序列级区间，不用相邻帧数量夸大独立样本。
+
+若完整对象地图与完整历史规划在同预算下达到相同效果和成本，V8.3 的表示优势未被建立；若收益只来自新增自由度，应归于控制贡献。若 $\Gamma$ 的区间跨零，应报告目前没有分离证据，而非挑选单次成功视频。
+
+\subsection{Genesis 与真实数据预算}
+Genesis 用于生成受控几何、验证动态执行、研究资源变化和训练可选的同信息选择器。学习器可以蒸馏 LP 或产生候选偏好，最终合法性仍由实际合同验收。第一版不需要重新引入大型基础模型或大量真人运动示教。
+
+真实数据优先用于动作到图像特征的响应、压力/接触影响、延迟、漏检及失锁分布。TR-FDF 已说明任务相关特征动力学的重要性\cite{trfdf}；几何切片仿真不能自行替代这些测量。高保真外观生成与人体材料辨识不作为本版前置条件。
+
+\section{最接近的文献与本版贡献边界}
+\label{sec:related}
+
+\subsection{一般信息控制和可达性已有成熟基础}
+Dual control 已把物理状态和未知参数放入同一决策过程，讨论信息与未来控制的相互影响\cite{dualcontrol}。Resource-constrained goal POMDP shielding 已明确排除“当前未耗尽资源，但未来不存在安全到目标策略”的 trap\cite{shield}。语义 belief graph 也已将几何/语义估计与不同局部控制器放入共同图规划\cite{semanticgraph}。因此，本版不以“联合知识与执行”或“保护未来可完成性”作为首次主张。
+
+AIS 及受约束 AIS 已给出递归状态、代价、约束和预测保持条件，并讨论改变约束权重时复用表示\cite{ais,constrainedais}。本版的不同对象是固定物理选择层的可行\emph{关联差分空间}：对指定能力表，哪些方向确实必要，以及它们何时能被合法省略。它不是一般信息状态理论的替代。
+
+\subsection{运输与实验比较中的已知工具}
+固定边缘的联合分布优化、信息结构约束和 optimal transport 的联系已有直接研究\cite{strategicmeasures}。运输多面体的二分图、环移动和秩结构也已有系统分析\cite{transportpoly}。本版定理\ref{thm:cycle}与\ref{thm:minsummary}应被理解为这些工具在\emph{有真实执行和检查语义的受限模型}中的结构结果，不应单独包装成基础数学突破。
+
+Blackwell 比较允许处理观测信号，不等于允许免费改变机器人身体\cite{blackwellmodern}。Gaussian Blackwell 序已有直接结果\cite{kolchinsky}；按观测选模式后，分布可能截断或混合，不能无条件套用固定协方差 Gaussian SDP。V8.3 上层使用自然的有限 LP，连续控制层可另用已有 LMI/SOS 工具。
+
+Kobayashi 已研究校准可辨识性与有限时域执行的差异\cite{kobayashi}。V7.3 的连续见证在明确协议下给出任意后继控制器都无法绕开的时间下界；本版再把同一实例的受限统计缺陷与完成差对齐。若只给一个固定控制器失败的视频，达不到这一理论层级。
+
+\subsection{机器人超声与几何技能先例}
+SAMe 已有身体中心解剖先验和控制初始化；SonoGraph-WM 已进行历史图条件预测与滚动导航\cite{same,sonograph}。DreamReg 明确分离目标条件与 belief 动力学；Goal Plane World Model 已有实时 B-mode、多阶段目标切换及当前图像驱动的 stop 判定\cite{dreamreg,goalwm}。UltraBot 已建立自主颈动脉检查流程\cite{ultrabot}。因此，身体坐标、历史、世界模型、多阶段真实闭环都不是本版单独的新颖性。
+
+DOF 和 Transportation Maps 已支持对象中心几何迁移与反应策略，后者也运输姿态、刚度及不确定性\cite{dof,transportmap}。本版推进的是：真实对象证据面对新检查请求时需要哪些执行关联，以及这些关联何时能够转化成实际新图像。V8.2 的类型与时效账本保证这个研究对象没有被错误的完成计数替代。
+
+\subsection{可以写入引言的贡献表述}
+\begin{keybox}
+本文研究对象证据在后续机器人检查中的物理可复用性。我们固定同一信息实验，在合法的证据条件化模式选择中保持对象后验，并以实际入口、剩余资源和检查完成事件定义后继能力。针对声明请求族，方法给出边缘评价足够的必要充分条件，以及保留全部期望完成值所需的最小线性关联摘要；在连续物理见证中，通常统计等价的两个方案仍有严格完成差，而且该差与保留后继预算的物理受限缺陷精确一致。基于连续程序证书和能力区间，方法进一步生成可实现的选择策略及优化后有效的完成下界。真实实验将检验这种结构是否减少新请求的重新搜索和非必要采集，同时保持实际图像验收质量。
+\end{keybox}
+
+相对旧稿，新增的是\emph{从存在分离推进到可检查、可表示、可优化、与同一物理实例对齐}。是否形成足够强的 NMI 方法贡献，仍取决于紧的连续证书和真实跨请求收益；不能以这段文字代替实验。
+
+\section{下一阶段：先完成哪个证明责任与哪项实验}
+\label{sec:next}
+
+\begin{enumerate}
+\item \textbf{先找 RM75 上真实非零的交互。}使用当前模型搜索两条保持当前任务的可连接实现，核验式\eqref{eq:rm75time}或严格区间 $\underline\Gamma>0$。若始终找不到，不预设真实平台必有解析例同样的间隙。
+\item \textbf{建立完成表项的上下界生成器。}下界来自可执行闭环及条件风险；上界来自必要运动学/时间条件。把库内上界与全连续外包络分开，这比继续增加一个一般性命题更能提高理论实用性。
+\item \textbf{接入同一对象后验和三任务链。}先有真实 SA 更新、临时 LA 查询和 fresh 复查，再检验请求族的关联摘要及扩展；必要时使用 V5.1，无法满足其条件时使用明确的近似后端。
+\item \textbf{用完整地图和完整历史规划检验增量。}比较精度、计算预算、重新采集成本与实际成功率，保留同自由度控制对照。不要通过删除对方的物理状态或证据历史来取得优势。
+\end{enumerate}
+
+\begin{scopebox}
+\textbf{本版没有扩大应用范围。}仍然聚焦已知身份的局部管状目标、已有 RM75 与导轨、位置/速度接口，以及准静态扫描时段。语言理解、任意器官发现、病理诊断、人体材料辨识和新硬件均不是本版贡献的必要前提。
+\medskip\par
+\textbf{关于 V7.3 的理论深度。}V7.3 的选支 Gaussian 比较仍是最专门、展开最深的数学分支。V8.3 没有假装把所有复杂证明都用到了当前检查系统；它吸收关联、后继能力和同一程序验收这条核心，将其改造成更一般观测模型下可检验的有限操作理论。新稿的优势应是逻辑更完整、假设更可检查、能指导实际选择，而不是定理更长或模块更多。
+\end{scopebox}
+
+\appendix
+\section{符号、适用条件与退化情况}
+\begin{longtable}{P{24mm}P{123mm}}
+\toprule 符号 & 含义与必要限定\\\midrule\endhead
+$\theta,b_H$ & 对象潜参数及当前合法历史下的设计后验；不同对象不共享患者事实。\\
+$Y,Q,p_y$ & 固定共享采集的允许观测、条件 channel 与设计边缘；无效观测有显式出口。\\
+$M,\omega_{ym}$ & 选择层目标模式及真实建立程序；失败模式与意图模式分开。\\
+$x,\mathcal X_m,T$ & 完整真实状态、认证入口集合、剩余资源；包含影响未来的控制器与延迟状态。\\
+$\mathcal R,\mathcal L$ & 请求与实际记录的完成资格；统计处理不能生成新原始图像。\\
+$c,\ell,u$ & 同信息程序的完成概率及同时有效上下界；未知不等于不可行。\\
+$\mu,\mathcal P$ & 规划时的证据与模式联合律及可行域；不是额外隐藏患者状态。\\
+$\mathcal D,C$ & 真实可行差分空间及正交基；全局恒紧约束必须计入。\\
+$D,\zeta,k$ & 请求能力表、线性关联摘要及其类内最小维数。\\
+$\mathcal G,K$ & 有真实预算和语义合同的转换图与统计选择核。\\
+$\delta_{\mathcal G}$ & 在指定转换合同内的最坏参数 TV 缺陷；不是任意任务损失的通用数值。\\
+\bottomrule
+\end{longtable}
+
+典型退化情况如下：图为森林或可行域单点时，固定边缘已无关联自由度；$C^\top D=0$ 时全部声明能力由边缘确定；新增请求未带来新交互方向时无需扩展 $\zeta$；对象模型或合法边改变时，需要重新编译而非沿用旧秩证书；模式建立引入未建模信息或失败筛选时，原 Blackwell 等价不再自动成立。
+
+\section{复现、源码固定点与证据等级}
+\label{app:repro}
+\textbf{文档复现。}本文件使用 \code{ctexart} 的 Fandol 字体，图、表、参考文献均内嵌；用 XeLaTeX 编译两次即可，无外部图片或 BibTeX 数据库。
+
+\textbf{数值复现。}执行 \code{python3 verify_v83.py --output verification_v83.json}。脚本仅依赖 NumPy 和 SciPy，记录实际版本、容差及所有结果。它包含直接 LP 与解析式的独立比较、全部区间端点穷举，以及反例型边界检查；不调用仿真真值作为实际策略输入。
+
+\textbf{固定代码来源。}RealUS\_playground 使用 \code{43f897201724e7a94b1850dc99abc2fae1b4ba23}；AMONG\_US 使用 \code{f1ffc5078d6a08c32b59107ab16086a7bbde488e}。本版只读分析这些来源，没有在仓库写入或发布更改。
+
+\textbf{证据等级。}正文定理为声明模型内推导；11 项数值检查已运行；代码能力为静态审查；RM75 的实际分离区间、真实完成系数、连续外包络、共享训练与跨对象泛化尚未完成。解析例不替代人体或体模结果，静态代码存在也不替代闭环运行证据。
+
+\clearpage
+\begin{thebibliography}{99}\small
+\bibitem{v82} Pei Liu. Anatomical GPS V8.2. 项目方案源码，固定快照. \url{https://github.com/NingMeng0903/RealUS_playground/blob/43f897201724e7a94b1850dc99abc2fae1b4ba23/NMI_idea/ideas/Anatomical_GPS_V8.2.tex}.
+\bibitem{v73} Pei Liu. Anatomical GPS V7.3. 项目方案源码，固定快照. \url{https://github.com/NingMeng0903/RealUS_playground/blob/43f897201724e7a94b1850dc99abc2fae1b4ba23/NMI_idea/ideas/Anatomical_GPS_V7.3.tex}.
+\bibitem{v51} Pei Liu. Anatomical GPS V5.1. 项目方案源码，固定快照. \url{https://github.com/NingMeng0903/RealUS_playground/blob/43f897201724e7a94b1850dc99abc2fae1b4ba23/NMI_idea/ideas/Anatomical_GPS_V5.1.tex}.
+\bibitem{v61} Pei Liu. Anatomical GPS V6.1. 项目方案源码，固定快照. \url{https://github.com/NingMeng0903/RealUS_playground/blob/43f897201724e7a94b1850dc99abc2fae1b4ba23/NMI_idea/ideas/Anatomical_GPS_V6.1.tex}.
+\bibitem{blackwellmodern} I. Hogeboom-Burr and S. Y\"uksel. Comparison of Information Structures for Zero-Sum Games and a Partial Converse to Blackwell Ordering in Standard Borel Spaces. 2021 version. \url{https://arxiv.org/html/2005.06673v3}.
+\bibitem{transportpoly} J. A. De Loera and E. D. Kim. Combinatorics and Geometry of Transportation Polytopes: An Update. 2013. \url{https://arxiv.org/html/1307.0124v1}.
+\bibitem{strategicmeasures} A. A. Kulkarni and T. P. Coleman. An Optimizer's Approach to Stochastic Control Problems with Nonclassical Information Structures. 2013. \url{https://arxiv.org/html/1309.3745v1}.
+\bibitem{ais} J. Subramanian, A. Sinha, R. Seraj and A. Mahajan. Approximate Information State for Approximate Planning and Reinforcement Learning in Partially Observed Systems. JMLR, 2022; author version. \url{https://arxiv.org/html/2010.08843v2}.
+\bibitem{constrainedais} N. Khan and V. Subramanian. Cooperative Multi-Agent Constrained POMDPs: Strong Duality and Primal-Dual Reinforcement Learning with Approximate Information States. 2023 preprint. \url{https://arxiv.org/html/2307.16536v1}.
+\bibitem{dualcontrol} E. D. Klenske and P. Hennig. Dual Control for Approximate Bayesian Reinforcement Learning. 2016 version. \url{https://arxiv.org/pdf/1510.03591v2}.
+\bibitem{shield} M. Ajdar\'ow, \v{S}. Brlej and P. Novotn\'y. Shielding in Resource-Constrained Goal POMDPs. 2022 preprint. \url{https://arxiv.org/html/2211.15349v1}.
+\bibitem{funnel} A. Majumdar and R. Tedrake. Funnel Libraries for Real-Time Robust Feedback Motion Planning. 2017 version. \url{https://arxiv.org/html/1601.04037v3}.
+\bibitem{semanticgraph} M. F. Ginting et al. Safe and Efficient Navigation in Extreme Environments using Semantic Belief Graphs. 2023. \url{https://arxiv.org/html/2304.00645v1}.
+\bibitem{autoconj} M. D. Hoffman et al. Autoconj: Recognizing and Exploiting Conjugacy Without a Domain-Specific Language. NeurIPS, 2018. \url{https://arxiv.org/abs/1811.11926}.
+\bibitem{kobayashi} J. Kobayashi. When Identifiability Is Not Enough: Terminal Controllability in Task-Compatible Active Calibration. IEEE Robotics and Automation Letters, 2026. \url{https://doi.org/10.1109/LRA.2026.3719194}.
+\bibitem{kolchinsky} A. Kolchinsky. Redundancy and Synergy in Multivariate Gaussians via the Blackwell Order. 2026 preprint. \url{https://arxiv.org/html/2610.07360v1}.
+\bibitem{same} J. Zhang et al. SAMe: A Semantic Anatomy Mapping Engine for Robotic Ultrasound. 2026 preprint. \url{https://arxiv.org/html/2604.25646v2}.
+\bibitem{sonograph} X. Li et al. Scanning While Imagining: A Scene-Graph World Model for Robotic Ultrasound Navigation. 2026 preprint. \url{https://arxiv.org/pdf/2609.32837}.
+\bibitem{dreamreg} L. Kang et al. DreamReg: Belief-Driven World Model for 2D--3D Ultrasound Registration. 2026 preprint. \url{https://arxiv.org/html/2606.18825v1}.
+\bibitem{goalwm} S. Fan et al. Action-Conditioned World Model for Goal Plane Probe Guidance in Robotic Ultrasound. 2026 preprint. \url{https://arxiv.org/html/2607.21918v1}.
+\bibitem{ultrabot} H. Jiang et al. Towards Expert-Level Autonomous Carotid Ultrasonography with Large-Scale Learning-Based Robotic System. Nature Communications, 2025. \url{https://www.nature.com/articles/s41467-025-62865-w}.
+\bibitem{trfdf} Y. Qian et al. Task-Relevant Feature-Dynamics Fidelity Enables Zero-Shot Sim-to-Real Transfer for Robotic Ultrasound Scanning. 2026 preprint. \url{https://arxiv.org/html/2608.29516v1}.
+\bibitem{dof} C. Bilaloglu, T. L\"ow and S. Calinon. Object-Centric Task Representation and Transfer using Diffused Orientation Fields. 2025 preprint. \url{https://arxiv.org/html/2511.18563v1}.
+\bibitem{transportmap} G. Franzese, R. Prakash, C. Della Santina and J. Kober. Generalizable Motion Policies through Keypoint Parameterization and Transportation Maps. Author version. \url{https://arxiv.org/html/2404.13458v2}.
+\bibitem{codeqp} RealUS\_playground. UltraPoC weighted outer QP. \url{https://github.com/NingMeng0903/RealUS_playground/blob/43f897201724e7a94b1850dc99abc2fae1b4ba23/peirastic/contact_qp/weighted_outer.py}.
+\bibitem{codeactive} RealUS\_playground. Realman 8-DoF active contact mode. \url{https://github.com/NingMeng0903/RealUS_playground/blob/43f897201724e7a94b1850dc99abc2fae1b4ba23/peirastic/realman8dof/modes/contact_active.py}.
+\bibitem{codedird} RealUS\_playground. dIRD real-robot adapter. \url{https://github.com/NingMeng0903/RealUS_playground/blob/43f897201724e7a94b1850dc99abc2fae1b4ba23/rm75_control/rm75_control/control/joint_admittance_8dof/tasks/ird_adapter.py}.
+\bibitem{codesrs} RealUS\_playground. SRS trajectory dynamic programming. \url{https://github.com/NingMeng0903/RealUS_playground/blob/43f897201724e7a94b1850dc99abc2fae1b4ba23/ird_playground/ird_playground/optimization/srs_trajectory_dp.py}.
+\bibitem{codetwin} RealUS\_playground. DigitalTwinMirror. \url{https://github.com/NingMeng0903/RealUS_playground/blob/43f897201724e7a94b1850dc99abc2fae1b4ba23/rm75_control/rm75_control/control/joint_admittance_8dof/viewer/twin.py}.
+\bibitem{codegenesis} AMONG\_US. Genesis simulation runtime. \url{https://github.com/NingMeng0903/AMONG_US/blob/f1ffc5078d6a08c32b59107ab16086a7bbde488e/src/projects/genesis_ue_sync/sim_platform/simulation/runtime.py}.
+\bibitem{codehonest} AMONG\_US. Honest KMP servo. \url{https://github.com/NingMeng0903/AMONG_US/blob/f1ffc5078d6a08c32b59107ab16086a7bbde488e/DMP_playground/kmp_honest/servo.py}.
+\bibitem{codeimaging} AMONG\_US. Honest KMP imaging interface. \url{https://github.com/NingMeng0903/AMONG_US/blob/f1ffc5078d6a08c32b59107ab16086a7bbde488e/DMP_playground/kmp_honest/imaging.py}.
+\end{thebibliography}
+
+\end{document}
