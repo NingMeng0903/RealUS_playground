@@ -1,0 +1,28 @@
+[
+  {
+    "spec": {
+      "object_id": "entry_train_000",
+      "geometry_seed": 202612100,
+      "u": 1,
+      "v": 1,
+      "knee_deg": 60.0,
+      "width_scale": 1.0,
+      "length_scale": 1.0,
+      "amplitude_scale": 1.0
+    },
+    "world_hash": "780524242de2585e8c4e19132cee68e725917673e33bcc7e2572f124629e64fe"
+  },
+  {
+    "spec": {
+      "object_id": "entry_train_001",
+      "geometry_seed": 202612101,
+      "u": -1,
+      "v": -1,
+      "knee_deg": 60.0,
+      "width_scale": 1.0,
+      "length_scale": 1.0,
+      "amplitude_scale": 1.0
+    },
+    "world_hash": "5695b685bfa3f303b84528d8a69eae44466c5d46cc3f2fe94eaa08422b293d72"
+  }
+]

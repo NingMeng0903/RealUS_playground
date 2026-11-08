@@ -1,0 +1,742 @@
+% !TeX program = xelatex
+% UTF-8. Compile twice with XeLaTeX. Self-contained manuscript.
+\documentclass[11pt,a4paper,fontset=fandol]{ctexart}
+\usepackage[margin=23mm,headheight=15pt]{geometry}
+\usepackage{amsmath,amssymb,amsthm,mathtools,bm}
+\usepackage{booktabs,tabularx,longtable,array}
+\usepackage{xcolor,enumitem,fancyhdr}
+\usepackage[breakable]{tcolorbox}
+\usepackage[numbers,sort&compress]{natbib}
+\usepackage[unicode,colorlinks=true,linkcolor=blue!45!black,citecolor=blue!45!black,urlcolor=blue!45!black,breaklinks=true]{hyperref}
+\definecolor{ink}{HTML}{19384B}
+\definecolor{accent}{HTML}{147D92}
+\definecolor{light}{HTML}{F1F6F8}
+\hypersetup{pdftitle={Anatomical GPS V8.5.2：同对象经验支持的跨请求完成预测},pdfauthor={Research methodology}}
+\pagestyle{fancy}\fancyhf{}
+\fancyhead[L]{\small\color{ink}Anatomical GPS V8.5.2}
+\fancyhead[R]{\small\color{ink}局部辨识、共同策略、真实完成}
+\fancyfoot[C]{\thepage}
+\setlength{\parskip}{0.22em}\setlength{\emergencystretch}{3em}
+\linespread{1.12}
+\setlist{itemsep=0.18em,topsep=0.35em,parsep=0pt}
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+\newcolumntype{P}[1]{>{\raggedright\arraybackslash}p{#1}}
+\newtheorem{theorem}{定理}[section]
+\newtheorem{proposition}[theorem]{命题}
+\newtheorem{lemma}[theorem]{引理}
+\theoremstyle{definition}\newtheorem{definition}[theorem]{定义}
+\newtheorem{assumption}[theorem]{条件}\newtheorem{example}[theorem]{实例}
+\theoremstyle{remark}\newtheorem{remark}[theorem]{说明}
+\numberwithin{equation}{section}
+\newtcolorbox{corebox}{colback=light,colframe=accent,boxrule=0.6pt,arc=1mm,breakable,left=2mm,right=2mm,top=1.5mm,bottom=1.5mm}
+\newcommand{\E}{\mathbb E}\newcommand{\Prb}{\mathbb P}
+\newcommand{\R}{\mathbb R}\newcommand{\N}{\mathbb N}
+\newcommand{\TV}{\operatorname{TV}}\newcommand{\osc}{\operatorname{osc}}
+\newcommand{\rank}{\operatorname{rank}}\newcommand{\spanof}{\operatorname{span}}
+\newcommand{\Finish}{\mathsf{Finish}}\newcommand{\ind}{\mathbf 1}
+\newcommand{\pos}[1]{[#1]_+}\newcommand{\cD}{\mathcal D}
+\newcommand{\cC}{\mathcal C}\newcommand{\cQ}{\mathcal Q}
+\DeclareMathOperator*{\argmax}{arg\,max}
+\DeclareMathOperator*{\argmin}{arg\,min}
+\title{\color{ink}\bfseries Anatomical GPS V8.5.2\\[0.3em]
+\LARGE 同对象经验支持的跨请求完成预测\\[0.35em]
+\large 调和材料坐标、合法运动程序与有限样本决策的闭合方法}
+\author{研究方案与方法稿}
+\date{2026 年 11 月 2 日}
+\begin{document}
+\maketitle
+\begin{abstract}
+同一对象的既有超声观察何时能够帮助完成后来提出的新请求？我们将问题限定为：从保留对象身份的局部程序数据中学习证据、真实执行出口与耗时的依赖，冻结模型后，预测声明程序族内未训练完整请求链的期限完成率。V8.5.2 保留有限模型上的任务辨识、同时置信集和共同策略保证，接回材料坐标、dIRD、接触控制与 Genesis 的系统方法。新增的收束是：区分训练总体关联与当前对象后验，规定实际短程序合同，用有限历史策略混合线性规划落实部署保证，并分开模型内证书、带抽象误差的条件保证和独立实测校准。预算、已采证据释放和旧知识隐藏均成为同一模型的可证伪预测。本文给出完整数学条件、实现接口、训练与验证协议及有限数学核验；真实机器人、真实超声和相对强基线的交互效率尚需实验检验。
+\end{abstract}
+
+\section{成熟度判断与本版锁定的研究问题}
+\label{sec:decision}
+\begin{corebox}
+\textbf{结论：理论骨架足够成熟，可以停止扩题；进入正式实验前仍需完成方法闭合。}
+V8.5 的有限模型结论没有发现需要推翻主线的数学问题。V8.5.2 不增加一套普适系统辨识或最小记忆理论，而明确理论使用哪类数据、求解哪个共同策略、调用什么真实程序，以及何种证据足以将模型内预测称为实际系统保证。完成这些定义与最小实现后，主要工作应转向实验。
+\end{corebox}
+
+研究问题只保留一个：\textbf{局部检查经历能否使机器人提前判断，当前对象的新成像请求在现有构型、信息可用时刻及预算下何时能够完成？} 方法输出为
+\begin{equation}
+ (\cD_{\rm local},H_t,R,T)\longmapsto
+ (\widehat P_{\rm finish},[L,U],\pi_{\rm deploy},\mathrm{scope}).
+ \label{eq:product}
+\end{equation}
+其中 $H_t$ 只含当前合法可见历史，$R$ 是成像请求，$T$ 是截止或剩余预算；区间可以因未辨识或模型失配而很宽。\texttt{scope} 标明保证针对的入口、程序、观察接口及模型条件。
+
+\begin{table}[htbp]\centering\small
+\begin{tabularx}{\linewidth}{P{.20\linewidth}YY}\toprule
+层面 & 本版判断 & 进入实验前的动作\\\midrule
+有限模型与核心推导 & 已足够支撑方法开发 & 保留成立条件，不再扩展一般理论\\
+学习问题与部署算法 & 原路线成立，操作定义需补齐 & 固定探针、模型集合、策略树与求解器\\
+系统资产 & 材料图册、候选构型与控制代码可承接 & 建立程序级执行记录与图像验收闭环\\
+真实过程保证 & 不能由有限模型自动获得 & 区分抽象误差、统计误差与经验校准\\
+NMI 贡献强度 & 有值得检验的清晰方向 & 用留出预测、干预和强基线证明新增价值\\\bottomrule
+\end{tabularx}
+\caption{“理论够用”不等于“实证结论已成立”，也不等于必然获得某一刊物接收。}
+\end{table}
+
+\subsection{三个贡献层次}
+第一，明确\emph{任务相关关联的可辨识问题}：单个程序的边缘预测正确，不代表数据足以决定后继请求的完成率。第二，给出\emph{可运行的联合后果学习与共同决策方法}：同一个策略须在仍未区分的模型之间获得保证。第三，检验\emph{物理执行中的预测规律及代价优势}：先预测再运行，验证何时旧信息有用、何时已经来不及，以及达到相同预测与完成要求需要多少真实交互。
+
+第一层的线性判据、第二层的半 Markov 建模和置信工具有明确前例。论文的新增价值不能仅由定理数量或术语组合承担，而应由这三层在同一个真实问题中的连贯结果承担。
+
+\subsection{本版冻结的范围}
+首实现采用有限图像特征接口、有限短程序及有限历史策略族；允许使用\textbf{完整有限后验}。不要求先证明最小递归记忆，不要求重建完整人体，不增加大规模模仿学习或通用临床诊断目标。新请求组合只使用已覆盖的程序、入口、观察与验收规则。新对象分布、新执行器、新图像提取器或新的动作权限都需单独检验。
+
+\section{操作语义：对象、知识与真正完成}
+\label{sec:semantics}
+\subsection{训练总体与当前对象必须分开}
+训练总体分布记为 $p_\phi(\theta)$；当前对象的未知属性为 $\theta_i$，其在线后验为
+\begin{equation}
+ b_{i,t}(dw)=\Prb_\phi(w_{i,t}\in dw\mid H_{i,t}),\qquad
+ w_{i,t}=(\theta_i,\chi_{i,t}).
+ \label{eq:belief}
+\end{equation}
+$\theta_i$ 在一个短检查片段内固定；$\chi$ 包含会持续并改变未来分布的未观测变量，例如接触状态、隐藏执行状态及尚未释放的数据内容。\textbf{模型参数 $\phi$ 在留出评测前冻结；当前对象的 $b_{i,t}$ 随观察更新。} 两者不能混称“在线学习”。
+
+例如 $\rho=\E[UV]$ 描述不同对象或独立配置中的跨程序关联。对同一固定体模反复采帧可以估计其观测噪声或执行重复性，不能制造许多个独立对象来估计总体 $\rho$。初期可用多个可更换、独立分配的隐藏配置构成受控总体；若人为平衡四种配置，结论属于该设计分布，不能称为自然患者总体规律。
+
+可见状态 $x$ 记录实际关节/轨道测量、控制器状态、接触反馈、时钟、对象与图册版本及已释放凭据。若这些测量并非足够的物理状态，剩余不确定性进入 $w$，而不是通过命名为“state”假定其消失。任何影响未来的遗漏变量都可能破坏局部核的可组合性。
+
+\subsection{材料地址与请求}
+请求定义为
+\begin{equation}
+ R=(\mathrm{object\_id},\Omega_R,\mathcal V_R,\mathcal Q_R,t_R),
+ \label{eq:request}
+\end{equation}
+依次规定对象、材料区域、视图规则、质量规则及最早允许采集时刻。图像账本 $\ell$ 逐帧保存身份、材料足迹、视图、质量结果、采集时间和释放时间。$g_R(\ell)=1$ 由预注册验收规则决定；预测器给出高分不能自行写入“已完成”。
+
+fresh 要求\emph{真实采集时间}满足 $t_{\rm capture}\ge t_R$。晚释放旧图像、重新处理旧帧或改变标签均不产生 fresh。图像质量由固定、独立的评价流程确认；几何上经过目标点不能直接代替合格超声图像。
+
+本文使用“截止前曾经合法完成”的吸收事件。若请求要求图像持续有效、质量随时间过期或全程维持接触，则必须把相应义务加入验收状态，不能直接使用吸收完成的单调性。
+
+\subsection{已采未释放的信息}
+采集时即产生唯一图像包及内容；释放只改变规划器是否能读取。可见队列保存包 ID、采集和预计释放元数据；不可见内容保存在 $\chi$。晚释放时读取同一个包，不能重新从观测模型采样。全部合法反馈，包括实际耗时、接触、失败、轨道与关节状态，都进入历史；不能只隐藏图像却忽略其他信息通道。
+
+\section{接回 V8.4：从材料坐标到实际短程序}
+\label{sec:system}
+\subsection{调和图册负责稳定关联，物理几何负责执行}
+材料地址写为 $\xi=(h,\vartheta,d)$，当前几何映射为 $p=\Psi_c(\xi)$，局部度量为
+\begin{equation}
+ J_c(\xi)=D\Psi_c(\xi),\qquad G_c(\xi)=J_c(\xi)^\top J_c(\xi).
+ \label{eq:atlas}
+\end{equation}
+地址用于把不同视图与时间的证据关联到同一对象区域；长度、角度、法向和执行轨迹仍用当前几何计算。同一材料坐标不意味着相同物理方向或距离。
+
+现有 \texttt{harmonic.py} 包含表面 cotangent Laplace--Beltrami Dirichlet 求解及体网格 FEM 延拓；深度 $d$ 使用皮肤与内侧距离比，并非三个分量都是调和函数\cite{codeharmonic}。图册须提供有效域、局部退化/多值检查、对象身份与标定版本。这里不宣称全局单射或任意变形下精确保持对应。
+
+跨图像证据的合并必须检查上述身份与版本。标定或图册更新后的旧证据应重投影并验证，不能无条件沿用同一数值地址。图册只提供关联与任务语言，本身不产生关于隐藏血管结构的后验。
+
+\subsection{dIRD 负责构造候选实现}
+dIRD 与 SRS 轨迹 DP 可给出轨道偏置、姿态/冗余候选及离散路径；相应代码具有姿态扰动、期望/稳健/CVaR 读出和离散步长检查\cite{codedird}。这些是候选生成与局部筛查。连续碰撞、接触、真实执行时间和恢复能力仍由程序合同承担。
+
+当前 \texttt{ird\_adapter.py} 明确是扫描开始时一次 \texttt{query\_d\_star}，并非每个控制周期在线重新规划\cite{codeird}。本版只要求在短程序边界生成或选择已验收候选；不要求把 dIRD 塞入高频控制线程。模式 $m$ 必须代表一个实际可执行配置/路径族，而不能只是一串 IK 种子或 rail 数值。
+
+若真实机构没有硬性的连通分支障碍，使用不同实现之间的\emph{恢复时间分布}即可，不人为假定“选错绝对不能恢复”。除非有全控制器必要性证明，能力上界始终标明属于声明程序库。
+
+\subsection{UltraPoC/接触控制提供真实后果}
+现有外层 QP 的变量是 $[U,\Omega,\alpha,\sigma_I]$；前三列承担法向、rocking 和路径进度方向，$\sigma_I$ 是松弛量，并不是第四个独立物理横向控制量\cite{codeqp}。若实验需要独立侧移或新的姿态调节，应先实现并验证对应程序，不能借变量数推断控制权限。
+
+控制循环已有实际命令修改后的检查与回退\cite{codeloop}。程序记录要保存最终送出的命令、测得运动、停止/失锁原因及实际耗时。联合模型预测的是这套闭环执行器的后果，而非名义参考轨迹。控制器、限速、输入延迟或反馈权限改变时，程序版本随之改变。
+
+\subsection{Genesis 的两个角色}
+Genesis 用于可控隐藏几何、执行扰动与数据日志验证，也用于在与实机相同输入权限下验证候选程序。现有 runtime 同时有动态接口和直接设置关节位置的路径；\texttt{step(commands)} 中直接位置赋值不能单独证明真实重配置时间\cite{coderuntime}。与实机一致的位置/速度伺服及滞后模型已足够，无需为论文把硬件改为力矩控制。
+
+只读 digital-twin mirror 是状态显示；它与因果预测模型分开。几何切片或标签图可检验程序组合，但不能充当真实 B-mode 质量模型的验证。仿真真值用于训练审计和离线评价，禁止进入测试策略输入。
+
+\subsection{唯一的程序合同与最小程序库}
+每个短程序为
+\begin{equation}
+ a=(\mathrm{id},\mathrm{version},\mathcal X_a,\mathrm{parameters},
+ \mathrm{feedback},\mathrm{stop},\mathrm{exits}).
+ \label{eq:program}
+\end{equation}
+入口集合 $\mathcal X_a$ 明确实际物理状态、图册/控制版本和允许资源；内部反馈是合法可见传感；出口包含成功、无效图像、失锁、超时、拒绝和不可恢复状态。参数或权限变化时不得仍视为同一个未条件化核。
+
+\begin{table}[htbp]\centering\small
+\begin{tabularx}{\linewidth}{P{.21\linewidth}YY}\toprule
+程序 & 作用与输入 & 必须记录的结果\\\midrule
+AcquireSA & 指定材料区域上的局部短轴观察 & 图像/特征、足迹、质量、采集/释放时间\\
+SetMode$(m)$ & 从真实入口建立一个 dIRD 候选实现 & 实际构型、接触、失败与建立时间\\
+Probe & 固定权限的短探查，可辅助分支决策 & 完整观察、运动变化、失锁与耗时\\
+AcquireLA & 指定请求的长轴闭环采集 & fresh 图像、独立质量验收、出口与耗时\\
+Return & 已验证的局部返回/重配置 & 实际返回终点、失败和全部代价\\
+Recheck & 调用原采集程序完成 fresh 复查 & 新图像凭据与新的验收时刻\\\bottomrule
+\end{tabularx}
+\caption{最小程序族。程序内部可有反馈；程序边界决定上层的合法决策时刻。}
+\end{table}
+
+Recheck 是请求层的复用：若物理动作、参数和反馈与 AcquireSA/AcquireLA 相同，直接使用原核，仅改变验收时刻，不重学一套 fresh 核。另允许明确计时的 Wait 和吸收 Stop，所有比较方法拥有相同等待权限，禁止无限次零耗时调用。
+
+日志最小单位为
+\begin{equation}
+ D_i=(\mathrm{object/config/run\ id},H_i,x_i,a_i,
+ z_i,x_i',\tau_i,\ell_i',\mathrm{status}_i).
+ \label{eq:record}
+\end{equation}
+另保存采样/随机分配概率、原始图像 ID、最终命令、程序版本及审计标签。拒绝与失败均属于总结果，不能删除后重新归一化。一个硬件闭环最少新增四个模块：程序包装器、图像凭据账本、模型/置信集后端、策略执行器；这些是待实现接口，不是本稿声称已存在的代码。
+
+\section{同一个可学习的联合后果模型}
+\label{sec:model}
+\begin{definition}[合法程序联合核]
+\begin{equation}
+ K_a(dw',dz,dx',d\tau\mid w,x)
+ \label{eq:kernel}
+\end{equation}
+同时描述隐藏持续状态、新释放观察、实际可见出口与耗时。对象短片段内固定对应 $\theta'=\theta$；接触与队列等持续隐变量仍可变化。
+\end{definition}
+
+局部核可组合要求：给定 $(w,x,a)$，未来后果分布不再依赖未记录的早期历史。该条件必须通过状态设计与后续条件预测诊断支持；拟合平均误差低不等于充分性成立。若出口相似但不同早期历史持续导致不同后继误差，应补入有物理意义的状态，或收缩程序入口，而不是每条链各拟合一套新模型。
+
+记 $o=(z,x',\tau)$。在有密度的表示中，预测与更新为
+\begin{align}
+ \bar K_a(do\mid b,x)&=\int K_a(\mathsf W,do\mid w,x)b(dw),\\
+ b'(dw')&=\frac{\int k_a(dw',o\mid w,x)b(dw)}
+ {\int k_a(\mathsf W,o\mid w,x)b(dw)}.
+ \label{eq:update}
+\end{align}
+耗时、失败与存活反馈同样更新后验；零概率实际结果触发失配报告与已验证回退，不能任意补一个有利后验。
+
+\subsection{有限首实现与训练目标}
+首例可设 $\theta=(U,V)\in\{-1,+1\}^2$，其中 $U$ 对应短 SA 扫掠可见的中心漂移/局部倾向，$V$ 对应远端目标切向或后继 LA 访问相关的结构类别。单张理想圆形 SA 图像不被假定能辨认纵向方向。两者都应由独立审计定义，不能事后按是否成功命名；每类可包含多个几何实现，并按整个配置留出。噪声、时间、接触、出口与包队列使用预先声明的有限接口。类别只是首个可检验实例，不宣称四种模式覆盖真实人体。
+
+完整局部序列的似然为
+\begin{equation}
+ \mathcal L(M;D_e)=\sum_{w_0,\ldots,w_k}p_M(w_0)
+ \prod_{j=0}^{k-1}K_{M,a_j}(w_{j+1},z_j,x_{j+1},\tau_j\mid w_j,x_j).
+ \label{eq:likelihood}
+\end{equation}
+$a_j$ 来自记录的采样设计或合法历史策略。可以用有限频数或参数化联合似然学习，但不能分别拟合图像、出口和时间边缘后无依据相乘。也不能把后来的完整链成功标签或未来平滑后验当成当前程序输入。
+
+\begin{example}[正确边缘仍会给出错误期限预测]
+模型 A 的 $(S,\tau)$ 为 $(1,1),(0,3)$，各概率 $1/2$；模型 B 为 $(1,3),(0,1)$，各概率 $1/2$。成功标志 $S$ 与时间的边缘完全相同，预算 $T=2$ 时实际完成率却为 $1/2$ 与 $0$。独立相乘会对二者都预测 $1/4$。
+\end{example}
+
+\subsection{局部探针与三个数据集合}
+局部探针 $e$ 是预注册的短序列和干预分配，输出为完整联合记录。一个探针内部保留同对象关联，不将多个帧当成独立样本。训练、校准、最终验证按独立对象/配置和运行分离；用于开发特征、程序、分区与候选模型的 pilot 数据不能再次冒充独立校准数据。
+
+建议局部训练覆盖：SA 观测校准；同对象 SA 与局部 LA 相关特征配对；两个候选模式的随机分配及建立结果；从已声明入口进行 LA 服务与合法恢复；Return/Recheck 的局部出口。训练始终不使用目标完整请求链的终端完成标签。若某个所谓局部探针实际上等价包含全部目标链，应收缩“未训练组合”的主张。
+
+\section{哪些局部数据足以支持后继请求}
+\label{sec:ident}
+\subsection{一般定义与精确可解子类}
+一般有限候选模型族中的任务可辨识条件是
+\begin{equation}
+ j_e(M)=j_e(M')\ \forall e
+ \quad\Longrightarrow\quad
+ V_{M,q}^{\pi}=V_{M',q}^{\pi}\ \forall(q,\pi).
+ \label{eq:general-ident}
+\end{equation}
+$j_e(M)$ 是完整探针的预测分布；$q$ 包含请求、预算与入口协议，$\pi$ 是\emph{同一个}合法历史映射。若条件不成立，正确输出是部分辨识区间，而非选出一个模型后消除歧义。
+
+为了得到精确、易审计的判据，先固定条件核、传感模型和其他初始条件，只令初始对象分布 $p\in\Delta_d$ 未知。此时
+\begin{equation}
+ j=Gp,\qquad V_{p,q}^{\pi}=c_{q,\pi}^{\top}p.
+ \label{eq:linear}
+\end{equation}
+每个探针块 $G_e$ 为列随机矩阵；若只用不完整摘要，补入归一化行 $\mathbf1^\top$。
+
+\begin{theorem}[固定条件核下的任务辨识]
+\label{thm:ident}
+在完整单纯形 $\Delta_d$ 上，所有声明固定历史策略的任务值由 $Gp$ 唯一决定，当且仅当
+\begin{equation}
+ \spanof\{c_{q,\pi}\}\subseteq\operatorname{range}(G^\top).
+ \label{eq:rowspace}
+\end{equation}
+\end{theorem}
+\begin{proof}
+若 $c=G^\top\alpha$，则 $c^\top p=\alpha^\top Gp$。反之，存在 $d\in\ker G$ 使 $c^\top d\ne0$；归一化行给出 $\mathbf1^\top d=0$。取单纯形内点 $p_0$ 和足够小 $t>0$，$p_0\pm td$ 产生相同探针分布但不同任务值。
+\end{proof}
+
+这个线性可估性判据是训练设计工具，不是一般未知核辨识定理。实际 $G$ 或执行核也需学习时，必须把其不确定性并入候选模型/置信集合；不能把估计的 $G$ 当成精确真值后仍沿用上述无误差结论。
+
+\subsection{反例决定探针，而不是所有数据都配对即可}
+两个世界中 $U,V$ 都边缘均匀，分别满足 $V=U$ 与 $V=-U$。只看边缘不可区分；读取 $Y=U$ 后选 $m=Y$，在完成要求 $m=V$ 下成功率分别为 $1$ 与 $0$。四状态总体的两组单变量边缘矩阵秩为 $3$，完整同对象配对补入缺失的关联方向。
+
+两两配对也不普遍充分：若 $U,V$ 独立均匀，$W=UV$ 与 $W=-UV$ 的所有两两边缘相同；策略读 $U,V$ 后令 $m=UV$，任务 $m=W$ 的完成率却相反。因此首批请求族必须明确，所需探针长度由其依赖方向决定。
+
+\subsection{可辨识还需要稳定}
+若 $c_{q,\pi}=\sum_eG_e^\top\alpha_{q,\pi,e}$，定义 $\osc(\alpha)=\max\alpha-\min\alpha$。则
+\begin{equation}
+ |c_{q,\pi}^\top(p-p')|
+ \le\sum_e\osc(\alpha_{q,\pi,e})\TV(G_ep,G_ep').
+ \label{eq:osc}
+\end{equation}
+证明只需对零质量有符号测度减去系数中点，并用 $\ell_1$ 范数与 TV 的关系。定义
+\begin{equation}
+ \kappa=\sup_{q,\pi}\inf_{G^\top\alpha=c_{q,\pi}}
+ \sum_e\osc(\alpha_e).
+ \label{eq:kappa}
+\end{equation}
+秩正确但 $\kappa$ 大时，有限样本仍可能无法给出有用区间。
+
+本版只采用\textbf{固定预算的任务相关探针选择}：在 pilot 阶段检查缺失方向与上式的误差放大，选择必要的局部序列和固定样本分配，然后冻结设计。可在固定核子类中最小化
+\begin{equation}
+ B(\boldsymbol n)=\sup_{q,\pi}\inf_{G^\top\alpha=c_{q,\pi}}
+ 2\sum_e\osc(\alpha_e)r_e(n_e)
+ \label{eq:design}
+\end{equation}
+或在给定 $B\le\omega$ 下比较真实采集成本 $\sum_e c_e^{\rm cost}n_e$；也可在 $\sum_e c_e^{\rm cost}n_e\le C$ 约束下最小化 $B$。其系数 $2$ 来自同一置信集内两模型各距经验分布一个半径，因此 $B$ 界定该集合的任务值直径；无法满足线性表示的方向取 $+\infty$。这是有限设计准则，不声称全局最优主动学习。条件核未知时，本式只用于 pilot 设计参考；若未建立对核不确定性的统一控制，不据此宣称样本预算或任务区间保证，最终区间由完整模型集合计算。若根据本轮观察自适应停止采样，固定样本置信公式不再自动适用。
+
+\section{从局部数据到一个共同可部署策略}
+\label{sec:algorithm}
+\subsection{同时模型置信集}
+设 $E$ 个固定实验，实验 $e$ 有 $d_e$ 个完整输出类别、预先固定 $n_e$ 个独立同分布样本。实验之间无需独立。令
+\begin{align}
+ r_e&=\min\!\left\{1,\sqrt{\frac{d_e\log2+\log(E/\delta)}{2n_e}}\right\},\\
+ \cC_D&=\{M:\TV(j_e(M),\widehat j_e)\le r_e,\ \forall e\}.
+ \label{eq:confidence}
+\end{align}
+$n_e=0$ 时取 $r_e=1$。有限分布的 TV 是子集概率差的最大值，对不超过 $2^{d_e}$ 个子集使用 Hoeffding 单侧界，再对实验取并集，得到真模型属于声明类时
+\begin{equation}
+ \Prb(M_0\in\cC_D)\ge1-\delta.
+ \label{eq:coverage}
+\end{equation}
+同一配置内多帧并不满足这里的 iid 对象样本假设。可用独立配置单位构造完整输出，或另采用适用的分层/依赖处理；不能靠扩大帧数人为缩窄半径。
+
+有限候选字典可以作为首实现，但“真值位于字典”是条件，不是频数检验自动证明的事实。连续参数的粗网格若没有覆盖/插值误差外包络，只提供网格模型内结论。置信集为空应报告失配，不能删除不利实验使其重新非空。
+
+\subsection{有限历史树与混合线性规划}
+\label{sec:lp}
+固定有限可见输出、最大调用次数 $H$ 和合法程序库。构造共同历史策略树族
+$\Pi_0=\{\pi_1,\ldots,\pi_J\}$；每棵树的动作只依赖当时历史、当前请求及剩余预算。所有候选模型都用\emph{相同的树}求值。第一版可以只包含若干分支规则、是否增加短探查、何时返回和重试；其上界相应只属于这一策略族。
+
+对候选 $M_1,\ldots,M_N$，由联合核完整传播得到
+\begin{equation}
+ A_{ij}(q)=V_{M_i,q}^{\pi_j}.
+ \label{eq:matrix}
+\end{equation}
+共同部署算法精确求解
+\begin{align}
+ L_q=\max_{\lambda,t}\quad &t\label{eq:lp}\\
+ \text{s.t.}\quad &\sum_{j=1}^J\lambda_j A_{ij}(q)\ge t,
+ \quad i=1,\ldots,N,\nonumber\\
+ &\lambda_j\ge0,\quad\sum_j\lambda_j=1.\nonumber
+\end{align}
+开始运行时使用独立随机数选取一棵树，随后按其合法历史分支执行。随机化概率不读取隐藏模型 ID。乐观上界为
+\begin{equation}
+ U_q=\max_{i,j}A_{ij}(q).
+ \label{eq:upper}
+\end{equation}
+若候选集合连续，上式需要有效的模型外包络或全局优化；仅枚举有限网格不自动得到连续类上界。
+
+\begin{proposition}[共同策略的模型内保证]
+\label{prop:common}
+在同一事件 $M_0\in\cC_D$ 上，式\eqref{eq:lp}的部署策略满足
+\begin{equation}
+ V_{M_0,q}^{\pi_D}\ge L_q,\qquad
+ L_q\le V_{M_0,q}^{*,\operatorname{co}(\Pi_0)}\le U_q.
+ \label{eq:common}
+\end{equation}
+近似求解时从部署下界扣除已控制的 $\epsilon_{\rm plan}$。
+\end{proposition}
+\begin{proof}
+混合树的价值对 $\lambda$ 线性。真实模型是 LP 的一个约束行，所以部署值不低于最小行值；真实库内最优也是式\eqref{eq:upper}所取上确界的一个候选。
+\end{proof}
+
+这一步不能替换成 $\inf_M\sup_\pi V_M^\pi$：当两个模型分别要求相反动作时，各自可达 $1$，共同随机化只能保证 $1/2$。也不能在全局固定候选模型约束下，每个节点随意更换最坏模型，却称其为同一个精确稳健问题。逐行矩形外包络可给保守下界，但必须标明外包络。在线重新优化若不属于预先求值的同一历史策略，也不能直接继承原部署保证。
+
+定义
+\begin{equation}
+ D_{\cQ}(\cC_D)=\sup_{q,\pi,M,M'}
+ |V_{M,q}^{\pi}-V_{M',q}^{\pi}|.
+\end{equation}
+对相同策略取模型间直径，可得 $U_q-L_q\le D_{\cQ}(\cC_D)$。在固定条件核子类，结合式\eqref{eq:osc}有
+\begin{equation}
+ U_q-L_q\le\min\{1,2\kappa r_{\max}\}.
+ \label{eq:width}
+\end{equation}
+同一个模型覆盖事件可同时支持声明查询族内的数据后预算选择；查询不得改变训练未覆盖的动作、观测接口或验收义务。
+
+\subsection{当前对象的条件化不能被总体覆盖替代}
+上面的 $q$ 指预先声明的入口/请求/运行协议，其价值可以对初始对象分布和完整历史取平均。实际看到某个稀有历史后，条件完成率的误差可能放大。可以对每个候选模型用完整历史似然计算条件预测并取保守包络，但不能把一个无条件总体 TV 界直接复制成每个稀有历史的窄区间。部署策略的总体保证与逐历史保证分别报告。
+
+\section{从模型内证书到真实过程：明确误差责任}
+\label{sec:validity}
+\subsection{真实过程与有限抽象的接口}
+有限模型未必等于真实过程。设存在\emph{同一个}模型 $M^\dagger$ 同时满足
+\begin{align}
+ \TV(P_e^{\rm real},j_e(M^\dagger))&\le\beta_e\quad\forall e,\\
+ \sup_{\pi\in\operatorname{co}(\Pi_0)}
+ |V_{{\rm real},q}^{\pi}-V_{M^\dagger,q}^{\pi}|&\le\eta_q\quad\forall q.
+ \label{eq:abstraction}
+\end{align}
+这些量比较共同可见历史与验收事件，不要求真实系统和模型使用相同隐藏坐标。不能为每个探针选一个不同的近似模型，再声称存在统一 $M^\dagger$。
+
+使用扩张集合
+\begin{equation}
+ \cC_D^\beta=\{M:\TV(j_e(M),\widehat j_e)\le r_e+\beta_e,\ \forall e\}.
+ \label{eq:expanded}
+\end{equation}
+在数据覆盖事件上，$M^\dagger\in\cC_D^\beta$。因此对于任何从数据选出的共同策略，
+\begin{align}
+ V_{{\rm real},q}^{\pi_D}
+ &\ge\pos{\inf_{M\in\cC_D^\beta}V_{M,q}^{\pi_D}-\eta_q},\\
+ V_{{\rm real},q}^{*,\operatorname{co}(\Pi_0)}
+ &\le\min\{1,\sup_{M\in\cC_D^\beta,\pi}V_{M,q}^{\pi}+\eta_q\}.
+ \label{eq:real-cert}
+\end{align}
+若部署 LP 仅 $\epsilon_{\rm plan}$ 次优，稳健下界再扣除 $\epsilon_{\rm plan}$。证明是三角不等式和共同策略命题；这是适用条件的补齐，不包装为新的普适定理。
+
+$\beta_e,\eta_q$ 必须来自可验证误差界或另有覆盖保证的校准程序；拟合残差小、分类器失败、测试没有拒绝模型都不能自动产生它们。若抽象条件本身以概率至少 $1-\delta_{\rm abs}$ 成立，总覆盖至少为 $1-\delta_{\rm data}-\delta_{\rm abs}$。
+
+\subsection{联合核误差的充分路径}
+若真核与模型确有共同隐藏/可见状态及动作合同，初始分布 TV 至多 $\epsilon_0$，每步完整核在所有合法入口上 TV 至多 $\epsilon_j$，则令
+\begin{equation}
+ \Delta_H=1-(1-\epsilon_0)\prod_{j=1}^{H}(1-\epsilon_j).
+ \label{eq:coupling}
+\end{equation}
+对相同历史策略及验收事件，
+\begin{equation}
+ |V_{K,q}^{\pi}-V_{\widehat K,q}^{\pi}|\le\Delta_H,
+ \qquad V_{K,q}^*-V_{K,q}^{\widehat\pi}
+ \le\min\{1,2\Delta_H+\epsilon_{\rm plan}\}.
+ \label{eq:propagation}
+\end{equation}
+证明在附录。它给出 $\eta_q$ 的一种充分构造，属于模型误差传播的标准方法\cite{partial,ais}。连续分布与有限经验点集的 TV 往往为 $1$；均匀核误差不是训练完网络后自然获得的指标。
+
+有限分区只能在单元内同质或有统一误差控制时使用逐行频数界。只审计 $\theta$ 而未审计持续隐变量，不能声称知道完整核行。输入延迟、离散时间、接触变化和未见入口的误差不得隐去。
+
+\begin{table}[htbp]\centering\small
+\begin{tabularx}{\linewidth}{P{.23\linewidth}YY}\toprule
+可以报告的结果 & 必要证据 & 不自动推出\\\midrule
+模型内完成区间 & 声明模型集与共同策略的正确求值 & 真实机器人落入该区间\\
+条件性真实完成保证 & 覆盖真过程的统计条件与抽象误差 & 所有连续控制器的最优能力\\
+独立实测校准 & 冻结后未参与拟合的完整运行 & 任意新入口、新对象或新策略均受保证\\\bottomrule
+\end{tabularx}
+\caption{三类结果可并存，但必须分别标注。尚无可验证抽象界时，真实系统报告预测与独立校准。}
+\end{table}
+
+\section{同一个冻结模型必须预测的三个现象}
+\label{sec:predictions}
+\subsection{预算与关联：先定义四格，再解释乘积}
+在共同实际入口、预定模式建立协议和固定后继程序下定义
+\begin{equation}
+ C_{ym}(T)=\Prb(\Finish_R(T)=1\mid Y=y,\operatorname{do}(m),x_0).
+ \label{eq:four}
+\end{equation}
+模式通过随机分配或明确干预建立；未成功建立的出口仍在总体结果内。定义
+\begin{equation}
+ \Gamma_R(T)=C_{++}(T)+C_{--}(T)-C_{+-}(T)-C_{-+}(T).
+ \label{eq:gamma}
+\end{equation}
+该量描述证据与实现配对的任务交互，不是全局状态维数，也不是必然为正的信息价值。
+
+对一个可解析子类，设
+\begin{equation}
+ \Prb(U=u,V=v)=\frac{1+\rho uv}{4},\qquad
+ \Prb(Y=U\mid U,V)=p\ge\frac12,
+ \label{eq:binary}
+\end{equation}
+SA 噪声给定 $U$ 后与 $V$ 无关。模式建立与比较入口已标准化，固定续接程序仅按 $m=V$ 与否有按时完成率 $s(T),r(T)$。令
+\begin{equation}
+ a=\Prb(V=Y\mid Y)=\frac{1+\rho(2p-1)}2.
+\end{equation}
+四格对角为 $as+(1-a)r$，非对角为 $(1-a)s+ar$，于是
+\begin{equation}
+ \boxed{\Gamma_R(T)=2\rho(2p-1)[s(T)-r(T)].}
+ \label{eq:factor}
+\end{equation}
+在这里 $Y$ 平衡，按 $m=Y$ 的策略相对独立均匀分支提高 $\Gamma_R(T)/4$；$\rho<0$ 时应考虑反配对。短预算下两个程序都不能完成，或长预算下都能恢复时，收益可能消失。真实系统未必满足后一个情形，不能强求所有曲线最终归零。
+
+若证据改变模式建立时间、失败率或实际入口，直接组合完整核，不按成功入口筛选后套用乘积。$Y$ 不平衡时用真实权重计算策略值，不再默认 $\Gamma/4$。
+
+\paragraph{条件化误差。}
+若每个四格的\emph{条件完成率}误差均为 $\epsilon$，则 $|\widehat\Gamma-\Gamma|\le4\epsilon$。若只知道未条件化联合分布 TV 为 $\epsilon$，且事件 $Y=y$ 的概率至少 $\zeta>0$，一个安全的条件概率误差界为 $\min\{1,2\epsilon/\zeta\}$（并要求模型条件概率有定义）。稀有分组不能无条件沿用 $4\epsilon$。
+
+\subsection{证据释放：改变可用时刻而非证据质量}
+固定同一个已采包及采集成本，只改变其释放时间。若早信息免费、可忽略，且不改变物理状态、权限与动力学，早释放的最优值不低于晚释放，因为早策略可模拟晚策略。严格优势是实证问题，依赖信息是否在有用决策之前可用。
+
+在真实 RM75 首实验中，先报告有限程序库内的恢复时间与完成预测。只有进一步证明任何成功控制都必须在承诺接口 $\sigma$ 选对分支，且错误分支在预算内不可补救，才可使用
+\begin{equation}
+ \{\Finish_R(T)=1\}\subseteq\{B=\theta\}.
+\end{equation}
+等先验二元状态及固定承诺前实验 $\eta$ 下，完整合法前缀分布为 $Q_+^\eta,Q_-^\eta$，从而
+\begin{equation}
+ \Prb_\eta(\Finish_R(T)=1)\le
+ \frac{1+\TV(Q_+^\eta,Q_-^\eta)}2.
+ \label{eq:timing-upper}
+\end{equation}
+不等先验使用带权 Bayes 正确率。失败、超时、未承诺及所有信息通道均须保留。一个分类器准确率低不能给出该 TV 的上界；某次搜索未找到恢复路径也不证明所有控制器都不能恢复。
+
+同一包最终都能看到，不等于最终后验相同，因为执行成败本身含信息。实验只需准确表述“同一已采证据，不同释放时刻”；无需额外承诺终端知识完全相同。
+
+\subsection{旧知识：同入口、同请求、同 fresh 义务}
+在相同当前入口和共同可见信息 $\mathcal G$ 下，比较保留旧记录 $Z$ 与隐藏其内容及派生表示。令
+\begin{equation}
+ b=\Prb(w\mid\mathcal G),\quad b_Z=\Prb(w\mid\mathcal G,Z),\quad
+ \E[b_Z\mid\mathcal G]=b.
+\end{equation}
+固定策略价值对初始分布线性，最优值是线性函数的上确界，故
+\begin{equation}
+ \E_Z V_R^*(b_Z,x,T)\ge V_R^*(b,x,T).
+ \label{eq:reuse}
+\end{equation}
+这是免费可忽略信息的平均价值，不保证每一条记录都节省帧数，也不保证固定近似控制器必然获益。检索、计算和额外运动开销必须计入。
+
+共同物理入口可能已经泄露旧证据的信息，例如先前按 $Z$ 选择的构型。隐藏组仍可观察真实构型，必须使用 $\Prb(w\mid\mathcal G)$，不能强行恢复为均匀先验。可在不依赖 $Z$ 的标准入口随机化可见性，或对共同历史正确条件化。请求若由早期观察触发，其出现本身也含信息。
+
+新帧可同时辅助辨识和完成验收；不人为将两种帧数重复相加。所有组都必须真实获得新请求要求的 fresh 图像，不能把旧图像计入完成来换取表面效率。
+
+\clearpage
+\section{一个可执行的训练、冻结与运行流程}
+\label{sec:workflow}
+\begin{corebox}
+\textbf{算法 1：局部经验到跨请求执行。}
+\begin{enumerate}
+\item 固定材料关联、图像特征、程序权限、状态、图像验收与最大调用次数。完成单程序入口/出口测试。
+\item 在 pilot 数据上检查目标查询的辨识方向和实际恢复时间范围，冻结探针与样本分配。
+\item 采集独立对象/配置的同对象局部记录；保留选择概率、失败和超时。学习联合模型，并用独立数据建立声明范围内的模型集合。
+\item 冻结模型、观察接口、控制器、策略树生成规则及验收。保存所有版本和训练配置清单。
+\item 对预注册新请求链、预算和信息干预输出完成预测、区间、部署树及适用范围。输出文件带时间戳，先于测试运行。
+\item 在线只更新当前对象后验与真实凭据账本；按选定历史树调用一个合法程序，记录真实出口与时长。
+\item 独立完整链检验预测、校准、实际完成和交互成本。超域、空集合、零概率观察与拒绝均单独记录并计入总体结果。
+\end{enumerate}
+\end{corebox}
+
+准备阶段若尚未公布临时请求，准备策略不得读取未来实际请求。预注册请求分布下可优化期望后继价值，但不能用“每个请求各有一个最优准备”替代同一次准备。请求公布后才可按其实际取值分支。
+
+\subsection{最小完整链}
+共同准备为材料区域 SA 获取和当前状态记录。随后随机公布 LA 请求，策略选择已有实现或增加短探查，再进行 LA fresh；完成后公布一个新的 fresh 复查请求，必要时 Return 后 Recheck。局部训练覆盖各程序与必要配对，\textbf{两条完整链的终端结果不参与模型拟合或窗口选择}。
+
+新截止的读出可来自固定策略的完成时间次分布函数 $F_R^\pi(T)$；预算相关策略则按声明的规则重新求值/选树，保持局部模型冻结。如果只对已训练完整运行换几个截止，属于预算校准，不能称为局部组合泛化。
+
+\section{最小实验包与可证伪标准}
+\label{sec:experiments}
+\subsection{阶段 0：验证程序合同}
+对实际硬件与动态仿真分别测量 SetMode、Probe、AcquireLA、Return 的入口覆盖、时间、接触、停止及失败。验证每个保存的图像有不可改写的采集时刻和对象/足迹关联。至少找到一个\emph{自然存在}、信息可能改变选择的预算区域；若合法程序都同样容易完成，应改变实验任务/预算或接受该场景无此机制，不能事后虚构障碍。
+
+这一步还要确定原来的 QP 是否支持计划中的 LA 探查，Genesis 是否使用正确执行接口，以及实际控制器延迟是否已经进入状态。程序合同未通过前，先修复系统，不扩大统计模型。
+
+\subsection{实验 A：未训练完整链的完成预测}
+用局部训练数据冻结同一个模型。在独立完整链上检验：不同预算下的完成率、完整成功时间分布、四格表和策略选择是否被提前预测。所有失败均进入分母；超时只表示在该预算内未完成，不能当作永远不能完成。
+
+主要指标为预注册查询上的完成概率误差、区间宽度与独立校准、实际完成率。Brier/log score 可作为逐运行预测补充，但不能代替完成事件或覆盖判断。新入口、新配置与新链分别标注，不合并成一个笼统“泛化成功率”。
+
+\subsection{实验 B：相同证据的释放时机}
+在固定采集与缓冲规则下随机化释放时间，先预测完成差异的预算范围，再运行独立重复。保持所有组相同合法反馈与恢复权限；检查其他图像缓存、后验、日志或控制状态是否泄露被遮蔽内容。可以在仿真中使用共同随机数配对；真实硬件不同运行不声称具有逐帧相同噪声，使用随机分组与完整包审计。
+
+硬件上严格的“同一包”比较可从已采后的共同入口开始：在两次重置续程中复用同一旧包、保持其采集时间，各自执行新的 fresh 采集。这检验续程的信息时机机制，不冒充两次从头独立采集的完整链。完整链的总体完成率另由随机释放 gate 的独立运行检验。
+
+先检验\emph{预测的差异}，不只寻找显著性。若早晚差异出现在模型未预测的范围，说明状态、时延或恢复模型不足。若全过程无差异，应检验替代信息通道、可等待余量和物理恢复是否本就充分，而不是增写更强定理解释数据。
+
+\subsection{实验 C：旧知识的成本与 fresh 完成}
+在共同入口随机隐藏/保留旧 SA 内容，记录新请求到达后的新增真实图像、程序调用、实际交互秒数、返回次数、耗时和完成率。固定相同的 fresh 验收。关联打乱、错误关联和重复计数只作为机制消融；其数据依赖不套用原 iid 置信半径。
+
+论文主要效率问题是：\emph{达到相同留出预测误差、区间要求及完成率，需要多少真实交互？} 必须将模式建立、失败重试和恢复时间计入。若只在保留组降低 fresh 义务，或只比较成功样本，结论无效。
+
+\subsection{基线：避免与自己的同一实现比较}
+\begin{table}[htbp]\centering\small
+\begin{tabularx}{\linewidth}{P{.25\linewidth}YY}\toprule
+对照 & 比较目的 & 公平条件\\\midrule
+同一有限模型的完整后验规划 & 一致性参考/求解上限 & 本版也用完整后验时二者可完全相同，不预设优势\\
+共享完整历史的预测世界模型 & 检验结构与局部数据设计价值 & 同观测、动作、时限、训练与恢复权限\\
+辨识后执行的任务条件策略 & 检验信息获取与执行时机的联合考虑 & 允许动态状态、deadline 和相同恢复；明确为适配基线\\
+边缘因子化/跨程序配对打乱 & 解释缺失关联方向 & 保持程序内边缘与样本量，仅作机制消融\\\bottomrule
+\end{tabularx}
+\caption{完整模型能学到同样机制是允许的结果；算法优势必须由数据或计算成本证明。}
+\end{table}
+
+若主方法与完整有限后验采用同一模型/模型集合、数据、策略类、不确定性处理及优化目标，二者可以是同一算法，不把后者包装为被击败的方法。仅“都使用完整后验”并不意味着 Bayes 平均优化与稳健 max--min 相同。可检验的效率来源限制为必要局部探针的选择、物理结构约束与参数共享、跨链复用；首个四状态示例不足以证明普遍压缩优势。
+
+材料坐标使用 rigid anatomy anchor 或可用 keypoint transport 作有限对照；执行实现比较固定合法候选与 dIRD 选择，始终给相同物理权限。坐标与控制消融用于解释系统因素，不要求每个现有模块都独立成为一篇新理论贡献。
+
+\subsection{样本与统计协议}
+\begin{enumerate}
+\item 预注册训练/校准/测试对象或配置、完整链、预算网格、策略族、请求分配和主要误差指标。
+\item 以独立对象/配置评估跨对象关联；以独立重置运行评估给定配置的执行噪声。多帧与重复运行的层级不得混淆。
+\item pilot 用来确定可检测效应与运行方差；正式样本量在测试前固定。暂不凭空指定一个“足够”的临床样本数。
+\item 多预算或多组区间使用同时覆盖或明确的多重比较处理；重复随机种子只能检验合成覆盖，不能增加真实独立对象数。
+\item 分层 bootstrap 可作经验不确定性报告，但不冒称自动继承本文 iid 的精确有限样本保证。
+\end{enumerate}
+
+对 $M$ 个预先固定、每组 $n_j$ 个 iid 独立完整运行的成功时间分布，可用 DKW 加并集界：
+\begin{equation}
+ \Prb\!\left(\forall j,T:
+ |\widehat F_j(T)-F_j(T)|\le
+ \sqrt{\frac{\log(2M/\delta)}{2n_j}}\right)\ge1-\delta.
+ \label{eq:dkw}
+\end{equation}
+它控制经验分布与真实分布，不自动控制学习预测。可将冻结预测与该独立带比较。若完整链数据进一步用于调整模型或选择参数，它成为校准/开发集，需要新的最终测试；不再称该链完全未见。
+
+\subsection{停止与收缩主张的判据}
+\begin{itemize}
+\item 相同局部出口下仍存在明显历史依赖：补一个必要状态或收缩入口，重新冻结并重新测试。
+\item 区间正确但过宽：检查未辨识方向、实验覆盖和模型病态，不能只增加神经网络容量。
+\item 预测准但结构无成本优势：保留可解释预测与机制贡献，撤回更高效的主张。
+\item 只有合成标签/几何切片有效，真实图像不成立：主张停留在有限/几何模型，继续修复观察接口。
+\item 物理时机干预没有预测中的作用：修正实际恢复与替代信息模型，不宣称一般“知识不可及时利用”规律已被验证。
+\end{itemize}
+
+\section{与最接近工作的关系及可成立的 novelty}
+\label{sec:novelty}
+\subsection{理论前例与本稿边界}
+PSR 已以未来实验预测表示历史知识，AIS 已给出递归信息状态与近似规划性能界\cite{psr,ais}。TAPM 明确使用 option/半 Markov 的终态与耗时模型并分析误差与规划\cite{partial}。因此本稿不将“任务相关状态”“局部程序联合核”或“TV 到价值界”单独宣称为新理论类别。
+
+CTCAO 研究受控动态状态中的任务相关辨识、主动查询代价与风险控制\cite{ctcao}。其已知候选模型及任务标签目标与本稿的局部数据学习、真实图像完成和期限执行目标不同；但不能把它描述为只能做静态分类。Kobayashi 的工作已指出辨识准确并不自动带来有限时域控制成功\cite{kobayashi}。本稿进一步检验可学习的同对象关联如何与实际程序时间共同决定后继完成。
+
+\subsection{超声前例与需要进一步证明的内容}
+SonoGraph-WM 已具有解剖坐标、历史条件、目标图集合、未来图/位姿联合预测及重规划\cite{sonograph}；Anatomy-Anchored Learning 已以解剖 anchor 和多模态历史学习扫描动作\cite{anchored}。UltraBot 已实现完整的颈动脉横纵轴检查流程\cite{ultrabot}。本稿不能以“记住历史”“使用身体坐标”或“SA 后转 LA”作为独立 novelty。
+
+可形成差异的是：从哪些\emph{局部同对象数据}能够辨识后继执行所需关联；同一个冻结模型能否预测未训练链的\emph{期限真实完成}；相同证据的可用时机和旧知识保留能否产生被提前预测的改变；该结构在公平条件下是否节省实际交互。调和材料图册与 dIRD 是让这一问题落到真实对象和有限实现上的方法组成，仍需适当对照说明作用。
+
+\begin{corebox}
+\textbf{建议使用的 novelty 段落。}
+我们研究局部检查经历如何支持同一对象上后来提出的新成像请求。从保留对象身份的局部程序数据中，方法辨识会改变后继执行的证据关联，并将新观察、实际退出状态与耗时保留为联合后果。在明确的观察接口、程序权限和预算内，我们提出以同一个冻结模型预测未训练完整请求链的真实完成率，通过独立完整运行检验这种预测，并为共同可部署历史策略给出条件明确的保守保证。其关键贡献是连接“哪些关联必须从数据中辨识”与“这些知识何时仍能转化为可完成动作”，由预算、证据释放和知识隐藏干预检验这一联系，并评估其相对通用历史模型的真实交互成本。真实预测能力和成本优势均为实证主张，必须由对照结果支持。
+\end{corebox}
+
+\section{实施顺序与本版交付边界}
+\label{sec:final}
+\textbf{第一优先级是冻结定义并接通最小闭环。} 完成程序合同、图像账本、同对象数据单位和 LP 策略执行器。随后采集局部数据，输出一份尚未运行完整链的事前预测，再开展实验 A/B/C。无需在此之前继续增加一般最小状态、任意连续对象或通用最优探针理论。
+
+本文附带的 \texttt{verify\_v852.py} 是新建有限数学核验，检查辨识反例、共同策略、关联分解、联合时间事件及 fresh/延迟语义。它不复用或声称恢复 V8.5 缺失的实验脚本，不代表 Genesis、RM75 或真实超声结果。实际运行记录见随包 JSON。一般定理靠给定条件下的证明成立，数值核验只验证具体构造及实现一致性。
+
+\textbf{是否适合 NMI 最终由新增能力的证据决定。} 有限理论已经足以构成实验的可检验骨架；尚待证明的是它能否在真实系统里预测此前未训练的完整行为，并比合理替代方法更有效地使用局部数据。若这些结果成立，无需为了“更像理论论文”继续叠加新命题。
+
+\appendix
+\section{有限预算求值与误差传播的完整条件}
+\label{app:dp}
+每次未吸收程序调用耗时至少 $\Delta>0$，最大总预算 $T_{\max}$，调用次数上界可取
+$H=\lfloor T_{\max}/\Delta\rfloor+1$，包含最后一次可能超时的调用。完成验收是程序出口，或将异步验收作为新出口；否则不能把超时程序内部不可见事件提前算成已完成。
+
+单个已知模型的后验动态规划为
+\begin{align}
+ V_{R,0}(b,x,r)&=g_R(x),\\
+ V_{R,h}(b,x,r)&=\max\left\{g_R(x),\max_{a\in\mathcal A(x)}
+ \int_{\tau\le r}V_{R,h-1}(b'_a,x',r-\tau)
+ \bar K_a(dz,dx',d\tau\mid b,x)\right\}.
+ \label{eq:dp}
+\end{align}
+负预算取零，完成/失败吸收，空动作集只可停止。由第一步分解和塔式法则得此递推。它是单模型半 Markov/POMDP 求值，不替代第\ref{sec:lp}节全局共同策略 LP。有限动作也不意味着连续后验计算自动具有低复杂度。
+
+式\eqref{eq:propagation}的证明：先以至少 $1-\epsilon_0$ 概率耦合同一初始状态及策略随机数。在此前全部相同的事件上，共同历史策略选相同程序；对下一完整后果作最大耦合，条件一致概率至少 $1-\epsilon_j$。停止后补相同吸收转移，整条历史一致概率至少 $(1-\epsilon_0)\prod_j(1-\epsilon_j)$。一致时完成指示完全相同，故固定策略值差至多 $\Delta_H$；对同一策略类取上确界，再插入模型最优值和模型执行值，得次优性界。
+
+若真实状态或动作权限不一致，不能直接用这个耦合条件。式\eqref{eq:abstraction}给出较一般的任务误差接口，但其误差量仍需独立论证。
+
+\section{连续机构的物理见证及其限制}
+\label{app:physical}
+保留早期版本的可解析连续实例作为机制见证\cite{v84,v85}。配置 $q=(c,u,v)$，末端 $(c,u+v,0)$，满足 $|u|\le2$、$|v|\le1.5$，且 $c>\kappa$ 时 $|u|\ge1$；速度界为 $|\dot c|\le v_c$、$|\dot u|\le v_u$、$|\dot v|\le\bar v$。目标曲线为
+\begin{equation}
+ \gamma_\theta(c)=(c,\theta g(c),-d),\quad
+ g(c_0)=0,\ g(L)=1,\ 0\le g\le1,
+\end{equation}
+其中 $L>c_0>\kappa$，$g\in C^1$ 且 $v_c\|g'\|_\infty\le\bar v$。入口 $q_m=(c_0,mu_0,-mu_0)$，$1<u_0<1.5$；验收要求到达 $c=L$ 并沿规定采集路径满足 $|u+v-\theta g(c)|\le\varepsilon<1/2$。
+
+匹配分支 $m=\theta$ 保持 $u=mu_0$，取 $v=mg(c)-mu_0$ 和 $\dot c=v_c$，可于
+\begin{equation}
+ t_0=\frac{L-c_0}{v_c}
+\end{equation}
+完成。错误分支要在终端满足目标，必须穿过 $-1<u<1$；穿越时只能在 $c\le\kappa$。到连接区、穿越中间带、再到终点是三个不重叠时间段，因此即使已知真值，恢复也至少需要
+\begin{equation}
+ t_0+d_0,\qquad d_0=\frac{2(c_0-\kappa)}{v_c}+\frac2{v_u}.
+\end{equation}
+在 $t_0\le T<t_0+d_0$ 内存在严格完成分离。此处几何覆盖就是解析传感模型的验收；它不是实际 B-mode 质量证明。它给入口后的恢复下界，不自动给任意准备策略统一的最晚证据时刻，也不直接适用于 RM75。实际机构没有对应必要性证据时，只报告声明程序族的时间分布与预测窗口。
+
+\section{本版实际运行的有限核验}
+\label{app:verification}
+\subsection{解析构造与求解器核验}
+随包脚本新建并运行了 20 组有限核验，全部通过。其中包括边缘/配对矩阵秩 $3/4$、同边缘不同价值、三变量奇偶反例、振幅 LP、共同策略与模型知情最优的区别、稀有条件误差、成功--时间联合反例、原包延迟释放、fresh 验收与模型误差传播。关联分解在 144 组参数中核验，包括负 $\rho$ 和错误分支反而更易完成的情况，最大公式差为 $1.67\times10^{-16}$。
+
+近似代表模型核验中的 $\beta,\eta$ 是例子外给的可审计界，不是从残差估计出来的保证。检查通过说明这些有限构造与脚本一致，不替代一般定理证明，也不评价真实控制能力。
+
+\subsection{新生成的局部训练与留出链}
+随机种子为 \texttt{20261102}，生成真值 $p=0.78,\rho=0.65$，第二局部特征对 $V$ 的准确率 $q=0.83$ 在本合成合同中已知。给定 $(U,V)$ 后两特征噪声独立。训练含 6000 条带 $U$ 审计的 SA 校准、12000 条同对象配对探针和三个程序各 5000 条时间样本，共 33000 条局部记录。
+
+SA 与模式建立总耗时固定为 $2$。匹配时服务时间取 $(2,3,5)$，概率为 $(0.65,0.25,0.10)$；不匹配时取 $(4,6,8)$，概率为 $(0.20,0.50,0.30)$；复查增加 $(1,2)$ 时间，概率 $(0.70,0.30)$。这些时间分布在声明条件下独立，是本合成例的约束而非真实系统假设。模型用局部频数学习各时间概率。
+
+完整测试链为 SA--LA 与 SA--LA--复查。每条链对四个共同规则 $(m(-),m(+))\in\{-1,+1\}^2$ 各独立运行 3000 次，共 24000 条测试记录；目标完整训练链为零。首次合格终端图像在服务结束时生成，但图像质量与几何足迹只有类别标志，没有真实影像或物理验证。
+
+感知字典取 $p\in\{0.68,0.78,0.88\}$，关联参数取
+\[
+\rho\in\{-1,-0.75,-0.65,-0.5,-0.25,0,0.25,0.5,0.65,0.75,1\}.
+\]
+真值位于该字典是显式假设。33 个初始候选经 SA 校准后剩 11 个，经同对象探针后剩
+$(0.78,0.65)$ 与 $(0.78,0.75)$ 两个，没有强行将集合缩成单个真模型。另用于名义预测的估计为 $\widehat p=0.7856667,\widehat\rho=0.6718291$。
+
+\begin{table}[htbp]\centering\small
+\begin{tabularx}{\linewidth}{Y r}\toprule
+本轮实际结果 & 数值\\\midrule
+有限数学核验组 & 20/20 通过\\
+局部训练/独立完整链测试 & 33000 / 24000\\
+感知候选：初始/校准后/配对后 & 33 / 11 / 2\\
+最大名义预测与经验 CDF 差 & 0.0314667\\
+最大真值 CDF 与经验 CDF 差（审计） & 0.0266667\\
+8 个分布同时 DKW 带宽 & 0.0310062\\
+预算网格库内最优区间审计 & 全部覆盖\\
+部署策略下界网格审计 & 全部成立\\\bottomrule
+\end{tabularx}
+\caption{单次种子的有限合成结果；预算网格包含该离散时间模型的全部 CDF 跳点。}
+\end{table}
+
+\begin{table}[htbp]\centering\small
+\begin{tabular}{c r r r r}\toprule
+链 & 预算 & 下界 & 上界 & 真库内最优（审计）\\\midrule
+SA--LA & 5 & 0.593129 & 0.670251 & 0.613800\\
+SA--LA & 8 & 0.881607 & 0.941465 & 0.904600\\
+SA--LA--复查 & 6 & 0.517593 & 0.640282 & 0.562650\\
+SA--LA--复查 & 9 & 0.810362 & 0.922082 & 0.856900\\\bottomrule
+\end{tabular}
+\caption{同一候选感知集合与局部时间误差产生的证书；真值仅供离线审计。}
+\end{table}
+
+本轮名义预测误差略大于 DKW 带宽，并不违反 DKW：该不等式控制\emph{真分布与经验分布}，不自动控制学习预测。训练模型覆盖事件与测试 DKW 事件各为 $95\%$，若联合使用，简单并集只保证至少 $90\%$。一次种子和网格审计不估计重复采样覆盖率，也不证明强基线上的交互效率。全部类别频数、半径、环境版本与逐预算结果在随包 JSON/CSV 中给出。
+
+\section{源码依据与复现说明}
+本版系统判断依据 RealUS\_playground 的固定快照：
+\begin{quote}\small\ttfamily
+4f61dd38fd6b4d409598a04b16ed848ecad61c6a
+\end{quote}
+源稿为其中的 V8.4 与 V8.5\cite{v84,v85}。代码读取说明已有实现与缺口，不表示现场运行或实机认证。本文不改变上述仓库。
+
+文稿为单文件 XeLaTeX：连续编译两次以生成交叉引用。有限核验使用 Python 3、NumPy 与 SciPy，运行
+\begin{quote}\small\ttfamily
+python verify\_v852.py --output-dir results
+\end{quote}
+运行范围、检查项与实际数值以 \path{results/verification_results.json} 为准。复现包同时提供源稿、PDF、脚本、结果和说明，不包含不存在的机器人或超声数据。
+
+\begin{thebibliography}{99}
+\bibitem{v84} NingMeng0903. Anatomical GPS V8.4. Repository research manuscript.
+\href{https://github.com/NingMeng0903/RealUS_playground/blob/4f61dd38fd6b4d409598a04b16ed848ecad61c6a/NMI_idea/ideas/Anatomical_GPS_V8.4.tex}{固定快照源码}.
+\bibitem{v85} NingMeng0903. Anatomical GPS V8.5, recovered edition. Repository research manuscript.
+\href{https://github.com/NingMeng0903/RealUS_playground/blob/4f61dd38fd6b4d409598a04b16ed848ecad61c6a/NMI_idea/ideas/Anatomical_GPS_V8.5.tex}{固定快照源码}.
+\bibitem{codeharmonic} NingMeng0903. RealUS\_playground: harmonic.py and atlas.py.
+\href{https://github.com/NingMeng0903/RealUS_playground/tree/4f61dd38fd6b4d409598a04b16ed848ecad61c6a/src/projects/genesis_ue_sync/anatomy_retarget/leg_volume_coordinates}{材料坐标实现}.
+\bibitem{codedird} NingMeng0903. RealUS\_playground: trajectory\_operator.py; srs\_trajectory\_dp.py.
+\href{https://github.com/NingMeng0903/RealUS_playground/tree/4f61dd38fd6b4d409598a04b16ed848ecad61c6a/ird_playground/ird_playground}{dIRD 与轨迹优化实现}.
+\bibitem{codeird} NingMeng0903. RealUS\_playground: tasks/ird\_adapter.py.
+\href{https://github.com/NingMeng0903/RealUS_playground/blob/4f61dd38fd6b4d409598a04b16ed848ecad61c6a/rm75_control/rm75_control/control/joint_admittance_8dof/tasks/ird_adapter.py}{一次性 dIRD 接口}.
+\bibitem{codeqp} NingMeng0903. RealUS\_playground: weighted\_outer.py and geometry.py.
+\href{https://github.com/NingMeng0903/RealUS_playground/tree/4f61dd38fd6b4d409598a04b16ed848ecad61c6a/peirastic/contact_qp}{接触 QP 实现}.
+\bibitem{codeloop} NingMeng0903. RealUS\_playground: joint\_admittance\_8dof/loop.py.
+\href{https://github.com/NingMeng0903/RealUS_playground/blob/4f61dd38fd6b4d409598a04b16ed848ecad61c6a/rm75_control/rm75_control/control/joint_admittance_8dof/loop.py}{实际控制循环}.
+\bibitem{coderuntime} NingMeng0903. RealUS\_playground: sim\_platform/simulation/runtime.py.
+\href{https://github.com/NingMeng0903/RealUS_playground/blob/4f61dd38fd6b4d409598a04b16ed848ecad61c6a/src/projects/genesis_ue_sync/sim_platform/simulation/runtime.py}{Genesis runtime}.
+\bibitem{partial} K. Khetarpal, Z. Ahmed, G. Comanici, D. Precup.
+Temporally Abstract Partial Models. NeurIPS, 2021.
+\href{https://papers.nips.cc/paper/2021/file/0f3d014eead934bbdbacb62a01dc4831-Paper.pdf}{论文全文}.
+\bibitem{ais} J. Subramanian, A. Sinha, R. Seraj, A. Mahajan.
+Approximate Information State for Approximate Planning and Reinforcement Learning in Partially Observed Systems. JMLR, 23(12):1--83, 2022.
+\href{https://jmlr.org/papers/volume23/20-1165/20-1165.pdf}{论文全文}.
+\bibitem{psr} M. L. Littman, R. S. Sutton, S. Singh.
+Predictive Representations of State. NeurIPS, 2001.
+\href{https://proceedings.neurips.cc/paper/2001/file/1e4d36177d71bbb3558e43af9577d70e-Paper.pdf}{论文全文}.
+\bibitem{ctcao} L. Zhang, C. Xu. Certified Task-Conditioned Active Observability.
+arXiv:2609.28520, 2026. Preprint.
+\href{https://arxiv.org/pdf/2609.28520}{论文全文，尤其第 2--4、7 节}.
+\bibitem{kobayashi} J. Kobayashi. When Identifiability Is Not Enough: Terminal Controllability in Task-Compatible Active Calibration.
+IEEE Robotics and Automation Letters, 11(10):11039--11045, 2026.
+\href{https://doi.org/10.1109/LRA.2026.3719194}{正式论文 DOI}.
+\bibitem{sonograph} X. Li, S. Chen, F. Li, Z. Jiang, N. Navab, Y. Bi.
+Scanning While Imagining: A Scene-Graph World Model for Robotic Ultrasound Navigation.
+arXiv:2609.32837, 2026. Preprint.
+\href{https://arxiv.org/pdf/2609.32837}{论文全文}.
+\bibitem{anchored} Y. Bi, F. Han, Y. Su, Y. Zhou, Z. Jiang, N. Navab.
+From Freehand Demonstrations to Autonomous Robotic Ultrasound: An Anatomy-Anchored Learning Framework.
+arXiv:2610.32525, 2026. Preprint.
+\href{https://arxiv.org/abs/2610.32525}{论文与全文入口}.
+\bibitem{ultrabot} H. Jiang et al. Towards expert-level autonomous carotid ultrasonography with large-scale learning-based robotic system.
+Nature Communications, 16:7893, 2025.
+\href{https://www.nature.com/articles/s41467-025-62865-w}{正式论文}.
+\end{thebibliography}
+\end{document}

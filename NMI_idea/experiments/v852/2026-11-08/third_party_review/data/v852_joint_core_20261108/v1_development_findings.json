@@ -1,0 +1,6 @@
+{
+  "status": "development only; do not count as final ABC confirmation",
+  "public_acceptance_audit_inconsistency": "upstream success could remain true when public status became coverage_gap; v2 splits policy feedback from independent audit",
+  "full_runner_exception": "move override initially attempted after a prior safety stop; v2 refuses further motion",
+  "next_version": "reuse slow diagnostic acquisition for fresh recheck, same 9/12 coverage; retain old failures"
+}

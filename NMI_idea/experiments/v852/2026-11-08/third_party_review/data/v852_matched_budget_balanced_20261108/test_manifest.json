@@ -1,0 +1,498 @@
+[
+  {
+    "case_id": "basic:test_20266308_a3db2f09c4a9",
+    "level": "basic",
+    "group": "pose60_balanced",
+    "spec": {
+      "object_id": "test_20266308_a3db2f09c4a9",
+      "geometry_seed": 202663080004,
+      "u": -1,
+      "v": -1,
+      "knee_deg": 60.0,
+      "width_scale": 1.0,
+      "length_scale": 1.0,
+      "amplitude_scale": 1.0
+    },
+    "near": -0.06526297381447466,
+    "chain": [
+      "a",
+      "f"
+    ]
+  },
+  {
+    "case_id": "basic:test_20266308_31085afbe723",
+    "level": "basic",
+    "group": "pose60_balanced",
+    "spec": {
+      "object_id": "test_20266308_31085afbe723",
+      "geometry_seed": 202663080001,
+      "u": -1,
+      "v": 1,
+      "knee_deg": 60.0,
+      "width_scale": 1.0,
+      "length_scale": 1.0,
+      "amplitude_scale": 1.0
+    },
+    "near": -0.0739966297062945,
+    "chain": [
+      "a",
+      "b",
+      "f"
+    ]
+  },
+  {
+    "case_id": "basic:test_20266308_3799b9897982",
+    "level": "basic",
+    "group": "pose60_balanced",
+    "spec": {
+      "object_id": "test_20266308_3799b9897982",
+      "geometry_seed": 202663080010,
+      "u": 1,
+      "v": -1,
+      "knee_deg": 60.0,
+      "width_scale": 1.0,
+      "length_scale": 1.0,
+      "amplitude_scale": 1.0
+    },
+    "near": 0.08372131112705605,
+    "chain": [
+      "b",
+      "a",
+      "f"
+    ]
+  },
+  {
+    "case_id": "basic:test_20266308_d909b7a45c39",
+    "level": "basic",
+    "group": "pose60_balanced",
+    "spec": {
+      "object_id": "test_20266308_d909b7a45c39",
+      "geometry_seed": 202663080011,
+      "u": 1,
+      "v": 1,
+      "knee_deg": 60.0,
+      "width_scale": 1.0,
+      "length_scale": 1.0,
+      "amplitude_scale": 1.0
+    },
+    "near": 0.0941799196289318,
+    "chain": [
+      "a",
+      "f"
+    ]
+  },
+  {
+    "case_id": "basic:test_20266308_b999826f13bd",
+    "level": "basic",
+    "group": "pose60_balanced",
+    "spec": {
+      "object_id": "test_20266308_b999826f13bd",
+      "geometry_seed": 202663080008,
+      "u": -1,
+      "v": -1,
+      "knee_deg": 60.0,
+      "width_scale": 1.0,
+      "length_scale": 1.0,
+      "amplitude_scale": 1.0
+    },
+    "near": -0.0830038710980565,
+    "chain": [
+      "a",
+      "b",
+      "f"
+    ]
+  },
+  {
+    "case_id": "basic:test_20266308_3e11d1b3734a",
+    "level": "basic",
+    "group": "pose60_balanced",
+    "spec": {
+      "object_id": "test_20266308_3e11d1b3734a",
+      "geometry_seed": 202663080009,
+      "u": -1,
+      "v": 1,
+      "knee_deg": 60.0,
+      "width_scale": 1.0,
+      "length_scale": 1.0,
+      "amplitude_scale": 1.0
+    },
+    "near": -0.10901434777095709,
+    "chain": [
+      "b",
+      "a",
+      "f"
+    ]
+  },
+  {
+    "case_id": "basic:test_20266308_de4c8127a5d9",
+    "level": "basic",
+    "group": "pose60_balanced",
+    "spec": {
+      "object_id": "test_20266308_de4c8127a5d9",
+      "geometry_seed": 202663080002,
+      "u": 1,
+      "v": -1,
+      "knee_deg": 60.0,
+      "width_scale": 1.0,
+      "length_scale": 1.0,
+      "amplitude_scale": 1.0
+    },
+    "near": 0.10947504160456667,
+    "chain": [
+      "a",
+      "f"
+    ]
+  },
+  {
+    "case_id": "basic:test_20266308_5c46f99cf370",
+    "level": "basic",
+    "group": "pose60_balanced",
+    "spec": {
+      "object_id": "test_20266308_5c46f99cf370",
+      "geometry_seed": 202663080007,
+      "u": 1,
+      "v": 1,
+      "knee_deg": 60.0,
+      "width_scale": 1.0,
+      "length_scale": 1.0,
+      "amplitude_scale": 1.0
+    },
+    "near": 0.10764388020791893,
+    "chain": [
+      "a",
+      "b",
+      "f"
+    ]
+  },
+  {
+    "case_id": "basic:test_20266308_51ad6012b295",
+    "level": "basic",
+    "group": "pose60_balanced",
+    "spec": {
+      "object_id": "test_20266308_51ad6012b295",
+      "geometry_seed": 202663080000,
+      "u": -1,
+      "v": -1,
+      "knee_deg": 60.0,
+      "width_scale": 1.0,
+      "length_scale": 1.0,
+      "amplitude_scale": 1.0
+    },
+    "near": -0.0874586201897608,
+    "chain": [
+      "b",
+      "a",
+      "f"
+    ]
+  },
+  {
+    "case_id": "basic:test_20266308_6630b3033f8c",
+    "level": "basic",
+    "group": "pose60_balanced",
+    "spec": {
+      "object_id": "test_20266308_6630b3033f8c",
+      "geometry_seed": 202663080005,
+      "u": -1,
+      "v": 1,
+      "knee_deg": 60.0,
+      "width_scale": 1.0,
+      "length_scale": 1.0,
+      "amplitude_scale": 1.0
+    },
+    "near": -0.0921079303789374,
+    "chain": [
+      "a",
+      "f"
+    ]
+  },
+  {
+    "case_id": "basic:test_20266308_d09936457005",
+    "level": "basic",
+    "group": "pose60_balanced",
+    "spec": {
+      "object_id": "test_20266308_d09936457005",
+      "geometry_seed": 202663080006,
+      "u": 1,
+      "v": -1,
+      "knee_deg": 60.0,
+      "width_scale": 1.0,
+      "length_scale": 1.0,
+      "amplitude_scale": 1.0
+    },
+    "near": 0.09311372873289447,
+    "chain": [
+      "a",
+      "b",
+      "f"
+    ]
+  },
+  {
+    "case_id": "basic:test_20266308_e7df33d7b795",
+    "level": "basic",
+    "group": "pose60_balanced",
+    "spec": {
+      "object_id": "test_20266308_e7df33d7b795",
+      "geometry_seed": 202663080003,
+      "u": 1,
+      "v": 1,
+      "knee_deg": 60.0,
+      "width_scale": 1.0,
+      "length_scale": 1.0,
+      "amplitude_scale": 1.0
+    },
+    "near": 0.06916408611386649,
+    "chain": [
+      "b",
+      "a",
+      "f"
+    ]
+  },
+  {
+    "case_id": "stress:test_20266318_1ed1a1412abb",
+    "level": "stress",
+    "group": "pose60_balanced",
+    "spec": {
+      "object_id": "test_20266318_1ed1a1412abb",
+      "geometry_seed": 202663180000,
+      "u": -1,
+      "v": -1,
+      "knee_deg": 60.0,
+      "width_scale": 1.0,
+      "length_scale": 1.0,
+      "amplitude_scale": 1.0
+    },
+    "near": -0.17303368370760153,
+    "chain": [
+      "a",
+      "f"
+    ]
+  },
+  {
+    "case_id": "stress:test_20266318_48a6e12072ca",
+    "level": "stress",
+    "group": "pose60_balanced",
+    "spec": {
+      "object_id": "test_20266318_48a6e12072ca",
+      "geometry_seed": 202663180005,
+      "u": -1,
+      "v": 1,
+      "knee_deg": 60.0,
+      "width_scale": 1.0,
+      "length_scale": 1.0,
+      "amplitude_scale": 1.0
+    },
+    "near": -0.21222255577940452,
+    "chain": [
+      "a",
+      "b",
+      "f"
+    ]
+  },
+  {
+    "case_id": "stress:test_20266318_6a9129b14472",
+    "level": "stress",
+    "group": "pose60_balanced",
+    "spec": {
+      "object_id": "test_20266318_6a9129b14472",
+      "geometry_seed": 202663180010,
+      "u": 1,
+      "v": -1,
+      "knee_deg": 60.0,
+      "width_scale": 1.0,
+      "length_scale": 1.0,
+      "amplitude_scale": 1.0
+    },
+    "near": 0.19409202855137953,
+    "chain": [
+      "b",
+      "a",
+      "f"
+    ]
+  },
+  {
+    "case_id": "stress:test_20266318_b94a3000ddb5",
+    "level": "stress",
+    "group": "pose60_balanced",
+    "spec": {
+      "object_id": "test_20266318_b94a3000ddb5",
+      "geometry_seed": 202663180003,
+      "u": 1,
+      "v": 1,
+      "knee_deg": 60.0,
+      "width_scale": 1.0,
+      "length_scale": 1.0,
+      "amplitude_scale": 1.0
+    },
+    "near": 0.20062610358320507,
+    "chain": [
+      "a",
+      "f"
+    ]
+  },
+  {
+    "case_id": "stress:test_20266318_e156aac60dbe",
+    "level": "stress",
+    "group": "pose60_balanced",
+    "spec": {
+      "object_id": "test_20266318_e156aac60dbe",
+      "geometry_seed": 202663180008,
+      "u": -1,
+      "v": -1,
+      "knee_deg": 60.0,
+      "width_scale": 1.0,
+      "length_scale": 1.0,
+      "amplitude_scale": 1.0
+    },
+    "near": -0.2281019668519798,
+    "chain": [
+      "a",
+      "b",
+      "f"
+    ]
+  },
+  {
+    "case_id": "stress:test_20266318_d1660ff94ae3",
+    "level": "stress",
+    "group": "pose60_balanced",
+    "spec": {
+      "object_id": "test_20266318_d1660ff94ae3",
+      "geometry_seed": 202663180009,
+      "u": -1,
+      "v": 1,
+      "knee_deg": 60.0,
+      "width_scale": 1.0,
+      "length_scale": 1.0,
+      "amplitude_scale": 1.0
+    },
+    "near": -0.26313888640402083,
+    "chain": [
+      "b",
+      "a",
+      "f"
+    ]
+  },
+  {
+    "case_id": "stress:test_20266318_3acf21412198",
+    "level": "stress",
+    "group": "pose60_balanced",
+    "spec": {
+      "object_id": "test_20266318_3acf21412198",
+      "geometry_seed": 202663180006,
+      "u": 1,
+      "v": -1,
+      "knee_deg": 60.0,
+      "width_scale": 1.0,
+      "length_scale": 1.0,
+      "amplitude_scale": 1.0
+    },
+    "near": 0.23787858504542836,
+    "chain": [
+      "a",
+      "f"
+    ]
+  },
+  {
+    "case_id": "stress:test_20266318_7e1f1ca48302",
+    "level": "stress",
+    "group": "pose60_balanced",
+    "spec": {
+      "object_id": "test_20266318_7e1f1ca48302",
+      "geometry_seed": 202663180011,
+      "u": 1,
+      "v": 1,
+      "knee_deg": 60.0,
+      "width_scale": 1.0,
+      "length_scale": 1.0,
+      "amplitude_scale": 1.0
+    },
+    "near": 0.20847168180421782,
+    "chain": [
+      "a",
+      "b",
+      "f"
+    ]
+  },
+  {
+    "case_id": "stress:test_20266318_f74d0f9f9985",
+    "level": "stress",
+    "group": "pose60_balanced",
+    "spec": {
+      "object_id": "test_20266318_f74d0f9f9985",
+      "geometry_seed": 202663180004,
+      "u": -1,
+      "v": -1,
+      "knee_deg": 60.0,
+      "width_scale": 1.0,
+      "length_scale": 1.0,
+      "amplitude_scale": 1.0
+    },
+    "near": -0.22209460050758884,
+    "chain": [
+      "b",
+      "a",
+      "f"
+    ]
+  },
+  {
+    "case_id": "stress:test_20266318_84997ad5c8ab",
+    "level": "stress",
+    "group": "pose60_balanced",
+    "spec": {
+      "object_id": "test_20266318_84997ad5c8ab",
+      "geometry_seed": 202663180001,
+      "u": -1,
+      "v": 1,
+      "knee_deg": 60.0,
+      "width_scale": 1.0,
+      "length_scale": 1.0,
+      "amplitude_scale": 1.0
+    },
+    "near": -0.17097291342795018,
+    "chain": [
+      "a",
+      "f"
+    ]
+  },
+  {
+    "case_id": "stress:test_20266318_663d8ff2898f",
+    "level": "stress",
+    "group": "pose60_balanced",
+    "spec": {
+      "object_id": "test_20266318_663d8ff2898f",
+      "geometry_seed": 202663180002,
+      "u": 1,
+      "v": -1,
+      "knee_deg": 60.0,
+      "width_scale": 1.0,
+      "length_scale": 1.0,
+      "amplitude_scale": 1.0
+    },
+    "near": 0.17918414063322663,
+    "chain": [
+      "a",
+      "b",
+      "f"
+    ]
+  },
+  {
+    "case_id": "stress:test_20266318_eeed40715549",
+    "level": "stress",
+    "group": "pose60_balanced",
+    "spec": {
+      "object_id": "test_20266318_eeed40715549",
+      "geometry_seed": 202663180007,
+      "u": 1,
+      "v": 1,
+      "knee_deg": 60.0,
+      "width_scale": 1.0,
+      "length_scale": 1.0,
+      "amplitude_scale": 1.0
+    },
+    "near": 0.1712899786726142,
+    "chain": [
+      "b",
+      "a",
+      "f"
+    ]
+  }
+]

@@ -1,0 +1,221 @@
+{
+  "schema": "v852_prospective_core_suite_v1",
+  "created": "2026-11-08T06:51:45.623433+00:00",
+  "seed": 20266208,
+  "levels": {
+    "basic": {
+      "amplitude_scale": 1.0,
+      "noise": 0.00035,
+      "dropout": 0.0,
+      "lag": 0.09
+    },
+    "stress": {
+      "amplitude_scale": 2.4,
+      "noise": 0.001,
+      "dropout": 0.08,
+      "lag": 0.21
+    }
+  },
+  "training_pool": 48,
+  "test_objects": 12,
+  "population_rhos": [
+    -0.8,
+    0.0,
+    0.8
+  ],
+  "population_design": "balanced factorial test weighted by (1+rho*U*V); training stratified subsamples",
+  "independent_unit": "unique complete anatomy configuration; reset/counterfactual runs are clustered",
+  "deadlines": [
+    6.0,
+    7.0,
+    8.0,
+    9.0,
+    10.0,
+    11.0,
+    12.0,
+    13.0,
+    14.0,
+    15.0,
+    16.0,
+    17.0,
+    18.0,
+    19.0,
+    20.0,
+    21.0,
+    22.0,
+    23.0,
+    24.0,
+    25.0,
+    26.0,
+    27.0,
+    28.0,
+    29.0,
+    30.0,
+    31.0,
+    32.0,
+    33.0,
+    34.0,
+    35.0,
+    36.0,
+    37.0,
+    38.0,
+    39.0,
+    40.0,
+    41.0,
+    42.0,
+    43.0,
+    44.0,
+    45.0,
+    46.0
+  ],
+  "arms": [
+    {
+      "name": "retain_early",
+      "release": 0.0,
+      "hidden": false
+    },
+    {
+      "name": "release_3s",
+      "release": 3.0,
+      "hidden": false
+    },
+    {
+      "name": "release_8s",
+      "release": 8.0,
+      "hidden": false
+    },
+    {
+      "name": "hide_old",
+      "release": 0.0,
+      "hidden": true
+    }
+  ],
+  "trees": [
+    {
+      "name": "fixed_minus",
+      "kind": "fixed",
+      "default_mode": -1,
+      "near_mapping": 1,
+      "probe_mapping": 1,
+      "recover": true
+    },
+    {
+      "name": "fixed_plus",
+      "kind": "fixed",
+      "default_mode": 1,
+      "near_mapping": 1,
+      "probe_mapping": 1,
+      "recover": true
+    },
+    {
+      "name": "react_-1_-1",
+      "kind": "react",
+      "default_mode": -1,
+      "near_mapping": -1,
+      "probe_mapping": 1,
+      "recover": true
+    },
+    {
+      "name": "react_-1_+1",
+      "kind": "react",
+      "default_mode": -1,
+      "near_mapping": 1,
+      "probe_mapping": 1,
+      "recover": true
+    },
+    {
+      "name": "react_+1_-1",
+      "kind": "react",
+      "default_mode": 1,
+      "near_mapping": -1,
+      "probe_mapping": 1,
+      "recover": true
+    },
+    {
+      "name": "react_+1_+1",
+      "kind": "react",
+      "default_mode": 1,
+      "near_mapping": 1,
+      "probe_mapping": 1,
+      "recover": true
+    },
+    {
+      "name": "probe_-1",
+      "kind": "probe",
+      "default_mode": -1,
+      "near_mapping": 1,
+      "probe_mapping": -1,
+      "recover": true
+    },
+    {
+      "name": "probe_+1",
+      "kind": "probe",
+      "default_mode": -1,
+      "near_mapping": 1,
+      "probe_mapping": 1,
+      "recover": true
+    },
+    {
+      "name": "wait_-1",
+      "kind": "wait",
+      "default_mode": -1,
+      "near_mapping": -1,
+      "probe_mapping": 1,
+      "recover": true
+    },
+    {
+      "name": "wait_+1",
+      "kind": "wait",
+      "default_mode": -1,
+      "near_mapping": 1,
+      "probe_mapping": 1,
+      "recover": true
+    }
+  ],
+  "chains": [
+    [
+      "a",
+      "f"
+    ],
+    [
+      "a",
+      "b",
+      "f"
+    ],
+    [
+      "b",
+      "a",
+      "f"
+    ]
+  ],
+  "complete_target_chains_in_training": 0,
+  "native_smplx": true,
+  "feature_sensor": "finite-thickness geometric vessel slices, not B-mode",
+  "execution_backend": "cartesian_lag; separate Genesis and finite-kernel reports",
+  "real_contact_or_hardware": false,
+  "formal_confidence_set": false,
+  "notes": [
+    "post-request state starts at standardized public entry independent of old SA",
+    "test old SA at0deg, request pose may be60deg; no model refitting",
+    "body reposition cost before request is not measured",
+    "all mode/retry/return costs after request executed and counted",
+    "early/late/hide same historical content and same fresh obligations"
+  ],
+  "source_sha256": {
+    "run_core_suite.py": "02f8c0ca7226dfa5a20768183dd2b765ea9b480b12099ef130161e8b2027f59a",
+    "core_execution.py": "7ffb66ce8ee8e0d58816d7dabd633d0d99b0e5909fcfd2b814a529e95ebf47a2",
+    "core_models.py": "0c3a03bc25e801c5f287b97ecc62aafe155d1cca48cba8077f5ee90b85739d2e",
+    "evidence_ledger.py": "ef4439cd600e8ffa14853b19927ddffd60263796824734b7c2a90a14c8b2cf92",
+    "run_budget_suite.py": "44f31a6cce78ecaf1f9a29129aa7623f02f2ac23cb293c6f83eb341ad4fa4a3d"
+  },
+  "variant": "matched_structure_history_point_objective_budgets",
+  "comparison": "same local records, same tree library, same nominal objective, N=8/16/full",
+  "request_context_design": "complete UV x three requests, randomized within UV blocks, fixed pose60/shape1",
+  "local_reuse": {
+    "source": "/home/camp/Documents/Codex/2026-11-08/cd-downloads-sudo-apt-install-chatgpt/work/core_suite_development_oracle_feedback_01",
+    "raw_sha256": "783da56d968df3b790c67dce5291d4d54abf905afc3f08f18e6c9046ab41ce84",
+    "reason": "single-program physical execution used only visible feedback; separate audit labels from public program feedback",
+    "complete_chain_outcomes_reused": false,
+    "new_test_configuration_seed": 20266308
+  }
+}

@@ -1,0 +1,112 @@
+{
+  "case_id": "pose_60_width_1_length_1_reference_-1",
+  "knee_deg": 60.0,
+  "shape_controls": [
+    1.0,
+    1.0
+  ],
+  "reference_mode": -1,
+  "candidate_rank": 1,
+  "rail_m": 0.5,
+  "entry_id": 1,
+  "dird_min_score": 5.774022102355957,
+  "nominal_scan_retiming_s": 5.1145606075263865,
+  "backend": "genesis_pd",
+  "physical_execution": false,
+  "simulated_joint_execution": true,
+  "contact_checked": false,
+  "environment_collision_checked": false,
+  "self_collision_scope": "configured_arm_body_pairs",
+  "actual_entry_q": [
+    0.41558667653043646,
+    -1.5797620729202606,
+    -1.6533930815758835,
+    1.1330221019718925,
+    1.6571964548101124,
+    1.5745389822756388,
+    1.0462242999792917,
+    1.6355586124623642
+  ],
+  "retiming_is_measured_duration": false,
+  "config": {
+    "backend": "genesis_pd",
+    "dt": 0.01,
+    "velocity_fraction": 0.25,
+    "acceleration_rail_m_s2": 0.5,
+    "acceleration_arm_rad_s2": 2.0,
+    "lag_time_s": 0.08,
+    "collision_margin_m": 0.01,
+    "rail_tolerance_m": 0.0002,
+    "arm_tolerance_rad": 0.002,
+    "velocity_tolerance": 0.01,
+    "maximum_duration_s": 120.0,
+    "scan_speed_m_s": 0.02
+  },
+  "preflight_min_clearance_m": 0.03909068886336616,
+  "preflight_collision_samples": 135,
+  "success": true,
+  "status": "completed",
+  "duration_s": 13.699999999999752,
+  "transition_duration_s": 3.46999999999997,
+  "scan_duration_s": 10.229999999999782,
+  "wall_seconds": 12.908619608999288,
+  "exit_q": [
+    0.499819278717041,
+    -2.331780195236206,
+    -1.2227606773376465,
+    1.4729799032211304,
+    1.5903403759002686,
+    2.308961868286133,
+    1.3802279233932495,
+    -0.3508819341659546
+  ],
+  "exit_qdot": [
+    0.00027747085550799966,
+    -0.009199594147503376,
+    0.0015513929538428783,
+    0.004123156890273094,
+    -0.005259001161903143,
+    0.004508222918957472,
+    0.0010469427797943354,
+    -0.002140251686796546
+  ],
+  "exit_T_tcp_world": [
+    [
+      0.2457538656983034,
+      -0.05866727471934599,
+      -0.9675552637298529,
+      -0.0638761561636518
+    ],
+    [
+      -0.8105026582297189,
+      0.5350657020671352,
+      -0.2383068095417386,
+      -0.8891376087744944
+    ],
+    [
+      0.5316864475392424,
+      0.8427709329043142,
+      0.08394448257445183,
+      -0.2214220158612875
+    ],
+    [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ]
+  ],
+  "final_joint_error": [
+    0.00018072128295898438,
+    -0.0009241104125976562,
+    0.00015556812286376953,
+    0.0004190206527709961,
+    -0.0005345344543457031,
+    0.0004630088806152344,
+    0.00011146068572998047,
+    -0.0002155303955078125
+  ],
+  "recorded_ticks": 1370,
+  "reset_count": 18,
+  "trajectory_file": "trial_017.npz"
+}

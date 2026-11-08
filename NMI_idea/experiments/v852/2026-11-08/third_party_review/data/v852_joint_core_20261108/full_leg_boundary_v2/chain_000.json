@@ -1,0 +1,107 @@
+{
+  "tree": "react_-1_+1",
+  "success": false,
+  "duration": 2.980000000000002,
+  "program_calls": 1,
+  "recoveries": 0,
+  "new_frames": 12,
+  "fresh_frames": 0,
+  "calls": [
+    {
+      "program": "a",
+      "mode": 1,
+      "success": false,
+      "public_success": false,
+      "independent_success": false,
+      "status": "joint_safety_stop",
+      "duration": 2.980000000000002,
+      "service_duration": 1.200000000000001,
+      "entry_duration": 1.7800000000000011,
+      "nominal_duration": 4.2103814166711935,
+      "scan_speed_m_s": 0.028,
+      "exit_position_local": [
+        -0.008825337353708228,
+        -0.07514980182616397,
+        0.01112538610189583
+      ],
+      "exit_rotation_local": [
+        -0.004769803860563008,
+        -0.4021054815725664,
+        -0.0944493617756773
+      ],
+      "exit_velocity_local": [
+        0.02520346180320239,
+        0.014386299681403359,
+        -0.003575827596462782
+      ],
+      "frame_count": 12,
+      "frame_capture_times": [
+        1.7800000000000011,
+        1.8800000000000012,
+        1.9800000000000013,
+        2.0800000000000014,
+        2.1800000000000015,
+        2.2800000000000016,
+        2.3800000000000017,
+        2.4800000000000018,
+        2.580000000000002,
+        2.680000000000002,
+        2.780000000000002,
+        2.880000000000002
+      ],
+      "fresh_frames": 10,
+      "coverage": 0.25,
+      "capture_min": 1.7800000000000011,
+      "capture_max": 2.880000000000002,
+      "start_time": 0.0,
+      "end_time": 2.980000000000002,
+      "backend": "genesis_pd",
+      "transfer_events": [
+        {
+          "start": 0.62,
+          "mode": 1,
+          "candidate_count": 340,
+          "attempts": [
+            {
+              "status": "completed",
+              "duration": 1.7800000000000011
+            }
+          ],
+          "planning_wall_seconds": 1.5655751019985473
+        }
+      ]
+    }
+  ],
+  "decisions": [
+    {
+      "time": 0.0,
+      "stage": "a",
+      "mode": 1,
+      "near_visible": true,
+      "probe_visible": false
+    }
+  ],
+  "packet_hash": "5cad147ade18f6efd64faa38eb0d3a86813a748f4ab671375b17c9bf976a8cf0",
+  "release": 0.0,
+  "hidden": false,
+  "world_hash": "8684887afe0df18443151614043bea51fa8ff57ba0c16ee911ef51c84c60d121",
+  "ledger": {
+    "n_records": 13,
+    "n_hidden": 0,
+    "n_release_overrides": 1,
+    "n_events": 15,
+    "object_ids": [
+      "joint_test_000"
+    ],
+    "region_ids": [
+      "a",
+      "near"
+    ],
+    "hidden_ids": []
+  },
+  "backend": "genesis_pd",
+  "wall_seconds": 3.3109975549996307,
+  "object_id": "joint_test_000",
+  "condition": "early",
+  "preparation_status": "public_entry_unsupported"
+}

@@ -1,0 +1,45 @@
+{
+  "schema": "v852_joint_entry_kernel_v3",
+  "n_train_objects": 2,
+  "n_local_programs": 18,
+  "n_test_objects": 2,
+  "n_full_chains": 6,
+  "n_completed": 6,
+  "mean_conservative_curve_absolute_error": 0.125,
+  "mean_selected_unsupported_mass": 0.0,
+  "by_condition": {
+    "early": {
+      "n": 2,
+      "completed": 2,
+      "mean_duration": 20.719999999999647,
+      "selected_trees": [
+        "fixed_plus",
+        "fixed_plus"
+      ]
+    },
+    "late": {
+      "n": 2,
+      "completed": 2,
+      "mean_duration": 20.719999999999647,
+      "selected_trees": [
+        "fixed_plus",
+        "fixed_plus"
+      ]
+    },
+    "hide": {
+      "n": 2,
+      "completed": 2,
+      "mean_duration": 20.719999999999647,
+      "selected_trees": [
+        "fixed_plus",
+        "fixed_plus"
+      ]
+    }
+  },
+  "no_cartesian_transition_model": true,
+  "all_failures_retained": true,
+  "physical_execution": false,
+  "contact_or_Bmode_validation": false,
+  "formal_guarantee": false,
+  "wall_seconds": 217.2969449930024
+}

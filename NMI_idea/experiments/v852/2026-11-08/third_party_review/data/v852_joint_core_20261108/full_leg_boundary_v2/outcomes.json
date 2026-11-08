@@ -1,0 +1,817 @@
+[
+  {
+    "tree": "react_-1_+1",
+    "success": false,
+    "duration": 2.980000000000002,
+    "program_calls": 1,
+    "recoveries": 0,
+    "new_frames": 12,
+    "fresh_frames": 0,
+    "calls": [
+      {
+        "program": "a",
+        "mode": 1,
+        "success": false,
+        "public_success": false,
+        "independent_success": false,
+        "status": "joint_safety_stop",
+        "duration": 2.980000000000002,
+        "service_duration": 1.200000000000001,
+        "entry_duration": 1.7800000000000011,
+        "nominal_duration": 4.2103814166711935,
+        "scan_speed_m_s": 0.028,
+        "exit_position_local": [
+          -0.008825337353708228,
+          -0.07514980182616397,
+          0.01112538610189583
+        ],
+        "exit_rotation_local": [
+          -0.004769803860563008,
+          -0.4021054815725664,
+          -0.0944493617756773
+        ],
+        "exit_velocity_local": [
+          0.02520346180320239,
+          0.014386299681403359,
+          -0.003575827596462782
+        ],
+        "frame_count": 12,
+        "frame_capture_times": [
+          1.7800000000000011,
+          1.8800000000000012,
+          1.9800000000000013,
+          2.0800000000000014,
+          2.1800000000000015,
+          2.2800000000000016,
+          2.3800000000000017,
+          2.4800000000000018,
+          2.580000000000002,
+          2.680000000000002,
+          2.780000000000002,
+          2.880000000000002
+        ],
+        "fresh_frames": 10,
+        "coverage": 0.25,
+        "capture_min": 1.7800000000000011,
+        "capture_max": 2.880000000000002,
+        "start_time": 0.0,
+        "end_time": 2.980000000000002,
+        "backend": "genesis_pd",
+        "transfer_events": [
+          {
+            "start": 0.62,
+            "mode": 1,
+            "candidate_count": 340,
+            "attempts": [
+              {
+                "status": "completed",
+                "duration": 1.7800000000000011
+              }
+            ],
+            "planning_wall_seconds": 1.5655751019985473
+          }
+        ]
+      }
+    ],
+    "decisions": [
+      {
+        "time": 0.0,
+        "stage": "a",
+        "mode": 1,
+        "near_visible": true,
+        "probe_visible": false
+      }
+    ],
+    "packet_hash": "5cad147ade18f6efd64faa38eb0d3a86813a748f4ab671375b17c9bf976a8cf0",
+    "release": 0.0,
+    "hidden": false,
+    "world_hash": "8684887afe0df18443151614043bea51fa8ff57ba0c16ee911ef51c84c60d121",
+    "ledger": {
+      "n_records": 13,
+      "n_hidden": 0,
+      "n_release_overrides": 1,
+      "n_events": 15,
+      "object_ids": [
+        "joint_test_000"
+      ],
+      "region_ids": [
+        "a",
+        "near"
+      ],
+      "hidden_ids": []
+    },
+    "backend": "genesis_pd",
+    "wall_seconds": 3.3109975549996307,
+    "object_id": "joint_test_000",
+    "condition": "early",
+    "preparation_status": "public_entry_unsupported"
+  },
+  {
+    "tree": "probe_+1",
+    "success": false,
+    "duration": 4.7599999999999865,
+    "program_calls": 2,
+    "recoveries": 0,
+    "new_frames": 10,
+    "fresh_frames": 0,
+    "calls": [
+      {
+        "program": "probe",
+        "mode": 0,
+        "success": false,
+        "public_success": false,
+        "independent_success": false,
+        "status": "joint_safety_stop",
+        "duration": 4.7599999999999865,
+        "service_duration": 0.9999999999999836,
+        "entry_duration": 3.760000000000003,
+        "nominal_duration": 2.9203572909081785,
+        "scan_speed_m_s": 0.01,
+        "exit_position_local": [
+          -0.006029275748192384,
+          -0.017078573229254324,
+          0.0024084644230053854
+        ],
+        "exit_rotation_local": [
+          -0.06704006588213686,
+          -0.19393467690039592,
+          -0.05192637472906483
+        ],
+        "exit_velocity_local": [
+          -0.008555083326132331,
+          0.002741702398736329,
+          0.022443732883730104
+        ],
+        "frame_count": 10,
+        "frame_capture_times": [
+          3.760000000000003,
+          3.860000000000003,
+          3.960000000000003,
+          4.060000000000001,
+          4.159999999999999,
+          4.259999999999997,
+          4.359999999999995,
+          4.459999999999993,
+          4.559999999999991,
+          4.659999999999989
+        ],
+        "fresh_frames": 10,
+        "coverage": 0.3333333333333333,
+        "capture_min": 3.760000000000003,
+        "capture_max": 4.659999999999989,
+        "start_time": 0.0,
+        "end_time": 4.7599999999999865,
+        "backend": "genesis_pd",
+        "transfer_events": [
+          {
+            "start": 0.56,
+            "mode": 0,
+            "candidate_count": 344,
+            "attempts": [
+              {
+                "status": "completed",
+                "duration": 3.760000000000003
+              }
+            ],
+            "planning_wall_seconds": 1.3665490160019544
+          }
+        ]
+      },
+      {
+        "program": "a",
+        "mode": 1,
+        "success": false,
+        "public_success": false,
+        "independent_success": false,
+        "status": "joint_safety_stop",
+        "duration": 0.0,
+        "service_duration": 0.0,
+        "entry_duration": 0.0,
+        "nominal_duration": 4.2103814166711935,
+        "scan_speed_m_s": 0.028,
+        "exit_position_local": [
+          -0.02638323886377436,
+          -0.13397043601343228,
+          0.0058976160568055104
+        ],
+        "exit_rotation_local": [
+          -0.09336651124497274,
+          -0.9043626884457413,
+          0.04454735862762338
+        ],
+        "exit_velocity_local": [
+          -0.021280319099677012,
+          0.002007387901789416,
+          0.011293623924330188
+        ],
+        "frame_count": 0,
+        "frame_capture_times": [],
+        "fresh_frames": 0,
+        "coverage": 0.0,
+        "capture_min": null,
+        "capture_max": null,
+        "start_time": 4.7599999999999865,
+        "end_time": 4.7599999999999865,
+        "backend": "genesis_pd",
+        "transfer_events": [
+          {
+            "start": 0.56,
+            "mode": 0,
+            "candidate_count": 344,
+            "attempts": [
+              {
+                "status": "completed",
+                "duration": 3.760000000000003
+              }
+            ],
+            "planning_wall_seconds": 1.3665490160019544
+          }
+        ]
+      }
+    ],
+    "decisions": [
+      {
+        "time": 4.7599999999999865,
+        "stage": "a",
+        "mode": 1,
+        "near_visible": true,
+        "probe_visible": true
+      }
+    ],
+    "packet_hash": "5cad147ade18f6efd64faa38eb0d3a86813a748f4ab671375b17c9bf976a8cf0",
+    "release": 0.0,
+    "hidden": false,
+    "world_hash": "8684887afe0df18443151614043bea51fa8ff57ba0c16ee911ef51c84c60d121",
+    "ledger": {
+      "n_records": 11,
+      "n_hidden": 0,
+      "n_release_overrides": 1,
+      "n_events": 13,
+      "object_ids": [
+        "joint_test_000"
+      ],
+      "region_ids": [
+        "near",
+        "probe"
+      ],
+      "hidden_ids": []
+    },
+    "backend": "genesis_pd",
+    "wall_seconds": 4.1181777989986585,
+    "object_id": "joint_test_000",
+    "condition": "early",
+    "preparation_status": "public_entry_unsupported"
+  },
+  {
+    "tree": "react_-1_+1",
+    "success": false,
+    "duration": 3.2000000000000024,
+    "program_calls": 1,
+    "recoveries": 0,
+    "new_frames": 23,
+    "fresh_frames": 0,
+    "calls": [
+      {
+        "program": "a",
+        "mode": -1,
+        "success": false,
+        "public_success": false,
+        "independent_success": false,
+        "status": "joint_safety_stop",
+        "duration": 3.2000000000000024,
+        "service_duration": 2.300000000000002,
+        "entry_duration": 0.9000000000000005,
+        "nominal_duration": 4.128172822801029,
+        "scan_speed_m_s": 0.028,
+        "exit_position_local": [
+          0.012611013257177445,
+          -0.05356143510042798,
+          0.010209008500864574
+        ],
+        "exit_rotation_local": [
+          -0.014660314458136012,
+          -0.2239510236752709,
+          0.019084716786721773
+        ],
+        "exit_velocity_local": [
+          -0.007893985267789179,
+          0.026107460402607138,
+          -0.003535759064718405
+        ],
+        "frame_count": 23,
+        "frame_capture_times": [
+          0.9000000000000005,
+          1.0000000000000004,
+          1.1000000000000005,
+          1.2000000000000006,
+          1.3000000000000007,
+          1.4000000000000008,
+          1.5000000000000009,
+          1.600000000000001,
+          1.700000000000001,
+          1.8000000000000012,
+          1.9000000000000012,
+          2.0000000000000013,
+          2.1000000000000014,
+          2.2000000000000015,
+          2.3000000000000016,
+          2.4000000000000017,
+          2.5000000000000018,
+          2.600000000000002,
+          2.700000000000002,
+          2.800000000000002,
+          2.900000000000002,
+          3.000000000000002,
+          3.1000000000000023
+        ],
+        "fresh_frames": 17,
+        "coverage": 0.5,
+        "capture_min": 0.9000000000000005,
+        "capture_max": 3.1000000000000023,
+        "start_time": 0.0,
+        "end_time": 3.2000000000000024,
+        "backend": "genesis_pd",
+        "transfer_events": [
+          {
+            "start": 0.62,
+            "mode": -1,
+            "candidate_count": 512,
+            "attempts": [
+              {
+                "status": "completed",
+                "duration": 0.9000000000000005
+              }
+            ],
+            "planning_wall_seconds": 1.700925583998469
+          }
+        ]
+      }
+    ],
+    "decisions": [
+      {
+        "time": 0.0,
+        "stage": "a",
+        "mode": -1,
+        "near_visible": false,
+        "probe_visible": false
+      }
+    ],
+    "packet_hash": "5cad147ade18f6efd64faa38eb0d3a86813a748f4ab671375b17c9bf976a8cf0",
+    "release": 5.0,
+    "hidden": false,
+    "world_hash": "8684887afe0df18443151614043bea51fa8ff57ba0c16ee911ef51c84c60d121",
+    "ledger": {
+      "n_records": 24,
+      "n_hidden": 0,
+      "n_release_overrides": 1,
+      "n_events": 26,
+      "object_ids": [
+        "joint_test_000"
+      ],
+      "region_ids": [
+        "a",
+        "near"
+      ],
+      "hidden_ids": []
+    },
+    "backend": "genesis_pd",
+    "wall_seconds": 3.703664780998224,
+    "object_id": "joint_test_000",
+    "condition": "late",
+    "preparation_status": "public_entry_unsupported"
+  },
+  {
+    "tree": "probe_+1",
+    "success": false,
+    "duration": 4.7599999999999865,
+    "program_calls": 2,
+    "recoveries": 0,
+    "new_frames": 10,
+    "fresh_frames": 0,
+    "calls": [
+      {
+        "program": "probe",
+        "mode": 0,
+        "success": false,
+        "public_success": false,
+        "independent_success": false,
+        "status": "joint_safety_stop",
+        "duration": 4.7599999999999865,
+        "service_duration": 0.9999999999999836,
+        "entry_duration": 3.760000000000003,
+        "nominal_duration": 2.9203572909081785,
+        "scan_speed_m_s": 0.01,
+        "exit_position_local": [
+          -0.006029275748192384,
+          -0.017078573229254324,
+          0.0024084644230053854
+        ],
+        "exit_rotation_local": [
+          -0.06704006588213686,
+          -0.19393467690039592,
+          -0.05192637472906483
+        ],
+        "exit_velocity_local": [
+          -0.008555083326132331,
+          0.002741702398736329,
+          0.022443732883730104
+        ],
+        "frame_count": 10,
+        "frame_capture_times": [
+          3.760000000000003,
+          3.860000000000003,
+          3.960000000000003,
+          4.060000000000001,
+          4.159999999999999,
+          4.259999999999997,
+          4.359999999999995,
+          4.459999999999993,
+          4.559999999999991,
+          4.659999999999989
+        ],
+        "fresh_frames": 10,
+        "coverage": 0.3333333333333333,
+        "capture_min": 3.760000000000003,
+        "capture_max": 4.659999999999989,
+        "start_time": 0.0,
+        "end_time": 4.7599999999999865,
+        "backend": "genesis_pd",
+        "transfer_events": [
+          {
+            "start": 0.56,
+            "mode": 0,
+            "candidate_count": 344,
+            "attempts": [
+              {
+                "status": "completed",
+                "duration": 3.760000000000003
+              }
+            ],
+            "planning_wall_seconds": 0.2462261029977526
+          }
+        ]
+      },
+      {
+        "program": "a",
+        "mode": 1,
+        "success": false,
+        "public_success": false,
+        "independent_success": false,
+        "status": "joint_safety_stop",
+        "duration": 0.0,
+        "service_duration": 0.0,
+        "entry_duration": 0.0,
+        "nominal_duration": 4.2103814166711935,
+        "scan_speed_m_s": 0.028,
+        "exit_position_local": [
+          -0.02638323886377436,
+          -0.13397043601343228,
+          0.0058976160568055104
+        ],
+        "exit_rotation_local": [
+          -0.09336651124497274,
+          -0.9043626884457413,
+          0.04454735862762338
+        ],
+        "exit_velocity_local": [
+          -0.021280319099677012,
+          0.002007387901789416,
+          0.011293623924330188
+        ],
+        "frame_count": 0,
+        "frame_capture_times": [],
+        "fresh_frames": 0,
+        "coverage": 0.0,
+        "capture_min": null,
+        "capture_max": null,
+        "start_time": 4.7599999999999865,
+        "end_time": 4.7599999999999865,
+        "backend": "genesis_pd",
+        "transfer_events": [
+          {
+            "start": 0.56,
+            "mode": 0,
+            "candidate_count": 344,
+            "attempts": [
+              {
+                "status": "completed",
+                "duration": 3.760000000000003
+              }
+            ],
+            "planning_wall_seconds": 0.2462261029977526
+          }
+        ]
+      }
+    ],
+    "decisions": [
+      {
+        "time": 4.7599999999999865,
+        "stage": "a",
+        "mode": 1,
+        "near_visible": false,
+        "probe_visible": true
+      }
+    ],
+    "packet_hash": "5cad147ade18f6efd64faa38eb0d3a86813a748f4ab671375b17c9bf976a8cf0",
+    "release": 5.0,
+    "hidden": false,
+    "world_hash": "8684887afe0df18443151614043bea51fa8ff57ba0c16ee911ef51c84c60d121",
+    "ledger": {
+      "n_records": 11,
+      "n_hidden": 0,
+      "n_release_overrides": 1,
+      "n_events": 13,
+      "object_ids": [
+        "joint_test_000"
+      ],
+      "region_ids": [
+        "near",
+        "probe"
+      ],
+      "hidden_ids": []
+    },
+    "backend": "genesis_pd",
+    "wall_seconds": 3.017807834999985,
+    "object_id": "joint_test_000",
+    "condition": "late",
+    "preparation_status": "public_entry_unsupported"
+  },
+  {
+    "tree": "react_-1_+1",
+    "success": false,
+    "duration": 3.2000000000000024,
+    "program_calls": 1,
+    "recoveries": 0,
+    "new_frames": 23,
+    "fresh_frames": 0,
+    "calls": [
+      {
+        "program": "a",
+        "mode": -1,
+        "success": false,
+        "public_success": false,
+        "independent_success": false,
+        "status": "joint_safety_stop",
+        "duration": 3.2000000000000024,
+        "service_duration": 2.300000000000002,
+        "entry_duration": 0.9000000000000005,
+        "nominal_duration": 4.128172822801029,
+        "scan_speed_m_s": 0.028,
+        "exit_position_local": [
+          0.012611013257177445,
+          -0.05356143510042798,
+          0.010209008500864574
+        ],
+        "exit_rotation_local": [
+          -0.014660314458136012,
+          -0.2239510236752709,
+          0.019084716786721773
+        ],
+        "exit_velocity_local": [
+          -0.007893985267789179,
+          0.026107460402607138,
+          -0.003535759064718405
+        ],
+        "frame_count": 23,
+        "frame_capture_times": [
+          0.9000000000000005,
+          1.0000000000000004,
+          1.1000000000000005,
+          1.2000000000000006,
+          1.3000000000000007,
+          1.4000000000000008,
+          1.5000000000000009,
+          1.600000000000001,
+          1.700000000000001,
+          1.8000000000000012,
+          1.9000000000000012,
+          2.0000000000000013,
+          2.1000000000000014,
+          2.2000000000000015,
+          2.3000000000000016,
+          2.4000000000000017,
+          2.5000000000000018,
+          2.600000000000002,
+          2.700000000000002,
+          2.800000000000002,
+          2.900000000000002,
+          3.000000000000002,
+          3.1000000000000023
+        ],
+        "fresh_frames": 17,
+        "coverage": 0.5,
+        "capture_min": 0.9000000000000005,
+        "capture_max": 3.1000000000000023,
+        "start_time": 0.0,
+        "end_time": 3.2000000000000024,
+        "backend": "genesis_pd",
+        "transfer_events": [
+          {
+            "start": 0.62,
+            "mode": -1,
+            "candidate_count": 512,
+            "attempts": [
+              {
+                "status": "completed",
+                "duration": 0.9000000000000005
+              }
+            ],
+            "planning_wall_seconds": 0.03927678399850265
+          }
+        ]
+      }
+    ],
+    "decisions": [
+      {
+        "time": 0.0,
+        "stage": "a",
+        "mode": -1,
+        "near_visible": false,
+        "probe_visible": false
+      }
+    ],
+    "packet_hash": "5cad147ade18f6efd64faa38eb0d3a86813a748f4ab671375b17c9bf976a8cf0",
+    "release": 0.0,
+    "hidden": true,
+    "world_hash": "8684887afe0df18443151614043bea51fa8ff57ba0c16ee911ef51c84c60d121",
+    "ledger": {
+      "n_records": 24,
+      "n_hidden": 1,
+      "n_release_overrides": 1,
+      "n_events": 26,
+      "object_ids": [
+        "joint_test_000"
+      ],
+      "region_ids": [
+        "a",
+        "near"
+      ],
+      "hidden_ids": [
+        "old:near"
+      ]
+    },
+    "backend": "genesis_pd",
+    "wall_seconds": 2.0334871249979187,
+    "object_id": "joint_test_000",
+    "condition": "hide",
+    "preparation_status": "public_entry_unsupported"
+  },
+  {
+    "tree": "probe_+1",
+    "success": false,
+    "duration": 4.7599999999999865,
+    "program_calls": 2,
+    "recoveries": 0,
+    "new_frames": 10,
+    "fresh_frames": 0,
+    "calls": [
+      {
+        "program": "probe",
+        "mode": 0,
+        "success": false,
+        "public_success": false,
+        "independent_success": false,
+        "status": "joint_safety_stop",
+        "duration": 4.7599999999999865,
+        "service_duration": 0.9999999999999836,
+        "entry_duration": 3.760000000000003,
+        "nominal_duration": 2.9203572909081785,
+        "scan_speed_m_s": 0.01,
+        "exit_position_local": [
+          -0.006029275748192384,
+          -0.017078573229254324,
+          0.0024084644230053854
+        ],
+        "exit_rotation_local": [
+          -0.06704006588213686,
+          -0.19393467690039592,
+          -0.05192637472906483
+        ],
+        "exit_velocity_local": [
+          -0.008555083326132331,
+          0.002741702398736329,
+          0.022443732883730104
+        ],
+        "frame_count": 10,
+        "frame_capture_times": [
+          3.760000000000003,
+          3.860000000000003,
+          3.960000000000003,
+          4.060000000000001,
+          4.159999999999999,
+          4.259999999999997,
+          4.359999999999995,
+          4.459999999999993,
+          4.559999999999991,
+          4.659999999999989
+        ],
+        "fresh_frames": 10,
+        "coverage": 0.3333333333333333,
+        "capture_min": 3.760000000000003,
+        "capture_max": 4.659999999999989,
+        "start_time": 0.0,
+        "end_time": 4.7599999999999865,
+        "backend": "genesis_pd",
+        "transfer_events": [
+          {
+            "start": 0.56,
+            "mode": 0,
+            "candidate_count": 344,
+            "attempts": [
+              {
+                "status": "completed",
+                "duration": 3.760000000000003
+              }
+            ],
+            "planning_wall_seconds": 0.24653770800068742
+          }
+        ]
+      },
+      {
+        "program": "a",
+        "mode": 1,
+        "success": false,
+        "public_success": false,
+        "independent_success": false,
+        "status": "joint_safety_stop",
+        "duration": 0.0,
+        "service_duration": 0.0,
+        "entry_duration": 0.0,
+        "nominal_duration": 4.2103814166711935,
+        "scan_speed_m_s": 0.028,
+        "exit_position_local": [
+          -0.02638323886377436,
+          -0.13397043601343228,
+          0.0058976160568055104
+        ],
+        "exit_rotation_local": [
+          -0.09336651124497274,
+          -0.9043626884457413,
+          0.04454735862762338
+        ],
+        "exit_velocity_local": [
+          -0.021280319099677012,
+          0.002007387901789416,
+          0.011293623924330188
+        ],
+        "frame_count": 0,
+        "frame_capture_times": [],
+        "fresh_frames": 0,
+        "coverage": 0.0,
+        "capture_min": null,
+        "capture_max": null,
+        "start_time": 4.7599999999999865,
+        "end_time": 4.7599999999999865,
+        "backend": "genesis_pd",
+        "transfer_events": [
+          {
+            "start": 0.56,
+            "mode": 0,
+            "candidate_count": 344,
+            "attempts": [
+              {
+                "status": "completed",
+                "duration": 3.760000000000003
+              }
+            ],
+            "planning_wall_seconds": 0.24653770800068742
+          }
+        ]
+      }
+    ],
+    "decisions": [
+      {
+        "time": 4.7599999999999865,
+        "stage": "a",
+        "mode": 1,
+        "near_visible": false,
+        "probe_visible": true
+      }
+    ],
+    "packet_hash": "5cad147ade18f6efd64faa38eb0d3a86813a748f4ab671375b17c9bf976a8cf0",
+    "release": 0.0,
+    "hidden": true,
+    "world_hash": "8684887afe0df18443151614043bea51fa8ff57ba0c16ee911ef51c84c60d121",
+    "ledger": {
+      "n_records": 11,
+      "n_hidden": 1,
+      "n_release_overrides": 1,
+      "n_events": 13,
+      "object_ids": [
+        "joint_test_000"
+      ],
+      "region_ids": [
+        "near",
+        "probe"
+      ],
+      "hidden_ids": [
+        "old:near"
+      ]
+    },
+    "backend": "genesis_pd",
+    "wall_seconds": 3.0269947000015236,
+    "object_id": "joint_test_000",
+    "condition": "hide",
+    "preparation_status": "public_entry_unsupported"
+  }
+]

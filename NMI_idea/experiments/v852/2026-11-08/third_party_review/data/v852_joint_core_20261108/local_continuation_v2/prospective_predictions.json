@@ -1,0 +1,578 @@
+[
+  {
+    "object_id": "joint_test_000",
+    "condition": "early",
+    "tree": "react_-1_+1",
+    "deadlines": [
+      20.0,
+      40.0,
+      60.0,
+      90.0
+    ],
+    "completion": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "local_bundle_rollouts": [
+      {
+        "success": true,
+        "duration": 13.261182499185388,
+        "program_calls": 3,
+        "recoveries": 1,
+        "new_frames": 106,
+        "fresh_frames": 33
+      },
+      {
+        "success": true,
+        "duration": 9.349963663167946,
+        "program_calls": 2,
+        "recoveries": 0,
+        "new_frames": 75,
+        "fresh_frames": 33
+      }
+    ],
+    "interval_kind": "unidentified transfer kernel: conservative [0,1]",
+    "lower": [
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "upper": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ]
+  },
+  {
+    "object_id": "joint_test_000",
+    "condition": "early",
+    "tree": "probe_+1",
+    "deadlines": [
+      20.0,
+      40.0,
+      60.0,
+      90.0
+    ],
+    "completion": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "local_bundle_rollouts": [
+      {
+        "success": true,
+        "duration": 16.62527982046997,
+        "program_calls": 4,
+        "recoveries": 1,
+        "new_frames": 139,
+        "fresh_frames": 33
+      },
+      {
+        "success": true,
+        "duration": 12.714060984452527,
+        "program_calls": 3,
+        "recoveries": 0,
+        "new_frames": 108,
+        "fresh_frames": 33
+      }
+    ],
+    "interval_kind": "unidentified transfer kernel: conservative [0,1]",
+    "lower": [
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "upper": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ]
+  },
+  {
+    "object_id": "joint_test_000",
+    "condition": "late",
+    "tree": "react_-1_+1",
+    "deadlines": [
+      20.0,
+      40.0,
+      60.0,
+      90.0
+    ],
+    "completion": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "local_bundle_rollouts": [
+      {
+        "success": true,
+        "duration": 9.605396186601514,
+        "program_calls": 2,
+        "recoveries": 0,
+        "new_frames": 78,
+        "fresh_frames": 33
+      },
+      {
+        "success": true,
+        "duration": 9.349963663167946,
+        "program_calls": 2,
+        "recoveries": 0,
+        "new_frames": 75,
+        "fresh_frames": 33
+      }
+    ],
+    "interval_kind": "unidentified transfer kernel: conservative [0,1]",
+    "lower": [
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "upper": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ]
+  },
+  {
+    "object_id": "joint_test_000",
+    "condition": "late",
+    "tree": "probe_+1",
+    "deadlines": [
+      20.0,
+      40.0,
+      60.0,
+      90.0
+    ],
+    "completion": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "local_bundle_rollouts": [
+      {
+        "success": true,
+        "duration": 16.62527982046997,
+        "program_calls": 4,
+        "recoveries": 1,
+        "new_frames": 139,
+        "fresh_frames": 33
+      },
+      {
+        "success": true,
+        "duration": 12.714060984452527,
+        "program_calls": 3,
+        "recoveries": 0,
+        "new_frames": 108,
+        "fresh_frames": 33
+      }
+    ],
+    "interval_kind": "unidentified transfer kernel: conservative [0,1]",
+    "lower": [
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "upper": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ]
+  },
+  {
+    "object_id": "joint_test_000",
+    "condition": "hide",
+    "tree": "react_-1_+1",
+    "deadlines": [
+      20.0,
+      40.0,
+      60.0,
+      90.0
+    ],
+    "completion": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "local_bundle_rollouts": [
+      {
+        "success": true,
+        "duration": 9.605396186601514,
+        "program_calls": 2,
+        "recoveries": 0,
+        "new_frames": 78,
+        "fresh_frames": 33
+      },
+      {
+        "success": true,
+        "duration": 9.349963663167946,
+        "program_calls": 2,
+        "recoveries": 0,
+        "new_frames": 75,
+        "fresh_frames": 33
+      }
+    ],
+    "interval_kind": "unidentified transfer kernel: conservative [0,1]",
+    "lower": [
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "upper": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ]
+  },
+  {
+    "object_id": "joint_test_000",
+    "condition": "hide",
+    "tree": "probe_+1",
+    "deadlines": [
+      20.0,
+      40.0,
+      60.0,
+      90.0
+    ],
+    "completion": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "local_bundle_rollouts": [
+      {
+        "success": true,
+        "duration": 16.62527982046997,
+        "program_calls": 4,
+        "recoveries": 1,
+        "new_frames": 139,
+        "fresh_frames": 33
+      },
+      {
+        "success": true,
+        "duration": 12.714060984452527,
+        "program_calls": 3,
+        "recoveries": 0,
+        "new_frames": 108,
+        "fresh_frames": 33
+      }
+    ],
+    "interval_kind": "unidentified transfer kernel: conservative [0,1]",
+    "lower": [
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "upper": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ]
+  },
+  {
+    "object_id": "joint_test_001",
+    "condition": "early",
+    "tree": "react_-1_+1",
+    "deadlines": [
+      20.0,
+      40.0,
+      60.0,
+      90.0
+    ],
+    "completion": [
+      0.9999999999999999,
+      0.9999999999999999,
+      0.9999999999999999,
+      0.9999999999999999
+    ],
+    "local_bundle_rollouts": [
+      {
+        "success": true,
+        "duration": 13.261182499185388,
+        "program_calls": 3,
+        "recoveries": 1,
+        "new_frames": 106,
+        "fresh_frames": 33
+      },
+      {
+        "success": true,
+        "duration": 9.349963663167946,
+        "program_calls": 2,
+        "recoveries": 0,
+        "new_frames": 75,
+        "fresh_frames": 33
+      }
+    ],
+    "interval_kind": "unidentified transfer kernel: conservative [0,1]",
+    "lower": [
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "upper": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ]
+  },
+  {
+    "object_id": "joint_test_001",
+    "condition": "early",
+    "tree": "probe_+1",
+    "deadlines": [
+      20.0,
+      40.0,
+      60.0,
+      90.0
+    ],
+    "completion": [
+      0.9999999999999999,
+      0.9999999999999999,
+      0.9999999999999999,
+      0.9999999999999999
+    ],
+    "local_bundle_rollouts": [
+      {
+        "success": true,
+        "duration": 16.62527982046997,
+        "program_calls": 4,
+        "recoveries": 1,
+        "new_frames": 139,
+        "fresh_frames": 33
+      },
+      {
+        "success": true,
+        "duration": 12.714060984452527,
+        "program_calls": 3,
+        "recoveries": 0,
+        "new_frames": 108,
+        "fresh_frames": 33
+      }
+    ],
+    "interval_kind": "unidentified transfer kernel: conservative [0,1]",
+    "lower": [
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "upper": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ]
+  },
+  {
+    "object_id": "joint_test_001",
+    "condition": "late",
+    "tree": "react_-1_+1",
+    "deadlines": [
+      20.0,
+      40.0,
+      60.0,
+      90.0
+    ],
+    "completion": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "local_bundle_rollouts": [
+      {
+        "success": true,
+        "duration": 9.605396186601514,
+        "program_calls": 2,
+        "recoveries": 0,
+        "new_frames": 78,
+        "fresh_frames": 33
+      },
+      {
+        "success": true,
+        "duration": 9.349963663167946,
+        "program_calls": 2,
+        "recoveries": 0,
+        "new_frames": 75,
+        "fresh_frames": 33
+      }
+    ],
+    "interval_kind": "unidentified transfer kernel: conservative [0,1]",
+    "lower": [
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "upper": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ]
+  },
+  {
+    "object_id": "joint_test_001",
+    "condition": "late",
+    "tree": "probe_+1",
+    "deadlines": [
+      20.0,
+      40.0,
+      60.0,
+      90.0
+    ],
+    "completion": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "local_bundle_rollouts": [
+      {
+        "success": true,
+        "duration": 16.62527982046997,
+        "program_calls": 4,
+        "recoveries": 1,
+        "new_frames": 139,
+        "fresh_frames": 33
+      },
+      {
+        "success": true,
+        "duration": 12.714060984452527,
+        "program_calls": 3,
+        "recoveries": 0,
+        "new_frames": 108,
+        "fresh_frames": 33
+      }
+    ],
+    "interval_kind": "unidentified transfer kernel: conservative [0,1]",
+    "lower": [
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "upper": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ]
+  },
+  {
+    "object_id": "joint_test_001",
+    "condition": "hide",
+    "tree": "react_-1_+1",
+    "deadlines": [
+      20.0,
+      40.0,
+      60.0,
+      90.0
+    ],
+    "completion": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "local_bundle_rollouts": [
+      {
+        "success": true,
+        "duration": 9.605396186601514,
+        "program_calls": 2,
+        "recoveries": 0,
+        "new_frames": 78,
+        "fresh_frames": 33
+      },
+      {
+        "success": true,
+        "duration": 9.349963663167946,
+        "program_calls": 2,
+        "recoveries": 0,
+        "new_frames": 75,
+        "fresh_frames": 33
+      }
+    ],
+    "interval_kind": "unidentified transfer kernel: conservative [0,1]",
+    "lower": [
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "upper": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ]
+  },
+  {
+    "object_id": "joint_test_001",
+    "condition": "hide",
+    "tree": "probe_+1",
+    "deadlines": [
+      20.0,
+      40.0,
+      60.0,
+      90.0
+    ],
+    "completion": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "local_bundle_rollouts": [
+      {
+        "success": true,
+        "duration": 16.62527982046997,
+        "program_calls": 4,
+        "recoveries": 1,
+        "new_frames": 139,
+        "fresh_frames": 33
+      },
+      {
+        "success": true,
+        "duration": 12.714060984452527,
+        "program_calls": 3,
+        "recoveries": 0,
+        "new_frames": 108,
+        "fresh_frames": 33
+      }
+    ],
+    "interval_kind": "unidentified transfer kernel: conservative [0,1]",
+    "lower": [
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "upper": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ]
+  }
+]

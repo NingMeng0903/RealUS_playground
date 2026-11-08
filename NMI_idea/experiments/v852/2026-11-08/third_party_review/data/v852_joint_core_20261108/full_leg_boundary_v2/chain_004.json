@@ -1,0 +1,120 @@
+{
+  "tree": "react_-1_+1",
+  "success": false,
+  "duration": 3.2000000000000024,
+  "program_calls": 1,
+  "recoveries": 0,
+  "new_frames": 23,
+  "fresh_frames": 0,
+  "calls": [
+    {
+      "program": "a",
+      "mode": -1,
+      "success": false,
+      "public_success": false,
+      "independent_success": false,
+      "status": "joint_safety_stop",
+      "duration": 3.2000000000000024,
+      "service_duration": 2.300000000000002,
+      "entry_duration": 0.9000000000000005,
+      "nominal_duration": 4.128172822801029,
+      "scan_speed_m_s": 0.028,
+      "exit_position_local": [
+        0.012611013257177445,
+        -0.05356143510042798,
+        0.010209008500864574
+      ],
+      "exit_rotation_local": [
+        -0.014660314458136012,
+        -0.2239510236752709,
+        0.019084716786721773
+      ],
+      "exit_velocity_local": [
+        -0.007893985267789179,
+        0.026107460402607138,
+        -0.003535759064718405
+      ],
+      "frame_count": 23,
+      "frame_capture_times": [
+        0.9000000000000005,
+        1.0000000000000004,
+        1.1000000000000005,
+        1.2000000000000006,
+        1.3000000000000007,
+        1.4000000000000008,
+        1.5000000000000009,
+        1.600000000000001,
+        1.700000000000001,
+        1.8000000000000012,
+        1.9000000000000012,
+        2.0000000000000013,
+        2.1000000000000014,
+        2.2000000000000015,
+        2.3000000000000016,
+        2.4000000000000017,
+        2.5000000000000018,
+        2.600000000000002,
+        2.700000000000002,
+        2.800000000000002,
+        2.900000000000002,
+        3.000000000000002,
+        3.1000000000000023
+      ],
+      "fresh_frames": 17,
+      "coverage": 0.5,
+      "capture_min": 0.9000000000000005,
+      "capture_max": 3.1000000000000023,
+      "start_time": 0.0,
+      "end_time": 3.2000000000000024,
+      "backend": "genesis_pd",
+      "transfer_events": [
+        {
+          "start": 0.62,
+          "mode": -1,
+          "candidate_count": 512,
+          "attempts": [
+            {
+              "status": "completed",
+              "duration": 0.9000000000000005
+            }
+          ],
+          "planning_wall_seconds": 0.03927678399850265
+        }
+      ]
+    }
+  ],
+  "decisions": [
+    {
+      "time": 0.0,
+      "stage": "a",
+      "mode": -1,
+      "near_visible": false,
+      "probe_visible": false
+    }
+  ],
+  "packet_hash": "5cad147ade18f6efd64faa38eb0d3a86813a748f4ab671375b17c9bf976a8cf0",
+  "release": 0.0,
+  "hidden": true,
+  "world_hash": "8684887afe0df18443151614043bea51fa8ff57ba0c16ee911ef51c84c60d121",
+  "ledger": {
+    "n_records": 24,
+    "n_hidden": 1,
+    "n_release_overrides": 1,
+    "n_events": 26,
+    "object_ids": [
+      "joint_test_000"
+    ],
+    "region_ids": [
+      "a",
+      "near"
+    ],
+    "hidden_ids": [
+      "old:near"
+    ]
+  },
+  "backend": "genesis_pd",
+  "wall_seconds": 2.0334871249979187,
+  "object_id": "joint_test_000",
+  "condition": "hide",
+  "preparation_status": "public_entry_unsupported"
+}

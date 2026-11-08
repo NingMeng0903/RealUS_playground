@@ -1,0 +1,726 @@
+{
+  "joint_robust": {
+    "schema": "v852_object_bundle_model_v1",
+    "mode": "paired",
+    "n_objects": 24,
+    "n_strata": 6,
+    "strata": {
+      "0:1:1": 6,
+      "30:1.08:0.96": 2,
+      "30:1:1": 4,
+      "0:0.94:1.04": 4,
+      "30:0.94:1.04": 4,
+      "0:1.08:0.96": 4
+    },
+    "programs": [
+      "a:-1",
+      "a:1",
+      "b:-1",
+      "b:1",
+      "f:0",
+      "probe:0"
+    ],
+    "evidence_features": [
+      "near",
+      "probe"
+    ],
+    "hidden_features_used": [],
+    "within_object_program_outcomes_preserved": true,
+    "posterior_structure": "laplace_P_sign_probe_given_sign_near_plus_probe_gaussian",
+    "structure_discards_amplitude_without_probe": true,
+    "bootstrap_is_strict_confidence_set": false,
+    "shuffle_audit": {
+      "applied": false,
+      "within_stratum": true,
+      "program_rows_unchanged": true
+    },
+    "n_unique_object_ids": 24,
+    "near_range": [
+      -0.26138457283325167,
+      0.2538527420207848
+    ],
+    "probe_range": [
+      -0.22394941370690402,
+      0.20683279781041275
+    ],
+    "row_hash_inputs": [
+      "train_20261228_0025",
+      "train_20261228_0021",
+      "train_20261228_0002",
+      "train_20261228_0030",
+      "train_20261228_0003",
+      "train_20261228_0033",
+      "train_20261228_0009",
+      "train_20261228_0000",
+      "train_20261228_0037",
+      "train_20261228_0034",
+      "train_20261228_0041",
+      "train_20261228_0006",
+      "train_20261228_0022",
+      "train_20261228_0001",
+      "train_20261228_0042",
+      "train_20261228_0005",
+      "train_20261228_0038",
+      "train_20261228_0014",
+      "train_20261228_0013",
+      "train_20261228_0029",
+      "train_20261228_0018",
+      "train_20261228_0010",
+      "train_20261228_0017",
+      "train_20261228_0026"
+    ]
+  },
+  "joint_nominal": {
+    "schema": "v852_object_bundle_model_v1",
+    "mode": "paired",
+    "n_objects": 24,
+    "n_strata": 6,
+    "strata": {
+      "0:1:1": 6,
+      "30:1.08:0.96": 2,
+      "30:1:1": 4,
+      "0:0.94:1.04": 4,
+      "30:0.94:1.04": 4,
+      "0:1.08:0.96": 4
+    },
+    "programs": [
+      "a:-1",
+      "a:1",
+      "b:-1",
+      "b:1",
+      "f:0",
+      "probe:0"
+    ],
+    "evidence_features": [
+      "near",
+      "probe"
+    ],
+    "hidden_features_used": [],
+    "within_object_program_outcomes_preserved": true,
+    "posterior_structure": "laplace_P_sign_probe_given_sign_near_plus_probe_gaussian",
+    "structure_discards_amplitude_without_probe": true,
+    "bootstrap_is_strict_confidence_set": false,
+    "shuffle_audit": {
+      "applied": false,
+      "within_stratum": true,
+      "program_rows_unchanged": true
+    },
+    "n_unique_object_ids": 24,
+    "near_range": [
+      -0.26138457283325167,
+      0.2538527420207848
+    ],
+    "probe_range": [
+      -0.22394941370690402,
+      0.20683279781041275
+    ],
+    "row_hash_inputs": [
+      "train_20261228_0025",
+      "train_20261228_0021",
+      "train_20261228_0002",
+      "train_20261228_0030",
+      "train_20261228_0003",
+      "train_20261228_0033",
+      "train_20261228_0009",
+      "train_20261228_0000",
+      "train_20261228_0037",
+      "train_20261228_0034",
+      "train_20261228_0041",
+      "train_20261228_0006",
+      "train_20261228_0022",
+      "train_20261228_0001",
+      "train_20261228_0042",
+      "train_20261228_0005",
+      "train_20261228_0038",
+      "train_20261228_0014",
+      "train_20261228_0013",
+      "train_20261228_0029",
+      "train_20261228_0018",
+      "train_20261228_0010",
+      "train_20261228_0017",
+      "train_20261228_0026"
+    ]
+  },
+  "full_history": {
+    "schema": "v852_object_bundle_model_v1",
+    "mode": "full_history",
+    "n_objects": 24,
+    "n_strata": 6,
+    "strata": {
+      "0:1:1": 6,
+      "30:1.08:0.96": 2,
+      "30:1:1": 4,
+      "0:0.94:1.04": 4,
+      "30:0.94:1.04": 4,
+      "0:1.08:0.96": 4
+    },
+    "programs": [
+      "a:-1",
+      "a:1",
+      "b:-1",
+      "b:1",
+      "f:0",
+      "probe:0"
+    ],
+    "evidence_features": [
+      "near",
+      "probe"
+    ],
+    "hidden_features_used": [],
+    "within_object_program_outcomes_preserved": true,
+    "posterior_structure": "continuous_joint_rbf_knn",
+    "structure_discards_amplitude_without_probe": false,
+    "bootstrap_is_strict_confidence_set": false,
+    "shuffle_audit": {
+      "applied": false,
+      "within_stratum": true,
+      "program_rows_unchanged": true
+    },
+    "n_unique_object_ids": 24,
+    "near_range": [
+      -0.26138457283325167,
+      0.2538527420207848
+    ],
+    "probe_range": [
+      -0.22394941370690402,
+      0.20683279781041275
+    ],
+    "row_hash_inputs": [
+      "train_20261228_0025",
+      "train_20261228_0021",
+      "train_20261228_0002",
+      "train_20261228_0030",
+      "train_20261228_0003",
+      "train_20261228_0033",
+      "train_20261228_0009",
+      "train_20261228_0000",
+      "train_20261228_0037",
+      "train_20261228_0034",
+      "train_20261228_0041",
+      "train_20261228_0006",
+      "train_20261228_0022",
+      "train_20261228_0001",
+      "train_20261228_0042",
+      "train_20261228_0005",
+      "train_20261228_0038",
+      "train_20261228_0014",
+      "train_20261228_0013",
+      "train_20261228_0029",
+      "train_20261228_0018",
+      "train_20261228_0010",
+      "train_20261228_0017",
+      "train_20261228_0026"
+    ]
+  },
+  "shuffled_robust": {
+    "schema": "v852_object_bundle_model_v1",
+    "mode": "shuffled",
+    "n_objects": 24,
+    "n_strata": 6,
+    "strata": {
+      "0:1:1": 6,
+      "30:1.08:0.96": 2,
+      "30:1:1": 4,
+      "0:0.94:1.04": 4,
+      "30:0.94:1.04": 4,
+      "0:1.08:0.96": 4
+    },
+    "programs": [
+      "a:-1",
+      "a:1",
+      "b:-1",
+      "b:1",
+      "f:0",
+      "probe:0"
+    ],
+    "evidence_features": [
+      "near",
+      "probe"
+    ],
+    "hidden_features_used": [],
+    "within_object_program_outcomes_preserved": true,
+    "posterior_structure": "laplace_P_sign_probe_given_sign_near_plus_probe_gaussian",
+    "structure_discards_amplitude_without_probe": true,
+    "bootstrap_is_strict_confidence_set": false,
+    "shuffle_audit": {
+      "applied": true,
+      "within_stratum": true,
+      "permutation": {
+        "0:1:1": [
+          4,
+          23,
+          7,
+          0,
+          13,
+          2
+        ],
+        "30:1.08:0.96": [
+          12,
+          1
+        ],
+        "30:1:1": [
+          3,
+          15,
+          19,
+          11
+        ],
+        "0:0.94:1.04": [
+          9,
+          6,
+          5,
+          21
+        ],
+        "30:0.94:1.04": [
+          8,
+          17,
+          18,
+          16
+        ],
+        "0:1.08:0.96": [
+          22,
+          14,
+          20,
+          10
+        ]
+      },
+      "near_multiset_by_stratum_preserved": true,
+      "program_rows_unchanged": true,
+      "probe_rows_unchanged": true
+    },
+    "n_unique_object_ids": 24,
+    "near_range": [
+      -0.26138457283325167,
+      0.2538527420207848
+    ],
+    "probe_range": [
+      -0.22394941370690402,
+      0.20683279781041275
+    ],
+    "row_hash_inputs": [
+      "train_20261228_0025",
+      "train_20261228_0021",
+      "train_20261228_0002",
+      "train_20261228_0030",
+      "train_20261228_0003",
+      "train_20261228_0033",
+      "train_20261228_0009",
+      "train_20261228_0000",
+      "train_20261228_0037",
+      "train_20261228_0034",
+      "train_20261228_0041",
+      "train_20261228_0006",
+      "train_20261228_0022",
+      "train_20261228_0001",
+      "train_20261228_0042",
+      "train_20261228_0005",
+      "train_20261228_0038",
+      "train_20261228_0014",
+      "train_20261228_0013",
+      "train_20261228_0029",
+      "train_20261228_0018",
+      "train_20261228_0010",
+      "train_20261228_0017",
+      "train_20261228_0026"
+    ]
+  },
+  "independent": {
+    "schema": "v852_object_bundle_model_v1",
+    "mode": "independent",
+    "n_objects": 24,
+    "n_strata": 6,
+    "strata": {
+      "0:1:1": 6,
+      "30:1.08:0.96": 2,
+      "30:1:1": 4,
+      "0:0.94:1.04": 4,
+      "30:0.94:1.04": 4,
+      "0:1.08:0.96": 4
+    },
+    "programs": [
+      "a:-1",
+      "a:1",
+      "b:-1",
+      "b:1",
+      "f:0",
+      "probe:0"
+    ],
+    "evidence_features": [
+      "near",
+      "probe"
+    ],
+    "hidden_features_used": [],
+    "within_object_program_outcomes_preserved": false,
+    "posterior_structure": "laplace_P_sign_probe_given_sign_near_plus_probe_gaussian",
+    "structure_discards_amplitude_without_probe": true,
+    "bootstrap_is_strict_confidence_set": false,
+    "shuffle_audit": {
+      "applied": false,
+      "within_stratum": true,
+      "program_rows_unchanged": true
+    },
+    "n_unique_object_ids": 24,
+    "near_range": [
+      -0.26138457283325167,
+      0.2538527420207848
+    ],
+    "probe_range": [
+      -0.22394941370690402,
+      0.20683279781041275
+    ],
+    "row_hash_inputs": [
+      "train_20261228_0025",
+      "train_20261228_0021",
+      "train_20261228_0002",
+      "train_20261228_0030",
+      "train_20261228_0003",
+      "train_20261228_0033",
+      "train_20261228_0009",
+      "train_20261228_0000",
+      "train_20261228_0037",
+      "train_20261228_0034",
+      "train_20261228_0041",
+      "train_20261228_0006",
+      "train_20261228_0022",
+      "train_20261228_0001",
+      "train_20261228_0042",
+      "train_20261228_0005",
+      "train_20261228_0038",
+      "train_20261228_0014",
+      "train_20261228_0013",
+      "train_20261228_0029",
+      "train_20261228_0018",
+      "train_20261228_0010",
+      "train_20261228_0017",
+      "train_20261228_0026"
+    ]
+  },
+  "time_factorized": {
+    "schema": "v852_object_bundle_model_v1",
+    "mode": "paired",
+    "n_objects": 24,
+    "n_strata": 6,
+    "strata": {
+      "0:1:1": 6,
+      "30:1.08:0.96": 2,
+      "30:1:1": 4,
+      "0:0.94:1.04": 4,
+      "30:0.94:1.04": 4,
+      "0:1.08:0.96": 4
+    },
+    "programs": [
+      "a:-1",
+      "a:1",
+      "b:-1",
+      "b:1",
+      "f:0",
+      "probe:0"
+    ],
+    "evidence_features": [
+      "near",
+      "probe"
+    ],
+    "hidden_features_used": [],
+    "within_object_program_outcomes_preserved": true,
+    "posterior_structure": "laplace_P_sign_probe_given_sign_near_plus_probe_gaussian",
+    "structure_discards_amplitude_without_probe": true,
+    "bootstrap_is_strict_confidence_set": false,
+    "shuffle_audit": {
+      "applied": false,
+      "within_stratum": true,
+      "program_rows_unchanged": true
+    },
+    "n_unique_object_ids": 24,
+    "near_range": [
+      -0.26138457283325167,
+      0.2538527420207848
+    ],
+    "probe_range": [
+      -0.22394941370690402,
+      0.20683279781041275
+    ],
+    "row_hash_inputs": [
+      "train_20261228_0025",
+      "train_20261228_0021",
+      "train_20261228_0002",
+      "train_20261228_0030",
+      "train_20261228_0003",
+      "train_20261228_0033",
+      "train_20261228_0009",
+      "train_20261228_0000",
+      "train_20261228_0037",
+      "train_20261228_0034",
+      "train_20261228_0041",
+      "train_20261228_0006",
+      "train_20261228_0022",
+      "train_20261228_0001",
+      "train_20261228_0042",
+      "train_20261228_0005",
+      "train_20261228_0038",
+      "train_20261228_0014",
+      "train_20261228_0013",
+      "train_20261228_0029",
+      "train_20261228_0018",
+      "train_20261228_0010",
+      "train_20261228_0017",
+      "train_20261228_0026"
+    ]
+  },
+  "identify_execute": {
+    "schema": "v852_object_bundle_model_v1",
+    "mode": "paired",
+    "n_objects": 24,
+    "n_strata": 6,
+    "strata": {
+      "0:1:1": 6,
+      "30:1.08:0.96": 2,
+      "30:1:1": 4,
+      "0:0.94:1.04": 4,
+      "30:0.94:1.04": 4,
+      "0:1.08:0.96": 4
+    },
+    "programs": [
+      "a:-1",
+      "a:1",
+      "b:-1",
+      "b:1",
+      "f:0",
+      "probe:0"
+    ],
+    "evidence_features": [
+      "near",
+      "probe"
+    ],
+    "hidden_features_used": [],
+    "within_object_program_outcomes_preserved": true,
+    "posterior_structure": "laplace_P_sign_probe_given_sign_near_plus_probe_gaussian",
+    "structure_discards_amplitude_without_probe": true,
+    "bootstrap_is_strict_confidence_set": false,
+    "shuffle_audit": {
+      "applied": false,
+      "within_stratum": true,
+      "program_rows_unchanged": true
+    },
+    "n_unique_object_ids": 24,
+    "near_range": [
+      -0.26138457283325167,
+      0.2538527420207848
+    ],
+    "probe_range": [
+      -0.22394941370690402,
+      0.20683279781041275
+    ],
+    "row_hash_inputs": [
+      "train_20261228_0025",
+      "train_20261228_0021",
+      "train_20261228_0002",
+      "train_20261228_0030",
+      "train_20261228_0003",
+      "train_20261228_0033",
+      "train_20261228_0009",
+      "train_20261228_0000",
+      "train_20261228_0037",
+      "train_20261228_0034",
+      "train_20261228_0041",
+      "train_20261228_0006",
+      "train_20261228_0022",
+      "train_20261228_0001",
+      "train_20261228_0042",
+      "train_20261228_0005",
+      "train_20261228_0038",
+      "train_20261228_0014",
+      "train_20261228_0013",
+      "train_20261228_0029",
+      "train_20261228_0018",
+      "train_20261228_0010",
+      "train_20261228_0017",
+      "train_20261228_0026"
+    ]
+  },
+  "fixed_reference": {
+    "schema": "v852_object_bundle_model_v1",
+    "mode": "paired",
+    "n_objects": 24,
+    "n_strata": 6,
+    "strata": {
+      "0:1:1": 6,
+      "30:1.08:0.96": 2,
+      "30:1:1": 4,
+      "0:0.94:1.04": 4,
+      "30:0.94:1.04": 4,
+      "0:1.08:0.96": 4
+    },
+    "programs": [
+      "a:-1",
+      "a:1",
+      "b:-1",
+      "b:1",
+      "f:0",
+      "probe:0"
+    ],
+    "evidence_features": [
+      "near",
+      "probe"
+    ],
+    "hidden_features_used": [],
+    "within_object_program_outcomes_preserved": true,
+    "posterior_structure": "laplace_P_sign_probe_given_sign_near_plus_probe_gaussian",
+    "structure_discards_amplitude_without_probe": true,
+    "bootstrap_is_strict_confidence_set": false,
+    "shuffle_audit": {
+      "applied": false,
+      "within_stratum": true,
+      "program_rows_unchanged": true
+    },
+    "n_unique_object_ids": 24,
+    "near_range": [
+      -0.26138457283325167,
+      0.2538527420207848
+    ],
+    "probe_range": [
+      -0.22394941370690402,
+      0.20683279781041275
+    ],
+    "row_hash_inputs": [
+      "train_20261228_0025",
+      "train_20261228_0021",
+      "train_20261228_0002",
+      "train_20261228_0030",
+      "train_20261228_0003",
+      "train_20261228_0033",
+      "train_20261228_0009",
+      "train_20261228_0000",
+      "train_20261228_0037",
+      "train_20261228_0034",
+      "train_20261228_0041",
+      "train_20261228_0006",
+      "train_20261228_0022",
+      "train_20261228_0001",
+      "train_20261228_0042",
+      "train_20261228_0005",
+      "train_20261228_0038",
+      "train_20261228_0014",
+      "train_20261228_0013",
+      "train_20261228_0029",
+      "train_20261228_0018",
+      "train_20261228_0010",
+      "train_20261228_0017",
+      "train_20261228_0026"
+    ]
+  },
+  "joint_n8": {
+    "schema": "v852_object_bundle_model_v1",
+    "mode": "paired",
+    "n_objects": 8,
+    "n_strata": 4,
+    "strata": {
+      "0:1:1": 4,
+      "30:1.08:0.96": 1,
+      "30:1:1": 1,
+      "0:0.94:1.04": 2
+    },
+    "programs": [
+      "a:-1",
+      "a:1",
+      "b:-1",
+      "b:1",
+      "f:0",
+      "probe:0"
+    ],
+    "evidence_features": [
+      "near",
+      "probe"
+    ],
+    "hidden_features_used": [],
+    "within_object_program_outcomes_preserved": true,
+    "posterior_structure": "laplace_P_sign_probe_given_sign_near_plus_probe_gaussian",
+    "structure_discards_amplitude_without_probe": true,
+    "bootstrap_is_strict_confidence_set": false,
+    "shuffle_audit": {
+      "applied": false,
+      "within_stratum": true,
+      "program_rows_unchanged": true
+    },
+    "n_unique_object_ids": 8,
+    "near_range": [
+      -0.26138457283325167,
+      0.2538527420207848
+    ],
+    "probe_range": [
+      -0.1701566996104109,
+      0.172969999273044
+    ],
+    "row_hash_inputs": [
+      "train_20261228_0025",
+      "train_20261228_0021",
+      "train_20261228_0002",
+      "train_20261228_0030",
+      "train_20261228_0003",
+      "train_20261228_0033",
+      "train_20261228_0009",
+      "train_20261228_0000"
+    ]
+  },
+  "joint_n16": {
+    "schema": "v852_object_bundle_model_v1",
+    "mode": "paired",
+    "n_objects": 16,
+    "n_strata": 6,
+    "strata": {
+      "0:1:1": 5,
+      "30:1.08:0.96": 2,
+      "30:1:1": 3,
+      "0:0.94:1.04": 3,
+      "30:0.94:1.04": 1,
+      "0:1.08:0.96": 2
+    },
+    "programs": [
+      "a:-1",
+      "a:1",
+      "b:-1",
+      "b:1",
+      "f:0",
+      "probe:0"
+    ],
+    "evidence_features": [
+      "near",
+      "probe"
+    ],
+    "hidden_features_used": [],
+    "within_object_program_outcomes_preserved": true,
+    "posterior_structure": "laplace_P_sign_probe_given_sign_near_plus_probe_gaussian",
+    "structure_discards_amplitude_without_probe": true,
+    "bootstrap_is_strict_confidence_set": false,
+    "shuffle_audit": {
+      "applied": false,
+      "within_stratum": true,
+      "program_rows_unchanged": true
+    },
+    "n_unique_object_ids": 16,
+    "near_range": [
+      -0.26138457283325167,
+      0.2538527420207848
+    ],
+    "probe_range": [
+      -0.2008291041718948,
+      0.20096440916936453
+    ],
+    "row_hash_inputs": [
+      "train_20261228_0025",
+      "train_20261228_0021",
+      "train_20261228_0002",
+      "train_20261228_0030",
+      "train_20261228_0003",
+      "train_20261228_0033",
+      "train_20261228_0009",
+      "train_20261228_0000",
+      "train_20261228_0037",
+      "train_20261228_0034",
+      "train_20261228_0041",
+      "train_20261228_0006",
+      "train_20261228_0022",
+      "train_20261228_0001",
+      "train_20261228_0042",
+      "train_20261228_0005"
+    ]
+  }
+}

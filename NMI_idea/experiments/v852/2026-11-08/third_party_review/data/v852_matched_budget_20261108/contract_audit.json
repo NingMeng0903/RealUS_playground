@@ -1,0 +1,17 @@
+{
+  "schema": "v852_contract_audit_v1",
+  "pass": true,
+  "errors": [],
+  "n_independent_test_configurations": 16,
+  "n_interventions": 640,
+  "failed_interventions_included": 61,
+  "training_test_overlap": false,
+  "same_historical_content_across_gates": true,
+  "hidden_reads": 0,
+  "premature_reads": 0,
+  "old_frames_counted_fresh": 0,
+  "same_material_anatomy_across_pose": true,
+  "prediction_sha_unchanged": true,
+  "inconsistent_public_and_audit_success_fields": 0,
+  "scope": "contract audit only; not scientific effect, coverage, contact or hardware validation"
+}

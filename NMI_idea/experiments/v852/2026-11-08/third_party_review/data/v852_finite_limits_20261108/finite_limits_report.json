@@ -1,0 +1,426 @@
+{
+  "binary_pairing": {
+    "all_margins_equal": true,
+    "margin_total_variation_from_first": {
+      "-0.8": {
+        "U": 0.0,
+        "V": 0.0
+      },
+      "0.0": {
+        "U": 0.0,
+        "V": 0.0
+      },
+      "0.8": {
+        "U": 0.0,
+        "V": 0.0
+      }
+    },
+    "margins": {
+      "-0.8": {
+        "U": {
+          "-1": 0.5,
+          "1": 0.5
+        },
+        "V": {
+          "-1": 0.5,
+          "1": 0.5
+        }
+      },
+      "0.0": {
+        "U": {
+          "-1": 0.5,
+          "1": 0.5
+        },
+        "V": {
+          "-1": 0.5,
+          "1": 0.5
+        }
+      },
+      "0.8": {
+        "U": {
+          "-1": 0.5,
+          "1": 0.5
+        },
+        "V": {
+          "-1": 0.5,
+          "1": 0.5
+        }
+      }
+    },
+    "pairing_changes_task_value": true,
+    "rho_values": [
+      -0.8,
+      0.0,
+      0.8
+    ],
+    "tables": {
+      "-0.8": {
+        "(-1, -1)": 0.04999999999999999,
+        "(-1, 1)": 0.45,
+        "(1, -1)": 0.45,
+        "(1, 1)": 0.04999999999999999
+      },
+      "0.0": {
+        "(-1, -1)": 0.25,
+        "(-1, 1)": 0.25,
+        "(1, -1)": 0.25,
+        "(1, 1)": 0.25
+      },
+      "0.8": {
+        "(-1, -1)": 0.45,
+        "(-1, 1)": 0.04999999999999999,
+        "(1, -1)": 0.04999999999999999,
+        "(1, 1)": 0.45
+      }
+    },
+    "task_value_policy_m_equals_U": {
+      "-0.8": 0.09999999999999998,
+      "0.0": 0.5,
+      "0.8": 0.9
+    },
+    "task_value_range": [
+      0.09999999999999998,
+      0.9
+    ],
+    "unpaired_margin_only_interval": [
+      0.0,
+      1.0
+    ]
+  },
+  "common_policy_lp": {
+    "lower": 0.5,
+    "matrix": [
+      [
+        1.0,
+        0.0
+      ],
+      [
+        0.0,
+        1.0
+      ]
+    ],
+    "mixture": [
+      0.5,
+      0.5
+    ],
+    "mixture_sum": 1.0,
+    "shared_policy_not_model_oracle": true,
+    "upper": 1.0
+  },
+  "experiments": {
+    "A": {
+      "absolute_error": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "deadlines": [
+        2.0,
+        2.4,
+        2.8,
+        3.0,
+        3.2
+      ],
+      "independent_monte_carlo_cdf": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "max_absolute_error": 0.0,
+      "mc_n": 30001,
+      "name": "A_local_to_untrained_chain",
+      "policy": "adaptive_old",
+      "predicted_completion_cdf": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "release_time": 0.0,
+      "retain_old": true
+    },
+    "B": {
+      "early": {
+        "absolute_error": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "deadlines": [
+          2.0,
+          2.4,
+          2.8,
+          3.0,
+          3.2
+        ],
+        "independent_monte_carlo_cdf": [
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "max_absolute_error": 0.0,
+        "mc_n": 30001,
+        "name": "B_early_release",
+        "policy": "adaptive_old",
+        "predicted_completion_cdf": [
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "release_time": 0.0,
+        "retain_old": true
+      },
+      "late": {
+        "absolute_error": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "deadlines": [
+          2.0,
+          2.4,
+          2.8,
+          3.0,
+          3.2
+        ],
+        "independent_monte_carlo_cdf": [
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          1.0
+        ],
+        "max_absolute_error": 0.0,
+        "mc_n": 30001,
+        "name": "B_late_release",
+        "policy": "adaptive_old",
+        "predicted_completion_cdf": [
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          1.0
+        ],
+        "release_time": 0.8,
+        "retain_old": true
+      }
+    },
+    "C": {
+      "hidden": {
+        "absolute_error": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "deadlines": [
+          2.0,
+          2.4,
+          2.8,
+          3.0,
+          3.2
+        ],
+        "independent_monte_carlo_cdf": [
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          1.0
+        ],
+        "max_absolute_error": 0.0,
+        "mc_n": 30001,
+        "name": "C_old_knowledge_hidden",
+        "policy": "adaptive_old",
+        "predicted_completion_cdf": [
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          1.0
+        ],
+        "release_time": 0.0,
+        "retain_old": false
+      },
+      "retained": {
+        "absolute_error": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "deadlines": [
+          2.0,
+          2.4,
+          2.8,
+          3.0,
+          3.2
+        ],
+        "independent_monte_carlo_cdf": [
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "max_absolute_error": 0.0,
+        "mc_n": 30001,
+        "name": "C_old_knowledge_retained",
+        "policy": "adaptive_old",
+        "predicted_completion_cdf": [
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "release_time": 0.0,
+        "retain_old": true
+      }
+    }
+  },
+  "interpretation_limits": [
+    "Pair-only observations cannot shrink the parity model set because all pairwise distributions are identical.",
+    "The option durations are finite-kernel values, not robot timing measurements.",
+    "Monte Carlo checks an independently sampled copy of the declared kernel; it is not an independent physical test.",
+    "The release gate controls upper-level visibility; a hidden historical packet is never accepted as fresh evidence."
+  ],
+  "option_kernel": {
+    "execute_correct": 1.4,
+    "execute_mismatch": 0.8,
+    "fresh_recheck": 0.6,
+    "probe": 0.9,
+    "recover_after_mismatch": 1.0
+  },
+  "protocol": {
+    "deadlines": [
+      2.0,
+      2.4,
+      2.8,
+      3.0,
+      3.2
+    ],
+    "fresh_acceptance": "capture_time >= request_time and kind=fresh",
+    "hidden_modes": [
+      -1,
+      1
+    ],
+    "late_release_can_wait": true,
+    "old_capture_time": -1.0,
+    "recovery_allowed": true,
+    "request_time": 0.0,
+    "same_old_packet_capture_cost": true
+  },
+  "schema": "v852_finite_limits_report_v1",
+  "scope": "finite mathematical and program-option stress test only; not geometry, B-mode, or real execution",
+  "tree_library_oracle": {
+    "best_library_curve": [
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "curves": {
+      "adaptive_old": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "blind_minus": [
+        0.5,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "blind_plus": [
+        0.5,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "probe_then_execute": [
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        1.0
+      ]
+    },
+    "full_information_oracle_curve": [
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "policies": [
+      "adaptive_old",
+      "blind_plus",
+      "blind_minus",
+      "probe_then_execute"
+    ],
+    "selected_policy_by_deadline": [
+      "adaptive_old",
+      "adaptive_old",
+      "adaptive_old",
+      "adaptive_old",
+      "adaptive_old"
+    ]
+  },
+  "triple_parity": {
+    "additional_pair_only_data_changes_model_set": false,
+    "all_pairwise_probes_identical": true,
+    "full_triple_total_variation": 1.0,
+    "pair_only_common_policy_lower": 0.5,
+    "pair_only_policy_value_range": {
+      "negative": [
+        0,
+        1.0
+      ],
+      "positive": [
+        0,
+        1.0
+      ]
+    },
+    "pairwise_total_variation": {
+      "01": 0.0,
+      "02": 0.0,
+      "12": 0.0
+    },
+    "triple_probe_distinguishes_worlds": true,
+    "triple_probe_policy_value": 1.0,
+    "worlds": {
+      "negative": {
+        "(-1, -1, -1)": 0.25,
+        "(-1, 1, 1)": 0.25,
+        "(1, -1, 1)": 0.25,
+        "(1, 1, -1)": 0.25
+      },
+      "positive": {
+        "(-1, -1, 1)": 0.25,
+        "(-1, 1, -1)": 0.25,
+        "(1, -1, -1)": 0.25,
+        "(1, 1, 1)": 0.25
+      }
+    }
+  }
+}

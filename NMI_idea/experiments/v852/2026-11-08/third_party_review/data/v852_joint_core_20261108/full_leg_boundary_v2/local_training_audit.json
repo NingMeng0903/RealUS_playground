@@ -1,0 +1,283 @@
+[
+  {
+    "spec": {
+      "object_id": "joint_train_000",
+      "geometry_seed": 202612090,
+      "u": 1,
+      "v": 1,
+      "knee_deg": 0.0,
+      "width_scale": 1.0,
+      "length_scale": 1.0,
+      "amplitude_scale": 1.0
+    },
+    "world_hash": "a14c1e357c3f8f08ef56c4ee0e030585b60cfdaf5916c21d802adf549c366335",
+    "programs": [
+      {
+        "program": "near",
+        "mode": 0,
+        "success": false,
+        "status": "public_entry_unsupported",
+        "duration": 0.0,
+        "entry_duration": 0.0,
+        "service_duration": 0.0,
+        "nominal_duration": 1.0,
+        "public_success": false,
+        "independent_success": false,
+        "scan_speed_m_s": 0.01,
+        "exit_position_local": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "exit_rotation_local": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "exit_velocity_local": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "frame_count": 0,
+        "fresh_frames": 0,
+        "coverage": 0.0,
+        "backend": "genesis_pd"
+      },
+      {
+        "program": "probe",
+        "mode": 0,
+        "success": false,
+        "public_success": false,
+        "independent_success": false,
+        "status": "joint_safety_stop",
+        "duration": 1.560000000000001,
+        "service_duration": 1.5000000000000009,
+        "entry_duration": 0.06,
+        "nominal_duration": 3.2758047567208877,
+        "scan_speed_m_s": 0.01,
+        "exit_position_local": [
+          -0.0031308913736239887,
+          -0.019641417308250916,
+          0.0016601742044484243
+        ],
+        "exit_rotation_local": [
+          -0.003306304466220633,
+          -0.17157031973573458,
+          -0.03780548109993635
+        ],
+        "exit_velocity_local": [
+          0.02091093467435598,
+          0.004966876990773067,
+          -0.0015937604489223017
+        ],
+        "frame_count": 15,
+        "frame_capture_times": [
+          0.06,
+          0.16,
+          0.25999999999999995,
+          0.36000000000000004,
+          0.46000000000000013,
+          0.5600000000000002,
+          0.6600000000000003,
+          0.7600000000000003,
+          0.8600000000000004,
+          0.9600000000000005,
+          1.0600000000000005,
+          1.1600000000000006,
+          1.2600000000000007,
+          1.3600000000000008,
+          1.4600000000000009
+        ],
+        "fresh_frames": 15,
+        "coverage": 0.3333333333333333,
+        "capture_min": 0.06,
+        "capture_max": 1.4600000000000009,
+        "start_time": 0.0,
+        "end_time": 1.560000000000001,
+        "backend": "genesis_pd",
+        "transfer_events": [
+          {
+            "start": 0.56,
+            "mode": 0,
+            "candidate_count": 476,
+            "attempts": [
+              {
+                "status": "completed",
+                "duration": 0.06
+              }
+            ],
+            "planning_wall_seconds": 0.012045619998389157
+          }
+        ]
+      },
+      {
+        "program": "a",
+        "mode": -1,
+        "success": false,
+        "public_success": false,
+        "independent_success": false,
+        "status": "joint_safety_stop",
+        "duration": 1.9200000000000013,
+        "service_duration": 1.8600000000000012,
+        "entry_duration": 0.06,
+        "nominal_duration": 4.201990097033965,
+        "scan_speed_m_s": 0.028,
+        "exit_position_local": [
+          0.008183058143415627,
+          -0.07147238445996802,
+          0.014422763318000463
+        ],
+        "exit_rotation_local": [
+          0.03235371411475509,
+          -0.2478161336712048,
+          0.04282778714371033
+        ],
+        "exit_velocity_local": [
+          0.0036702570727430092,
+          0.026927826391680083,
+          -0.0038066314770926965
+        ],
+        "frame_count": 19,
+        "frame_capture_times": [
+          0.06,
+          0.16,
+          0.25999999999999995,
+          0.36000000000000004,
+          0.46000000000000013,
+          0.5600000000000002,
+          0.6600000000000003,
+          0.7600000000000003,
+          0.8600000000000004,
+          0.9600000000000005,
+          1.0600000000000005,
+          1.1600000000000006,
+          1.2600000000000007,
+          1.3600000000000008,
+          1.4600000000000009,
+          1.560000000000001,
+          1.660000000000001,
+          1.7600000000000011,
+          1.8600000000000012
+        ],
+        "fresh_frames": 16,
+        "coverage": 0.3333333333333333,
+        "capture_min": 0.06,
+        "capture_max": 1.8600000000000012,
+        "start_time": 0.0,
+        "end_time": 1.9200000000000013,
+        "backend": "genesis_pd",
+        "transfer_events": [
+          {
+            "start": 0.62,
+            "mode": -1,
+            "candidate_count": 292,
+            "attempts": [
+              {
+                "status": "completed",
+                "duration": 0.06
+              }
+            ],
+            "planning_wall_seconds": 0.014206586001819232
+          }
+        ]
+      },
+      {
+        "program": "a",
+        "mode": 1,
+        "success": false,
+        "public_success": false,
+        "independent_success": false,
+        "status": "joint_safety_stop",
+        "duration": 1.2600000000000007,
+        "service_duration": 1.2000000000000006,
+        "entry_duration": 0.06,
+        "nominal_duration": 4.27744583262261,
+        "scan_speed_m_s": 0.028,
+        "exit_position_local": [
+          -0.015329544295116996,
+          -0.1119199890088065,
+          0.01072958515265652
+        ],
+        "exit_rotation_local": [
+          0.09460468969952353,
+          -0.387209687604671,
+          -0.20627434953272267
+        ],
+        "exit_velocity_local": [
+          -2.7839849376388006e-05,
+          -0.00498369286540805,
+          -0.01123191613921397
+        ],
+        "frame_count": 12,
+        "frame_capture_times": [
+          0.06,
+          0.16,
+          0.25999999999999995,
+          0.36000000000000004,
+          0.46000000000000013,
+          0.5600000000000002,
+          0.6600000000000003,
+          0.7600000000000003,
+          0.8600000000000004,
+          0.9600000000000005,
+          1.0600000000000005,
+          1.1600000000000006
+        ],
+        "fresh_frames": 10,
+        "coverage": 0.08333333333333333,
+        "capture_min": 0.06,
+        "capture_max": 1.1600000000000006,
+        "start_time": 0.0,
+        "end_time": 1.2600000000000007,
+        "backend": "genesis_pd",
+        "transfer_events": [
+          {
+            "start": 0.62,
+            "mode": 1,
+            "candidate_count": 140,
+            "attempts": [
+              {
+                "status": "completed",
+                "duration": 0.06
+              }
+            ],
+            "planning_wall_seconds": 0.01235341799838352
+          }
+        ]
+      },
+      {
+        "program": "f",
+        "mode": 0,
+        "success": false,
+        "status": "public_entry_unsupported",
+        "duration": 0.0,
+        "entry_duration": 0.0,
+        "service_duration": 0.0,
+        "nominal_duration": 1.0,
+        "public_success": false,
+        "independent_success": false,
+        "scan_speed_m_s": 0.028,
+        "exit_position_local": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "exit_rotation_local": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "exit_velocity_local": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "frame_count": 0,
+        "fresh_frames": 0,
+        "coverage": 0.0,
+        "backend": "genesis_pd"
+      }
+    ]
+  }
+]

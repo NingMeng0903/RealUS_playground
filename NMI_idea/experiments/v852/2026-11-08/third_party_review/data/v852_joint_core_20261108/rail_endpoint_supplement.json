@@ -1,0 +1,1267 @@
+{
+  "scope": "exploratory static endpoint supplement to same public placements; not an ABC test or physical reachability proof",
+  "original_rails": [
+    0.15,
+    0.3,
+    0.45,
+    0.6,
+    0.75
+  ],
+  "extra_rails": [
+    0.0,
+    0.8
+  ],
+  "branch_grid": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7
+  ],
+  "psi_grid_step_deg": 10,
+  "rows": [
+    {
+      "placement_index": 0,
+      "anchor": 0.4,
+      "wrist_offset_rad": 0.0,
+      "added_rail_candidates": [
+        0.0,
+        0.8
+      ],
+      "targets": {
+        "0:near": {
+          "original_candidates": 540,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "0:common": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "0:probe": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "0:a": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "0:f": {
+          "original_candidates": 560,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:near": {
+          "original_candidates": 548,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:common": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:probe": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:a": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:f": {
+          "original_candidates": 544,
+          "endpoint_candidates": 0,
+          "q": null
+        }
+      },
+      "combined_all_starts_supported": false
+    },
+    {
+      "placement_index": 1,
+      "anchor": 0.45,
+      "wrist_offset_rad": 0.0,
+      "added_rail_candidates": [
+        0.0,
+        0.8
+      ],
+      "targets": {
+        "0:near": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "0:common": {
+          "original_candidates": 328,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "0:probe": {
+          "original_candidates": 476,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "0:a": {
+          "original_candidates": 348,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "0:f": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:near": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:common": {
+          "original_candidates": 504,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:probe": {
+          "original_candidates": 344,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:a": {
+          "original_candidates": 432,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:f": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        }
+      },
+      "combined_all_starts_supported": false
+    },
+    {
+      "placement_index": 2,
+      "anchor": 0.5,
+      "wrist_offset_rad": 0.0,
+      "added_rail_candidates": [
+        0.0,
+        0.8
+      ],
+      "targets": {
+        "0:near": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "0:common": {
+          "original_candidates": 456,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "0:probe": {
+          "original_candidates": 504,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "0:a": {
+          "original_candidates": 424,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "0:f": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:near": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:common": {
+          "original_candidates": 776,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:probe": {
+          "original_candidates": 440,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:a": {
+          "original_candidates": 756,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:f": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        }
+      },
+      "combined_all_starts_supported": false
+    },
+    {
+      "placement_index": 3,
+      "anchor": 0.55,
+      "wrist_offset_rad": 0.0,
+      "added_rail_candidates": [
+        0.0,
+        0.8
+      ],
+      "targets": {
+        "0:near": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "0:common": {
+          "original_candidates": 424,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "0:probe": {
+          "original_candidates": 772,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "0:a": {
+          "original_candidates": 388,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "0:f": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:near": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:common": {
+          "original_candidates": 792,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:probe": {
+          "original_candidates": 1052,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:a": {
+          "original_candidates": 792,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:f": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        }
+      },
+      "combined_all_starts_supported": false
+    },
+    {
+      "placement_index": 4,
+      "anchor": 0.6,
+      "wrist_offset_rad": 0.0,
+      "added_rail_candidates": [
+        0.0,
+        0.8
+      ],
+      "targets": {
+        "0:near": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "0:common": {
+          "original_candidates": 1004,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "0:probe": {
+          "original_candidates": 1020,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "0:a": {
+          "original_candidates": 1016,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "0:f": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:near": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:common": {
+          "original_candidates": 1068,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:probe": {
+          "original_candidates": 768,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:a": {
+          "original_candidates": 1076,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:f": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        }
+      },
+      "combined_all_starts_supported": false
+    },
+    {
+      "placement_index": 5,
+      "anchor": 0.4,
+      "wrist_offset_rad": -1.5707963267948966,
+      "added_rail_candidates": [
+        0.0,
+        0.8
+      ],
+      "targets": {
+        "0:near": {
+          "original_candidates": 348,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "0:common": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "0:probe": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "0:a": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "0:f": {
+          "original_candidates": 592,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:near": {
+          "original_candidates": 336,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:common": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:probe": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:a": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:f": {
+          "original_candidates": 452,
+          "endpoint_candidates": 0,
+          "q": null
+        }
+      },
+      "combined_all_starts_supported": false
+    },
+    {
+      "placement_index": 6,
+      "anchor": 0.45,
+      "wrist_offset_rad": -1.5707963267948966,
+      "added_rail_candidates": [
+        0.0,
+        0.8
+      ],
+      "targets": {
+        "0:near": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "0:common": {
+          "original_candidates": 838,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "0:probe": {
+          "original_candidates": 1088,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "0:a": {
+          "original_candidates": 850,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "0:f": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:near": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:common": {
+          "original_candidates": 1060,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:probe": {
+          "original_candidates": 768,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:a": {
+          "original_candidates": 1088,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:f": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        }
+      },
+      "combined_all_starts_supported": false
+    },
+    {
+      "placement_index": 7,
+      "anchor": 0.5,
+      "wrist_offset_rad": -1.5707963267948966,
+      "added_rail_candidates": [
+        0.0,
+        0.8
+      ],
+      "targets": {
+        "0:near": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "0:common": {
+          "original_candidates": 1276,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "0:probe": {
+          "original_candidates": 1244,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "0:a": {
+          "original_candidates": 1008,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "0:f": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:near": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:common": {
+          "original_candidates": 1152,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:probe": {
+          "original_candidates": 1168,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:a": {
+          "original_candidates": 1154,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:f": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        }
+      },
+      "combined_all_starts_supported": false
+    },
+    {
+      "placement_index": 8,
+      "anchor": 0.55,
+      "wrist_offset_rad": -1.5707963267948966,
+      "added_rail_candidates": [
+        0.0,
+        0.8
+      ],
+      "targets": {
+        "0:near": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "0:common": {
+          "original_candidates": 1304,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "0:probe": {
+          "original_candidates": 1016,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "0:a": {
+          "original_candidates": 1288,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "0:f": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:near": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:common": {
+          "original_candidates": 940,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:probe": {
+          "original_candidates": 732,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:a": {
+          "original_candidates": 932,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:f": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        }
+      },
+      "combined_all_starts_supported": false
+    },
+    {
+      "placement_index": 9,
+      "anchor": 0.6,
+      "wrist_offset_rad": -1.5707963267948966,
+      "added_rail_candidates": [
+        0.0,
+        0.8
+      ],
+      "targets": {
+        "0:near": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "0:common": {
+          "original_candidates": 1004,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "0:probe": {
+          "original_candidates": 704,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "0:a": {
+          "original_candidates": 1068,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "0:f": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:near": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:common": {
+          "original_candidates": 696,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:probe": {
+          "original_candidates": 412,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:a": {
+          "original_candidates": 700,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:f": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        }
+      },
+      "combined_all_starts_supported": false
+    },
+    {
+      "placement_index": 10,
+      "anchor": 0.4,
+      "wrist_offset_rad": 1.5707963267948966,
+      "added_rail_candidates": [
+        0.0,
+        0.8
+      ],
+      "targets": {
+        "0:near": {
+          "original_candidates": 544,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "0:common": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "0:probe": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "0:a": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "0:f": {
+          "original_candidates": 824,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:near": {
+          "original_candidates": 544,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:common": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:probe": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:a": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:f": {
+          "original_candidates": 820,
+          "endpoint_candidates": 0,
+          "q": null
+        }
+      },
+      "combined_all_starts_supported": false
+    },
+    {
+      "placement_index": 11,
+      "anchor": 0.45,
+      "wrist_offset_rad": 1.5707963267948966,
+      "added_rail_candidates": [
+        0.0,
+        0.8
+      ],
+      "targets": {
+        "0:near": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "0:common": {
+          "original_candidates": 188,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "0:probe": {
+          "original_candidates": 384,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "0:a": {
+          "original_candidates": 176,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "0:f": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:near": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:common": {
+          "original_candidates": 388,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:probe": {
+          "original_candidates": 400,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:a": {
+          "original_candidates": 384,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:f": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        }
+      },
+      "combined_all_starts_supported": false
+    },
+    {
+      "placement_index": 12,
+      "anchor": 0.5,
+      "wrist_offset_rad": 1.5707963267948966,
+      "added_rail_candidates": [
+        0.0,
+        0.8
+      ],
+      "targets": {
+        "0:near": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "0:common": {
+          "original_candidates": 360,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "0:probe": {
+          "original_candidates": 612,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "0:a": {
+          "original_candidates": 348,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "0:f": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:near": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:common": {
+          "original_candidates": 544,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:probe": {
+          "original_candidates": 672,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:a": {
+          "original_candidates": 516,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:f": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        }
+      },
+      "combined_all_starts_supported": false
+    },
+    {
+      "placement_index": 13,
+      "anchor": 0.55,
+      "wrist_offset_rad": 1.5707963267948966,
+      "added_rail_candidates": [
+        0.0,
+        0.8
+      ],
+      "targets": {
+        "0:near": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "0:common": {
+          "original_candidates": 656,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "0:probe": {
+          "original_candidates": 984,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "0:a": {
+          "original_candidates": 644,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "0:f": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:near": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:common": {
+          "original_candidates": 1020,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:probe": {
+          "original_candidates": 1060,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:a": {
+          "original_candidates": 1010,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:f": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        }
+      },
+      "combined_all_starts_supported": false
+    },
+    {
+      "placement_index": 14,
+      "anchor": 0.6,
+      "wrist_offset_rad": 1.5707963267948966,
+      "added_rail_candidates": [
+        0.0,
+        0.8
+      ],
+      "targets": {
+        "0:near": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "0:common": {
+          "original_candidates": 1004,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "0:probe": {
+          "original_candidates": 1344,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "0:a": {
+          "original_candidates": 988,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "0:f": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:near": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:common": {
+          "original_candidates": 1352,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:probe": {
+          "original_candidates": 1392,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:a": {
+          "original_candidates": 1360,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:f": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        }
+      },
+      "combined_all_starts_supported": false
+    },
+    {
+      "placement_index": 15,
+      "anchor": 0.4,
+      "wrist_offset_rad": 3.141592653589793,
+      "added_rail_candidates": [
+        0.0,
+        0.8
+      ],
+      "targets": {
+        "0:near": {
+          "original_candidates": 648,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "0:common": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "0:probe": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "0:a": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "0:f": {
+          "original_candidates": 728,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:near": {
+          "original_candidates": 652,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:common": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:probe": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:a": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:f": {
+          "original_candidates": 728,
+          "endpoint_candidates": 0,
+          "q": null
+        }
+      },
+      "combined_all_starts_supported": false
+    },
+    {
+      "placement_index": 16,
+      "anchor": 0.45,
+      "wrist_offset_rad": 3.141592653589793,
+      "added_rail_candidates": [
+        0.0,
+        0.8
+      ],
+      "targets": {
+        "0:near": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "0:common": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "0:probe": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "0:a": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "0:f": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:near": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:common": {
+          "original_candidates": 173,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:probe": {
+          "original_candidates": 408,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:a": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:f": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        }
+      },
+      "combined_all_starts_supported": false
+    },
+    {
+      "placement_index": 17,
+      "anchor": 0.5,
+      "wrist_offset_rad": 3.141592653589793,
+      "added_rail_candidates": [
+        0.0,
+        0.8
+      ],
+      "targets": {
+        "0:near": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "0:common": {
+          "original_candidates": 276,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "0:probe": {
+          "original_candidates": 706,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "0:a": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "0:f": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:near": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:common": {
+          "original_candidates": 600,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:probe": {
+          "original_candidates": 618,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:a": {
+          "original_candidates": 580,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:f": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        }
+      },
+      "combined_all_starts_supported": false
+    },
+    {
+      "placement_index": 18,
+      "anchor": 0.55,
+      "wrist_offset_rad": 3.141592653589793,
+      "added_rail_candidates": [
+        0.0,
+        0.8
+      ],
+      "targets": {
+        "0:near": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "0:common": {
+          "original_candidates": 672,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "0:probe": {
+          "original_candidates": 988,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "0:a": {
+          "original_candidates": 712,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "0:f": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:near": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:common": {
+          "original_candidates": 924,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:probe": {
+          "original_candidates": 934,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:a": {
+          "original_candidates": 920,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:f": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        }
+      },
+      "combined_all_starts_supported": false
+    },
+    {
+      "placement_index": 19,
+      "anchor": 0.6,
+      "wrist_offset_rad": 3.141592653589793,
+      "added_rail_candidates": [
+        0.0,
+        0.8
+      ],
+      "targets": {
+        "0:near": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "0:common": {
+          "original_candidates": 1004,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "0:probe": {
+          "original_candidates": 700,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "0:a": {
+          "original_candidates": 1004,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "0:f": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:near": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:common": {
+          "original_candidates": 612,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:probe": {
+          "original_candidates": 824,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:a": {
+          "original_candidates": 624,
+          "endpoint_candidates": 0,
+          "q": null
+        },
+        "60:f": {
+          "original_candidates": 0,
+          "endpoint_candidates": 0,
+          "q": null
+        }
+      },
+      "combined_all_starts_supported": false
+    }
+  ]
+}

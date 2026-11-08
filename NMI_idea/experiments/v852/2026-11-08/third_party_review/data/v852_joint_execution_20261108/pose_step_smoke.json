@@ -1,0 +1,10 @@
+{
+  "backend": "genesis_pd",
+  "initial_error_m": 0.0040000000000000036,
+  "final_error_m": 2.2529080026526125e-07,
+  "duration_s": 2.0000000000000013,
+  "ticks": 200,
+  "reset_count": 1,
+  "safe": true,
+  "interface": "step_pose public target -> DLS -> PD -> measured FK"
+}

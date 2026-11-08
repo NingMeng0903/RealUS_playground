@@ -1,0 +1,274 @@
+{
+  "experiments": {
+    "A": {
+      "absolute_error": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "deadlines": [
+        2.0,
+        2.4,
+        2.8,
+        3.0,
+        3.2
+      ],
+      "independent_monte_carlo_cdf": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "max_absolute_error": 0.0,
+      "mc_n": 30001,
+      "name": "A_local_to_untrained_chain",
+      "policy": "adaptive_old",
+      "predicted_completion_cdf": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "release_time": 0.0,
+      "retain_old": true
+    },
+    "B": {
+      "early": {
+        "absolute_error": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "deadlines": [
+          2.0,
+          2.4,
+          2.8,
+          3.0,
+          3.2
+        ],
+        "independent_monte_carlo_cdf": [
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "max_absolute_error": 0.0,
+        "mc_n": 30001,
+        "name": "B_early_release",
+        "policy": "adaptive_old",
+        "predicted_completion_cdf": [
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "release_time": 0.0,
+        "retain_old": true
+      },
+      "late": {
+        "absolute_error": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "deadlines": [
+          2.0,
+          2.4,
+          2.8,
+          3.0,
+          3.2
+        ],
+        "independent_monte_carlo_cdf": [
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          1.0
+        ],
+        "max_absolute_error": 0.0,
+        "mc_n": 30001,
+        "name": "B_late_release",
+        "policy": "adaptive_old",
+        "predicted_completion_cdf": [
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          1.0
+        ],
+        "release_time": 0.8,
+        "retain_old": true
+      }
+    },
+    "C": {
+      "hidden": {
+        "absolute_error": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "deadlines": [
+          2.0,
+          2.4,
+          2.8,
+          3.0,
+          3.2
+        ],
+        "independent_monte_carlo_cdf": [
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          1.0
+        ],
+        "max_absolute_error": 0.0,
+        "mc_n": 30001,
+        "name": "C_old_knowledge_hidden",
+        "policy": "adaptive_old",
+        "predicted_completion_cdf": [
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          1.0
+        ],
+        "release_time": 0.0,
+        "retain_old": false
+      },
+      "retained": {
+        "absolute_error": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "deadlines": [
+          2.0,
+          2.4,
+          2.8,
+          3.0,
+          3.2
+        ],
+        "independent_monte_carlo_cdf": [
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "max_absolute_error": 0.0,
+        "mc_n": 30001,
+        "name": "C_old_knowledge_retained",
+        "policy": "adaptive_old",
+        "predicted_completion_cdf": [
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "release_time": 0.0,
+        "retain_old": true
+      }
+    }
+  },
+  "option_kernel": {
+    "execute_correct": 1.4,
+    "execute_mismatch": 0.8,
+    "fresh_recheck": 0.6,
+    "probe": 0.9,
+    "recover_after_mismatch": 1.0
+  },
+  "protocol": {
+    "deadlines": [
+      2.0,
+      2.4,
+      2.8,
+      3.0,
+      3.2
+    ],
+    "fresh_acceptance": "capture_time >= request_time and kind=fresh",
+    "hidden_modes": [
+      -1,
+      1
+    ],
+    "late_release_can_wait": true,
+    "old_capture_time": -1.0,
+    "recovery_allowed": true,
+    "request_time": 0.0,
+    "same_old_packet_capture_cost": true
+  },
+  "scope": "finite mathematical and program-option stress test only; not geometry, B-mode, or real execution",
+  "tree_library_oracle": {
+    "best_library_curve": [
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "curves": {
+      "adaptive_old": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "blind_minus": [
+        0.5,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "blind_plus": [
+        0.5,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "probe_then_execute": [
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        1.0
+      ]
+    },
+    "full_information_oracle_curve": [
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "policies": [
+      "adaptive_old",
+      "blind_plus",
+      "blind_minus",
+      "probe_then_execute"
+    ],
+    "selected_policy_by_deadline": [
+      "adaptive_old",
+      "adaptive_old",
+      "adaptive_old",
+      "adaptive_old",
+      "adaptive_old"
+    ]
+  }
+}

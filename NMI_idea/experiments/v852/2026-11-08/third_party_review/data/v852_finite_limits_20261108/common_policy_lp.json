@@ -1,0 +1,20 @@
+{
+  "lower": 0.5,
+  "matrix": [
+    [
+      1.0,
+      0.0
+    ],
+    [
+      0.0,
+      1.0
+    ]
+  ],
+  "mixture": [
+    0.5,
+    0.5
+  ],
+  "mixture_sum": 1.0,
+  "shared_policy_not_model_oracle": true,
+  "upper": 1.0
+}

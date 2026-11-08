@@ -1,0 +1,12 @@
+{
+  "created": "2026-11-08T06:37:38.263919+00:00",
+  "outcomes_exist": false,
+  "sha256": {
+    "protocol.json": "a2b3642ec2a6ad93ff5e84d71408b4441bd8ae23b715ba892ab8ee1488c7549f",
+    "local_bundles.jsonl": "b9d1fd78ed61d5e89d8553f1a591f3bc7c2c7058a49df11c93351225c44718a3",
+    "predictions.jsonl": "32d75a6527bd3e7add83ef1e008739c757cac14497e787d10096a88fbcf16083",
+    "test_manifest.json": "134d56d5751a7bb4c78a62f47b1f3fe29163892a3b10a101f8826aea81d9b726"
+  },
+  "n_predictions": 5760,
+  "selection_precommitted": true
+}

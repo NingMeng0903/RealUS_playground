@@ -1,0 +1,30 @@
+[
+  {
+    "spec": {
+      "object_id": "joint_test_000",
+      "geometry_seed": 202616090,
+      "u": 1,
+      "v": 1,
+      "knee_deg": 60.0,
+      "width_scale": 1.0,
+      "length_scale": 1.0,
+      "amplitude_scale": 1.0
+    },
+    "near": 0.0,
+    "preparation": {
+      "status": "public_entry_unsupported",
+      "duration": 0.0
+    },
+    "common_q": [
+      0.3,
+      -1.356288928109624,
+      -2.268830057735048,
+      1.1217103458991406,
+      1.009167882191556,
+      0.3851408862477958,
+      1.06814214254784,
+      2.2764305994707468
+    ],
+    "world_hash": "8684887afe0df18443151614043bea51fa8ff57ba0c16ee911ef51c84c60d121"
+  }
+]

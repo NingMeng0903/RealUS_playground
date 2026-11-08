@@ -1,0 +1,56 @@
+{
+  "schema": "v852_joint_core_development_v1",
+  "backend": "genesis_pd",
+  "controller": "srs",
+  "task": "full_leg",
+  "spans": {
+    "near": [
+      0.1,
+      0.25
+    ],
+    "probe": [
+      0.56,
+      0.6
+    ],
+    "a": [
+      0.62,
+      0.76
+    ],
+    "b": [
+      0.78,
+      0.91
+    ],
+    "f": [
+      0.14,
+      0.21
+    ]
+  },
+  "n_train_objects": 1,
+  "n_test_objects": 1,
+  "n_full_chains": 6,
+  "n_completed": 0,
+  "mean_curve_absolute_error": 0.0,
+  "all_failures_retained": true,
+  "formal_guarantee": false,
+  "prediction_transfer_model_is_approximate": true,
+  "physical_execution": false,
+  "contact_or_Bmode_validation": false,
+  "by_condition": {
+    "early": {
+      "attempted": 2,
+      "completed": 0,
+      "mean_duration": 3.8699999999999943
+    },
+    "late": {
+      "attempted": 2,
+      "completed": 0,
+      "mean_duration": 3.979999999999994
+    },
+    "hide": {
+      "attempted": 2,
+      "completed": 0,
+      "mean_duration": 3.979999999999994
+    }
+  },
+  "wall_seconds": 37.55938096399768
+}

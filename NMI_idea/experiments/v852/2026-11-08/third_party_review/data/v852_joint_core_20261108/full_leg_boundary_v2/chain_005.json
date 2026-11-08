@@ -1,0 +1,158 @@
+{
+  "tree": "probe_+1",
+  "success": false,
+  "duration": 4.7599999999999865,
+  "program_calls": 2,
+  "recoveries": 0,
+  "new_frames": 10,
+  "fresh_frames": 0,
+  "calls": [
+    {
+      "program": "probe",
+      "mode": 0,
+      "success": false,
+      "public_success": false,
+      "independent_success": false,
+      "status": "joint_safety_stop",
+      "duration": 4.7599999999999865,
+      "service_duration": 0.9999999999999836,
+      "entry_duration": 3.760000000000003,
+      "nominal_duration": 2.9203572909081785,
+      "scan_speed_m_s": 0.01,
+      "exit_position_local": [
+        -0.006029275748192384,
+        -0.017078573229254324,
+        0.0024084644230053854
+      ],
+      "exit_rotation_local": [
+        -0.06704006588213686,
+        -0.19393467690039592,
+        -0.05192637472906483
+      ],
+      "exit_velocity_local": [
+        -0.008555083326132331,
+        0.002741702398736329,
+        0.022443732883730104
+      ],
+      "frame_count": 10,
+      "frame_capture_times": [
+        3.760000000000003,
+        3.860000000000003,
+        3.960000000000003,
+        4.060000000000001,
+        4.159999999999999,
+        4.259999999999997,
+        4.359999999999995,
+        4.459999999999993,
+        4.559999999999991,
+        4.659999999999989
+      ],
+      "fresh_frames": 10,
+      "coverage": 0.3333333333333333,
+      "capture_min": 3.760000000000003,
+      "capture_max": 4.659999999999989,
+      "start_time": 0.0,
+      "end_time": 4.7599999999999865,
+      "backend": "genesis_pd",
+      "transfer_events": [
+        {
+          "start": 0.56,
+          "mode": 0,
+          "candidate_count": 344,
+          "attempts": [
+            {
+              "status": "completed",
+              "duration": 3.760000000000003
+            }
+          ],
+          "planning_wall_seconds": 0.24653770800068742
+        }
+      ]
+    },
+    {
+      "program": "a",
+      "mode": 1,
+      "success": false,
+      "public_success": false,
+      "independent_success": false,
+      "status": "joint_safety_stop",
+      "duration": 0.0,
+      "service_duration": 0.0,
+      "entry_duration": 0.0,
+      "nominal_duration": 4.2103814166711935,
+      "scan_speed_m_s": 0.028,
+      "exit_position_local": [
+        -0.02638323886377436,
+        -0.13397043601343228,
+        0.0058976160568055104
+      ],
+      "exit_rotation_local": [
+        -0.09336651124497274,
+        -0.9043626884457413,
+        0.04454735862762338
+      ],
+      "exit_velocity_local": [
+        -0.021280319099677012,
+        0.002007387901789416,
+        0.011293623924330188
+      ],
+      "frame_count": 0,
+      "frame_capture_times": [],
+      "fresh_frames": 0,
+      "coverage": 0.0,
+      "capture_min": null,
+      "capture_max": null,
+      "start_time": 4.7599999999999865,
+      "end_time": 4.7599999999999865,
+      "backend": "genesis_pd",
+      "transfer_events": [
+        {
+          "start": 0.56,
+          "mode": 0,
+          "candidate_count": 344,
+          "attempts": [
+            {
+              "status": "completed",
+              "duration": 3.760000000000003
+            }
+          ],
+          "planning_wall_seconds": 0.24653770800068742
+        }
+      ]
+    }
+  ],
+  "decisions": [
+    {
+      "time": 4.7599999999999865,
+      "stage": "a",
+      "mode": 1,
+      "near_visible": false,
+      "probe_visible": true
+    }
+  ],
+  "packet_hash": "5cad147ade18f6efd64faa38eb0d3a86813a748f4ab671375b17c9bf976a8cf0",
+  "release": 0.0,
+  "hidden": true,
+  "world_hash": "8684887afe0df18443151614043bea51fa8ff57ba0c16ee911ef51c84c60d121",
+  "ledger": {
+    "n_records": 11,
+    "n_hidden": 1,
+    "n_release_overrides": 1,
+    "n_events": 13,
+    "object_ids": [
+      "joint_test_000"
+    ],
+    "region_ids": [
+      "near",
+      "probe"
+    ],
+    "hidden_ids": [
+      "old:near"
+    ]
+  },
+  "backend": "genesis_pd",
+  "wall_seconds": 3.0269947000015236,
+  "object_id": "joint_test_000",
+  "condition": "hide",
+  "preparation_status": "public_entry_unsupported"
+}

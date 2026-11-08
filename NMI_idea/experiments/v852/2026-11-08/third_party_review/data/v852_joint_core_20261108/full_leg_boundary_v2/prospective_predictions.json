@@ -1,0 +1,242 @@
+[
+  {
+    "object_id": "joint_test_000",
+    "condition": "early",
+    "tree": "react_-1_+1",
+    "deadlines": [
+      20.0,
+      40.0,
+      60.0,
+      90.0
+    ],
+    "completion": [
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "local_bundle_rollouts": [
+      {
+        "success": false,
+        "duration": 3.848510640261789,
+        "program_calls": 2,
+        "recoveries": 1,
+        "new_frames": 31,
+        "fresh_frames": 0
+      }
+    ],
+    "interval_kind": "unidentified transfer kernel: conservative [0,1]",
+    "lower": [
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "upper": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ]
+  },
+  {
+    "object_id": "joint_test_000",
+    "condition": "early",
+    "tree": "probe_+1",
+    "deadlines": [
+      20.0,
+      40.0,
+      60.0,
+      90.0
+    ],
+    "completion": [
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "local_bundle_rollouts": [
+      {
+        "success": false,
+        "duration": 5.9057502688980295,
+        "program_calls": 3,
+        "recoveries": 1,
+        "new_frames": 46,
+        "fresh_frames": 0
+      }
+    ],
+    "interval_kind": "unidentified transfer kernel: conservative [0,1]",
+    "lower": [
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "upper": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ]
+  },
+  {
+    "object_id": "joint_test_000",
+    "condition": "late",
+    "tree": "react_-1_+1",
+    "deadlines": [
+      20.0,
+      40.0,
+      60.0,
+      90.0
+    ],
+    "completion": [
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "local_bundle_rollouts": [
+      {
+        "success": false,
+        "duration": 3.8085106402617885,
+        "program_calls": 2,
+        "recoveries": 1,
+        "new_frames": 31,
+        "fresh_frames": 0
+      }
+    ],
+    "interval_kind": "unidentified transfer kernel: conservative [0,1]",
+    "lower": [
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "upper": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ]
+  },
+  {
+    "object_id": "joint_test_000",
+    "condition": "late",
+    "tree": "probe_+1",
+    "deadlines": [
+      20.0,
+      40.0,
+      60.0,
+      90.0
+    ],
+    "completion": [
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "local_bundle_rollouts": [
+      {
+        "success": false,
+        "duration": 5.9057502688980295,
+        "program_calls": 3,
+        "recoveries": 1,
+        "new_frames": 46,
+        "fresh_frames": 0
+      }
+    ],
+    "interval_kind": "unidentified transfer kernel: conservative [0,1]",
+    "lower": [
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "upper": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ]
+  },
+  {
+    "object_id": "joint_test_000",
+    "condition": "hide",
+    "tree": "react_-1_+1",
+    "deadlines": [
+      20.0,
+      40.0,
+      60.0,
+      90.0
+    ],
+    "completion": [
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "local_bundle_rollouts": [
+      {
+        "success": false,
+        "duration": 3.8085106402617885,
+        "program_calls": 2,
+        "recoveries": 1,
+        "new_frames": 31,
+        "fresh_frames": 0
+      }
+    ],
+    "interval_kind": "unidentified transfer kernel: conservative [0,1]",
+    "lower": [
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "upper": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ]
+  },
+  {
+    "object_id": "joint_test_000",
+    "condition": "hide",
+    "tree": "probe_+1",
+    "deadlines": [
+      20.0,
+      40.0,
+      60.0,
+      90.0
+    ],
+    "completion": [
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "local_bundle_rollouts": [
+      {
+        "success": false,
+        "duration": 5.9057502688980295,
+        "program_calls": 3,
+        "recoveries": 1,
+        "new_frames": 46,
+        "fresh_frames": 0
+      }
+    ],
+    "interval_kind": "unidentified transfer kernel: conservative [0,1]",
+    "lower": [
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "upper": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ]
+  }
+]

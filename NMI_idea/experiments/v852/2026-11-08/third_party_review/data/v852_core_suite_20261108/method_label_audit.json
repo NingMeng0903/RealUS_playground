@@ -1,0 +1,6 @@
+{
+  "joint_nominal_actual_objective": "same robust objective as joint_robust due prefix dispatch; treat as consistency alias, not Bayes baseline",
+  "primary_joint_robust_affected": false,
+  "full_history_affected": false,
+  "new_matched_budget_variant_will_use_correct_nominal_dispatch": true
+}

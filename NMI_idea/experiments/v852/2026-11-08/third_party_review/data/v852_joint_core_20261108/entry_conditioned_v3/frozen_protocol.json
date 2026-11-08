@@ -1,0 +1,539 @@
+{
+  "schema": "v852_joint_entry_kernel_v3",
+  "backend": "genesis_pd",
+  "scope": "local continuation at pose60, same known shape; no contact, B-mode, registration or full-leg claim",
+  "seed": 20261110,
+  "spans": {
+    "near": [
+      0.56,
+      0.6
+    ],
+    "probe": [
+      0.56,
+      0.6
+    ],
+    "a": [
+      0.62,
+      0.76
+    ],
+    "b": [
+      0.78,
+      0.91
+    ],
+    "f": [
+      0.56,
+      0.6
+    ]
+  },
+  "registration_source": "outputs/v852_joint_core_20261108/local_continuation_v2/frozen_protocol.json",
+  "registration_sha256": "4c2695a81ea29f30f0396f14dcc519d2e9616f30db215ba24a1f1fa0a9966378",
+  "entry_grid": {
+    "common": [
+      0.3,
+      -1.9715828204692212,
+      -1.3784622743979427,
+      1.1582164055839803,
+      0.6093394370779944,
+      1.6145186146713169,
+      1.153923760755151,
+      1.1244571125200535
+    ],
+    "public_probe_end": [
+      0.45,
+      -1.8718739334022843,
+      -1.36936026992028,
+      1.2010744924486252,
+      1.4776556491452988,
+      1.8526256042401588,
+      1.2555517236913962,
+      0.2909156770503056
+    ],
+    "public_a_end": [
+      0.15,
+      -1.948256304764585,
+      -1.5748813550046303,
+      1.2017162154735093,
+      0.7966925891632123,
+      2.0377425812974987,
+      0.5005030017527395,
+      0.8328674125925726
+    ]
+  },
+  "entry_grid_qdot": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+  ],
+  "entry_support_q_scale": [
+    0.06,
+    0.35,
+    0.35,
+    0.35,
+    0.35,
+    0.35,
+    0.35,
+    0.35
+  ],
+  "entry_support_qdot_scale": [
+    0.03,
+    0.12,
+    0.12,
+    0.12,
+    0.12,
+    0.12,
+    0.12,
+    0.12
+  ],
+  "training_objects": 2,
+  "local_program_calls": 18,
+  "test_objects": 2,
+  "complete_chains_for_training": 0,
+  "deadlines": [
+    20.0,
+    40.0,
+    60.0,
+    90.0
+  ],
+  "selection_deadline": 40.0,
+  "conditions": {
+    "early": {
+      "release": 0.0,
+      "hidden": false
+    },
+    "late": {
+      "release": 5.0,
+      "hidden": false
+    },
+    "hide": {
+      "release": 0.0,
+      "hidden": true
+    }
+  },
+  "trees": [
+    {
+      "name": "fixed_minus",
+      "kind": "fixed",
+      "default_mode": -1,
+      "near_mapping": 1,
+      "probe_mapping": 1,
+      "recover": true
+    },
+    {
+      "name": "fixed_plus",
+      "kind": "fixed",
+      "default_mode": 1,
+      "near_mapping": 1,
+      "probe_mapping": 1,
+      "recover": true
+    },
+    {
+      "name": "react_-1_-1",
+      "kind": "react",
+      "default_mode": -1,
+      "near_mapping": -1,
+      "probe_mapping": 1,
+      "recover": true
+    },
+    {
+      "name": "react_-1_+1",
+      "kind": "react",
+      "default_mode": -1,
+      "near_mapping": 1,
+      "probe_mapping": 1,
+      "recover": true
+    },
+    {
+      "name": "react_+1_-1",
+      "kind": "react",
+      "default_mode": 1,
+      "near_mapping": -1,
+      "probe_mapping": 1,
+      "recover": true
+    },
+    {
+      "name": "react_+1_+1",
+      "kind": "react",
+      "default_mode": 1,
+      "near_mapping": 1,
+      "probe_mapping": 1,
+      "recover": true
+    },
+    {
+      "name": "probe_-1",
+      "kind": "probe",
+      "default_mode": -1,
+      "near_mapping": 1,
+      "probe_mapping": -1,
+      "recover": true
+    },
+    {
+      "name": "probe_+1",
+      "kind": "probe",
+      "default_mode": -1,
+      "near_mapping": 1,
+      "probe_mapping": 1,
+      "recover": true
+    },
+    {
+      "name": "wait_-1",
+      "kind": "wait",
+      "default_mode": -1,
+      "near_mapping": -1,
+      "probe_mapping": 1,
+      "recover": true
+    },
+    {
+      "name": "wait_+1",
+      "kind": "wait",
+      "default_mode": -1,
+      "near_mapping": 1,
+      "probe_mapping": 1,
+      "recover": true
+    }
+  ],
+  "selection_rule": "maximize conservative completion lower at40, then supported mass, then minimize full-duration cost; unknown paths penalized90s",
+  "joint_kernel": "nearest observed actual q/qdot entry, whole outcome+duration+exit joint record; one persistent training object per rollout",
+  "transition_time_approximation": null,
+  "formal_guarantee": false,
+  "old_evidence": "actual independent test-time slowProbe preparation; same derived packet across all arms",
+  "physical_execution": false,
+  "plant": {
+    "config": {
+      "backend": "genesis_pd",
+      "dt": 0.02,
+      "velocity_fraction": 0.25,
+      "acceleration_rail_m_s2": 0.5,
+      "acceleration_arm_rad_s2": 2.0,
+      "lag_time_s": 0.08,
+      "collision_margin_m": 0.01,
+      "rail_tolerance_m": 0.0002,
+      "arm_tolerance_rad": 0.002,
+      "velocity_tolerance": 0.01,
+      "maximum_duration_s": 120.0,
+      "scan_speed_m_s": 0.02
+    },
+    "robot_contract": {
+      "schema": "realman_robot_contract_v1",
+      "kinematics_urdf": "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/RM75-6F-8dof.urdf",
+      "kinematics_urdf_sha256": "7578310c5ce7b03a301c171175fd4eca2bd8e4b15903a7a9a3ed9bfc366e4ec0",
+      "collision_urdf": "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/RM75-6F-8dof.collision.urdf",
+      "collision_urdf_sha256": "ba6f49b4fd9cba74107af25ecd82afccac156a94b194a6acb06a2aadebf1d197",
+      "collision_pairs": "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/collision_pairs.yaml",
+      "collision_pairs_sha256": "8d4b96e09ec8bdfd33a7835fb77fa4dcb720551e7d55d28c063994b99c392318",
+      "collision_mesh_sha256": {
+        "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/meshes/collision/base_link.stl": "d064b0a2f806d8f10fd591555fc0e4cc336192094e96401902c141368d8ae6cc",
+        "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/meshes/collision/link_1.stl": "90d5b335f392402516e722681ba8329ad06f0e28d79d29ba1463da952b73b90f",
+        "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/meshes/collision/link_2.stl": "8c580d89602815965ccc3bf7634004bb60cc72f36b3890f3e7c22bf00e27d5f7",
+        "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/meshes/collision/link_3.stl": "a3920205d23ee649adfffbad53aa20260d277fd57a7f10d0aa8ce99249e8530e",
+        "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/meshes/collision/link_4.stl": "525ab301f2b4747c0e2a9f2494ffca4b28f798d75e38eb6ed2d92438a3a1babe",
+        "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/meshes/collision/link_5.stl": "bf7ff38e2bde76aeb2424bd8f39c6d90d1bcdcc378c06f41020a89d79762b4f1",
+        "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/meshes/collision/link_6.stl": "d5efae0116584d1d00d46f3a8579ab093abaecb41435f65c83c06308bb74c518",
+        "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/meshes/collision/link_7.stl": "a19c21f7fc000f5b9aae9b051bdf3b9880caacdcabd027e624072edd17a71f0c",
+        "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/meshes/collision/probe45.stl": "8a68b1b7df6668af46a766c80393a8f9822060378f4c8d65686efe2edfc0efe5"
+      },
+      "tcp_frame": "tcp",
+      "tcp_joint": "link_7_to_tcp",
+      "flange_frame": "link_7",
+      "root_frame": "rail_base",
+      "rail_joint": "rail_y",
+      "rail_locked_at_m": 0.0,
+      "rail_limits_m": [
+        0.0,
+        0.8
+      ],
+      "j1_joint": "joint_1",
+      "T_root_j1_axis": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          0.0,
+          -0.4
+        ],
+        [
+          0.0,
+          0.0,
+          1.0,
+          0.2405
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "T_flange_tcp": [
+        [
+          0.014774022132612807,
+          0.9998908401730626,
+          -0.0001897578249923093,
+          0.0
+        ],
+        [
+          -0.6440522759647374,
+          0.009371115199288349,
+          -0.7649240799089563,
+          -0.01523
+        ],
+        [
+          -0.7648388026863352,
+          0.011423219245411842,
+          0.644120420393116,
+          0.12135
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "tool_frame": {
+        "joint_name": "link_7_to_tcp",
+        "parent_frame": "link_7",
+        "child_frame": "tcp",
+        "T_flange_tcp": [
+          [
+            0.014774022132612807,
+            0.9998908401730626,
+            -0.0001897578249923093,
+            0.0
+          ],
+          [
+            -0.6440522759647374,
+            0.009371115199288349,
+            -0.7649240799089563,
+            -0.01523
+          ],
+          [
+            -0.7648388026863352,
+            0.011423219245411842,
+            0.644120420393116,
+            0.12135
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "T_tcp_flange": [
+          [
+            0.014774022132612865,
+            -0.6440522759647375,
+            -0.7648388026863353,
+            0.08300427254304381
+          ],
+          [
+            0.9998908401730625,
+            0.00937111519928828,
+            0.011423219245411823,
+            -0.001243485570945564
+          ],
+          [
+            -0.0001897578249922692,
+            -0.7649240799089563,
+            0.6441204203931159,
+            -0.08981380675171803
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        ]
+      },
+      "collision_security_margin_m": 0.01,
+      "metric": {
+        "schema": "se3_weighted_l2_v1",
+        "lambda_m_per_rad": 0.5729577951308232,
+        "cm_per_deg": 1.0,
+        "note": "chart-coordinate weighted L2 used for EDT / Eikonal; not an SE(3) geodesic"
+      },
+      "collision_scope": "arm_body_self_collision_only",
+      "yaw_invariant_static_links": [
+        "base_link"
+      ]
+    },
+    "base_world": [
+      [
+        -0.6169440935826609,
+        0.03381746588681496,
+        0.7862800801206022,
+        0.08129697985529821
+      ],
+      [
+        0.19043303620923502,
+        0.9758018857305877,
+        0.10745202894667984,
+        -1.2166827343326698
+      ],
+      [
+        -0.7636198295707093,
+        0.2160255975703344,
+        -0.6084551726140378,
+        0.26384879171644016
+      ],
+      [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    ],
+    "T_image_tcp": [
+      [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        -1.0,
+        -1.2246467991473532e-16,
+        0.0
+      ],
+      [
+        0.0,
+        1.2246467991473532e-16,
+        -1.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    ],
+    "physical_execution": false,
+    "contact_model": null,
+    "environment_collision_model": null,
+    "initialization_only_direct_position_assignment": true,
+    "state_source": "Genesis get_dofs_position/get_dofs_velocity",
+    "execution_duration_source": "simulation clock advanced on actual plant ticks; not path retiming",
+    "control_law": "position_PD"
+  },
+  "checkpoint": {
+    "status": "score_only",
+    "physical_execution": false,
+    "ready_for_execution": false,
+    "device": "cpu",
+    "checkpoint": "/media/camp/EXT_DRIVE/RealUS_playground/ird_playground/data/checkpoints/rm4d_signed_current_robot_20261108/selected.pt",
+    "checkpoint_sha256": "08698c273bd1f0f4f2a86d956df95448ba502ee9d7fc17445f06258a13286e51",
+    "allow_stale_audit": false,
+    "checkpoint_artifact_schema": "ird_signed_field_v2",
+    "checkpoint_calibration_schema": "ird_clearance_calibration_v2",
+    "robot_contract_matches": true,
+    "robot_contract_differences": {},
+    "placement_label": "virtual_unregistered",
+    "physical_registration_verified": false,
+    "input_tcp_frame": "physical_probe45_tcp",
+    "base_world_convention": "T_world_railbase",
+    "rail_convention": "raw_URDF_rail_y_m",
+    "rail_limits_m": [
+      0.0,
+      0.8
+    ],
+    "T_railbase_j1_axis_at_zero": [
+      [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        1.0,
+        0.0,
+        -0.4
+      ],
+      [
+        0.0,
+        0.0,
+        1.0,
+        0.2405
+      ],
+      [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    ],
+    "T_flange_tcp_current_URDF": [
+      [
+        0.014774022132612807,
+        0.9998908401730626,
+        -0.0001897578249923093,
+        0.0
+      ],
+      [
+        -0.6440522759647374,
+        0.009371115199288349,
+        -0.7649240799089563,
+        -0.01523
+      ],
+      [
+        -0.7648388026863352,
+        0.011423219245411842,
+        0.644120420393116,
+        0.12135
+      ],
+      [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    ],
+    "T_flange_tcp_used_by_field": [
+      [
+        0.014774021692574024,
+        0.9998908638954163,
+        -0.000189757818588987,
+        0.0
+      ],
+      [
+        -0.644052267074585,
+        0.009371114894747734,
+        -0.7649241089820862,
+        -0.015230000019073486
+      ],
+      [
+        -0.7648388147354126,
+        0.011423218995332718,
+        0.6441203951835632,
+        0.12134999781847
+      ],
+      [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    ],
+    "score_units": "uncalibrated_checkpoint_output_not_metres",
+    "score_is_success_probability": false,
+    "limitations": [
+      "No environment collision certificate",
+      "No actual-entry transition plan",
+      "No contact or image acceptance",
+      "No measured execution duration"
+    ]
+  }
+}
