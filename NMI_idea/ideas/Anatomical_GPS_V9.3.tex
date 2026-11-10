@@ -1,0 +1,987 @@
+% !TeX program = xelatex
+% Self-contained Chinese research design manuscript. Compile twice with XeLaTeX.
+% No external figures, custom font files or BibTeX database are required.
+% V9.3 integrates the supplied V9.2 and Local Response Skills Addendum.
+\documentclass[UTF8,fontset=fandol,11pt,a4paper]{ctexart}
+\usepackage[margin=23mm,headheight=16pt]{geometry}
+\usepackage{amsmath,amssymb,amsthm,bm,mathtools}
+\usepackage{booktabs,tabularx,longtable,array,multirow}
+\usepackage{xcolor,enumitem,fancyhdr,microtype}
+\usepackage[most]{tcolorbox}
+\usepackage{tocloft}
+\setlength{\cftbeforesecskip}{1.5pt}
+\renewcommand{\cftsecfont}{\small}
+\renewcommand{\cftsecpagefont}{\small}
+\usepackage{xurl}
+\usepackage[colorlinks=true,linkcolor=teal!65!black,citecolor=teal!65!black,urlcolor=blue!60!black]{hyperref}
+\usepackage{bookmark}
+\definecolor{ink}{HTML}{193541}
+\definecolor{accent}{HTML}{167276}
+\definecolor{pale}{HTML}{EFF5F5}
+\definecolor{muted}{HTML}{52616A}
+\ctexset{section={format=\Large\bfseries\color{ink}},subsection={format=\large\bfseries\color{ink}}}
+\newtcolorbox{corebox}{enhanced,breakable,colback=pale,colframe=accent,boxrule=.6pt,arc=1mm,left=3mm,right=3mm,top=2mm,bottom=2mm}
+\newtcolorbox{scopebox}{enhanced,breakable,colback=white,colframe=muted,boxrule=.45pt,arc=0mm,left=3mm,right=3mm,top=2mm,bottom=2mm}
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+\newcolumntype{P}[1]{>{\raggedright\arraybackslash}p{#1}}
+\setlist{nosep,leftmargin=1.8em,topsep=4pt}
+\setlength{\parskip}{4pt}
+\renewcommand{\arraystretch}{1.16}
+\emergencystretch=3em
+\theoremstyle{plain}
+\newtheorem{theorem}{定理}[section]
+\newtheorem{proposition}[theorem]{命题}
+\newtheorem{corollary}[theorem]{推论}
+\newtheorem{lemma}[theorem]{引理}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{定义}
+\newtheorem{assumption}[theorem]{条件}
+\newtheorem{example}[theorem]{例}
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{说明}
+\renewcommand{\proofname}{证明}
+\numberwithin{equation}{section}
+\newcommand{\R}{\mathbb R}
+\newcommand{\E}{\mathbb E}
+\newcommand{\Prob}{\mathbb P}
+\newcommand{\B}{\mathfrak B}
+\newcommand{\G}{\mathcal G}
+\newcommand{\cR}{\mathcal R}
+\newcommand{\cA}{\mathcal A}
+\newcommand{\cU}{\mathcal U}
+\newcommand{\cZ}{\mathcal Z}
+\newcommand{\norm}[1]{\left\lVert#1\right\rVert}
+\DeclareMathOperator{\tr}{tr}
+\DeclareMathOperator{\Cov}{Cov}
+\DeclareMathOperator{\diag}{diag}
+\DeclareMathOperator{\KL}{KL}
+\DeclareMathOperator{\TV}{TV}
+\DeclareMathOperator{\sg}{stopgrad}
+\DeclareMathOperator*{\argmin}{arg\,min}
+\DeclareMathOperator*{\argmax}{arg\,max}
+\newcommand{\code}[1]{\begingroup\small\nolinkurl{#1}\endgroup}
+\pagestyle{fancy}\fancyhf{}
+\fancyhead[L]{\small Anatomical GPS / 可迁移局部响应技能}
+\fancyhead[R]{\small V9.3}
+\fancyfoot[C]{\thepage}
+\hypersetup{pdftitle={Anatomical GPS V9.3: Transferable Local Response Skills},pdfauthor={Research design manuscript}}
+\begin{document}
+\begin{titlepage}
+\vspace*{6mm}
+{\Large\sffamily\color{accent}ANATOMICAL GPS / RESEARCH DESIGN}\par
+\vspace{13mm}
+{\fontsize{38}{44}\selectfont\bfseries\color{ink}V9.3}\par
+\vspace{9mm}
+{\fontsize{24}{34}\selectfont\bfseries\color{ink}宽解剖先验下的\par 可迁移局部响应技能}\par
+\vspace{5mm}
+{\Large 与能力条件化首次超声获取}\par
+\vspace{9mm}
+{\large Transferable Local Response Skills for\par First Ultrasound Acquisition under\par Broad Anatomical Priors}\par
+\vspace{10mm}
+\begin{corebox}
+\textbf{研究问题}\par
+不先完成个体预扫描，也不依赖精确的人群平均内部位置，机器人能否利用合成及有限局部交互数据，学习“在当前条件下这样移动会发生什么”，将其变成与 dIRD 兼容的可微代价，并在未见对象上更快取得第一次合格图像？
+\medskip\par
+\textbf{方法主线}\par
+宽而有结构的解剖先验 $\rightarrow$ 本次局部证据与几何推断 $\rightarrow$ 解析几何加学习响应残差 $\rightarrow$ 任务、声窗与能力的联合选择 $\rightarrow$ 最终动作验收与真实新图像。
+\end{corebox}
+\vfill
+2026 年 11 月 10 日\par
+\vspace{3mm}
+\textbf{完整中文方法稿、条件性推导、首轮实验协议与实施接口}\par
+\vspace{4mm}
+{\small 本稿整合用户提供的 V9.2 源稿和局部响应技能增补，不是只改版本号。新增公式是拟议方法的明确化，不是已发表结果。本次未训练网络、未运行首次获取闭环、未进行体模或真人实验；编译检查和附带代数自检不能替代这些实验。}
+\end{titlepage}
+
+\begin{abstract}
+个体内部血管与脏器的位置差异，不宜被压缩成一条必须跟随的平均轨迹；但这不意味着跨对象学习没有价值。本文提出 Anatomical GPS V9.3，将“在哪里搜索”“当前对象是什么”和“局部动作会产生什么成像后果”分开建模。公开的身体图册及相关、多模式宽先验只提供粗搜索支持；本次检查的局部超声更新目标与关联假设；共享 e3nn 模型在已知几何响应上学习条件残差、检测概率和视角相关质量，并形成可微任务能量。该能量与粗骨声路代价、dIRD 能力引导和真实运动成本统一求解，V6.1 的后验任务自由度约束平滑、接触修正后的最终动作。系统不等待完整器官拟合或全局信息图，不把一次已完成短轴检查作为长轴获取的免费起点。理论给出宽先验的支持边界、切片交点响应的局部正则条件、分型技能能量及其梯度的坐标规律、动作条件模型的局部迁移和排序误差界、可检验的模型梯度下降条件，以及任务风险与真实执行误差的验收接口。EM 仅作为固定窗口内关联和几何修正的可选求解器，不把控制优化混称为 M 步。实验在既有 DMP\_playground 接口上，依次检验信息隔离、先验与技能的独立作用、局部响应迁移、声窗与机器人能力冲突、关联消融及真实 8DoF 执行；再进入冻结模型的真实声学验证。预期效果、无效情形和失败解释均事前声明，不预填性能数值。
+\end{abstract}
+\noindent\textbf{关键词：}首次超声获取；局部响应技能；宽解剖先验；调和图册；e3nn；模型预测控制；任务自由度；dIRD。
+\setcounter{tocdepth}{1}
+\begingroup\small\setlength{\parskip}{0pt}\tableofcontents\endgroup
+\clearpage
+
+\section{问题定位、贡献与版本继承}
+\label{sec:problem}
+\subsection{从位置平均转向条件响应复用}
+本文研究粗身体 ROI 中的首次目标获取：请求在第一次超声采集前给定，在线系统没有该对象的完整中心线、成功切面或上一次检查记录。主实例是局部血管长轴获取；短轴是独立重置的次任务。必要的试探、短扫与重新确认均计入本次成本，不预先赠送一遍扫描。
+
+三个问题分别是：粗先验是否把搜索引向合理区域；局部观察如何修正这个患者的目标假设；在当前成像、接触和机器人条件下，什么动作能改善获取结果。\textbf{位置分布宽，不等于条件响应也同样不可迁移。}反过来，条件响应是否具有跨对象稳定性是待检验假设，不由位置归一化直接推出。
+
+\begin{corebox}
+\textbf{三个拟议贡献}\par
+一，宽先验与共享响应分离：不以学习精确的个体绝对位置为必要前提，通过程序化几何和局部动作记录学习可调用的响应模型。\par
+二，解析几何加分型响应残差：已知运动学显式计算，未知局部变化学习，并将预测分布转为可微任务能量。\par
+三，能力条件化的首次获取：在同一优化与验收中协调任务风险、声窗与真实实现代价，以首次独立图像通过率和总耗时验证，而非以预测分数宣布成功。
+\end{corebox}
+Bayes 更新、e3nn、残差建模、MPC、EM 和自然梯度都是已有工具。本文拟议增量是这些工具围绕\emph{粗位置先验下的可迁移局部成像响应与真实实现}所形成的具体算法及实证能力，不把每个基础公式重新计为原创。
+
+\subsection{与 V9.2、V9.1、V6.1 的关系}
+\begin{table}[htbp]\centering\small
+\begin{tabularx}{\linewidth}{P{24mm}YY}\toprule
+来源 & 保留 & 本版变化或限制\\\midrule
+V9.2 & 首次获取、公私信息隔离、概率查询、有限前瞻、真实时间与失败记录 & 人工宽先验成为合法主设置；除几何提议外，新增唯一的动作条件响应头\\
+V9.2 增补 & 相关先验、解析加残差、声路代理、局部 EM & 合并为完整方法；补足缺失观测、坐标、求导和实验职责\\
+V9.1 & 分型证据、身体锚定状态、几何与关联不确定性 & 不回到“先扫一遍便于复查”的主任务\\
+V6.1 & 后验限制任务允许的运动，检查完整最终动作 & 与学习技能代价共同使用；不能先验收后任意叠加控制\\\bottomrule
+\end{tabularx}
+\caption{本稿以给定源稿与增补为基础。表中“新增”指本版方法设计，不是已实现的软件事实。}
+\end{table}
+
+\subsection{本版不做什么}
+不要求完整器官恢复、患者 CT、人体材料参数辨识或大量医生轨迹示教；不并行增加 RL、FM、Diffusion 和多套运动基元。DMP/KMP/ProDMP 是可替换的参考与平滑工具，首轮固定一种。骨先验只为局部声窗提供辅助条件，EM 只为模糊关联服务。临床诊断有效性与人体安全认证不由本稿的几何验收给出。
+
+\section{相关工作与来源事实}
+\label{sec:related}
+\subsection{不强制预扫描，不等于拒绝概率推断}
+Goel 等的 ICRA 2022 工作以 BO 采集若干位置，估计血管密度信息图和表面，再构造参考扫描轨迹；其图 2 与 III-D 明确区分这两个阶段。它不是穷尽全表面的预扫描\cite{goel}。用户提供的心脏稿则通过覆盖采集、原语恢复、条件导航和局部精修获取标准切面，其图 2 与 III-B/C 给出了该顺序\cite{cardiac}。本文不将它们曲解为不处理部分观测；区别是\textbf{不把完整参考恢复作为开始任务动作的前置条件}，从第一帧起交替推断与执行。
+
+\subsection{已有可迁移超声技能与强基线}
+VesNet-RL 使用模拟二值血管图像训练导航，借助真实分割接入实际图像；其真人验证为采集体积上的虚拟导航，物理机器人验证使用体模\cite{vesnet}。Jiang 等通过少量示教的图像排序学习奖励，并分离任务与个体域信息\cite{sonographer}。Chatelain 等已研究目标保持与置信图驱动声窗改善\cite{confidence}。因此，“sim-to-real”“局部图像伺服”或“维持目标同时改善声窗”不能独立承担本版新颖性。
+
+\subsection{可微响应、几何类型与可选关联}
+动作条件预测结合 MPC 已有 Deep Visual Foresight 等先例，其实验为机器人推物而非超声\cite{foresight}。SE(3)-DiffusionFields 展示了学习的标量代价与几何约束联合优化\cite{difffields}；本文借鉴这种接口，不要求再训练一个扩散模型。e3nn 与 VN 提供等变构造\cite{e3nn,vn}，不自动提供有效技能、概率校准或接触安全。EM 的单调性只属于固定概率模型和固定数据下的似然／后验目标\cite{em}。SKEL 提供皮肤与骨骼网格的联合参数模型\cite{skel}，不是由 SMPL-X 关节直接得到的患者骨表面真值。
+
+\begin{scopebox}
+\textbf{来源与新增设计分开。}上述段落只陈述所引来源支持的能力。本稿以下的宽先验、响应接口、技能能量、风险合同和实验组合属于拟议设计。既有论文没有证明 V9.3 的效果。匿名心脏稿不标注不存在的作者、DOI 或录用信息。
+\end{scopebox}
+
+\section{首次获取合同、状态与合法输入}
+\label{sec:contract}
+\subsection{请求、时间与失败}
+请求写为
+\begin{equation}
+\cR=(\Omega_{\rm coarse},\mathrm{class},\mathrm{view},L_{\min},\epsilon_c,\epsilon_a,T_{\max}).
+\end{equation}
+ROI 来自外部解剖区域，不由测试真实血管反算缩小。多个目标不可区分时，需要可观测的类别／位置关系定义选择语义；不要求从相同图像猜出隐藏 ID。
+
+令 $d_t^{\rm stop}$ 表示策略宣布完成并提交图像，$g_{\rm audit}$ 表示独立验收，则
+\begin{equation}
+\tau=\inf\{t:d_t^{\rm stop}=1,\quad
+ g_{\rm audit}(I^{\rm acq}_{t-w:t},T^{\rm act}_{t-w:t},S)=1\},\qquad
+\mathrm{RMT}(T_{\max})=\E[\min(\tau,T_{\max})].
+\label{eq:first}
+\end{equation}
+错误提前停止或未完成令 $\tau=+\infty$。模拟器中的 $S$ 仅由独立评价器使用；真实验证以独立标注与局部参考代替。策略不能从审计失败得到免费重试。计时从公共粗定位和安全接触初态交付起开始，方法特有初始化、探查、计算阻塞、重新登记和等待都计入；公共准备另报。
+
+\subsection{公开历史与隐变量}
+公开历史 $H_t$ 包含实际图像／掩码、检测集合、实测位姿与时间、力与外部身体估计及其误差、标定版本和已执行命令。隐状态
+\begin{equation}
+S_t=(\Gamma,\gamma_{\rm reg},\chi_t,A_t,B_{\rm true},\zeta_{\rm obs})
+\end{equation}
+包含真实局部几何、共享配准、持续局部漂移、关联、真实骨／遮挡及观测偏差。在线系统维护近似 $\B_t=p(S_t\mid H_t)$，不读取这些真值。
+
+必须区分\emph{检测标志} $D_t$ 与\emph{真实可见性} $V_t$。策略只看到检测结果及其质量；$D_t=0$ 可能由不在视野、遮挡、失耦或漏检产生，$D_t=1$ 也可能是假阳性。真正的 $V_t$ 仅可作训练／审计标签。
+
+\subsection{四类量与三类不确定性}
+位置锚点只说明大致搜索区域；对象后验说明当前已知几何；响应模型说明动作后果；机器人状态说明实际能力。人群／设计解剖差异、当前对象后验不确定性、动作响应模型误差分别记录。不能用一个网络 confidence 同时代替三者，也不能把轨迹偏好协方差当作目标定位误差。
+
+\section{宽而有结构的解剖先验}
+\label{sec:prior}
+\subsection{相关曲线而非逐点大噪声}
+首轮用 $K=5$ 个三维样条残差控制点、正半径和共享登记偏差：
+\begin{equation}
+\gamma(s)=\Psi_c(\bar\xi(s))+\sum_{j=1}^{K}B_j(s)a_j,\qquad
+\bm a\mid m\sim\mathcal N(\mu_m,K_m\otimes\Sigma_m).
+\label{eq:curve}
+\end{equation}
+模板 $\bar\xi$ 由公共身体区域生成，不能沿测试真实中心线设置锚点。控制点联合采样保持平滑；深度、局部区域和有限曲率由声明生成合同约束。存在多种走向时使用混合模式，不将多条分离血管平均为不存在的中心线。
+
+公开设计先验为
+\begin{equation}
+ p_0(\Gamma\mid c)=(1-\epsilon)\sum_{m=1}^{M}\pi_m p_m(\Gamma\mid c)
+ +\epsilon p_{\rm broad}(\Gamma\mid\Omega_{\rm coarse}),\quad 0<\epsilon<1.
+\label{eq:prior}
+\end{equation}
+$p_{\rm broad}$ 仍是合理几何的联合分布，不是每个网格点独立白噪声。每项需要可采样且在概率重加权时具有可评价密度；带截断／拒绝采样的未知归一化不能忽略后冒充精确 Bayes。
+
+\subsection{能够替代与不能替代的数据}
+人工设计先验可替代首版的大规模位置分布拟合，不能替代真实前端、局部响应校准和独立部署评价。称其为\emph{设计分布}，不称为已校准的人群分布。对比学习先验时，后者只从独立源对象学习；数据量、体型条件、模型容量与本次观察权限分别报告。
+
+\begin{proposition}[支持是必要条件而不是发现保证]
+若 $p_0(U)=0$，且更新相对于 $p_0$ 用有限非负似然重加权，则更新后 $p(U\mid Y)=0$。式\eqref{eq:prior}只有在 $p_{\rm broad}(U)>0$ 且相关数据似然非零时，才能避免这一零支持障碍；这不保证有限粒子能抽到 $U$，也不保证有限时间完成任务。
+\end{proposition}
+\begin{proof}后验在 $U$ 上的概率是 $\int_U L(Y\mid S)p_0(dS)$ 除以正归一化常数；前者为零即得。\end{proof}
+
+\subsection{宽先验不等于可用风险证书}
+较大方差会扩大搜索，也可能使成像动作全部被拒绝。初始搜索不施加目标已经居中的要求；获得局部观测后才评估成像风险。无法由当前模型解释的持续观测触发扩大候选或模型失配标志，而不是强行把检测拉回模板。姿态、区域语义和局部结构的条件先验可能仍有价值，本文不声称所有人群统计均无意义。
+
+\section{调和图册与几何类型：共同索引而非内部真值}
+\label{sec:geometry}
+设规范物理嵌入 $X_0=\Psi_0(\xi)$、当前嵌入 $p=\Psi_c(\xi)$，$\xi=(h,\vartheta,d)$ 是标签而非三维向量。局部有效体积图中
+\begin{equation}
+J_c=D_\xi\Psi_c,\qquad F=J_cJ_0^{-1},\qquad G_c=J_c^\top J_c.
+\end{equation}
+表面图使用二维切空间，不能写不存在的三维逆矩阵。调和性本身不保证全局单射，需检查图块有效域、接缝与退化。
+
+固定标签随既有材料对应运输，不要求运输后仍是新度量下的调和场。目标真实位置采用
+\begin{equation}
+c_{a,t}=\Psi_{c_t,\gamma_t}(\bar\xi_a)+r_{a,t}.
+\label{eq:anchor}
+\end{equation}
+身份可以保持而内部目标滑移。首轮身体在每个 episode 内固定，跨 episode 改姿态；接触残差只采用可校准的局部模型，不重建全身本构。单一局部测量 $y=c^0+\gamma+r+\nu$ 不能普遍分离登记偏差与内部漂移，应保留联合不确定性或增加外部锚点。
+
+物理向量、平面法向和协方差分别按适用规律运输：
+\begin{equation}
+v'=Fv,\qquad n'\propto F^{-\top}n,\qquad \Sigma'\simeq F\Sigma F^\top.
+\end{equation}
+协方差式对确定仿射映射精确，一般非线性映射仅一阶。单位切向样本先运输再归一化；其二阶矩一般不满足简单归一化 $FMF^\top$ 的精确闭合。已有同规范矩、不同运输后风险反例保留为结构测试，不重新声称普遍非刚性等变。
+
+运动解码为
+\begin{equation}
+\dot p=J_c\dot\xi+\partial_t\Psi_c(\xi).
+\end{equation}
+共同更换世界坐标时所有物理量相容变换；仅移动患者而不移动机器人，能力集合会真实改变。不同图册刻度的梯度优化必须使用物理度量，不能把标签导数直接当毫米速度。
+
+\section{局部证据提升与唯一首实现}
+\label{sec:belief}
+\subsection{超声观测合同}
+统一声学坐标：$x$ 为图像横向，$y$ 为成像平面法向，$z$ 为正深度。像素或检测位置经实际标定映射为
+\begin{equation}
+y_i(u)=o_i+R_i\kappa_i(u;\mathcal C_i).
+\end{equation}
+线阵合成适配可用 $\kappa(u,d)=[u,0,d]^\top$，实际曲阵／扇扫需其真实声束几何。切片厚度、声速、外参与登记误差进入观测模型。检测缺失时输出空集合，而非真实曲线上的最近点、面外距离或隐藏切向。
+
+以一个观测块 $Y_i$ 为单位，关联 $A_i\in\{0,1,\dots,N_i\}$ 中 $0$ 表示未知／离群。静态首模型使用
+\begin{equation}
+L_i(S)=p(Y_i\mid S,T_i)=\sum_j p(A_i=j\mid S,T_i)L(Y_i\mid S,A_i=j,T_i),
+\end{equation}
+并包含漏检与假阳性：无假阳性的简化子模型才有 $p(Y_i=\varnothing\mid S,T_i)=1-p_D(S,T_i)$。图像分割、质量和几何特征源于同一图像时，不能把它们无条件当作独立测量。
+
+\subsection{沿用 V9.2 的联合粒子提议，但不让网络创造证据}
+为给局部响应提供不确定几何条件，首实现保留完整曲线粒子。可使用无网络结构提议，或 e3nn 的几何提议头 $q_\psi$：
+\begin{align}
+q_{\rm mix}(S\mid H_t)&=\lambda_0p_0(S)+(1-\lambda_0)q_\psi(S\mid H_t),\\
+\widetilde w_n&=\frac{p_0(S_n)\prod_{i\in\mathcal I_t}L_i(S_n)}{q_{\rm mix}(S_n\mid H_t)},
+\qquad w_n=\frac{\widetilde w_n}{\sum_m\widetilde w_m}.
+\label{eq:importance}
+\end{align}
+沿用原型值 $\lambda_0=0.1$、$128$ 粒子，低 ESS 时公共 fallback 到 $512$；它们是待 pilot 验证参数，不是充分性保证。对数权重与完整联合样本保留登记和曲线控制点相关性；各唯一观测块只进入一次。有限粒子、近似似然和设计先验不提供真实后验的自动校准。
+
+\textbf{静态与动态不能混用。}式\eqref{eq:importance}只用于一个静态潜对象窗口。若需要显式动态 $\chi_t$，改用带转移 $K_\theta$ 的序贯预测--更新或轨迹粒子；不得把受压后不同状态的图像继续按同一静态曲线独立相乘。第一轮静态子模型为主，局部动态为独立压力项。
+
+\subsection{概率状态与消息编码不同}
+由采集姿态与软关联构造的分型特征可写为
+\begin{equation}
+m_j^{(\ell)}=\frac{\sum_i a_{ij}D^{(\ell)}(R_i)\varphi_i^{(\ell)}}{\sum_i a_{ij}+\varepsilon},\quad \ell=0,1,2.
+\label{eq:lift}
+\end{equation}
+该平均只构造编码器输入，不增加概率证据精度。规范参考中的标架对齐与物理形变运输也分开：抽象特征可用局部旋转对齐，真实法向与切向需完整 $F$ 或 $F^{-\top}$。未观察区、先验区、冲突区保留状态标签；不提前全局池化而丢失对象对应。
+
+\subsection{三条信息流的隔离}
+\begin{equation}
+\underbrace{Y_{\le t}\longrightarrow\B_t}_{\text{对象推断}},\qquad
+\underbrace{(\B_t,H_t,a)\longrightarrow\widehat{Y^+}}_{\text{候选响应}},\qquad
+\underbrace{(\widehat{Y^+},x_t)\longrightarrow a^*}_{\text{控制选择}}.
+\label{eq:flows}
+\end{equation}
+首版把学习响应作为短期预测代理，几何后验由固定的观测模型更新；二者的一致性须通过持出下一观测检查，不能未经校准就声称是一个精确联合生成模型。预测的未来图像不是新证据，不写回当前后验。若以后把响应核并入严格序贯模型，应重新声明条件独立性和更新公式。
+
+\section{什么叫可迁移局部技能}
+\label{sec:skill}
+\begin{definition}[有条件的局部成像技能]
+技能由启动条件 $\mathcal I_k$、允许的短动作集合 $\cA_k$、动作条件预测 $\widehat K_\theta$、任务代价 $\ell_k$、停止／失败规则组成。它不是一个固定世界位移，也不是必须单独训练的策略。给定当前合法历史，选择一个有限动作并在新观测到达后重新计算，构成闭环技能。
+\end{definition}
+
+\begin{longtable}{P{23mm}P{48mm}P{75mm}}
+\toprule 模式 & 启动条件 & 目标与边界\\\midrule\endhead
+SEARCH & 当前没有可信目标，或关联失锁 & 用粗先验、已搜区域与检测模型选择短动作；不存在来自隐藏目标的真实居中梯度\\
+AIM & 已有局部目标假设及适用的成像模型 & 居中、方向与长度改善；允许任务等价的接触点／姿态协同调整\\
+WINDOW & 公开图像提示遮挡或质量不足 & 尝试合法声窗；可能暂时失去目标，转回 SEARCH 并重新确认身份，不强制“任何时刻都看见”\\
+VERIFY & 当前候选在可观测条件上近似合格 & 获取持续新帧并提交验收；策略和审计各自独立\\\bottomrule
+\end{longtable}
+
+四种模式共享响应网络，任务请求 $k$ 只改变读出目的和代价。物理下一观察在给定状态与相同实际动作时不应因“请求叫短轴还是长轴”而改变；因此\textbf{基础响应头不依赖任意任务名称}，任务只进入查询头／动作选择。若请求实际改变成像设备设置或控制律，则把这些真实条件作为输入，不靠名称隐含改变物理。
+
+“位置无关”仅指不记忆绝对位置到固定动作的映射。深度、局部曲率、表面法向、探头类型、组织／区域语义和接触条件仍可影响响应。身体相对机器人摆放只在能力条件中保留；不同真实条件不能被错误地当作对称性抹去。
+
+\section{已知运动学与切片响应：学习之前先计算什么}
+\label{sec:analytic}
+\subsection{明确动作约定}
+在当前探头标架下，短动作记为 $a=(d,\varphi,\Delta t)$。$d$ 是探头原点的位移在当前标架中的表达，$\varphi$ 是旋转向量，固定几何约定为
+\begin{equation}
+o^+=o+Rd,\qquad R^+=R\exp([\varphi]_\times).
+\label{eq:action}
+\end{equation}
+这不是把 $[d;\varphi]$ 无条件当作 $SE(3)$ 对数；两种参数化的平移一般不同。训练使用完整实际执行路径和持续时间。首轮短路径形状由公共平滑器固定，若两个路径端点相同但中间动作不同，应加入路径基系数／历史，否则端点动作不一定足够预测结果。
+
+\subsection{固定物理点的精确有限运动}
+令 $\rho=R^\top(c-o)$。静止目标在动作\eqref{eq:action}后满足
+\begin{equation}
+\rho^+_{\rm fixed}=\exp(-[\varphi]_\times)(\rho-d).
+\label{eq:fixedexact}
+\end{equation}
+连续形式为
+\begin{equation}
+\boxed{\dot\rho=-v^P+[\rho]_\times\omega^P+R^\top\dot c.}
+\label{eq:fixedvel}
+\end{equation}
+由对 $R^\top(c-o)$ 求导直接得到。对于静止同一目标点，最后一项为零；实际组织运动或切片交点变化则不能省略。已知这一关系时不需要网络从大量数据重新发现刚体几何。
+
+\subsection{血管交点不是一个固定材料点}
+设样本曲线为 $\gamma(s)$，当前成像平面法向为 $n(a)$，局部交点满足
+\begin{equation}
+h(s,a)=n(a)^\top(\gamma(s)-o(a))=0.
+\end{equation}
+\begin{proposition}[切片交点响应的局部可微条件]
+若在 $(s_0,a_0)$ 有 $h=0$、$n^\top\gamma'(s_0)\ne0$，且 $h$ 连续可微，则该局部交点分支可微，且
+\begin{equation}
+D_a s=-\frac{D_a h}{n^\top\gamma'},\qquad D_a c_{\rm hit}=\gamma'(s)D_a s.
+\label{eq:hit}
+\end{equation}
+这里 $D_a h$ 对固定 $s$ 求偏导；它不包含尚未求出的 $D_a s$。
+\end{proposition}
+\begin{proof}隐函数定理给局部分支。对 $h(s(a),a)=0$ 求导得 $h_sD_as+D_ah=0$，再对 $\gamma(s(a))$ 用链式法则。\end{proof}
+
+此命题为标准隐函数工具的任务实例。其预测是：接近长轴时 $n^\top\gamma'\approx0$，单一交点参数可能不稳定或不唯一，不能用加一个很小的分母就宣称解析 Jacobian 可靠。长轴阶段改用有限厚度的可见曲段、多个站位或图像形态。
+
+\subsection{有限厚度的预测几何，不向策略提供真实曲线}
+对每个后验样本定义光滑足迹 $w_T(s)$，综合距平面距离、深度与视野边界，得到
+\begin{equation}
+m_T=\int w_T(s)\,ds,\qquad
+\bar c_T=\frac{\int\gamma(s)w_T(s)\,ds}{m_T+\varepsilon}.
+\end{equation}
+$m_T$ 太小时返回缺失，不把 $\bar c_T$ 的数值当成观测中心。该积分由\emph{后验样本}而非隐藏曲线计算；模拟器的独立 tube mesh／硬遮挡评价另行实现。光滑近似只服务候选预测，不作为实际图像通过的真值。
+
+\section{动作条件响应模型：解析项加唯一残差头}
+\label{sec:response}
+\subsection{预测对象与缺失机制}
+记 $\G_t$ 为从合法历史和几何粒子构造的局部图。基础模型预测
+\begin{equation}
+\widehat K_\theta(D^+,Z^+,Q^+\mid\G_t,a),
+\label{eq:kernel}
+\end{equation}
+其中 $D^+$ 为下一块有无检测，$Z^+$ 为有检测时的局部观测特征，$Q^+$ 为声明的可观测图像质量。$Z^+$ 可以包含二维中心、深度、掩码形态和片段方向线索，不能把未测到的完整三维切向当作直接标签。其规范化联合形式为
+\begin{equation}
+\widehat K_\theta=
+(1-\widehat p_D)\,\delta_{D=0,Z=\bot}\,p_\theta(Q\mid D=0,\G,a)
++\widehat p_D\,\delta_{D=1}\,p_\theta(Z,Q\mid D=1,\G,a).
+\label{eq:missing}
+\end{equation}
+$\bot$ 是缺失符号，不是零中心。质量若在无检测时无定义，也使用缺失变量。$D=1$ 仍不表示目标身份正确，后续风险另计关联错误。
+
+\subsection{几何预测与条件残差}
+在条件几何样本 $S_n$ 下，先由解析切片模型得到 $f_{\rm geom}(S_n,a)$。首实现使用同一个网络残差头修正有检测特征的均值：
+\begin{equation}
+\widehat Z^+=f_{\rm geom}(S_n,a)+r_\theta(\G_t,S_n,a),
+\qquad Z^+\mid D^+=1\sim p_\theta(\cdot;\widehat Z^+,C_\theta).
+\label{eq:residual}
+\end{equation}
+对当前与后续均有可靠检测的局部窗口，可等价写成解释性的增量模型
+\begin{equation}
+\Delta Z=L_{\rm geom}(\G_t)a_{\rm geom}+r_\theta(\G_t,a)+\varepsilon.
+\end{equation}
+有限动作一般非线性，实际首模型优先使用有限几何预测\eqref{eq:residual}，不把上式的线性近似扩展到任意动作。
+
+若要让零动作的\emph{动作增量残差}为零，可以写
+\begin{equation}
+r_\theta(\G,u,\Delta t)=\Delta t\,b_\theta(\G,\Delta t)
++g_\theta(\G,u,\Delta t)-g_\theta(\G,0,\Delta t).
+\label{eq:zero}
+\end{equation}
+$b_\theta$ 保留等待期间的漂移。只有环境与观测均值静止的子实验才固定 $b_\theta=0$；不能通过网络约束抹去真实蠕变、呼吸或设备漂移。持续时间不是可省略条件。
+
+\subsection{首轮输出与训练阶段固定}
+\begin{table}[htbp]\centering\small
+\begin{tabularx}{\linewidth}{P{29mm}YY}\toprule
+输出 & 起始实现 & 约束\\\midrule
+几何提议 $q_\psi$ & 沿用 V9.2 的四分量联合曲线提议 & 只加速采样，不能替代似然或增添观测\\
+$\widehat p_D$ & 候选动作条件的 Bernoulli 概率 & 同时训练未检出和假阳性；不能以真实 $V$ 为在线输入\\
+可见特征均值／协方差 & 几何预测加残差；观测平面上的联合高斯起点 & 面外不确定性由潜几何与厚度解释，不把二维点当完整三维真值\\
+质量预测 & 一个标量分布或验收概率 & 固定可观测标签定义；不等于临床诊断质量\\\bottomrule
+\end{tabularx}
+\end{table}
+
+先训练并冻结几何提议／后端，再用相同后验输入训练响应头；最后才评估可选联合微调。主消融固定 proposal、滤波、控制器和预算，只打开／关闭响应残差。若理想模拟已经由几何精确解释，残差无增益是必须接受的零结果，不通过削弱解析基线制造收益。
+
+\subsection{不重复计算不确定性}
+若 $\widehat m_n,C_n$ 是条件于 $S_n$ 的响应均值与条件误差，则总预测协方差近似为
+\begin{equation}
+\widehat C=\sum_n w_n C_n+
+\sum_n w_n(\widehat m_n-\bar m)(\widehat m_n-\bar m)^\top,
+\qquad\bar m=\sum_nw_n\widehat m_n.
+\label{eq:totalcov}
+\end{equation}
+若网络已输出条件于整个后验的\emph{边缘}协方差，就不能再加第二项重复计算几何不确定性。多模型 ensemble 的差异也不自动是已校准置信界；需独立检查预测区间与实际选择动作上的覆盖。
+
+\section{e3nn 结构与位置无关的技能能量}
+\label{sec:e3nn}
+\subsection{输入类型与表示选择}
+首轮采用三层消息传递，隐藏通道起点为每层 $64$ 个标量、$16$ 个向量、$8$ 个二阶通道，$\ell_{\max}=2$。这继承 V9.2 的试验起点，不是已训练最优结构。输入节点包括观测点、后验曲线摘要／样本、局部表面、粗骨先验和探头／候选动作；全部以相对物理几何表达。
+
+\begin{longtable}{P{22mm}P{61mm}P{63mm}}
+\toprule 类型 & 输入例子 & 不能误用的地方\\\midrule\endhead
+$\ell=0$ & 类别、采集时间、尺度、力幅值、缺失掩码、固定图册标签 & 图册标签不是空间向量；区域语义可影响物理响应\\
+$\ell=1$ & 相对位置、声束轴、表面法向、平移和角增量 & 在 $SO(3)$ 下同为向量；若使用 $O(3)$ 宇称，极向量与轴向量须分开\\
+$\ell=0\oplus2$ & 协方差、无向轴矩、局部形态张量 & 无向轴 $t$ 与 $-t$ 不应被强制指定符号；二阶矩不是完整方向分布\\\bottomrule
+\end{longtable}
+
+消息采用
+\begin{equation}
+h_j' =\operatorname{Gate}\!\left(Wh_j+\sum_{i\in\mathcal N(j)}
+\operatorname{TP}(h_i,Y(\widehat r_{ji});w_\theta(\norm{r_{ji}},s_{ji}))\right).
+\end{equation}
+距离／类别决定标量权重，球谐和张量积保持旋转类型\cite{e3nn,e3nndocs}。为改善动作导数连续性，首轮使用光滑标量激活与门控，避免对向量坐标逐个 ReLU。候选优化内固定或光滑化邻接，不能忽略 kNN 切换造成的不可微点。
+
+输出协方差可由对称矩阵 $H=h_0I+H^{(2)}$ 构造 $C=\sigma_0^2\exp(H)+\sigma_{\min}^2I$，再投影到候选成像平面；$C$ 正定不代表概率已校准。三角 Cholesky 因子不是普通二阶旋转张量。首版只声明共同 $SO(3)$／$SE(3)$ 坐标一致性，不默认人体左右镜像或任意图册变换是任务对称。
+
+\subsection{规范 GNN 是必要强基线}
+若先用探头标架表达全部相对几何，共同世界旋转已被显式消除，普通 GNN 可能足够。必须与这种规范化 GNN，以及标量加 VN／显式二阶读出作同输入比较。e3nn 的潜在价值是有限数据下的类型约束与空间耦合，不是消除所有个体或形变差异。
+
+\subsection{从预测分布形成任务能量}
+定义任务特征损失 $\ell_k$，无检测失败代价 $c_k^{\rm miss}$，有检测质量代价 $c_Q$。一个总是有定义的局部期望能量为
+\begin{equation}
+\begin{split}
+E_{\theta,k}(\G,a)=&(1-\widehat p_D)c_k^{\rm miss}\\
+&+\widehat p_D\E[\ell_k(Z^+)+\lambda_Qc_Q(Q^+)\mid D^+=1,\G,a].
+\end{split}
+\label{eq:skillenergy}
+\end{equation}
+这补足了增补稿中 $\E\ell_k+\lambda_{\rm drop}\Pr(V^+=0)$ 的缺失语义：目标不可见时没有伪造的中心特征。SEARCH 使用检测／终端获取价值，AIM 使用声明几何关系，WINDOW 使用候选声窗质量与身份保持／重新获取代价。$c_k^{\rm miss}$ 对所有方法一致并冻结，不人为惩罚某基线。
+
+几何后验风险与响应头预测的质量属于不同职责。二者可以相关，但不能当独立成功概率相乘。响应能量给偏好，硬验收由第\ref{sec:risk}节的声明合同和真实控制承担。多站位长轴必须评价整段可见长度，不能用单点方向正确替代。
+
+\section{粗骨先验与可微声窗代价}
+\label{sec:acoustic}
+\subsection{声学遮挡不等于机械碰撞}
+SMPL-X 关节骨架不是患者骨表面。已有骨网格／SKEL 类模板可以提供粗几何\cite{skel}，但必须保留形状、位置和配准误差。首轮仅使用局部骨块／肋骨状先验，不增加全身骨重建。机器人碰撞检查使用独立碰撞资产；内部骨先验主要限制声路，不应被当成探头在体内穿行的碰撞问题。
+
+策略访问公开先验 $b_\beta(p)\in[0,1]$ 及其误差描述；真实遮挡几何只在 renderer/audit。$b_\beta$ 是光滑占据／遮挡代理，不是已验证的衰减系数。令 $l=\norm{c-o}>0$，定义
+\begin{equation}
+E_{\rm ray}(o,c;\beta)=l\int_0^1 b_\beta(o+s(c-o))\,ds.
+\label{eq:ray}
+\end{equation}
+其量纲是长度；进入总代价前以固定参考长度归一化。对不确定目标与骨参数使用 $\E_{\B_t}E_{\rm ray}$，或声明尾部风险，而不是只对均值点判断通透。
+
+\subsection{可检验的梯度}
+若 $b_\beta\in C^1$、梯度可积，记 $I=\int_0^1b_\beta(o+s(c-o))ds$、$e=(c-o)/l$，则
+\begin{align}
+\nabla_o E_{\rm ray}&=-eI+l\int_0^1(1-s)\nabla b_\beta(o+s(c-o))\,ds,\\
+\nabla_c E_{\rm ray}&= eI+l\int_0^1s\nabla b_\beta(o+s(c-o))\,ds.
+\label{eq:raygradient}
+\end{align}
+由长度与线段参数的乘积求导得到，可用独立有限差分检查。候选优化改变 $o$ 时，当前目标后验不随优化愿望移动；$\nabla_c$ 只用于合法几何解码或概率传播，不能用于把患者目标拉向更优声路。
+
+真实成像还依赖扇形束、入射界面、耦合、厚度和前端。式\eqref{eq:ray}只作为可消融的几何代理：没有射线遮挡不保证图像合格，有声影也不唯一证明存在骨头。骨先验质量不足时降低该项权重或由观测修正其不确定性，不使用隐藏骨标签调权。
+
+\subsection{学习响应与声路项不应重复计价}
+基础检测／质量 logit 可使用显式声路特征，再由同一响应头学习残差。如果 $\widehat p_D,Q$ 已完整条件化并包含声路预测，主目标优先使用式\eqref{eq:skillenergy}；额外 $E_{\rm ray}$ 仅作为公开的弱正则／提议项，单独消融，不能把两项当独立概率相乘。\textbf{默认生产比较不重复奖励同一遮挡证据。}
+
+声窗切换可能需要暂时离开当前目标、跨过低质量区域，因此保留有限候选与两步前瞻，不声称一个梯度能逃离所有局部极小值。不存在合法声窗时允许停止或报告失败；禁止用提高接触力“穿透遮挡”。本稿不提供真人操作力阈值。
+
+\section{能力条件化的联合优化与短前瞻}
+\label{sec:optimization}
+\subsection{同一决策变量上的代价，而非速度直接叠加}
+令 $z$ 为短路径参数，解码实际探头路径 $T_z(\tau)$、动作 $a(z)$ 和机器人的连续实现。当前状态 $x_t$ 包括实际关节／导轨位置速度、内环状态和资源。一次有限候选内的局部优化写为
+\begin{equation}
+\begin{aligned}
+\min_z\quad & E_{\theta,k}(\sg(\G_t),a(z))+
+\lambda_d E_{\rm cap}(T_z;x_t)+\lambda_m C_{\rm motion}(z)\\
+&+\lambda_b\bar E_{\rm ray}(T_z;\B_t),\\
+\mathrm{s.t.}\quad &z\in\cZ_{\rm phys}(x_t),\quad\norm{z-z_0}_{W_z}\le r_z,\\
+&\text{AIM/VERIFY 时满足最终动作风险与余项验收。}
+\end{aligned}
+\label{eq:joint}
+\end{equation}
+$\lambda_b=0$ 为声路已进入预测头时的默认选择，非零正则另报。代价统一物理尺度，权重、候选权限和时间预算正式测试前冻结。$\sg$ 表示\emph{当前}后验／历史不由优化目标改写；候选中因果预测接触后状态可以变化，但需要声明模型，不是反向优化真实解剖。
+
+能力项可取路径聚合的
+\begin{equation}
+E_{\rm cap}=-\operatorname{Agg}_{\tau}\rho_{\rm dIRD}(T_{J1}^{-1}T_z(\tau)).
+\end{equation}
+实际 J1、法兰、声学 TCP 和 probe45 变换遵守资产合同。dIRD 是可达裕度代理，不是碰撞证书或当前入口的连续 IK 解；每条保留路径仍做真实分支、关节／导轨限位、碰撞、速度、加速度与 jerk 检查。物理集合随患者相对机器人移动而改变。
+
+\subsection{几何梯度与度量}
+链式法则给出
+\begin{equation}
+\nabla_z E_{\rm total}
+=(D_za)^\top\nabla_a E_{\theta,k}
++\lambda_d(D_zT)^*dE_{\rm cap}
++\lambda_m\nabla_z C_{\rm motion}+\lambda_b\nabla_z\bar E_{\rm ray}.
+\end{equation}
+星号表示在声明位姿坐标／切空间中的拉回，不把矩阵位姿直接当 16 个无约束欧氏数。梯度是否存在取决于当前分支和光滑近似；离散 IK、模式切换与最终碰撞判断保留在有限候选层，不声称整条硬验证管线可微。
+
+若更换局部参数 $z'=\chi(z)$、$C=D\chi$，微分变换为 $\partial_{z'}E=C^{-\top}\partial_zE$，速度为 $v'=Cv$。使用 $W_z'=C^{-\top}W_zC^{-1}$ 的度量优化才能保持同一物理方向；固定各图册数值的欧氏梯度一般不一致。姿态／平移／导轨尺度分别声明，退化拉回度量需降维或具有物理意义的正则，而不是在每个坐标下随意添加同一个数值 $\epsilon I$。
+
+\subsection{短前瞻保留原首次获取逻辑}
+定义直接成像尝试的模型代价
+\begin{equation}
+C_{\rm term}(\B,x)=\min_{z\in\cZ(x)}
+[\widehat\tau_z+C_{\rm fail}(1-\widehat p_{\rm accept}(z\mid\B))].
+\end{equation}
+$\widehat p_{\rm accept}$ 是模型内／校准后的预测，不等于停止真值。没有合格候选时使用剩余预算失败代价。短探查比较
+\begin{equation}
+J_1(a)=\widehat\tau_a+
+\E_{Y^+,x^+\mid H_t,a}
+C_{\rm term}(\operatorname{Upd}(\B_t,Y^+,a),x^+).
+\label{eq:lookahead}
+\end{equation}
+在虚拟分支内允许因果更新\emph{假设的未来}后验；它不被提前写回当前对象。首轮候选起点为24个短搜索动作和16个成像候选，昂贵展开保留8个候选、每个8个预测观察分支；这些数字在pilot后冻结。首轮最多两步，保留直接 VERIFY，所有候选有相同计算与执行成本合同。每个 rollout 使用同一个持续几何／偏差样本，不能每步重新抽独立患者。该策略不是全局最优 POMDP 求解，也不保证最短获取时间。
+
+\subsection{慢环选择与快环执行}
+网络、后验和候选搜索运行在慢环。UltraPoC／QPIK 和既有接触、图像反馈在快环执行；最终平滑／限速／接触修正后的命令才进入第\ref{sec:risk}节验收及日志。不能先验收学习动作，再直接叠加一个未知法向或角速度。实际修改超出模型余项时停止／缩小步长／重估，急停与回撤不等待网络。
+
+\section{理论核心：何时技能能运输，何时梯度值得执行}
+\label{sec:theory}
+\subsection{明确的坐标规律}
+用世界表示的探头原点平移与角增量向量对记 $u=[\Delta o;\Delta\omega]\in\R^6$。共同刚体变换 $g=(Q,b)$ 下 $u'=D_Qu$、$D_Q=\diag(Q,Q)$。它不是以世界原点定义的完整 spatial twist 的 adjoint；第\ref{sec:analytic}节探头局部动作则在共同换坐标下不变。
+
+\begin{proposition}[标量技能能量诱导等变动作梯度]
+若分型预测核、任务损失与输入图满足
+\begin{equation}
+E(g\G,D_Qu)=E(\G,u),
+\end{equation}
+且 $E$ 对动作可微，则
+\begin{equation}
+\nabla_{u'}E(g\G,u')\big|_{u'=D_Qu}
+=D_Q\nabla_uE(\G,u).
+\label{eq:gradequiv}
+\end{equation}
+若机器人物理约束和能力也共同变换，唯一优化解按同一规律变换；多解时只能保证最优集合相容，tie-break 另需一致。
+\end{proposition}
+\begin{proof}
+对等式用链式法则得 $D_Q^\top\nabla_{u'}E=\nabla_uE$。$D_Q$ 正交，左乘 $D_Q$ 即得。约束和目标的一一换元给最优集合结论。
+\end{proof}
+
+该命题说明如何构造可运输优化方向，不说明真实响应跨患者完全相同。单独移动患者、改变骨形状或压迫响应都不是共同换坐标。普通规范 GNN 也可能实现相同的系统级坐标规律。
+
+\subsection{局部技能可迁移的充分条件及其限制}
+\begin{assumption}[局部条件接口]
+在声明上下文 $x$ 与动作集 $\cA(x)$ 内，任务后果 $O^+$ 包含检测、特征、停止相关质量与动作时长。源域与目标域已用同一物理约定表示，条件核为 $K_s(\cdot\mid x,a)$、$K_r(\cdot\mid x,a)$。局部上下文足以满足本子模型的条件预测，不遗漏会系统改变后果的区域或持续状态。
+\end{assumption}
+\begin{proposition}[局部任务代价和候选排序的迁移界]
+若 $\sup_{x,a}\TV(K_r,K_s)\le\epsilon_{\rm dom}$，且学习核满足 $\sup_{x,a}\TV(K_s,\widehat K)\le\epsilon_{\rm fit}$，则对任意 $[0,1]$ 值任务损失，
+\begin{equation}
+\sup_{x,a}|J_r(x,a)-\widehat J(x,a)|\le
+\epsilon_{\rm dom}+\epsilon_{\rm fit}=:\epsilon_J.
+\end{equation}
+在同一有限候选集上选 $\hat a\in\argmin_a\widehat J$，则
+\begin{equation}
+J_r(x,\hat a)-\min_aJ_r(x,a)\le2\epsilon_J.
+\label{eq:regret}
+\end{equation}
+若真实最优与其余候选的间隔大于 $2\epsilon_J$，选择排序保持。
+\end{proposition}
+\begin{proof}
+有界函数期望差受总变差控制；再以三角不等式连接源核、学习核与目标核。分别在估计最优点和真实最优点应用一致误差界，中间利用估计最优性得两倍界。
+\end{proof}
+
+这是标准核误差与决策误差工具的局部应用，不是新的普遍 sim-to-real 定理。它解释\emph{为什么}应匹配动作条件后果而不只匹配单帧外观。不同目标的绝对位置可以改变 $p(x)$，但若测试超出上下文覆盖，或内部状态遗漏使条件核改变，结论不适用。仅源域平均误差小不提供上述一致界。该一阶界不自动保证多步闭环的首次成功时间；长程需逐步联合接口与初始分布误差控制，或直接真实验证。
+
+\subsection{可微并不保证真实下降}
+令 $J(u)$ 是在当前固定历史和物理条件下的真实期望任务代价，$\widehat g=\nabla\widehat J(u)$。以预先固定物理尺度归一化动作后，假定当前邻域内
+\begin{equation}
+\norm{\nabla J(u)-\widehat g}\le\epsilon_g,
+\quad J\text{ 的梯度为 }L\text{-Lipschitz}.
+\end{equation}
+\begin{proposition}[模型梯度的局部可检验下降条件]
+对邻域内的可执行步 $d$，
+\begin{equation}
+J(u+d)-J(u)\le
+\widehat g^\top d+\epsilon_g\norm d+\frac L2\norm d^2.
+\label{eq:descent}
+\end{equation}
+特别地，对 $d=-\eta\widehat g$、$0<\eta<2/L$，右侧为
+\begin{equation}
+-\eta(1-L\eta/2)\norm{\widehat g}^2+
+\eta\epsilon_g\norm{\widehat g}.
+\end{equation}
+若 $\norm{\widehat g}>\epsilon_g/(1-L\eta/2)$，则该局部期望代价下降。
+\end{proposition}
+\begin{proof}由下降引理先界 $J(u+d)$，再用 Cauchy--Schwarz 界真实与模型梯度的内积差。代入梯度步即得。\end{proof}
+
+在受约束优化中应检验实际步 $d$，不能套用无约束梯度步的充分条件。$
+abla J$ 和 $L$ 通常不能在真实超声中准确得知，因此该命题首先指导动作对／有限差分与 trust-region 实验，不是部署中自动可用的安全证书。低质量预测导致优化器利用模型误差时，应缩小信赖域或回到可验证的有限候选，不把模型损失下降当物理改善。
+
+\subsection{为什么不能靠减少整体方差代替任务相关观察}
+沿用 V9.2 的线性 Gaussian 子模型：$\zeta\sim\mathcal N(m,P)$，观察 $y=H_a\zeta+\nu$、$\nu\sim\mathcal N(0,R_a)$，固定实现的剩余任务误差为 $L_z(\zeta-m)$。允许用新均值重新校正后，方差风险下降为
+\begin{equation}
+\Delta_{a,z}=\tr\!\left[L_z^\top WL_zPH_a^\top
+(H_aPH_a^\top+R_a)^{-1}H_aP\right].
+\label{eq:voi}
+\end{equation}
+它由 Gaussian 协方差更新得到。取 $P=I_2$、$R_a=1$，分别观察第一或第二坐标，互信息相同；若任务只依赖第一坐标，二者风险下降分别为 $1/2$ 与 $0$。这些是归一化解析值，不是超声结果。真实实现中的 $L_z$ 必须由实际几何和机器人候选产生，不能手写分支惩罚造优势。
+
+信息探查会改变实际入口并消耗时间，完整价值仍用式\eqref{eq:lookahead}，不能直接最大化式\eqref{eq:voi}。当不确定性很低或反馈很强时，额外探查和学习残差完全可能没有收益。
+
+\section{V6.1 内核：可靠任务自由度与最终动作验收}
+\label{sec:risk}
+\subsection{同一后验的候选风险}
+令目标中心和无向单位切向为随机变量 $c,t$，当前探头 $R=[r_x,r_y,r_z]$，$P_T=[r_x^\top;r_y^\top]$。记
+\begin{equation}
+\mu=\E[c],\quad\Sigma=\Cov(c),\quad M=\E[tt^\top].
+\end{equation}
+当前查询为
+\begin{align}
+\mathcal R_c(T)&=\norm{P_T(\mu-o)}^2+\tr(P_T\Sigma P_T^\top),\\
+\mathcal R_{\rm SA}(T)&=1-r_y^\top Mr_y,\qquad
+\mathcal R_{\rm LA}(T)=r_y^\top Mr_y.
+\label{eq:moments}
+\end{align}
+这些是二次损失期望的恒等式，不要求高斯。单点 LA 风险仅表示轴在平面内；整段可见长度、身份、声窗和质量另行验收。形变后先运输完整样本再读取矩，不能把当前矩当一般递归充分状态。
+
+\subsection{名义零空间之外的不确定性代价}
+令最终短动作参数为 $\Delta x$，包含基础伺服、dIRD 偏好、接触协调与实际推进。规则残差 $r(S)$ 与 Jacobian $A(S)$ 的完整线性风险为
+\begin{equation}
+\mathcal R_{\rm step}(\Delta x)=
+\E\norm{r(S)+A(S)\Delta x}_W^2
+=\begin{bmatrix}1\\\Delta x\end{bmatrix}^{\!\top}
+\Gamma\begin{bmatrix}1\\\Delta x\end{bmatrix},\quad
+\Gamma=\E([r\ A]^\top W[r\ A]).
+\label{eq:risk}
+\end{equation}
+全部交叉项保留。写 $\bar A=\E A$、$U=\E[(A-\bar A)^\top W(A-\bar A)]$，则
+\begin{equation}
+\E[A^\top WA]=\bar A^\top W\bar A+U.
+\end{equation}
+当 $\bar A d=0$，忽略当前残差的局部解释是
+\begin{equation}
+\E\norm{A(\alpha d)}_W^2=\alpha^2d^\top Ud.
+\label{eq:freedom}
+\end{equation}
+新证据若减少了该方向的 $d^\top Ud$，可以扩大可靠调整幅度；减少无关不确定性未必有用。观察也可能揭示模型错误并收缩动作集合，不能声称自由度随帧数单调增加。
+
+\subsection{响应残差、跟踪与模型失配必须同账处理}
+假定给定合法历史后，对候选全集有 $\mathcal R_{\rm step}\le\widehat{\mathcal R}_{\rm step}+\beta$，并在概率至少 $1-\eta_{\rm rem}$ 的共同事件上，真实最终规则与线性预测之差不超过 $\rho<\epsilon$。则
+\begin{equation}
+\boxed{\widehat{\mathcal R}_{\rm step}+\beta\le
+\delta(\epsilon-\rho)^2}
+\label{eq:accept}
+\end{equation}
+给出最终几何违反概率不超过 $\delta+\eta_{\rm rem}$。证明是三角不等式、Markov 界和并集界；若需要整个有限段，起点与终点分别验收，并使用全段共同余项。目标身份错误和模型外事件另分风险，不只条件于“关联正确”报告。
+
+响应模型补偿的不是自动证明的误差界。$\rho,\beta$ 必须包括被实际接受的接触变形、观测偏差、线性化、跟踪延迟、限速与 jerk 修改；没有可靠界时标为经验验收。候选优化后的校准需在选中动作上检验，随机候选覆盖率不能直接推广为所有连续动作的一致保证。
+
+单段几何风险不保证整个检查完成，也不保证图像诊断质量。多段需要声明累计风险预算和持续有效的前提；有限路径采样不自动证明连续无碰撞。SEARCH 不使用式\eqref{eq:accept}强制尚不可满足的目标条件，但物理和接触限制始终成立。
+
+\section{EM 的唯一职责：模糊关联与局部几何修正}
+\label{sec:em}
+\subsection{固定数据、固定共享网络、固定窗口先验}
+首轮单管且关联清楚时 EM 默认关闭。进入相邻管、假阳性与失锁压力组后，可选固定窗口 $Y_{\mathcal W}$，用不包含这些窗口数据的既有先验 $p_{\rm old}(\eta)$。局部参数 $\eta$ 包含曲线控制点／半径和有足够锚定的少量偏差，全局技能参数 $\theta,\psi$ 保持冻结。
+
+对一个已声明的、规范化的观测混合模型，目标为
+\begin{equation}
+\mathcal J(\eta)=\sum_{i\in\mathcal W}
+\log\sum_j\pi_j(\eta)L_{ij}(\eta)+\log p_{\rm old}(\eta).
+\label{eq:emobj}
+\end{equation}
+$\pi_j$ 来自先验／合法条件；同一图像语义若已在 $L_{ij}$ 中使用，不再伪装成独立先验重复计数。若用图像条件启发分数替代生成似然，标注为 surrogate，不自动沿用标准 EM 证明。
+
+E 步为
+\begin{equation}
+\gamma_{ij}^{(r)}=\frac{\pi_j(\eta^{(r)})L_{ij}(\eta^{(r)})}
+{\sum_l\pi_l(\eta^{(r)})L_{il}(\eta^{(r)})};
+\end{equation}
+M 步在固定责任下提高
+\begin{equation}
+\mathcal Q(\eta\mid\eta^{(r)})=
+\sum_{i,j}\gamma_{ij}^{(r)}[\log\pi_j(\eta)+\log L_{ij}(\eta)]
++\log p_{\rm old}(\eta).
+\label{eq:mstep}
+\end{equation}
+固定噪声 Gaussian 子模型得到带权局部最小二乘加先验。若也优化噪声，保留 log-det 与归一化，设置物理噪声下界，防止通过无限大方差或塌缩作弊。没有外部锚点时登记偏差与内部残差不应全部自由拟合。
+
+\begin{proposition}[固定窗口中的广义 EM 单调性]
+若模型与数据在迭代中固定、E 步为其正确责任且 M 步不降低式\eqref{eq:mstep}，则 $\mathcal J(\eta^{(r+1)})\ge\mathcal J(\eta^{(r)})$。
+\end{proposition}
+\begin{proof}
+对任意责任 $\gamma$，观测对数似然等于期望完整对数似然加责任熵，再加 $\KL(\gamma\|p(A\mid Y,\eta))$。在旧参数处正确 E 步使 KL 为零；在新参数处 KL 非负。提高固定责任的期望目标及相同先验，便不降低边缘目标\cite{em}。
+\end{proof}
+
+这是经典 EM 性质，不是本版新定理，也不保证全局最优、校准后验或图像质量提高。心脏稿采用的是近似原语密度下的 EM 式更新和轴切换\cite{cardiac}；本文只借鉴其关联--拟合分工，不直接继承其近似目标的性质。
+
+\subsection{EM 不等于后验，也不能重复计算数据}
+一个 MAP 点不是完整后验。明显多模态时保留多个局部模式及对应不确定性。若用 EM 优化均值来改进重要性提议，随后构造\emph{密度可评价}的 $q_{\rm EM}$ 与宽先验混合，再从该混合采样并用实际提议密度重加权。不能直接把旧粒子推到 EM 极值后继续使用原提议分母；非可逆推送尤其不能随意补一个 Jacobian。
+
+同一窗口只形成一次 likelihood。滑窗重用的数据须从旧先验中剥离，或直接采用包含每个唯一块一次的批量重算；不把已经包含窗口证据的后验再次作为先验乘同一窗口。EM 迭代次数不增加有效观测数，也不应独立缩小测量噪声。
+
+\subsection{不能交替优化哪些东西}
+\textbf{对象推断不含 dIRD 能量、路径耗时或任务奖励。}这些量不能让目标估计迁就机器人。\textbf{动作优化不是 M 步。}它改变未来状态与观察，不是在同一固定数据似然上做参数最大化。允许的工程循环是
+\[
+\text{关联／几何修正}\;\to\;\text{冻结当前认识}\;\to\;
+\text{动作选择}\;\to\;\text{执行并获得新数据},
+\]
+而不是声称整个循环具有 EM 的似然或成功率单调保证。正式测试不在线更新共享技能权重后仍称冻结迁移。
+
+\section{训练数据、损失与梯度校准}
+\label{sec:data}
+\subsection{主要样本是局部转移，不是完整医生轨迹}
+每个片段记录
+\begin{equation}
+\mathcal D_i=(H_i,a_i^{\rm cmd},a_i^{\rm act},\Delta t_i,
+ c_i^{\rm ctx},Y_i^+,d_i^{\rm fail},\mathrm{version}_i).
+\end{equation}
+上下文包含真实可用的力／身体状态及传感版本。保留未检出、失锁、动作限幅、超时和失败。实际动作应为测得的路径或足够的基函数参数；仅把期望命令当真实位移会把执行误差混入组织模型。缺少真实力时不把虚构外力日志当力传感。
+
+仿真可从同一个世界克隆多个合法动作，得到反事实 action-pair 标签；只有离线生成器和 audit 可这样访问隐藏状态，在线策略只获得实际执行结果。真实体模重复动作不假定组织完全复位；按接触状态、执行顺序和等待时间记录，而非把差异全归于动作方向。
+
+\subsection{合成生成器与真实数据用途分开}
+生成器分别采外表面／姿态、内部局部曲线、粗骨先验误差与真实遮挡、持续登记／观测偏差、局部响应和机器人摆放。不要用某个方法的参考路径决定测试目标，也不要让训练与测试都由同一个已知残差函数直接喂答案。
+
+首轮使用三类环境：G-Exact 为与解析模型一致的几何零增益对照；G-Shift 加入独立的持续偏差、厚度／曲率变化和受控响应残差；G-Window 加入独立真实遮挡与错误粗骨先验。测试残差族或参数区间留出，不能仅改变随机种子却保留同一易识别函数。其结果都属于几何／特征代理，不是声学仿真证明。
+
+真实数据优先用于前端校准、局部动作响应和独立效果验证。分别报告：人体位置数据对象数、感知标注对象与帧数、局部转移块数、最终独立体模／志愿者数。使用目标域校准时单列为带校准迁移，不能写“全系统零真实数据”。
+
+\subsection{冻结几何后端后的响应训练}
+先用独立源数据训练／固定 $q_\psi$ 与推断后端，再训练响应 $\theta$。所有响应模型在训练时也读取由合法历史算出的估计状态，避免始终用真值几何训练、部署却输入错误后验。可额外做有真值条件的上界实验，但不得混为主方法。
+
+主损失为有缺失机制的负对数似然：
+\begin{equation}
+\begin{split}
+\mathcal L_{\rm resp}=&-D^+\log\widehat p_D-(1-D^+)\log(1-\widehat p_D)\\
+&-\mathbf1_{D^+=1}\log p_\theta(Z^+,Q^+\mid D^+=1,\G,a).
+\end{split}
+\label{eq:loss}
+\end{equation}
+多检测或身份不清时对关联边缘化，不用隐藏 ID 强行选择在线目标。若有可靠离线动作对，辅以任务代价的排序损失；例如 $J_i^*<J_j^*$ 时用
+\begin{equation}
+\mathcal L_{\rm rank}=\log(1+\exp((\widehat J_i-\widehat J_j)/T_r)).
+\end{equation}
+排序监督是额外标签预算，所有学习基线有相同访问权；标签不来自未经验证的模型自己的预测。第一轮优先 proper scoring 与响应误差，排序作为消融，不以排序损失替代概率校准。
+
+\subsection{模型求导检查与物理求导检查必须分开}
+自动微分与模型有限差分一致，只说明程序算对了同一个函数。另用独立 simulator 或体模短动作比较
+\begin{equation}
+D_dJ\approx\frac{J(u+hd)-J(u-hd)}{2h}
+\end{equation}
+与模型方向导数 $\widehat g^\top d$。固定局部状态、物理尺度、步幅与可行域；切片分支切换、遮挡跳变和未检出区标为非光滑／缺失，不通过只保留平滑样本来提升正确率。真实重复试验保留状态漂移，提供区间而非一次差分真值。
+
+报告动作对排序、梯度符号和角度、选中动作实际损失变化、预测--实际改善比、误差超过 trust region 的频率。有限数据不能普遍证明第\ref{sec:theory}节的统一 $\epsilon_g,L$；将其作为诊断和模型有效域依据，而不假称全局保证。
+
+\subsection{新人体迁移的四级证据}
+\begin{table}[htbp]\centering\small
+\begin{tabularx}{\linewidth}{P{15mm}YY}\toprule
+等级 & 内容 & 可声称范围\\\midrule
+L0 & 合成几何／特征响应训练与新世界测试 & 机制与组合泛化，不是 sim-to-real\\
+L1 & 真实 URDF/Genesis 或机器人执行加几何传感模型 & 构型、时间与实现验证，不是声学迁移\\
+L2 & 未见体模、真实 B-mode、冻结接口与模型 & 体模的声学／执行联合迁移\\
+L3 & 获批志愿者、明确人群和任务范围 & 人体研究可行性，不自动等于诊断有效性\\\bottomrule
+\end{tabularx}
+\end{table}
+真人实验须另行审批、知情同意、受训监护和部位适配的停止／力限制。仿真阈值不直接搬到人体；Codex 不自动启动实机或调整安全设置。
+
+\section{第一轮实验：保留 V9.2 的依赖顺序，明确新增归因}
+\label{sec:experiments}
+\subsection{数据规模与对象级划分}
+沿用 V9.2 的计划规模，不把增加因素后的副本记成新对象。
+\begin{table}[htbp]\centering\small
+\begin{tabularx}{\linewidth}{P{31mm}P{31mm}Y}\toprule
+集合 & 计划数量 & 责任\\\midrule
+开发 pilot & 24 独立世界 & 只调合同、范围和可行性，不进入正式结论\\
+合成训练 & 1024 独立世界 & 每世界最多 16 段因果历史；每段可产生多个明确预算的转移标签\\
+源验证／校准 & 各 128 世界 & 模型选择与校准分开；之后冻结\\
+正式几何测试 & 128 世界 & 四组各32，3初态、2噪声种子，共768 episode/方法\\
+训练重复 & 3 种子 & 与对象层统计分开；增强副本不是新患者\\
+8DoF 测试 & 24 新世界 & 2摆放、2初态，共96 episode/方法\\\bottomrule
+\end{tabularx}
+\caption{以上是计划而非运行结果或功效分析。预算不足时可先 pilot，不用挑选几个成功例替代正式结论。}
+\end{table}
+
+四组主测试为源内新对象、几何／姿态组合留出、观测／局部响应偏差留出、几何--声窗--摆放组合留出。理想解析对照和 EM 压力组使用预先锁定的配对子集或额外独立清单，明确总数；不能跑完后按有利遮挡挑选场景。训练数据效率可用 $128,512,1024$ 独立世界嵌套子集，观察新转移而非重复帧的作用。
+
+\subsection{E0：信息与几何合同是硬门槛}
+必须首先通过：未检出不返回隐藏中心／面外误差；公开历史相同而未观测真值改变时下一动作相同；测试真曲线不用于 prior、起点、phase 或 path length；唯一证据不重复更新；真实骨与公开骨隔离；相同后验不因 dIRD 目标变化而被优化改写；共享网络测试时冻结；EM 多轮不增加证据次数。
+
+结构测试包括：右手声学标架、正深度、固定点有限位姿公式、切片交点 Jacobian 及退化检测、分型能量／梯度的共同坐标规律、矩风险与直接样本一致、声路线积分梯度、最终平滑后动作检查。没有有效 atlas 时显式失败，不静默以解析圆柱代替后仍称调和方法。
+
+\subsection{E1：宽先验和技能分离的首次获取}
+主任务始终为首次 LA；初态分为目标当前未检出和已检出但未合格，两层单报。主比较固定人工宽先验，比较完整 V9.3 与原 V9.2 后端、解析概率主动搜索及规范 GNN 响应。
+
+再做先验因素：人工宽先验与从相同独立源世界学习的条件先验，交叉固定／打开同一响应技能。所有方法有同样粗 ROI、空间支持、观测权限和动作自由度；不能把错误窄先验当唯一对照。学习先验与技能训练的数据分别记账。报告首次检测与首次合格的时间分解，不能只报告目标已见后的速度而忽略最初搜索。
+
+\subsection{E2：可迁移局部响应，而不是绝对位置记忆}
+E2a 在新的身体地址／刚体摆放中保持局部几何相同，检验重表达；同一模板的旋转副本不跨训练测试冒充新对象。E2b 进一步改变深度、曲率、局部遮挡和响应条件，检验真正物理泛化。
+
+固定后验和动作集合，比较解析预测、规范 GNN 残差、e3nn 残差、非参数／小 GP 局部残差。指标是持出转移 NLL、检测校准、动作对排序、模型有限差分误差、独立动作方向效果和实际短程代价下降。不可把传感真值切向送给 e3nn 而不给基线。G-Exact 中学习优势应消失或很小；若完整方法显著更好，先检查解析实现／权限是否不公平。
+
+\subsection{E3：任务相关观察与 V6.1 风险释放}
+E3a 沿用同互信息、不同任务风险下降的解析例，再用实际几何 Jacobian 产生 $L_z$，比较熵搜索、检测概率和获取代价前瞻。E3b 固定响应模型与后验，只替换最终动作约束：名义均值、冻结先验风险、当前后验风险。所有方法保留相同图像伺服、TCP 变形和物理权限。
+
+报告错误接受、保守拒绝、规则误差--时间曲线；强反馈条件下优势消失是合法结果。模型失配和延迟对各方法同时施加，不用只损害基线的噪声。若 Markov 型验收过保守而全部拒绝，应报告并缩小声明域或改用经独立校准的后验概率，不临时任意降低风险阈值。
+
+\subsection{E4：声窗与机器人能力冲突}
+保持同一目标后验和粗骨先验，寻找两种均实际合法的声窗，其真实运动成本不同。比较只用声路几何、只用学习质量、dIRD 只排序、联合优化以及相同候选的完整 IK/轨迹搜索。参考 confidence-driven target-centering 设计同传感权限的强伺服基线\cite{confidence}，标为适配而不是未经复现的原论文结果。
+
+必须加入先验骨位置错误、假声影、目标不在视野以及所有合法声窗阻断的失败组。真实射线／厚度模拟器与策略平滑代理不同；策略看不到隐藏骨。记录实际窗口转换、目标重获、机械规划调用与执行时间。若不存在真实窗口--能力权衡，接受零效应，不手写分支失败代价。
+
+E4 的几何层通过后，再接真实8DoF资产和执行；缺 URDF、collision、TCP、checkpoint 时返回 \code{SKIP_MISSING_ASSET}，不能用 Cartesian 时间替代机器人实验。dIRD 作用可以是减少规划时间，不要求代理比无时间限制的精确搜索更正确。
+
+\subsection{E5：可选 EM 关联压力组}
+单管主基准 EM 默认关闭。相邻管、假阳性、面外失锁组才比较硬关联、软滤波、少步 EM 的同预算版本。保存多模式和来源，不以几何拟合损失下降代替任务成功。报告关联错误、错误置信、局部极值、重复计数检查和计算延迟；无歧义时 EM 应无收益或增加成本，这是合理的反证条件。
+
+\subsection{基线矩阵}
+\begin{longtable}{P{15mm}P{55mm}P{76mm}}
+\toprule 编号 & 方法 & 归因\\\midrule\endhead
+B0 & 图册覆盖搜索＋因果局部伺服 & 有粗 prior、已搜区域和最终视角调整的工程基线，不用随机游走充数\\
+B1 & 结构概率几何＋主动搜索 & 无学习响应；相同先验、滤波、动作和最终检查\\
+F92 & V9.2 提议＋解析后端 & 冻结相同 proposal，隔离新增响应头\\
+B2 & 规范 GNN 响应＋相同后端 & 同标签、容量近似匹配；隔离 e3nn 类型结构\\
+B3 & 完整响应＋仅均值动作验收 & 隔离 V6.1 后验约束，不能减少其动作自由度\\
+B4 & 完整后验／响应＋熵探查 & 隔离任务相关观察选择\\
+B5 & 完整模型＋无能力偏好 & 仍有精确可行性检查，区分能到与值得去\\
+F93 & 本文完整方法 & 宽先验、提议与响应、声窗条件、风险验收和能力引导\\
+S & 同信息历史策略／VesNet 风格适配 & 单报 RL 交互和监督数据预算，不冒充原论文复现\\\bottomrule
+\end{longtable}
+
+首轮优先 B0/B1/F92/B2/F93，再做 B3--B5 与 E4/E5 专项。主张优于一般学习策略时 S 不能永久缺席。骨几何项、EM 和高阶通道分别消融，不同时改变训练数据、控制权限与模型大小。
+
+\subsection{验收、统计与预期结果}
+沿用拟定几何代理：LA 连续可见片段不少于15 mm、中心容限2 mm、轴与平面夹角容限10度，持续0.5 s且有至少5个新采帧；这些均为\emph{仿真研究条件}，非真人操作或临床标准。高曲率场景需在 pilot 确认多站位判据，不用单点切向代替长度。策略使用观测 verifier，审计使用隐藏 tube mesh／独立图像判定；审计不触发 retry。
+
+主输出为截至30/45/60 s的成功曲线、60 s RMT、错误停止、首次检测/合格时间分解、选中动作校准、实际运动与计算时间、全部失败原因。正式主要比较为 F93 对 F92/B1/B2；延续 V9.2 的候选研究门槛：成功率差95\%区间下限不低于 $-3$ 个百分点，同时 RMT 改善；15\%相对改善只是待冻结的实际意义目标，不是预测成绩或样本量功效结论。统计按世界／对象配对聚类，训练种子单列；多个探索性峰值不当主显著结果。
+
+\begin{longtable}{P{28mm}P{58mm}P{60mm}}
+\toprule 事前预测 & 支持模式 & 否定或收缩主张的结果\\\midrule\endhead
+粗先验可用 & 即使 prior 宽，局部响应改善首次合格效率 & 只提高已见目标后的速度，总 RMT 更差；不能宣称首次获取改善\\
+技能可迁移 & 新地址与新局部条件下动作排序、实际下降保持 & 仅共同旋转单元测试通过，条件响应 OOD 失败\\
+可微代价有用 & 梯度／有限候选选择在真实短动作中兑现 & 模型分数下降但图像更差，说明梯度不可信\\
+联合能力优化 & 真实受限摆放下减少无效换窗或规划时间 & 仅 dIRD 分数改善，执行时间与完成率不变\\
+EM有条件有用 & 关联歧义组改善实际获取且不过度自信 & 似然上升但模式塌缩／错误停止增加\\\bottomrule
+\end{longtable}
+
+以上是事前趋势，不填实验成功率；若结果不支持，不换种子、删失败或退回“第二次更快”代替首次问题。不存在先验保证任何真人有效的技能；适用域与不适用情形也属于结果。
+
+\section{完整算法与 DMP\_playground 实施计划}
+\label{sec:implementation}
+\subsection{一次在线循环}
+\begin{scopebox}
+\textbf{算法 1：宽先验下的首次获取与局部响应技能}
+\begin{enumerate}
+\item 从外部身体、粗 ROI、公共骨先验和实际机器人状态初始化；对象历史为空，共享权重冻结，审计数据隔离。
+\item 收到新图像块后登记唯一 ID、采集时间、实际位姿与接触条件。空检测保持为空；识别图册、标定或前端版本变化。
+\item 用声明的静态／动态模型更新联合几何状态。存在关联歧义且启用消融时，在固定窗口内做有限步 EM，并按正确提议／似然重建权重。
+\item 生成 SEARCH、AIM、WINDOW 或 VERIFY 的共同短动作候选。目标不可信时不凭空计算真实居中误差。
+\item 对当前固定后验样本进行解析几何预测；分型响应头输出残差、检测与质量分布；生成任务能量和适用域信息。
+\item 以有限前瞻、dIRD、实际路径代价筛选，并在局部信赖域内联合优化。各虚拟分支保持同一持续对象样本。
+\item 对最终连续机器人路径与平滑／接触修正后的动作检查物理约束；AIM/VERIFY 还检查后验规则风险。全部拒绝时选择授权探查、恢复或停止，不强行放松阈值。
+\item 执行一个短程序，记录实际轨迹、时间、限幅和新图像；比较预测与实际响应。失配触发缩步／重估，而不在测试对象训练共享权重。
+\item 由观测 verifier 决定是否提交完成；独立 audit 在隔离通道判定结果。成功、错误停止和超时均保存，重复至结束。
+\end{enumerate}
+\end{scopebox}
+
+\subsection{代码审阅来源与当前缺口}
+以下接口继承用户提供的 V9.2 源码审阅记录\cite{v92,codex92}，\textbf{本版没有重新读取远端最新版，也没有运行本地项目}。历史快照为 AMONG\_US \code{f1ffc5078d6a08c32b59107ab16086a7bbde488e}，dIRD README 历史 blob 为 \code{247991130601910ce95bd656fc7fe2d73afe05f4}。Codex 必须先核对用户本地 commit、dirty diff、资产路径、依赖版本和哈希，不按文稿猜函数签名。
+
+\begin{longtable}{P{46mm}P{47mm}P{53mm}}
+\toprule 既有位置 & 继承的用途 & 必须重新检查的边界\\\midrule\endhead
+\code{kmp_honest/imaging.py} & 切片相交与像素重建 & 真值只在 renderer，策略无隐藏段号／面外误差\\
+\code{kmp_honest/servo.py} & 因果方向估计与局部反馈 & 历史审阅发现未检出仍使用 image\_u；新 adapter 必须隔离\\
+\code{core_algorithms/probe_slice.py} & 另一套切片几何 & 与 kmp 的平面轴约定不同，统一声学坐标\\
+\code{module_b_geometry.py}、\code{module_c_smoothing.py} & 图册解码与平滑器 & 使用有效图册及最终实际输出，不把预规划真路径当输入\\
+\code{fake_data/generate_fake_data.py} & 程序化世界基础 & 测试 prior 与目标分开；不用真实 trunk 初始化\\
+\code{ird_playground} & 轨迹能量、任务聚合与8DoF求解 & 确认真实 J1/TCP、checkpoint、碰撞资产；缺失显式跳过\\\bottomrule
+\end{longtable}
+
+\subsection{新增目录与模块}
+建议 \code{DMP_playground/first_acquisition_v93/}；若 V9.2 已实现则通过适配层复用，保持旧基准可运行，不悄悄改其配置或日志含义。以下全是待实现 API：
+\begin{longtable}{P{44mm}P{102mm}}
+\toprule 模块 & 职责\\\midrule\endhead
+\code{contracts.py}, \code{sensor_adapter.py}, \code{audit.py} & 公私状态、声学轴、缺失语义、时间与独立验收\\
+\code{structured_prior.py}, \code{worlds.py}, \code{splits.py} & 相关宽先验、独立隐藏世界、源／测试清单\\
+\code{belief.py}, \code{association_refiner.py} & 联合概率查询、可选固定窗口 EM、不重复计数\\
+\code{e3nn_proposal.py}, \code{local_response.py} & 原几何提议、唯一解析加残差响应头、合法分布输出\\
+\code{acoustic_prior.py}, \code{skill_energy.py} & 公开骨声路、缺失感知任务能量、模型导数\\
+\code{candidate_bank.py}, \code{active_planner.py} & 同权限候选、最多两步前瞻和反事实权限控制\\
+\code{realizer.py}, \code{robot_adapter.py} & dIRD／连续 IK、最终命令风险、实际8DoF接口\\
+\code{train_response.py}, \code{calibrate.py}, \code{analyze.py} & 响应训练、选择后校准、对象级统计和所有失败\\\bottomrule
+\end{longtable}
+
+\subsection{实施顺序与停止点}
+阶段0：资产清单、公共历史接口、E0。阶段1：B0/B1 与无响应的首次获取，验证 source 内任务可完成。阶段2：几何提议和规范响应基线，再加入 e3nn 残差。阶段3：E1--E3，冻结数据／配置后比较。阶段4：声窗与真实8DoF，缺资产显式停止。阶段5：仅在关联压力组测试 EM。最后才进入独立真实声学验证。
+
+每一步保存 \code{asset_manifest.json}、\code{splits_manifest.json}、冻结配置、训练权重与校准哈希。逐决策保存历史哈希、后验摘要、ESS、候选、预测、梯度／优化状态、选中动作；逐执行保存实际 pose/q/qdot、时间、限幅、失败与新图像。审计文件不在策略进程读取权限内。完整命令和未运行项都必须交付，不只交成功视频。
+
+\section{讨论、可失败的主张与论文完成标准}
+\label{sec:discussion}
+\subsection{真正需要证明什么}
+第一，粗先验可以是合理设计起点，但其覆盖性和搜索成本必须独立测量；不能从“大方差”推出数据免疫。第二，共享响应能否在新位置、新几何条件下帮助真实选择，需要动作条件验证，不由旋转等变性推出。第三，dIRD 的价值是减少无效实现或求解成本，不能以代理分数替代真正通过率。第四，局部技能无效时必须承认并限定范围，而不是改回先扫再找的更容易任务。
+
+\subsection{什么仍然不需要增加}
+不为本稿额外学习完整人体形变或材料刚度；局部持续残差足以定义当前问题。不要同时训练多个大策略和生成器来掩盖作用来源。EM、粗骨模型和更高阶通道都须在独立消融中证明值得保留。若解析伺服已经足够、或规范 GNN 与 e3nn 一样有效，贡献应如实落在概率任务接口和能力优化，而不是强称某网络不可替代。
+
+\subsection{多脏器扩展的准确含义}
+血管是首个明确模型。向局部脏器边界／目标面扩展时，共享的是局部响应接口、类型规则与联合实现方法；需要重新声明可观测特征、任务损失、几何模型与验收。仅在同一种管状目标上更换位置不等于通用多脏器，也不能把规范身体模型中的器官先验当作患者准确内部地图。
+
+\subsection{本次交付与待完成工作}
+本次交付是将给定 V9.2 和增补统一后的完整设计稿，并编写条件性推导及实施协议。附带脚本只检验代数关系和简化固定数据例子；它不调用 e3nn、DMP\_playground、Genesis 或真实超声，也不验证分布校准和临床效果。编译／数值检查的状态见打包说明，不预填训练或系统性能。
+
+下一阶段仍需实现：无泄漏环境、合法观测模型、实际可用的宽 prior、局部转移数据、响应网络、选择后校准、声窗代理与8DoF接入。必须先留下预测，再执行并测量，而不是事后用最成功的轨迹解释设计。
+
+\begin{corebox}
+\textbf{V9.3 的最终主张}\par
+在缺少个体完整内部模型、全局解剖先验很粗的条件下，将可复用的局部成像响应与当前对象认识分开：以已知几何和分型学习预测动作后果，以 dIRD 和真实约束选择可执行实现，并用本次新图像验证首次合格获取。
+\end{corebox}
+
+\appendix
+\section{统一梯度与真实技能的区别：完整计算约定}
+\label{app:gradient}
+优化变量为固定初态上的短路径参数时，当前观测图不因候选改变。候选动作改变预测位置、视野和未来接触条件；这些是合法求导路径。图像编码器对已采图像的导数不表示可改变过去，后验权重不能被能力目标更新。离散粒子身份、遮挡分支和候选子集在一次局部求导内固定；边界处切换由外层有限枚举处理。
+
+Gaussian 响应积分可用解析二次矩或固定随机数重参数化。二元检测通过式\eqref{eq:skillenergy}的概率显式求期望，而不对采样的0/1检测做伪梯度。离散模式用可计算混合权重；若采用近似梯度必须单独标注。有限差分应分别验证 $a\to E$、$z\to a$ 和完整 $z\to E_{\rm total}$，不能只检查最后一个容易抵消误差的标量。
+
+\section{当前矩的使用与非刚性非闭合反例}
+\label{app:moments}
+对 $c$ 有有限二阶矩，展开 $c-o=(\mu-o)+(c-\mu)$ 得
+\[
+\E\norm{P(c-o)}^2=\norm{P(\mu-o)}^2+\tr(P\Sigma P^\top).
+\]
+对单位切向，$\E(n^\top t)^2=n^\top\E(tt^\top)n$。这些恒等式不能推导精确尾概率或任意非线性任务。
+
+分布A在 $\pm e_1,\pm e_2$ 等概率；分布B在 $\pm(e_1+e_2)/\sqrt2,\pm(e_1-e_2)/\sqrt2$ 等概率。它们有相同 $M=\diag(1/2,1/2,0)$。取 $F=\diag(2,1,1)$ 并逐样本归一化，则
+\[
+M_F^A=\diag(1/2,1/2,0),\qquad M_F^B=\diag(4/5,1/5,0).
+\]
+所以规范二阶矩不能普遍确定形变后的方向风险。这是 V9.1/9.2 已有结构边界，V9.3 继续保留，不重新计为新结果。
+
+\section{有限执行段与模型误差预算}
+设一阶段 $\ell_\tau=r+\tau A\Delta x$，$\tau\in[0,1]$。范数凸性给
+\[
+\norm{\ell_\tau}_W\le\max\{\norm r_W,\norm{r+A\Delta x}_W\}.
+\]
+若真实段相对 $\ell_\tau$ 的余项在共同事件上不超过 $\rho$，两端均不超过 $\epsilon-\rho$，则整段不超过 $\epsilon$。对端点使用 Markov 和并集界，外加余项失效概率，得到第\ref{sec:risk}节的全段充分条件。多个自适应段需要在实际历史下分配可预测总风险预算；不能把相关段的成功概率直接相乘。
+
+若只做经验模型校准，报告经验错误接受，不将该校准自动代入为每个稀有历史上的确定界。模型残差学习若改善平均误差，却恶化尾部或优化挑选后的误差，不能因平均值更小而降低硬阈值。
+
+\section{解析自检的范围}
+\label{app:checks}
+随包 \code{verify_v93_math.py} 仅做下列固定种子检查：固定点有限动作的一阶导数；局部切片交点隐导数；声路线积分端点梯度；一个自造光滑分型标量能量的旋转与梯度规律；有限分布的任务矩和 V6.1 Gram 分解；固定噪声一维混合模型的 EM 似然单调；局部二次代价下式\eqref{eq:descent}的数值上界；宽 prior 的零支持反例。
+
+该脚本\textbf{不是 e3nn 实现、不是新算法训练、不是首轮实验}。其通过也不证明真实梯度准确或 EM 在完整血管场景有效。完整 E0--E5 由后续 Codex 在用户本地实现和测试；实际自检数值单独保存，不嵌入主文充当性能。
+
+\section{编译、来源与修改记录}
+\label{app:sources}
+本文为单个 \code{.tex} 文件，参考文献内置，无外部图像或字体文件。使用 XeLaTeX 连续编译两次；也可使用 \code{latexmk -xelatex}。包中另含 \code{CODEX_TASK_V9.3.md}、\code{experiments_v93.yaml}、编译说明和代数自检脚本。配置均为计划起点，不会自动控制机器人。
+
+主要输入为本对话上传的 \code{Anatomical_GPS_V9.2.tex}、\code{V9.2_Local_Response_Skills_Addendum.md}、\code{CODEX_TASK_V9.2.md}，源文件 SHA256 见包内 manifest\cite{v92,addendum,codex92}。新增明确化包括：缺失目标时技能损失的定义；基于同一动作的任务无关物理预测；零动作漂移项；切片切向退化处理；响应误差与几何后验不重复计数；EM 改善提议时的密度责任；声路重复计价的消融；梯度诊断与物理验证分开。
+
+公开参考在本次写作中核对论文摘要／作者或官方页面。V9.2 中关于 2026 年 TR-FDF 的背景条目，本轮未成功取回其公开页面，故不作为 V9.3 的文献论证依据；这不构成对该工作的否定或不存在判断。引用上传心脏稿时仅依据其提供版本，不外推正式发表信息。所有代码现状引用均标为继承的 V9.2 审阅记录，而非本轮重新实测。
+
+\begin{thebibliography}{99}
+\bibitem{v92} \emph{Anatomical GPS V9.2：合成训练驱动的首次超声目标获取}. 用户提供内部研究稿，2026-11-09；本次整合的基础源文件 \code{Anatomical_GPS_V9.2.tex}。
+\bibitem{addendum} \emph{V9.2 增补：宽解剖先验与可迁移的局部响应技能}. 用户提供研究设计与 Codex 增补，2026-11-10；\code{V9.2_Local_Response_Skills_Addendum.md}。
+\bibitem{codex92} \emph{Anatomical GPS V9.2 首次获取基准实施任务书}. 用户提供 \code{CODEX_TASK_V9.2.md}，代码审阅快照与数据合同的来源。
+\bibitem{v61} \emph{Anatomical GPS V6.1：患者后验约束下的材料任务等价执行}. 内部方法稿，2026；本版依 V9.2 已载明的完整风险公式继承，不重新宣称已运行其系统。
+\bibitem{goel} R. Goel, FNU Abhimanyu, K. Patel, J. Galeotti, H. Choset.
+\emph{Autonomous Ultrasound Scanning using Bayesian Optimization and Hybrid Force Control}. ICRA, pp.8396--8402, 2022. 用户提供全文，尤其第3页图2与III-D。
+\bibitem{cardiac} \emph{Knowing What, Learning Where: A Knowledge-Informed Coarse-to-Fine Framework for Autonomous Robotic Acquisition of Cardiac Standard Views}. 用户提供匿名 T-RO 投稿稿，26-1613.1，2026；图2、III-B/C及III-C.4。未编造作者、DOI或录用状态。
+\bibitem{vesnet} Y. Bi, Z. Jiang, Y. Gao, T. Wendler, A. Karlas, N. Navab.
+\emph{VesNet-RL: Simulation-Based Reinforcement Learning for Real-World US Probe Navigation}. IEEE RA-L, 7(3):6638--6645, 2022. \url{https://arxiv.org/abs/2205.06676}.
+\bibitem{sonographer} Z. Jiang, Y. Bi, M. Zhou, Y. Hu, M. Burke, N. Navab.
+\emph{Intelligent Robotic Sonographer: Mutual Information-Based Disentangled Reward Learning from Few Demonstrations}. IJRR, 43(7):981--1002, 2024. \url{https://arxiv.org/abs/2307.03705}.
+\bibitem{confidence} P. Chatelain, A. Krupa, N. Navab.
+\emph{Confidence-Driven Control of an Ultrasound Probe}. IEEE T-RO, 33(6):1410--1424, 2017. \url{https://doi.org/10.1109/TRO.2017.2723618}.
+\bibitem{foresight} C. Finn, S. Levine.
+\emph{Deep Visual Foresight for Planning Robot Motion}. ICRA, 2017. \url{https://arxiv.org/abs/1610.00696}.
+\bibitem{difffields} J. Urain, N. Funk, J. Peters, G. Chalvatzaki.
+\emph{SE(3)-DiffusionFields: Learning Smooth Cost Functions for Joint Grasp and Motion Optimization through Diffusion}. ICRA, pp.5923--5930, 2023. \url{https://arxiv.org/abs/2209.03855}.
+\bibitem{e3nn} M. Geiger, T. Smidt.
+\emph{e3nn: Euclidean Neural Networks}. arXiv:2207.09453, 2022. \url{https://arxiv.org/abs/2207.09453}.
+\bibitem{e3nndocs} e3nn contributors. \emph{Tensor Product: Official Documentation}. \url{https://docs.e3nn.org/en/stable/api/o3/o3_tp.html}. 本次访问：2026-11-10；运行版本由本地 manifest 冻结。
+\bibitem{vn} C. Deng, O. Litany, Y. Duan, A. Poulenard, A. Tagliasacchi, L. Guibas.
+\emph{Vector Neurons: A General Framework for SO(3)-Equivariant Networks}. ICCV, 2021. \url{https://arxiv.org/abs/2104.12229}.
+\bibitem{em} A. P. Dempster, N. M. Laird, D. B. Rubin.
+\emph{Maximum Likelihood from Incomplete Data Via the EM Algorithm}. Journal of the Royal Statistical Society, Series B, 39(1):1--22, 1977. \url{https://doi.org/10.1111/j.2517-6161.1977.tb01600.x}.
+\bibitem{skel} M. Keller, K. Werling, S. Shin, S. Delp, S. Pujades, C. K. Liu, M. J. Black.
+\emph{From Skin to Skeleton: Towards Biomechanically Accurate 3D Digital Humans}. ACM TOG, 42(6), 253:1--253:15, 2023. \url{https://doi.org/10.1145/3618381}; \url{https://skel.is.tue.mpg.de/}.
+\end{thebibliography}
+\end{document}
