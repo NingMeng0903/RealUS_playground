@@ -1,0 +1,55 @@
+{
+  "schema": "ab_closed_loop_witness_plot_v1",
+  "result_files": [
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_closed_loop_20261111/closed_loop_reviewed_run/fixture_00_constrained/RESULT.json",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_closed_loop_20261111/closed_loop_reviewed_run/fixture_00_open/RESULT.json",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_closed_loop_20261111/closed_loop_reviewed_run/fixture_01_constrained/RESULT.json",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_closed_loop_20261111/closed_loop_reviewed_run/fixture_01_open/RESULT.json",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_closed_loop_20261111/closed_loop_reviewed_run/open_matched/fixture_00_open/RESULT.json",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_closed_loop_20261111/closed_loop_reviewed_run/open_matched/fixture_01_open/RESULT.json"
+  ],
+  "witness": {
+    "case_id": "5",
+    "fixture": "fixture_00_constrained",
+    "result_i0": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_closed_loop_20261111/closed_loop_reviewed_run/fixture_00_constrained/RESULT.json",
+    "result_i1": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_closed_loop_20261111/closed_loop_reviewed_run/fixture_00_constrained/RESULT.json",
+    "same_first_exit": {
+      "q": [
+        0.3803479179910173,
+        -1.526437412919167,
+        -1.5644270317522586,
+        1.1490262494196737,
+        1.69643620972376,
+        1.5993515271579686,
+        1.0499124303120126,
+        1.6975545839705997
+      ],
+      "qdot": [
+        -0.018965350094051144,
+        0.0007244739486711052,
+        -0.014513541153541528,
+        -0.012064975295140572,
+        -0.08432735667615102,
+        -0.04106530728823858,
+        0.010931085711051676,
+        0.10515592112250605
+      ],
+      "snapshot_sha256": "0d22c3a3ea9bcb06c333b99c74a633d3f3bbe13b7f989b4769c97d4a948428dd"
+    },
+    "prefix_route": "fork_minus__direct",
+    "terminal_route_i0": "fork_minus__left__direct",
+    "terminal_route_i1": "fork_minus__right__direct",
+    "motion_manifest": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_closed_loop_20261111/closed_loop_reviewed_run/fixture_00_constrained/execution/MOTION.json",
+    "trace_paths": [
+      "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_closed_loop_20261111/closed_loop_reviewed_run/fixture_00_constrained/execution/fork_minus__direct_0.npz",
+      "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_closed_loop_20261111/closed_loop_reviewed_run/fixture_00_constrained/execution/fork_minus__left__direct_0.npz",
+      "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_closed_loop_20261111/closed_loop_reviewed_run/fixture_00_constrained/execution/fork_minus__right__direct_0.npz"
+    ],
+    "outcomes": {
+      "I0": "fail @ 4.215s",
+      "I1": "success @ 3.87s"
+    },
+    "deadline_s": 5.29
+  },
+  "output": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_closed_loop_20261111/closed_loop_reviewed_run/WITNESS.png"
+}

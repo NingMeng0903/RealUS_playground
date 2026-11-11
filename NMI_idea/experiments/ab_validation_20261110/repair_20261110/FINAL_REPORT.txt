@@ -1,0 +1,71 @@
+A/B共用基础修正最新状态（2026-11-10，替代此前同名汇总）
+
+当前控制结论
+两条冻结branch4路径已实现2cm/s扫描中段同时准确跟踪位置与姿态：
+使用原100/50任务权重、20deg软件command-lead界、C2位置/旋转参考、
+完整base几何6D速度、.8s对称起停，按同刻测量FK对参考评估，
+path0中段最大位置.032982mm、姿态.032484deg；
+path1中段最大位置.033009mm、姿态.032071deg。
+强位置权重在同一新参考下几乎得到相同中段结果，故不再靠二者取舍。
+用户已明确启动/刹停瞬态单列，重点有效扫描中段；固定.8s边界及全部弧长
+分箱保留，不能按误差临时挑窗口。物理q/v/a/j与碰撞限值未放宽。
+严格jerk门仍有小的求解精度尺度负余量，尚未称完整机械/实机认证。
+控制修正及复用：qp_cross_track_fix/SMOOTH_REFERENCE_REPORT.txt、
+SCAN_PROFILE_USAGE.txt、scan_tracking_profile.yaml、scan_replay.py。
+生产新增参考：rm75_control/control/joint_admittance_8dof/scan_reference.py。
+
+为什么旧实验偏离很大
+零角FF使姿态滞后；完整FF加入后，旧分段几何的速度结点跳变、.4s起步和
+过紧lead包络使同时6D请求在实际动态盒内经常不可行。QP1于是按米/秒与
+弧度/秒加权折中。单换权重修正位置，但角度和大jerk仍不理想；单放松
+lead也无充分收益。这些负结果全部保留。新参考经过原17pose，但区间
+几何小幅改变（距旧折线最大约.116/.118mm），实际新候选已逐tick检查。
+另旧误差将下一拍q_send(t+dt)对当前T(t)计算，健康轨迹中会多出约.1mm；
+现用q_meas_before对T(t)并保存独立FK，旧指标保留、不冒称物理改进。
+
+native异常的关键勘误
+此前数十米非法rail的正常生产归因应撤回。离线模型时间在seq发布后才
+通过notify-hook改写，native能先读到wall时间。一次受控交错已精确复现
+异常；修正为seq发布前写model_time_s，IPC超时仍用wall时间。25项相关
+回归通过，干净同条件回放无非法q。旧源码传播路径观察保留，但不再把
+污染的回放输入说成正常生产native的已证根因。qp_clock_repair/REPORT.txt
+与audit/followup_20261110/FINAL_FOLLOWUP_AUDIT.txt记录完整证据。
+
+坐标当前交付边界
+1. 已审计双腿shaft ROI v2分层体坐标h[.14,.94]，真实skin边界d=0、
+   双向查询、材料/物理无重叠、固定SMPL-X W七姿态运输；原v2资产不变。
+2. 本轮新增完整owned真皮肤接触多chart，保留全部原三角面与固定W，
+   双腿7姿态CGAL自交0，过渡/运输误差<5e-16m，827/827旧模板表面投影
+   足迹已真实重投影（核心扫描右234、左235）。26项测试通过、1可选跳过。
+   harmonic_full_domain_followup/{REPORT.txt,manifest.json,USAGE.md}。
+3. 全皮肤多chart只证明d=0接触/路径地址覆盖；不可把它叫端部深部血管
+   体域已完成。全域棱柱、.1–2mm collar等失败完整保留，不替换已验v2。
+   调和标量最大原则不保证整个三维映射单射或任意SMPL-X变形合法。
+
+先验与A→B路线勘误
+概率内部血管允许公共SMPL-X绑定粗模板、人工相关宽分布和路径先验。
+只禁止测试对象未观测的真解剖进入策略；不能按prebake/vessel文件名禁用
+通用模板。选定的短扫描命令有确定6D导数，无需知道患者真血管速度。
+NO_PRESCAN_FOLLOWUP_PROTOCOL.txt与PROBABILISTIC_PATH_FF_ADDENDUM.txt
+已修正此权限。本次重读远端V9.3@75f8e866的prior/optimization/实验段，
+本地PLAN.txt与用户粘贴路线；未在远端NMI_idea找到独立PLAN文件。
+以V9.3为开发底稿，V6.1后验风险、V9.1几何身份、V9.4观察分支恢复。
+
+A/B实验证据
+no_prescan_ab单帧机制pilot：384世界A=B=MPC动作相同，不支持选择B。
+ab_streaming_followup加入训练残差、逐帧公开LA代理和独立审计：
+主组learned预测RMSE .451→.114，曾获合成LA质量78→83/256，但正确
+公开停止51→46/256，差异区间跨零；解析精确负对照无假收益。
+独立复算2048回合、54420帧及训练索引/参数通过。固定动作分辨率、低
+有效粒子数、合成长度/身份生成器等限制保留；没有真实B-mode或已集成B。
+当前研究方向仍是先把A与连续视觉servo/实际QP接好，再检验B；不把预测
+误差改善当稳定任务收益，不宣布B全部模块成立。
+
+其他已完成修正
+不可见时隐藏目标u/depth/tangent不再进入伺服；主入口NameError修复。
+Module C仅平滑，完整旁路已测试。dIRD零旋转梯度与raw阈值校准修正，
+新GPU重训无可靠优于旧权重证据，未替换旧checkpoint。原有限SRS拒绝
+不等于实际底层QP不可执行。各旧报告/测试/负结果保留原路径。
+
+本轮均离线，无硬件、真人、接触或真实超声试验；未自动切换硬件默认
+controller.yaml，未推送远端或全量提交用户已有脏工作区。

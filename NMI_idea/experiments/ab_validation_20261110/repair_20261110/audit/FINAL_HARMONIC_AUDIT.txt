@@ -1,0 +1,197 @@
+最终独立审计：修订 shaft ROI v2 与显式点查询入口
+2026-11-10。审计者：Astra。离线；未使用机器人、真实接触、超声或网络。
+
+结论
+接受修订 v2 在明确 h∈[.14,.94] 环状子域、固定 SMPL-X 附件和本轮七个
+离散膝角下的有限几何/材料坐标检查；接受显式单点查询与分片线性点运输
+接口。本轮独立发现的两个合法边界误拒绝缺陷已经修复并重新验证，接受
+依据包含合法边界成功，不只是域外 fail-closed。
+
+这不是整腿 atlas、已有完整 DMP 血管扫描链、实时伺服或物理超声系统通过。
+d=1 是半径比例 .04 的内壳，几何中心线在环域之外；不能写成中心线 d=1。
+d 是正边权图 Laplace 的 Dirichlet 解；h 是平滑中心线站位标签，theta 是
+平行运输角标签。三者不能合称全部满足物理连续域 Laplace 方程的坐标。
+体权重是固定 SMPL-X 插值模型，不是独立实测组织形变。
+
+审计只新建本 audit 目录文件，没有编辑生产源码、其他工作者的资产或报告。
+按父任务要求封存，不等待未采用的端点扩展/全腿试验。本结论以最终冻结
+NPZ、实际源码与本目录 fresh 结果为依据；已只读复核工作者最终 REPORT
+及 manifest，28 项文件指纹全部相符。
+
+冻结身份
+目录：../harmonic/shaft_roi_v2/
+atlas_left.npz
+  8d4deac6ab8f364ae08b359ec2878027144fb1c4aa44fba777f5126e99853191
+atlas_right.npz
+  f1a42becc403ebf7687025d4ab8b7d3480e52d4713df8c6357449b23d4ebba1c
+attachments_left.npz
+  d70d2350240fa2e8a9195a173dbb2e92094503a9458fa3b350dbb55fd658b4d5
+attachments_right.npz
+  bfc7c76b083be69604ec18c963d4110870d2437afdb19aba8d95c5e6fb4f1b3f
+以上均独立计算并与 asset_hashes.json 相符。旧 v2 保存在
+../harmonic/shaft_roi_v2_before_boundary_fix/，未覆盖失效证据。
+修订前后 vertices/tets/h/theta/d/volume_points/volume_xi/skin_vertices
+逐数组相同，两个 attachments 的完整文件字节 hash 相同；修改为外皮面
+连接、相应法线与版本信息，以及公开查询接口的物理点浮点精度。
+源码、配置、canonical 权重 bundle 和审计输出指纹见同目录
+FINAL_HARMONIC_AUDIT_MANIFEST.json。
+
+最后元数据修订附注：数值复跑时的边界修订 hash 为 left bdd33e8d…、
+right 067427d8…，原文件保存在 shaft_roi_v2_before_metadata_normalization。
+其后只规范化说明；本审计重新逐项核对，唯一变更为 metadata_json，
+全部其余数组字节和附件字节相同，见 harmonic_metadata_final_identity.json。
+当前顶层明确 72×108×8、graph d、transport h/theta；旧 FEM/radial24
+以及旧候选体无效标记仅存在来源记录，当前 ownership 只陈述筛面规则。
+当前 default_depth_mode 与域界未变，因此未重复无关的全量几何试验。
+fresh 结果保留实际执行时的旧版本 hash，没有事后改成最终 hash 来伪装重跑。
+
+本轮发现并闭合的真实缺陷
+1. 旧 v2 的两腿各 15,336 个 atlas.skin_faces 全部采用与 native tetra
+   外边界不同的方格对角。seed 19954 每腿随机 128 个皮肤三角内点，
+   left 58、right 73 被 baked 查询拒绝；接受点的最大 |d| 分别
+   9.05534e-4、1.32380e-3。不是单纯数据容差。
+2. 即使取正确 native 外/内面，公开接口强制 float32 仍把合法点推出域。
+   每类 128 点，left 外/内拒绝 62/75，right 63/68；同点直接 float64
+   native 查询全部接受。原始完整输入、采样面、bary、异常保存在
+   harmonic_boundary_pre_boundary_fix.{json,npz,log}。
+3. 当前 shaft_rebuild.native_boundary_surface 从正定向 native tets
+   直接提取真实外表面；forward 的物理输入与 inverse 的物理输出保留
+   float64。没有增加域外夹取，也没有放宽 native 包含公差。
+4. 修订后每腿 skin_faces 与 native 外面集合完全一致。每腿所有 15,336
+   面中心全部被公开接口接受；另随机 128 个皮肤/外壳/内壳三角内点
+   全部接受，最大深度误差 <9.74e-16。每腿 1,036 个随机 d=0/1 与
+   h 两端、theta 周期角地址公开双向查询全部成功，深度误差 <1.58e-15。
+   实际 DMP point 入口的 90° d=0 与 d=1 点也均成功，运输深度误差
+   ≤1.13e-15。记录见 harmonic_boundary_final.json 与
+   harmonic_boundary_extended_final.json。
+   这些是有限 double 输入检查，不承诺外部先量化/带噪点必在精确网格上。
+
+独立 fresh 几何与材料复跑
+脚本 check_harmonic_final.py 对两腿重新加载，每腿 62,208 节点、322,056
+tet；从实际 canonical bundle、关节树与同一固定 W 重新计算 LBS，没有
+读取工作者的 posed 数组作为答案。raw 以及 0/15/30/45/60/75/90° 七姿态
+均全量计算体积，非正体积数均 0；全量 BVH + tetra SAT 正体积重叠均 0。
+SAT 复用并审查了独立几何工作者的内核，输入由本审计重新生成，内核与
+输入 hash 被记录；它包含共享顶点对，未跳过可能折叠的相邻单元。
+不把同一内核的再次执行伪称第二种完全独立的全量相交算法。
+
+raw 最小 determinant：left 2.10021036e-9、right 2.06691630e-9 m³
+（det 是 6 倍有向体积）。90° 最小 det_pose/det_rest：
+left .168329905、right .187167996。此处与先前几何报告末位不同，因为
+使用实际入口的 float32 LBS 运算/写回路径；不影响符号与相交结论。
+每腿完整 tet 边界 33,696 面，内部非流形面 0。本审计另用 CGAL 完整
+边界自交检测复跑 raw 与 90°，四次均 0 对，见 harmonic_cgal_final.json。
+七个离散角度通过，不是连续 [0,90] 全区间或任意多关节姿态的数学证明。
+
+材料域对每 tet 正确展开 theta，归一到 theta/(2pi)，再检验 theta±2pi
+三副本共 966,168 tet，两腿全量正体积重叠均 0。所有局部材料行列式
+同为负号、无零值。每单元恰有两个角节点值；sin/cos 插值的 bearing
+在该角单元是线性角坐标的严格单调重参数化，不能因使用 circular
+interpolation 就忽略周期接缝。本次三副本检查没有检测到重复材料地址。
+
+独立 seed 594201 每腿 1,024 个原 tet 内部点，不提供 reference_points：
+p→xi→p 最大误差 left 2.78909e-8 m、right 2.96650e-8 m；再次前向所得
+float32 标签逐位一致。theta=-2pi/0/2pi/4pi 的 inverse 最大位置差约
+1.12e-8 m。径向 d 严格向外递减，外壳为 0、内壳为 1；h 相邻站位严格
+增加。对应材料点的七姿态标签与共同 SE(3) 变换检查通过。这验证声明
+的分片模型对应，不代表能从真实图像恢复未知组织对应关系。
+
+每腿 4 个 physical 域外例（远点、中心线、两端外点）与 5 个 material
+非法例（h上下界、d上下界、非有限值）全部抛错；未以 nearest 结果当成功。
+inverse 默认不接受 reference 越权跳过真实域检查。公开显式
+outside='nearest' 仍存在，不能当作有效新域或静默用于 scan 规划。
+
+皮肤关系与权重解释
+新外节点保留原生产 Loop 来源三角的 bary 附件，独立重算最大位置误差
+约 5.99e-8 m；完整面片仍是重新三角化的近似面。修订后全部面中心到
+真实来源 Loop 三角的距离：left mean .029678 mm/max .143226 mm，
+right mean .029831 mm/max .223591 mm。这不是全表面 Hausdorff 界，
+不能把“来源节点/权重精确继承”扩写成整个连续物理皮肤完全相同。
+本审计阅读时的封存 REPORT 相应面中心最大距离沿用边界修订前的
+left .2404/right .1417 mm；已通知工作者修订该文字，本文采用修订后重测值。
+原 production CSR→owned source W 的谱系检查见已封存独立几何报告；
+本轮附件字节不变。体 W 为外环 W 与逐站 core 环平均 W 的径向凸组合。
+旧/新体 W 扩展规则不同，不能把所有变形改善归因于网格一个因素。
+
+源码接口与实际接入范围
+生产路径为 /media/camp/EXT_DRIVE/Among_US/src/projects/genesis_ue_sync/
+anatomy_retarget/leg_volume_coordinates/{atlas.py,harmonic.py,
+volume_refine.py,shaft_rebuild.py,lbs_bridge.py}。
+query_atlas_coordinates 读取 versioned metadata 的 default_depth_mode='baked'；
+VolumeTetRefiner 使用原 native tets，支持真实域查询/逆解。旧资产仍默认
+distance_ratio；这与 stored d 是两种不同字段，不因这次修复自动等同。
+查询的第二返回值是 chart 特征中最近的离散 skin sample，不是精确的
+物理法线投影/连续接触点。其他旧 distance-ratio 梯度和下游消费者没有
+因本轮点入口验证而自动全部获得 baked 语义。
+
+实际可调用入口是 /media/camp/EXT_DRIVE/Among_US/DMP_playground/
+run_volume_coordinate_query.py，配置 configs/shaft_roi_v2_20261110.json。
+独立运行新内部点、两种边界点与域外点通过预期行为；入口校验 atlas /
+attachments hash，按真实 native cell bary 将点运输到 posed vertices，
+再执行 posed 前向查询。它是点查询/点运输入口；没有运输完整探头姿态、
+法向/切向控制，也未调用完整血管 DMP 扫描链或新超声观测回路。
+三次完整单点 load+hash+全体 LBS+query 耗时 .425–.455 s；warm scalar
+query 约 1.2 ms。不能称完整入口已经满足 5/20 ms 伺服实时周期。
+
+既有扫描路径覆盖与旧缺陷对照
+新 ROI 有意排除端部，不允许偷偷把既有整链的域外点最近邻吸附后宣称
+接入成功。父任务已检查旧 atlas 血管标签：R_COM_FEM_V 的旧 h 为
+.0528–.0862，全部低于新下限；R_SUPFEMV 13/85、POST_TIB_V 15/114
+旧标签超出范围；POPV 的旧标签在范围内。此为父任务报告的筛查结果，
+本审计没有把它伪称自己的重投影；旧 h 来自另一 chart，只能近似提示
+覆盖风险。新资产需要重新投影与逐点域验证，不能直接复用旧血管 cache。
+
+旧整腿的非注入缺陷未因缩域而“被修好”：独立几何已封存的旧资产
+left/right 相反定向 tet 为 2552/169；identity transport 重叠对
+347794/7529；膝站位 frame 突跳与不连续分段骨轴有关。全域 cap/TetGen
+候选存在表面保形、流形或极小 sliver 问题，不能用“全正 tet”代替质量
+和姿态验收。本次不选择这些候选，也不覆盖其失败记录。工作者的端点
+扩展探索不是 8 层体网格加七姿态完整验证，主资产继续冻结 [.14,.94]。
+
+伺服/dIRD/QP 与 B 的最终证据边界
+沿用本审计 PHASE1_REPORT.txt：真实完整 pose-loop 的隐藏测量非干扰
+已独立复跑；A/B 主配置旁路整个 Module C。只关闭 Ruckig 仍会走 fallback，
+不能把它当旁路。已准备路径、vessel-centered crop 仍是已知先验；没有
+blind first image 或真实 B-mode 证据。
+
+沿用 PHASE2_REPORT.txt：新旧 checkpoint 五组 source/boundary 无交叠；
+raw m_safe=zero_bias+safety_threshold 的修复与 54 回归已独立验证。
+新 checkpoint 在既有严格门未优于/替代旧版本；不能选择性报告新分数。
+probe45 URDF/软件 TCP 一致性不证明设备当前装的是 probe50 或任何真机工具。
+
+本轮额外只读审查 dird/ADDENDUM_PHASE2.txt 与新修复 manifest；逐文件
+hash 全匹配。对 Python/native 各 204 条已封存实际短命令，独立把 path→
+hold→path 拼接再差分，逐帧 acceleration/jerk 与修复值误差均 0；
+native hold 的真实 jerk 余量 −.008656222 被保留，没有归零隐藏。
+本次没有再次运行这些短 QP 场景，结论是源码和保存轨迹的独立重计算。
+
+本审计 earlier fresh branch0/no_dird/path0 的 native 异常仍有效：tick641
+q_meas rail .298021185919 m，而 q_send rail 58.282671290689 m；桥接器在
+反馈前拒绝并拒绝后续续接。长路径 native 输出异常尚未定位，段界统计
+修复不修复它。固定模型时钟、短回归通过或一次 branch0 合法，不是实际
+控制系统稳定性证书。新跟踪诊断属于单独任务，本报告不预判其未封存结果。
+
+因此：旧 B 的能力 oracle 是有限 sampled SRS/运动学流程，不是实际
+UltraPOC 执行能力；有限 SRS 失败不证明系统无法执行该路径。旧合成 B
+信息收益可支持离线研究方向，不能恢复“真实机械增益/新连续 QP 全图/
+端到端首次成像已验证”的声明。学习 dIRD proxy 的必要性也未由这些坐标
+修复证明。生产代码被调用与物理超声有效性是不同证据层级。
+
+复现与证据层级
+在本目录运行：
+  python check_harmonic_boundary.py final
+  python check_harmonic_boundary_extended.py
+  env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 \
+    /media/camp/EXT_DRIVE/envs/genesis/bin/python check_harmonic_final.py final
+  /media/camp/EXT_DRIVE/envs/genesis/bin/python check_harmonic_cgal.py
+输出仅写本 audit 目录。结果详见 harmonic_final_results.json、
+harmonic_boundary_*final.json、harmonic_cgal_final.json、
+harmonic_skin_fit_final.json、harmonic_entry_timing.json 与对应运行日志。
+工作者最终源回归日志为 22 passed、1 optional fixture skipped；本轮只读
+核对日志/指纹，未重复声称自己运行了这 22 个测试。本审计的独立实际运行
+为上文所列完整几何、边界、反解、运输和保存 QP 轨迹重计算。
+
+合成机制证据：原 A/B 的响应、后验决策和有限 SRS 能力假设；保持原范围。
+生产运动学/几何软件证据：本次 ROI、真实点 API、固定 LBS、此前实际 QP
+理想反馈回放；各自通过和失败均按上述有限范围保留。
+真实物理超声证据：本轮没有。新资产通过不填补这一空白。

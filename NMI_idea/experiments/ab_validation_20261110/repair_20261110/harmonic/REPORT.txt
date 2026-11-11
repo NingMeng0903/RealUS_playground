@@ -1,0 +1,92 @@
+坐标修复封存报告 — 2026-11-10
+
+已交付：双腿 shaft ROI v2，可用域 h∈[0.14,0.94]，θ为周期弧度，d∈[0,1]。
+它是明确范围的生产候选，不是全腿或完整血管扫描链修复。
+唯一当前资产目录：本报告同目录 shaft_roi_v2/。旧production文件未覆盖。
+原v2错误边界和先前元数据版本均完整归档，不应作为当前资产加载。
+
+1. 真实修复
+
+上游原ROI只用跨中线15mm几何mask，混入对侧腿。新atlas.py读取可选canonical LBS，
+按每面3顶点平均 ipsilateral hip/knee/ankle/foot 总权重≥contralateral筛面，
+保留最大面积连通分量并删除unused顶点。原生XYZ不改。重烘native clean base与现有
+Butterfly L3均经CGAL无自交；旧smooth壳自交的独立证据与所有失败方案保留。
+
+旧runtime错误地把harmonic_vertices前skin_count点当皮肤，且重算解析距离比d。
+现将旧解析距离比与baked图深度明确分开：旧资产默认解析比，使用真实三角皮肤/保留
+孤立顶点与core polyline；显式baked用原生tet，不填凸包，不静默域外外推。
+原16个右皮肤点 mean|d| .475617、max .954376→0；其h/θ不变。
+
+新ROI使用过滤后原production Loop皮肤和原CSR stencil权重，XYZ与保留权重不动。
+从真实skin三角面与连续中心线平面求交，全部ray恰一交；采用平行运输frame，
+构造72×108×8层体。每腿62208节点、322056四面体、7776外皮顶点/15336外皮面。
+外皮连接从真实tet外边界提取，已修复独立审计发现的quad对角不一致。
+physical point输入及逆映射输出保留float64，已修复float32导致的合法边界假拒绝。
+
+仅d满足正边权离散图Laplace Dirichlet方程；h是输运的中心线station标签，θ是周期
+平行运输角。不得称为三个标量的FEM调和映射或单射定理。标量最大原则不保证单射。
+空间几何与材料地址单射另有独立全量检验。
+d=0为存储tet真正外壳，d=1为半径比例.04内壳；centerline、端外区不属该annular域。
+
+2. 最终独立验证（使用真正写盘重载资产）
+
+两腿空间raw及0,15,30,45,60,75,90度固定SMPL-X膝屈曲：全tet无重叠、无反转；
+全部径向层序和相邻h层序通过。90度最小pose/rest体积比 left .16833/right .18717。
+空间float32存储mesh全正；材料unwrap(θ,h,d)局部Jacobian一致同号、无零/翻号。
+全部322056材料tet及±2π三副本966168tet的BVH/SAT检查均无材料重叠。
+全部径向d严格递减，最小相邻步长 left .07234/right .07950。
+周期seam一致。所有15336外皮面与native边界完全一致。
+每腿全部15336外皮面中心均接受，max|d|<1e-15。
+随机实际外/内三角内点和1036个d=0/1及端点逆-正回查全部通过，无reference真值。
+独立1024个体内点往返位置max约6e-8m。非法h/d和真正物理域外均直接raise，不clip。
+
+outer交点到原production owned三角面为数值零（<2e-8m；bary构造误差<6e-8m）。
+loft片面是近似：独立全15336面中心到原skin max left .143226mm/right .223591mm（最终native边界连接；证据：../audit/harmonic_skin_fit_final.json）；
+自测4096三角内点max left .2263mm/right .1674mm。不得称整片面严格贴原skin或
+据此宣称精密超声/真实接触有效。原CSR->sourceowned W重算差0，outer bary W差≤1.73e-7。
+这是固定恢复SMPL-X主体和有限七姿态检验，不推出任意人体/姿态无自交。
+
+3. 实际入口和覆盖
+
+可直接load_leg_volume_atlas(shaft_roi_v2/atlas_right.npz)，
+query_atlas_coordinates(atlas,p)；v2 metadata默认baked。
+VolumeTetRefiner.from_atlas(atlas).xi_to_p(xi)为严格逆映射，返回float64。
+附件attachments_{side}.npz有固定volume_lbs_weights与真实source face/bary lineage。
+不得拿诊断full_vertex_indices代替这些体权重。
+
+实际DMP点查询入口已落并执行：
+python -m DMP_playground.run_volume_coordinate_query --config DMP_playground/configs/shaft_roi_v2_20261110.json --xi 1.2 .5 .5 --knee-deg 60
+入口验证asset/attachment SHA，使用真实DMP config/canonical loader、固定节点SMPL-X LBS、
+原生tet FEM点transport，再在posed chart查询。最终本点逆误差0、θ/h/d输运误差0
+（浮点输出精度内）；独立90度d=0/1边界点入口亦过。完整单点入口约.4秒，非伺服
+实时周期认证。没有声称接触、姿态控制、超声或完整servo验证。
+
+旧vessel projection未迁移，也不能直接复用旧ξ。旧标记h范围包括域外端样本：
+R_COM_FEM_V .05278–.08622，R_SUPFEMV .08622–.44243，R_POST_TIB_V到.98939。
+旧数字标签和新chart还需物理重新映射，故不能声称当前完整scan chain工作范围已覆盖。
+本次真实集成仅为明确in-domain点查询/transport；普通DMP旧默认与缓存未悄然替换。
+
+4. 边界扩展和完整域状态
+
+前瞻冻结小网格全结果：shaft_h_extension_trials/frozen_plan.json、grid_results.json。
+72×108×3探索门最大通过 right [.12,.96]、left [.12,.94]；并非最终8层+7pose认证，
+未替换已验证v2。部分失败的“中段open”可能是截面端点聚合临界，不能当成已证明
+解剖阻断或最大安全边界。当前确认域只有[.14,.94]；扩展尚待更精确边界处理与全审。
+
+完整腿clean skin+cap MeshFix/TetGen候选仅作探索。最初double正体积在float32变为
+right3反转/1零体积、left65反转，已拒绝。质量/nobisect重试使rest float32全正，但
+未完成完整域hθd、kinematic W和七姿态/单射验证，不作为生产候选。无继续cap试验
+阻塞本次ROI交付。所有旧输入、失败、质量试验与hash保留。
+
+5. 验证和封存
+
+源相关测试：22 passed，1 skipped（缺少可选latest canonical fixture）。
+另有真实双腿生产/ROI、独立几何材料全量、边界逆正、DMP入口测试；不是只测存储节点。
+最终manifest.json记录当前源、资产、canonical输入与证据SHA。
+shaft_roi_v2/metadata_revision.json证明最后metadata-only修订所有数组不变；
+boundary_revision.json证明边界修订体数组/W不变。旧solver/FEM/layout标签仅存
+source_surface_metadata来源记录，不是当前求解器声明。
+最终独立证据：../audit/harmonic_final_results.json、harmonic_boundary_final.json、
+harmonic_boundary_extended_final.json、harmonic_cgal_final.json及最终审计报告。
+较早harmonic_independent/REPORT.txt对应历史hash，应结合上述revision/addendum使用。
+使用契约源码：Among_US/src/projects/genesis_ue_sync/anatomy_retarget/leg_volume_coordinates/SHAFT_ROI_USAGE.md。

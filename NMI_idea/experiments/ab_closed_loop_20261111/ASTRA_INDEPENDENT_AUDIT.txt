@@ -1,0 +1,387 @@
+INDEPENDENT CODE, NATIVE-MECHANICS AND PUBLIC-NUMERICS AUDIT
+2026-11-11
+
+Audited original implementation:
+  /media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_closed_loop_20261111
+Audited corrected snapshot:
+  /media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_closed_loop_reviewed_20261111
+
+Sections 1--7 were completed using source, public FROZEN.json and public
+calibration MOTION.json/NPZ files, without inspecting held-out RESULT.json or
+success rates. Section 8 was added after the corrected run completed and checks
+the resulting records and individual witnesses. No source, parameter, run, or
+outcome file was edited by this auditor. Independent numerical decision checks
+used analytic public observations and public native poses, not the held-out
+seed 721419. Cohort effect estimation belongs to the separate outcome analysis.
+
+1. Overall judgment
+
+The corrected implementation supports a finite-library, deterministic native
+robot simulation with observation-dependent decisions and fresh synthetic
+detected-feature acceptance. It genuinely executes the existing native joint
+controller, preserves its histories by deterministic prefix replay, and uses
+measured-frame SE(3) targets with signed tilt. It is not an endpoint-IK substitute.
+I found no private association/response/target-truth input to the policy's action
+selection and no arm-specific removal of a supported retreat/crossover route.
+
+The initial association update was wrong. The corrected update is exact for its
+declared fixed-geometry Gaussian association surrogate, subject to numerical
+underflow handling. It is not an exact posterior for the renderer's uncertain
+anatomy and frame. The initial probe-value integration also has substantial
+quadrature error. That error changes one public witness first-choice comparison
+at sufficiently accurate integration; it must not be hidden in a causal claim
+about exit anticipation. Native execution, same-first information effects, and
+actual fresh acceptance can still be evaluated independently of that limitation.
+
+2. Measured surface, reference, dIRD, and native continuity
+
+fixture.make_rig uses the production zero-depth atlas anchor and the existing
+estimate_contact fit of 81 noisy sensor points. The robot target is generated
+through rig.measured; private surface coordinates are used by the simulator's
+contact/feature evaluation. robot_motion.measured_goal_pose rotates about contact
+local x. Acquisition constructs the public action from actual final FK in the
+measured frame and the physical action from actual final FK in the true frame.
+The coefficient feature is [1, signed tilt / 0.10]. This is a real signed-tilt
+dependence in the frozen simulation, not an action-name response lookup.
+
+_SE3ProDMPReference drives a full SE(3) translation/exponential-rotation path with
+the integral-basis scalar ProDMP phase and analytic linear/angular feed-forward.
+It starts at actual FK. The phase is rest-to-rest; it does not consume measured
+entry TCP velocity as a ProDMP boundary condition. Actual native qdot and
+acceleration are nevertheless retained. Correct wording is therefore
+"rest-to-rest ProDMP references with continuous native controller histories."
+The inherited ScanReplayBridge result label still says WorldPoseSplineReference;
+that is stale metadata. The overridden reference factory and desired traces,
+not this result string, establish what is executed.
+
+All route proposals use the same baked dIRD evaluator and time/margin ordering.
+The calibration layer actually checks every eligible finite-library candidate
+and selects the fastest accepted candidate. dIRD is a proposal/ranking aid, not
+a certificate. Execution reruns the selected route at a distinct exact prefix;
+only identical deterministic transitions are cached. Cache lookup checks elapsed
+time, pose and the complete snapshot. Native QPReplaySession replays every
+previous command event and verifies q, qdot and acceleration to 1e-7; controller
+configuration/binary fingerprints are checked. Native model time advances on
+published controller updates and survives prefix replay. No hardware connection
+is opened. The plant is ideal measured-q feedback at 5 ms ticks.
+
+The original native checker compared FK(q_next) to desired[t]. The correction
+adds the protocol's same-tick check using current FK followed by the preceding
+actual FK sample. Both the old gate and the aligned gate must pass. Independent
+reconstruction of the original public traces found no accepted segment rejected
+by the aligned 2 mm/2 degree check. Corrected public calibration summaries are:
+
+  fixture             accepted/checked routes  accepted segments
+  00 constrained               38/42                  54
+  01 constrained               39/43                  55
+  00 open                      20/20                  20
+  01 open                      20/20                  20
+  total                       117/125                149
+
+Across these accepted segments, same-tick maximum position error is
+1.853383 mm and maximum rotation error is 0.159361 degrees. Minimum sampled
+self-clearance is 39.195130 mm; maximum true synthetic contact gap is 0.759552 mm.
+Every saved q/qdot/acceleration reconstruction error is exactly zero. Maximum
+configured command-jerk excess is 0.038057 rad/s^3 over an arm limit of
+300 rad/s^3, about 0.0127 percent. The user explicitly tolerates such microscopic
+jerk overruns; no new jerk rejection gate is warranted. The native gate enforces
+position, velocity, acceleration, tracking and sampled self-collision, while
+the corrected catalog records jerk margin. Do not call this strict zero-tolerance
+jerk certification.
+
+Earlier independent calibration inspection found accepted TCP tick spacing at
+most 0.236349 mm. End TCP speeds were at most 0.269 mm/s and 0.000942 rad/s while
+joint histories remained nonzero. The latter explains why "all qdot reset to
+zero" would be false even though the reference ends at rest.
+
+3. Obstacles, contact, and fairness
+
+The direct crossover is blocked by planar slab intersection, not by policy or
+action identity. Both round-tip and retreat-fork paths are offered where a direct
+segment intersects the wall. The same candidate machinery is available to every
+arm. Rejected candidates remain in public calibration records. This finite
+library is not an exhaustive continuous-motion search, and missing witnesses
+cannot establish global infeasibility.
+
+The collision model checks a 2-D forbidden TCP region and line segments between
+actual TCP ticks, plus per-tick native robot/probe self-collision. It does not
+check full external-arm collision, a force/contact plant, or a swept articulated
+robot volume. No explicit probe-radius inflation or nonlinear between-tick
+deviation bound is archived. Accordingly use "planar TCP exclusion with linear
+between-tick checking" unless additional envelope provenance is supplied; do
+not claim continuous full physical probe/arm collision certification. A failed
+execution terminates rather than rewinding to a successful physical route.
+No separate verified withdrawal program is implemented.
+
+The two constrained fixtures share index//2=0, hence the same robot anchor,
+atlas address and sensed surface realization. They are two fixed geometric
+variants, not two independent sensor calibrations and certainly not 128 robot
+placements. The 128 anatomical draws remain one subject cluster each across
+layouts. Neither public calibration nor physical histories depend on response w.
+
+F0 uses the documented common start-state continuation model in first-stage
+scoring but pays each real prefix duration. Both F arms subsequently choose and
+execute from actual q/qdot/time. A_greedy uses the same immediate-terminal
+selector and retry rule as B. A_geometry is more precisely a fixed acoustic-prior
+policy without residual updates; it is not a separate geometric servo.
+Fixed_pair order is now selected by minimum public worst-case checked completion
+time. If it cannot fit, it falls back to the direct selector; this must be visible
+when interpreting any equality with A or B. Neither full pair fits T0.
+
+All four corrected public manifests have T0=3.900000 s. Although the open-mode
+code recomputes T0, the open and constrained absolute deadlines coincide exactly
+for these frozen fixtures, satisfying the causal opening comparison here.
+The constrained geometric witness deadlines are Tw00=5.290000 s and
+Tw01=4.835000 s. Central worst completion minima are 4.215 s in both. The fastest
+side cross-window completions, minimizing over checked detours, are 6.365 s and
+5.455 s respectively. These are public timing separations, not image successes.
+
+4. Acoustic association, fresh frames, and controls
+
+Original acoustics.py used likelihood branch masses (.9*p_real, .1), whereas
+the renderer uses (p_real, (1-p_real)*.1). At fully supported poses the erroneous
+target/clutter masses were (.72,.10) instead of (.80,.02), reducing target/clutter
+prior odds by a factor of 5.5556. The original run cannot support exact-mixture
+inference claims and is correctly retained separately.
+
+The corrected update uses the renderer-consistent association masses and keeps
+Gaussian natural parameters separately in every association component. An
+independent two-observation check enumerated all four target/clutter assignments
+with their closed-form joint Gaussian likelihoods. Maximum mixture-weight and
+component-mean error was 2.220446e-16; maximum covariance error was 1.214306e-17.
+Event deduplication passed. Corrected per-component predictive quadrature had
+total mass exactly 1 in this check. Predictive outputs expose only "candidate"
+and "missing", never the integration component's true association label.
+
+The policy updates one explicitly stationary material-patch response shared
+across the two windows. Public actual pose, window and visit are retained. It
+does not infer geometry latents jointly: it subtracts nominal g_geo and combines
+an integrated geometric gate with residual-quality probability. Support/quality
+correlations, uncertainty of true frame, and cross-pose geometry evidence remain
+approximations. "Exact Gaussian natural-parameter update conditional on an
+association and the nominal geometry" is supportable; exact full acoustic-world
+Bayes is not.
+
+Terminal acquisition uses a new event separate from probe events. The private
+acceptance function receives actual physical action and the same captured
+packet, with no arm identity. The action-selection code does not consult its
+truth or accepted bit. It stops only on public detector quality/confidence.
+High-quality detections outside the private geometry gate are therefore genuine
+false public stops, retained as failures. The amended primary endpoint requires
+genuine detected-target identity, center error <=4.5 mm, view error <=0.22 rad,
+and fresh quality >=0.58. There is no visible-length or raster-image gate.
+A missed detector is necessarily a primary failure even if its latent quality
+would otherwise be high. This is "fresh qualifying detected synthetic features,"
+not independently graded ultrasound or detector-independent image acquisition.
+
+Corrected public event IDs include the executed prefix, so distinct prefixes
+cannot silently deduplicate distinct observations. The noise stream intentionally
+remains common by named view/visit across arms, including different exact poses.
+This departs from the original physical-parameter noise-key requirement but is
+explicit in ASSOCIATION_CORRECTION.txt. It is defensible common-random-number
+coupling across counterfactual trajectories, not independent noise across every
+different pose. Repeated visits within one episode have distinct draws.
+
+The uninformative and all-missing controls tell the planner diagnostics are
+uninformative. I0/I1 deterministic choices should match under equal F, including
+forced same-first comparisons. The response-reset control is deliberately
+unannounced to the policy. It tests stale-response reuse, not the protocol's
+reset-aware Bayesian null; a reset-aware control remains absent.
+
+5. Value recurrence and independent numerical decision sensitivity
+
+The expectation branches on public observations and applies a common posterior
+for a given public history. It does not maximize separately over private worlds.
+The implementation scores one terminal acquisition after zero, one or two
+diagnostic observations. It may execute a second terminal after public rejection,
+but this retry is not included in first-stage expectation. Planning utility is
+p_success - .04 * immediate execution duration. Failure-charged deadline time is
+reported separately. This is a finite truncated rollout, not an exact solution
+of the full specified recurrence or globally optimal policy.
+
+Corrected prediction integrates each Gaussian association component separately
+with 5 target and 3 clutter Gauss-Hermite nodes. This is materially coarse. Public
+nominal-action checks found expected-max utility differences of .0205--.0461
+between 5/3 and 31/15 nodes, and .00086--.00119 between 63/31 and 127/63 nodes.
+These are integration errors, not held-out performance results.
+
+An exact-native-pose check then reconstructed every public scan/probe action
+from the selected corrected calibration route's last NPZ FK pose, using the
+measured frame, actual route durations and frozen T0/Tw. First choices were:
+
+  layout/deadline/F       5/3 nodes      31/15 nodes     127/63 nodes
+  00 T0 F0               fork_minus     fork_minus      fork_minus
+  00 T0 F1               direct left    direct left     direct left
+  01 T0 F0               fork_minus     fork_minus      fork_minus
+  01 T0 F1               direct left    direct left     direct left
+  00 Tw F0               fork_minus     fork_minus      fork_minus
+  00 Tw F1               fork_minus     fork_minus      fork_minus
+  01 Tw F0               side_left      side_left       fork_minus
+  01 Tw F1               fork_minus     fork_minus      fork_minus
+
+The 01 Tw F0 competition was independently integrated with adaptive quadrature
+over the full public detected-quality mixture and a separate missing branch:
+
+  side_left     0.4401395193121216
+  side_right    0.4392966896868129
+  fork_minus    0.4443168558917972
+  fork_plus     0.3328027712215640
+
+Estimated absolute integration errors were below 5e-11. By comparison, frozen
+5/3 assigns side_left .3915050757 and fork_minus .3746611932, reversing the
+ordering. Thus a Tw01 F0-versus-F1 success difference from this frozen run cannot
+be attributed solely to anticipating the actual exit: accurate integration of
+the same nominal model would make both first choose fork_minus. Do not silently
+repair or tune the completed frozen policy using its outcomes. Report the coarse
+policy result and this public numerical sensitivity separately. The T0 initial
+choices and both Tw F1 choices are stable in these comparisons.
+
+At T0, B_I1F1 and A_greedy choose the same direct-left acquisition and use the
+same public-feedback retry code. They therefore have identical acquisition
+outcomes under the paired deterministic execution and noises (planning-wall
+charges can differ). A primary B advantage over I1F0 is avoidance of an
+unhelpful nominal-exit probe, not superiority over the strong immediate A and
+not a primary example in which B itself uses new probe information. Same-first
+diagnostic results at suitable exits/deadlines must establish that separate
+information claim.
+
+6. Outcome audit requirements, once results are available
+
+For every declared forced first program and each case/layout/deadline, compare
+I0 and I1 same_first_exit exactly: q, qdot and snapshot hash. Verify the prefix
+capture sequence, elapsed times, route IDs and original public packet agree;
+only packet visibility may differ. Treat a null signature from a time-insufficient
+prefix as an unexecuted prefix, not a valid same-first experiment. Both executed
+continuations must link to execution/MOTION.json and NPZ traces with accepted
+native gates. A cache hit is exact replay, not another native trajectory run.
+
+To demonstrate a real observation-dependent witness, show a concrete I1/I0 pair
+whose terminal choices differ, the realized public quality/missing packet,
+actual entry/exit q and qdot, exact fresh event ID, full elapsed native time,
+and method-blind true-target feature acceptance. Cross-check that the rejected
+cross-window route is too late after minimizing all supported checked returns.
+Retain negative cases, false public stops, misses, and every forced first program.
+Do not select only a successful subject or equate a timing gap with acquisition.
+
+Report all four factorial cells and strong A/fixed-pair comparisons at T0,
+long deadlines, open, no-information, all-missing and unaware reset. Subject
+bootstrap clusters must contain both layouts and every paired arm/noise. Distinguish
+model-clock results from wall-planning sensitivity and offline calibration cost.
+Any constructive case is an existence example, not significance or superiority
+over unrestricted continuous control. Separate a clean same-first I effect from
+the numerically fragile Tw01 F first-choice contrast.
+
+7. Reproducibility scope and audited corrected source hashes
+
+The source/runtime fingerprint and checked native traces are substantial, but
+the manifest does not archive the 81 sensor coordinates, fit residuals, private
+surface equation, all atlas asset hashes, or the imported ProDMP/contact-estimator
+source hashes. Those remain reproducibility limitations; the current fixed seed
+can reconstruct them only while dependencies remain unchanged.
+Full native snapshots are retained in runtime caches for continuation, while the
+result archive saves their hashes and q/qdot rather than portable full snapshot
+objects. Reproducing controller internals therefore requires the preserved
+software and deterministic prefix replay, not only loading a result row.
+
+fixture.py:
+  0f6691f63f8cf66b0a1ffdcc8a0523e4b5b13d9427cff64e34e8adea59e93ca7
+robot_motion.py:
+  ca173c6c859deec61cb6acaee10405660aa4fbd022328fac8b7913887847a420
+acoustics.py:
+  c246cfe812af9fa3552efc385b1b20d767baaf59c60fa15f246d297f13e07ac9
+planning.py:
+  226e360d7410d4ce21031fa8f649e4ca474da16a8d3ff9595db0142e49b348f6
+run_closed_loop.py:
+  30fc65fe8653e5451a219f2cf1976c61ca7f392bb1a1349ec8ee5ee7bc153b30
+PROTOCOL.txt:
+  da00e977b0b7b829cb39cb662bad2cca44056f62fcf708fc1e8c6a31eaf803e1
+IMPLEMENTATION_FREEZE.txt:
+  df29489b22d14aa96625c2185b20b8305a96785dc33635c14fd6f3fa7387a54d
+ASSOCIATION_CORRECTION.txt:
+  68773d385725c99f091236dee1dcbc75675dc07bdec72cda103a7be1e3da5307
+
+8. Completed corrected-run integrity and concrete witness audit
+
+After the corrected outputs were complete, all 26,624 result rows were audited.
+There were 12,416 rows per constrained fixture and 896 per open fixture. All
+45,153 recorded physical-event references resolved to execution/MOTION.json and
+existing NPZ traces. Exact entry/exit q and qdot, route validity and duration
+matched the execution records. Success flags matched an accepted terminal event;
+the first-success timestamp matched the first accepted event and was before the
+declared deadline. Every accepted event had true-target identity and a distinct
+fresh terminal acquisition. No integrity violation was found by these checks.
+No episode repeated a public acquisition event ID, and every model-clock total
+equalled the sum of its actually executed event durations. B_I1F1 and A_greedy
+matched exactly in primary success, first-success time, stops, first choice,
+terminal count and full public acquisition sequence for all 128 cases in each
+constrained fixture; this confirms the public-choice deduction above.
+
+All 6,144 forced same-first I0/I1 pairs had exactly equal saved post-prefix q,
+qdot and snapshot hash, equal realized public prefix packets, equal prefix routes
+and equal elapsed time. Every prefix completed, including prefixes with no
+time left for a subsequent terminal. In both no-information and all-missing
+controls, the paired branches had identical continuation sequences/outcomes.
+This checks same-first execution and masking; it does not assert equal outcomes
+between different F policies or eliminate the model/integration limitations.
+
+A positive same-first witness, chosen for concrete inspection after running all
+declared subjects/programs, is fixture_00_constrained, case_id=5, witness deadline
+5.29 s, same_fork_minus_I0 versus same_fork_minus_I1. Both execute the same
+245-tick fork_minus__direct prefix in 1.225 s. Its actual measured-frame pose is
+(x,y,tilt)=(0.006000152467 m,-0.003000496432 m,-0.075036755112 rad).
+The newly acquired public candidate has quality 0.811536785874 and confidence
+0.966693209796. The post-prefix native state is identical in both branches:
+
+  q = [0.3803479179910173, -1.526437412919167, -1.5644270317522586,
+       1.1490262494196737, 1.69643620972376, 1.5993515271579686,
+       1.0499124303120126, 1.6975545839705997]
+  qdot = [-0.018965350094051144, 0.0007244739486711052,
+          -0.014513541153541528, -0.012064975295140572,
+          -0.08432735667615102, -0.04106530728823858,
+           0.010931085711051676, 0.10515592112250605]
+  snapshot_sha256 =
+    0d22c3a3ea9bcb06c333b99c74a633d3f3bbe13b7f989b4769c97d4a948428dd
+
+The masked branch executes fork_minus__left__direct for 2.99 s and obtains the
+new event fork_minus/left/visit_0 at elapsed 4.215 s. It is a genuine target but
+has quality 0.089176009000, below 0.58, and fails. The informed branch executes
+fork_minus__right__direct for 2.645 s and obtains the distinct new event
+fork_minus/right/visit_0 at 3.87 s. It is a genuine target with quality
+1.085487385511, center error 3.642280 mm and axis error 0.150295 rad, satisfying
+the amended feature gate. The right branch correctly stops on that packet.
+The two terminal paths have 598 and 529 native ticks. Their respective maximum
+same-tick position errors are 0.585124 and 0.020239 mm; both pass native tracking,
+contact and collision checks. The realized diagnostic and terminal values are
+different draws/events, not reused probe observations.
+
+Trace files, relative to the experiment directory above:
+  closed_loop_reviewed_run/fixture_00_constrained/execution/fork_minus__direct_0.npz
+  closed_loop_reviewed_run/fixture_00_constrained/execution/fork_minus__left__direct_0.npz
+  closed_loop_reviewed_run/fixture_00_constrained/execution/fork_minus__right__direct_0.npz
+
+The companion positive witness in fixture_01_constrained is case_id=3 with the
+same forced fork_minus. Its public quality is 0.670641152454. The masked branch
+executes left at 4.29 s and fails with true-target quality 0.009219324344. The
+informed branch executes right at 3.775 s and succeeds with quality
+0.928072730349, center error 3.278965 mm and axis error 0.056769 rad, before
+Tw01=4.835 s. Both prefixes share snapshot hash
+14813465ca29c3d9db5e7cc9bbf974fbdd46d339fb9d9017abfa9392213d6a99.
+Corresponding native terminal traces have 613 and 510 ticks and pass their gates.
+
+A negative same-first example is case_id=41, fixture_00_constrained, the same
+forced prefix and exact mechanical state. New diagnostic quality 0.419441757657
+causes the informed policy to select right. That fresh true-target packet has
+quality 0.531514772969 and fails at 3.87 s. The masked policy selects left and
+succeeds at 4.215 s with quality 0.696657373042, center error 4.149718 mm and
+axis error 0.111058 rad. Thus observation use is not uniformly beneficial under
+this realized noisy, geometry-approximate policy. A corresponding negative
+fork_minus pair is present in fixture_01 as well.
+
+The positive examples establish observation-dependent checked branching and a
+new accepted synthetic feature packet from an identical actual prefix. They do
+not establish aggregate superiority, solve the coarse-quadrature Tw01 F contrast,
+or demonstrate performance under the protocol's original 2 mm image-center gate:
+the declared amended center gate is 4.5 mm, and the displayed accepted examples
+have center errors exceeding 2 mm. They are native-simulation witnesses, not
+hardware or raster-ultrasound demonstrations. All positive and negative outcomes
+must remain in the separate complete cohort analysis.

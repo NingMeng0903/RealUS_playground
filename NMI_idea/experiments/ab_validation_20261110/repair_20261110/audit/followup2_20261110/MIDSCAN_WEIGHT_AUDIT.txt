@@ -1,0 +1,60 @@
+Independent mid-scan / QP1 weighting audit, 2026-11-10
+
+Verdict
+The four weight-ablation and six relaxed-reference saved runs support the reported middle-scan pose accuracy. The user's changed acceptance emphasis is applied exactly as documented in MIDSCAN_EVALUATION_PROTOCOL.txt: this is a post-run user-directed metric clarification, not an original preregistration. It does not waive mechanical limits. No native process, hardware, or experiment rerun was performed for this audit.
+
+Independent checks
+Every saved joint state was passed through the URDF tcp FK. Position error and geodesic orientation error were independently recomputed from the 4x4 poses. Desired arc fraction and perpendicular error were reconstructed by projecting onto the original 17-pose polyline. All-motion, phase [.8,duration-.8], arc [.2,.8], and all ten non-settle arc deciles agree with the root's summary, including sample counts and gates. Every trace SHA agrees with its result. The four weight-case raw result, reference and native-config SHAs also agree. Paired desired poses and clocks are bit-identical; the complete native dumps differ only in qp.task_weight. Continuous acceleration/jerk were recomputed from the saved entry velocity/acceleration and every command.
+
+Important interpretation
+The baseline's 0.30 mm along-track number describes the frame of maximum total error; it is not the whole-run along-track maximum, which is about 6.04 mm for path0. A fixed reference and identical seeds show a causal task-weight effect on these runs. This does not establish optimal weights, universal performance, or exclusion of solver conditioning effects. QP1 mixes linear m/s and angular rad/s residuals, and its weights set how unavoidable residual is distributed. QP2 locks the achieved QP1 task, so these records do not support direct secondary overwriting as the explanation.
+
+W-only keeps the 6-degree lead envelope. The resulting worst command jerk is about 509.7 / 481.1 rad/s^3 at a collapsed -0.777807 rad/s box, compared with the unchanged 300 limit. These are substantive failures, not rounding. The 20-degree plus both-end .8-second cases retain much smaller negative jerk margins, also strict FAIL. The phase/middle pose success must never be reported as complete mechanical or physical execution success.
+
+Regional results (maxima; all distances mm, angles degrees)
+case | middle frames / time span | position | normal | angle | pose gate | worst jerk margin
+path0_baseline | 459 / 0.800-3.090 | 4.586765726 | 3.154740470 | 0.552703547 | False | -10.8339282954
+path0_tolerance_unit | 459 / 0.800-3.090 | 0.128574777 | 0.070630089 | 1.986777906 | True | -209.69922076
+path1_baseline | 476 / 0.800-3.175 | 4.391244463 | 2.920684631 | 0.521796806 | False | -0.0393228103481
+path1_tolerance_unit | 476 / 0.800-3.175 | 0.115043052 | 0.044852567 | 1.919456974 | True | -181.123336829
+path0_lead20_start04 | 459 / 0.800-3.090 | 2.800189311 | 1.761344569 | 0.204027245 | False | -0.0392366940829
+path0_lead20_both08 | 579 / 0.800-3.690 | 0.946518984 | 0.938751623 | 0.205513957 | True | -0.0372380521821
+path0_lead0_both08 | 579 / 0.800-3.690 | 0.946518984 | 0.938751623 | 0.205513957 | True | -0.0372380521821
+path1_lead20_start04 | 476 / 0.800-3.175 | 2.590837101 | 1.613590275 | 0.155803866 | False | -0.0373582043806
+path1_lead20_both08 | 596 / 0.800-3.775 | 1.071543867 | 1.016370182 | 0.173626526 | True | -0.0345329711374
+path1_lead0_both08 | 596 / 0.800-3.775 | 1.071543867 | 1.016370182 | 0.173626526 | True | -0.0345329711374
+
+W-only pose peaks and complete deciles
+path0_tolerance_unit: orientation peak {'tick': 126, 'time_s': 0.63, 'phase_s': 0.63, 'arc_fraction': 0.11644192639375472, 'degrees': 2.2798746904907867}; above-2deg intervals [[0.5, 0.795]].
+decile | frames | position max | normal max | angle max
+0 | 114 | 0.091055676 | 0.079872022 | 2.241068865
+1 | 74 | 0.100566009 | 0.073457534 | 2.279874690
+2 | 74 | 0.113288554 | 0.057674314 | 1.385015519
+3 | 74 | 0.128574777 | 0.070630089 | 0.446596234
+4 | 74 | 0.101405677 | 0.008719143 | 0.063068913
+5 | 74 | 0.100474229 | 0.008108174 | 0.019850171
+6 | 73 | 0.099829489 | 0.033505626 | 0.104767876
+7 | 74 | 0.095131795 | 0.027385759 | 0.168206991
+8 | 74 | 0.088142165 | 0.012213593 | 0.131778078
+9 | 74 | 0.199064439 | 0.197040136 | 1.890238177
+Arc20-80: 443 frames, position 0.128574777, normal 0.070630089, angle 1.385015519, gate True.
+path1_tolerance_unit: orientation peak {'tick': 126, 'time_s': 0.63, 'phase_s': 0.63, 'arc_fraction': 0.11380466889001331, 'degrees': 2.2100832015090326}; above-2deg intervals [[0.51, 0.775], [3.975, 3.985]].
+decile | frames | position max | normal max | angle max
+0 | 116 | 0.090809979 | 0.084398929 | 2.181791767
+1 | 76 | 0.096721186 | 0.070812108 | 2.210083202
+2 | 75 | 0.107522381 | 0.038424785 | 1.308847887
+3 | 76 | 0.115043052 | 0.044852567 | 0.439867563
+4 | 75 | 0.104255185 | 0.019275715 | 0.104081253
+5 | 76 | 0.100217747 | 0.033428610 | 0.111299778
+6 | 75 | 0.099691074 | 0.029645419 | 0.190869135
+7 | 76 | 0.093963888 | 0.023052067 | 0.244835227
+8 | 76 | 0.080858610 | 0.015111249 | 0.158789124
+9 | 75 | 0.199624598 | 0.199405784 | 2.049002961
+Arc20-80: 453 frames, position 0.115043052, normal 0.044852567, angle 1.308847887, gate True.
+
+Production configuration recommendation (not implemented by this audit)
+Use an optional explicit inner.qp.task_units mode in the shared Python config resolver. When absent, preserve the legacy task_weight behavior. Resolve it once to the existing six effective task_weight entries before constructing either Python or native QP; log both source scales and final weights in the native dump. Do not normalize again in the reference, outer-loop error, Jacobian, command, or native solver.
+A transparent compatible schema is linear_scale_m=.002, angular_scale_rad=pi/90, angular_cost_weight=50, which yields W_linear=50*(angular_scale_rad/linear_scale_m)^2=15230.870989335432 and W_angular=50. Equivalently cost scale k=50*(pi/90)^2 multiplies ||v_linear/.002||^2+||omega/(pi/90)||^2. Require finite strictly positive scales and weights, and reject ambiguous simultaneous explicit legacy weights and enabled unit-scale settings rather than silently double-applying them. A profile may choose one representation explicitly.
+These spatial scales define relative QP1 task residual priorities. They do not change physical units of the signals, do not enforce a 2 mm/2 degree pose constraint, and are not uniquely determined by dimensional analysis. Distinct position/orientation outer-loop gains further mean this is not exactly equal normalized pose-error cost. Keep q/v/a/j, lead, collision, and solver admission limits in their existing separate fields and checks. Retain the tested absolute cost scale: arbitrarily rescaling all six weights is not generally equivalent because QP1 also contains 1e-8 joint regularization and potentially CBF slack cost, and numerical conditioning changes. Test parser/native export parity and invalid config rejection. No hardware default deployment follows from these offline results.
+
+Evidence: check_midscan_weights.py, midscan_weights_independent.json/.log. The json contains all 130 window summaries, FK errors, source trace hashes, exact peak coordinates and strict derivative margins. This report covers the original four weight runs and six relaxed runs only; later combinations require their own independent audit.

@@ -1,0 +1,136 @@
+{
+  "scope": "Fixed-policy post hoc sensitivity on already captured features; no retuned decision or physical rerun. No raster/visible-length gate.",
+  "center_max_m": 0.002,
+  "angle_max_rad": 0.17453292519943295,
+  "quality_min": 0.58,
+  "results": {
+    "primary": {
+      "counts": {
+        "B_I1_F1": 45,
+        "I1_F0": 52,
+        "A_greedy": 45,
+        "pair_fixed": 45,
+        "same_fork_minus_I1": 52,
+        "same_fork_minus_I0": 52
+      },
+      "B_vs_A": {
+        "difference": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "B_vs_pair": {
+        "difference": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "same_fork_minus_I1_vs_I0": {
+        "difference": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      }
+    },
+    "witness": {
+      "counts": {
+        "B_I1_F1": 68,
+        "I1_F0": 51,
+        "A_greedy": 48,
+        "pair_fixed": 48,
+        "same_fork_minus_I1": 68,
+        "same_fork_minus_I0": 45
+      },
+      "B_vs_A": {
+        "difference": 0.078125,
+        "ci95": [
+          0.0234375,
+          0.13671875
+        ]
+      },
+      "B_vs_pair": {
+        "difference": 0.078125,
+        "ci95": [
+          0.0234375,
+          0.13671875
+        ]
+      },
+      "same_fork_minus_I1_vs_I0": {
+        "difference": 0.08984375,
+        "ci95": [
+          0.03515625,
+          0.1484375
+        ]
+      }
+    },
+    "long1_5": {
+      "counts": {
+        "B_I1_F1": 73,
+        "I1_F0": 73,
+        "A_greedy": 48,
+        "pair_fixed": 75
+      },
+      "B_vs_A": {
+        "difference": 0.09765625,
+        "ci95": [
+          0.046875,
+          0.15234375
+        ]
+      },
+      "B_vs_pair": {
+        "difference": -0.0078125,
+        "ci95": [
+          -0.046875,
+          0.03125
+        ]
+      }
+    },
+    "long2": {
+      "counts": {
+        "B_I1_F1": 82,
+        "I1_F0": 79,
+        "A_greedy": 88,
+        "pair_fixed": 85
+      },
+      "B_vs_A": {
+        "difference": -0.0234375,
+        "ci95": [
+          -0.05859375,
+          0.0078125
+        ]
+      },
+      "B_vs_pair": {
+        "difference": -0.01171875,
+        "ci95": [
+          -0.0625,
+          0.0390625
+        ]
+      }
+    }
+  },
+  "first_strict_same_fork_positive": [
+    {
+      "layout": "fixture_00_constrained",
+      "case_id": 6
+    },
+    {
+      "layout": "fixture_00_constrained",
+      "case_id": 35
+    },
+    {
+      "layout": "fixture_00_constrained",
+      "case_id": 89
+    },
+    {
+      "layout": "fixture_00_constrained",
+      "case_id": 91
+    },
+    {
+      "layout": "fixture_00_constrained",
+      "case_id": 109
+    }
+  ]
+}

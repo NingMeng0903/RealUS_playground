@@ -1,0 +1,338 @@
+INDEPENDENT FINAL AUDIT — A/B OFFLINE VALIDATION
+Date: 2026-11-10. Reviewer: independent Astra checker.
+Scope: source/math/data audit plus fresh offline numerical/module checks.
+No hardware, contact experiment, ultrasound acquisition or network action was
+performed by this auditor. Only audit/ files were written by this auditor.
+
+VERDICT
+
+There is enough evidence to pursue B as a bounded OFFLINE research direction
+on top of A: observation-conditioned recourse is correctly implemented in the
+finite model, improves the declared synthetic task objective against two
+full-belief baselines, and the learned-response extension closes a real A->B
+dataflow through actual DMP endpoints and actual robot-kinematics queries.
+
+This is NOT evidence that B is a validated end-to-end anatomical ultrasound
+system, that it has acquired a first qualified image, or that every proposed
+module is necessary. A remains a supported simpler response-model foundation.
+The learned dIRD proxy provides ZERO measured decision benefit in these core
+comparisons; the capability benefit is due to sampled exact admissibility.
+The additional B benefit over full-belief greedy is modest in absolute loss
+units, with many ties. Production servo failures remain unresolved. Selecting
+B as an offline direction is a scoped research judgment, not a deployment or
+publication-readiness endorsement and not a universal superiority claim.
+
+1. EVIDENCE CLASSES — KEEP THESE SEPARATE
+
+SYNTHETIC MECHANISM:
+Exact risk/VOI examples, A affine response worlds, finite target identities,
+hand-declared sensor kernels, learned synthetic sensor extension, source-prior
+factorial, synthetic image-plane errors, synthetic ellipse/obstacle geometry.
+Terminal correct identity is a scored synthetic success. It is not a measured
+image-quality event. The main B objective is accumulated motion/sensing/proxy
+cost PLUS a20 failure/wrong-identity loss, not deadline-truncated acquisition
+time. A result is one-step local feature error, not completed scanning time.
+
+PRODUCTION KINEMATICS / REAL SOURCE MODULES:
+Actual local DMP/KMP fit/rollout, production atlas/SMPL-X attachment computations,
+installed physical-probe45 dIRD checkpoint, calibrated robot-relative encoder,
+SRS whole-path candidate lift, Pinocchio FK/limits and configured self-collision
+geometry were executed. These establish software/asset contracts and bounded
+mechanical computations. A failed finite SRS lift does not prove no feasible
+robot path exists. Sampled collision checking is not continuous safety.
+
+TRUE PHYSICAL ULTRASOUND:
+NONE in this experiment. No B-mode stream, measured contact/force, real robotic
+execution, independent phantom/patient acquisition, diagnostic acceptance or
+physical first-qualified-image endpoint was tested. Combining the first two
+classes does not create evidence in this class.
+
+2. INDEPENDENT REPRODUCTION COMPLETED
+
+Audit code does not write or rerun workers' main programs in their output dirs.
+Files under audit/ retain calculations, fresh-query results and input hashes.
+
+check_moment_example.py / moment_example_result.json:
+Exact rational P/Q observation-value example and ternary-sign countercheck.
+
+independent_results.py / independent_results.json:
+Recreated A train/validation/test arrays and checked all split hashes; refit the
+ridge model independently; reproduced all128 test action selections/errors and
+paired interval. Independently solved all72 B values with joint-mass recursion;
+maximum difference7.11e-15. Independently enumerated realized terminal outcome
+paths for every saved policy, reproducing costs, success, wrong identity, explicit
+failure and invalid failure. Recomputed missing-observation and depth metrics
+from saved raw motion samples. No worker planning/evaluation helper was imported.
+
+independent_extension.py / independent_extension.json:
+Recreated seed41107 public contexts and persistent hidden response perturbations;
+reconstructed true/learned/analytic kernels from actual DMP endpoints and A's
+coefficients; reproduced feature/kernel errors, every policy's true expected
+loss and all72 learned-model optimal values. Deliberately changing hidden E
+changes Ktrue while leaving Khat exactly unchanged. Correct-identity endpoint
+semantics are explicitly recorded. No worker planner/evaluator was imported.
+
+independent_factorial.py / independent_factorial.json:
+Recreated seed41108 counts[102,78,51,25] and the smoothed source prior. Independently
+constructed greedy/B policies and evaluated all288 factorial rows (four cells
+per row); maximum planning/loss difference1.07e-14. The initial audit checker
+used an ordinary floating-point min at symmetric ties; matching the declared
+1e-12 tie rule was necessary to reproduce particular tied policy choices. This
+was a checker correction, not a change to experiment policies or outcomes.
+
+independent_production.py / independent_production.json:
+Checked production SO(3) values/Jacobians against independent torch matrix_exp
+at zero, near-zero, both sides of the Taylor switch, a general rotation, pi and
+2pi; also checked second derivatives at zero. Independently confirmed old
+dR21/drx=0 and new=1. Actual DMP candidate endpoints match A exactly; path lengths
+differ by at most6.94e-18m. Seven fresh real capability queries reproduce saved
+scores exactly and admissibility/failure reasons, including body-only placement
+changes, a nonroot incoming state and the repaired departure rejection. A fresh
+real-field zero-rotation gradient differs from central FD by1.03e-6 absolute.
+Reviewed and reexecuted actual e3nn CPU/CUDA contract functions, canonical-frame,
+full-risk and nonrigid normal/tangent checks; all pass. Those are numerical
+contracts, not trained e3nn performance evidence.
+
+One early fresh-query run read graph.json while its owner was regenerating it
+and stopped on absent context1. That log is preserved; the final complete graph
+was used for all successful audit outputs. No missing context was filled in or
+silently substituted.
+
+Final graph SHA256:
+bb9d5c394a6a7bc0d374430f8de6a71ed91312155e0dc7ea783861d7ec7d0734
+Final capability adapter SHA256:
+2608a43e6f716835072a9dc7a074245858ae28cb29364776f212268cd6e9ecdd
+Production torch_kinematics.py before/after SHA256:
+19c80906457ec4fbe9d28f383c93c456a63ccb27979fe9f991ef0415ab4f9f0a
+721fbc3016f7aec7c24357c0ecd3b1b09700756792e8116194bbc0c0967432d7
+Per-artifact hashes are in the independent JSON outputs. Fresh graph source
+hashes match current builder/motion/capability files.
+
+3. THEORY: WHAT WAS ACTUALLY ESTABLISHED
+
+For ell(a,X)=(X-a)^2, r=X,B=-1,W=1, both P(±1)=1/2 and
+Q(0)=2/3,Q(±sqrt(3))=1/6 give Gamma=diag(1,1), hence current risk1+a^2.
+Binary Y=1{X>0} yields expected posterior MSE0 under P and2/5 under Q.
+At observation cost4/5, P observes and Q skips. With ternary sign including a
+separate zero outcome both posterior MSEs are0; that version is invalid.
+Therefore current quadratic moments need not determine future observation
+value. This does not prove A must discard belief or that the full posterior is
+the only possible sufficient representation. It is not a novel general VOI
+theorem or physical result.
+
+The full-risk/cross-term, nominal-nullspace, conditional-second-moment and
+nonrigid normal examples are algebraically sound in their stated models.
+Numerical equivariance is verified for a declared representation and canonical
+frame, not across real tissues or arbitrary deformations. No fitted uniform
+model-error/remainder bounds or post-selection physical chance certificate are
+provided. e3nn is actually exercised but untrained; its necessity or advantage
+over an ordinary local-coordinate model is not demonstrated.
+
+V9.3 already contains a short-lookahead equation. Thus the evidence supports
+an operational planning comparison, not a claim that B first invents lookahead
+relative to every algorithm described in V9.3.
+
+4. A RESPONSE RESULT AND ITS LIMITS
+
+Independent test worlds:128, drawn separately from256 training/64 validation
+worlds. Under the declared context-dependent affine response shift, analytic
+selected squared error=.08888472525 and learned=.04839566095.
+Paired learned-minus-analytic=-.04048906430, bootstrap95% interval
+[-.05637836757,-.02670914984]. Exact analytic negative control ties at
+.04133134633; no artificial learned advantage is present there.
+The four-probe online local Jacobian gets slightly LOWER raw error=.04773014695
+in the shifted condition, but higher charged objective=.09314856763 versus
+learned=.04979704335 under the declared probe/travel prices. This supports the
+specified information/cost tradeoff, not superior learned accuracy over all
+feedback methods. Probe noise was corrected to the common.015 and prior results
+are retained as development.
+
+The fitted feature family closely matches the synthetic generator G(c); held-out
+worlds test independent contexts/biases within that family, not independent
+tissue physics. Current feature error e is public and exact in the simulator.
+Candidate endpoints/path lengths come from actual DMP, while training/probe
+responses use the synthetic local action law. The experiment is not the full
+conditional controller with missing detections, motion execution, contact,
+multi-mode anatomy or the proposed continuous joint trajectory optimization.
+No corrected strong full-servo first-acquisition comparison is yet available.
+
+5. B MAIN MODEL: RECOURSE, FEASIBILITY, COSTS
+
+All methods share public belief, three inspection actions, four terminal target
+actions, two inspection observations, common graph and evaluation model. The
+same-horizon open-loop baseline fixes the inspection sequence but still allows
+the terminal target decision to use the acquired observations; this is a useful
+stronger baseline than fixing every future decision. Greedy replans using full
+belief and one-inspection lookahead. B gets deeper observation-conditioned
+recourse, not privileged hidden identity or additional action permissions.
+
+Main mean expected taskloss+cost:
+  full-belief greedy                 8.64067820379
+  same-horizon open-loop             8.93746272365
+  observation-contingent B           8.53442868068
+  exact full-history reference       8.53442868068
+  B without capability               9.13773988700
+  B without learned dIRD proxy        8.53442868068
+B improves20/72 versus greedy (52 ties),54/72 versus open-loop (18 ties).
+Agreement with reference validates finite planning; B's model-optimal dominance
+over its restricted-policy baselines is not evidence of new POMDP theory.
+
+Independently computed main outcome probabilities:
+                          success    wrong ID   explicit fail  invalid fail
+  greedy                  .748211    .210122     .041667        0
+  open-loop               .741700    .214665     .043635        0
+  B                       .766501    .174546     .058953        0
+  no capability           .755152    .138488     0               .106359
+Low wrong-identity rate alone is insufficient: entropy's .140079 wrong rate
+comes with .125100 explicit failure. All outcome categories sum to one.
+
+Source inspection and independent reconstruction show branch minimization occurs
+AFTER grouping identical public observation histories. The same latent target
+persists through a branch; no-detection is an actual likelihood outcome. Planning
+functions do not receive realized hidden labels. Existing repeated-call
+noninterference checks are partly structural/tautological, but source dataflow
+and the independent hidden-response mutation test support the restricted claim.
+This does not absolve the separately tested stock servo's confirmed leak.
+
+Actual mechanical queries:192 shared offline graph edges, fresh setup≈48.177s.
+Failure counts by fixed placement=4/34/0; total38. Nodes retain exact previous
+pose/q exit and queries use the incoming q. Independently checked child pose/q
+consistency is exact. A body-only +.04m shift makes root inspection2 fail its
+finite SRS lift while the other placements pass; fresh queries reproduce this.
+Thus capability is causally used and not a fabricated fixed cost table.
+
+Every core full-B policy is IDENTICAL to the policy with the dIRD soft penalty
+removed while retaining exact validation. Accordingly the observed capability
+benefit cannot be credited to learned dIRD score guidance. The separate dIRD
+trajectory ablation is also adverse: initial sampled exact pass1/6, no-dIRD0/6,
+joint-guided0/6, despite proxy improvement. Do not relabel proxy-positive as
+executable or infer necessity of the learned field from no-capability failure.
+
+All simulated motion/observations/failed attempts are charged under the declared
+additive objective. Invalid attempts conservatively accrue the edge cost plus
+failure, rather than measured early-abort physical timing. Planning uses a shared
+precomputed graph and asynchronous cost convention; no online dIRD latency is
+hidden. B still does more cached work than greedy: mean branch expansions
+24.67 versus8.81, and edge-cost reads300.33 versus116.43. The open-loop comparator
+has comparable exhaustive work (32.67 expansions,308.33 reads). This is equal
+information/action/horizon comparison, not proof at every fixed compute cap.
+The stored graph's historical .05m/s cost fields are not the effective policy
+cost; B explicitly recomputes movement at.02m/s as documented in the amendment.
+
+The72 scenarios are a designed finite set with repeated beliefs across three
+placements, not72 independent patients. Reported scenario bootstrap intervals
+are descriptive only. Main prior-shift robustness reverses some rankings:
+entropy expected loss15.5020 versus B16.4439. No universal robustness claim.
+
+6. LEARNED A->B EXTENSION AND PRIOR FACTORIAL
+
+These are explicitly POST-MAIN additions with a separately written pre-extension
+design. They should not be presented as the original untouched confirmatory
+experiment. No observed extension score was used to retune the declared seed,
+response law, sensor map or costs in the inspected source/logs.
+
+Actual A coefficients predict features at actual DMP endpoints. A fixed map
+converts predicted features to five-outcome Khat including nondetection.
+Independent persistent E_h perturbations generate Ktrue for evaluation only.
+The learned kernel probability MSE=.000205372 versus analytic=.005159866;
+feature error=.00500325 versus.13703052. These are model-truth errors in this
+synthetic family, not real detection calibration or clinical confidence.
+
+True expected loss:
+  learned greedy        8.97769592205
+  learned open-loop     9.03054397732
+  learned B             8.89102616973
+  analytic B            9.21051529672
+Learned B improves20/72 versus learned greedy and51/72 versus learned open-loop;
+it improves36, ties35 and worsens1 versus analytic B. Learned B/reference match
+under the assumed learned model; independent evaluation uses Ktrue. No-dIRD
+proxy again ties in every scenario. True learned-B success=.741950, wrong
+identity=.205566, explicit failure=.052484, invalid failure0.
+
+This closes the declared modular dataflow but not a full servo loop: target
+hypotheses are four known candidate sites; the observation response is an
+artificial local field; terminal success depends on discrete identity, not the
+predicted final image feature/quality. No local anatomical posterior curve,
+measured detection frontend, physical contact or first-image qualification was
+integrated. This limitation is substantive, not merely an absent larger sample.
+
+The prior x response factorial is correctly crossed and evaluated against the
+TRUE population rather than the controller's chosen prior. Source-fitted prior
+versus broad uniform with learned B changes loss by-1.048787686 on the source
+population and+1.040565924 after the fixed source shift. All four hypotheses
+remain supported. This demonstrates a finite-population prior tradeoff, not a
+fitted clinical anatomical prior or robustness to truth outside model support.
+
+7. PRODUCTION FINDINGS AND REPAIRS
+
+SO(3) production repair is correct in the tested float32/float64 contract. The
+old near-zero constant-identity branch erased a true derivative. The new
+unnormalised-skew Rodrigues/Taylor form preserves first/second derivatives.
+The inspected patch is confined to that function; checkpoint unchanged.
+
+The audit found an additional bridge defect: SRS bounded only internal q_ref
+steps, while bridge declared continuity true without testing seed->first q.
+Three virtual descendants had12.549-degree departures despite a12-degree gate.
+All were under unreachable context1/i2.i0, so primary exact-policy outcomes were
+unaffected. The authorized adapter correction now checks the original full
+seed+q_ref chain for arm AND rail steps. Fresh audit rejection reproduces the
+corrected failure. Full graph regeneration retains same main/extension losses;
+proxy/q_ref did not change. This is resolved within the adapter's declared scope,
+not a global production solver repair or dynamic feasibility certificate.
+
+Motion source findings are supported by source anchors and raw samples:
+  - Stock missing-observation lateral correction consumes image_u even when
+    visible=False. For identical missing histories, hidden ±10mm target worlds
+    produce gain1 path difference84.392mm over all147 KMP steps and162.357mm
+    over the first90 common-missing DMP steps; gain0 difference is0. Later DMP
+    detected frames are correctly excluded. This violates a missing-only sensor
+    contract. It is not a leak in the newly isolated finite B planner.
+  - Existing Ruckig Module C gives visible fraction.027211 for both primitives
+    versus1.0 in nominal unsmoothed gain1 runs; no qualified full execution claim.
+  - Stock primary servo raises NameError(use_scheduled_vessel). The harness-only
+    alias permits a privileged replay, not a repaired causal first-image method.
+  - Production runtime depth reads incorrect presumed skin-node indices and
+    violates skin d=0: sampled mean.475617/max.954376. The source-free skin-array
+    binding adapter restores these samples to0 while retaining h/theta; it does
+    not make the analytic ratio equal to the separately baked depth field.
+  - Under equal correspondence/attachment information, canonical registered3D
+    transport is exact by construction while harmonic surface decoding adds
+    error (max≈3.004mm). No harmonic superiority is established.
+  - Known vessel-centered crop and prepared scan-path prior make the servo test
+    continuation/centering near a known path, not blind first acquisition from
+    only a coarse body ROI.
+
+8. FIVE GATES AND NEXT DECISION
+
+Gate1 — MODULE CORRECTNESS: PASS for bounded tested DMP/KMP and corrected dIRD
+operator/bridge contracts; NOT a blanket production-stack pass. Stock servo,
+Module C and atlas runtime defects remain. Source/asset provenance is traceable.
+
+Gate2 — A MECHANISM: PASS in the declared held-out synthetic affine response
+family with negative control and measured-probe comparator. PARTIAL relative to
+the requested complete anatomical first-acquisition task; no valid full-servo,
+ultrasound or cross-physics validation.
+
+Gate3 — B SYNTHETIC MECHANISM: PASS. Finite reference agreement, public-history
+updates, no-information/high-cost controls, matched full-belief baselines and
+failure accounting are correct. Superiority is local to the declared objectives,
+model assumptions, finite action graph and offline compute convention.
+
+Gate4 — B PRODUCTION INTEGRATION: PASS NARROWLY for the finite learned-response
+->actual primitive->real mechanical graph dataflow; PARTIAL/NOT PASSED for the
+proposed end-to-end continuous/contact/ultrasound controller. Exact capability
+information matters; learned dIRD-proxy decision benefit is absent. This must
+not be compressed into an unqualified claim that all B modules were validated.
+
+Gate5 — PHYSICAL/ULTRASOUND EVIDENCE: NOT PASSED; none was collected.
+
+Recommended next decision: keep A as the common response/control foundation and
+continue B as the specific offline recourse research branch. Carry forward the
+no-dIRD-proxy result; do not add unnecessary EM/e3nn/primitive expansion to make
+the architecture appear essential. Before making an end-to-end claim, repair
+the missing-data and production execution contracts, define observed image
+qualification/identity and failure/deadline semantics, integrate that actual
+observation/termination loop with the same measured motion and capability state,
+and then compare against a corrected strong A/servo baseline under common
+physical and compute budgets on independent physical objects. These are missing
+evidence requirements, not experiments that have already passed.

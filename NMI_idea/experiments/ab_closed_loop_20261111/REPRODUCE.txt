@@ -1,0 +1,35 @@
+复现闭环 A/B
+2026-11-11
+
+闭环结果采用经过误检关联修正的实现。首次冻结版本的完整记录保存在
+closed_loop_frozen_run。正式结果和原生运动记录在 closed_loop_reviewed_run。
+审查修正及其原因见对应实现目录的 ASSOCIATION_CORRECTION.txt。
+每个 FROZEN.json 写入运行代码哈希、原生二进制指纹、公开运动时标、
+姿态目标及持出的解剖和观测种子。
+
+主实验源代码目录
+/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_closed_loop_reviewed_20261111
+
+在该目录使用本机 Genesis Python。输出使用一个新目录。以下命令中的
+/tmp/ab_reproduction 是复现目录，可以替换为工作区中新建的绝对路径。
+
+for index in 0 1; do
+    OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 /media/camp/EXT_DRIVE/envs/genesis/bin/python run_closed_loop.py --index "$index" --mode constrained --output /tmp/ab_reproduction
+    OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 /media/camp/EXT_DRIVE/envs/genesis/bin/python run_closed_loop.py --index "$index" --mode open --output /tmp/ab_reproduction
+    OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 /media/camp/EXT_DRIVE/envs/genesis/bin/python run_open_matched.py --index "$index" --constrained-run /tmp/ab_reproduction --output /tmp/ab_reproduction/open_matched
+done
+
+回到报告目录后统计。配对 bootstrap 以解剖对象为单位。跨镜像布局先平均。
+/media/camp/EXT_DRIVE/envs/genesis/bin/python summarize_results.py /tmp/ab_reproduction
+
+核对具体实例。布局 00、case_id 5、variant witness。RESULT.json 中查找
+same_fork_minus_I0 和 same_fork_minus_I1。两组出场状态的完整历史哈希、
+实测 q、qdot、探查包和耗时相同。轨迹记录在以下目录中。
+closed_loop_reviewed_run/fixture_00_constrained/execution
+  fork_minus__direct_0.npz
+  fork_minus__left__direct_0.npz
+  fork_minus__right__direct_0.npz
+
+轨迹里的 measured_before 是同控制时刻的测得位姿，actual 是该次更新后
+位姿。已有包装器的 reference 元数据沿用了样条标签。这个实验通过
+_ProDMPReplayBridge 使用实际 ProDMP 相位，详细复核见 Astra 审查。
