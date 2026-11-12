@@ -1,0 +1,204 @@
+V4 CONTINUING RECOVERY + ONE-LAYER BASE-POLICY ROLLOUT
+Astra implementation contract, 2026-11-11. Protocol, not a result.
+
+This version corrects the scope of the bounded v3 pilot. Preserve v3 code,
+results, interruption records and model lineage. Do not reinterpret missing
+v3 computations as task failures. No held-out test has been used.
+
+1. Unchanged task, model and physical gates
+
+Use the carried-forward models/v3/MODEL.json and its fitted ModelParams.
+Keep SENSOR_V2, geometry, measured contact frames, all 12 diagnostic actions
+(four locations x dwell .15/.30/.60), terminal dwell, public/private acceptance,
+native ProDMP/dIRD interfaces and existing complete-segment gates unchanged.
+The 2 mm whole-segment gate is not relaxed because final dwell tracking is good.
+Actual sensor generation and planning-world simulation remain separate.
+Planning simulation uses fitted ModelParams, never generator truth constants.
+Time weight remains zero. Log motion, acquisition and planning wall time.
+
+The old .90 min(raw,p_cal) score describes the next two-attempt terminal option.
+It remains the common local commitment trigger. It is not renamed a calibrated
+probability of completing the whole continuing task. Correct completion within
+those two attempts is a subset of eventual correct completion when success is
+absorbing; however the fitted score itself is not a confidence lower bound.
+Report local option calibration and whole-episode reliability separately.
+
+2. Actual episode semantics, shared by every arm
+
+Every NEW frame, including probe/pair/recovery frames, uses the same public
+verifier. Public acceptance stops immediately; private evaluation determines
+correct completion versus absorbing wrong completion. Never continue secretly
+after a false acceptance. Rejected packets update the public belief exactly once.
+
+One terminal option has up to two fresh attempts at one window, as before.
+After two public rejections, return to public belief planning from the actual
+exit. Preserve q, qdot, acceleration, controller history, clock, all evidence,
+visibility history and pending policy phase. Do not reset to the fork or prior.
+A terminal rejection is a local noncompletion, not an irreversible task failure.
+
+A native precheck with no witness does not acquire a frame or advance the HMM.
+Blacklist only that action at the current actual full-state identity. Try a
+common lawful alternative; do not end the task merely because the first chosen
+candidate lacks a checked path. Native route alternatives already provided by
+the adapter remain available. The common fallback uses the A_task_v4 ordering
+on unblocked actions, including an admitted terminal option if available.
+If all available finite-library alternatives fail, record operational withdrawal
+with the witness log, not a proof that every continuous motion is impossible.
+An actual execution failure must retain its real resulting state/status; no rewind.
+
+Complete_pair keeps its selected order/dwell and completes both members unless
+a new frame already completes the task. A fallback recovery acquisition does
+not silently count as the missing prescribed pair member. Preserve its pending
+member across recovery. At a completed-pair boundary use the common option gate;
+if not admitted start another complete pair. After terminal rejections return to
+that same boundary and re-evaluate; a new pair is not forced if the gate admits.
+
+3. Baselines and the exact rollout tail
+
+A_task_v4 is the SAME public function in the external baseline and rollout tail:
+  a. If a legal proposed two-attempt option meets the common .90 score, select it.
+  b. Otherwise maximize immediate correct-public-acceptance mass over 12 probes.
+  c. Ties within 1e-10 use the cheap task-direction variance-reduction proxy
+       sum_{S,mode,k} mass * p(next target detection | S,mode,a)
+          * (d C H_a^T)^2 / (H_a C H_a^T + R_a),
+     where d=H_left-H_right and C is that conditional response covariance.
+     Remaining ties use shorter dwell, then canonical action ID.
+This is a declared tie proxy, not full expected information gain under uncertain
+association. It avoids recursively calling A_info inside every simulated tail.
+
+External A_info retains its Gaussian-integrated terminal task-class information
+gain with the same belief, candidates, .90 local gate and continuing recovery.
+It remains a strong comparator. No claim that rollout relative to A_task must
+beat A_info. Fixed-pair dwell is selected on development among all three values.
+
+4. One-layer B rollout: frozen finite computation
+
+At an actual planning boundary, first apply the SAME local commitment gate.
+Only when it does not admit an option, evaluate a diagnostic choice by rollout.
+The base action a_A is the action A_task_v4 would choose at this same public state.
+All 12 single probes are available. No 12 x outcome x 12 x outcome search tree.
+
+Selection samples: N_select=16 independent trajectories, common-random across
+candidate first actions. Maximum simulated length L=8 TOTAL fresh frames,
+including the candidate, terminal attempts and recovery acquisitions. Thereafter
+use A_task_v4 only. Stop a simulated trajectory at public acceptance or genuine
+finite-library withdrawal; otherwise its L=8 endpoint is unresolved, not failure.
+
+At EACH trajectory root sample the joint posterior in this order:
+geometry particle, conditional visibility mode, conditional Gaussian component,
+then w from that component. Keep that S and w for ALL frames in the trajectory.
+Propagate visibility once before each fresh simulated capture. Generate all
+target/clutter/missing observations and noises with the fitted ModelParams.
+Advance only public predicted mechanical state; never call native execute/check
+inside Monte Carlo. Predicted-state and dIRD outputs remain non-certificates.
+
+The simulated world and reward evaluator may read the sampled latent. The tail
+controller receives ONLY public packets, its own filtered belief, proposed
+mechanical state and public flags. It must not receive association, true S/w,
+mode or true correctness. A public false acceptance is absorbing even though
+the reward evaluator knows it is wrong. Posterior updates use the same full
+512-particle/four-component implementation, not the sampled latent as a belief.
+
+For each candidate record counts S=correct, F=absorbing noncorrect, U=unresolved.
+Selection lower=L_a=S/16; upper=U_a=(S+U)/16. F includes wrong acceptance and
+operational withdrawal. Select the largest L_a, with ties preferring a_A then
+canonical ID. If the selected action is a_A, or its L_a <= U_A, execute a_A.
+An unresolved tail is never asserted to have zero eventual value.
+
+EXACT OUTPUT-PRESERVING PRUNING: evaluate a_A first. If its selection upper U_A
+is exactly 1, every candidate lower is <=1 and none can pass the strict rule.
+Skip all other candidates and execute a_A. Log the pruning reason and skipped
+count; do not fabricate their scores. U_A=1 is a property of this finite sample,
+not proof that the real base policy eventually succeeds with probability one.
+This conservative rule can suppress a purely faster candidate; that limitation
+must be reported, not reinterpreted as evidence that all B policies are useless.
+
+If selection proposes a nonbase action with positive conservative difference,
+validate ONLY that winner versus a_A with N_validate=32 NEW independent paired
+trajectories, same L=8. The validation seed family is independent of selection.
+For trajectory i define X_i=1 if candidate correctly completed within L;
+Y_i=1 if A correctly completed OR remained unresolved. Z_i=X_i-Y_i.
+Switch from A only if mean(Z)>0 AND the exact one-sided paired discordant
+binomial test has p<=.05: wins=count(Z=1), losses=count(Z=-1),
+p=Pr[Binomial(wins+losses,.5)>=wins]; p=1 if no discordance.
+Otherwise EXECUTE A. Do not try another selected winner, extend the search,
+or introduce an additional task-risk gate. This is a fixed simulation-accuracy
+selection rule, not clinical confidence or a claim of real-policy improvement.
+
+Use deterministic hash-separated selection/validation RNG substreams based on
+public history/state, a common root seed and trajectory index. Candidate pairs
+share latent draws and independent per-capture random channels by capture index.
+Samples are iid across trajectory indices for the validation test. Skipping
+pruned candidates must not advance or otherwise change another RNG substream.
+Record seed keys, S/F/U, paired wins/losses, chosen action, fallback and work count.
+
+Worst case per decision: (12*16 + 2*32)*8 = 2048 simulated fresh transitions;
+absorbed trajectories stop early. With U_A=1 pruning, at most 16*8 are needed.
+This is a conservative finite-tail algorithm with base fallback, not a theorem
+of superiority under an approximate model or over every stronger baseline.
+
+5. Administrative checkpoints and honest final-success bounds
+
+Actual episodes continue independently of rollout L. Checkpoints are 8,16,32
+TOTAL actual fresh frames, not diagnostic-only counts and not task deadlines.
+Always evaluate the last frame first. If still undecided, save a resumable
+right-censored state. A checkpoint must retain terminal retry/pair phase,
+actual native state, belief and event IDs, blacklist, counters/clock and the
+private renderer's visibility mode. Resuming must reproduce uninterrupted runs.
+Continue unresolved episodes through the same checkpoints for ALL arms. At 32
+report unresolved; do not silently call it permanent task failure.
+
+For N evaluated objects/records, S correct and U unresolved, eventual correct
+fraction for those cases lies in [S/N,(S+U)/N]. For a conservative B-minus-A
+comparison use B's lower and A's upper; the fixed-pair comparison is analogous.
+Pair mirrors by object, never treat two layouts as independent subjects. A
+positive small-capture advantage alone does not establish an eventual advantage.
+Motion, total captures, recovery and computation remain separate secondary costs.
+
+Report local two-attempt labels, all final public wrong declarations, and final
+outcomes after first commitment separately. Zero terminal commitments means
+that commitment-specific calibration is unassessed; it does NOT remove a strong
+baseline that completed via valid probe frames. Such frames count identically
+for every arm. Full-object coverage prevents all-refusal from looking successful.
+No new confidence-interval gate is added to execution. The existing .10 task-risk
+standard is assessed on actual task outcomes, with denominators and censoring
+bounds explicit; do not mistake protocol compliance for measured reliability.
+
+6. Small pilot, then untouched evaluation
+
+Keep model/training/calibration artifacts and sensor parameters unchanged.
+Development: the first 8 existing development subject IDs (root seed 721502),
+both mirrored constrained fixtures. Six configurations: A_task_v4, A_info,
+B_rollout_v4, and complete pair at .15/.30/.60. Total 96 episode trajectories,
+with checkpoint continuations belonging to those same trajectories.
+Use this pilot for implementation, work budget, censoring and baseline/dwell
+selection. It is development data, not an efficacy/significance claim. Select
+the stronger A and pair dwell by actual final-correct coverage under the common
+risk standard, retaining censoring and all candidate results. No false-positive,
+loss, physical failure or unfavorable object may be discarded.
+
+Before starting the untouched 128 subjects (seed 721503; noise family 721504),
+freeze sources, model SHA, selected A/pair and this one B definition. There is
+no test-driven change of N, L, gates, layouts, priors or policy. The original
+research target remains >=10 percentage points over BOTH strong A and pair,
+with paired subject-bootstrap 97.5% two-sided intervals having lower bounds
+above zero (10000 draws, seed 721505), and shared task-risk requirements met.
+With unresolved cases, use conservative success differences/bounds; otherwise
+do not claim the final-success target. Report failure to meet it honestly.
+
+7. Release checks and resource bound
+
+Required: latent consistency/public-only tail tests; independent validation
+streams; upper-one pruning equivalence; two-reject recovery; common no-witness
+fallback; checkpoint/resume across pending pair/retry; false acceptance absorbing;
+full dense filter numerical equivalence; selected native state continuity.
+Do not reduce particles, components, nodes, merge rules or physical gates for speed.
+Profile fixed public states before scaling: target <=30 s per B decision, with
+60 s as an engineering readiness budget, not a new task deadline. If unmet,
+optimize equivalent computation or report computation incomplete; do not silently
+truncate a decision or alter N/L. Warmup and steady-state costs are separate.
+
+No claim is made that action-independent lost->present recovery becomes smarter
+because the policy chooses a direction. No new wall, exposure budget, or
+irreversible mechanism is introduced. Actual data, not the protocol, decide
+whether B supplies an independent benefit in this unchanged synthetic world.

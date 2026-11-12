@@ -1,0 +1,61 @@
+Transport-response bridge (frozen protocol)
+============================================
+
+Scope and claim boundary
+------------------------
+This is a bounded bridge between the audited atlas/tet geometry and the
+synthetic local-response benchmark.  It is not a real-ultrasound experiment,
+not a non-rigid tissue theorem, and not a test on independent patients.  The
+harmonic mechanism RAW_RESULTS.npz is reused exactly: two atlas legs, 256
+native cells per leg, and the seven saved posed deformations (0..90 degrees).
+
+Geometry
+--------
+For each selected native tet and barycentric point, reconstruct J0 from the
+atlas harmonic coordinate Jacobian exactly as in harmonic_mechanism/run_transport.py:
+Xp is the physical edge matrix and Kb has rows (theta, h, d) coordinate
+differences, with the barycentric theta row evaluated by the sin/cos circular
+formula.  J0 = X0 Kb^{-1}.  Set h=1 and d=2,
+
+  t0 = normalize(J0[:,h]),  n0 = -normalize(inv(J0)[d,:]).
+
+The row of inv(J0) is represented as a Euclidean covector/vector here; it is
+orthogonal to the h column up to floating point error.  For a posed cell with
+deformation F from RAW_RESULTS, transport
+
+  t = normalize(F t0),  n = normalize(F^{-T} n0).
+
+The probe frame has columns Rx=t, Rz=-n, Ry=Rz x Rx.  We require R^T R=I,
+det(R)>0 and report all violations.  This uses the physical atlas/tet
+correspondence; ordinary barycentric reconstruction is checked separately.
+
+Synthetic response and evaluation
+----------------------------------
+Per cell, a fixed seed 720998 gives s~Uniform[-1,1]^4, and the same s is used
+at all seven poses.  The same 32 local actions per cell are sampled with
+direction normalisation and magnitude Uniform[.15,.8], with no target-based
+selection.  The declared smooth-compliance plant from
+response_learning_geometry/run_benchmark.py generates the scorer-only truth
+from current local n,t and u.  Labels are never supplied to the models.  One
+normalized unit is 10 mm; target image correction is [.4,-.3] and success is
+the predeclared normalized L2 error <= .2 (2 mm).
+
+Models (all frozen, no refit)
+-----------------------------
+* e3nn typed-basis n=2048, seed=101, with the correct transported n,t,R;
+* the same e3nn checkpoint with frozen-world n0,t0 (current R and actions);
+* the same checkpoint with wrong F n0 transport for n and correct Ft0 for t;
+* the frozen probe-local signless-dyadic MLP strong baseline with correct n,t,R.
+
+For each mode we report per-pose physical response RMSE, same-candidate action
+regret and success, plus the oracle candidate ceiling.  The ordinary-tet
+equivalence is the maximum discrepancy between the saved barycentric point and
+the same point reconstructed from posed tet edges.  All arrays, source,
+asset/pose hashes and checkpoint hashes are saved in MANIFEST.json.
+
+Independent checks
+------------------
+test_bridge.py independently recomputes the two-sample transport/frame
+formulas, tests orthogonality/positive SO(3), and tests ordinary-tet
+equivalence.  Formula failures are retained as failures; no post-hoc
+orthogonalisation or threshold tuning is applied.

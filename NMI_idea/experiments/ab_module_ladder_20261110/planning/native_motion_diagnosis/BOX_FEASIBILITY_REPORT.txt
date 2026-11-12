@@ -1,0 +1,14 @@
+Frozen QP box-feasibility diagnosis
+===================================
+Four maximum-residual ticks were checked with scipy linprog and bounded least squares.
+
+Result
+------
+For all four ticks, exact J(q) dq = v_cmd_received is infeasible under the recorded trace box_lo/box_hi. The bounded least-squares residuals are approximately 0.229, 0.400, 0.0469, and 0.0433 (the first two nominal segments, then two stress holds).
+The physical velocity box ±[0.4, 2.512 x 7] admits exact equality on both stress holds and the first nominal tick. The second nominal tick retains a bounded residual of about 0.0102 in this saved Jacobian/frame convention, so it is reported as a residual case rather than a pure speed-limit proof.
+All four Jacobians have rank six with nonzero smallest singular values; this is not a rank-deficiency diagnosis. Model time increments are 0.005 s throughout and across segment boundaries, with no nonpositive increment.
+
+Interpretation
+--------------
+The recorded local dynamic qdot box, not the static physical velocity limit by itself, is sufficient to make the requested task equality infeasible at the selected failure ticks. The native QP can still report solved because it returns a constrained/slack solution; the execution layer does not convert the large task residual or zero task progress into a failure/pause.
+The trace does not identify whether the box width comes from acceleration, jerk, or another history term. The next smallest check is to log those box terms for one of these exact ticks and compare the unconstrained and box-constrained solutions; no broad retuning is needed for the AB conclusion.

@@ -1,0 +1,128 @@
+B binary decision mechanism report
+===================================
+
+Scope: exact toy Bayes decision threshold; not ultrasound/robot validation and not a new VOI theorem.
+
+Default p=.5, r=.8, c=.1, L=1
+--------------------------------
+delta | direct | always-probe | cheap choice/risk | Bellman choice/risk | entropy H-tie | entropy U-tie | entropy higher-MI U
+   0 |      0.5 |         0.3 | probe/0.3       | probe/0.3       |        0.3 |        0.6 |             0.6
+ 0.2 |      0.5 |         0.4 | probe/0.4       | probe/0.4       |        0.4 |        0.6 |             0.6
+0.39 |      0.5 |       0.495 | probe/0.495     | probe/0.495     |      0.495 |        0.6 |             0.6
+ 0.4 |      0.5 |         0.5 |  skip/0.5       |  skip/0.5       |        0.5 |        0.6 |             0.6
+0.41 |      0.5 |       0.505 |  skip/0.5       |  skip/0.5       |      0.505 |        0.6 |             0.6
+ 0.6 |      0.5 |         0.6 |  skip/0.5       |  skip/0.5       |        0.6 |        0.6 |             0.6
+   1 |      0.5 |         0.6 |  skip/0.5       |  skip/0.5       |        0.6 |        0.6 |             0.6
+
+Threshold check
+---------------
+cheap choices:  ['probe', 'probe', 'probe', 'skip', 'skip', 'skip', 'skip']
+Bellman choices:['probe', 'probe', 'probe', 'skip', 'skip', 'skip', 'skip']
+cheap == Bellman: True; grid threshold matches: True
+
+Pressure groups
+---------------
+skewed_prior: direct=0.3, probe=0.4, cheap=skip/0.3, branch_actions=[1, 1], branch_same=True
+uninformative_signal: direct=0.5, probe=0.6, cheap=skip/0.5, branch_actions=[-1, -1], branch_same=True
+high_observation_cost: direct=0.5, probe=0.55, cheap=skip/0.5, branch_actions=[1, -1], branch_same=False
+all_branches_choose_minus: direct=0.5, probe=0.6, cheap=skip/0.5, branch_actions=[-1, -1], branch_same=True
+
+Paired Monte Carlo (N=4096)
+----------------------------
+default_delta_0:
+  myopic_no_observation: analytic=0.5, mc=0.5, CI95=[0.48468591,0.51531409], analytic-mc=0
+  always_informative_H: analytic=0.3, mc=0.29042969, CI95=[0.27840384,0.30245554], analytic-mc=0.0095703125
+  cheap_exact_threshold: analytic=0.3, mc=0.29042969, CI95=[0.27840384,0.30245554], analytic-mc=0.0095703125
+  two_step_bellman: analytic=0.3, mc=0.29042969, CI95=[0.27840384,0.30245554], analytic-mc=0.0095703125
+  entropy_equal_mi_favor_H: analytic=0.3, mc=0.29042969, CI95=[0.27840384,0.30245554], analytic-mc=0.0095703125
+  entropy_equal_mi_favor_U: analytic=0.6, mc=0.6, CI95=[0.58468591,0.61531409], analytic-mc=1.110223e-16
+  entropy_strictly_higher_mi_U: analytic=0.6, mc=0.6, CI95=[0.58468591,0.61531409], analytic-mc=1.110223e-16
+default_delta_0.2:
+  myopic_no_observation: analytic=0.5, mc=0.5, CI95=[0.48468591,0.51531409], analytic-mc=0
+  always_informative_H: analytic=0.4, mc=0.39042969, CI95=[0.37801994,0.40283944], analytic-mc=0.0095703125
+  cheap_exact_threshold: analytic=0.4, mc=0.39042969, CI95=[0.37801994,0.40283944], analytic-mc=0.0095703125
+  two_step_bellman: analytic=0.4, mc=0.39042969, CI95=[0.37801994,0.40283944], analytic-mc=0.0095703125
+  entropy_equal_mi_favor_H: analytic=0.4, mc=0.39042969, CI95=[0.37801994,0.40283944], analytic-mc=0.0095703125
+  entropy_equal_mi_favor_U: analytic=0.6, mc=0.6, CI95=[0.58468591,0.61531409], analytic-mc=1.110223e-16
+  entropy_strictly_higher_mi_U: analytic=0.6, mc=0.6, CI95=[0.58468591,0.61531409], analytic-mc=1.110223e-16
+default_delta_0.39:
+  myopic_no_observation: analytic=0.5, mc=0.5, CI95=[0.48468591,0.51531409], analytic-mc=0
+  always_informative_H: analytic=0.495, mc=0.48542969, CI95=[0.47200241,0.49885696], analytic-mc=0.0095703125
+  cheap_exact_threshold: analytic=0.495, mc=0.48542969, CI95=[0.47200241,0.49885696], analytic-mc=0.0095703125
+  two_step_bellman: analytic=0.495, mc=0.48542969, CI95=[0.47200241,0.49885696], analytic-mc=0.0095703125
+  entropy_equal_mi_favor_H: analytic=0.495, mc=0.48542969, CI95=[0.47200241,0.49885696], analytic-mc=0.0095703125
+  entropy_equal_mi_favor_U: analytic=0.6, mc=0.6, CI95=[0.58468591,0.61531409], analytic-mc=1.110223e-16
+  entropy_strictly_higher_mi_U: analytic=0.6, mc=0.6, CI95=[0.58468591,0.61531409], analytic-mc=1.110223e-16
+default_delta_0.4:
+  myopic_no_observation: analytic=0.5, mc=0.5, CI95=[0.48468591,0.51531409], analytic-mc=0
+  always_informative_H: analytic=0.5, mc=0.49042969, CI95=[0.4769336,0.50392578], analytic-mc=0.0095703125
+  cheap_exact_threshold: analytic=0.5, mc=0.5, CI95=[0.48468591,0.51531409], analytic-mc=0
+  two_step_bellman: analytic=0.5, mc=0.5, CI95=[0.48468591,0.51531409], analytic-mc=0
+  entropy_equal_mi_favor_H: analytic=0.5, mc=0.49042969, CI95=[0.4769336,0.50392578], analytic-mc=0.0095703125
+  entropy_equal_mi_favor_U: analytic=0.6, mc=0.6, CI95=[0.58468591,0.61531409], analytic-mc=1.110223e-16
+  entropy_strictly_higher_mi_U: analytic=0.6, mc=0.6, CI95=[0.58468591,0.61531409], analytic-mc=1.110223e-16
+default_delta_0.41:
+  myopic_no_observation: analytic=0.5, mc=0.5, CI95=[0.48468591,0.51531409], analytic-mc=0
+  always_informative_H: analytic=0.505, mc=0.49542969, CI95=[0.4818634,0.50899597], analytic-mc=0.0095703125
+  cheap_exact_threshold: analytic=0.5, mc=0.5, CI95=[0.48468591,0.51531409], analytic-mc=0
+  two_step_bellman: analytic=0.5, mc=0.5, CI95=[0.48468591,0.51531409], analytic-mc=0
+  entropy_equal_mi_favor_H: analytic=0.505, mc=0.49542969, CI95=[0.4818634,0.50899597], analytic-mc=0.0095703125
+  entropy_equal_mi_favor_U: analytic=0.6, mc=0.6, CI95=[0.58468591,0.61531409], analytic-mc=1.110223e-16
+  entropy_strictly_higher_mi_U: analytic=0.6, mc=0.6, CI95=[0.58468591,0.61531409], analytic-mc=1.110223e-16
+default_delta_0.6:
+  myopic_no_observation: analytic=0.5, mc=0.5, CI95=[0.48468591,0.51531409], analytic-mc=0
+  always_informative_H: analytic=0.6, mc=0.6, CI95=[0.58468591,0.61531409], analytic-mc=1.110223e-16
+  cheap_exact_threshold: analytic=0.5, mc=0.5, CI95=[0.48468591,0.51531409], analytic-mc=0
+  two_step_bellman: analytic=0.5, mc=0.5, CI95=[0.48468591,0.51531409], analytic-mc=0
+  entropy_equal_mi_favor_H: analytic=0.6, mc=0.6, CI95=[0.58468591,0.61531409], analytic-mc=1.110223e-16
+  entropy_equal_mi_favor_U: analytic=0.6, mc=0.6, CI95=[0.58468591,0.61531409], analytic-mc=1.110223e-16
+  entropy_strictly_higher_mi_U: analytic=0.6, mc=0.6, CI95=[0.58468591,0.61531409], analytic-mc=1.110223e-16
+default_delta_1:
+  myopic_no_observation: analytic=0.5, mc=0.5, CI95=[0.48468591,0.51531409], analytic-mc=0
+  always_informative_H: analytic=0.6, mc=0.6, CI95=[0.58468591,0.61531409], analytic-mc=1.110223e-16
+  cheap_exact_threshold: analytic=0.5, mc=0.5, CI95=[0.48468591,0.51531409], analytic-mc=0
+  two_step_bellman: analytic=0.5, mc=0.5, CI95=[0.48468591,0.51531409], analytic-mc=0
+  entropy_equal_mi_favor_H: analytic=0.6, mc=0.6, CI95=[0.58468591,0.61531409], analytic-mc=1.110223e-16
+  entropy_equal_mi_favor_U: analytic=0.6, mc=0.6, CI95=[0.58468591,0.61531409], analytic-mc=1.110223e-16
+  entropy_strictly_higher_mi_U: analytic=0.6, mc=0.6, CI95=[0.58468591,0.61531409], analytic-mc=1.110223e-16
+skewed_prior:
+  myopic_no_observation: analytic=0.3, mc=0.30009766, CI95=[0.29090522,0.3092901], analytic-mc=-9.765625e-05
+  always_informative_H: analytic=0.4, mc=0.40009766, CI95=[0.39090522,0.4092901], analytic-mc=-9.765625e-05
+  cheap_exact_threshold: analytic=0.3, mc=0.30009766, CI95=[0.29090522,0.3092901], analytic-mc=-9.765625e-05
+  two_step_bellman: analytic=0.3, mc=0.30009766, CI95=[0.29090522,0.3092901], analytic-mc=-9.765625e-05
+  entropy_equal_mi_favor_H: analytic=0.4, mc=0.40009766, CI95=[0.39090522,0.4092901], analytic-mc=-9.765625e-05
+  entropy_equal_mi_favor_U: analytic=0.4, mc=0.40009766, CI95=[0.39090522,0.4092901], analytic-mc=-9.765625e-05
+  entropy_strictly_higher_mi_U: analytic=0.4, mc=0.40009766, CI95=[0.39090522,0.4092901], analytic-mc=-9.765625e-05
+uninformative_signal:
+  myopic_no_observation: analytic=0.5, mc=0.5, CI95=[0.48468591,0.51531409], analytic-mc=0
+  always_informative_H: analytic=0.6, mc=0.6, CI95=[0.58468591,0.61531409], analytic-mc=1.110223e-16
+  cheap_exact_threshold: analytic=0.5, mc=0.5, CI95=[0.48468591,0.51531409], analytic-mc=0
+  two_step_bellman: analytic=0.5, mc=0.5, CI95=[0.48468591,0.51531409], analytic-mc=0
+  entropy_equal_mi_favor_H: analytic=0.6, mc=0.6, CI95=[0.58468591,0.61531409], analytic-mc=1.110223e-16
+  entropy_equal_mi_favor_U: analytic=0.6, mc=0.6, CI95=[0.58468591,0.61531409], analytic-mc=1.110223e-16
+  entropy_strictly_higher_mi_U: analytic=0.6, mc=0.6, CI95=[0.58468591,0.61531409], analytic-mc=1.110223e-16
+high_observation_cost:
+  myopic_no_observation: analytic=0.5, mc=0.5, CI95=[0.48468591,0.51531409], analytic-mc=0
+  always_informative_H: analytic=0.55, mc=0.54042969, CI95=[0.52840384,0.55245554], analytic-mc=0.0095703125
+  cheap_exact_threshold: analytic=0.5, mc=0.5, CI95=[0.48468591,0.51531409], analytic-mc=0
+  two_step_bellman: analytic=0.5, mc=0.5, CI95=[0.48468591,0.51531409], analytic-mc=0
+  entropy_equal_mi_favor_H: analytic=0.55, mc=0.54042969, CI95=[0.52840384,0.55245554], analytic-mc=0.0095703125
+  entropy_equal_mi_favor_U: analytic=0.85, mc=0.85, CI95=[0.83468591,0.86531409], analytic-mc=1.110223e-16
+  entropy_strictly_higher_mi_U: analytic=0.85, mc=0.85, CI95=[0.83468591,0.86531409], analytic-mc=1.110223e-16
+all_branches_choose_minus:
+  myopic_no_observation: analytic=0.5, mc=0.5, CI95=[0.48468591,0.51531409], analytic-mc=0
+  always_informative_H: analytic=0.6, mc=0.6, CI95=[0.58468591,0.61531409], analytic-mc=1.110223e-16
+  cheap_exact_threshold: analytic=0.5, mc=0.5, CI95=[0.48468591,0.51531409], analytic-mc=0
+  two_step_bellman: analytic=0.5, mc=0.5, CI95=[0.48468591,0.51531409], analytic-mc=0
+  entropy_equal_mi_favor_H: analytic=0.6, mc=0.6, CI95=[0.58468591,0.61531409], analytic-mc=1.110223e-16
+  entropy_equal_mi_favor_U: analytic=0.6, mc=0.6, CI95=[0.58468591,0.61531409], analytic-mc=1.110223e-16
+  entropy_strictly_higher_mi_U: analytic=0.6, mc=0.6, CI95=[0.58468591,0.61531409], analytic-mc=1.110223e-16
+
+Mutual information
+-------------------
+equal-MI H/U: 0.27807191 bits; higher-MI U: 0.71360304 bits; strict=True.
+Equal-MI H/U is a tie, so the two tie-break results are both reported.  The higher-MI U result is intentionally task-irrelevant and is not an equal-MI claim.
+
+Interpretation
+--------------
+The exact two-step decision changes from probe to skip at Delta=.4 because the observation's decision benefit falls below its cost. Always probing and entropy selection do not perform this task-value threshold. The result is a standard binary Bayes mechanism and only supports the narrow claim that a reliable observation can be worth or not worth its cost depending on downstream executable cost.

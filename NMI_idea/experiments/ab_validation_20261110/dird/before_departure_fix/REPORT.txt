@@ -1,0 +1,151 @@
+dIRD actual-operator offline validation, 2026-11-10
+
+Outcome
+Actual installed physical-probe45 checkpoint, canonical encoder, continuous
+trajectory operator, SRS whole-path DP, Pinocchio FK and all configured mesh
+self-collision pairs executed. The field and frame derivative contracts pass
+bounded numerical checks after one approved production derivative fix.
+The controlled trajectory ablation does NOT support an executable-planning
+benefit: both optimized methods are proxy-positive but all selected exact
+lifts fail continuity. These failures are retained, never relabeled success.
+No ultrasound image, human-contact, robot-network or hardware experiment ran.
+
+Environment and traceability
+Python 3.10.20, numpy 2.2.6, torch 2.12.0+cu126, Pinocchio4.0.0; CPU
+float64 with torch_num_threads=1. GPU actual checks used RTX4080 Laptop12GB.
+The old hppfcl Python name is absent; working Pinocchio uses coal. No install
+or download was needed. Detailed installed versions and all source/test
+hashes are inventory.json; current harness hashes are repro_manifest.json.
+Source repositories had substantial preexisting changes; none were reverted.
+One initially clean production file was modified only after root approval:
+  /media/camp/EXT_DRIVE/RealUS_playground/ird_playground/ird_playground/ird/torch_kinematics.py
+Before SHA256: 19c80906457ec4fbe9d28f383c93c456a63ccb27979fe9f991ef0415ab4f9f0a
+After SHA256:  721fbc3016f7aec7c24357c0ecd3b1b09700756792e8116194bbc0c0967432d7
+Patch: so3_exp_production_fix.patch. No checkpoint was changed or retrained.
+
+Checkpoint / calibrated frames
+Current checkpoint: /media/camp/EXT_DRIVE/RealUS_playground/ird_playground/data/checkpoints/rm4d_signed_current_robot_20261108/selected.pt
+SHA256: 08698c273bd1f0f4f2a86d956df95448ba502ee9d7fc17445f06258a13286e51
+Strict schema and current physical robot-contract validation succeeded.
+Checkpoint/calibration SHA and installed canonical dataset SHA both match.
+manifest.json and inventory.json include TCP offset, full robot mesh hashes,
+URDF/pair hashes, root/J1-axis transforms, units and training metadata.
+TCP poses are in rail_base; q=[raw rail_y(m),j1..j7(rad)]; rail_y is [0,.8]m.
+Encoder uses the physical J1-axis frame, NOT rail_base origin. Axis placement
+matches independent Pinocchio FK exactly at rail0, nominal .28437, and .8m.
+The frozen nominal seed comes from the first preexisting demo q, recalculated
+with current probe45 FK, not selected for favorable B outcomes. Its complete
+q/T are nominal_context.json; self-distance .03909525m against .01m gate.
+Seed branch0, psi≈−172°. Full-psi offline DP policy is explicit; this differs
+from live-controller psi envelope [40°,110°] and live capsule collision assets.
+This audit uses the field's recorded mesh assets, never claims live parity.
+
+Production tests and derivative defect
+Initial targeted production suite: 44 passed in2.66s. After fix:44 passed in
+1.88s. Dedicated independent regression:8 passed in1.16s. Checks include
+zero, near-zero, arbitrary, pi/2pi rotations, SciPy/matrix_exp values and
+Jacobians, torch.gradcheck, zero gradgradcheck and float32 batching.
+Initial pytest regression launch auto-loaded unrelated Dash and failed due
+to absent importlib_metadata. Re-run explicitly disabled Dash, as the source
+repository already does; all resulting tests passed. Logs preserve failure.
+
+The old so3_exp returned a constant identity for norm<1e-8, causing dR21/drx=0
+at identity; independent matrix exponential and FD give1. Reproduction uses
+the preserved source, without reverting production: pre_fix/reproduce_identity.py.
+The fix applies Rodrigues directly to skew(rotvec), stable Taylor coefficients
+near zero and a half-angle coefficient elsewhere. It preserves the first and
+second derivatives. FD p95 relative error across all25 spline controls fell
+from 0.45443293 to 1.5631323e-08; maximum
+absolute FD error after fix is8.70e-10. Old fixed-zero rotational endpoints
+caused the mismatch; free nonzero interior controls already agreed. At zero
+initialized orientation controls the old defect could block rotational guidance.
+
+Bounded numerical results (not general performance/release validation)
+24 fresh pose perturbations ×7 physical variables, central FD h=1e-5 m/rad:
+CPU p95 relative derivative error 3.8019e-08.
+Common arbitrary SE(3), moving both robot reference and TCP:
+score max abs error 2.2871e-14, gradient 3.1264e-13.
+Wrong identity-axis and task-only transformations change scores as expected;
+full sweep h=1e-3..1e-6 and vectors are gradients.json.
+Moving only obstacle context leaves raw dIRD BITWISE identical while changing
+the obstacle distance channel; the fixed field is not rewritten by obstacles.
+GPU CPU parity score 1.7764e-15, gradient 2.8422e-14; real spline17-waypoint
+rail derivative FD p95 2.347e-08.
+GPU warm raw-score p50 (1/16/256 paths×17 waypoints):1.24/1.67/10.51ms.
+CPU nominal3waypoint query, including SRS and sampled self-collision:
+p50/p95 0.036219/0.036744s across20 warm repetitions.
+These timings exclude model load and are local measurements, not live latency.
+
+Fresh limited field diagnostic
+64 uniform joint-limit FK states selected solely by exact .01m self-collision
+margin required66 draws; no score-based selection. Positive recall at the
+calibrated threshold is0.984375 (63/64). Matched orientations/rail with
+TCP+3mX are deliberately EASY far negatives: specificity1.0; all64 actual SRS
+queries fail. This diagnostic does not test difficult boundaries, calibration,
+subject holdout or task safety. All q,poses,scores and failures are preserved.
+Existing installed evaluation report (NOT rerun in full): balanced accuracy
+.933843, near-axis balanced accuracy .865424; calibrated unreachable false
+accept rate .0487921 with upper bound .0499353. Positive proxy is not safety.
+
+Trajectory ablation, same finite budget
+Actual production ellipse_surface_tcp and DifferentiableTrajectoryEnergy
+cubic controls, real frozen checkpoint,17samples,5controls,6 noisy proposals
+(seed20261110),60 Adam steps for each optimized method. Same initial controls,
+fixed endpoint controls, geometry, obstacle, regularization, queries and step
+count. no_dird still evaluates the field but removes its optimization term,
+so field-call budgets are equal. Initial is a0-step reference, not an
+optimization-budget comparator. Synthetic ellipse/obstacle geometry is
+explicitly separate from physical kinematics and ultrasound.
+
+First global-default ellipse attempt: all18 paths fail IK at fixed waypoint0;
+proxy minimum−13.58. Kept under default_ellipse_failed, no claim of benefit.
+Second separately labeled DEVELOPMENT run registers the production decoder's
+first pose rigidly to public nominal FK and uses a6cm local span. This change
+was made to inspect local integration, never by selecting favorable seeds or
+B outcomes. Complete before-fix run is pre_fix; corrected repeat is main.
+Same generated proposals are retained with all errors.
+
+method          proxy pass  sampled exact lift pass  obstacle proxy pass
+initial             3/6             1/6                     0/6
+no_dird             6/6             0/6                     6/6
+joint_guided        6/6             0/6                     6/6
+Mean raw scores:2.5869 /5.2155 /5.6174. Optimized minimum3.0373 is set by the
+common fixed endpoints. CPU optimization elapsed .265/.361s for no_dird/joint.
+Initial exact failures: rail step .0530m, arm step24.732°, and disconnected
+candidate lattices at samples7,5,2. Optimized arm jumps are38.092–41.966°
+(no_dird) and46.688–64.659°(joint), exceeding12°. Fail-closed is required.
+This is ONE geometric scene with six proposals, not six independent worlds.
+It supports module integration and reveals a limitation; it gives no causal
+success/time advantage for dIRD or B. No field target score is a distance or
+proof of collision clearance. No environment/skin/contact safety is inferred.
+
+Bridge for actual DMP B experiment
+adapter.py provides CapabilityBridge.query_path; API.txt is the exact contract.
+Inputs are caller's actual TCP path, physical rail and incoming robot q.
+Outputs retain pointwise proxy, SRS branch/psi, exact-failure reason, q_ref and
+exit q, calibrated physical frame, limit/FK margins, all configured self-
+collision distances, departure joint transition and measured query time.
+Core B agent was sent public nominal context and warned about proxy/continuity
+failures; that agent owns actual DMP paths and state-dependent B evaluation.
+No hand-built interpolation here is passed off as an actual DMP primitive.
+Frame-only ±.04mY context probes pass sampled IK/self-collision; actual DMP
+integration results belong to core and must be checked separately.
+
+Exact-check scope and limitations
+SRS is fixed to incoming seed branch and a finite coarse5°/refined1° psi
+lattice. DP enforces12° consecutive arm and .04m rail steps. FK must be within
+.1mm and .001rad; physical URDF limits and .01m mesh self-distance checked.
+All35 configured pairs are queried, without active-pair truncation, at each
+sample of joint interpolation including departure (≤1°/.005m). This is a
+sampled exact-geometry check, not continuous collision detection. A failed
+selected DP lift does not prove no alternate valid lift exists. There is no
+human/environment collision, contact, force, dynamics, velocity retiming or
+physical execution certification. B experiments must not overstate this scope.
+
+Reproduction and files
+Run: bash run.sh (set RUN_GPU=0 only to skip GPU audit). Source fix must already
+be present; run.sh never toggles or rewrites production code/checkpoints.
+All seeds, hashes, exact arrays, logs and command ledger are retained. See
+COMMANDS.txt for successful and failed commands; no downloads are required.
+Report scope: dIRD module evidence and a narrow correctness repair, not
+completed robotic ultrasound system validation or a positive B selection.

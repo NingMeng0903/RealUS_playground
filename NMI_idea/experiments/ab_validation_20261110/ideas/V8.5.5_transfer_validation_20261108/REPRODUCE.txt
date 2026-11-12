@@ -1,0 +1,25 @@
+Reproduction and review
+
+All commands run from the original workspace root, with:
+  env PYTHONPATH=work OPENBLAS_NUM_THREADS=1 /media/camp/EXT_DRIVE/envs/genesis/bin/python
+
+Executables (always choose a NEW output path; frozen output refuses overwrite):
+  -m leg_program_bench.run_interrupt_replan_validation --help
+  -m leg_program_bench.run_pose_transfer_suite --output NEW_OUTPUT
+  -m leg_program_bench.run_extended_pose_transfer --freeze-only --output NEW_OUTPUT
+  -m leg_program_bench.run_extended_pose_transfer --execute --output SAME_NEW_OUTPUT
+  -m leg_program_bench.run_transfer_learning_suite --output NEW_OUTPUT --local-only
+  -m leg_program_bench.run_transfer_chain_suite --local-data LOCAL_OUTPUT --output NEW_CHAIN_OUTPUT
+  -m leg_program_bench.audit_dird_transfer_proposals --entry-transfer --output NEW_OUTPUT
+  -m leg_program_bench.run_composable_confirmation --output NEW_OUTPUT
+  -m leg_program_bench.run_handoff_data_validation --data CONFIRMATION_OUTPUT --output NEW_OUTPUT
+  -m leg_program_bench.run_equal_budget_handoff_confirmation --help
+
+Tests:
+  env PYTHONPATH=work OPENBLAS_NUM_THREADS=1 PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /media/camp/EXT_DRIVE/envs/genesis/bin/python -m pytest -q work/leg_program_bench/tests
+
+Each old experiment uses its own frozen_source and frozen_protocol. Current additive controller options preserve old defaults but source hashes differ; use the corresponding frozen source to reproduce old protocol hashes exactly.
+
+External licensed SMPL-X, production material atlas, current robot URDF/collision files, dIRD checkpoint, Genesis/Pinocchio and the original virtual registration are required for physical replay. These assets are referenced/hashes recorded but not redistributed in this review bundle. Raw B-mode/contact data do not exist in this simulation pilot.
+
+Review does not require robot hardware. Never interpret these executables as permission to connect hardware.

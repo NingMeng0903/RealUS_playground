@@ -1,0 +1,119 @@
+冻结协议 — conditioned local response and geometry mechanism benchmark
+======================================================================
+
+Scope
+-----
+This is a synthetic contact-response benchmark for the V9.3 analytic/residual/
+geometry mechanism.  It is not a real ultrasound/contact dataset, not a claim
+of anatomical truth, and not complete A/B validation.  All plant coefficients
+below are declared synthetic.  The experiment asks whether a response model
+conditioned on public local context can predict and select actions under
+unseen probe-frame rotations, and whether a typed geometric basis removes
+avoidable coordinate/sign errors.
+
+Units, public inputs and split
+------------------------------
+* A normalized displacement/action component is 1 mm.  A response component is
+  also 1 mm before projection.  The probe image plane is local x/z; centering
+  success is fixed before running at Euclidean x/z error <= 0.50 mm.
+* Each public context is s=(depth, force, compliance, history), all normalized
+  to [-1,1] after sampling: depth in [0.2,1.0], force in [0,1], compliance in
+  [0.3,1.3], history in [-1,1].  Public geometry is action u, unit surface
+  normal n, signless vessel axis t, and calibrated probe frame R in SO(3).
+  The learner receives u,n,t,R,s and public noisy response labels; it never
+  receives the plant coefficients or an object ID.
+* Train samples are independent contexts/actions, not random frames from a
+  trajectory.  Test uses 512 independent contexts with fixed seed 720950.
+  The in-distribution (ID) test uses fixed seed 720951 and the same context
+  law but train/test rotation ranges are both +/-15 degrees.  The OOD test
+  samples arbitrary SO(3) probe rotations.  Train rotations are axis-angle
+  rotations with angle Uniform[-15,15] degrees around a random axis; OOD
+  rotations are uniform random quaternions.
+* Training sizes are 128, 512, 2048, each with exactly three seeds
+  [101,202,303].  The same fixed test contexts and candidate actions are used
+  for every model.  No test result changes epochs, features, candidate count,
+  target or success threshold.
+
+Declared synthetic plant
+------------------------
+The analytic rigid term is r_rigid=u and is retained directly.  The learned
+target is residual q=r_total-u.  In probe-local coordinates let
+  b0=u,
+  b1=n(n^T u),
+  b2=t(t^T u).
+For local scalars d,f,k,h and dot products a=n^T u, v=t^T u, the ground-truth
+residual is
+  q = alpha(s)b0 + beta(s)[1 + 0.35*tanh(2f)*a^2]b1
+      + gamma(s)[1 + 0.20*d*v^2]b2,
+  alpha=0.22+0.08d+0.05f+0.03h,
+  beta =0.12+0.06k+0.04f^2,
+  gamma=0.10+0.05(1-d)+0.04 cos(pi h).
+The total response is r_total=u+q.  This is a smooth anisotropic compliance
+plant with force-dependent nonlinearity.  Labels are r_total + independent
+Gaussian noise with fixed standard deviation 0.01 mm; models train on
+label-u, not on hidden coefficients.  The negative plant q=0 (r_total=u)
+is retained as a separate negative-control test and is never silently removed.
+
+Models and canonical baselines
+-------------------------------
+1. analytic_zero_residual: q_hat=0.  This is the declared rigid-only baseline.
+2. global_fixed_linear: fit one constant world-frame 3x3 matrix q_hat=A u
+   on the public training labels; no s, n, t or R conditioning.
+3. online_RLS_3probe: for each test context only, execute three orthogonal
+   real probes u=0.5 R e_i, record their noisy residuals, and fit a local
+   linear q_hat=A u by least squares.  Probe count/cost is recorded as 3; the
+   probes are not hidden free labels.  This is a strong adaptive baseline.
+4. world_coordinate_MLP: fixed two-hidden-layer MLP on [s,u_world,n_world,t]
+   (t is supplied with an arbitrary sign), predicting world residual q.
+5. probe_local_MLP: the same fixed MLP after every vector is transformed by
+   R^T, predicting local residual and transporting it back by R.
+6. typed_residual_basis: a typed vector basis model.  It forms the exact
+   covariant contractions b0,b1,b2 and an MLP predicts only their scalar
+   coefficients from invariant/local scalar features [s,|u|^2,n^Tu,(t^Tu)^2,
+   (n^Tt)^2].  The output is the typed sum and is transported by R.  This is
+   an explicit manual O(3) TensorProduct-equivalent contraction because the
+   e3nn package is not installed in the environment; it must not be reported
+   as a completed e3nn library implementation.  The t sign enters only through
+   even/invariant quantities and b2, so t and -t are equivalent.
+
+All MLPs use hidden width 64, two layers, tanh, Adam lr=1e-3, batch size 256,
+and 100 epochs, fixed for every N/seed.  One-dimensional output scaling and
+feature definitions are fixed here.  Weights are saved for every run.
+
+Action-selection benchmark
+--------------------------
+Each test context has 32 fixed candidate local actions with norm in [0.15,0.8]
+mm, generated once from the test seed.  The target image-plane correction is
+fixed at [0.40,-0.30] mm in local x/z.  Every method chooses the candidate
+minimizing its predicted Euclidean x/z error.  The scorer uses the noiseless
+plant only to evaluate the chosen candidate.  Report actual error, oracle
+candidate ceiling, regret relative to the same candidate set, success rate at
+0.50 mm, and online RLS's explicit three-probe count.  No model chooses a
+candidate using hidden truth.
+
+Required geometric checks
+-------------------------
+* ID and arbitrary-SO(3) response RMSE and action regret/success.
+* t sign-flip: replace t by -t with all else identical; true response is
+  unchanged.  Report prediction difference; typed basis should be at numerical
+  tolerance, while unconstrained MLPs are allowed to fail.
+* Whole-problem SO(3): apply an independent Q to u,n,t,R and compare predicted
+  q' with Q q.  Report equivariance error; local/typed models are the
+  canonical coordinate baselines, not assumed winners.
+* Action gradient versus central finite differences on fixed test points for
+  the trained largest model (N=2048, seed=101) for world/local/typed models.
+* Negative q=0 plant: report residual false-positive magnitude and action
+  metrics; do not delete it as an outlier.
+* free-response oracle uses the true plant only as a ceiling and is not a
+  learner.
+
+Outputs and interpretation
+--------------------------
+Save this protocol before generation, raw arrays, all weights, RESULTS.json,
+REPORT.txt, independent tests and SHA256 manifest.  A positive typed/local
+result only demonstrates a synthetic conditioned-response and coordinate
+mechanism.  If probe-local MLP matches typed basis, retain the simpler model;
+e3nn/typed structure is not a required contribution by declaration.  If
+online RLS matches or beats learning, report that honestly.  No result may be
+described as anatomical contact truth, real ultrasound transfer, or complete
+A/B success.

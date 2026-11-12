@@ -1,0 +1,96 @@
+冻结协议 — B binary decision mechanism
+=======================================
+
+性质与范围
+----------
+这是一个紧凑的、可独立验证的二元 Bayes 决策机制实验。它只检验标准
+“观察是否改变后续可执行决策”的阈值，不宣称新的 VOI 理论、真实超声
+性能或机器人性能。原 response_identification/ 下已有实验不修改。
+
+核心模型和预算
+--------------
+* 隐状态 H∈{+,-}，默认 p=P(H=+)=0.5；终端动作 d∈{+,-}。
+* 错误终端动作损失 L=1。动作 - 没有额外执行成本；动作 + 有状态无关
+  的继续执行成本 Delta。这个 Delta 代表同一公共机器人状态下的后续
+  可执行代价，不是人为硬墙。
+* 公开二元观测 Y∈{+,-} 是对 H 的对称信号：P(Y=H)=r，默认 r=0.8。
+  观测成本 c=0.1。一次决策最多允许两步：直接终止，或支付 c 取得一
+  次观测后再作一个不可逆终端动作。所有观测和后续执行成本都计入总风险。
+* 策略函数只读取 public prior/likelihood/cost 和公开 Y，不读取 H。H 只
+  在解析 scorer 和 Monte Carlo scorer 中生成真实错误损失。
+* Delta 网格固定为 [0, .2, .39, .4, .41, .6, 1.0]，不根据结果改动。
+
+精确策略与比较
+--------------
+1. myopic/no-observation：不观测，直接选择当前 Bayes 风险最小的动作。
+2. always-informative：总是支付 c 获取 H-signal，再对每个公开分支选择
+   posterior Bayes 动作；它是“可靠但不检查是否值得”的基线。
+3. cheap-exact-threshold：先计算直接终止和一次 H-signal 后的完整期望
+   风险（含 c、Delta），只有严格更小才观测；等价于本二步模型的精确
+   cheap decision rule，平局选择 skip。
+4. two-step-Bellman：枚举 skip 与 probe→terminal 的所有公开分支，取
+   最小期望风险；这是本 toy 中的精确两步 Bellman 策略，不把它包装成
+   新算法。
+5. entropy sensor choice：预算相同，可在 H-signal 与独立 nuisance U-signal
+   中选择。U 与 H 独立，观测成本和动作预算相同。
+   * equal-MI：U 的准确率也为 .8，与 H-signal 对完整 (H,U) 状态的 MI
+     完全相同；报告 tie-break favor-H 和 tie-break favor-U 两种结果，
+     不声称“同 MI 必然选错”。
+   * strictly-higher-MI-U：U 准确率固定为 .95，MI 严格大于 H-signal；
+     full-state entropy 选择 U，但 U 对 H 的任务风险没有作用。
+   entropy 仍支付同一个 c；U 分支之后只能依据 H 的未改变 posterior 作
+   终端动作。
+
+默认解析阈值
+------------
+对 p=.5、L=1、r=.8、c=.1：
+* 不观测风险为 .5（动作 -）。
+* 当 Delta<.6 时，H-signal 后 Y=+ 选 +、Y=- 选 -，probe 风险
+  .2 + Delta/2 + c = .3 + Delta/2。
+* 当 Delta>=.6 时，两个观测分支都选 -，信息决策价值为零，probe 风险
+  .5+c=.6。
+* 因而 cheap/Bellman 在 Delta<.4 时选择 probe，Delta=.4 平局选择 skip，
+  Delta>.4 选择 skip；网格中的 .39/.4/.41 必须显示阈值两侧变化。
+这些式子只作为待验证的标准 binary Bayes 结果；实现会枚举所有 H、Y
+分支后再独立重算，不能只打印公式。
+
+零收益和压力组
+--------------
+除默认 Delta 网格外，固定加入：
+* 偏斜先验：p=.9,r=.8,Delta=.2,c=.1；所有公开观测分支的最优终端
+  动作都应为 +，因此 decision information 为零。
+* 无信息观测：p=.5,r=.5,Delta=0,c=.1；所有观测和无观测后验相同，
+  最优动作不随 Y 改变。
+* 高观测成本：p=.5,r=.8,Delta=0,c=.35；观测虽改变动作分支，但净
+  风险不值得支付 c。
+* 高 Delta：p=.5,r=.8,Delta=.6,c=.1；所有 H-signal 分支都选 -，信息
+  本身没有决策收益。
+这些组用于防止把“观测可靠”或“熵下降”包装成必然任务收益。
+
+Entropy 信息量定义
+------------------
+对 H/U 独立且均匀的四状态 S=(H,U)，二元对称传感器的 full-state MI
+用精确离散熵计算。equal-MI 时 r_H=r_U=.8；strictly-higher-MI 时
+r_H=.8,r_U=.95。相同 MI 的 tie 不判定错误，只列出两个合法 tie-break；
+更高 MI 的 U 选择则是一个明确的 task-irrelevant information 压力测试。
+
+解析枚举、Monte Carlo 和证据
+----------------------------
+* 对每个默认 Delta 和压力组，解析枚举 H=±、Y=± 的 joint branch mass，
+  先聚合 posterior branch 风险，再取最小动作风险；策略决策禁止访问 H。
+* 使用固定 seed=720942、N=4096 的 paired Monte Carlo；每个声明先验 p 用
+  固定计数的 stratified H 样本（round(pN) 个 +，其余 -，再由该 seed
+  打乱），避免小样本先验频率波动把解析值验证变成抽样计数测试。各策略/
+  传感器共用同一组 H 和预生成信号（common random numbers），但不按结果挑 seed。
+  报 analytic expected risk、MC mean、paired 95% normal CI 和 analytic-MC
+  差异。MC 只验证解析值，不替代解析枚举。
+* 独立测试脚本手写 branch 枚举、后验动作、风险公式、MI、阈值和 MC
+  scorer；检查 cheap-exact-threshold 与 two-step-Bellman 完全一致，检查
+  所有 public branches 和零收益组。
+
+结论边界
+--------
+这里的 failure→success 只指“总是观察/只看信息量”的观察选择在阈值
+Delta=.4 附近被精确的风险阈值纠正；它不是 A/B 完整系统的成功，也不是
+对真实机器人后续可达性的证据。真实系统必须测量实际动作、观测、资源和
+状态转移成本，并与同预算的强视觉伺服/Belief-MPC 比较。

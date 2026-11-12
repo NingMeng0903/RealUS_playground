@@ -1,0 +1,21 @@
+Continuous-GT / finite-public-prior mismatch screen
+Status: complete
+Scope: finite 32-point public belief versus independent continuous GT;
+not calibrated continuous SMC, not a robot/clinical generalization claim.
+
+Episodes: 32/32; public prior sha256=92432d67a7251adb93035f11570e9d1669f85be46307a8820c9b5f0f77188dbf
+Host wall seconds: 105.425791
+
+By condition/method:
+  iid/A_continuous_servo: n=8 completed=8 failures=0 correct=0 false=0 mean_RMT=60 min_raw_ESS=1 max_post=1 min_support=1
+  iid/B_two_step: n=8 completed=8 failures=0 correct=0 false=0 mean_RMT=60 min_raw_ESS=1 max_post=1 min_support=1
+  shifted/A_continuous_servo: n=8 completed=8 failures=0 correct=0 false=0 mean_RMT=60 min_raw_ESS=1 max_post=1 min_support=1
+  shifted/B_two_step: n=8 completed=8 failures=0 correct=0 false=0 mean_RMT=60 min_raw_ESS=1 max_post=1 min_support=1
+
+Paired shifted-minus-iid cluster means:
+  A_continuous_servo: {'n_pairs': 8, 'mean_delta_shifted_minus_iid': {'RMT_s': 0.0, 'correct_public_stop': 0.0, 'false_public_stop': 0.0, 'actions': 0.0, 'nearest_prior_geometry_rms_m': 0.0007396296136973493}}
+  B_two_step: {'n_pairs': 8, 'mean_delta_shifted_minus_iid': {'RMT_s': 0.0, 'correct_public_stop': 0.0, 'false_public_stop': 0.0, 'actions': 0.0, 'nearest_prior_geometry_rms_m': 0.0007396296136973493}}
+
+Private GT hashes and nearest-prior geometry RMS values are retained only
+under RESULTS.json.audit_private; they are never policy inputs.
+RESULTS.json sha256=6da6319338367651d235a9c82b245dedea987888484ee02e87bc87b976f4adbe

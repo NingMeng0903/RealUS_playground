@@ -1,0 +1,183 @@
+NATIVE PILOT AUDIT (read-only)
+================================
+
+Audit date: 2026-11-11
+Frozen target:
+  study_v3/A_task_dwell_30/fixture_00_constrained/dev/fixture_00_constrained/
+  A_task/case_0001/RESULT.json
+
+Scope and method
+----------------
+No source, controller, constraint, cache, or result file was modified.  This
+audit read the target RESULT.json, the shared planning MOTION.json, the native
+planning NPZ traces, the checkpoint manifest, and the shared execution reuse
+records.  NPZ same-tick and geometry quantities were recomputed from
+``measured_before``, ``desired``, and ``local_xyz_m``.
+
+Observed pilot sequence
+-----------------------
+The first four actions were
+``side_right__single_dwell_0.6`` (four times), all feasible and executed.
+The fifth decision was ``side_left__single_dwell_0.6``.  RESULT.json reports
+``reason=native_probe_invalid``, ``probe_count=4``, ``fresh_count=4``,
+``verification_calls=5``, and ``execution_calls=4``.  The fourth execution was
+an exact planning-checkpoint replay (``execution_reuse``); no q-only or nominal
+state reset was used.
+
+Exact fifth-check route evidence
+---------------------------------
+The shared planning manifest contains the two legal public route candidates
+from the complete prefix
+``side_right__single_dwell_0.6`` repeated four times:
+
+1. ``...__side_left__single_dwell_0.6__round_tip``
+   (records ``seg_0ef2f83cb18b991bfd7e_0..2.npz``), overall ``valid=false``.
+   Steps 0 and 1 pass.  The final step (``seg_..._2.npz``) fails the native
+   2-mm tracking gate:
+
+   * same-tick position error = 0.003993224 m (3.993 mm), over the 0.002-m
+     gate by 1.993 mm;
+   * same-tick rotation error = 0.006494228 rad (0.372 deg), below the 2-deg
+     gate;
+   * native position p95 = 0.003531706 m and endpoint position error =
+     0.003875434 m;
+   * recomputed actual-vs-desired rotation max = 0.005592153 rad (0.320 deg),
+     so the native 2-deg rotation component is not the failing pose gate;
+   * geometry true-surface gap = 0.000553052 m (0.553 mm), within 3 mm;
+   * all public ``local_xyz_m`` samples are inside the window, and no swept
+     wall-box segment is hit;
+   * minimum self distance = 0.039716648 m (39.717 mm), task pauses = 0,
+     native failure count = 0;
+   * the negative configured jerk margin is recorded only as a numerical
+     diagnostic and is not this gate.
+   * the final step still has a complete exit snapshot and zero native
+     ``failures``; under the frozen replay contract this means
+     ``exit_state_valid=true`` even though the segment tracking gate is false.
+
+2. ``...__side_left__single_dwell_0.6__retreat_fork``
+   (records ``seg_157acb4e7bccfb78330c_0..2.npz``), overall ``valid=false``.
+   Steps 0 and 1 pass.  The final step (``seg_..._2.npz``) also fails only on
+   position tracking:
+
+   * same-tick position error = 0.002210762 m (2.211 mm), over the 2-mm gate
+     by 0.211 mm;
+   * same-tick rotation error = 0.002572224 rad (0.147 deg), below 2 deg;
+   * native position p95 = 0.001629044 m and endpoint position error =
+     0.002049034 m;
+   * recomputed actual-vs-desired rotation max = 0.0015812147 rad (0.091 deg),
+     so the native 2-deg rotation component is not the failing pose gate;
+   * geometry true-surface gap = 0.000654213 m (0.654 mm), within 3 mm;
+   * all public samples are inside the window, with no wall-box segment hit;
+   * minimum self distance = 0.039524236 m (39.524 mm), task pauses = 0,
+     native failure count = 0.
+   * the final step still has a complete exit snapshot and zero native
+     ``failures``; under the frozen replay contract this means
+     ``exit_state_valid=true`` even though the segment tracking gate is false.
+
+The failed traces have complete q/qdot/acceleration snapshots.  Within each
+three-step route, end q and qdot equal the next step's start q and qdot to
+machine precision (reported reconstruction errors are all 0.0).  The first
+step starts at the prior successful route's endpoint, also without a qdot
+reset.  Thus the failure is not caused by lost history, an invalid checkpoint,
+or normalized/restarted state.
+
+Why RESULT has no fifth event
+-----------------------------
+MotionRollouts materialized both candidates, but neither produced a valid
+Transfer.  Its documented aggregation then returns ``reason=no_checked_route``
+with ``route_id=null``.  NativeAdapter records that as the infeasible fifth
+check; checkpoint ``acbc475b5405d0156af7c8f0.json`` confirms this exact
+``no_checked_route`` result.  This is the expected consequence of both native
+route attempts failing the 2-mm tracking gate, not an adapter inability to
+find the route.  The adapter does not currently expose the rejected candidate
+rows in the final event, but that reporting limitation did not cause the
+invalid result.
+
+Classification
+--------------
+This is a physical/native controller tracking-gate failure on the final
+waypoint of both available routes (position > 2 mm).  It is not a 2-deg
+rotation failure, public geometry/window failure, wall/collision failure,
+pause/exit failure, jerk policy failure, or state-continuation failure.  No
+adapter/source fix is indicated by this audit; no code was changed.
+
+Other-arm / same-route observation
+-----------------------------------
+The exact full route string above occurs only in this target planning manifest;
+no other arm has the same complete prefix and route.  The same rig has the
+closely related ``side_right__0.6``-prefix observations in this manifest:
+round_tip fails at 3.147 mm or 3.432 mm while retreat_fork succeeds.  Other
+scanned planning manifests show the same route-dependent pattern: in
+``A_task`` fixture_01, round_tip fails at 3.139 mm while retreat_fork passes;
+in ``A_info`` fixture_01, round_tip fails at 2.835--3.344 mm while the paired
+retreat_fork routes pass.  These are different complete states/fixtures, not
+independent repeats of the exact target route, and are reported only as
+context.
+
+Cache/replay qualification
+--------------------------
+The target RESULT native counters are 5 verification calls, 4 executions,
+and 4 execution reuses.  Shared execution ``reuse_*.json`` records point to
+planning NPZ files and mark ``complete_state_reused=true``.  They are
+deterministic checkpoint replays, not independent physical trials.  The
+planning manifest keeps the full route labels while NPZ names use short
+content hashes.
+
+Conclusion for the pilot
+------------------------
+The first ``native_probe_invalid`` is explained by two real, deterministic
+native tracking failures at the 2-mm position gate.  Do not reinterpret it as
+geometry/collision or as an adapter cache bug; retain the failed route rows
+and state history for downstream accounting.
+
+Timing / phase supplement (same retained NPZ traces)
+-----------------------------------------------------
+The quantities below use local time in the final (step 2 of 3) route segment.
+``actual`` means native actual TCP pose versus desired pose (the frozen native
+tracking gate); ``measured_before`` is the previous/entry sample versus the
+same desired pose (the adapter's aligned ``same_tick`` gate).  The middle
+window is local segment time 10--90% of the saved trace; the final dwell window
+is the last 0.600 s of the trace.  Position values are mm and rotations are
+degrees.
+
+* ``round_tip`` / ``seg_0ef2f83cb18b991bfd7e_2.npz``: local trace length
+  1.565 s, reference duration 0.840028 s.  The actual-position peak is
+  3.875434 mm at t=0.175 s (20.8% of reference phase; 57.98% of the complete
+  three-step route).  The measured-before peak is 3.993224 mm at t=0.180 s
+  (21.4% of reference phase).  Actual rotation peaks at 0.3204 deg and
+  measured-before rotation at 0.3721 deg.  In the 10--90% middle window,
+  actual position max/p95 are 3.875434/3.411030 mm and measured-before
+  position max/p95 are 3.993224/3.611103 mm; thus this is a clear middle-
+  segment violation, not an end effect.  In the final 0.600-s dwell (t>=0.965
+  s), actual position max/p95 are 0.003145/0.002124 mm and measured-before
+  position max/p95 are 0.003309/0.002223 mm; actual/measured-before rotation
+  max values are only 0.0491/0.0496 deg.
+
+* ``retreat_fork`` / ``seg_157acb4e7bccfb78330c_2.npz``: local trace length
+  1.890 s, reference duration 1.169383 s.  The full-trace actual-position
+  peak is 2.049034 mm at t=0.145 s (12.4% of reference phase; 57.83% of the
+  complete route), while measured-before peaks at 2.210762 mm at t=0.155 s.
+  Actual/measured-before rotation peaks are 0.0906/0.1474 deg.  The actual
+  10--90% middle max/p95 is 1.777488/0.535517 mm, so the native actual peak is
+  a short early transient just before the 10% boundary.  However, the
+  measured-before 10--90% max/p95 is 2.006436/0.749714 mm (peak t=0.190 s),
+  which is still 0.006436 mm over the adapter's 2-mm aligned gate in the
+  middle.  In the final 0.600-s dwell (t>=1.290 s), actual and measured-before
+  position max/p95 are both 0.000441/0.000440 mm; rotation max/p95 are
+  0.0094/0.0095 and 0.0089/0.0090 deg respectively.
+
+Gate interpretation
+--------------------
+The frozen native ``motion_tracking_pass_2mm_2deg`` test is a full-trace max
+test over actual-vs-desired position/rotation (plus its native limit checks),
+not a 10--90% middle-only test.  The fixture's aligned before-tick check is
+also computed as a full-trace max.  Therefore ``round_tip`` is rejected by a
+large middle-segment position excursion in both views.  ``retreat_fork`` is
+rejected by the full native actual peak at the early transition and also by
+the before-tick aligned peak, which remains just over 2 mm in the 10--90%
+window.  Neither route is rejected by the tail/dwell: both settle to
+sub-millimetre (indeed micron-scale) position error and sub-degree rotation.
+The retained evidence therefore does not support calling this an end-of-trace
+artifact; only the native actual component of the retreat-fork failure is
+predominantly an early transient, while the adapter before-tick gate still
+shows a middle-window overrun.

@@ -1,0 +1,495 @@
+FROZEN LOCAL CLOSED-LOOP A/B PROTOCOL
+Design owner: Astra; implementation and execution are separate.
+Date: 2026-11-11. This file defines a simulation experiment, not a result.
+
+1. CLAIM, SCOPE, AND FREEZE
+
+The testable claim is that, for a known acquisition task and a common bounded
+anatomical prior, new acoustic observations can change which checked continuation
+is useful, and anticipating the actual state and remaining time after a probe can
+change which probe is worth executing. The claim is conditional on the sensing
+model, the available program library, and the declared controller. It does not
+claim a new Bellman equation, global terminal controllability, clinical ultrasound
+performance, or universal superiority of a more elaborate policy.
+
+The primary outcome is acquisition of the first NEW, privately accepted task
+image/observation before a fixed deadline. Planning success probabilities, old
+probe packets, endpoint IK witnesses, and safe withdrawal are not completion.
+
+Freeze this protocol, final numeric public geometry/program manifest, model
+manifest, source hashes, and random seeds before generating held-out acoustic
+outcomes. Public geometry-only engineering may repair an invalid robot placement
+or unsupported reference before that freeze. Record every attempted placement and
+the public engineering rejection reason. Do not retain a placement because B
+wins, because an acoustic outcome looks favorable, or because a comparator fails.
+Any changed model, deadline rule, candidate, or threshold after test outcomes is
+an explicitly dated amendment and a new experiment, not a silent replacement.
+
+No patient prescan is available. Initial public inputs are the known requested
+target/view, atlas/material anchor and bounded prior, calibrated robot state,
+known fixture geometry, and current synthetic surface sensor data. Hidden anatomy
+and acoustic latents enter only the simulator/evaluator. All arms receive the
+same initial public information and use the same motion/checking machinery.
+
+2. THREE RELATIONS AND THEIR LIMITED INTERPRETATION
+
+Response, for an actual acquisition pose A and material address xi:
+
+  Y = g_geo(S, Fhat^{-1} A) + H(Fhat^{-1} A) w_xi + epsilon,
+  H = [1, s],   s = signed measured local tilt / 0.10 rad.
+
+S is a public anatomical hypothesis when predicting, and private anatomy only
+when generating/evaluating data. Fhat is fitted from current sensor points; it
+is not the private true frame. g_geo is evaluated from geometry at the actual
+probe pose. A diagnostic channel may use a declared non-target tissue response,
+but its physical support and relation to target quality must be specified. Do
+not assign visibility or a diagnostic label merely because an action is named
+"central" or "informative".
+
+For conditionally independent, correctly associated Gaussian observations:
+
+  Lambda_xi = Lambda_xi^- + sum H_i^T R_i^{-1} H_i,
+  eta_xi    = eta_xi^-    + sum H_i^T R_i^{-1}(Y_i-g_i).
+
+Keep event IDs, acquisition addresses, actual poses, contact and calibration
+versions. A frame is counted once. This natural state is exact only for its
+conditional Gaussian component. Missing detections and unlabelled false
+positives require their mixture likelihood; do not feed all positive detections
+through an unconditional Gaussian update and call it exact. An exact small
+Gaussian mixture or a fixed quadrature/particle posterior is acceptable. If an
+approximation is used, freeze its support and report normalization/prediction
+checks against a denser calculation on development data.
+
+A two-dimensional shared w is permitted only as an explicit locally stationary
+PATCH assumption spanning the two surface windows. Record the distinct sampled
+addresses within that patch. Otherwise keep separate address states, or a frozen
+joint prior with declared cross-address covariance. Observing one independent
+window does not update another. Response-reset controls test this assumption.
+
+Task value:
+
+  V(a | b,x,r) = - E[c(a,O)]
+    + E_{O=(Y,x',tau,flags) ~ K(.|b,x,a)}
+      [ max_{pi in Pi_checked(x',r-tau)} J_fresh(pi | b^+(O),x',r-tau) ].
+
+The maximization is by PUBLIC history, not independently by private world.
+Equal public histories induce equal actions. Already successful/terminated
+branches get their actual value. Unknown paths have no executable witness and
+cannot be released. Missing a witness is not proof of global infeasibility.
+The present deterministic mechanical simulator may make the exit/time component
+of K degenerate. Such a result tests action-specific continuation accounting;
+it does not alone establish a benefit of a nonfactorized stochastic kernel.
+
+3. PUBLIC INTERFACES AND STATE CONTINUITY
+
+physics.run(program, entry_state, fixture, measured_frame) returns:
+  trace; complete exit_state; elapsed model time; mechanical/contact flags;
+  newly generated public acoustic packet(s); checked/rejected/unknown status.
+
+entry_state and exit_state include actual q, qdot, acceleration/history required
+by the controller, model-clock phase, actual contact mode, and any controller
+internal state needed to reproduce continuation. The target pose ID is not the
+state. Never reset qdot, acceleration, elapsed time, or controller memory at a
+program boundary unless a real checked settling segment has produced that state.
+
+The planner API receives public observation packets, current calibrated state,
+fixture geometry, measured frame, prior/posterior, candidate manifests, and
+remaining time. It receives no true/false association flag, private centerline,
+hidden acoustic coefficient, correct terminal label, or evaluator success bit.
+
+The private evaluator receives private anatomy, actual pose/trace, and a fresh
+acquisition payload. Its function does not receive policy/arm identity. The
+planner can stop on a public detector criterion; false public stops remain
+failures and are counted. Do not silently correct them with private truth.
+
+Identical deterministic mechanical prefixes may be cached. Cache identity must
+include the entire measured entry state, controller/binary/config hashes,
+reference, fixture, contact/frame version, clock and all relevant history.
+Static endpoint q witnesses are not native exit states. Cache hit rates and
+native executions are reported separately. Cached outcome means replay of the
+same deterministic transition, not a physically new acoustic acquisition.
+
+4. CURRENT CONTACT FRAME AND PUBLIC FIXTURE
+
+Use the production atlas skin/material anchor already available in
+ab_live_surface_20261111/run_geometry.py. Save the anchor ID, side, pose and asset
+hash. Fit current contact with that file's estimate_contact: observed plane fit,
+public approach-line intersection, and a public task tangent projected onto the
+estimated tangent plane. Reject degenerate fit/support/incidence/tangent cases.
+All policies use this same accepted measured frame. The true displaced surface
+is private to simulation/evaluation.
+
+The reference sensor recipe is a 9 by 9 point patch over +/-10 mm, independent
+0.25 mm coordinate noise, and a declared private surface displacement/tilt.
+Use fixed public development seeds to obtain the final accepted fixture(s);
+record offsets, surface equation, sensor data, fitted frame and fit residuals.
+Do not fit the frame directly to private true normals or private contact points.
+
+The implementation's proposed local fixture, in the fitted tangent chart, is:
+  common fork/start:      (0, 0) mm;
+  terminal windows:       (-16,18), (+16,18) mm;
+  side diagnostic sites:  (-16,13), (+16,13) mm;
+  baffle footprint:       x in [-4,4], y in [10,34] mm.
+The nominal direct crossover through the baffle is forbidden by swept geometry,
+not an action-ID blacklist. Routes around its lower end and every other supported
+retreat/return/crossover route remain available to EVERY arm. A mirrored fixture
+interchanges left/right constraint roles using the same published rule. Freeze
+the probe envelope, inflated clearance, waypoints, fixture transform and all
+pose/tilt values in the final manifest. The final manifest must show that an
+actual acoustic channel has support at each diagnostic site; with a narrow
+yaw-only image plane this is not guaranteed by the coordinates above.
+
+It is legitimate for a central diagnostic to take longer than a side diagnostic
+if it is a distinct acquisition program with its own physical location, signed
+tilt, dwell and observation law. It is NOT legitimate to manufacture an advantage
+by defining a longer probe as the identical side probe plus a mandatory return
+while withholding that return from the shorter probe's continuations. With the
+same evidence and all recovery routes, the shorter program can choose that
+return after observing and weakly dominates the mandatory-return version.
+
+These are known synthetic workspace/contact exclusions, not measured patient
+ribs. State precisely what collision model is implemented. Probe-envelope versus
+fixture clearance does not certify the rest of the robot against that fixture.
+If full external-link geometry is unavailable, qualify the result as native
+whole-segment robot/self-collision plus swept probe-fixture checking; do not call
+it full external-environment collision certification.
+
+5. MOTION AND PHYSICAL ACCEPTANCE
+
+Use original integral-basis ProDMP references with actual measured entry pose
+and entry velocity, transformed through Fhat, and preserve their analytic timing
+and feed-forward twists. The current native controller can be used offline;
+no hardware session is required. Baked dIRD ranks candidate searches, and every
+arm uses the same database, ordering, query budget and fallback. dIRD score or
+endpoint reachability never substitutes for a whole-segment check.
+
+Before execution, a candidate must have a checked route from the ACTUAL entry.
+Check motion, dwell, transition/settling and recovery, not only moving endpoints:
+  - same-tick FK(q_meas_before[t]) against desired pose[t];
+  - configured physical joint position/velocity/acceleration/jerk limits;
+  - actual derivative continuity across adjoining segments;
+  - configured self-collision and available external collision geometry;
+  - swept probe-envelope/fixture clearance, including between-sample clearance;
+  - synthetic contact geometry/support and declared contact mode;
+  - elapsed model time, endpoint tolerance and controller-state validity.
+
+Retain the established motion gate of maximum 2 mm translation and maximum
+2 degrees orientation error where the native reference is the intended target.
+The stricter true-contact/image gate remains separate. Use the controller's
+actual physical limits, not new posture preferences chosen for this experiment.
+For between-tick clearance, use a conservative swept/interpolated envelope with
+a recorded maximum spacing/error bound; discrete checking alone is labelled
+sampled, not continuous certification. A tracking or constraint failure cannot
+be relabelled successful because a later endpoint happens to be good.
+
+If a requested segment cannot be checked, record rejected or unknown and execute
+a common checked stop/withdrawal when available. Safe withdrawal beyond deadline
+remains a task timeout. The contact model is geometric: without a force/contact
+plant, this study does not establish force regulation or stable physical contact.
+
+6. CANDIDATES, BUDGET, AND THE 2 BY 2
+
+All methods share direct acquisition at both windows, the supported side
+diagnostic(s), central diagnostic/pair, fixed paired tilts, all supported routing
+and recovery primitives, and the same terminal retry rule. A program may contain
+multiple primitive segments; its acquisition events and end state are explicit.
+Freeze the complete finite library and canonical lexicographic tie break.
+
+Acquisition timing and noise:
+  side single diagnostic dwell:       0.15 s;
+  central pair:                       0.30 s at EACH signed tilt;
+  fixed pair:                         same per-tilt dwell as central pair;
+  terminal fresh acquisition dwell:    1.00 s;
+  diagnostic tilt reference:           -0.025 and +0.025 rad;
+  terminal tilt reference:             -0.10 and +0.10 rad, when supported;
+  sensor SD per independent acquisition:
+    0.035 * sqrt(0.15 s / actual acquisition dwell).
+
+Include every actual travel, tilt, native settle and acquisition duration. A
+central pair is not assigned an arbitrary extra penalty or free return. If the
+native dwell/reference requires a different executable timing, freeze the
+physical timing and record an engineering amendment before test outcomes; keep
+the above declared acquisition time distinct from servo settling overhead.
+
+Primary horizon: at most one diagnostic program, with at most two acoustic probe
+acquisitions, followed by direct terminal acquisitions. At most two terminal
+attempts may be made if remaining time admits both. A terminal failure is followed
+by the same actual-state greedy legal recovery rule in every arm. No method loses
+an already supported retreat/crossover edge. Longer H3 search, if run, is a
+separate labelled sensitivity using identical physical and compute budgets.
+
+I=1: after the selected diagnostic program, use all its new acoustic packets.
+I=0: replace that program's entire acoustic packet(s), including acoustic
+missing/detection/quality flags, with a constant mask. Retain actual q, qdot,
+controller state, elapsed time, and public mechanical/contact status. If those
+retained variables themselves reveal information, condition on their likelihood;
+do not pretend that I=0 means absolutely no new information. Terminal acquisition
+packets remain readable in all arms for their common recovery rule. Existing
+legal prior history is identical across arms.
+
+F=1: PRE-probe scoring uses the candidate-specific predicted executed exit state
+and checked continuation times from that state, with the actual program timing
+model and remaining budget. In deterministic mechanics these may be public
+native calibration replays, explicitly labelled calibrated-model predictions.
+F=0: PRE-probe scoring uses one common nominal post-probe state at the fork and
+its common continuation-time model. It still pays each candidate's known actual
+reference/prefix time. This factor deliberately removes action-specific future
+exit/continuation accounting; it does not hide obviously known command duration.
+
+After real execution, BOTH F arms discard any nominal assumed entry and check/
+replan from actual q, qdot, controller memory and remaining time. F=0 must never
+execute a fictitious edge. The factors only alter information use and first-stage
+forecasting. Share observation laws, priors, candidates, transition checks,
+search limits and numerical integration accuracy.
+
+The four labels are I0F0, I1F0, I0F1, I1F1. Do not call I1F0 an independent strong
+baseline without naming its deliberate nominal-exit ablation.
+
+Additional baselines:
+  A_greedy: full public posterior/history and actual q/time; choose the best
+    checked immediate terminal acquisition by the same success-minus-time
+    objective, then use identical public-feedback legal retries. No lookahead
+    through future diagnostic observations. This is the strong immediate A.
+  A_geometry: same executable immediate routes and public image feedback, but
+    analytical geometric prior/servo without online acoustic residual learning.
+  Fixed_pair: fixed minus/plus pair at the frozen supported diagnostic site;
+    order chosen once using public motion cost, before outcomes. Then use the
+    same posterior and actual-state terminal/recovery selector as I1F1.
+    Report canonical minus-then-plus as a secondary order if order is material.
+
+Fixed_pair matching I1F1 is an informative result: it limits any claimed need for
+adaptive probe selection. A_greedy outperforming B is retained, not repaired away.
+
+7. DEADLINES AND UTILITY
+
+Let D_L,D_R be the fastest checked actual time from the shared start to the end
+of the first fresh terminal acquisition, including route, settle and dwell. Let
+P_min be the minimum time to complete a legal diagnostic program from that start.
+The public geometry-only rule is:
+
+  T0 = max(D_L,D_R) + P_min.
+
+If one terminal has no witness, record that mechanical restriction before
+private draws; do not replace infinity by an arbitrary successful time. Retain
+the case with a declared finite operational deadline or mark it as a pretest
+engineering rejection, consistently across arms and with the reason recorded.
+The intended main fixtures have both direct terminal routes witnessed.
+All-arm sensitivities are 1.5*T0 and 2*T0. Never choose the most favorable deadline
+as the main result. No acoustic outcome participates in this deadline rule.
+
+Planning utility is:
+
+  J = P(first new accepted acquisition by T)
+      - 0.04 s^{-1} * E[min(elapsed time to terminal task outcome, T)].
+
+Failures/timeouts are charged T for restricted-time reporting; successful first
+acquisition time is retained even if a public detector does not immediately
+recognize it. Also report correctness of the submitted/stopped-on acquisition.
+Avoid double-counting prefix time in the recursion. Primary inference uses the
+binary timely-acquisition outcome, not a post hoc tuned utility coefficient.
+
+A separate, explicitly CONSTRUCTIVE PUBLIC-GEOMETRY WITNESS is allowed. For a
+central program set C to the maximum, over L/R, of its prefix time plus fastest
+checked continuation to that terminal plus fresh acquisition. For a specified
+side program set S to its prefix plus fastest checked cross-window completion,
+minimizing over ALL supported returns/detours/recoveries. If S-C exceeds two
+controller ticks plus declared timing uncertainty, freeze Tw=(C+S)/2 before
+private outcomes. Otherwise report that no timing witness exists. Perform the
+same rule in both mirrored fixtures and retain both. Tw does not replace T0.
+
+This construction witnesses timing separation in the frozen checked library.
+It becomes an actual fresh-acquisition fail-to-succeed example only when a
+positive-probability public observation branch selects a physically executed,
+privately accepted new frame. Timing alone does not establish image success.
+Report the entire constructed scenario and all arms, with no inferential claim
+from selecting an existence example. It is not proof that every continuous
+controller is incapable of a faster completion.
+
+8. HIDDEN ANATOMY, ACOUSTICS, MISSES, AND FALSE POSITIVES
+
+Use a bounded public prior tied to the production material patch and known task,
+not the private offset anatomy. The previous local residual scene's parameter
+order is (y0, y_slope, y_curvature, depth, z_slope, z_curvature), with baseline
+(0.00002,0.008,0.22,0.034,0.006,0.40) in metres and compatible derivatives.
+Any translation/rotation needed to place this vessel through the present task
+ROI belongs to the public anatomy manifest and is applied equally to the prior
+and private draws. Do not silently use the original y approximately zero curve
+with displaced windows that cannot see it.
+
+Freeze bounded offsets before test. The recommended coarse-patch support is
+y0 +/-3 mm, depth +/-4 mm, y_slope +/-0.08, z_slope +/-0.04, and the previous
+curvature halfwidths 0.35 and 0.22 per metre. This is a declared synthetic local
+prior, not an empirical population prior. If the implementation instead retains
+the much narrower old residual_scene prior, label that restricted scope and
+include a wider-offset sensitivity; do not describe it as broad patient anatomy.
+
+The frozen primary residual prior is zero-mean Gaussian with SDs (0.065,0.23)
+for intercept and normalized tilt slope, with zero prior cross-covariance. Use
+this known simulator prior, shared by every arm; this is a model-based test and
+does not claim learned-prior generalization. A separately labelled sensitivity
+may reuse the existing independently fitted public prior. No new neural model
+is justified here. If fitting new moments in a future experiment, use separate
+training subjects. Do not train on held-out private geometry or select latent
+coefficients to produce a desired arm.
+
+Reference detector mixture for each fresh packet:
+  genuine association probability p_real = 0.80 * physical_support;
+  if genuine association is absent, spurious-packet probability = 0.10;
+  otherwise return missing (no scalar value).
+physical_support is computed from true acoustic/image geometry in simulation
+and integrated over public anatomical hypotheses by the planner. A supported
+true signal has quality from g_geo + H w + fresh Gaussian sensor noise. A
+spurious candidate has quality N(0.12,0.08^2), independent of true identity and
+residual unless a different frozen clutter law is explicitly stated. Its packet
+does not reveal that it is spurious. Thus, for supported observations, real,
+spurious and missing probabilities are .80,.02,.18; unsupported observations
+have spurious/missing probabilities .10,.90. Use the complete likelihood in the
+policy model. The private association flag is evaluator-only.
+
+Freeze geometric acceptance at the previous local gates: correct intended
+target, absolute image offset <=2 mm, true visible geometric length >=15 mm,
+view-angle error <=10 degrees, and realized fresh true-target quality >=0.
+Acceptance must use the actual rendered view/FK pose and actual contact support,
+not the target command or nominal geometry. A positive spurious detector packet
+cannot satisfy target identity. A missed detector may still have captured a
+qualifying true image; distinguish first qualified acquisition from public stop.
+
+Every terminal acquisition has a new event ID and independently keyed image/noise
+stream. Probe packets are never reused as terminal pixels or quality. Share
+common random numbers across arms by subject, physical acquisition parameters,
+visit index, and image-noise family, not by wall-clock call order. Same-action
+same-visit potential outcomes may be paired; distinct or repeated acquisitions
+still receive distinct event keys. Log keys without exposing private labels.
+
+If only geometric/image features are generated, describe the endpoint as
+"blinded synthetic feature-observation acceptance". Do not imply human image
+grading or validated raw ultrasound quality. If pixels are rendered, archive
+representative fresh images and the method-blind evaluator rule, including
+false positives and misses rather than only successful examples.
+
+9. COHORTS AND NEGATIVE CONTROLS
+
+Public engineering seed: 721411; at most 16 public-only fixture/pose attempts.
+Held-out anatomy seed: 721419; observation seed family: 721420.
+Use 128 independently drawn hidden anatomies, paired across the two mirrored
+constrained layouts and all methods. A shared anatomy across layouts remains
+one statistical cluster, not two independent subjects. Mechanical/contact
+fixtures may be reused to make exact native replay tractable, but their number
+must be reported separately from the 128 acoustic/anatomical draws. This is
+conditional evidence for those fixtures, not 128 independently placed robots.
+
+Required controls, using the same latent draws where pairing is meaningful:
+  Open: remove the public baffle/slot constraint; recompute all checked routes
+    and retain the same primary absolute deadline for the causal opening check.
+    Also report the open-layout T0 rule separately if desired.
+  Longer deadline: 1.5*T0 and 2*T0, all arms, same mechanics/acoustics.
+  Uninformative: diagnostic packet distribution independent of task-relevant
+    latent anatomy/quality, while retaining mechanical exit/time information.
+    A rational model aware of this manipulation should not assign information
+    value to those packets; information-factor increments should vanish in
+    expectation, though finite sampled outcomes may differ.
+  All missing: mask or generate every diagnostic acoustic packet as missing in
+    both informed and masked arms; with identical retained state/time and the
+    correct model, their deterministic decisions should agree.
+  Response reset: redraw slope/residual at the terminal or other window using
+    the declared prior, after the probe. A reset-aware model marginalizes the
+    new response; blind reuse is a separate failure diagnostic.
+
+Do not demand exact equality of F arms in an open layout: actual distances and
+times can still differ. Opening is a valid null for F only when all relevant
+continuation costs/feasible actions truly become the common nominal model.
+Do not demand equality after a long deadline if the utility retains a time cost.
+
+10. SAME-FIRST REAL CONTINUATIONS
+
+For EACH supported side and central probe program, execute the first program
+once from the common entry and save the full actual simulator/controller state
+and realized public packets. Clone that exact post-probe state into I=1 and I=0
+branches, changing only packet visibility. Execute both selected continuations
+through the native simulator/checker and acquire new terminal observations.
+
+The branches share actual prefix q, qdot, controller memory, contact, elapsed
+time, acoustic realization and fixture. The I=0 branch still sees public state
+and time. A counterfactual probability computed without executing a continuation
+is not a real same-first continuation. Deterministic replay from an exact cached
+state is acceptable and must carry its trace and fresh acquisition event.
+Predeclare all tested first programs; do not report only the one with a positive
+information effect. Same-first information effects can be zero at some exits.
+
+11. ANALYSIS AND REQUIRED RECORDS
+
+Primary paired effect: success(I1F1)-success(I1F0) at T0, averaged first over the
+two fixed layouts within each independent anatomy. This isolates anticipating
+future execution when new observations are used. Also report success(I1F1)-
+success(I0F1), all four cell means, and the interaction:
+  [I1F1-I0F1] - [I1F0-I0F0].
+These are prespecified companion estimates, not a search over significance.
+Report separate contrasts versus A_greedy, A_geometry and Fixed_pair without
+silently changing the primary comparison. Report every layout/control and
+deadline, including losses and null results.
+
+Use paired, subject-cluster bootstrap confidence intervals with 10,000 resamples
+and seed 721421, resampling the 128 anatomy IDs with all their layouts, arms and
+paired noises together. Give raw paired discordance counts. For one-layout
+binary comparisons an exact paired sign/McNemar diagnostic is permissible, but
+do not treat repeated layouts/noise replicates as independent trials. Prefer
+effect sizes and 95% intervals. If multiple confirmatory p-values are claimed,
+prespecify a correction; otherwise label companion contrasts descriptive. No
+power or general significance claim follows from the constructive witness.
+
+Record at least: first fresh accepted acquisition by deadline; correct public
+stop/submission; false stop; timeout; failure charged deadline; actual first
+acquisition time; number of new probes and terminal frames; missing and spurious
+packet rates (private audit only); chosen first program and terminal; predicted
+versus realized success/time; all mechanical rejects and unknowns; tracking,
+joint/derivative/collision/contact margins; recovery attempts; checked witness
+coverage; native and cached execution counts; planning wall time and query count.
+
+The primary clock is native/model execution time plus acquisition/settle time.
+Report online planning wall time separately and include a sensitivity charging
+it to task time when measurable comparably. Offline graph construction/calibration
+is a disclosed setup cost. A budget of expensive checks cannot be granted only
+to B. Do not imply a real-time implementation if a policy used offline exhaustive
+branch replays that a comparator did not receive.
+
+12. INTERPRETATION RULES
+
+A clean positive mechanism result requires: actual observation-dependent legal
+branching; real fresh acceptance; a matched same-first information effect at an
+appropriate exit; and an F effect explained by executed state/time differences,
+not missing comparator edges or hidden truth. Calibration errors and missed/
+false detections must remain in the outcomes. A strong fixed pair or greedy A
+matching B limits the practical contribution even if the finite mechanism works.
+
+A null/negative overall result is a valid result of this frozen experiment.
+Separate insufficient information, physical delay, unobserved target geometry,
+model mismatch, native tracking failure, and search-without-witness. Do not turn
+an implementation failure into evidence against all possible policies, or a
+hand-constructed timing witness into general empirical superiority.
+
+The previous exact finite-graph results remain algebraic counterexamples. The
+new native simulation adds only the claims actually checked here. The Kobayashi
+example motivates separating identification from fixed-controller completion;
+its reported 22/50 at 50 steps, 3/50 at 200 steps, and early-risk 44% to 86%
+must be cited/verified against that paper by the reporting author, and are not
+new results of this protocol.
+
+PRE-PRIVATE ENGINEERING NOTE
+
+The implementation owner reports that a pure stationary central rotation failed
+the existing native position-tracking gate, while translated/rotated paths passed
+its public pilot. Before private acoustic outcomes, replacing that unsupported
+reference by small central-corridor sweeps (approximately +/-3 to 5 mm translation
+with signed rotations up to +/-0.075 rad) is allowed as an explicit engineering
+amendment. Retain the failed pure-rotation attempt and all traces. Freeze exact
+new poses and durations in the final program manifest; use their ACTUAL signed
+tilt in H, preserve exact SE(3) timing, and keep the same 2 mm/2 degree gate.
+The final manifest, not an idealized rotation-only reference, defines the tested
+action. This note records design authorization, not independent validation of
+the reported pilot.
+
+If the resulting central program exceeds T0, it remains too slow at T0. Do not
+increase T0 to include it. The frozen 1.5*T0 and 2*T0 sensitivities can reveal
+deadline dependence. If the public constructive-witness gap is nonpositive,
+report that no such timing witness was obtained rather than alter the fixture
+or suppress a supported side-probe recovery after observing private outcomes.

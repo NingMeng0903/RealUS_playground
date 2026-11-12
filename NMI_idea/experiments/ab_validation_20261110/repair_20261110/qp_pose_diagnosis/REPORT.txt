@@ -1,0 +1,62 @@
+UltraPOC 理想反馈回放的 pose 误差及 native rail 异常：源码核对
+2026-11-10。本报告只分析既有冻结数据和生产源码；未修改控制器、未执行设备。
+
+层级先分清
+本次离线实验每 5 ms 把上一条合法关节命令作为下一帧测量，即关节执行无
+物理跟随误差；它并没有假设末端实际 pose 恒等于时间推进的参考 pose。
+JointIkController.update 调用 QP 将期望 twist 转换为受关节速度、加速度、
+位置、任务/碰撞等约束的 qdot 并积分。参考时间继续推进时，若任务因约束
+减速或暂停，末端相对于参考的误差自然增长。这是受限闭环跟踪误差，不能
+称为仿真 plant 随机误差，也不能凭 dIRD 离线烘焙就设为零。
+
+冻结回放的三个可区分机制
+1. branch0 初始 q 的 elbow/SEW 角约172°，branch4 约68°。同一首 pose
+   不唯一决定初始关节分支。branch0/path0 的 task_progress<.01 占约30.8%
+   时刻；此前完整主批次位置 p95 约58–126 mm。不能由此判定整条 pose
+   路径几何不可达，因为 branch4 的有效回放位置 p95 约0.105–0.433 mm；
+   独立fresh branch4/path0 为0.106325 mm。需要合法的初始分支/进入路径。
+2. 参考路径用姿态 Slerp，角速度 p95约0.391 rad/s，但原角速度前馈为零，
+   角度主要靠约2 s^-1 的比例反馈追赶。常速一阶稳态估算 e≈omega/k=
+   0.1955 rad=11.2°，与实测branch4姿态 p95约7.9–11.6°同量级；这不是
+   精确逐帧预测。已有诊断把角前馈加入后，path0姿态p95约7.91°→0.547°，
+   但位置p95升至6.93 mm，显示同一QP内任务耦合/约束重新分配。不能仅凭
+   姿态改善宣布整体pose达标。需要一致的6D参考速度和协调的可行性调度。
+3. native 后端另有间歇非法 rail 命令，属于独立阻断，不能解释成正常跟踪
+   滞后。Astra fresh branch0/path0 tick641，输入 q_meas[0]=0.298021185919 m，
+   上一 q_cmd[0]=同值，输出 q_send[0]=58.282671290689 m，qdot[0]=
+   -0.001350347698 m/s，status=OK、QP1/2=solved。桥接器已在理想plant
+   积分前拒绝并保持最后合法状态。branch4先前另有-3.29977m实例。
+
+native rail 异常的传播路径（源码可确定）
+inner.cpp约1547–1552行，在coupled observer已有采样时，以内部 q_hat_
+重置 q_prev[0] 和 q_cmd_[0]，而非直接以本帧 q_meas 作为发送基点。
+2135–2141行先用 q_prev+qdot*dt 形成命令并裁剪rail位置；2167–2178行
+加速度shadow clamp以 q_prev/dq_prev 为基点，若通过任务检查便再次将
+q_cmd_替换成 q_shadow，但替换之后没有重新检查位置限位或 q_send与
+q_meas的单步位移。types.hpp约410–430行的clamp_command_step正是
+q_shadow=q_prev+clamped_dq。坏tick按实际输出反推该基点：
+58.282671290689−(-0.001350347698)*0.005=58.282678042427m。
+这个基点与外部测量0.298021m相差57.984657m。output 的
+qdot_qp_vs_sent_max=.001350283和小的qdot也与shadow改写一致。
+因此，即使先前有位置裁剪，异常内部基点仍可经shadow替换重新进入
+q_send；status=OK/小qdot无法证明绝对q合法。这定位了传播及发布防护缺口。
+
+但q_hat_为什么会跳到58.282678m尚未从该冻结tick证实。native内部q_hat_
+没有逐tick直接导出；可能是内部状态/时序/二进制行为，需要在原二进制
+边界处抓内部observer状态和shadow前后q值，不能从最终一帧锁定唯一根因。
+原源码加只读日志重编译后未复现，不构成修复。不得把上述源码路径写成
+已完成对底层native异常的修复；当前桥接器fail-closed仍是必要防护。
+
+dIRD与执行边界
+dIRD离线场/候选的评分和烘焙（即便通过其校准与静态可行性门）不确定
+这组初始 q、每tick参考时钟、在线QP约束、角速度前馈或native状态，
+所以不会把末端动态tracking误差自动归零。原有限SRS拒绝也不能替代
+UltraPOC QP可行性判定。本次无实体接触、超声图像或完整实机链验证。
+
+证据：
+../dird/REPORT.txt；../dird/ADDENDUM_PHASE2.txt；
+../audit/PHASE2_REPORT.txt；../audit/phase2_native_first_invalid_tick.json。
+生产源码：rm75_control/native/wbc_rt/src/inner.cpp、
+rm75_control/native/wbc_rt/include/wbc_rt/types.hpp、
+rm75_control/rm75_control/control/joint_admittance_8dof/wbc_rt/client.py、
+rm75_control/rm75_control/control/joint_admittance_8dof/loop.py。

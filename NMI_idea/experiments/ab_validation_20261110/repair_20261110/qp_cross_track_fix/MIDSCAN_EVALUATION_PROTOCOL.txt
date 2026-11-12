@@ -1,0 +1,18 @@
+User-directed metric clarification,2026-11-10
+User explicitly accepts startup/end tracking transients; main goal is middle scan.
+Written after original runs, before new regional summaries; do not call it the
+original preregistration or change any saved trace, method, seed or threshold.
+
+Report all-motion maxima as before, plus:
+1. Common middle window: commanded reference phase in[.8s,nominal_duration-.8s].
+   .8s is the previously derived ramp in RELAXED_EXECUTION_PROTOCOL, not fit to error.
+   For fixed clocks phase=trace t; governed traces use recorded reference_time_s.
+   Endpoint settle excluded; report exact retained time/sample count.
+2. Geometry-only sensitivity: desired arc-length fraction in[.2,.8].
+3. All ten arc-length deciles with position, normal and angular p95/max, so a
+   window cannot conceal a bad interior region. Exclude settle from arc deciles;
+   acceleration/deceleration remain in appropriate first/last deciles.
+Compute total position error, signed tangential and perpendicular position error
+from local original-polyline tangent, and geodesic SO(3) orientation error.
+Preserve2mm/2deg descriptive pose threshold, all q/v/a/j and collision results.
+Only the user changes the priority of transient pose maxima, never physical limits.

@@ -1,0 +1,61 @@
+Post-hoc conservative baseline addendum
+=======================================
+
+Scope: abstract local y=c+J a mechanism; original registered artifacts are unchanged.
+This addendum was added after the original minimum-norm result and is not a prospective test.
+Fixed test cases: 512; independent prior training subjects: 4096; train seed=720941.
+
+1. Frozen query prediction (normalized y units)
+-----------------------------------------------
+no_excitation:
+  ridge_identity:
+    translation: l2_rmse=0.00935347, l2_p95=0.0160971, linf_p95=0.0143925
+    rotation: l2_rmse=0.327484, l2_p95=0.582031, linf_p95=0.484046
+    combined: l2_rmse=0.262059, l2_p95=0.467865, linf_p95=0.384922
+    controller: success=302/512 (0.589844), clip_any=11/512
+  shared_gaussian:
+    translation: l2_rmse=0.00932982, l2_p95=0.0161389, linf_p95=0.0144011
+    rotation: l2_rmse=0.118353, l2_p95=0.221407, linf_p95=0.199192
+    combined: l2_rmse=0.0950486, l2_p95=0.17947, linf_p95=0.158553
+    controller: success=482/512 (0.941406), clip_any=0/512
+    shared-prior coverage:
+      translation: marginal95=0.949219,0.955078, all-marginal=0.908203, joint-ellipsoid95=0.960938, std=0.00675261,0.0067593
+      rotation: marginal95=0.925781,0.951172, all-marginal=0.876953, joint-ellipsoid95=0.923828, std=0.0677609,0.0959477
+      combined: marginal95=0.921875,0.955078, all-marginal=0.876953, joint-ellipsoid95=0.917969, std=0.0544168,0.0769062
+  orthogonality_completion:
+    translation: l2_rmse=0.00935725, l2_p95=0.0160684, linf_p95=0.0144263
+    rotation: l2_rmse=0.125519, l2_p95=0.241728, linf_p95=0.211813
+    combined: l2_rmse=0.100761, l2_p95=0.192673, linf_p95=0.168564
+    controller: success=481/512 (0.939453), clip_any=0/512
+
+completed_excitation:
+  ridge_identity:
+    translation: l2_rmse=0.00982195, l2_p95=0.0169925, linf_p95=0.0155766
+    rotation: l2_rmse=0.0156377, l2_p95=0.0260573, linf_p95=0.0239662
+    combined: l2_rmse=0.0143183, l2_p95=0.0244216, linf_p95=0.0231116
+    controller: success=512/512 (1), clip_any=0/512
+  shared_gaussian:
+    translation: l2_rmse=0.00975011, l2_p95=0.0167568, linf_p95=0.0154444
+    rotation: l2_rmse=0.0154755, l2_p95=0.0262764, linf_p95=0.024021
+    combined: l2_rmse=0.0142073, l2_p95=0.0242898, linf_p95=0.0225208
+    controller: success=512/512 (1), clip_any=0/512
+    shared-prior coverage:
+      translation: marginal95=0.949219,0.953125, all-marginal=0.90625, joint-ellipsoid95=0.957031, std=0.00705209,0.00703358
+      rotation: marginal95=0.962891,0.957031, all-marginal=0.919922, joint-ellipsoid95=0.974609, std=0.011383,0.0114643
+      combined: marginal95=0.951172,0.964844, all-marginal=0.919922, joint-ellipsoid95=0.958984, std=0.0103584,0.0104102
+  orthogonality_completion:
+    translation: l2_rmse=0.0098264, l2_p95=0.0169981, linf_p95=0.0156043
+    rotation: l2_rmse=0.125572, l2_p95=0.239929, linf_p95=0.210279
+    combined: l2_rmse=0.100838, l2_p95=0.190453, linf_p95=0.16857
+    controller: success=479/512 (0.935547), clip_any=0/512
+
+2. Shared prior learned from public training observations
+--------------------------------------------------------
+mu_J=0.800994,-0.0231644,0.0217111,0.802426
+diag(Sigma_J)=0.0716787,0.319574,0.320004,0.0714726
+eigenvalues(Sigma_J)=0.00923355,0.0216882,0.121163,0.630644
+
+3. Interpretation
+-----------------
+The J=I ridge baseline tests whether the original no-excitation failure was partly caused by the minimum-norm zero completion. The shared Gaussian baseline tests whether a response prior learned from independent public data can fill an unobserved direction; held-out prediction and interval coverage, especially no-excitation rotation, are the relevant evidence.
+A high posterior confidence with poor held-out coverage is overconfidence, not success. Even good abstract baseline performance is only evidence about this linear mechanism and does not establish a complete A skill, B active observation, real ultrasound transfer, or executable robot behavior.

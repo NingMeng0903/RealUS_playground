@@ -1,0 +1,23 @@
+Frozen smooth6D-reference diagnostic,2026-11-10 before these four runs
+User asks whether position and rotation can be jointly more accurate, accepting
+startup/end transients but prioritizing middle scan. Test analytic differentiable
+reference, not another gain/weight sweep. New production classWorldPoseSplineReference
+uses natural Cartesian cubic spline and RotationSpline through the same17poses.
+It changes geometry BETWEEN poses, so do not call it only time retiming or reuse
+an old path certificate. Robot q/physical constraints checked on actual new path.
+
+Reference tests before execution: exact input-node interpolation, continuous
+spatial/angular rate/acceleration, all6 FF components vs finite differences,
+world-frame equivariance, exact rest endpoints, finite short scans, peak
+translation<=.02m/s by analytic maximum of each spline derivative polynomial.
+8 tests passed. Actual peak speed and between-chord deviation recorded.
+Use symmetric .8s start/stop (same derived value), lead20deg, q/v/a/j/collision
+physical limits unchanged,2ssettle,dt.005, frozen branch4 path0/path1 q seeds.
+Each path exactly once with baseline100/50 weights and previously derived
+tolerance-unit15230.870989/50 weights. No tuning or repeat after result.
+
+Report all-motion, fixedphase[.8,duration-.8], arc20–80 and every decile.
+Joint target for additional precision: middle pos<=.2mm and angle<=.1deg;
+retain original2mm/2deg threshold and all mechanical q/v/a/j/collision margins.
+Test instantaneous6D feasibility separately; any infeasibility must be recorded.
+No hardware, no patient image/contact, no production-global parameter promotion.

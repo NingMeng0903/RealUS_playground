@@ -1,0 +1,19 @@
+Frozen requested relaxation + acceleration-aware timing,2026-11-10
+User requests relaxing artificial joint velocity restriction. All runs offline.
+Initial-pose independent equality LP: current measured rail v=0, complete6D
+nominal2cm/s request needs minimax arm speed1.301735rad/s(path0)/1.292321(path1).
+Thus6deg lead cap=.777807 cannot realize it, despite physical2.512rad/s limit.
+To admit1.30rad/s while retaining a following-error bound choose20deg lead margin:
+stopping_velocity(20deg,3rad/s2,.005s)=about1.432rad/s.
+Cosine start lower-bound ramp pi*1.30174/(2*3)=.6816s, round up to.8s.
+These are derived test values, no fit to success metrics.
+
+Run each frozen branch4 path0/path1 exactly once for:
+(A)20deg lead margin + original start-only .4s + consistent6D FF;
+(B)20deg + symmetric .8s start/stop law + consistent6D FF;
+(C)lead disabled only ideal-feedback test + symmetric .8s + consistent6D FF.
+Baseline6deg/start-only results already saved in lead_ablation_results.json.
+Same17poses and Slerp, q seed,2cm/s peak,2ssettle,dt.005,original100/50weights.
+Keep physical q/v/a/j,position margin,collision and all error gates unchanged.
+Never rerun/select seeds after failure. Record2mm/2deg max pose,all strict mechanical
+gates,normal error and remaining limitations. No hardware/default deployment.

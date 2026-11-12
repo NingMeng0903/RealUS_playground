@@ -1,0 +1,3 @@
+fresh n/draws 64 66
+positive recall / far-negative specificity 0.984375 1.0
+all far-negative SRS failed 64 / 64

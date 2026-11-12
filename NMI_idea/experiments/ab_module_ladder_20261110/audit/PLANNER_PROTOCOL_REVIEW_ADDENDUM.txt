@@ -1,0 +1,106 @@
+Independent pre-test release addendum, 2026-11-10
+
+Decision: APPROVE the frozen sampled L0 policy-performance comparison. The two
+budget defects that blocked the initial revision are corrected and independently
+rechecked. This supersedes the initial HOLD for the hashes below, not the claim
+boundaries in PLANNER_PROTOCOL_REVIEW.txt. The root will complete the declared
+DEV 8/32/64 and compact/full-family checks before opening the held-out catalogue;
+changes to the approved numeric design would require a recorded new amendment.
+No held-out catalogue or native controller was used by this audit.
+
+Approved protocol SHA256:
+  a1221257b245977bbf8888d996e76f2213cc3002e3b156c967e62797fd900d84
+Reviewed system.py:
+  c9983d1fd606223612d7f6b3dffac132bf4f8bd176c8d1ac46a88ae5be7c29c7
+Reviewed run_experiment.py:
+  44242e8cdbb1d93815f6596cdaf56504fb1e8b4a8ef46f2ab56b9cf95d911480
+Reviewed test_resources.py:
+  28f4832a95022732a6f9329f1b1a1e45e5eb27472d20faca684ad392fa7a30d1
+DEV_AMENDMENT_02.txt:
+  893b59d447184744b4e1c175e4e49cba5e3779659034ac1486256d7f01e2d71e
+Unchanged observation/environment.py:
+  d4dc27e2822e7bf04fa533e9fb47e42f2ed22ee576ad6285ced4dde32ceeacef
+Unchanged observation/servo.py:
+  ae506a793d419118cf32e7ce466b8591721a7cc9fefe45c9b7cb16e8606b2697
+Capability implementation used by the independent check:
+  8dd40a6af7b29ed0b4084e25acb5f403a91a35b364f978ac1233a793467841a4
+
+Resource and stopping corrections verified
+- remaining_actions and remaining_time now enter decide; an actual last action
+  cannot expand an imagined continuation. No affordable root action returns
+  None. A zero-action budget returns the remaining failure RMT, not zero value.
+- A fixed_two pending action is performed only if still affordable. The first
+  repair briefly fell through to image-conditioned replanning when it was not;
+  this was reported and corrected before release. It now returns None. An
+  affordable committed action ignores the newly observed posterior/history.
+- Charged belief work occurs before the timely stop decision. A late public
+  pass is diagnostic and cannot count as correct_public_stop. The initial
+  deterministic 60.6-second success defect is eliminated.
+- The one-step value is the right censored-time expression:
+    V1 = R - (R-c1) P(correct first public stop).
+  For fixed first/second actions, with latent h persistent across blocks:
+    V2 = R - (R-c1) sum_h b_h C1_h
+           - sum_h b_h (1-Public1_h) (R-c1-c2)_+ C2_h.
+  This agrees with independent enumeration of first correct, first wrong,
+  first no-stop followed by second correct, and final failure. False stops
+  and incomplete episodes retain the deadline loss; no free audit retry.
+- All 6 owner resource regressions independently rerun: PASS. Five additional
+  independent formula/fixed-action tests: PASS. Logs are
+  resources_repaired_recheck.log and resource_formula_recheck.log.
+- The actual CLI was tried with the approved protocol hash and forbidden
+  --methods and --max-actions overrides. Both reject BEFORE output creation or
+  catalogue generation. See test_release_guard_checks.json. Source hashes in
+  this addendum/manifest freeze the reviewed implementation as well as JSON.
+
+Independent live-planner sampled-backup check
+check_sampled_backup.py used only DEV seed720501, 16 legal hypotheses, the public
+a0_identity robot context, initial uniform belief, no public history and R=60.
+It checked 7 root candidates x 32 model blocks = 224 hypothetical public branches.
+Real finite static endpoint search produced 74 memoized robot witness queries;
+there were zero native calls and no selected actual patient world.
+
+Planner.decide was invoked once as the implementation UNDER TEST. The reference
+did NOT call Planner.decide, terminal, block_posterior or correct_given_public.
+It independently formed the likelihood/target-source masses for every h and
+source, summed those unnormalized masses before choosing a terminal action,
+and applied the censored RMT and identical finite witness transition/candidate
+specification. The same 32 sampled public observations define both kernels.
+
+Result: every root value agrees within 7.105427357601002e-15. The selected action
+[0,-.0136952,0] and value 50.0822751322156 agree exactly; both select a branch
+option. All 224 sampled blocks in this particular initial state were non-stops;
+public-stop target association is additionally covered by the initial audit's
+nontrivial ambiguous-source probability fixture. Evidence and full source/robot
+hashes: sampled_backup_check.json/.log. This is a stronger correctness check than
+the separate coarse-operator toy, but it certifies only this sampled kernel/state.
+
+What is now implemented, and what remains approximate
+- dIRD actually participates in terminal task-value ties within 1e-9. Its score
+  still cannot replace the common real endpoint check or alter anatomical
+  hypotheses. Invocation or tie preference alone is not demonstrated proxy gain;
+  the separately controlled query-budget retrieval experiment addresses that.
+- B_no_future_cap is now correctly described as removing BOTH future endpoint
+  availability and the joint-displacement time estimate. Current hard checks
+  remain shared. Results must not be attributed to availability alone.
+- 32 quantile samples cover each member once under a uniform 32-member prior
+  (twice under the 16-member DEV prior used here), but noise integration remains
+  approximate. Future candidates use compact posterior templates/expected
+  centering; all actual A/B decisions retain the same full continuous permission
+  family. This is a forecast approximation, not an exact sufficient compression
+  or a proof the forecast and real future candidate families coincide.
+- Measured online compute is charged by the actor. Future compute is not known
+  to the backup, so it remains an approximation to total online cost. Accounting
+  should include charged terminal planning work that ends before an acquisition;
+  do not derive the whole cost decomposition solely from completed-frame events.
+- Real URDF/FK/self-collision-checked q_kin witnesses are static planning state,
+  not actual native q_out or a certified path/contact/dynamic state. A failed
+  finite search is not physical infeasibility. The separate native evidence is
+  not elevated to full image/force/SMPL-X closed-loop execution.
+
+Release therefore permits the fixed sampled policy comparison, including an
+honest negative result. It does not certify continuous-population generalization,
+exact continuous-observation Bellman values, compressed-belief sufficiency,
+novelty of standard POMDP information value, physical ultrasound, or hardware
+safety. The independent operator aliases still change the conditional best probe
+in 28/32 pairs and the COMPLETE direct/probe decision in 0/32 pairs. The user's
+tiny-jerk instruction is respected: those residuals are not release blockers.

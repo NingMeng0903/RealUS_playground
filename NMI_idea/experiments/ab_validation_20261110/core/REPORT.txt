@@ -1,0 +1,181 @@
+CORE A/B OFFLINE IMPLEMENTATION REPORT
+2026-11-10. Final artifacts recomputed with audited departure-step bounds.
+Evidence labels: SYNTHETIC MECHANISM + PRODUCTION KINEMATICS only.
+No robot command, physical contact, human subject or acquired ultrasound data.
+
+IMPLEMENTED SCOPE
+A: independently generated contextual one-step response learning, local canonical
+ridge residual, actual source DMP candidate endpoints and path costs, analytic
+negative control, measured noisy four-probe Jacobian calibration and oracle.
+B: exact finite two-observation graph planning with four persistent hypotheses,
+public nondetection/marker outcomes, full posterior updates, actual DMP paths
+and imported dIRD/current assets plus sampled IK/FK/limits/self-collision checks.
+Every inspection history has its own actual exit pose/q. Root states are fixed
+robot poses; three declared body/site shifts are y=0,+.04,-.04m. This is a finite
+graph restriction, not full continuous or full-servo control.
+Two inspection observations are allowed, plus one terminal acquisition attempt.
+Wrong identity is a separately reported false acceptance; this synthetic
+terminal action does not establish a qualified ultrasound image.
+
+A FINAL FROZEN-SEED RESULTS
+Train256/validation64/test128 independent synthetic worlds;12 training actions
+per world. Train/validation/test hashes, coefficients and all selected actions
+are recorded in a_results.json and a_raw.npz. No test seed replacement/tuning.
+Negative control true selected squared error: analytic=learned=.041331346;
+paired learned minus analytic0, bootstrap95%[0,0]. Online=.042464187.
+Contextual mismatch: analytic=.088884725, learned=.048395661,
+online measured local Jacobian=.047730147, oracle=.046474835.
+Paired learned-minus-analytic mean=-.0404890643, world-bootstrap95%
+[-.0563783676,-.0267091498],2000 replicates.
+Charged error+movement+probe objective: analytic=.090203186,
+learned=.049797043, online=.093148568, oracle=.047904386.
+Online has four extra response observations and .08m modeled out/return probe
+travel. All training/probe readings use common sensor noise std=.015.
+Online's uncharged error is slightly stronger than learned; its charged cost
+is higher under the declared artificial .01/probe and .002/normalized travel
+weights. These weights are synthetic, not estimated acquisition seconds.
+Passive common-SE3 local-coordinate consistency passes floating-point error.
+No e3nn claim, physical response generalization, online servo stability or
+patient transport claim is supported by this one-step synthetic experiment.
+
+B MAIN FINITE-LIKELIHOOD RESULTS (CORRECTED FINAL GRAPH)
+All72 scenarios kept:3 public placements x24 broad supported beliefs.
+Primary exact expected taskloss+movement+sensing+proxy cost:
+full-belief greedy8.640678; same-horizon open-loop8.937463;
+entropy10.064796; B8.534429; no-capability9.137740;
+no-dIRD-proxy8.534429; collapsed-belief10.543904; exact reference8.534429.
+B versus open-loop: mean-.403034,54 improved/18 tied/0 worse.
+B versus greedy: mean-.106250,20 improved/52 tied/0 worse.
+Descriptive scenario bootstrap95% intervals[-.502240,-.311413] and
+[-.175914,-.052198] respectively. These are not population confidence bounds.
+B false acceptance=.174546; greedy=.210122. No-capability infeasible-attempt
+probability=.106359. Large residual false acceptance limits any safety claim.
+All72 no-dIRD-proxy ablation policies tie: no marginal policy value of the
+learned score penalty is established. Removing exact feasibility produces
+failures, so the demonstrated coupling is to exact graph admissibility.
+B equals independently structured unnormalised full-history enumeration within
+7.11e-15; exact evaluator agrees with planner to the same tolerance. This is
+algorithm correctness, not new general POMDP superiority. Posterior sums and
+likelihood sums pass; nondetection is a real modeled outcome. Behavioral
+noninterference uses identical public histories/robot states for all compatible
+hidden labels; hidden labels never enter the planner API. Main controls with
+uninformative likelihoods/high inspection costs show no gain in the tested
+scenarios. Relocation can in general have value even without information.
+
+POST-MAIN PREDECLARED LEARNED A -> B EXTENSION
+EXTENSION_DESIGN.txt was saved before scores, seed41107. Learned positive-world
+coefficients predict local feature values at actual DMP endpoints; a fixed
+no-detection/four-direction finite quantizer gives Khat. Ktrue instead uses
+independent persistent per-scenario/per-hypothesis response perturbations.
+The true kernel/perturbations are evaluator-only; the controller sees Khat,
+public context and graph. Persistent h and response are reused along a branch.
+Learned B true loss8.891026; learned greedy8.977696; learned open-loop9.030544;
+analytic B9.210515. B-v-greedy20 improved/52 tie; B-v-openloop51 improved/21 tie.
+Learned B-v-analytic B36 improved/35 tie/1 worse. Learned-greedy-v-analytic-greedy
+25 improved/44 tie/3 worse. All adverse cases remain in extension_results.json.
+Kernel probability MSE analytic .005159866 -> learned .000205372;
+feature squared error .137030519 -> .005003250. No-dIRD-proxy again ties72/72.
+Learned B/reference assumed-model agreement7.11e-15; true-model performance
+is evaluated separately. Learned B false acceptance=.205566, no-capability
+infeasible=.115512. This closes actual learned-response -> observation model ->
+branch planner -> production-kinematics dataflow only in a synthetic prototype.
+
+BUDGET / COMPUTE
+One shared final graph setup has192 actual capability queries,64 per context;
+all methods reuse exactly the same table and execute zero online dIRD calls.
+Corrected final graph setup took48.177s CPU. Native DMP fitting, query proxy/exact
+and total timings are retained per edge. Cached branch/cost/feasibility reads
+and per-policy wall times are recorded separately; physical action-budget
+parity is not an equal-compute claim. Planning is declared offline/asynchronous,
+not hidden inside a claimed real first-image latency. Cost uses nominal .02m/s
+movement, .4 per acquired observation, failure/wrong identity20, and .05 times
+softplus(-raw dIRD score); raw score is not a metric safety certificate.
+Source code/dependencies/checkpoints/assets and hashes are recorded by the
+module manifests plus environment.json/source_manifest.json. Final benchmark
+query counts exclude logged development runs, whose partial artifacts are kept.
+
+LIMITS / DECISION
+A response mechanism is supported within the declared independent synthetic
+world distribution; strong measured local calibration remains a useful baseline.
+B exact finite mechanism and learned-A dataflow extension are supported in the
+stated synthetic model and finite mechanical action graph. Learned field score
+marginal benefit is null in both tests; exact validation is essential in these
+placements. Artificial priors/likelihoods, graph restriction, sampled mechanical
+validation and substantial false acceptance prevent claiming a working physical
+ultrasound acquisition system or a general necessity/novelty theorem.
+The synthetic prior x response factorial design was frozen before its scores
+in PRIOR_FACTORIAL_DESIGN.txt; final results are appended below.
+
+REPRODUCTION
+Run ./run.sh using /media/camp/EXT_DRIVE/envs/genesis/bin/python, CPU one thread.
+This regenerates A, graph, main B, integrated extension, prior factorial and
+consistency diagnostics. Hardware is never invoked. AMENDMENTS.txt records
+numerical adapter/builder fixes and post-main scope additions; prior artifacts
+are preserved in development_*/ and main_frozen_result/.
+
+FINAL GRAPH / EXHAUSTIVE OUTCOME ACCOUNTING
+Corrected adapter now checks seed->first sample departure against the same
+12degree/.04m bounds as interior steps, plus sampled collision interpolation.
+All192 graph queries were rerun; exact failures per placement are4/64,34/64,0/64.
+Three added rejects lie below an already-unreachable node, so main/extension
+policies and task metrics remain unchanged. Pre-fix outputs are retained.
+Four nominal proxy-pass paths still fail exact checks: proxy pass is not safety.
+Child pose/q exits and next-edge seeds agree exactly in diagnostics.json.
+
+Main outcomes (correct / wrong identity / explicit failure / invalid attempt):
+A_full_belief_greedy: 0.748211408 / 0.210121925 / 0.041666667 / 0.000000000
+A_same_horizon_open_loop: 0.741700466 / 0.214664531 / 0.043635003 / 0.000000000
+entropy_information: 0.734821112 / 0.140079238 / 0.125099650 / 0.000000000
+B_observation_contingent: 0.766501084 / 0.174546001 / 0.058952915 / 0.000000000
+B_without_capability: 0.755152354 / 0.138488364 / 0.000000000 / 0.106359281
+B_collapsed_belief: 0.603500243 / 0.299277534 / 0.097222222 / 0.000000000
+
+Integrated extension outcomes (same four exhaustive categories):
+learned_greedy: 0.727626757 / 0.230706576 / 0.041666667 / 0.000000000
+learned_open_loop: 0.732901986 / 0.216204418 / 0.050893596 / 0.000000000
+learned_B: 0.741949704 / 0.205566326 / 0.052483970 / 0.000000000
+analytic_B: 0.729974130 / 0.206664341 / 0.063361528 / 0.000000000
+learned_no_capability: 0.727153512 / 0.157334966 / 0.000000000 / 0.115511522
+
+Every policy's exact outcome replay sums to1. Wrong-rate reduction alone cannot
+be read as acquisition success: entropy has lower wrong rate partly by more
+explicit failure/abstention. Original main prior-shift robustness replay gives
+entropy loss15.502004, B16.443914: entropy is better under that misspecified
+prior condition, despite B being optimal for its assumed prior/model.
+
+SYNTHETIC PRIOR x RESPONSE FACTORIAL (POST-MAIN PREDECLARED)
+Independent source seed41108 gave256 counts[102,78,51,25]; Laplace fitted prior
+[.396153846,.303846154,.2,.1]. True source population[.4,.3,.2,.1], shifted
+population[.1,.4,.3,.2]. Broad prior remains uniform. Test truth weights are
+those declared populations, never substituted by the controller prior.
+Each cell uses the same72 public response contexts and exact mechanical graph.
+For B, cell mean true loss (broad analytic / broad learned / fitted analytic /
+fitted learned):
+source: 12.532989469 / 11.995314872 / 11.974615740 / 10.946527186
+shifted: 14.300947452 / 13.076552376 / 14.978439516 / 14.117118300
+
+Source fitted prior under source population, learned B: fitted-minus-broad
+-1.048788,58 improved/14 tied/0 worse. Under shifted population it HURTS:
++1.040566, descriptive95%[.728947,1.359724],12 improved/14 tied/46 worse.
+Learned versus analytic response helps mean B loss for broad prior in source
+(-.537675) and shifted(-1.224395) populations, while15 and11 individual adverse
+cases respectively remain. Full greedy/B2x2 cells, outcome categories and paired
+intervals are retained in prior_factorial_results.json. These are deliberately
+artificial finite populations, not evidence for a fitted human anatomy prior.
+
+PROVENANCE / COST INTERPRETATION NOTES
+Graph builder convenience timing/cost fields retain its .05m/s primitive horizon;
+ALL reported main/extension/factorial planner movement costs are independently
+recomputed from actual path_length_m at the declared .02m/s nominal speed.
+No velocity/dynamics guarantee follows from either nominal timing.
+The native DMP duration is a declared horizon and its path geometry is retained.
+The definitive main and integrated results do not establish improved deadline
+first-qualified-image time; the declared endpoint is expected taskloss+cost.
+Planning/reference agreement is for the assumed likelihood/prior; robustness
+replays explicitly retain cases where a different policy is better under truth.
+Source_manifest.json and graph.source_hashes contain final provenance; prior
+run variants remain separate. No physical ultrasound acquisition is inferred.
+Invalid-attempt convention: on a proposed edge failing the sampled validator,
+the synthetic evaluator charges the entire proposed movement/observation cost
+plus failure loss20, then terminates. It does not invent an actual collision
+trajectory or claim a measured physical failure time.

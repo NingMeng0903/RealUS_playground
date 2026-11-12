@@ -1,0 +1,80 @@
+Frozen W-weight + lead/timing combination diagnostic, 2026-11-10
+
+Scope and ownership
+-------------------
+This is a new offline-only subexperiment under weight_ablation/.  Existing
+weight-ablation artifacts in the parent directory are sealed and untouched.
+No production source, binary, hardware/session API, default config, physical
+limit, gain, or QP task weight outside this runner is changed.  The software
+lead relaxation is explicitly authorized for this diagnostic only.  Results
+are an offline profile, not a real-robot claim.
+
+Frozen input and exact run count
+--------------------------------
+Use only repair_20261110/audit/phase2_native_subset_inputs.npz, with exactly
+branch4_path0_T/q_seed and branch4_path1_T/q_seed.  Run each frozen path once
+under each case (four native replays total), in this order:
+
+  path0_A_start04, path0_B_symmetric08,
+  path1_A_start04, path1_B_symmetric08
+
+There is no lead sweep, speed sweep, seed change, retune, or failure rerun.
+
+Common W-weight and lead contract
+----------------------------------
+Each case changes only the in-memory raw configuration needed for this test:
+
+  inner.qp.task_weight = [W, W, W, 50, 50, 50]
+  command_lead_arm_deg = 20.0 (the existing legal software lead field)
+
+W is the frozen tolerance-unit diagnostic from the paired ablation:
+50*(radians(2)/0.002)^2 = 15230.870989335432.  The 20-degree lead is the
+predeclared software bound: the frozen initial minimax arm rate is about
+1.30 rad/s, while the 20-degree/3 rad/s^2 stopping-envelope calculation gives
+about 1.432 rad/s at dt=.005 s.  Neither value is fit to these outcomes.
+Physical q/v/a/j/collision limits remain unchanged.  The runner records the
+effective parsed lead in radians and the native cfg dump's lead and task
+weight lines, with hashes.
+
+Reference and timing cases
+---------------------------
+Both cases use the same frozen 17-pose geometry, same full six-dimensional
+analytic pose/Slerp reference and world-frame angular feed-forward, peak speed
+0.02 m/s, and 2.0 s endpoint settle:
+
+  A_start04: existing original start-only .4 s soft-start reference.
+  B_symmetric08: the already frozen Symmetric08 in
+                 qp_cross_track_fix/run_relaxed_execution.py, with the same
+                 geometry and .8 s cosine start and .8 s cosine stop law.
+
+The .8 s timing follows the predeclared 3 rad/s^2 acceleration derivation; it
+is not chosen from these results.  No pose waypoint or orientation geometry is
+altered.  The repaired deterministic native model clock and URDF TCP remain
+in force.
+
+Gates and fixed reporting windows
+----------------------------------
+Retain the existing strict gates unchanged: full-run maximum position <=2 mm,
+orientation <=2 degrees, q/velocity/acceleration/jerk margins >=0, self-
+collision distance >=10 mm, no solver fault, and no replay failure.  Keep
+negative margins and signed along/cross/rotation-vector values; do not round
+or waive numerical violations.  Report full-motion and path-only results.
+
+Also report the fixed reference-phase middle window
+  t_ref in [.8 s, duration_s-.8 s]
+for both cases, whether or not it coincides with the active speed plateau.
+This window is declared before results and is not selected from error peaks.
+Report the fixed path-arc window 20%..80% and ten fixed 10%-arc bins
+[0,10),...,[90,100]% (endpoint inclusion is deterministic and documented in
+the runner).  For every window report position, rotation, signed along-track,
+cross-path-normal vector/norm, and dynamic jerk max/margin/violation count.
+
+Artifacts and interpretation
+----------------------------
+run_combination.py writes one trace, one reference sample file, one raw result,
+and one native cfg dump per case, plus RESULTS.json, RESULTS.sha256, and
+REPORT.txt.  Native cfg task_weight and lead lines must match the requested
+values before each replay starts.  The report compares A/B under identical W
+and states any remaining same-reference numerical sensitivity.  It must not
+claim hardware readiness or infer that a passing middle window proves the
+start/end or physical execution is safe.

@@ -1,0 +1,291 @@
+{
+  "available": 128,
+  "target_present": 96,
+  "both_present": 65,
+  "empty": 0
+}
+{
+  "subjects": 128,
+  "arms": {
+    "online_B": {
+      "narrow": {
+        "success": 76,
+        "total": 128,
+        "legal": 128,
+        "wrong": 16,
+        "wrong_trunk": 0,
+        "wrong_clutter": 16,
+        "target_present": 103,
+        "with_prospective_tail_alternatives": 72,
+        "tail_switches": 16,
+        "switches_with_strict_success": 13,
+        "choices": {
+          "(3, 4)": 5,
+          "(3, 3)": 117,
+          "(3, 2)": 6
+        },
+        "mean_actual_cost": {
+          "travel_mm": 17.11675932583007,
+          "turn_deg": 6.669237204190261,
+          "duration_s": 1.5
+        }
+      },
+      "wide": {
+        "success": 76,
+        "total": 128,
+        "legal": 128,
+        "wrong": 16,
+        "wrong_trunk": 0,
+        "wrong_clutter": 16,
+        "target_present": 103,
+        "with_prospective_tail_alternatives": 72,
+        "tail_switches": 16,
+        "switches_with_strict_success": 13,
+        "choices": {
+          "(3, 4)": 5,
+          "(3, 3)": 117,
+          "(3, 2)": 6
+        },
+        "mean_actual_cost": {
+          "travel_mm": 17.11675932583007,
+          "turn_deg": 6.669237204190261,
+          "duration_s": 1.5
+        }
+      }
+    },
+    "online_MPC": {
+      "narrow": {
+        "success": 76,
+        "total": 128,
+        "legal": 128,
+        "wrong": 16,
+        "wrong_trunk": 0,
+        "wrong_clutter": 16,
+        "target_present": 103,
+        "with_prospective_tail_alternatives": 72,
+        "tail_switches": 16,
+        "switches_with_strict_success": 13,
+        "choices": {
+          "(3, 4)": 5,
+          "(3, 3)": 117,
+          "(3, 2)": 6
+        },
+        "mean_actual_cost": {
+          "travel_mm": 17.11675932583007,
+          "turn_deg": 6.669237204190261,
+          "duration_s": 1.5
+        }
+      },
+      "wide": {
+        "success": 76,
+        "total": 128,
+        "legal": 128,
+        "wrong": 16,
+        "wrong_trunk": 0,
+        "wrong_clutter": 16,
+        "target_present": 103,
+        "with_prospective_tail_alternatives": 72,
+        "tail_switches": 16,
+        "switches_with_strict_success": 13,
+        "choices": {
+          "(3, 4)": 5,
+          "(3, 3)": 117,
+          "(3, 2)": 6
+        },
+        "mean_actual_cost": {
+          "travel_mm": 17.11675932583007,
+          "turn_deg": 6.669237204190261,
+          "duration_s": 1.5
+        }
+      }
+    },
+    "frozen_B": {
+      "narrow": {
+        "success": 70,
+        "total": 128,
+        "legal": 128,
+        "wrong": 14,
+        "wrong_trunk": 0,
+        "wrong_clutter": 14,
+        "target_present": 102,
+        "with_prospective_tail_alternatives": 50,
+        "tail_switches": 12,
+        "switches_with_strict_success": 4,
+        "choices": {
+          "(3, 4)": 8,
+          "(3, 3)": 114,
+          "(3, 2)": 6
+        },
+        "mean_actual_cost": {
+          "travel_mm": 17.161765244597767,
+          "turn_deg": 6.669535326924688,
+          "duration_s": 1.5
+        }
+      },
+      "wide": {
+        "success": 70,
+        "total": 128,
+        "legal": 128,
+        "wrong": 14,
+        "wrong_trunk": 0,
+        "wrong_clutter": 14,
+        "target_present": 102,
+        "with_prospective_tail_alternatives": 50,
+        "tail_switches": 12,
+        "switches_with_strict_success": 4,
+        "choices": {
+          "(3, 4)": 8,
+          "(3, 3)": 114,
+          "(3, 2)": 6
+        },
+        "mean_actual_cost": {
+          "travel_mm": 17.161765244597767,
+          "turn_deg": 6.669535326924688,
+          "duration_s": 1.5
+        }
+      }
+    }
+  },
+  "online_B_minus": {
+    "online_MPC": {
+      "effect": 0.0,
+      "ci_95": [
+        0.0,
+        0.0
+      ],
+      "success_gate": false,
+      "wrong_effect": 0.0,
+      "wrong_ci_95": [
+        0.0,
+        0.0
+      ],
+      "wrong_gate": true,
+      "actual_cost_delta": {
+        "travel_mm": 0.0,
+        "turn_deg": 0.0,
+        "duration_s": 0.0
+      },
+      "cost_ci_simultaneous_95": {
+        "travel_mm": [
+          0.0,
+          0.0
+        ],
+        "turn_deg": [
+          0.0,
+          0.0
+        ],
+        "duration_s": [
+          0.0,
+          0.0
+        ]
+      },
+      "cost_equivalent": true,
+      "by_reserve": {
+        "narrow": {
+          "effect": 0.0,
+          "ci_95": [
+            0.0,
+            0.0
+          ],
+          "win_loss": [
+            0,
+            0
+          ],
+          "exact_p": 1.0
+        },
+        "wide": {
+          "effect": 0.0,
+          "ci_95": [
+            0.0,
+            0.0
+          ],
+          "win_loss": [
+            0,
+            0
+          ],
+          "exact_p": 1.0
+        }
+      },
+      "narrow_minus_wide": {
+        "effect": 0.0,
+        "ci_95": [
+          0.0,
+          0.0
+        ]
+      },
+      "different_first_view": 0,
+      "different_tail_view": 0,
+      "B_switch_with_paired_win": 0
+    },
+    "frozen_B": {
+      "effect": 0.046875,
+      "ci_95": [
+        0.0,
+        0.09375
+      ],
+      "success_gate": false,
+      "wrong_effect": 0.015625,
+      "wrong_ci_95": [
+        -0.015625,
+        0.046875
+      ],
+      "wrong_gate": false,
+      "actual_cost_delta": {
+        "travel_mm": -0.04500591876769261,
+        "turn_deg": -0.0002981227344264828,
+        "duration_s": 0.0
+      },
+      "cost_ci_simultaneous_95": {
+        "travel_mm": [
+          -0.20369304824105722,
+          0.11530280946557749
+        ],
+        "turn_deg": [
+          -0.003938853413995692,
+          0.0032290769797655985
+        ],
+        "duration_s": [
+          0.0,
+          0.0
+        ]
+      },
+      "cost_equivalent": true,
+      "by_reserve": {
+        "narrow": {
+          "effect": 0.046875,
+          "ci_95": [
+            0.0,
+            0.09375
+          ],
+          "win_loss": [
+            8,
+            2
+          ],
+          "exact_p": 0.109375
+        },
+        "wide": {
+          "effect": 0.046875,
+          "ci_95": [
+            0.0,
+            0.09375
+          ],
+          "win_loss": [
+            8,
+            2
+          ],
+          "exact_p": 0.109375
+        }
+      },
+      "narrow_minus_wide": {
+        "effect": 0.0,
+        "ci_95": [
+          0.0,
+          0.0
+        ]
+      },
+      "different_first_view": 0,
+      "different_tail_view": 34,
+      "B_switch_with_paired_win": 2
+    }
+  }
+}

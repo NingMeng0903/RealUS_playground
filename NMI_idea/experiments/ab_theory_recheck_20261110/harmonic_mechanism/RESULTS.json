@@ -1,0 +1,745 @@
+{
+  "scope": "Actual audited production harmonic volume and saved SMPL-X poses; local geometric transport/gradient checks only",
+  "protocol_sha256": "f60ec5eebb00ecd5b7ae6bd8fad46c6f2a0879a56d3add174ab5f8021939755b",
+  "source_sha256": "4589c20665f203d1ccb23e21c99df8763276670e42d9b71e2fb195efa2659eef",
+  "seed": 720960,
+  "results": {
+    "right": [
+      {
+        "knee_deg": 0,
+        "address_absolute_error_max_by_component": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "frozen_world_point_error_mm": {
+          "n": 256,
+          "median": 2.1615634304165957e-05,
+          "p95": 5.656860899047925e-05,
+          "max": 9.842435904807626e-05
+        },
+        "material_vs_ordinary_barycentric_error_m": 2.242025235105681e-16,
+        "frozen_tangent_error_deg": {
+          "n": 256,
+          "median": 0.0003201678390191547,
+          "p95": 0.0061005669792022765,
+          "max": 0.05334368177799176
+        },
+        "wrong_vector_normal_error_deg": {
+          "n": 256,
+          "median": 0.0006247067037289348,
+          "p95": 0.011016028429005401,
+          "max": 0.03784043178908124
+        },
+        "correct_tangent_normal_abs_cosine": {
+          "n": 256,
+          "median": 4.163336342344337e-17,
+          "p95": 1.4224732503009818e-16,
+          "max": 3.3306690738754696e-16
+        },
+        "raw_gradient_reparameterization_angle_deg": {
+          "n": 256,
+          "median": 81.95502753005894,
+          "p95": 89.06589287274934,
+          "max": 90.74013322053518
+        },
+        "metric_gradient_reparameterization_difference": {
+          "n": 256,
+          "median": 1.2412670766236366e-16,
+          "p95": 8.96919139818297e-16,
+          "max": 8.81282141594492e-15
+        },
+        "metric_vs_cartesian_descent_difference": {
+          "n": 256,
+          "median": 1.2134928933452618e-16,
+          "p95": 7.7571184588799e-16,
+          "max": 8.794620319638101e-15
+        }
+      },
+      {
+        "knee_deg": 15,
+        "address_absolute_error_max_by_component": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "frozen_world_point_error_mm": {
+          "n": 256,
+          "median": 17.74855783759147,
+          "p95": 89.0367643006501,
+          "max": 97.10691545849151
+        },
+        "material_vs_ordinary_barycentric_error_m": 2.254873622441467e-16,
+        "frozen_tangent_error_deg": {
+          "n": 256,
+          "median": 8.82828781339657,
+          "p95": 14.912437167575423,
+          "max": 16.05329780462049
+        },
+        "wrong_vector_normal_error_deg": {
+          "n": 256,
+          "median": 1.070239351381605,
+          "p95": 2.9734454858344037,
+          "max": 4.2402267899400234
+        },
+        "correct_tangent_normal_abs_cosine": {
+          "n": 256,
+          "median": 4.163336342344337e-17,
+          "p95": 1.6653345369377348e-16,
+          "max": 3.469446951953614e-16
+        },
+        "raw_gradient_reparameterization_angle_deg": {
+          "n": 256,
+          "median": 81.57755386914546,
+          "p95": 89.54941058438995,
+          "max": 93.09828518925367
+        },
+        "metric_gradient_reparameterization_difference": {
+          "n": 256,
+          "median": 1.5702840969703698e-16,
+          "p95": 3.943837527670907e-15,
+          "max": 2.1371865316316868e-14
+        },
+        "metric_vs_cartesian_descent_difference": {
+          "n": 256,
+          "median": 1.290574072746484e-16,
+          "p95": 3.904462118566355e-15,
+          "max": 2.135044320826186e-14
+        }
+      },
+      {
+        "knee_deg": 30,
+        "address_absolute_error_max_by_component": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "frozen_world_point_error_mm": {
+          "n": 256,
+          "median": 35.19341165582601,
+          "p95": 176.55008405906875,
+          "max": 192.55236675664207
+        },
+        "material_vs_ordinary_barycentric_error_m": 2.2929868617541516e-16,
+        "frozen_tangent_error_deg": {
+          "n": 256,
+          "median": 17.59600402817682,
+          "p95": 29.948543294447845,
+          "max": 32.24489839832696
+        },
+        "wrong_vector_normal_error_deg": {
+          "n": 256,
+          "median": 2.174048115497663,
+          "p95": 6.058675305805557,
+          "max": 7.996122353315473
+        },
+        "correct_tangent_normal_abs_cosine": {
+          "n": 256,
+          "median": 5.551115123125783e-17,
+          "p95": 1.6653345369377348e-16,
+          "max": 3.885780586188048e-16
+        },
+        "raw_gradient_reparameterization_angle_deg": {
+          "n": 256,
+          "median": 82.22718814092369,
+          "p95": 91.1390596808267,
+          "max": 95.46265120047603
+        },
+        "metric_gradient_reparameterization_difference": {
+          "n": 256,
+          "median": 2.220446049250313e-16,
+          "p95": 3.520159790676391e-15,
+          "max": 1.9100772602620825e-14
+        },
+        "metric_vs_cartesian_descent_difference": {
+          "n": 256,
+          "median": 2.0038857654237157e-16,
+          "p95": 3.58293995131806e-15,
+          "max": 1.9032155252559384e-14
+        }
+      },
+      {
+        "knee_deg": 45,
+        "address_absolute_error_max_by_component": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "frozen_world_point_error_mm": {
+          "n": 256,
+          "median": 52.03608785386885,
+          "p95": 261.0425690333259,
+          "max": 284.7031261544416
+        },
+        "material_vs_ordinary_barycentric_error_m": 2.2929868617541516e-16,
+        "frozen_tangent_error_deg": {
+          "n": 256,
+          "median": 26.20015862126654,
+          "p95": 44.866397442736016,
+          "max": 48.477737611631206
+        },
+        "wrong_vector_normal_error_deg": {
+          "n": 256,
+          "median": 3.240353664632248,
+          "p95": 8.972077155234585,
+          "max": 12.729351755507988
+        },
+        "correct_tangent_normal_abs_cosine": {
+          "n": 256,
+          "median": 5.551115123125783e-17,
+          "p95": 1.8388068845354155e-16,
+          "max": 3.0531133177191805e-16
+        },
+        "raw_gradient_reparameterization_angle_deg": {
+          "n": 256,
+          "median": 81.17303527268808,
+          "p95": 92.75688639277396,
+          "max": 97.67531340776527
+        },
+        "metric_gradient_reparameterization_difference": {
+          "n": 256,
+          "median": 2.5438405243138006e-16,
+          "p95": 2.3307670116965857e-15,
+          "max": 1.454106103385961e-14
+        },
+        "metric_vs_cartesian_descent_difference": {
+          "n": 256,
+          "median": 2.3551386880256624e-16,
+          "p95": 2.343378956002606e-15,
+          "max": 1.4553479324477612e-14
+        }
+      },
+      {
+        "knee_deg": 60,
+        "address_absolute_error_max_by_component": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "frozen_world_point_error_mm": {
+          "n": 256,
+          "median": 67.98845028988717,
+          "p95": 341.0685434986975,
+          "max": 371.9825299483551
+        },
+        "material_vs_ordinary_barycentric_error_m": 2.2929868617541516e-16,
+        "frozen_tangent_error_deg": {
+          "n": 256,
+          "median": 34.524262785453274,
+          "p95": 59.83877725017956,
+          "max": 64.65022670194749
+        },
+        "wrong_vector_normal_error_deg": {
+          "n": 256,
+          "median": 4.31638554896833,
+          "p95": 11.66660259570331,
+          "max": 18.99674066684982
+        },
+        "correct_tangent_normal_abs_cosine": {
+          "n": 256,
+          "median": 5.551115123125783e-17,
+          "p95": 1.6653345369377348e-16,
+          "max": 2.498001805406602e-16
+        },
+        "raw_gradient_reparameterization_angle_deg": {
+          "n": 256,
+          "median": 79.68091153325034,
+          "p95": 94.21482228212051,
+          "max": 99.5922109067005
+        },
+        "metric_gradient_reparameterization_difference": {
+          "n": 256,
+          "median": 2.482534153247273e-16,
+          "p95": 3.1138076524308785e-15,
+          "max": 2.7443233280587398e-14
+        },
+        "metric_vs_cartesian_descent_difference": {
+          "n": 256,
+          "median": 2.403797875900044e-16,
+          "p95": 3.039130455314869e-15,
+          "max": 2.7443233280587398e-14
+        }
+      },
+      {
+        "knee_deg": 75,
+        "address_absolute_error_max_by_component": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "frozen_world_point_error_mm": {
+          "n": 256,
+          "median": 82.77748833069421,
+          "p95": 415.25874583089035,
+          "max": 452.8972854573484
+        },
+        "material_vs_ordinary_barycentric_error_m": 2.237793284010081e-16,
+        "frozen_tangent_error_deg": {
+          "n": 256,
+          "median": 42.828211055201564,
+          "p95": 74.8131870584632,
+          "max": 80.6497848063417
+        },
+        "wrong_vector_normal_error_deg": {
+          "n": 256,
+          "median": 5.135505116038586,
+          "p95": 15.238476660269566,
+          "max": 27.018034364369857
+        },
+        "correct_tangent_normal_abs_cosine": {
+          "n": 256,
+          "median": 4.85722573273506e-17,
+          "p95": 1.6653345369377348e-16,
+          "max": 3.3306690738754696e-16
+        },
+        "raw_gradient_reparameterization_angle_deg": {
+          "n": 256,
+          "median": 78.86944687895303,
+          "p95": 94.97620357721127,
+          "max": 101.09959008898144
+        },
+        "metric_gradient_reparameterization_difference": {
+          "n": 256,
+          "median": 2.7194799110210365e-16,
+          "p95": 2.2211082366627545e-15,
+          "max": 4.648590775623451e-14
+        },
+        "metric_vs_cartesian_descent_difference": {
+          "n": 256,
+          "median": 2.8138409952858594e-16,
+          "p95": 2.217566184201729e-15,
+          "max": 4.652553147963732e-14
+        }
+      },
+      {
+        "knee_deg": 90,
+        "address_absolute_error_max_by_component": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "frozen_world_point_error_mm": {
+          "n": 256,
+          "median": 96.15013486948519,
+          "p95": 482.34375981487517,
+          "max": 526.0627915000159
+        },
+        "material_vs_ordinary_barycentric_error_m": 2.2929868617541516e-16,
+        "frozen_tangent_error_deg": {
+          "n": 256,
+          "median": 50.80118265866943,
+          "p95": 89.71201577462378,
+          "max": 96.41293405502213
+        },
+        "wrong_vector_normal_error_deg": {
+          "n": 256,
+          "median": 5.693328323532859,
+          "p95": 19.241361050910918,
+          "max": 36.902613060681944
+        },
+        "correct_tangent_normal_abs_cosine": {
+          "n": 256,
+          "median": 5.551115123125783e-17,
+          "p95": 1.6653345369377348e-16,
+          "max": 3.0531133177191805e-16
+        },
+        "raw_gradient_reparameterization_angle_deg": {
+          "n": 256,
+          "median": 78.65951833766216,
+          "p95": 96.15529175219457,
+          "max": 102.11581893340343
+        },
+        "metric_gradient_reparameterization_difference": {
+          "n": 256,
+          "median": 2.482534153247273e-16,
+          "p95": 2.612336211925078e-15,
+          "max": 1.4662511673516712e-14
+        },
+        "metric_vs_cartesian_descent_difference": {
+          "n": 256,
+          "median": 2.334590689543777e-16,
+          "p95": 2.604000565584295e-15,
+          "max": 1.4589720368447757e-14
+        }
+      }
+    ],
+    "left": [
+      {
+        "knee_deg": 0,
+        "address_absolute_error_max_by_component": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "frozen_world_point_error_mm": {
+          "n": 256,
+          "median": 1.694022959789067e-05,
+          "p95": 6.217886016456482e-05,
+          "max": 0.0001063076832891394
+        },
+        "material_vs_ordinary_barycentric_error_m": 2.238801616996866e-16,
+        "frozen_tangent_error_deg": {
+          "n": 256,
+          "median": 0.0002166715248729296,
+          "p95": 0.004363448546771912,
+          "max": 0.061493892068682984
+        },
+        "wrong_vector_normal_error_deg": {
+          "n": 256,
+          "median": 0.00047229014924038784,
+          "p95": 0.006947773656766222,
+          "max": 0.04851936058670796
+        },
+        "correct_tangent_normal_abs_cosine": {
+          "n": 256,
+          "median": 4.163336342344337e-17,
+          "p95": 1.6653345369377348e-16,
+          "max": 2.7755575615628914e-16
+        },
+        "raw_gradient_reparameterization_angle_deg": {
+          "n": 256,
+          "median": 85.30032632076455,
+          "p95": 89.54118331173832,
+          "max": 92.46274647483851
+        },
+        "metric_gradient_reparameterization_difference": {
+          "n": 256,
+          "median": 1.192029930659394e-16,
+          "p95": 4.1747318216101728e-16,
+          "max": 1.508320824568382e-14
+        },
+        "metric_vs_cartesian_descent_difference": {
+          "n": 256,
+          "median": 1.1443916996305594e-16,
+          "p95": 3.2339281242617357e-16,
+          "max": 1.5043459571903432e-14
+        }
+      },
+      {
+        "knee_deg": 15,
+        "address_absolute_error_max_by_component": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "frozen_world_point_error_mm": {
+          "n": 256,
+          "median": 5.6641312852418135,
+          "p95": 80.79083391398486,
+          "max": 96.10217348497494
+        },
+        "material_vs_ordinary_barycentric_error_m": 2.254873622441467e-16,
+        "frozen_tangent_error_deg": {
+          "n": 256,
+          "median": 5.685858794036566,
+          "p95": 14.938016627339987,
+          "max": 16.244064087482446
+        },
+        "wrong_vector_normal_error_deg": {
+          "n": 256,
+          "median": 1.0580790339197605,
+          "p95": 2.9188310114195937,
+          "max": 4.421925350724114
+        },
+        "correct_tangent_normal_abs_cosine": {
+          "n": 256,
+          "median": 5.551115123125783e-17,
+          "p95": 1.6653345369377348e-16,
+          "max": 3.885780586188048e-16
+        },
+        "raw_gradient_reparameterization_angle_deg": {
+          "n": 256,
+          "median": 84.60998109042924,
+          "p95": 90.69690361399962,
+          "max": 93.67492301452845
+        },
+        "metric_gradient_reparameterization_difference": {
+          "n": 256,
+          "median": 1.5700924586837752e-16,
+          "p95": 2.826916135753507e-15,
+          "max": 2.828539989313423e-14
+        },
+        "metric_vs_cartesian_descent_difference": {
+          "n": 256,
+          "median": 1.2412670766236366e-16,
+          "p95": 2.8810902278550387e-15,
+          "max": 2.8275957751081384e-14
+        }
+      },
+      {
+        "knee_deg": 30,
+        "address_absolute_error_max_by_component": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "frozen_world_point_error_mm": {
+          "n": 256,
+          "median": 11.231332592034299,
+          "p95": 160.19934424858678,
+          "max": 190.56000723634463
+        },
+        "material_vs_ordinary_barycentric_error_m": 2.254873622441467e-16,
+        "frozen_tangent_error_deg": {
+          "n": 256,
+          "median": 11.311935222580647,
+          "p95": 29.890768784416935,
+          "max": 32.30025865614386
+        },
+        "wrong_vector_normal_error_deg": {
+          "n": 256,
+          "median": 2.2206740848764364,
+          "p95": 6.484201661607738,
+          "max": 10.211241546036687
+        },
+        "correct_tangent_normal_abs_cosine": {
+          "n": 256,
+          "median": 5.551115123125783e-17,
+          "p95": 1.6653345369377348e-16,
+          "max": 3.885780586188048e-16
+        },
+        "raw_gradient_reparameterization_angle_deg": {
+          "n": 256,
+          "median": 83.64172736603243,
+          "p95": 92.42693100099932,
+          "max": 96.21927893379443
+        },
+        "metric_gradient_reparameterization_difference": {
+          "n": 256,
+          "median": 1.7663203618858437e-16,
+          "p95": 2.6766020782743393e-15,
+          "max": 2.0555814716808877e-14
+        },
+        "metric_vs_cartesian_descent_difference": {
+          "n": 256,
+          "median": 1.594436429147036e-16,
+          "p95": 2.6621217981092618e-15,
+          "max": 2.0566357127655302e-14
+        }
+      },
+      {
+        "knee_deg": 45,
+        "address_absolute_error_max_by_component": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "frozen_world_point_error_mm": {
+          "n": 256,
+          "median": 16.606364285320538,
+          "p95": 236.8668073446005,
+          "max": 281.75733495504295
+        },
+        "material_vs_ordinary_barycentric_error_m": 2.3055512673781017e-16,
+        "frozen_tangent_error_deg": {
+          "n": 256,
+          "median": 16.81407229228374,
+          "p95": 45.05451096084607,
+          "max": 48.09306818469376
+        },
+        "wrong_vector_normal_error_deg": {
+          "n": 256,
+          "median": 3.5506727696487776,
+          "p95": 9.770271055181137,
+          "max": 17.549207760133246
+        },
+        "correct_tangent_normal_abs_cosine": {
+          "n": 256,
+          "median": 5.551115123125783e-17,
+          "p95": 1.97758476261356e-16,
+          "max": 3.885780586188048e-16
+        },
+        "raw_gradient_reparameterization_angle_deg": {
+          "n": 256,
+          "median": 82.44251392582817,
+          "p95": 93.88474489876037,
+          "max": 99.70174664406508
+        },
+        "metric_gradient_reparameterization_difference": {
+          "n": 256,
+          "median": 2.2723622087799865e-16,
+          "p95": 2.29096389544834e-15,
+          "max": 9.532510539761004e-15
+        },
+        "metric_vs_cartesian_descent_difference": {
+          "n": 256,
+          "median": 2.0014830212433605e-16,
+          "p95": 2.2674739839875458e-15,
+          "max": 9.525020350626796e-15
+        }
+      },
+      {
+        "knee_deg": 60,
+        "address_absolute_error_max_by_component": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "frozen_world_point_error_mm": {
+          "n": 256,
+          "median": 21.69725848083954,
+          "p95": 309.4813992331642,
+          "max": 368.1337098909526
+        },
+        "material_vs_ordinary_barycentric_error_m": 2.2929868617541516e-16,
+        "frozen_tangent_error_deg": {
+          "n": 256,
+          "median": 22.122757141161102,
+          "p95": 60.363050239039985,
+          "max": 63.769270127916265
+        },
+        "wrong_vector_normal_error_deg": {
+          "n": 256,
+          "median": 4.883290120666696,
+          "p95": 13.215626894004426,
+          "max": 26.626731030292778
+        },
+        "correct_tangent_normal_abs_cosine": {
+          "n": 256,
+          "median": 5.551115123125783e-17,
+          "p95": 1.6653345369377348e-16,
+          "max": 4.996003610813204e-16
+        },
+        "raw_gradient_reparameterization_angle_deg": {
+          "n": 256,
+          "median": 82.13683208865413,
+          "p95": 96.31826535505948,
+          "max": 102.62645610849923
+        },
+        "metric_gradient_reparameterization_difference": {
+          "n": 256,
+          "median": 2.237726045655905e-16,
+          "p95": 2.0671065698288795e-15,
+          "max": 1.0131811623781563e-14
+        },
+        "metric_vs_cartesian_descent_difference": {
+          "n": 256,
+          "median": 2.0014830212433605e-16,
+          "p95": 2.0963707792838386e-15,
+          "max": 1.007970774805521e-14
+        }
+      },
+      {
+        "knee_deg": 75,
+        "address_absolute_error_max_by_component": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "frozen_world_point_error_mm": {
+          "n": 256,
+          "median": 26.416879182034663,
+          "p95": 376.8005794404553,
+          "max": 448.21117120908497
+        },
+        "material_vs_ordinary_barycentric_error_m": 2.3055512673781017e-16,
+        "frozen_tangent_error_deg": {
+          "n": 256,
+          "median": 27.254209005057458,
+          "p95": 75.72649464769098,
+          "max": 79.64982532279019
+        },
+        "wrong_vector_normal_error_deg": {
+          "n": 256,
+          "median": 6.006329191472243,
+          "p95": 17.761806306382194,
+          "max": 37.59892784931702
+        },
+        "correct_tangent_normal_abs_cosine": {
+          "n": 256,
+          "median": 5.551115123125783e-17,
+          "p95": 1.6653345369377348e-16,
+          "max": 3.3306690738754696e-16
+        },
+        "raw_gradient_reparameterization_angle_deg": {
+          "n": 256,
+          "median": 81.29103653201662,
+          "p95": 96.91465609071281,
+          "max": 105.87742080984303
+        },
+        "metric_gradient_reparameterization_difference": {
+          "n": 256,
+          "median": 2.4590380145172013e-16,
+          "p95": 2.224239157427001e-15,
+          "max": 3.014419076189248e-14
+        },
+        "metric_vs_cartesian_descent_difference": {
+          "n": 256,
+          "median": 2.4188364206364675e-16,
+          "p95": 2.2356480682839667e-15,
+          "max": 3.0089757951037745e-14
+        }
+      },
+      {
+        "knee_deg": 90,
+        "address_absolute_error_max_by_component": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "frozen_world_point_error_mm": {
+          "n": 256,
+          "median": 30.684537752955485,
+          "p95": 437.67269299151724,
+          "max": 520.619681752765
+        },
+        "material_vs_ordinary_barycentric_error_m": 2.242025235105681e-16,
+        "frozen_tangent_error_deg": {
+          "n": 256,
+          "median": 31.928019137400604,
+          "p95": 90.42092173104419,
+          "max": 95.29453064108104
+        },
+        "wrong_vector_normal_error_deg": {
+          "n": 256,
+          "median": 7.093505444018681,
+          "p95": 23.495653786871955,
+          "max": 50.515414122752844
+        },
+        "correct_tangent_normal_abs_cosine": {
+          "n": 256,
+          "median": 5.551115123125783e-17,
+          "p95": 1.448494102440634e-16,
+          "max": 4.440892098500626e-16
+        },
+        "raw_gradient_reparameterization_angle_deg": {
+          "n": 256,
+          "median": 80.44787516229877,
+          "p95": 98.49433707734678,
+          "max": 111.4594271806212
+        },
+        "metric_gradient_reparameterization_difference": {
+          "n": 256,
+          "median": 2.2887833992611187e-16,
+          "p95": 2.188690752620955e-15,
+          "max": 1.8157577923933512e-14
+        },
+        "metric_vs_cartesian_descent_difference": {
+          "n": 256,
+          "median": 2.0770370905276122e-16,
+          "p95": 2.225684282895548e-15,
+          "max": 1.8184710946155947e-14
+        }
+      }
+    ]
+  },
+  "input_hashes": {
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic/shaft_roi_v2/atlas_right.npz": "f1a42becc403ebf7687025d4ab8b7d3480e52d4713df8c6357449b23d4ebba1c",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic/shaft_roi_v2/right_pose_00.npz": "1575ef5701f90fb98046da774e17951da438507d94287da11e766969c87a9d30",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic/shaft_roi_v2/right_pose_15.npz": "093f6366306f5733a45331ff86f50677eeff431b7f8421070dc4421a8fc873fa",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic/shaft_roi_v2/right_pose_30.npz": "b90b2e3c8778e27828d31ed89732a89a2bd021e9807818f2b1accf9d5d90b9cc",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic/shaft_roi_v2/right_pose_45.npz": "efd1a63d4912033fd14a4c8eb50d0e3f9bd45ae9497c75efa9ed6f74e0277723",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic/shaft_roi_v2/right_pose_60.npz": "ab5e8a6dd448beb065717c2de559a0cb0b4f96eaf199fbd65de53a9c1a8c4329",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic/shaft_roi_v2/right_pose_75.npz": "274d8783535177c962ff405aedf336a9f038da3015e55b0e03ca9b0e88a80916",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic/shaft_roi_v2/right_pose_90.npz": "f8c6a7b186d3ebc9f3d2ff6a275fee0f789845124106254ae1fad375cf416291",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic/shaft_roi_v2/atlas_left.npz": "8d4deac6ab8f364ae08b359ec2878027144fb1c4aa44fba777f5126e99853191",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic/shaft_roi_v2/left_pose_00.npz": "f88ffbfbfea6954ebb8452e9cc8e2ecacdc1df8feed844d5d796ed1f37f02ca1",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic/shaft_roi_v2/left_pose_15.npz": "4f2626c832a2e9314f4984f485cfa0537ed820a91b777c0c15e7221f77d53bed",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic/shaft_roi_v2/left_pose_30.npz": "2c296872615086ddfff7a75a2b43d1b8ac338701691c3fa90d8a99fcaf9488a2",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic/shaft_roi_v2/left_pose_45.npz": "7def822991037df52d058346cc31b7e926c77e398ba8947700f627813cd43890",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic/shaft_roi_v2/left_pose_60.npz": "0ec623e57f8c7e7aaf7b5263750ecaa2e8ef2ad856570bc661d9d93e82d906dc",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic/shaft_roi_v2/left_pose_75.npz": "fef3a19f3545d555305634ac9962943a7538255ea533d4120ac6a8c4d02fbdee",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic/shaft_roi_v2/left_pose_90.npz": "822f98a4b1c5bdad0b88be5fc61b7a306f92586292fd80dd7bf2614d3cac7d14"
+  },
+  "strong_baseline": "Same tet/barycentric correspondence and Cartesian physical gradient match correct harmonic transport; no unique harmonic learning gain asserted"
+}

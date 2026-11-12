@@ -1,0 +1,99 @@
+Frozen exact finite-observation decision-operator check, 2026-11-10
+
+Scope and claim boundary
+------------------------
+This is a bounded mathematical module test only.  It exercises the real
+geometric observation model's ``sample_prior`` and ``predict_batch`` APIs;
+there is no controller, robot, selected actual world, hardware, learned
+sensor, or task-performance claim.  The audit/THEORY_CONDITIONS.txt review is
+binding: this is a finite-horizon Bellman/operator correctness check and an
+identification counterexample in the declared geometric surrogate, not a new
+general planning theorem or clinical/robotic result.
+
+Frozen latent catalogue and public action set
+-----------------------------------------------
+Catalogue particles are exactly ``sample_prior(seed=720510, n=64)`` from
+observation/environment.py.  The hidden index is a member of this public
+finite catalogue; no selected index is exposed to any calculation that plays
+the role of a policy.  Public probe/terminal actions are the Cartesian product
+body_x=0, body_y in [-.025,-.015,0,.015,.025], yaw in [-.30,0,.30], in that
+declared nested order (y, then yaw), for 15 actions.  All are within the
+observer's contact workspace, so contact is recorded and not used as a hidden
+world signal.
+
+Exact coarse observation operator
+----------------------------------
+For every particle h and probe action a, call the real batched prediction.
+Source 0 and source 1 are mutually exclusive source-mixture events with
+probabilities p_source[h,a,s].  Missing is the real event
+1-sum_s p_source[h,a,s].  For a visible source event, analytically integrate
+the independent Gaussian measurement densities using the model's SDS values
+and means; do not sample a noisy image or replace the source mixture with a
+particle label.  The public coarse observation alphabet is:
+
+  missing; or (u-bin, length-bin, identity-bin),
+  u bins       [-inf,-.004),[-.004,.004),[.004,inf),
+  length bins [0,.008),[.008,.015),[.015,inf),
+  identity    [0,.75),[.75,1].
+
+The density/mass integration respects the observer's clipping semantics:
+visible length has a lower length=0 atom plus its positive continuous tail;
+identity has both identity=0 and identity=1 clipping atoms.  The first length
+bin includes the length=0 atom and the first identity bin includes identity=0;
+the final identity bin includes identity=1.  Axis/depth are marginalized in
+this deliberately declared public operator because the terminal public stop
+uses only u, projected length, identity, and contact.  Observation rows are
+saved before any minimization; each h,a row must normalize to one.
+
+Terminal surrogate risk and two-step backup
+---------------------------------------------
+For each latent h and terminal action j, define target geometry legality from
+the real model's source-0 hypothesis:
+  geometric_length>=.015, abs(source-0 mean u)<=.002,
+  angle_audit<=10 degrees.
+Set q_target_public_gate to
+  p_source(source 0) * P(|u_obs|<=.002)
+                  * P(length_obs>=.015) * P(identity_obs>=.75),
+using the same analytic Gaussian/clipping masses.  The terminal risk is
+
+  R[h,j] = 60 * (1 - I(target geometry legal) * q_target_public_gate^5).
+
+The fifth power is the persistent-world five-frame public-stop gate, not
+(mean q)^5.  Motion+observation option cost is the frozen constant c=.5 for
+every probe, solely to isolate the operator mechanism; it is not a robot
+motion cost.  Direct terminal action has no option cost.
+
+For a current belief b (uniform catalogue and aliases below), compute every
+probe value exactly as
+
+  V_1(b,a) = .5 + sum_y min_j sum_h b[h] L[h,a,y] R[h,j],
+
+and report the direct-terminal value min_j sum_h b[h]R[h,j].  Include the
+unnormalized branch-weighted Xi[b,a,y,j] and independently recompute the same
+backup by normalizing each nonzero branch mass before minimizing.  Zero-mass
+branches contribute zero.  The operator must reproduce the normalized backup
+to numerical tolerance.
+
+Current-risk aliases and falsification
+---------------------------------------
+Form the SVD nullspace of [ones; R.T].  For each of 32 frozen random
+directions from seed=720511, project into that nullspace, normalize, and use
+safe delta=0.45*min_i(uniform_i/abs(n_i)) over nonzero components:
+  b_plus=uniform+delta*n, b_minus=uniform-delta*n.
+Both aliases remain strictly positive and sum to one.  Save nullspace
+residuals and verify b_plus@R == b_minus@R (current terminal-risk vectors)
+within floating-point tolerance.  For each pair compare the predictive
+observation operator b@L, all probe backups, direct value, best probe action,
+and Xi.  If no action changes, report that honestly and retain value/operator
+differences; do not tune priors, sensors, or costs to manufacture an action
+change.  The current-risk-only reconstruction is declared unable to
+distinguish an alias pair, while full Xi must reproduce the one-step backup.
+
+Artifacts and verification
+--------------------------
+run_operator_experiment.py writes raw numeric arrays and catalogue fields to
+operator_arrays.npz, then writes RESULTS.json, RESULTS.sha256, and REPORT.txt.
+Each source/protocol/runner/array/result hash is recorded.  Verification must
+include row normalization, missing/source mass consistency, clipping-atom
+mass accounting, normalized-vs-unnormalized backup residuals, nullspace/risk
+alias residuals, positive normalized beliefs, and Xi/full-backup residuals.

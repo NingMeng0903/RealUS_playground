@@ -1,0 +1,64 @@
+Local action-response query-identifiability report
+===================================================
+
+Scope: abstract y=c+J a mechanism only; not real ultrasound, complete A, B, dIRD, or robot validation.
+Registered seed=720940, subjects=512, sigma=0.02, all cases retained.
+
+1. Nullspace/query geometry
+----------------------------
+no_excitation:
+  translation: rank(F)=4, rank(GP)=2, rank(G(I-P))=0, residual=2.608e-16, ker inclusion=True
+  rotation: rank(F)=4, rank(GP)=0, rank(G(I-P))=2, residual=0.707107, ker inclusion=False
+  combined: rank(F)=4, rank(GP)=2, rank(G(I-P))=2, residual=0.565685, ker inclusion=False
+completed_excitation:
+  translation: rank(F)=6, rank(GP)=2, rank(G(I-P))=0, residual=1.86651e-16, ker inclusion=True
+  rotation: rank(F)=6, rank(GP)=2, rank(G(I-P))=0, residual=4.15834e-16, ker inclusion=True
+  combined: rank(F)=6, rank(GP)=2, rank(G(I-P))=0, residual=3.4877e-16, ker inclusion=True
+
+2. Frozen query prediction (normalized y units)
+-----------------------------------------------
+no_excitation:
+  minimum_norm_ls:
+    translation: l2_rmse=0.00935725, l2_p95=0.0160684, linf_p95=0.0144263, component_rmse=0.00661798,0.00661517
+    rotation: l2_rmse=0.503253, l2_p95=0.625425, linf_p95=0.59403, component_rmse=0.278656,0.419065
+    combined: l2_rmse=0.402735, l2_p95=0.498513, linf_p95=0.473535, component_rmse=0.22296,0.335386
+  fixed_J_identity:
+    translation: l2_rmse=0.325553, l2_p95=0.599674, linf_p95=0.488639, component_rmse=0.166581,0.279705
+    rotation: l2_rmse=0.327484, l2_p95=0.582031, linf_p95=0.484046, component_rmse=0.278656,0.172037
+    combined: l2_rmse=0.344352, l2_p95=0.635072, linf_p95=0.609868, component_rmse=0.244028,0.242957
+completed_excitation:
+  minimum_norm_ls:
+    translation: l2_rmse=0.0098264, l2_p95=0.0169981, linf_p95=0.0156043, component_rmse=0.00705391,0.00684108
+    rotation: l2_rmse=0.015646, l2_p95=0.0261321, linf_p95=0.0239432, component_rmse=0.0111053,0.0110213
+    combined: l2_rmse=0.014326, l2_p95=0.0244331, linf_p95=0.0231571, component_rmse=0.0104108,0.00984131
+  fixed_J_identity:
+    translation: l2_rmse=0.325553, l2_p95=0.599674, linf_p95=0.488639, component_rmse=0.166581,0.279705
+    rotation: l2_rmse=0.327484, l2_p95=0.582031, linf_p95=0.484046, component_rmse=0.278656,0.172037
+    combined: l2_rmse=0.344352, l2_p95=0.635072, linf_p95=0.609868, component_rmse=0.244028,0.242957
+
+3. Registered task-increment controller
+--------------------------------------
+no_excitation: success=153/512 (0.298828), clip_any=0/512
+completed_excitation: success=512/512 (1), clip_any=0/512
+
+4. Independent covariance check
+-------------------------------
+no_excitation:
+  translation: max_abs_cov_difference=1.04823e-06, mean_error(including bias)=-0.000128809,-2.74397e-05
+  rotation: max_abs_cov_difference=7.69263e-29, mean_error(including bias)=-0.0596215,-0.630872
+  combined: max_abs_cov_difference=2.26269e-07, mean_error(including bias)=0.0476234,0.504583
+completed_excitation:
+  translation: max_abs_cov_difference=1.82269e-06, mean_error(including bias)=-7.66984e-05,0.000160639
+  rotation: max_abs_cov_difference=2.13855e-06, mean_error(including bias)=-0.000195657,-0.000302585
+  combined: max_abs_cov_difference=3.14491e-06, mean_error(including bias)=-1.67222e-05,-4.17992e-05
+
+5. Alias-pair check
+-------------------
+J+=diag(1,0.8), J-=diag(1,1.2): same first column and both allowed.
+No-excitation noiseless public max difference=0; completed-excitation max difference=0.4.
+Rotation future difference=0,-0.2 (l2=0.2).
+
+Interpretation
+--------------
+The no-excitation design identifies translation but leaves the rotation query in an unobserved Jacobian column; the alias pair makes this failure unavoidable from its public data.  Adding one orthogonal action makes the registered rotation and combined queries identifiable and should reduce their frozen-query error.
+The completed design is a batch least-squares/RLS-equivalent mechanism, not evidence that a neural network is necessary.  The experiment establishes only a necessary local excitation/query condition; it does not establish cross-person transfer, belief updating, real ultrasound, or executable robot motion.

@@ -1,0 +1,103 @@
+伺服与生产入口修复报告
+2026-11-10
+
+已修复：honest KMP/DMP完整局部伺服在不可见时消费模拟器隐藏u/depth/confidence的问题；生产主入口 use_scheduled_vessel 未定义崩溃。未更改 production harmonic、dIRD 或 ModuleCSmoother 源码。
+初始检查：本次拥有的两个tracked源文件 kmp_honest/servo.py 和 run_trajectory_extraction_demo.py 在开始时无既有diff；整个 dmp_honest 目录为预先存在的untracked内容，原样保留。其他并行工作者脏改动不回退。
+
+一、源码变化
+1. kmp_honest/servo.py 的 filter_obs_for_control：visible=False时删除image_u/depth/out-of-plane/slice_margin，并将gamma、gamma_pos、gamma_tangent全部置0。完整loop实际调用该过滤器；缺失时不重建/摄入测量，横向反馈由visible && gamma>0显式门控。0只用于门控分支的算术占位，不是检测到中心。
+2. 结果增加 public_image_u_m/public_image_depth_m，missing为NaN，measured_vessel缺失也为NaN；旧image_*结果保留模拟器评价几何以兼容现有plot/metric接口，函数说明明确其评价用途。此次NPZ将原始量命名truth_image_*，公开量单列，避免真实0与缺失混淆。
+3. dmp_honest/servo.py复用同一真实honest loop，因此无需改动该已有包装文件；回归分别调用KMP/DMP实际入口。
+4. run_trajectory_extraction_demo.py 内部局部初始化 use_scheduled_vessel=scheduled_observation_truth_enabled(servo_cfg)，并复用于启动选项；不再依赖harness全局变量别名。scheduled on/off两条真实入口均执行成功。ClosedLoopServoResult追加可选公开测量字段，现有构造方式兼容。
+
+二、缺失观测因果回归
+同一公开prior/表面/nominal路径，两个隐藏世界只有深目标横向±10mm不同；额外深度120mm，整个147步均missing。KMP与DMP各自两世界的p_cmd、r_cmd和控制输入逐元素一致，最大差全部0；confidence全0，public图像数组全NaN。几何truth_image_u明显不同，证明确实改变隐藏目标而非重复世界。允许缺失时执行nominal扫描；不把移动距离本身判为泄漏。
+另有完整loop回归：相同5步可见观测前缀后，分别给予不同隐藏u/depth但相同missing历史，动作仍逐元素一致；真实可见偏移仍产生反馈，真实可见u=0保持为有效测量。
+{
+  "kmp": {
+    "same_public_prior": true,
+    "all_steps_missing": true,
+    "steps": 147,
+    "hidden_lateral_offsets_m": [
+      -0.01,
+      0.01
+    ],
+    "depth_extra_m": 0.12,
+    "position_max_difference_m": 0.0,
+    "rotation_max_difference": 0.0,
+    "control_input_max_difference": 0.0,
+    "all_missing_confidence_zero": true,
+    "all_public_image_u_missing": true
+  },
+  "dmp": {
+    "same_public_prior": true,
+    "all_steps_missing": true,
+    "steps": 147,
+    "hidden_lateral_offsets_m": [
+      -0.01,
+      0.01
+    ],
+    "depth_extra_m": 0.12,
+    "position_max_difference_m": 0.0,
+    "rotation_max_difference": 0.0,
+    "control_input_max_difference": 0.0,
+    "all_missing_confidence_zero": true,
+    "all_public_image_u_missing": true
+  }
+}
+
+三、实际关闭Ruckig与整个Module C的区别
+causal_no_ruckig_config.json：enable:true/use_ruckig:false，确实关闭Ruckig，但保留现有fallback位置混合与旋转步限。
+causal_module_c_bypass_config.json：enable:false/use_ruckig:false，旁路整个Module C。不是仅关闭Ruckig。
+真实调用均use_module_c=True，由配置决定。用构造器计数监测实际Ruckig：on为1，off/bypass为0。原可开启路径保留，未全局关闭Ruckig。ModuleCSmoother.enable:false的现有旁路和controller enable判断已经生效，无需新增旁路源码。
+共同固定世界目标/相同0、30度合法prior/60度持出pose；以下truth_geometry_u为包含不可见帧的几何评价误差，不能解释为所有帧都有传感器测量。public_visible_u只在可见帧求平均，可能受可见选择影响。
+id | visible fraction | truth mean|u| mm | visible-only mean|u| mm | Ruckig constructor calls
+kmp_ruckig_on | 0.027211 | 20.486051 | 17.865637658590206 | 1
+kmp_ruckig_off_fallback | 0.789116 | 10.481992 | 3.9188468422548137 | 0
+kmp_module_c_bypass | 1.000000 | 1.515120 | 1.5151199743251553 | 0
+kmp_missing_hidden_-0.010 | 0.000000 | 14.152870 | None | 0
+kmp_missing_hidden_+0.010 | 0.000000 | 28.758101 | None | 0
+dmp_ruckig_on | 0.027211 | 24.498697 | 17.97204706504074 | 1
+dmp_ruckig_off_fallback | 0.789116 | 10.980709 | 4.562306939976396 | 0
+dmp_module_c_bypass | 1.000000 | 1.677213 | 1.677213209368841 | 0
+dmp_missing_hidden_-0.010 | 0.000000 | 20.456014 | None | 0
+dmp_missing_hidden_+0.010 | 0.000000 | 25.175444 | None | 0
+primary_ruckig_off_fallback_scheduled_True | 0.996667 | 15.433137 | 15.395794967702646 | 0
+primary_ruckig_off_fallback_scheduled_False | 1.000000 | 10.464748 | 10.46474837012861 | 0
+primary_module_c_bypass_scheduled_True | 0.990000 | 15.640205 | 15.52756223534816 | 0
+primary_module_c_bypass_scheduled_False | 1.000000 | 10.704644 | 10.704644266489453 | 0
+
+关闭Ruckig且保留fallback：KMP/DMP可见率均78.91%，几何平均|u|分别10.482/10.981mm，明显好于Ruckig-on的2.72%，但未恢复完整跟踪。旁路整个Module C：两者均100%可见，误差1.515/1.677mm。故恢复上一轮100%可见率需要本实验中的完整Module C旁路，不能写成只关闭Ruckig即可。Ruckig及fallback闭环动态的根因、时序/速度适配仍未解决。
+
+四、生产主入口范围
+真实 run_closed_loop_servo_on_bent 在 scheduled True/False、Ruckig-off fallback/ModuleC-bypass四组合均完成，无全局别名，所有off配置实际Ruckig构造次数0；回归测试覆盖两种scheduled开关和enable:false合并配置。
+该主入口仍是oracle-assisted参考：bent GT rho/roll、vessel tangent path、VesselOracle、测试anatomy nominal replay会进入控制。此次只修复崩溃和验证配置生效，不把它改称未知目标因果基线；它仍不能用于证明missing-only传感器下的盲获取。所有primary结果单列。
+honest实验也有强先验：vessel-centered预制crop、已知扫描路径演示和测试身体表面；属于预制路径附近的继续扫描/居中，不是从宽人体区域无目标路径启动的首次成像。
+
+五、验证与复现
+22 tests全部通过：4项新增完整loop因果回归、2项新增实际主入口/配置回归、16项已有KMP/DMP算子回归。日志logs/regressions.log。
+命令（Among_US工作目录）：PYTHONPATH=.:src OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 MPLBACKEND=Agg python -m unittest DMP_playground.kmp_honest.test_servo_causality DMP_playground.tests.test_servo_entrypoint DMP_playground.kmp_honest.test_kmp DMP_playground.dmp_honest.test_dmp -v
+完整实验：OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 MPLBACKEND=Agg python /media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/servo/run_repaired_servo.py
+环境：{
+  "python": "/home/camp/.local/bin/python",
+  "python_version": "3.10.12 (main, Aug 31 2026, 10:18:17) [GCC 11.4.0]",
+  "packages": {
+    "numpy": "2.2.6",
+    "scipy": "1.15.3",
+    "matplotlib": "3.10.9",
+    "ruckig": "0.17.3"
+  },
+  "source_sha256": {
+    "/media/camp/EXT_DRIVE/Among_US/DMP_playground/kmp_honest/servo.py": "b775fa3432c2830de7a904786cd2dcbd8af5e9d20a68fa90badd601c4e5bf01d",
+    "/media/camp/EXT_DRIVE/Among_US/DMP_playground/run_trajectory_extraction_demo.py": "60bfbba3db30bb6f969c61b4a5152eba68e5d919bb4f6682f1e85ed54de84a2c",
+    "/media/camp/EXT_DRIVE/Among_US/DMP_playground/kmp_honest/test_servo_causality.py": "94bc76f94459ec00e08ae6f8631a8c507f147421f2a18c9e9fc617f5b5de6fe8",
+    "/media/camp/EXT_DRIVE/Among_US/DMP_playground/tests/test_servo_entrypoint.py": "35974eff571c0d79597f7ef167285dad711c039a83a66261c3404fc410bddf39",
+    "/media/camp/EXT_DRIVE/Among_US/DMP_playground/dmp_honest/servo.py": "c432944e4648cd0ec1850ffb96c39ae093f807f63459078007903e16bfda3fad",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/servo/causal_no_ruckig_config.json": "6802b18d497f6fc600806f2a9af6182a316cabc3dc7e643ea80c259aab4d5d21",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/servo/causal_module_c_bypass_config.json": "5a392766a68375ac62990918a36d55c459a4ad03f94e62060b0247000be1fc19",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/servo/run_repaired_servo.py": "7c0df38df316422e132ed0dc16bcf32aac91e3e67348eaae725ebc3a220ec6b9"
+  },
+  "git_head": "f1ffc5078d6a08c32b59107ab16086a7bbde488e"
+}
+metrics.json记录全部情景有效配置、wall time、构造器计数和因果差值；逐帧NPZ记录p/R、phase、visibility、public测量、truth评价量、confidence、控制输入和重建点。sources.patch记录tracked源差异；source_manifest.json记录新增回归测试及执行文件SHA256。
+执行层级：只执行CPU探头位姿路径模拟和几何接触代理；没有joint关节轨迹层、dIRD可行性、机器人动作、真实力/接触或真实B-mode。此次修复不等价于物理执行控制器验证。

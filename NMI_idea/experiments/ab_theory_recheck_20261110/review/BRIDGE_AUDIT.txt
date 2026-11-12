@@ -1,0 +1,87 @@
+Bounded transport-response bridge appendix — 2026-11-11
+
+The actual atlas/tet -> transported frame -> frozen e3nn prediction interface
+passes the independent two-cell/two-action spot check. This is a production
+geometry plus synthetic response bridge, not independent-patient evidence or
+an ultrasound/controller acquisition result. No training, native replay or
+720913 cohort was run. Earlier sealed audits remain unchanged.
+
+Reviewed run_bridge.py SHA:
+4e1e162aac922ecd370ec975c1033d51eac0659d24f6f48369fbf43347294459
+RESULTS.json SHA:
+ad1b4e7ac37c7d4ee890d7cf5c8a523ab1860c11b0367a5f463267335cb67f3f
+All6 local and20 external entries in the bridge manifest match. The frozen
+e3nn checkpoint is the same b53dd3bc... checkpoint previously audited.
+
+Independent spot check
+For right native tet149507 and left tet225080 at90deg, independently rebuilt
+the circular Kb derivative, X0, J0=X0 Kb^-1 and F=Xp X0^-1 directly from actual
+atlas/posed vertices. Computed t0=unit(J0[:,h]) and n0=-unit(inv(J0)[d,:]),
+then t=unit(Ft0), n=unit(F^-Tn0) and R=[t,(-n)x t,-n].
+J/F match saved arrays exactly; maximum R difference5.56e-17. Direct frozen
+checkpoint predictions for two actions per cell match saved float32 outputs
+within2.99e-8 normalized units. Independently expanded synthetic plant algebra
+matches saved scorer truth within3.47e-9 normalized units. Ordinary tetrahedral
+barycentric positions match the edge reconstruction within2.78e-17m.
+Full details are preserved in BRIDGE_AUDIT_checks.json.
+
+The input/label separation is correct within this declared experiment: the
+network gets s,u,n,t,R and its frozen parameters; generated q_true is used only
+to score. However n/t are known material-coordinate directions, not inferred
+patient vessel/skin directions. The normal is a depth-field covector inside
+the shaft ROI. This does not measure a real probe contact normal or identify
+a hidden blood vessel. No probe-origin/contact/controller loop is exercised.
+
+Why correct rows are identical across legs and poses
+make_actions() generates ONE set of256 scalar contexts and32 local actions,
+outside the leg/pose loops. Those same draws are reused for both legs and all
+seven poses. More strongly, constructing Rx=t and Rz=-n makes
+R^T t=e1 and R^T n=-e3 for every correctly transported cell. Thus all correct
+rows reduce to the same256 synthetic probe-local response problems, differing
+only in their world embedding and small floating-point rounding.
+
+This is a legitimate paired coordinate/transport mechanism test. It is NOT
+512 independent subjects,3584 independent learning tests, or new evidence
+that compliance coefficients transfer under nonrigid tissue deformation.
+Scalar coefficients are held fixed by the synthetic law; no stretch-dependent
+material coefficient is inferred or transported. e3nn's common SO(3) output
+law does not provide a general nonrigid response theorem.
+
+Interpretation of reported results
+Correct e3nn response RMSE is about.0422mm; frozen-world n0/t0 increases it to
+right.249mm/left.227mm at90deg. Correct canonical MLP RMSE is about.234mm.
+These are valid synthetic errors for the frozen models and assumed geometry.
+They demonstrate the cost of supplying stale/wrong geometry to this model.
+They do not measure patient tracking error or prove e3nn necessary. The typed
+model still uses the same structural output basis as the synthetic plant.
+
+The same-candidate oracle success ceiling is.80859375=207/256. Correct e3nn
+reaches that ceiling here, not100% acquisition. The bridge does not include
+fixed-linear/RLS comparisons; the earlier broader module found those strong
+baselines sufficient. Smaller response RMSE need not monotonically improve
+every candidate regret: some wrong-normal rows have smaller sampled regret
+by chance despite larger prediction error. Do not imply otherwise.
+
+Ordinary-tet baseline and attribution
+The implemented ordinary-tet check compares positions, not a separately
+executed full response baseline. With the SAME material directions/labels
+and vertices, ordinary tetrahedral F gives exactly the same transported
+n,t,R and therefore identical frozen-network input/prediction. The spot check
+confirms this shared F construction. Nothing here isolates a unique benefit
+of solving harmonic d versus another valid common material correspondence.
+The domain remains the audited h=.14–.94 annular shaft, not full-leg tissue.
+
+Provenance boundary
+The bridge manifest checks its declared files, assets and weights. It does
+not include the dynamically imported run_corrected.py, parent run_benchmark.py
+or e3nn implementation hashes. This appendix's manifest pins the first two
+and the actual e3nn tensor-product source, together with the bridge manifest;
+the missing transitive hashes do not invalidate the numerical spot check.
+
+Final claim allowed
+“Correct material geometry and vector/covector transport can feed a frozen
+synthetic response model consistently; stale world geometry degrades that
+model in this paired construction.” Do not upgrade this to a nonrigid-learning
+theorem, independent-patient transfer, learned-skill necessity, full B, or real
+ultrasound. The newly delivered inference DEV driver was not independently
+rerun here; the prior audit's owner-reported performance boundary remains.

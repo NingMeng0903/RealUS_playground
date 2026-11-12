@@ -1,0 +1,86 @@
+底层QP命令位姿参考：一致6D前馈与固定4倍重定时
+2026-11-10。只用17个冻结命令pose、生产Cartesian外环/原生QP、
+URDF TCP、理想合法关节反馈。无病人血管真值、图像/力/接触外环或硬件。
+
+实验前冻结PROTOCOL.txt：branch4/no_dird/path0同一q和pose，顺序只跑
+原2cm/s、同速一致6D前馈、0.5cm/s一致6D前馈各一次；.4s soft start、
+2s settle、dt=.005s、相同QP约束/增益。第三组是已预设的整条时间参数
+四倍放慢，平移和Slerp旋转共享时间；不是试错选速。非法q一律在理想
+反馈前拒绝。先前单独离线角FF结果仅作背景，不混入这三次统计。
+
+参考构造的检查
+离线Analytic6DReference继承生产WorldPolylineReference，只将其Slerp
+的世界系SO(3)导数写入vel_ff[3:6]：每段R(u)=R_i Exp(u phi)，
+phi=Log(R_i^T R_j)，omega_base=R_i phi * speed*tau_dot/段长。
+16段中点对中心差分的最大角速度绝对误差：2cm/s 1.332e-10rad/s，
+0.5cm/s 2.891e-11rad/s；位置、姿态、线速度与原参考逐位相同。
+三组保存时刻重新计算的pose与实际日志desired pose矩阵最大差0；
+参考vel_ff每tick在 *_reference.npz。离线包装确实分别调用83/3396步。
+
+完整结果（p95与max绝不互代；同速6D在坏tick截断）
+                         原2cm/s       6D同速2cm/s        6D+0.5cm/s
+运行tick                 1180          83截断             3396完整
+路径/settle tick          779/401       83/0               2995/401
+位置p95 / max (mm)       .106/.603     5.126/5.526        .0838/.8347
+路径位置p95/max (mm)     .104/.110     5.126/5.526        .0304/.3977
+角p95 / max (deg)        7.908/9.074   .213/.351截断       .0400/.0940
+路径角p95/max (deg)      8.107/9.074   .213/.351截断       .0266/.0271
+路径progress p05         .998543       .866186            .999999988
+task paused              0             0                  0
+最小自碰撞距(mm)          40.823        40.944             40.823
+速度最大/限值比           .2612         .3116              .2559
+加速度最大/限值比         .9786         1.0000             1.0000
+jerk最大/限值比          1.000113      1.041889           1.000130
+速度余量最小             +.37209       +.39251            +.37368
+加速度余量最小           +.06413       +2.46e-11          -2.58e-12
+jerk余量最小             -.033958      -13.4045           -.039123
+非法q                    0             tick82             0
+位置与姿态整路最大门      FAIL          FAIL(截断)         PASS
+严格q/v/a/j/碰撞总门     FAIL          FAIL               FAIL
+
+同速6D原生后端在tick82输出rail=-12.949667835m，位置越URDF界，
+桥接器未把命令送入理想反馈。故其截断p95/max不能与完整原速轨迹作
+最终性能比较，也不能用它说明一致6D参考整路成功。此前另一同速角FF
+诊断虽完整，位置p95约6.932mm、角p95约.547°，任务进度下降；这种
+独立诊断同样支持“只补角FF可能抢占平移QP容量”，不代替本次坏tick。
+
+固定4倍重定时的6D组完整通过本次2mm/2°整路最大误差门：
+位置最大.834685mm、姿态最大.094012°，路径段位置最大.397685mm。
+合法q及自碰撞门也通过，速度有余量。可是严格动态门仍失败：
+加速度最小余量-2.578e-12rad/s²属于浮点量级；jerk最小余量
+-.039122776rad/s³，对300rad/s³是0.0130%，在tick2296的关节6。
+有188个coordinate-tick jerk值严格超过对应限值。生产配置
+inner.qp.eps_abs=1e-6；native速度箱的jerk宽度为j_max*dt²，
+因此最大超量映射回速度箱约.039122776*.005²=9.781e-7rad/s，
+与求解绝对容差同量级。这是数值来源的合理解释，不是自动豁免；
+预先冻结的严格>=0验收仍为失败，未改限值、阈值或结果。
+两腿/任意路径/真实硬件都未验证，且native非法rail根因未消除。
+
+因此当前能说：所选branch4命令probe参考在离线理想反馈下，
+一致6D前馈+预定放慢使位姿误差同时进入2mm/2°；不能说所有机械
+约束已经严格合格或可以部署。模版SMPL-X/概率血管先验可以给出名义
+扫描路径；本角速度前馈只是选定命令轨迹的时间导数，不是对未知真人
+组织/血管运动速度的预知。
+
+生产源码决策
+本次只新增qp_reference_followup/离线参考包装与实验文件；没有
+改生产reference.py、QP C++、二进制、硬件配置或默认速度。原因是
+同速6D出现原生非法rail，固定重定时仍未过严格jerk门。下一步若要
+生产窄补，应把相同Slerp导数作为可选6D参考，配套统一重定时，
+并先定位native rail状态/发布防护；再在冻结+持出路径做完整严格门。
+单独全局打开角FF会改变已有轨迹的QP负载，不可按本次pose通过直接启用。
+
+证据与复现
+PROTOCOL.txt、run_reference_protocol.py、RESULTS.json、三组*_trace.npz、
+三组*_reference.npz、derive_reference_velocities.py。输入为
+../audit/phase2_native_subset_inputs.npz。RESULTS.json含配置/源指纹、
+逐组失败快照和完整每坐标限值/统计；trace含逐tick q/qdot/导数、
+pose、progress、碰撞及QP状态。三组一轮运行，无重试；本次复核
+仅从封存trace重算参考速度，没有重跑QP。
+
+SHA256：PROTOCOL 2f0997f6bd120ec61bfb889a0d0758384b195532c37926b4c651a9cd09c24cd8
+runner 40a2fa8dd903224f6a8959e7668b0d07cef2239e6bce7eff4b24d5cd184ef837
+RESULTS 1b9edf5d97e921ad4af2285ec7879f38bdb2242906d48385af125eda066fb856
+original trace b4df5e453eda51a645bf5a30882b6d84a64e220d820d58fbe7c21d123642b8e7
+6D2cm trace 292ec72125d4dfe6c1330b4584d93176e25a711dc7e7078295d5e007caf71827
+6D0.5cm trace 9be22e6af3d5893c647768f5795fac58d95a34efffe822ba3cfac9f50c402b6b

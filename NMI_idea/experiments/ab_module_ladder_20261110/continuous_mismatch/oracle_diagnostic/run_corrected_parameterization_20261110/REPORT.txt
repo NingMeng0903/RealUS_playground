@@ -1,0 +1,27 @@
+ORACLE_LEAKED_TRUTH corrected parameterization diagnostic
+status=complete episodes=16/16
+Posthoc input-contract correction only; original oracle and legal A/B outputs are excluded and unchanged.
+original oracle RESULTS hash unchanged=True
+GT hashes match sealed legal/original oracle=True
+all parameterization equivalence checks passed=True
+host wall seconds=6.564738; native replay run=False
+
+Corrected oracle by condition:
+  iid: {'n': 8, 'completed': 8, 'failures': 0, 'correct_public_stops': 5, 'false_public_stops': 1, 'public_stops': 6, 'ever_audit_quality': 7, 'mean_RMT_s': 23.68482822745292, 'actions': 24, 'min_raw_ess': 1.0, 'max_posterior_weight': 1.0}
+  shifted: {'n': 8, 'completed': 8, 'failures': 0, 'correct_public_stops': 5, 'false_public_stops': 1, 'public_stops': 6, 'ever_audit_quality': 7, 'mean_RMT_s': 24.638282922916495, 'actions': 34, 'min_raw_ess': 1.0, 'max_posterior_weight': 1.0}
+
+Original oracle context (copied descriptively; not merged):
+  iid: {'n': 8, 'completed': 8, 'failures': 0, 'correct_public_stops': 5, 'false_public_stops': 1, 'public_stops': 6, 'ever_audit_quality': 7, 'mean_RMT_s': 23.686755972954153, 'actions': 24, 'min_raw_ess': 1.0, 'max_posterior_weight': 1.0}
+  shifted: {'n': 8, 'completed': 8, 'failures': 0, 'correct_public_stops': 0, 'false_public_stops': 1, 'public_stops': 1, 'ever_audit_quality': 0, 'mean_RMT_s': 60.0, 'actions': 48, 'min_raw_ess': 1.0, 'max_posterior_weight': 1.0}
+
+Legal finite-prior A context (copied descriptively; not merged):
+  iid: {'n': 8, 'completed': 8, 'failures': 0, 'correct_public_stops': 0, 'false_public_stops': 0, 'mean_RMT_s': 60.0, 'median_RMT_s': 60.0, 'mean_actions': 6.0, 'any_mismatch_warning': True, 'min_raw_ess': 1.0, 'max_posterior_weight': 1.0, 'min_unique_effective_support': 1}
+  shifted: {'n': 8, 'completed': 8, 'failures': 0, 'correct_public_stops': 0, 'false_public_stops': 0, 'mean_RMT_s': 60.0, 'median_RMT_s': 60.0, 'mean_actions': 6.0, 'any_mismatch_warning': True, 'min_raw_ess': 1.0, 'max_posterior_weight': 1.0, 'min_unique_effective_support': 1}
+
+Interpretation: known-anatomy comparison, not a mathematical performance upper bound.
+A_continuous_servo retains its public-quality heuristic and finite candidate family;
+it is not guaranteed to choose a globally optimal imaging action.  Known-anatomy
+failure alone does not prove geometry infeasibility or six-action-budget causality.
+
+ORACLE_LEAKED_TRUTH is intentionally uppercase and must remain visible downstream.
+RESULTS.json sha256=70b423baaf48f5e15a0a984f55a908366e8edcc57f369ebe60fbc6ba4a464165

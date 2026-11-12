@@ -1,0 +1,831 @@
+{
+  "alias": {
+    "completed_noiseless_max_abs_difference": 0.3999999999999999,
+    "j_minus": [
+      [
+        1.0,
+        0.0
+      ],
+      [
+        0.0,
+        1.2
+      ]
+    ],
+    "j_plus": [
+      [
+        1.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.8
+      ]
+    ],
+    "no_excitation_noiseless_max_abs_difference": 0.0,
+    "rotation_future_difference": [
+      0.0,
+      -0.19999999999999996
+    ],
+    "rotation_future_difference_l2": 0.19999999999999996,
+    "rotation_future_minus": [
+      0.0,
+      0.6
+    ],
+    "rotation_future_plus": [
+      0.0,
+      0.4
+    ],
+    "same_first_column": true,
+    "statement": "The no-excitation public distributions are identical under the same independent Gaussian noise law; the coupled noiseless check is exactly zero."
+  },
+  "controller": {
+    "completed_excitation": {
+      "action_clip": 2.0,
+      "clip_any_count": 0,
+      "clip_any_rate": 0.0,
+      "n": 512,
+      "residual_component_p95": [
+        0.010347895972662412,
+        0.010448776377257728
+      ],
+      "residual_metrics": {
+        "component_mae": [
+          0.0034524193865291524,
+          0.0035130109115690837
+        ],
+        "component_mean_signed": [
+          -3.4989290015128015e-05,
+          0.0001405864484619779
+        ],
+        "component_rmse": [
+          0.004762863442539387,
+          0.004885943241802067
+        ],
+        "l2_max": 0.026003884868074784,
+        "l2_mean": 0.00550951686971877,
+        "l2_median": 0.004664905734964999,
+        "l2_p95": 0.012618744420448086,
+        "l2_rmse": 0.006823291693485587,
+        "linf_max": 0.022273337734480148,
+        "linf_mean": 0.005000786581290672,
+        "linf_p95": 0.011775855451897292,
+        "n": 512
+      },
+      "success_count": 512,
+      "success_rate": 1.0,
+      "success_threshold_linf": 0.08,
+      "target_limit": 0.3
+    },
+    "no_excitation": {
+      "action_clip": 2.0,
+      "clip_any_count": 0,
+      "clip_any_rate": 0.0,
+      "n": 512,
+      "residual_component_p95": [
+        0.21158532969349453,
+        0.27030411507703284
+      ],
+      "residual_metrics": {
+        "component_mae": [
+          0.06970323439949043,
+          0.12291690847333459
+        ],
+        "component_mean_signed": [
+          -0.004047658709234789,
+          0.007805071541012736
+        ],
+        "component_rmse": [
+          0.09687526548075362,
+          0.15101506263494044
+        ],
+        "l2_max": 0.40304227061699993,
+        "l2_mean": 0.15293142738744597,
+        "l2_median": 0.14425276253260455,
+        "l2_p95": 0.30981461880005945,
+        "l2_rmse": 0.17941673891976048,
+        "linf_max": 0.3369852923171819,
+        "linf_mean": 0.1386659918409902,
+        "linf_p95": 0.27701870234588427,
+        "n": 512
+      },
+      "success_count": 153,
+      "success_rate": 0.298828125,
+      "success_threshold_linf": 0.08,
+      "target_limit": 0.3
+    }
+  },
+  "covariance_validation": {
+    "completed_excitation": {
+      "combined": {
+        "empirical_centered_cov": [
+          [
+            0.00010668842717462578,
+            1.5675143148163677e-06
+          ],
+          [
+            1.5675143148163677e-06,
+            0.00010765094028259857
+          ]
+        ],
+        "fro_cov_difference": 4.42351403629293e-06,
+        "max_abs_cov_difference": 3.1449061587075544e-06,
+        "mean_query_error_including_bias": [
+          -1.672220994134274e-05,
+          -4.179924614941243e-05
+        ],
+        "n_replicates": 4096,
+        "note": "For an unidentifiable query, the centered covariance tests only estimator noise; the nonzero mean is missing-direction bias.",
+        "query": "combined",
+        "theoretical_cov": [
+          [
+            0.00010983333333333334,
+            0.0
+          ],
+          [
+            0.0,
+            0.00010983333333333334
+          ]
+        ]
+      },
+      "rotation": {
+        "empirical_centered_cov": [
+          [
+            0.00013547188232024282,
+            -7.998789160133127e-07
+          ],
+          [
+            -7.998789160133127e-07,
+            0.00013368077524508192
+          ]
+        ],
+        "fro_cov_difference": 2.4441195167209674e-06,
+        "max_abs_cov_difference": 2.138548986909479e-06,
+        "mean_query_error_including_bias": [
+          -0.00019565685181325497,
+          -0.00030258539574085325
+        ],
+        "n_replicates": 4096,
+        "note": "For an unidentifiable query, the centered covariance tests only estimator noise; the nonzero mean is missing-direction bias.",
+        "query": "rotation",
+        "theoretical_cov": [
+          [
+            0.00013333333333333334,
+            0.0
+          ],
+          [
+            0.0,
+            0.00013333333333333334
+          ]
+        ]
+      },
+      "translation": {
+        "empirical_centered_cov": [
+          [
+            5.107387562245139e-05,
+            -2.2967063613097945e-07
+          ],
+          [
+            -2.2967063613097945e-07,
+            4.817731106904351e-05
+          ]
+        ],
+        "fro_cov_difference": 2.140303948911995e-06,
+        "max_abs_cov_difference": 1.8226889309564897e-06,
+        "mean_query_error_including_bias": [
+          -7.669838251724568e-05,
+          0.00016063915172401347
+        ],
+        "n_replicates": 4096,
+        "note": "For an unidentifiable query, the centered covariance tests only estimator noise; the nonzero mean is missing-direction bias.",
+        "query": "translation",
+        "theoretical_cov": [
+          [
+            5e-05,
+            0.0
+          ],
+          [
+            0.0,
+            5e-05
+          ]
+        ]
+      }
+    },
+    "no_excitation": {
+      "combined": {
+        "empirical_centered_cov": [
+          [
+            2.2197004146343738e-05,
+            -2.2626910966033645e-07
+          ],
+          [
+            -2.2626910966033645e-07,
+            2.247670816678499e-05
+          ]
+        ],
+        "fro_cov_difference": 3.8663533132153257e-07,
+        "max_abs_cov_difference": 2.2626910966033645e-07,
+        "mean_query_error_including_bias": [
+          0.04762342488401217,
+          0.5045830394345941
+        ],
+        "n_replicates": 4096,
+        "note": "For an unidentifiable query, the centered covariance tests only estimator noise; the nonzero mean is missing-direction bias.",
+        "query": "combined",
+        "theoretical_cov": [
+          [
+            2.24e-05,
+            0.0
+          ],
+          [
+            0.0,
+            2.24e-05
+          ]
+        ]
+      },
+      "rotation": {
+        "empirical_centered_cov": [
+          [
+            1.3220353510251742e-29,
+            3.1890318391141606e-29
+          ],
+          [
+            3.1890318391141606e-29,
+            7.692626421069273e-29
+          ]
+        ],
+        "fro_cov_difference": 9.014661772094447e-29,
+        "max_abs_cov_difference": 7.692626421069273e-29,
+        "mean_query_error_including_bias": [
+          -0.05962145096905288,
+          -0.6308724902096408
+        ],
+        "n_replicates": 4096,
+        "note": "For an unidentifiable query, the centered covariance tests only estimator noise; the nonzero mean is missing-direction bias.",
+        "query": "rotation",
+        "theoretical_cov": [
+          [
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0
+          ]
+        ]
+      },
+      "translation": {
+        "empirical_centered_cov": [
+          [
+            4.676251446358215e-05,
+            9.55378562293909e-07
+          ],
+          [
+            9.55378562293909e-07,
+            4.670034027128607e-05
+          ]
+        ],
+        "fro_cov_difference": 1.9739765689628298e-06,
+        "max_abs_cov_difference": 1.0482287492964289e-06,
+        "mean_query_error_including_bias": [
+          -0.00012880925485251699,
+          -2.7439663725873598e-05
+        ],
+        "n_replicates": 4096,
+        "note": "For an unidentifiable query, the centered covariance tests only estimator noise; the nonzero mean is missing-direction bias.",
+        "query": "translation",
+        "theoretical_cov": [
+          [
+            4.571428571428572e-05,
+            0.0
+          ],
+          [
+            0.0,
+            4.571428571428572e-05
+          ]
+        ]
+      }
+    }
+  },
+  "geometry": {
+    "completed_excitation": {
+      "combined": {
+        "f_shape": [
+          8,
+          12
+        ],
+        "g_shape": [
+          2,
+          12
+        ],
+        "ker_inclusion_holds_at_1e-10": true,
+        "ker_inclusion_residual_fro": 3.487700151406421e-16,
+        "rank_F_full_theta": 6,
+        "rank_G": 2,
+        "rank_G_identifiable_part": 2,
+        "rank_G_unknown_part": 0
+      },
+      "rotation": {
+        "f_shape": [
+          8,
+          12
+        ],
+        "g_shape": [
+          2,
+          12
+        ],
+        "ker_inclusion_holds_at_1e-10": true,
+        "ker_inclusion_residual_fro": 4.1583398981892045e-16,
+        "rank_F_full_theta": 6,
+        "rank_G": 2,
+        "rank_G_identifiable_part": 2,
+        "rank_G_unknown_part": 0
+      },
+      "translation": {
+        "f_shape": [
+          8,
+          12
+        ],
+        "g_shape": [
+          2,
+          12
+        ],
+        "ker_inclusion_holds_at_1e-10": true,
+        "ker_inclusion_residual_fro": 1.8665132809273013e-16,
+        "rank_F_full_theta": 6,
+        "rank_G": 2,
+        "rank_G_identifiable_part": 2,
+        "rank_G_unknown_part": 0
+      }
+    },
+    "no_excitation": {
+      "combined": {
+        "f_shape": [
+          8,
+          12
+        ],
+        "g_shape": [
+          2,
+          12
+        ],
+        "ker_inclusion_holds_at_1e-10": false,
+        "ker_inclusion_residual_fro": 0.5656854249492381,
+        "rank_F_full_theta": 4,
+        "rank_G": 2,
+        "rank_G_identifiable_part": 2,
+        "rank_G_unknown_part": 2
+      },
+      "rotation": {
+        "f_shape": [
+          8,
+          12
+        ],
+        "g_shape": [
+          2,
+          12
+        ],
+        "ker_inclusion_holds_at_1e-10": false,
+        "ker_inclusion_residual_fro": 0.7071067811865476,
+        "rank_F_full_theta": 4,
+        "rank_G": 2,
+        "rank_G_identifiable_part": 0,
+        "rank_G_unknown_part": 2
+      },
+      "translation": {
+        "f_shape": [
+          8,
+          12
+        ],
+        "g_shape": [
+          2,
+          12
+        ],
+        "ker_inclusion_holds_at_1e-10": true,
+        "ker_inclusion_residual_fro": 2.608000033232708e-16,
+        "rank_F_full_theta": 4,
+        "rank_G": 2,
+        "rank_G_identifiable_part": 2,
+        "rank_G_unknown_part": 0
+      }
+    }
+  },
+  "protocol": {
+    "actions_completed_excitation": [
+      [
+        0.0,
+        0.0
+      ],
+      [
+        -1.0,
+        0.0
+      ],
+      [
+        1.0,
+        0.0
+      ],
+      [
+        0.0,
+        1.0
+      ]
+    ],
+    "actions_no_excitation": [
+      [
+        0.0,
+        0.0
+      ],
+      [
+        -1.0,
+        0.0
+      ],
+      [
+        1.0,
+        0.0
+      ],
+      [
+        0.5,
+        0.0
+      ]
+    ],
+    "controller_threshold": 0.08,
+    "n_nuisance": 6,
+    "n_subjects": 512,
+    "queries": {
+      "combined": [
+        0.35,
+        -0.4
+      ],
+      "rotation": [
+        0.0,
+        0.5
+      ],
+      "translation": [
+        0.5,
+        0.0
+      ]
+    },
+    "seed": 720940,
+    "sigma": 0.02,
+    "theta_dim": 12
+  },
+  "sample_summary": {
+    "c_max": [
+      9.986693645503525,
+      9.997894386209026
+    ],
+    "c_min": [
+      -9.947699290579441,
+      -9.998686035832904
+    ],
+    "jacobian_fro_max": 1.816989364591642,
+    "jacobian_fro_min": 1.0117310863893763,
+    "nuisance_max": [
+      0.9987532476734475,
+      0.9933125348354455,
+      0.9988946433595651,
+      0.9890646782127788,
+      0.9973283920671867,
+      0.9987523347003275
+    ],
+    "nuisance_min": [
+      -0.9957020485078927,
+      -0.9991974321058528,
+      -0.998652137659295,
+      -0.9983737476702379,
+      -0.9973964505416988,
+      -0.9981029252694626
+    ]
+  },
+  "summaries": {
+    "completed_excitation": {
+      "combined": {
+        "component_mae": [
+          0.008424697691612502,
+          0.007847010926828985
+        ],
+        "component_mean_signed": [
+          8.632451639021383e-05,
+          0.0003811400870109042
+        ],
+        "component_rmse": [
+          0.010410751597575457,
+          0.009841305530847447
+        ],
+        "component_rmse_physical_mm_or_deg": [
+          0.020821503195150914,
+          0.019682611061694895
+        ],
+        "l2_max": 0.03780967297418445,
+        "l2_mean": 0.012823450333985178,
+        "l2_median": 0.012216394917378852,
+        "l2_p95": 0.024433146157697625,
+        "l2_rmse": 0.014326026782674547,
+        "linf_max": 0.03289000203485831,
+        "linf_mean": 0.011570393745808826,
+        "linf_p95": 0.02315712497398197,
+        "n": 512
+      },
+      "fixed_J_identity": {
+        "combined": {
+          "component_mae": [
+            0.18578222325092872,
+            0.1775692433542245
+          ],
+          "component_mean_signed": [
+            0.057907472362593325,
+            -0.08832818428291801
+          ],
+          "component_rmse": [
+            0.24402845474788037,
+            0.24295731660139663
+          ],
+          "component_rmse_physical_mm_or_deg": [
+            0.48805690949576075,
+            0.48591463320279327
+          ],
+          "l2_max": 0.8023294993367456,
+          "l2_mean": 0.2907580032457006,
+          "l2_median": 0.24740577811239822,
+          "l2_p95": 0.6350715437265434,
+          "l2_rmse": 0.34435177423209196,
+          "linf_max": 0.7946084143029359,
+          "linf_mean": 0.26617112001732846,
+          "linf_p95": 0.6098678551785154,
+          "n": 512
+        },
+        "rotation": {
+          "component_mae": [
+            0.23337982564243404,
+            0.13058174091600414
+          ],
+          "component_mean_signed": [
+            0.010518141874680325,
+            0.10398172072748822
+          ],
+          "component_rmse": [
+            0.2786555362962569,
+            0.17203746911840914
+          ],
+          "component_rmse_physical_mm_or_deg": [
+            0.5573110725925138,
+            0.3440749382368183
+          ],
+          "l2_max": 0.7473163881906935,
+          "l2_mean": 0.2783554420267593,
+          "l2_median": 0.24087873026474907,
+          "l2_p95": 0.5820306187745208,
+          "l2_rmse": 0.3274840434116174,
+          "linf_max": 0.6088460398898975,
+          "linf_mean": 0.24291855591817685,
+          "linf_p95": 0.4840456545739122,
+          "n": 512
+        },
+        "translation": {
+          "component_mae": [
+            0.12373192642877695,
+            0.23495332685947792
+          ],
+          "component_mean_signed": [
+            0.09474569408905373,
+            -0.007346868144181899
+          ],
+          "component_rmse": [
+            0.166581222616964,
+            0.2797054626461263
+          ],
+          "component_rmse_physical_mm_or_deg": [
+            0.333162445233928,
+            0.5594109252922526
+          ],
+          "l2_max": 0.7690929257896957,
+          "l2_mean": 0.2766876103231799,
+          "l2_median": 0.23661982263934445,
+          "l2_p95": 0.5996743121162038,
+          "l2_rmse": 0.3255525296517385,
+          "linf_max": 0.6146214124065107,
+          "linf_mean": 0.24402705782815134,
+          "linf_p95": 0.4886390076416508,
+          "n": 512
+        }
+      },
+      "rotation": {
+        "component_mae": [
+          0.008917275690313916,
+          0.008864571522247533
+        ],
+        "component_mean_signed": [
+          2.4059742586979275e-05,
+          -0.0003094313282508194
+        ],
+        "component_rmse": [
+          0.011105255410922318,
+          0.011021307879237843
+        ],
+        "component_rmse_physical_mm_or_deg": [
+          0.022210510821844637,
+          0.022042615758475687
+        ],
+        "l2_max": 0.03369238738398738,
+        "l2_mean": 0.014046616294234506,
+        "l2_median": 0.013251838480407011,
+        "l2_p95": 0.026132142042875416,
+        "l2_rmse": 0.015645955551220565,
+        "linf_max": 0.03221820070712206,
+        "linf_mean": 0.012713346938451768,
+        "linf_p95": 0.023943184421383167,
+        "n": 512
+      },
+      "translation": {
+        "component_mae": [
+          0.0056653818814844875,
+          0.005502424143011941
+        ],
+        "component_mean_signed": [
+          0.00015081758637113988,
+          0.00019085003487178534
+        ],
+        "component_rmse": [
+          0.007053909786281812,
+          0.00684108218821695
+        ],
+        "component_rmse_physical_mm_or_deg": [
+          0.014107819572563624,
+          0.0136821643764339
+        ],
+        "l2_max": 0.022651080130881948,
+        "l2_mean": 0.008709309008282713,
+        "l2_median": 0.008359812839721228,
+        "l2_p95": 0.016998075725906846,
+        "l2_rmse": 0.009826395513052665,
+        "linf_max": 0.02065322872876274,
+        "linf_mean": 0.007810154115713147,
+        "linf_p95": 0.015604324638940768,
+        "n": 512
+      }
+    },
+    "no_excitation": {
+      "combined": {
+        "component_mae": [
+          0.18670607145586784,
+          0.31708080648542786
+        ],
+        "component_mean_signed": [
+          -0.008315103075356413,
+          0.31689963568093743
+        ],
+        "component_rmse": [
+          0.2229600488480213,
+          0.33538646414864287
+        ],
+        "component_rmse_physical_mm_or_deg": [
+          0.4459200976960426,
+          0.6707729282972857
+        ],
+        "l2_max": 0.5187467952754143,
+        "l2_mean": 0.3981226935460014,
+        "l2_median": 0.396837513474782,
+        "l2_p95": 0.498513083646037,
+        "l2_rmse": 0.4027347312021165,
+        "linf_max": 0.513938373356158,
+        "linf_mean": 0.35999695553882555,
+        "linf_p95": 0.47353512415342014,
+        "n": 512
+      },
+      "fixed_J_identity": {
+        "combined": {
+          "component_mae": [
+            0.18578222325092872,
+            0.1775692433542245
+          ],
+          "component_mean_signed": [
+            0.057907472362593325,
+            -0.08832818428291801
+          ],
+          "component_rmse": [
+            0.24402845474788037,
+            0.24295731660139663
+          ],
+          "component_rmse_physical_mm_or_deg": [
+            0.48805690949576075,
+            0.48591463320279327
+          ],
+          "l2_max": 0.8023294993367456,
+          "l2_mean": 0.2907580032457006,
+          "l2_median": 0.24740577811239822,
+          "l2_p95": 0.6350715437265434,
+          "l2_rmse": 0.34435177423209196,
+          "linf_max": 0.7946084143029359,
+          "linf_mean": 0.26617112001732846,
+          "linf_p95": 0.6098678551785154,
+          "n": 512
+        },
+        "rotation": {
+          "component_mae": [
+            0.23337982564243404,
+            0.13058174091600414
+          ],
+          "component_mean_signed": [
+            0.010518141874680325,
+            0.10398172072748822
+          ],
+          "component_rmse": [
+            0.2786555362962569,
+            0.17203746911840914
+          ],
+          "component_rmse_physical_mm_or_deg": [
+            0.5573110725925138,
+            0.3440749382368183
+          ],
+          "l2_max": 0.7473163881906935,
+          "l2_mean": 0.2783554420267593,
+          "l2_median": 0.24087873026474907,
+          "l2_p95": 0.5820306187745208,
+          "l2_rmse": 0.3274840434116174,
+          "linf_max": 0.6088460398898975,
+          "linf_mean": 0.24291855591817685,
+          "linf_p95": 0.4840456545739122,
+          "n": 512
+        },
+        "translation": {
+          "component_mae": [
+            0.12373192642877695,
+            0.23495332685947792
+          ],
+          "component_mean_signed": [
+            0.09474569408905373,
+            -0.007346868144181899
+          ],
+          "component_rmse": [
+            0.166581222616964,
+            0.2797054626461263
+          ],
+          "component_rmse_physical_mm_or_deg": [
+            0.333162445233928,
+            0.5594109252922526
+          ],
+          "l2_max": 0.7690929257896957,
+          "l2_mean": 0.2766876103231799,
+          "l2_median": 0.23661982263934445,
+          "l2_p95": 0.5996743121162038,
+          "l2_rmse": 0.3255525296517385,
+          "linf_max": 0.6146214124065107,
+          "linf_mean": 0.24402705782815134,
+          "linf_p95": 0.4886390076416508,
+          "n": 512
+        }
+      },
+      "rotation": {
+        "component_mae": [
+          0.23337982564243404,
+          0.39624652319288917
+        ],
+        "component_mean_signed": [
+          0.010518141874680325,
+          -0.39601827927251143
+        ],
+        "component_rmse": [
+          0.2786555362962569,
+          0.4190646370826097
+        ],
+        "component_rmse_physical_mm_or_deg": [
+          0.5573110725925138,
+          0.8381292741652194
+        ],
+        "l2_max": 0.6432691987936824,
+        "l2_mean": 0.497554141312657,
+        "l2_median": 0.49442871594220694,
+        "l2_p95": 0.6254247058973536,
+        "l2_rmse": 0.5032534927466811,
+        "linf_max": 0.642351099517721,
+        "linf_mean": 0.4498411615172226,
+        "linf_p95": 0.5940295035885117,
+        "n": 512
+      },
+      "translation": {
+        "component_mae": [
+          0.005260741027873417,
+          0.005366787344664673
+        ],
+        "component_mean_signed": [
+          0.00014201489198265764,
+          0.00012144608989698465
+        ],
+        "component_rmse": [
+          0.0066179798724163635,
+          0.006615173433210062
+        ],
+        "component_rmse_physical_mm_or_deg": [
+          0.013235959744832727,
+          0.013230346866420124
+        ],
+        "l2_max": 0.022958587253377512,
+        "l2_mean": 0.008305175241088857,
+        "l2_median": 0.007761243420581462,
+        "l2_p95": 0.01606842298920904,
+        "l2_rmse": 0.009357252649317334,
+        "linf_max": 0.020567701990222897,
+        "linf_mean": 0.007450280300156511,
+        "linf_p95": 0.014426335566013164,
+        "n": 512
+      }
+    }
+  }
+}

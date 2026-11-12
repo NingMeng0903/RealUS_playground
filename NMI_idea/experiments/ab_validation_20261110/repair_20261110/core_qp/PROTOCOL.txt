@@ -1,0 +1,84 @@
+QP CAPABILITY REPAIR PROTOCOL — frozen before core QP graph performance
+2026-11-10. Original core/* is frozen and is not modified.
+
+ARCHITECTURE CORRECTION
+Old exact_validated describes one finite SRS-grid lift, not whether UltraPOC's
+actual online JointIkController can execute the pose command. Its failures must
+not be promoted to pose-path or system unreachability. The new test calls the
+real production Cartesian track outer + JointIkController.update QP offline.
+This is ideal measured-state replay, not hardware/contact/ultrasound validation.
+
+FIXED COMPARISON POPULATION
+Exactly the old 192 (context,history,action) TCP pose sequences from
+../../core/graph.json:3 fixed placements,13 history nodes/context,64 edges/context.
+No pose path/target/candidate/seed selection after QP results. Original root q,
+probe45 URDF TCP, path geometry, sensor maps/likelihood parameters,24 broad
+beliefs/placement, A coefficients, seeds, task losses and original nominal
+costs remain. Each descendant uses the actual QP exit state of its own parent;
+its reference TCP sequence remains the frozen old sequence (departure tracking
+error is measured rather than silently regenerating an easier path).
+
+QP RUNTIME / TCP / PLANT
+Primary uses backend=python and tcp_mode=urdf to preserve the frozen physical
+probe45 URDF/checkpoint coordinate contract. Cached TCP is a separately labelled
+sensitivity only; current live active tool is not known. Use production config
+and actual controller/track code, dt=.005s, speed=.02m/s, .4s soft-start,
+fixed2s endpoint holding; no per-result slowing or longer settling. Observation
+is acquired during final.4s of this hold. Sensor output affects posterior, not
+physical state within an already-completed edge. The plant model is
+q_meas[k+1]=actual q_send[k], rail measurement from the previous command;
+no actuator dynamics, delay, force, contact or physical ultrasound are modeled.
+Pilot separate12-path cached-TCP diagnostics were visible before this protocol;
+none is an outcome of the primary192-edge urdf graph. Its timing informs only
+resource estimates. The2mm/2degree gate is the dIRD worker's predeclared
+engineering diagnosis gate, not a production arrival default.
+
+CONTINUOUS STATE REQUIREMENT / STOP GATE
+A valid history graph must propagate all controller state affecting continuation,
+not only q: current q_cmd, previous velocities/accelerations, rail execution and
+any solver/planner memory identified by the controller implementation. Branches
+must restore the same public physical state, with no hidden-target information.
+If the replay API resets these per edge and cannot snapshot/restore them, do
+NOT label edge tests a continuous B capability graph and do NOT reuse old B
+mechanical gains. Report fixed-edge mechanism results and the concrete missing
+state contract; a reset-policy result is only a separate restricted experiment.
+Any unsupported source history remains explicitly marked unreachable under its
+policy; no hidden state or oracle q reset may make a descendant reachable.
+
+PRIMARY PER-EDGE ENGINEERING GATE (fixed before graph outcomes)
+- Actual production controller/runtime/config/robot/TCP hashes recorded.
+- No exception or latched solver fault; finite q/state at every control tick.
+- Maximum actual-vs-current-reference position error <=.002m and orientation
+  geodesic error <=2degrees over every replay tick, including departure/hold.
+- Joint-limit minimum margin >=-1e-8 in every coordinate.
+- Every-tick configured35-pair mesh self-distance >=.01m, with finite results.
+- Velocity margin >=-1e-5; acceleration margin >=-1e-4 versus active cfg limits.
+- Exit pose and full controller state are retained, never nominally overwritten.
+Record all QP statuses, hard residuals, jerk extrema/soft-limit margin, tracking
+mean/p95/max/final errors, tick/total compute time and simulated duration.
+Jerk is reported separately because the production treatment may be soft;
+no retrospective hard jerk threshold is invented. Finite tick checks are not a
+continuous collision, velocity, contact or safety certificate.
+Secondary gate5mm/5degrees is prespecified with all other criteria unchanged;
+it never replaces the primary gate or causes scene deletion.
+
+B RE-EVALUATION (only if continuous-state contract is valid)
+Same original main finite sensor and learned-A response sensor extension, priors,
+full-belief greedy, horizon-matched open-loop, B contingent, entropy, no-cap,
+no-dIRD-proxy, collapsed belief and full-history exact reference as before.
+Original nominal-cost analysis isolates the mechanical-model replacement.
+Separately re-optimize/evaluate every method with actual simulated action time
+(including soft-start/settling/observation hold) to avoid free execution overhead.
+Report mechanical-state differences, success/wrong/explicitfail/invalid outcomes,
+expected taskloss+cost, executed observations, costs and all setup/runtime work.
+Keep zeros, adverse cases, unreachable contexts and model-mismatch outcomes.
+Exact reference agreement is correctness under the declared graph, not novelty.
+If only fixed-edge replay is possible, B mechanical comparison remains unverified.
+
+COMPUTE / REPRODUCTION
+One frozen192-edge graph pass, with deterministic history ordering. Parallelize
+independent public contexts/nodes only with independent controller instances or
+verified state clones. Worker pilot is~12s for1180 ticks; nominal192-edge cost
+is~25–40 CPU-min, potentially5–10 wall-min with6 independent workers. State API
+may reduce available parallelism. Record actual timing, errors and every attempt.
+Do not invoke hardware/session/robot bindings or change production assets.

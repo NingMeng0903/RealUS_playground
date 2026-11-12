@@ -1,0 +1,97 @@
+A/B theory recheck and failure-to-success mechanism study
+Continuation of the registered20261110 work; primary records are immutable.
+
+Goal
+Identify a correct and useful mechanism, not adjust the conclusion until B wins.
+Keep V9.3 as implementation basis and V6.1 terminal posterior risk. No new
+theorem about robot global path continuity is required. The repaired native
+controller, preserved secondary preferences and checked local setup are the
+execution baseline; use of dIRD remains within its audited witness-proxy scope.
+
+What the earlier failures did and did not test
+Earlier A was analytic geometry, not newly learned acoustic/response skills.
+Continuous GT0/8 used a32-world fixed support, so new anatomy could never move
+outside that bank. B was an approximate two-step finite-belief planner and did
+not beat the strong analytic A. Neither score justifies declaring the user's
+conditional-response idea false or B superior. Prior physical/anatomy data
+remain distinct from controller-visible evidence.
+
+Mechanism1: action-query identifiability (A)
+The anatomy/response parameter need not be globally identifiable if all future
+task-relevant response queries are identifiable. In a declared local linear
+model y=F theta+noise and response query G theta, ker(F) subset ker(G) is the
+appropriate noiseless criterion. Location nuisance can cancel in relative
+responses, but actual target registration remains relevant to acquisition.
+Equal-number translation-only versus translation+yaw probes test the predicted
+failure boundary. Use an adaptive least-squares/RLS baseline, not only a fixed
+wrong Jacobian. Small mathematical examples validate mechanism, not clinical
+ultrasound or neural-network necessity. Root-owned worker protocol gives512
+fixed simulated subjects and a frozen noisy response task.
+
+Mechanism2: online continuous patient correction (shared prerequisite)
+Use existing exact polyline/slab/FOV geometric sensor and its persistent target
+and decoy. Do not change the true renderer, noise,15mm/2mm/identity/public-stop
+gate, audit10deg condition or quality definition to create success.
+Compare fixed32, fixed128 and likelihood-tempered resample-move128, the latter
+two starting from EXACTLY the same128 public prior draws (seed720901). No GT
+is appended, supplied to a candidate generator or used by any posterior update.
+New inference is an engineering/statistical repair, not claimed new theory.
+
+First module experiment uses matched public histories, isolating inference:
+- DEV GT seed720902, initially2 objects. These may be inspected for correctness
+  and development; any parameter changes documented before the locked cohort.
+- Locked GT seed720913,16 objects, paired IID and shifted conditions. Do not
+  instantiate until review/release. Shift is +8mm common registration and +.10
+  slope encoded as a linear residual in y_controls, retaining canonical mode
+  labels. GT/private hashes are audit only.
+- Public survey sequence: x=0,y=-20,-10,0,10,20mm,yaw0. Each holds5 new frames.
+- Select one observed anchor using PUBLIC visible identity/quality and actual
+  probe pose; center by measured image u. Then take centered yaw0 and normal
+  shifts +/-2mm. All filters get identical evidence from this shared policy.
+  This is a module-level informative-excitation experiment, not a complete
+  online A/B strategy comparison. No observation is counted twice.
+- Analyze posterior-predictive observations on fixed public test poses and on
+  terminal candidates. Report zero predictive support separately; any numerical
+  NLL cap is scoring-only and never injected into posterior likelihoods.
+- Terminal candidate permissions are shared: posterior template candidates,
+  fine public correction, and a public-history line-fit baseline. Do not give
+  only B a better candidate family or hidden anatomy tangent.
+- Primary module outcomes: next-observation prediction, correct public
+  five-frame stop after shared sensing, wrong stop, sensor/movement/inference
+  cost. Show prefix performance after5 and8 sensing blocks. Global whole-curve
+  reconstruction is secondary; rawESS after resampling is not coverage.
+- Record rawESS, maximum weight, unique geometries, MH acceptance and full
+  temperature path. Never call beta<1 a completed Bayesian update. Continuous
+  model particles must refresh every planner geometry/response cache.
+
+Mechanism3: observation is useful only if it changes affordable decisions (B)
+Independent review derives exact binary/Gaussian thresholds and negative
+controls: prior already decisive, noninformative observation, same optimal
+continuation for every observation, excessive acquisition/compute cost, and
+uniformly easy robot execution. A cheaper threshold-probe or adaptive RLS is a
+required comparator where applicable. A small exact Bellman result cannot be
+reported as a novel general VOI/POMDP theorem.
+
+Only after mechanism2 works should repaired beliefs enter the same A/B planner.
+Keep strong continuous A, task-myopic A, entropy, equal-horizon fixed continuation
+and capability-aware B. Remaining action/time resources and all online compute
+must be charged. Any new multi-rate sensing/decision budget is a separately
+registered study, not a retrospective edit to old6-action/60s results.
+Future-model observations never enter actual belief. If a learned predictive
+response model lacks a hypothesis-conditioned likelihood, it must not silently
+replace the likelihood used for posterior updates.
+
+Theory/novelty decision
+Shared local response must prove useful under heldout tasks/contexts, not merely
+fit labels. B must explain and demonstrate a regime of future-decision value,
+plus its zero-benefit regime. Functional identifiability, Kalman/SMC/Bellman
+identities and generic compression bounds are existing tools; a new paper needs
+anatomy/contact/task structure, a computational method and independent evidence.
+e3nn, EM and complex primitives remain optional until an actual bottleneck and
+increment justify them. No score/journal ranking substitutes for these tests.
+
+Records
+review/: independent theoretical and literature review
+response_identification/: registered action-query numerical mechanism
+inference/: continuous posterior and analytic toy validation
+root study scripts/results: shared-history geometric experiment and synthesis

@@ -1,0 +1,10 @@
+{
+  "asset": "POSED_BRANCH.npz",
+  "sha256": "93d78daf1879fea297b6ad7aaa70c226975f81ecd062ade3d77a64adf6cceb8e",
+  "origin": "Exact arrays returned by posed_branch(DYNAMIC_GEOMETRY_FROZEN.npz) using the frozen atlas and attachments.",
+  "excluded_upstream": [
+    "ab_leg_bifurcation_20261112/knee_rebake/atlas_right.npz",
+    "ab_leg_bifurcation_20261112/knee_rebake/attachments_right.npz"
+  ],
+  "scope": "Already-transported synthetic branch for observation replay, without the source meshes or skinning weights."
+}

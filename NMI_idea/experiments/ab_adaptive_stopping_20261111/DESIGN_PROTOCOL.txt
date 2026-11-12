@@ -1,0 +1,373 @@
+ADAPTIVE STOPPING B — FROZEN IMPLEMENTATION CONTRACT
+Astra design, 2026-11-11. Status: protocol, not a result.
+DESIGN_PROTOCOL.txt, MID_REVIEW.txt, ASTRA_FINAL.txt and the independent
+audit_exact_option.py/.json belong to the design/review agent.
+Implementers own their assigned modules and must preserve other workers' edits.
+
+0. Objective and honest scope
+
+Implement the original B objective: choose each diagnostic action and dwell from
+public history, stop probing when a complete executable acquisition option is
+sufficiently reliable, otherwise continue probing or explicitly withdraw. No
+hard task-time deadline and no primary time penalty. This remains a bounded
+local simulation, not a claim about infinite search or clinical ultrasound.
+
+The research target is NOT presumed achieved: on the untouched 128-subject test,
+B must improve final correct completion over BOTH the strong A and an actually
+completed fixed-pair strategy by at least 10 percentage points. Both paired
+subject-bootstrap 97.5% two-sided intervals must have lower bound above zero
+(Bonferroni for the two primary comparisons). The common declared task-risk
+requirement must also be met in actual committed executions. Wrong completion,
+withdrawal, failure and watchdog cases remain in the all-subject denominator.
+An earlier good frame followed by a wrong final declaration is NOT primary
+success. Report ever-qualified separately. A failure to meet this target is a
+negative/incomplete result, not permission to tune on the same test subjects.
+The additional goal of purposeful reacquisition is retained: report loss-to-
+reacquisition capture count, native elapsed time, failed recovery moves and
+simultaneous diagnostic/acquisition use. Speed is a meaningful secondary benefit;
+it cannot replace the primary correct-completion requirement. Do not reduce A
+to random search or assume that it must recover only by luck.
+
+1. Frozen numerical settings
+
+Train 512 subjects, seed 721501; development/calibration 128, seed 721502;
+untouched test 128, seed 721503; observation seed family 721504. Subject identity
+is the unit across both mirrored layouts and all policies. Main bootstrap uses
+10000 subject-cluster draws, seed 721505. The two mirrors reuse the existing
+robot placement and material-patch realization: they are not independent robot
+placements. Training sensor samples may reuse fixed native poses; do not run or
+claim 512 independent native mechanical experiments.
+
+Four diagnostic locations: the existing side_left, side_right, fork_minus and
+fork_plus. For each, dwell is .15, .30 or .60 s: 12 actions. Keep accepted native
+SE(3) reference durations and actual measured-frame coordinates; dwell is added,
+never substituted for travel/settling. Terminal dwell remains 1.0 s.
+
+Common risk gate: empirical conservative task score >= .90. Sensitivities .80
+and .95 are separate and cannot replace the main result. Main time weight is
+zero. Existing .04/s is optional labelled secondary sensitivity only.
+
+Operational watchdog: at most 8 diagnostic acquisitions before commitment;
+a paired program consumes 2. Watchdog cases are unresolved and not successes.
+This is a finite experiment/compute guard, not a physical deadline, resource
+claim or learned stopping time. Prespecified sensitivity continues unresolved
+cases from their exact state to 12 diagnostic acquisitions, equally for all arms.
+If B wins only because competitors were censored at 8, the independent research
+claim is not achieved. Report this dependence. All costs remain recorded.
+
+2. SENSOR_V2 is a NEW frozen synthetic observation model
+
+Keep the previous continuous vessel and bounded geometry support:
+offset +/-3 mm, slope +/-0.08, curvature +/-0.35/m, depth 18--26 mm.
+Keep target quality g_geo(S, actual pose)+[1,tilt/.10]w plus independent quality
+noise SD .035*sqrt(.15/dwell); generator w has SD (.065,.23). These are generator
+settings, not parameters the fitted model may read instead of estimating.
+
+Every detected candidate, target OR clutter, has identical public field names:
+quality, signed center_offset_m, signed axis_angle_rad. Target center is the
+signed actual beam-minus-vessel intercept plus Gaussian SD
+0.0005*sqrt(.15/dwell) m. Target axis is signed actual tilt-minus-vessel tangent
+plus Gaussian SD .03*sqrt(.15/dwell) rad. Missing has no scalar feature; never
+replace missing with a zero-centered image. candidate_type is only candidate or
+missing. No private association, true geometry, response or target-success label
+enters a test policy.
+
+Clutter quality is N(.60,.12^2); center is uniform [-.022,.022] m; axis is uniform
+[-.35,.35] rad, mutually independent in this declared stress model. It is a
+high-quality spurious candidate channel, not a validated ultrasound renderer.
+Keep the old low-quality clutter N(.12,.08^2) as a separate legacy control;
+never combine the two generators' results under one old-law claim.
+
+Transient visibility loss is a hidden two-state acquisition-indexed Markov mode.
+Initial mode is present. Before each newly acquired packet, present->lost=.03,
+lost->present=.70. When present and physically supported, target detection=.80;
+otherwise no target packet. After absence of a true packet, clutter probability
+is .10; otherwise missing. This models synthetic loss/reacquisition per capture,
+not measured tissue motion. Preserve a common random stream per subject and
+acquisition/view/visit coupling; retain unique physical acquisition event IDs.
+
+Pure public feasibility check: with a just-confirmed present mode, perfect
+geometry/quality and two terminal opportunities, this loss/detection law gives
+maximum genuine-detection success .943344. The initially considered .10/.50
+loss/recovery law would cap it at .8896 and make a .90 gate impossible even for
+an oracle; it was rejected analytically before data. No threshold/layout/test
+outcome was used to obtain this choice. It creates a feasible methodological
+task, not evidence that these transition probabilities describe patients.
+
+3. Learned response, joint belief and first two equations
+
+Preserve Y=g_geo+Hw+noise and conditional Gaussian Lambda/eta evidence updates.
+Learn shared response/noise/detection/loss/clutter parameters from independent
+training action outcomes. Training may use annotated target/clutter and training
+anatomical geometry; it may NOT use true w directly as the fitted answer.
+Fit per-subject w from repeated genuine Y-g_geo and H, estimate noise from
+repeated-cell variation, and estimate group mean/covariance with measurement
+noise correction. Fit detector/loss transition frequencies and clutter/noisy
+feature distributions from annotated training records. Use fixed small PSD
+regularization if needed and disclose it. All policies share the fitted model.
+At test, freeze it and update only patient/material state. This is statistical
+response learning plus planning, not end-to-end policy learning.
+
+Belief: 512 common Sobol particles over S=(offset,slope,curvature,depth), with
+the broad prior above. Each S has conditional Gaussian w association components
+and two loss-mode weights. Genuine-candidate branches receive Gaussian natural
+parameter updates and noisy center/axis likelihoods; clutter branches retain w;
+missing uses the correct visibility/association likelihood. Propagate the loss
+mode once per NEW acquisition. For masked acoustics propagate mode without
+pretending a missing packet was observed. Use log weights and event deduplication.
+
+Bound memory to at most 4 Gaussian components per S and loss mode. If exceeded,
+merge the pair with smallest symmetric KL, preserving their total mass and first
+two moments; reconstruct natural parameters. Disclose this approximation.
+Fixed geometry particles need ESS diagnostics. The primary filter retains their
+weights without unregistered resampling/duplication. Development checks against
+1024/2048 geometry particles must quantify task-probability/decision sensitivity.
+Do not call this an exact full-world posterior or claim memory-performance gain
+from merely matching the replay of its own admitted events.
+
+4. Two distinct stopping decisions and the complete execution option
+
+Stop probing/commit only through the shared .90 task-score gate described below.
+This predicts future complete acquisition. It is different from declaring the
+task completed after a NEW observed packet meets a public verification rule.
+
+The bounded complete option is: choose left or right, follow its actual checked
+route, acquire a fresh terminal packet, and if public verification rejects it,
+retry once at the same window. At the first public acceptance, stop immediately;
+after two rejections, end as failed/no verified completion. All methods have
+exactly these same two options, retries and public verifier. No extra unseen
+retries may be executed outside the option whose probability was predicted.
+
+Public verification requires detected AND quality>=.58 AND absolute noisy
+center<=.0045 m AND absolute noisy axis<=.22 rad. Private final correctness also
+requires genuine target identity and TRUE center<=.0045 m and TRUE axis<=.22,
+with the quality from that SAME fresh packet. A wrong earlier public acceptance
+terminates as final failure; a later hypothetical good packet cannot repair it.
+This is detected-feature acceptance, not raster-image or visible-length grading.
+
+DUAL-PURPOSE AMENDMENT BEFORE IMPLEMENTATION/TEST: apply this SAME public and
+private verification to EVERY newly acquired packet, including one labelled
+diagnostic/probe. A genuine qualifying probe may immediately complete the task;
+an incorrect public acceptance immediately fails it. No role label suppresses
+the acquisition benefit. A privately qualifying but publicly rejected frame is
+ever-qualified only until a correct final declaration actually occurs. The
+diagnostic risk/stop decision and new-packet task-completion test are distinct.
+After two rejected terminal packets this bounded experiment ends uncompleted;
+do not silently return to probing while still predicting only two attempts.
+This shared finite execution-option limit is disclosed and is not a claim that
+unrestricted recovery could never succeed. Diagnostic-stage recovery from target
+loss remains available until the common guard.
+
+Compute raw_complete_p for the whole option, not only quality and not the
+independent-marginal formula 1-product(1-p). Integrate the SAME S and w across
+both attempts. Per S/w/mode let s be probability of truly correct public
+acceptance, f probability of wrong public acceptance (including a geometrically
+wrong target passing noisy gates and clutter), c=1-s-f. With mode transition P,
+let p1=the current mode distribution times P. Complete success is
+  p1 dot s + ((p1*c) P) dot s.
+Integrate that expression over S, association components and the projected
+Gaussian H w. Normal CDFs handle quality/feature gates, and the clutter law is
+explicit. PRE-RESULT NUMERICAL CORRECTION: for identical pose/dwell the option
+probabilities are quadratic in Q(w), the conditional noisy-quality pass
+probability. Use the equivalent exact moments E Q=Phi(z) and
+E Q^2=Phi(z)-2*T(z,sqrt(R/(2v+R))), where z=(g+H mean-threshold)/sqrt(v+R),
+v=H covariance H^T, R is quality-noise variance, and T is Owen's T function.
+The same first/second moments integrate both correct and early-false stops.
+This replaces integration only; it does not reduce 512 particles, association
+components or public-outcome nodes. GH33/GH65 remain comparison diagnostics,
+not assumed-converged truth: audit_exact_option.py independently checks the
+identity against adaptive integration and exhibits their possible tail error.
+For unequal attempts use E Q1, E Q2 and E(Q1 Q2) under the correct joint Gaussian
+projection/noise covariance, or independently converged integration. Do not
+force correlation one or round differing poses into an unreported equality.
+Propagate the HMM once before each fresh attempt; a one-attempt option has no
+retry term. Native actual/predicted poses and validity remain separately logged.
+Recompute calibration after the final corrected implementation is frozen.
+
+Shared calibration is monotone Platt:
+  p_cal=sigmoid(a*logit(clip(raw_p,1e-5,1-1e-5))+b), a>=0.
+Fit log loss on independent calibration subjects' actual complete-option
+correct/incorrect outcomes, weighting each subject equally across its records.
+Use common fixed exploration prefixes of lengths 0,1,2,4,6 and both terminal
+options for calibration coverage; record how their poses were generated.
+The gate score is min(raw_p,p_cal). This is an empirical conservative score,
+NOT a distribution-free confidence bound. Report held-out calibration and
+uncertainty; do not evade poor calibration by making a stronger claim.
+No low-sample statistical gate is to be invented that trivially rejects everyone.
+Conversely, do not lower .90 after seeing a low acceptance rate.
+
+5. Finite adaptive policy implementations
+
+At every new diagnostic packet update belief, re-evaluate complete options and
+actual state. If an option can be checked and its common score>=.90, select the
+highest-scoring such option and execute it. This common rule prevents B from
+winning merely by applying a different refusal standard. If none qualifies:
+
+A_info: choose the next single diagnostic maximizing predicted information gain
+about the four latent terminal-viability classes (neither/left/right/both).
+The class uses true geometric and noiseless-quality viability under posterior
+hypotheses, not hidden test truth. A sees full common belief and all 12 actions,
+can repeat, change windows, and use the same physical recovery. It is not forced
+to stop when initially uncertain. Ties use the common deterministic rule.
+
+A_task: choose the next diagnostic maximizing the probability of immediate
+correct public completion from THAT fresh packet; break ties by the same task-
+relevant information gain, then the common deterministic rule. This is the local
+task-response greedy baseline. Select the stronger A_task/A_info on development
+under the common risk standard and freeze it as A_full for test. Retain both
+development results. Do not call an entropy-only baseline that ignores the
+current image's task value the only strong A.
+
+B_H1: maximize immediate correct public acceptance probability PLUS expected
+best releasable complete-option score on PUBLICLY REJECTED packets only. False
+public acceptance has value zero and is absorbing. Never count immediate success
+and continue that same branch. On rejected packets a branch without a releasable
+option has zero immediate completion value. Break these truncated-horizon ties
+by expected maximum raw complete-option probability (a labelled potential
+heuristic), then by the same deterministic rule; do not mistake this heuristic
+for achieved coverage. Replan after executing exactly one diagnostic.
+
+B_H2: the same public-observation recursion with up to two future single
+diagnostics before the complete option. First layer evaluates all 12 actions;
+second layer retains the top 2 ranked by H1 value then raw-potential score.
+Execute only the first action and replan. This is bounded belief lookahead,
+not an exhaustive optimum or a precommitted pair.
+
+Complete_pair: fixed +/-fork order selected from public native worst-case
+completion cost. Dwell is selected once on development from the same three
+choices. Execute both members of every pair and update after each packet;
+after the complete pair apply the common commit gate. If needed, repeat complete
+pairs up to the common guard. No task-time cutoff may prevent its completion.
+If the first packet already passes the common public completion verifier, the
+pair may immediately finish just like every other arm. Otherwise it completes
+the pair before deciding to commit. Finishing the task early is distinct from
+stopping diagnostic probing early.
+
+All methods can explicitly withdraw if no lawful motion remains. Lack of a
+finite-library witness is recorded as unknown, not global impossibility.
+When progress scores are numerically tied, use higher complete-task score, then
+fewer additional acquisitions, then shorter dwell ONLY if task predictions are
+equivalent at the declared numerical tolerance, then canonical action name.
+Do not add a time penalty to force varied durations. With the frozen noise law
+longer dwell can dominate; selecting .60 everywhere is an admissible result.
+
+Development selection: compare B_H1/B_H2 and separately A_task/A_info under the
+same risk standard,
+correct completion first, then fewer diagnostic actions. Tie chooses H1.
+Select pair dwell the same way. Freeze the resulting B and pair configuration
+before test; retain all development scores. If only H1 is completed, label that
+limited scope and do not claim the full B search question has been resolved.
+
+Predictive-observation budget: common Sobol/CRN 16 outcomes/action initially;
+re-evaluate leading first-layer actions at 32, then 64 if ordering changes or
+value changes by >.01; up to 256 if still unstable. H2 secondary layer starts
+at 8 and refines selected candidates at 16/32. Report unresolved differences,
+actual outcome counts, beam effects, wall cost and node sensitivity on development.
+Do not revive the previous unvalidated 5/3 GH expected-max calculation. The
+smooth complete-option integration check is separate from this nonsmooth max decision.
+Predictive nodes provide immediate correct/incorrect acceptance MASS for value
+integration, not hidden association labels to posterior updates or action choice.
+Publicly identical rejected packets update the same belief. Adding dual-purpose
+early acceptance only in the runner while predicting exclusively later terminal
+images is invalid.
+
+6. Native execution contract and bounded work
+
+Interfaces required:
+  belief.clone/update/advance_without_acoustic/predict_packet/task_class_probs;
+  predict_complete_option(belief, actual_or_predicted_option)->raw_p,cal_score;
+  motion.propose(actual_state, action)->predicted candidate routes/status;
+  motion.execute_checked(actual_state, action)->complete exit/trace/flags/time.
+
+Carry actual q, qdot, acceleration, native history, pose/contact and cumulative
+clock through EVERY segment and dwell. Cache only exactly identical full states
+and program prefixes. Failed physical execution cannot rewind. Training may
+generate sensor outcomes at a limited common set of executed poses; disclose
+that this does not multiply independent robot validation.
+
+Do NOT expand all 12^depth native trajectories. Use common public geometric/
+kinematic route predictions for search, clearly marked predicted or unknown.
+Only execute/check selected motions and necessary alternative witnesses using
+the actual native controller. Every issued physical segment must pass the
+existing complete-segment gates; neither dIRD nor a predicted future state is a
+certificate. Future option probabilities are predictions until their motions
+are checked. Report execution mismatch/failure, not an oracle-corrected outcome.
+All arms receive equal candidate/checking access and the same numerical rules.
+Maintain the previous qualified scope: native ideal joint feedback, sampled
+self-collision and planar TCP exclusions, not tissue-force/full external-arm
+collision certification. No new irreversible obstacle may be invented to favor B.
+
+7. Attribution, negative controls and success decision
+
+After selecting B on development, report I(use diagnostic packet)/F(predict
+actual post-probe route state) 2x2 with identical risk gate/options. Mask only
+acoustic payload for I0; actual state/time and capture occurrence remain public.
+F0 substitutes the same nominal state for first-stage future feasibility only;
+all actual continuations remain checked. No-time reversible layouts may give
+zero F effect because every terminal remains reachable. Retain that result;
+the old baffle's detour alone cannot justify non-time terminal impossibility.
+
+Matched observation burden: report common diagnostic-cap curves 2/4/6/8 and
+the predeclared guard-12 continuation. Also use the first 32 test subject IDs,
+chosen before outcomes, for exact-count shadow comparisons at 2 and 4 diagnostic
+acquisitions: continue each diagnostic selector to that count, then apply the
+same complete-option gate/executor. These are separate controlled trajectories,
+not unexecuted counterfactual probabilities. Report their native cost and do not
+treat the subset as the primary 128-subject significance result. If execution
+budget prevents these controls, attribution remains incomplete; do not declare
+the independent core benefit solely from more observations in the main policy.
+
+Required controls: uninformative diagnostic packets; all diagnostic packets
+missing; response reset with reset-aware and unaware models; legacy low-quality
+clutter; open reversible mechanics. Keep higher-quality clutter and lost-mode
+episodes in primary outcomes. Include full learned-vs-generator model diagnostics
+on development; do not train one arm with additional private data.
+
+Calibration/selection uses development only. Test once with the frozen model,
+verifier, geometry, paths, selected B and pair dwell. Record all-subject final
+correct completion, wrong completion, no completion, withdrawal, watchdog,
+commit coverage, committed failure rate, ever-qualified, diagnostic/terminal
+counts, planning/motion/acquisition time, native routes/cache hits, predictive
+calibration, misses/clutter/loss/reacquisition and physical failures. Audit wrong
+declarations for ALL completed packets, including diagnostic ones. Define loss
+episodes from the frozen private visibility-mode trace for evaluation, and also
+report public detection-loss episodes. Measure acquisitions and native time to
+the next genuine target packet and to final correct completion. Unrecovered
+episodes remain censored/noncompleted; do not omit them. Private mode labels
+are evaluator-only. The Markov law is acquisition-indexed: a recovery-time
+result does not establish a physical time-dependent loss model.
+
+If B meets the numerical primary effect target but violates the shared risk
+requirement, wins only through more samples, uses an uncompleted fixed pair,
+depends on unstable integration, or relies on an unsupported physical barrier,
+the requested independent research goal is NOT achieved. Negative results may
+motivate a NEW version with a newly held-out test, never outcome-driven changes
+to this test. Finite refusal/guard effects are not evidence against all possible
+B policies, nor proof of eventual superiority in a reversible zero-cost world.
+
+Theoretical interpretation remains the existing three relations: local response,
+material evidence, and public-history adaptive stopping with a checked complete
+continuation. No claim that stopping/options, Bayes filtering, or generic belief
+planning itself is new. ASTRA_FINAL.txt will be written only after independent
+implementation and result review.
+
+SCOPE NOTE — PURPOSEFUL REACQUISITION (interpretive only; no setting changed)
+
+The frozen lost->present transition is acquisition-indexed and independent of
+action. For action a, genuine detection probability is the posterior expectation
+of .80 * P(next mode=present | current mode) * I(geometry has support at a).
+If every candidate has support for every relevant geometry hypothesis, all
+actions have the same per-acquisition probability of genuine redetection. A
+shorter route or dwell may reduce elapsed time, and choosing a better view may
+improve qualifying-task completion, but neither proves that the selected
+direction caused the target to become visible again. The .70 mode recovery
+itself cannot provide that evidence.
+
+Where support varies with action, the existing geometric term can affect
+redetection; report this separately from mode recovery. To test purposeful
+directional reacquisition as a mechanism requires independently justified
+action-dependent FoV, acoustic-window, occlusion or contact visibility, with
+different actions compared from the same actual lost state against a strong A.
+Such an extension is not part of this run and must not be introduced or tuned
+to obtain a B win. This run can test post-loss inference, confidence, routing,
+qualifying acquisition and measured recovery burden within its stated law.

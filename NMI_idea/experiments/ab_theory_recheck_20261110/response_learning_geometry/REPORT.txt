@@ -1,0 +1,37 @@
+Synthetic conditioned-response geometry benchmark
+=================================================
+Scope: synthetic contact plant only; not real ultrasound or full A/B validation.
+Device=cuda; test OOD seed=720950; ID seed=720951
+
+Selected n2048/seed101 geometry checks
+--------------------------------------
+model | SO3 equiv mean/p95 | t-signflip mean/p95 | FD gradient mean/max
+analytic_zero_residual | 0/0 | 0/0 | nan/nan
+global_fixed_linear | 0.0020182/0.0041779 | 0/0 | nan/nan
+world_mlp | 0.017742/0.03294 | 0.0124/0.023265 | 1.093/1.1594
+probe_local_mlp | 3.3962e-08/6.7102e-08 | 0.012823/0.022936 | 1.0891/1.1694
+typed_residual_basis | 2.9944e-08/7.4641e-08 | 0/0 | 1.1086/1.4227
+
+Data efficiency aggregate (OOD response RMSE / action success / regret)
+---------------------------------------------------------------------
+analytic_zero_residual_n128: RMSE=0.097908±0 mm, success=1±0, regret=0.024685±0 mm, negative-RMSE=0 mm
+global_fixed_linear_n128: RMSE=0.031712±0.00019257 mm, success=1±0, regret=0.005202±0.00017779 mm, negative-RMSE=0.092973 mm
+world_mlp_n128: RMSE=0.033468±0.0003933 mm, success=1±0, regret=0.0062697±0.00046677 mm, negative-RMSE=0.093179 mm
+probe_local_mlp_n128: RMSE=0.033087±0.00064096 mm, success=1±0, regret=0.0063956±0.00056015 mm, negative-RMSE=0.093062 mm
+typed_residual_basis_n128: RMSE=0.0067537±0.00026143 mm, success=1±0, regret=9.1935e-05±1.9735e-05 mm, negative-RMSE=0.096719 mm
+analytic_zero_residual_n512: RMSE=0.097908±0 mm, success=1±0, regret=0.024685±0 mm, negative-RMSE=0 mm
+global_fixed_linear_n512: RMSE=0.031345±8.5636e-05 mm, success=1±0, regret=0.0051004±0.00017929 mm, negative-RMSE=0.0932 mm
+world_mlp_n512: RMSE=0.032028±0.0002089 mm, success=1±0, regret=0.0056263±0.00016703 mm, negative-RMSE=0.093563 mm
+probe_local_mlp_n512: RMSE=0.031873±0.00019094 mm, success=1±0, regret=0.0056016±0.00019245 mm, negative-RMSE=0.093534 mm
+typed_residual_basis_n512: RMSE=0.0057584±0.00036704 mm, success=1±0, regret=6.5685e-05±1.9944e-05 mm, negative-RMSE=0.097368 mm
+analytic_zero_residual_n2048: RMSE=0.097908±0 mm, success=1±0, regret=0.024685±0 mm, negative-RMSE=0 mm
+global_fixed_linear_n2048: RMSE=0.031315±6.6225e-05 mm, success=1±0, regret=0.0053122±0.00022915 mm, negative-RMSE=0.092584 mm
+world_mlp_n2048: RMSE=0.030275±0.00017503 mm, success=1±0, regret=0.0045316±0.00011274 mm, negative-RMSE=0.093407 mm
+probe_local_mlp_n2048: RMSE=0.029871±0.00022592 mm, success=1±0, regret=0.0049324±0.00017647 mm, negative-RMSE=0.093391 mm
+typed_residual_basis_n2048: RMSE=0.0042067±0.00026493 mm, success=1±0, regret=4.7759e-05±2.488e-05 mm, negative-RMSE=0.097141 mm
+
+online_RLS_3probe: response RMSE=0.010212 mm, success=1, regret=0.00040105 mm, explicit probes=3
+
+Interpretation
+--------------
+The typed basis is a geometry-constrained synthetic mechanism model; coordinate and sample-efficiency results must be read against the probe-local MLP and online three-probe RLS. Matching local/typed performance is a valid negative result for an e3nn-specific claim. None of these results establishes anatomical contact truth or complete A/B performance.

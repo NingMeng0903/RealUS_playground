@@ -1,0 +1,733 @@
+{
+  "arms": [
+    "online_B",
+    "online_MPC",
+    "frozen_B"
+  ],
+  "capture_dwell_s": 0.21,
+  "cohort_n": 128,
+  "executed_seed_list": [
+    509183131,
+    41258125,
+    2664472855,
+    4242534846,
+    2461788355,
+    2433022505,
+    3851403870,
+    202318247,
+    2855966115,
+    4173526932,
+    2691514345,
+    2784633560,
+    4132703546,
+    3411876846,
+    1154117984,
+    3714960588,
+    950740816,
+    1506284182,
+    1702264341,
+    2258235132,
+    1922179850,
+    1348001108,
+    1343488266,
+    2609153467,
+    1280298188,
+    1838937390,
+    367463022,
+    2433239188,
+    1836625614,
+    3481718782,
+    1579231297,
+    2390105993,
+    3336545937,
+    825789459,
+    1940403452,
+    1846840794,
+    1710550760,
+    1004579341,
+    3120008110,
+    4111276401,
+    2626152754,
+    1310225124,
+    4237799750,
+    2460811439,
+    2150611755,
+    3993759215,
+    676554240,
+    4143009798,
+    990289222,
+    1392644796,
+    4160812343,
+    79467424,
+    1220066178,
+    4228260697,
+    1298582288,
+    3100880232,
+    488964393,
+    795114158,
+    260948983,
+    2949858876,
+    3462159150,
+    3566829178,
+    680067172,
+    721093133,
+    2340334254,
+    3520185148,
+    3526088339,
+    1952450956,
+    2464219111,
+    952376896,
+    1081298342,
+    3629269783,
+    621805275,
+    1347034934,
+    3907702381,
+    2518252245,
+    3133334039,
+    2427228573,
+    3307764630,
+    1570941154,
+    2550021490,
+    2588253458,
+    53207167,
+    37116677,
+    1122455372,
+    1480703375,
+    3837393304,
+    2268522483,
+    2097508339,
+    3611626190,
+    3332318616,
+    294786298,
+    1172558361,
+    609721550,
+    2699167148,
+    3236653658,
+    3151532836,
+    2129476677,
+    2266447489,
+    1155752451,
+    3362366304,
+    2511693971,
+    1814428236,
+    609934842,
+    917018161,
+    3175850734,
+    2043659402,
+    2688888239,
+    819358069,
+    2044824920,
+    3131588188,
+    2529327574,
+    1169687531,
+    458165216,
+    500495440,
+    2272729681,
+    1536462188,
+    4059508906,
+    1518467199,
+    2906191648,
+    4072960628,
+    3248364698,
+    4256584772,
+    3737132082,
+    3997609736,
+    407317404,
+    3384692830,
+    2136386822
+  ],
+  "frozen_manifest_sha256": "946a8212b1bf8eb304b5b10b8b87b2e5998f0ae9680c214e515c5704cfed6ee0",
+  "holdout_seed_base": 2026111217,
+  "holdout_seed_list": [
+    509183131,
+    41258125,
+    2664472855,
+    4242534846,
+    2461788355,
+    2433022505,
+    3851403870,
+    202318247,
+    2855966115,
+    4173526932,
+    2691514345,
+    2784633560,
+    4132703546,
+    3411876846,
+    1154117984,
+    3714960588,
+    950740816,
+    1506284182,
+    1702264341,
+    2258235132,
+    1922179850,
+    1348001108,
+    1343488266,
+    2609153467,
+    1280298188,
+    1838937390,
+    367463022,
+    2433239188,
+    1836625614,
+    3481718782,
+    1579231297,
+    2390105993,
+    3336545937,
+    825789459,
+    1940403452,
+    1846840794,
+    1710550760,
+    1004579341,
+    3120008110,
+    4111276401,
+    2626152754,
+    1310225124,
+    4237799750,
+    2460811439,
+    2150611755,
+    3993759215,
+    676554240,
+    4143009798,
+    990289222,
+    1392644796,
+    4160812343,
+    79467424,
+    1220066178,
+    4228260697,
+    1298582288,
+    3100880232,
+    488964393,
+    795114158,
+    260948983,
+    2949858876,
+    3462159150,
+    3566829178,
+    680067172,
+    721093133,
+    2340334254,
+    3520185148,
+    3526088339,
+    1952450956,
+    2464219111,
+    952376896,
+    1081298342,
+    3629269783,
+    621805275,
+    1347034934,
+    3907702381,
+    2518252245,
+    3133334039,
+    2427228573,
+    3307764630,
+    1570941154,
+    2550021490,
+    2588253458,
+    53207167,
+    37116677,
+    1122455372,
+    1480703375,
+    3837393304,
+    2268522483,
+    2097508339,
+    3611626190,
+    3332318616,
+    294786298,
+    1172558361,
+    609721550,
+    2699167148,
+    3236653658,
+    3151532836,
+    2129476677,
+    2266447489,
+    1155752451,
+    3362366304,
+    2511693971,
+    1814428236,
+    609934842,
+    917018161,
+    3175850734,
+    2043659402,
+    2688888239,
+    819358069,
+    2044824920,
+    3131588188,
+    2529327574,
+    1169687531,
+    458165216,
+    500495440,
+    2272729681,
+    1536462188,
+    4059508906,
+    1518467199,
+    2906191648,
+    4072960628,
+    3248364698,
+    4256584772,
+    3737132082,
+    3997609736,
+    407317404,
+    3384692830,
+    2136386822
+  ],
+  "mechanic_preflight": {
+    "common_probe": {
+      "cost_mm": 57.71407712236393,
+      "duration": 2.5,
+      "goal": [
+        3,
+        3
+      ],
+      "legal": true,
+      "max_ref_fk_error_mm": 0.003832123091422152,
+      "max_reference_speed_fraction": 0.9825879631441051,
+      "min_joint_margin": 0.365754262090803,
+      "min_self_collision_m": 0.039091169273779085,
+      "reason": "passed",
+      "start": [
+        0,
+        3
+      ],
+      "stroke_mm": 0.0
+    },
+    "common_probe_nominal_beam_ranges_mm": {
+      "max": [
+        [
+          -0.10866873390055881,
+          35.489640635402644
+        ],
+        [
+          8.049916201700475,
+          35.557995240514764
+        ]
+      ],
+      "min": [
+        [
+          -0.2530375659939996,
+          35.135309671162155
+        ],
+        [
+          7.9154819309054805,
+          35.23337807831463
+        ]
+      ]
+    },
+    "first_paths": [
+      {
+        "cost_mm": 8.006921076191741,
+        "duration": 0.65,
+        "goal": [
+          3,
+          2
+        ],
+        "legal": true,
+        "max_ref_fk_error_mm": 0.003685621218475081,
+        "max_reference_speed_fraction": 0.15058763132236294,
+        "min_joint_margin": 0.6129525438495791,
+        "min_self_collision_m": 0.04028961040625889,
+        "reason": "passed",
+        "start": [
+          3,
+          3
+        ],
+        "stroke_mm": 8.0
+      },
+      {
+        "cost_mm": 0.0,
+        "duration": 0.65,
+        "goal": [
+          3,
+          3
+        ],
+        "legal": true,
+        "max_ref_fk_error_mm": 0.003685621218475081,
+        "max_reference_speed_fraction": 0.06240961775677674,
+        "min_joint_margin": 0.6543004458149249,
+        "min_self_collision_m": 0.04063137602693058,
+        "reason": "passed",
+        "start": [
+          3,
+          3
+        ],
+        "stroke_mm": 0.0
+      },
+      {
+        "cost_mm": 7.943048829280659,
+        "duration": 0.65,
+        "goal": [
+          3,
+          4
+        ],
+        "legal": true,
+        "max_ref_fk_error_mm": 0.003685621218475081,
+        "max_reference_speed_fraction": 0.1449698425585724,
+        "min_joint_margin": 0.6543004458149249,
+        "min_self_collision_m": 0.04063137602693058,
+        "reason": "passed",
+        "start": [
+          3,
+          3
+        ],
+        "stroke_mm": 8.0
+      }
+    ],
+    "fixed_rail_m": 0.27681517458591665,
+    "legal_graph": {
+      "narrow": {
+        "2": [
+          "3:2>4:2"
+        ],
+        "3": [
+          "3:3>4:2",
+          "3:3>4:3",
+          "3:3>4:4"
+        ],
+        "4": [
+          "3:4>4:4"
+        ]
+      },
+      "wide": {
+        "2": [
+          "3:2>4:2",
+          "3:2>4:3",
+          "3:2>4:4"
+        ],
+        "3": [
+          "3:3>4:2",
+          "3:3>4:3",
+          "3:3>4:4"
+        ],
+        "4": [
+          "3:4>4:2",
+          "3:4>4:3",
+          "3:4>4:4"
+        ]
+      }
+    },
+    "model_joint_velocity_limits": [
+      0.3,
+      3.14,
+      3.14,
+      3.14,
+      3.14,
+      3.14,
+      3.14,
+      3.14
+    ],
+    "moving_knot_deg": [
+      11.0,
+      15.0,
+      19.0
+    ],
+    "path_progress_grid": [
+      0.0,
+      0.03125,
+      0.0625,
+      0.09375,
+      0.125,
+      0.15625,
+      0.1875,
+      0.21875,
+      0.25,
+      0.28125,
+      0.3125,
+      0.34375,
+      0.375,
+      0.40625,
+      0.4375,
+      0.46875,
+      0.5,
+      0.53125,
+      0.5625,
+      0.59375,
+      0.625,
+      0.65625,
+      0.6875,
+      0.71875,
+      0.75,
+      0.78125,
+      0.8125,
+      0.84375,
+      0.875,
+      0.90625,
+      0.9375,
+      0.96875,
+      1.0
+    ],
+    "pose_grid_deg": [
+      11.0,
+      12.0,
+      13.0,
+      14.0,
+      15.0,
+      16.0,
+      17.0,
+      18.0,
+      19.0
+    ],
+    "registration_robot_from_atlas": [
+      [
+        0.5862587298040651,
+        0.5173357979081119,
+        0.6234295260342613,
+        0.983089372840022
+      ],
+      [
+        0.1362297096947336,
+        -0.8215450010519869,
+        0.5536291876725633,
+        -0.6325800299555462
+      ],
+      [
+        0.7985876081714613,
+        -0.23964032100060018,
+        -0.5521144343573315,
+        -0.10503071263127892
+      ],
+      [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    ],
+    "tail_paths": {
+      "2": [
+        {
+          "cost_mm": 16.13888887109056,
+          "duration": 0.85,
+          "goal": [
+            4,
+            2
+          ],
+          "legal": true,
+          "max_ref_fk_error_mm": 0.0004181722678970513,
+          "max_reference_speed_fraction": 0.24368158811946328,
+          "min_joint_margin": 0.6129525438495791,
+          "min_self_collision_m": 0.04028961040625889,
+          "reason": "passed",
+          "start": [
+            3,
+            2
+          ],
+          "stroke_mm": 0.0
+        },
+        {
+          "cost_mm": 18.0731945122971,
+          "duration": 0.85,
+          "goal": [
+            4,
+            3
+          ],
+          "legal": true,
+          "max_ref_fk_error_mm": 0.0004181722678970513,
+          "max_reference_speed_fraction": 0.28831470280344706,
+          "min_joint_margin": 0.6129525438495791,
+          "min_self_collision_m": 0.04028961040625889,
+          "reason": "passed",
+          "start": [
+            3,
+            2
+          ],
+          "stroke_mm": 8.0
+        },
+        {
+          "cost_mm": 22.662371141644382,
+          "duration": 0.85,
+          "goal": [
+            4,
+            4
+          ],
+          "legal": true,
+          "max_ref_fk_error_mm": 0.0004181722678970513,
+          "max_reference_speed_fraction": 0.33236451375177245,
+          "min_joint_margin": 0.6129525438495791,
+          "min_self_collision_m": 0.04028961040625889,
+          "reason": "passed",
+          "start": [
+            3,
+            2
+          ],
+          "stroke_mm": 16.0
+        }
+      ],
+      "3": [
+        {
+          "cost_mm": 17.413890693824243,
+          "duration": 0.85,
+          "goal": [
+            4,
+            2
+          ],
+          "legal": true,
+          "max_ref_fk_error_mm": 0.003990492928537067,
+          "max_reference_speed_fraction": 0.18146752107247505,
+          "min_joint_margin": 0.6543004458149249,
+          "min_self_collision_m": 0.04063137602693058,
+          "reason": "passed",
+          "start": [
+            3,
+            3
+          ],
+          "stroke_mm": 8.0
+        },
+        {
+          "cost_mm": 15.518940716060852,
+          "duration": 0.85,
+          "goal": [
+            4,
+            3
+          ],
+          "legal": true,
+          "max_ref_fk_error_mm": 0.003685621218475081,
+          "max_reference_speed_fraction": 0.2257962203190295,
+          "min_joint_margin": 0.6543004458149249,
+          "min_self_collision_m": 0.04063137602693058,
+          "reason": "passed",
+          "start": [
+            3,
+            3
+          ],
+          "stroke_mm": 0.0
+        },
+        {
+          "cost_mm": 17.396578849152718,
+          "duration": 0.85,
+          "goal": [
+            4,
+            4
+          ],
+          "legal": true,
+          "max_ref_fk_error_mm": 0.003685621218475081,
+          "max_reference_speed_fraction": 0.27003820785061355,
+          "min_joint_margin": 0.6543004458149249,
+          "min_self_collision_m": 0.04063137602693058,
+          "reason": "passed",
+          "start": [
+            3,
+            3
+          ],
+          "stroke_mm": 8.0
+        }
+      ],
+      "4": [
+        {
+          "cost_mm": 21.828056125736264,
+          "duration": 0.85,
+          "goal": [
+            4,
+            2
+          ],
+          "legal": true,
+          "max_ref_fk_error_mm": 0.0015863261637207705,
+          "max_reference_speed_fraction": 0.1321854222337104,
+          "min_joint_margin": 0.6835365700414071,
+          "min_self_collision_m": 0.0410406151984482,
+          "reason": "passed",
+          "start": [
+            3,
+            4
+          ],
+          "stroke_mm": 16.0
+        },
+        {
+          "cost_mm": 16.922714601234425,
+          "duration": 0.85,
+          "goal": [
+            4,
+            3
+          ],
+          "legal": true,
+          "max_ref_fk_error_mm": 0.003769362321776893,
+          "max_reference_speed_fraction": 0.165683221664764,
+          "min_joint_margin": 0.6971408660269662,
+          "min_self_collision_m": 0.04104062995775966,
+          "reason": "passed",
+          "start": [
+            3,
+            4
+          ],
+          "stroke_mm": 8.0
+        },
+        {
+          "cost_mm": 14.965123995509531,
+          "duration": 0.85,
+          "goal": [
+            4,
+            4
+          ],
+          "legal": true,
+          "max_ref_fk_error_mm": 0.0003574300615821374,
+          "max_reference_speed_fraction": 0.2093767600285151,
+          "min_joint_margin": 0.6971408660269662,
+          "min_self_collision_m": 0.041040615218511434,
+          "reason": "passed",
+          "start": [
+            3,
+            4
+          ],
+          "stroke_mm": 0.0
+        }
+      ]
+    }
+  },
+  "planning": {
+    "confidence_threshold": 0.87,
+    "inner_nodes": 128,
+    "inner_seed": 842997,
+    "outer_nodes": 32,
+    "outer_seed": 842991,
+    "time_cost_per_s": 0.055,
+    "travel_cost_per_mm": 0.00045,
+    "wrong_association_cost": 1.0
+  },
+  "protocol_sha256": "1f098fb54662ff874e6f2c021b421d620f95f48cf61f6b81483c1cca28b82676",
+  "python": "3.10.20 (main, Mar 11 2026, 17:46:40) [GCC 14.3.0]",
+  "reserve_mm": {
+    "narrow": 10.0,
+    "wide": 26.0
+  },
+  "sampled_dt_s": 0.02,
+  "schema": "tro_moving_y_continuation_v1",
+  "shared_post_caps": {
+    "duration_s": 1.5,
+    "travel_mm": 60.0,
+    "turn_deg": 60.0
+  },
+  "smoke_seed_base": 2026111290,
+  "sources": {
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_fisher_continuation_20261112/certification.py": "fc1a6698f5f600030c5bdd2444cfee3a145a37bc6d63220b250b3e45336264e5",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_knee_latent_rl_20261112/belief.py": "f7a8e36bdacea26be3cc2d47b1f0fd1f84351f36295618edd3ec04ddfb12fdc0",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_knee_latent_rl_20261112/experiment.py": "c144fed1e4abf54c37d60a36600d7b0c5b46d531b8fc955274bc315464404ce0",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_knee_latent_rl_20261112/knee_world.py": "fcc615fc0bef50f206b51532f52e1832882de81e88cf0ebef20e719f1e396a58",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_leg_bifurcation_20261112/knee_rebake/atlas_right.npz": "b8a0e1395786774aac66f6bb621725e771a00af461e7a678266c2ebea9254aa5",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_leg_bifurcation_20261112/knee_rebake/attachments_right.npz": "7ce2dcc3c5aaca37da7c9e48813fab3b396ba28245ea5c3daed977380e1b1524",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_leg_bifurcation_20261112/learned_prodmp.py": "5b7536345314cb6bddc5beb2d6d9093cd64cb250d42ddae7d7df2742566ab4c7",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_leg_bifurcation_20261112/long_final_frozen/BRANCH_AND_GPS.json": "288cd63fa492a1635e47589f9389de0d126fa8b17f4ed64cef080847079bde21",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_leg_bifurcation_20261112/long_leg_assets.py": "f3b16a9a8de6aa8aa797aee0dd2538764b0fc866a556af553cc209d8ead67171",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_leg_dynamic_20261112/DYNAMIC_GEOMETRY_FROZEN.npz": "e61ff1a05ca957674d3b146dc225b96cce61286094f0e1da052b5874c8219180",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_leg_dynamic_20261112/dynamic_scan.py": "4fa62deb34c48b3b21ca3b2a2f6d920cbb44865cfbd4b7007a66ab6887c686db",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_map_recheck_20261112/closed_loop.py": "aa784ca1b20da4b300fb1d2074ed7c48d74d071e15e6ff3aeb820dc5eb1af877",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_map_recheck_20261112/map_model.py": "5f82bedb85600d44e37751aa8ee8840e4ec85a4792a0ec1ed9cf1625bdd66271",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_module_ladder_20261110/capability/capability.py": "8dd40a6af7b29ed0b4084e25acb5f403a91a35b364f978ac1233a793467841a4",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_tro_y_continuation_20261112/PROTOCOL.md": "1f098fb54662ff874e6f2c021b421d620f95f48cf61f6b81483c1cca28b82676",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_tro_y_continuation_20261112/mechanics.py": "c66f8a5217bab2443e4203333e3260132c5be56fb83aadfdf99b51e568fee25b",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_tro_y_continuation_20261112/planning.py": "38fdc919fe5f941269692ea008fcee0e8c210c7b461fceef032a7e524e1acc5f",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_tro_y_continuation_20261112/run_study.py": "f53dbc1f263e0cee5c140e464c11549ed081ff87fbd588546da01aaa92ef7b79",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/dird/adapter.py": "e056959792d4529d7389d5e49facb04b5497ded88d579677680b019f10e22eac",
+    "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/RM75-6F-8dof.collision.urdf": "ba6f49b4fd9cba74107af25ecd82afccac156a94b194a6acb06a2aadebf1d197",
+    "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/RM75-6F-8dof.urdf": "7578310c5ce7b03a301c171175fd4eca2bd8e4b15903a7a9a3ed9bfc366e4ec0",
+    "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/collision_pairs.yaml": "8d4b96e09ec8bdfd33a7835fb77fa4dcb720551e7d55d28c063994b99c392318",
+    "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/meshes/collision/base_link.stl": "d064b0a2f806d8f10fd591555fc0e4cc336192094e96401902c141368d8ae6cc",
+    "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/meshes/collision/link_1.stl": "90d5b335f392402516e722681ba8329ad06f0e28d79d29ba1463da952b73b90f",
+    "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/meshes/collision/link_2.stl": "8c580d89602815965ccc3bf7634004bb60cc72f36b3890f3e7c22bf00e27d5f7",
+    "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/meshes/collision/link_3.stl": "a3920205d23ee649adfffbad53aa20260d277fd57a7f10d0aa8ce99249e8530e",
+    "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/meshes/collision/link_4.stl": "525ab301f2b4747c0e2a9f2494ffca4b28f798d75e38eb6ed2d92438a3a1babe",
+    "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/meshes/collision/link_5.stl": "bf7ff38e2bde76aeb2424bd8f39c6d90d1bcdcc378c06f41020a89d79762b4f1",
+    "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/meshes/collision/link_6.stl": "d5efae0116584d1d00d46f3a8579ab093abaecb41435f65c83c06308bb74c518",
+    "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/meshes/collision/link_7.stl": "a19c21f7fc000f5b9aae9b051bdf3b9880caacdcabd027e624072edd17a71f0c",
+    "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/meshes/collision/probe45.stl": "8a68b1b7df6668af46a766c80393a8f9822060378f4c8d65686efe2edfc0efe5",
+    "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/control/joint_admittance_8dof/collision_model.py": "cd83783fd330644a626f47ad750567b1cd64f141b0ed10c10f05364fa5033cec",
+    "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/control/joint_admittance_8dof/model.py": "575647629fbc5fa78c7a0e756986f91459154095821384f132454af546fda2b3",
+    "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/kinematics/srs_ik.py": "7470286eb54d312c6f410c13040d0d50b453c7eb025f27021f6d705ee4697487"
+  },
+  "split": "holdout"
+}

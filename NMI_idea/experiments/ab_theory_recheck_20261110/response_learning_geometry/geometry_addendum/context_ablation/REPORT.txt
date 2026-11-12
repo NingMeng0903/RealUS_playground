@@ -1,0 +1,13 @@
+Context ablation with fixed typed geometric basis
+==================================================
+Units: response/action errors are physical mm (1 normalized unit=10 mm); success threshold=2 mm.
+All three models share b0=u, b1=n(n.u), b2=t(t.u); only context conditioning differs.
+
+Model | response RMSE mm | target + success/regret mm | target - success/regret mm | target alt success/regret mm
+constant_basis_ls | 0.168245 | 1/0.0164865 | 0.765625/0.0104801 | 0.839844/0.00723215
+typed_no_context | 0.170745 | 1/0.0133555 | 0.765625/0.0106835 | 0.839844/0.0087336
+typed_full_context | 0.0413791 | 1/0.00116698 | 0.767578/0.000985709 | 0.847656/0.00143097
+
+Interpretation
+--------------
+This isolates the incremental effect of public context s after holding the geometric basis and candidate budget fixed. The three target columns are new centering readouts only; they are not long-axis or acoustic-window transfer. Results remain synthetic and do not establish e3nn necessity or real ultrasound performance.

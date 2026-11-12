@@ -1,0 +1,172 @@
+R4 dIRD可重复重训与实际关节QP离线诊断
+封存日期：2026-11-10。按PLAN.txt和AMENDMENT_ULTRAPOC.txt解释。
+
+结论范围
+已实际完成独立新权重训练、原分组评估、全新物理运动学点查询和真实关节QP
+回放。重训可复现，但新模型没有可靠优于旧模型的证据，不替换旧模型。
+旧SRS的0/6只表示该有限格点/固定分支抬升器未给出合格解，不能表示dIRD或
+实际UltraPOC不能执行原pose路径。实际关节命令由在线QP计算，必须独立评价。
+
+用户问“理想仿真为什么仍有误差”：本轮区分了四件事。
+1) 回放器原先混用了5ms积分时钟和native observer实际墙钟。这是本轮回放器
+错误，已修；旧clock_mixed输出保留。修正后native短前缀重放整条q/qdot零差。
+2) 冻结的branch0/ψ≈172°初始q与生产偏好branch4/ψ≈68°不符。相同首pose、
+相同rail、按生产ψ_attr一次选出的branch4对照显著降低位置误差，不能把原
+branch0大误差直接归咎于通用QP固有限制，也不能现场瞬移到另一关节配置。
+3) 实际WorldPolylineReference虽插值姿态，却令角速度前馈恒0。原几何路径
+Slerp角速度p95=.39108rad/s；姿态依赖2/s反馈，因此存在动态滞后。单独增加
+由同生产参考计算的SO(3)角前馈可降低姿态误差，但仍未带来整体门槛通过。
+4) 原native二进制有可重复的非法rail返回值，具体内部赋值尚未定位。只读
+仪表重编译版未再现；不猜测根因、不修改生产C++掩盖，不把solved当合法。
+该项阻断native可执行性证书和连续B机械增益声明。
+
+物理/软件契约
+实际import副本：/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control。
+真实JointIkController.update、QpIkController/ProxQP、生产WorldPolylineReference、
+peirastic.realman8dof.modes.track.build_track_cartesian_phase均实际执行。
+配置：/media/camp/EXT_DRIVE/RealUS_playground/peirastic/configs/controller.yaml。
+q顺序为raw rail_y米+j1..j7弧度，pose在rail_base。URDF、probe45、J1轴编码和
+碰撞mesh均有哈希。主协议显式URDF工具，未读机器人或做网络TCP同步。
+配置的缓存工具gripper2与checkpoint物理probe45差1微米/.000437153rad；
+当前实机活动工具仍未离线确认。重训是该物理资产契约的独立模型验证，
+不能仅凭缓存相近便宣称已兼容当前实机。全35配置mesh对在每控制tick检查。
+外部人体/接触/环境碰撞不在范围内。
+
+回放假设和修正
+几何严格使用原冻结12条pose路径和原初始q，没有因结果改路径/速度/门槛。
+同一几何路径新时间设置：2cm/s，.4s软启动，dt=.005s，末端保持2s。
+这与旧12°/离散采样门是不同实验，不能直接比较“成功率”。真实QP自由分配
+rail，未把原场优化的计划rail强行当实际rail。测量为理想q_send反馈和上一
+rail速度反馈；没有UltraPOC接触/图像/力外环，没有设备/物理跟踪/实时抖动。
+固定名义参考时间i*dt并非完整live phase governor/publication链。参考线性
+前馈与数值导数最大差1.53e-11m/s；Slerp姿态连续，但角FF为0。
+q_send是命令目标；将其各坐标直接作为下一理想测量只是本轮运动学理想化，
+并未完整模拟20ms rail刷新/观测延迟和实际设备闭环。确定模型时钟不等于
+已经验证该理想plant完全匹配实际rail执行模型；相关差异不能当物理系统结论。
+native SHM模型时间修正为1000+tick*.005，IPC安全超时仍用真实墙钟；该模式
+ipc_wait_ms不是实际延迟测量。修正仅在自有离线桥接器，不改生产QP。
+
+独立重训
+使用实际生产train_signed/calibrate_conformal/eval_signed入口。原数据1796364行，
+原拆分seed20261128不变，新初始化seed20261110；192宽、5层、Fourier3和原损失/
+优化器不变。90epoch上限，patience16，实际62epoch早停，耗时103.711秒。
+GPU：RTX4080 Laptop12GB，torch2.12.0+cu126；无下载、无生产权重覆盖/部署。
+训练入口只新增可选initialization_seed以便固定分组独立初始化，默认兼容。
+原脏文件和预存diff在source_before，窄patch为initialization_seed_patch.diff。
+新旧五组计数及fingerprint完全一致：
+426d0ecad514935c9cffb87543ce6c45eaa3a3a3ea42e5e73c0e3bbed2985b70。
+原数据SHA246f9b5f65337525c3dae77409e2749e7c399f2e6bb7b7caca83c2ea82282f73。
+旧权重SHA：08698c273bd1f0f4f2a86d956df95448ba502ee9d7fc17445f06258a13286e51
+新权重SHA：32f9fc6483e502141a8b5b094b7741f094de38c3c2c1058bdbd333754d86b90e
+
+原已看测试仅作开发回归（不是新的独立发布测试）：
+                 旧模型          新候选
+BA               0.93384290      0.93163355
+校准误接受率     0.04879211      0.04741340
+误接受95%上界    0.04993528      0.04854135
+近轴BA           0.86542411      0.88172205
+严格角跨界率     0.21127503      0.19283456
+新候选严格角跨界率低于现有CLI门槛.203，因此eval返回1、pass=false。保留失败，
+不改变阈值追求通过，不推新模型为发布模型。原selected.pt哈希确认未改变。
+
+全新独立审计集没有参与训练/选择/调参：global512，seed20261130，实际生产
+SRS selected-witness+碰撞标签26正/486负；local256，seed20261131，固定branch0
+全5°格点中存在碰撞安全见证为正，98正/158负。两种oracle分别标记，不冒充
+存在性/连续轨迹/人体验证。
+Global BA旧.979740/新.977683；校准FAR旧1/486、新3/486。
+Local BA均1，FAR均0/158；此分布样本有限，不能外推到完整边界或实机。
+成对按pose分层bootstrap2000次：global新减旧BA95%区间[-.006173,.002058]，
+FAR区间[-.004115,.012346]；不是患者/世界层面的统计独立证据。详见SUMMARY。
+固定原pose+计划rail的旧/新分数另存fixed_path_model_scores.json。相同pose
+输入下QP更新不读取场模型，重训不能仅靠改分数修复该固定几何的执行。
+
+校准接口修复
+calibrate_conformal拟合的是raw-zero_bias。raw接受阈值必须是
+m_safe=zero_bias+safety_threshold。旧桥接器误把raw与centered safety_threshold
+比较，现已窄修；源码/哈希/patch和实际神经场边界回归均保留。
+旧raw正确阈值.0024494473（原错误.0186674129）；新raw阈值.0298355743。
+原192边cache扫描该修正未改变任何proxy_pass标签，但标签不能当安全证书。
+原结果不覆盖，旧SRS布尔本身不因阈值修复变化；B结论仍须改用实际执行模型。
+
+确定时钟，冻结branch0/native/URDF主回放：
+方法          proposal  位置p95mm 姿态p95deg 最小自距mm
+no_dird       0    58.376    12.971    39.091
+no_dird       1    72.260    13.715    39.091
+no_dird       2    60.239    13.417    39.091
+no_dird       3    64.850    13.546    39.091
+no_dird       4    61.540    13.110    39.091
+no_dird       5    60.162    13.102    39.091
+joint_guided  0   116.410    18.220    39.091
+joint_guided  1    98.351    17.695    39.091
+joint_guided  2    87.643    16.764    39.091
+joint_guided  3   126.533    18.087    39.091
+joint_guided  4    92.167    17.282    39.091
+joint_guided  5   120.427    17.002    39.091
+12条均无controller fault；q位置/命令速度和.01m自碰撞门通过12/12，命令加速度
+门12/12。有限差分命令jerk与配置箱比较为0/12通过，原数值均保留；不能以
+solved、低步长或自碰撞通过宣称完整机械安全。2mm/2°最大误差主门0/12。
+这只是否定“该初始状态+名义定时+这个离线参考封装”的高精度跟踪证据，
+绝不是否定整个系统/所有初始化下该几何路径可执行。
+
+初始化敏感性（单独，不替换主初始状态）
+按生产psi_attr=68°、branch4、同rail和同首物理pose一次选取；选取发生在
+查看12条敏感性结果前，未择优。FK最大矩阵差4.43e-6，自距41.267mm。
+原native12条中9条q/速度/自碰撞合法，位置p95范围.1056–.4333mm、姿态p95
+7.9075–11.6403°，未过完整姿态门。另3条返回非法rail，case为no_dird/1、
+joint_guided/3和5；其米级误差是无效后端输出，剔除出“合法轨迹误差”汇总。
+孤立重复时只有no_dird/1稳定重现，另两条未复现，完整差异保留，不挑选删除。
+
+分层诊断（native/URDF确定时钟）
+branch0常值pose2s位置p95约.85mm；5mm/2mm每秒低速直线约2.39mm。
+branch4同常值posep95约.00247mm、同慢线约.0102mm；同冻结path0位置p95
+.1063mm，而branch0为58.376mm。两个seed首pose差都为微米量级，base/world、
+q单位、初始FK及线性参考导数检查不能解释几十毫米误差。branch0 path0约
+30.8% tick的task_progress<.01，收到与可行命令范数差最大.58436；可行命令
+与J*qdot估计差约1e-17，表明任务被内层缩减而不是把QP成功误当完美跟踪。
+physical_saturated/joint_limited/rail_limited这些标志在该例为0，因此不能凭
+标志将原因简单命名成物理速度饱和。生产设计族/偏好约束耦合是有对照支持的
+解释，但未独立证明某一特定约束行是唯一原因。
+
+角前馈仅作独立参考接口诊断：用同生产Slerp的SO(3)数值导数补角FF，不改
+生产外层或QP，不用于B图。branch4 path0姿态p95从约7.91°降到约.547°，但
+位置p95升到约6.93mm，整体仍未通过主门；不把单项改善写成整体修复完成。
+
+native rail异常（剩余阻断项）
+原二进制no_dird/1在tick684：q_meas[0]=q_cmd_before[0]=.312057710m，
+q_send[0]=−3.299771340m，qdot[0]=+.007547273m/s；input t_mono=1003.42，
+dt=.005，rail_v=−.000452727，rail_refresh=.02，QP1/2报solved，rail box
+[0,.007534455]，hard residual1.28e-5。此前四tick都约.31206m。
+完整SHM input/output、q_meas/q_cmd/q_send、boxes、model/wall时钟和观测器
+可见字段在isolated_anomaly_native.json。Python同冻结三条输入未见越界。
+源码顺序确为q_hat rebasing→observer→QP积分/rail限位→step-clamp，无
+米/毫米转换。native observer内部状态未直接导出。
+独立同源只加只读打印的仪表版已成功编译到自有目录，未覆盖生产二进制；
+该版本在对应tick q_hat≈.312055476、q_send≈.312055441，无越界，且整条
+未复现原异常。仅凭这一差异不能猜具体赋值/内存/solver原因；问题未定位。
+正常rail rebasing本来可引入微米级q_send与旧q_cmd+dt*qdot差，不能强要求
+两者逐位相等；上述米级跳跃和URDF越界则明确非法。
+桥接器现逐tick检查非有限/URDF/命令速度，在非法proposal进入理想测量前
+拒绝，保存首坏tick，exit_state.valid=false且拒绝继续。没有生产C++修补。
+
+状态接口与复现
+QP_API.txt定义query_pose_path和QPReplaySession。出口状态保存完整路径/hold
+事件和源码/配置/二进制/TCP哈希；恢复重放所有实际update，非只复制q/qdot。
+短motion→.4s/80tick hold→motion的Python/native：JSON round-trip后整个
+下一段q轨迹、出口q和qdot最大差均0，fingerprint错误拒绝。严格1e-7门未放宽。
+该短回归不消除长路径native异常，因此当前接口只可作fail-closed离线研究。
+本轮没有重建192边B图，旧SRS图和clock-mixed root图都不能代表UltraPOC机械
+可执行性。坐标/资产独立审查由其他任务负责，尚不作新系统结论。
+
+验证与交付
+最终run_checks.sh：54项训练/分组/校准/旧离开段回归通过，Python/native
+完整前缀状态各通过。实际测试、所有异常/失败日志、原/新权重、独立审计集、
+逐tick trace、配置、source_before脏状态和哈希均保留。SUMMARY.json有结构化
+指标；COMMANDS.txt有命令；retrain.py --output 新不存在目录可重复实际训练，
+拒绝覆盖任何已有权重。run_checks.sh默认不重训、不跑完整24条。
+
+下一步最小工作
+先解决/独立审查native返回值与observer/提交合同，保留逐tick拒绝；明确当前
+真实TCP/机器人契约及实际允许初始配置；验证完整运行链的pose参考（含角
+前馈/时间参数化/参考治理）和状态传播。然后才在同信息/预算下比较上层
+A/B与旧/新场。重训本身不是这些接口/初始化/状态问题的替代修复。
+本轮从未连接机器人、发送设备命令、回放真实力/超声闭环或接触人体。

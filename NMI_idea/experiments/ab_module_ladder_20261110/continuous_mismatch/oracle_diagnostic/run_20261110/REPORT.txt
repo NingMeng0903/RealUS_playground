@@ -1,0 +1,17 @@
+ORACLE_LEAKED_TRUTH upper-bound diagnostic
+status=complete episodes=16/16
+This is invalid-policy truth leakage, excluded from legal A/B and prescan claims.
+GT hashes matched sealed legal run: True
+host wall seconds=5.270571; native replay run=False
+
+Oracle by condition:
+  iid: {'n': 8, 'completed': 8, 'failures': 0, 'correct_public_stops': 5, 'false_public_stops': 1, 'public_stops': 6, 'ever_audit_quality': 7, 'mean_RMT_s': 23.686755972954153, 'actions': 24, 'min_raw_ess': 1.0, 'max_posterior_weight': 1.0}
+  shifted: {'n': 8, 'completed': 8, 'failures': 0, 'correct_public_stops': 0, 'false_public_stops': 1, 'public_stops': 1, 'ever_audit_quality': 0, 'mean_RMT_s': 60.0, 'actions': 48, 'min_raw_ess': 1.0, 'max_posterior_weight': 1.0}
+
+Legal finite-prior A context (copied descriptively; not merged):
+  iid: {'n': 8, 'completed': 8, 'failures': 0, 'correct_public_stops': 0, 'false_public_stops': 0, 'mean_RMT_s': 60.0, 'median_RMT_s': 60.0, 'mean_actions': 6.0, 'any_mismatch_warning': True, 'min_raw_ess': 1.0, 'max_posterior_weight': 1.0, 'min_unique_effective_support': 1}
+  shifted: {'n': 8, 'completed': 8, 'failures': 0, 'correct_public_stops': 0, 'false_public_stops': 0, 'mean_RMT_s': 60.0, 'median_RMT_s': 60.0, 'mean_actions': 6.0, 'any_mismatch_warning': True, 'min_raw_ess': 1.0, 'max_posterior_weight': 1.0, 'min_unique_effective_support': 1}
+
+ORACLE_LEAKED_TRUTH is intentionally uppercase and must remain visible
+in every downstream interpretation.
+RESULTS.json sha256=7f3b71a8629c2dd599b7851eb85c3ff5c288fb584a9bc7ff493fd9d585e3b9af

@@ -1,0 +1,38 @@
+Independent smooth-reference and time-alignment audit, 2026-11-10
+
+Verdict: the two frozen paths achieve simultaneous sub-0.2 mm / sub-0.1 degree middle-scan tracking against the NEW spline reference with the ORIGINAL 100/50 task weights. The strong-position weights produce essentially the same middle accuracy. This supports a differentiable, dynamically easier reference as the sufficient tested correction in this regime; it does not require a position-versus-angle weight tradeoff in the middle. It is an offline native-controller / ideal-measured-joint result, not physical ultrasound or hardware accuracy. Mechanical strict PASS is still not established.
+
+Independent reproduction
+All 22 bundle hashes and 3 external source/test/native-binary hashes matched. The production reference's 8 tests were independently rerun and passed. All 5,240 saved frames from the four one-shot runs were reconstructed with the declared URDF tcp: FK(q_before), FK(q_send), desired pose, analytic 6D feed-forward, world/body transforms, current error feedback, and continuous command acceleration/jerk. The native model clock equals 1000+t, initial q equals the declared seed, and q_before[k+1]==q_send[k] exactly. Every saved same-time error file and middle summary agrees independently to <=9e-15 in displayed units. Independent collision recomputation covered 68/69 selected frames per run x all 35 pairs, with zero discrepancy. No native process, hardware, or experiment was rerun by this audit.
+
+Same-time middle results
+Window is the declared [.8 s, duration-.8 s], not chosen from errors.
+case                         n    p_max mm     normal_max mm  angle_max deg
+path0 original 100/50        580  .032982414    .032728420     .032484455
+path0 strong position       580  .033119182    .032728428     .032484544
+path1 original 100/50        598  .033009416    .032164809     .032070826
+path1 strong position       598  .033009435    .032164804     .032070908
+The original-weight time windows are .800-3.695 and .800-3.785 seconds.
+Independently integrated TRUE spline arc20-80 windows contain 444/454 samples: original-weight p_max .032032623/.031340729 mm, angle_max .024674056/.026980110 degrees. All ten true-spline arc bins are preserved in smooth_traces_independent.json. The original middle definition and the geometry-only sensitivity both pass the finer target.
+
+Full-run results remain visible. Original-weight same-time max position is 1.034877/1.022444 mm, max angle .076572/.072144 degrees, with the position peak in the last arc decile. Strong-position weights reduce full-run position to .062427/.059424 mm but increase angle to .493402/.474691 degrees. Thus the weight tradeoff remains at the transient end; the simultaneous middle result does not imply weights are universally irrelevant.
+
+Time alignment
+The old bridge computes control at t from FK(q_before), then publishes q_next and logs FK(q_next) against T(t). Because the next measured state is precisely that q_next, its physical simulation timestamp is t+dt. A perfect 2 cm/s segment would therefore show approximately 0.1 mm of false one-tick advance in the old metric. The new measured-before comparison is correct. This is an evaluation correction, not extra physical controller improvement. Historical post-update/old-reference metrics and original gates remain intact. The independent output also compares q_next with T(t+dt), consistently aligned.
+
+Reference mathematics and actual geometry
+Position is a natural CubicSpline; orientation is RotationSpline. Its angular derivative is local/body angular rate and is correctly multiplied by R to produce vee(Rdot R.T). Independent finite differences of the actual rotations verify all six feed-forward components <=4.3e-10; using the body angular rate directly would err by about .108/.114 rad/s. Common SE3 transforms preserve pose and both velocity blocks to numerical precision. Input pose nodes interpolate exactly; endpoints have exactly zero velocity, and the time law has continuous acceleration. This is C2, not a claim of globally continuous jerk.
+
+Independent interval optimization agrees with the implementation's derivative-polynomial maximum. Peak translation bound is .01999999999998 m/s; sampled speed remains below .02 m/s. Durations are 4.499520820/4.586063676 seconds and true spline lengths 73.918056877/75.629167761 mm.
+
+The candidate geometry has changed BETWEEN the 17 exact pose nodes. Across 32,769 parameter samples, directed spline-to-old-polyline distances are .115762262/.118140156 mm; same-parameter angular changes are .121217162/.133849574 degrees. These sampled distances are not an interval-certified Hausdorff bound. Measured middle FK compared with the OLD polyline/Slerp at the same chord parameter has max p .144677/.131470 mm and angle .142394/.157846 degrees. Therefore the .033 mm/.033 degree result must name the new spline reference, not imply equivalent fidelity to the old piecewise geometry. Old path certificates cannot be reused. These tests validate sampled robot self-collision, not body contact or vessel alignment.
+
+Mechanical and solver limits
+Complete native dumps show only resync_err_rad changed from 6 to 20 degrees relative to the old 100/50 controller; physical joint, velocity, acceleration, jerk and collision settings stayed unchanged. Within each new pair only task_weight differs and reference/clock/FF arrays are bit-identical. There are no saved illegal joint proposals, solver faults, or pauses. Sampled self-distance is about 40.823 mm.
+
+Original-weight jerk margins are -.024015952967 / -.006936181458 rad/s^3 against 300. The exact offending native lower jerk bounds are violated by 6.003988e-7 / 1.734045e-7 rad/s; native previous-two-command history equals the real saved history. Dividing these velocity residuals by dt^2 reproduces the jerk excess. These are solver-precision-scale residuals, unlike the earlier collapsed-box 200+ excess, but still strict FAIL. Strong-position cases similarly fail jerk by .022934676 / .029758009; several acceleration margins are negative at ~1e-12. No gate, physical limit, or sign is relaxed in this audit.
+
+Integration scope
+The four frozen runs actually instantiate the production WorldPoseSplineReference and feed its output through the real outer loop, native QP and URDF. At their freeze, scan_tracking_profile.yaml recorded the tested settings while the runner used matching explicit values. A subsequent reusable YAML-consuming factory/CLI is a separate integration change and requires its own addendum. The production-global hardware controller defaults were not automatically switched. The legacy bridge's soft_start_ramp_s=.4 metadata is stale for these runs; actual reference ramp is .8 on both ends, already explicitly corrected in the aligned report.
+
+Evidence: check_spline_reference.py, spline_reference_independent.json, reference_tests.log; check_smooth_traces.py, smooth_traces_independent.json; smooth_jerk_boundary_audit.json; manifest_and_aligned_files_check.json and smooth_manifest_at_audit.json. Independent outputs use the true spline tangent and numerically integrated spline arc; the original regional report used old-polyline projection for its arc/tangent sensitivity and remains distinguishable.

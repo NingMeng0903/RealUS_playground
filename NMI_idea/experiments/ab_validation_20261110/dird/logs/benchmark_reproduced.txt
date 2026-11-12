@@ -1,0 +1,65 @@
+pose/rail gradients {'finite_gradients': True, 'common_se3_score_max_abs_error': 2.2870594307278225e-14, 'common_se3_gradient_max_abs_error': 3.126388037344441e-13}
+{
+  "total_seconds": 4.200825240000995,
+  "installed_dataset_hash_matches_checkpoint": true,
+  "pose_gradient_p95_relative_error_at_h1e5": 3.8019182561656115e-08,
+  "common_se3_score_max_abs_error": 2.2870594307278225e-14,
+  "common_se3_gradient_max_abs_error": 3.126388037344441e-13,
+  "trajectory_gradient_p95_relative_error": 1.563132297418789e-08,
+  "raw_ird_separate_from_obstacle": true,
+  "methods": {
+    "initial": {
+      "n": 6,
+      "proxy_pass": 3,
+      "exact_sampled_pass": 1,
+      "obstacle_proxy_pass": 0,
+      "median_min_raw_ird": -0.15900866422189,
+      "minimum_raw_ird": -2.4471494806412752,
+      "optimization_seconds": 0.0,
+      "exact_query_seconds": 0.9087165530036145,
+      "failures": [
+        "SRS path exceeds rail-step bound: 0.053025 m",
+        "SRS path exceeds joint-step bound: 24.732 deg",
+        "SRS graph disconnects at waypoint 7",
+        "SRS graph disconnects at waypoint 5",
+        "SRS graph disconnects at waypoint 2"
+      ]
+    },
+    "no_dird": {
+      "n": 6,
+      "proxy_pass": 6,
+      "exact_sampled_pass": 0,
+      "obstacle_proxy_pass": 6,
+      "median_min_raw_ird": 3.0372755375759435,
+      "minimum_raw_ird": 3.0372755375759435,
+      "optimization_seconds": 0.26294221699936315,
+      "exact_query_seconds": 0.8657256359983876,
+      "failures": [
+        "SRS path exceeds joint-step bound: 39.594 deg",
+        "SRS path exceeds joint-step bound: 39.778 deg",
+        "SRS path exceeds joint-step bound: 41.966 deg",
+        "SRS path exceeds joint-step bound: 39.913 deg",
+        "SRS path exceeds joint-step bound: 39.543 deg",
+        "SRS path exceeds joint-step bound: 38.092 deg"
+      ]
+    },
+    "joint_guided": {
+      "n": 6,
+      "proxy_pass": 6,
+      "exact_sampled_pass": 0,
+      "obstacle_proxy_pass": 6,
+      "median_min_raw_ird": 3.0372755375759435,
+      "minimum_raw_ird": 3.0372755375759435,
+      "optimization_seconds": 0.35975000700273085,
+      "exact_query_seconds": 0.8655518790001224,
+      "failures": [
+        "SRS path exceeds joint-step bound: 59.512 deg",
+        "SRS path exceeds joint-step bound: 56.188 deg",
+        "SRS path exceeds joint-step bound: 64.659 deg",
+        "SRS path exceeds joint-step bound: 52.120 deg",
+        "SRS path exceeds joint-step bound: 61.080 deg",
+        "SRS path exceeds joint-step bound: 46.688 deg"
+      ]
+    }
+  }
+}

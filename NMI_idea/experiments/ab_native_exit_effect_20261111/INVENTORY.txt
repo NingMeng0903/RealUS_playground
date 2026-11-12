@@ -1,0 +1,224 @@
+NATIVE EXIT EFFECT — SAVED CHECKPOINT INVENTORY
+================================================
+
+Scope
+-----
+Read-only extraction from the saved native checkpoints/results in:
+
+  /media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111
+  /media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_adaptive_stopping_20261111
+
+The inventory does not run a controller, replay NPZ traces, connect to a
+robot, or use the network.  `scan_inventory.py` performs the same cheap JSON
+and log scan and never imports the native stack.
+
+Headline counts (saved checkpoint rows)
+----------------------------------------
+
+  total checkpoints read                         2,258
+  executed native passes                        2,159
+  explicit no_checked_route / no-witness           99
+  other checkpoint outcomes                         0
+
+By source study:
+
+  ab_continuing_rollout_20261111      1,807 pass / 92 no-witness
+  ab_adaptive_stopping_20261111         352 pass /  7 no-witness
+
+All 2,159 executed rows pass the saved route validity, every step's tracking
+gate, native tracking gate, valid flag, and native_failure_count == 0.  The 99
+no-witness rows have `result.reason=no_checked_route`, `route={}`, and no
+candidate route row.  Their output state remains a full native checkpoint
+(`q`, `qdot`, `acceleration`, `snapshot`) even though `output_state.valid` is
+false; they are not q-only resets.
+
+Exact state/action comparison
+-----------------------------
+
+The comparison key is fixture + saved `input_fingerprint` (complete state
+identity) + action_id.  There are 452 unique exact groups:
+
+  all-pass groups       377
+  all-no-witness groups  75
+  mixed groups            0
+
+Thus no exact saved fixture/start/action group has contradictory pass and
+no-witness rows.  This is a finite saved-library observation, not a claim of
+global impossibility.  Repeated rows are deterministic checkpoint replays,
+not independent physical trials.
+
+Direct versus returned route evidence
+--------------------------------------
+
+Across executed rows:
+
+  direct pass                         1,949
+  retreat_fork pass                    169
+  round_tip pass                        41
+  returned-route pass                  210
+
+For the same prescribed action at the fixture/action level, nine pairs have
+both direct and returned-route evidence, 21 are direct-only, and none is
+returned-only in this union of saved studies.  The nine pairs (counts are
+saved pass rows, not independent samples) are:
+
+  fixture_00_constrained / left       direct 197; retreat_fork 12
+  fixture_00_constrained / right      direct 171; retreat_fork 1; round_tip 3
+  fixture_00_constrained / side_left__single_dwell_0.6
+                                      direct 58; retreat_fork 70
+  fixture_00_constrained / side_right__single_dwell_0.15
+                                      direct 60; round_tip 9
+  fixture_00_constrained / side_right__single_dwell_0.3
+                                      direct 25; retreat_fork 9
+  fixture_00_constrained / side_right__single_dwell_0.6
+                                      direct 187; retreat_fork 7; round_tip 16
+  fixture_01_constrained / left       direct 191; retreat_fork 20
+  fixture_01_constrained / right      direct 159; retreat_fork 12; round_tip 13
+  fixture_01_constrained / side_left__single_dwell_0.6
+                                      direct 28; retreat_fork 38
+
+These are route-availability comparisons from different exact probe exits;
+they are not A/B outcome cherry-picks and do not imply that a returned route
+is preferable.
+
+If “prescribed scan” is restricted to terminal `left`/`right`, the four
+fixture/action pairs (fixture 0 left/right and fixture 1 left/right) all have
+both direct and returned evidence: 720 direct passes and 61 returned passes
+(32 retreat_fork left, 13 retreat_fork right, 16 round_tip right).  No such
+terminal pair is returned-only.
+
+Concrete reproducible checkpoints
+----------------------------------
+
+Direct native pass and first NATIVE_WITNESS transition:
+
+  /media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/B_rollout/fixture_00/cases_0000_0001/dev/fixture_00_constrained/native_shared/planning/checkpoints/239763b4090bb8fcb7b196c2.json
+
+  input key []
+  action side_right__single_dwell_0.6
+  route side_right__single_dwell_0.6__direct
+
+Returned retreat_fork pass for terminal left:
+
+  /media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/B_rollout/fixture_00/cases_0000_0001/dev/fixture_00_constrained/native_shared/planning/checkpoints/88970f9a004bb9349c063239.json
+
+  input key [side_right__single_dwell_0.6, side_right__single_dwell_0.6]
+  action left
+  route side_right__single_dwell_0.6__side_right__single_dwell_0.6__left__retreat_fork
+
+Returned round_tip pass for terminal right:
+
+  /media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_adaptive_stopping_20261111/study_v3/A_task_dwell_30/fixture_01_constrained/dev/fixture_01_constrained/native_shared/planning/checkpoints/bd7f86bee46892635be04967.json
+
+  input key [side_right__single_dwell_0.6, side_left__single_dwell_0.6]
+  action right
+  route side_right__single_dwell_0.6__side_left__single_dwell_0.6__right__round_tip
+
+Concrete no-witness after four exact probes:
+
+  /media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_adaptive_stopping_20261111/study_v3/A_task_dwell_30/fixture_00_constrained/dev/fixture_00_constrained/native_shared/planning/checkpoints/acbc475b5405d0156af7c8f0.json
+
+  input key [side_right__single_dwell_0.6 x 4]
+  action side_left__single_dwell_0.6
+  reason no_checked_route; route {}
+  output_state.valid false, output_state.native keys q/qdot/acceleration/snapshot
+
+The same content-addressed checkpoint is reused under the continuing B_rollout
+and A_task paths.  The saved pilot audit explains why both candidates were
+rejected; it is not a replay exception.
+
+One useful state-dependent contrast (not an exact-state contradiction) is the
+same requested `side_left__single_dwell_0.6` action in fixture 0:
+
+  no-witness input key [side_right__single_dwell_0.6 x 4]
+    checkpoint .../ab_adaptive_stopping_20261111/study_v3/A_task_dwell_30/
+    fixture_00_constrained/.../checkpoints/acbc475b5405d0156af7c8f0.json
+    reason no_checked_route
+
+  pass from a different exact exit input key [side_right__single_dwell_0.6]
+    checkpoint .../ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/
+    B_rollout/fixture_00/cases_0000_0001/dev/fixture_00_constrained/
+    native_shared/planning/checkpoints/48a8a882c9420830c8054626.json
+    route side_right__single_dwell_0.6__side_left__single_dwell_0.6__retreat_fork
+
+The latter is an executed pass with valid tracking/native gates on every step.
+This is precisely a finite state-dependent route witness: it does not claim
+the same exact state can both pass and fail, and it does not infer a global
+impossibility from the no-witness library.
+
+First-four public-boundary flag
+--------------------------------
+
+For the archived A_task cohort, fixture 0 case_0001 has four valid native
+side_right__single_dwell_0.6 exits followed by a real native rejection of
+side_left__single_dwell_0.6.  The exact checkpoint above and:
+
+  /media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_adaptive_stopping_20261111/NATIVE_PILOT_AUDIT.txt
+
+show both legal candidates failing the 2-mm position gate.  Fixture 1
+A_task/case_0001 instead reaches a terminal left pass after three right probes
+and one side-left probe; no analogous first-four physical rejection was found
+there.  This does not stand in for a complete chronological cohort audit.
+
+Mechanical failed check versus replay exception
+------------------------------------------------
+
+The pilot's two rejected candidates are a mechanical native whole-segment
+tracking-gate failure:
+
+  round_tip:    same-tick position 0.003993224 m; rotation 0.006494228 rad;
+                geometry gap 0.000553052 m; native_failure_count 0;
+                complete exit snapshot retained (exit_state_valid=true)
+  retreat_fork: same-tick position 0.002210762 m; rotation 0.002572224 rad;
+                geometry gap 0.000654213 m; native_failure_count 0;
+                complete exit snapshot retained (exit_state_valid=true)
+
+Both exceed the 2-mm position gate.  The audit reports no geometry/window,
+wall/collision, pause, native-failure, or lost-state cause.  This is distinct
+from `no_checked_route` as an aggregate checkpoint result and from controller
+history replay exceptions.
+
+The log scan finds eight reconstruction-mismatch throws and five
+KeyboardInterrupt computation logs (13 logs total).  They are log-only
+diagnostics, excluded from the 2,258 checkpoint outcome counts, and are not
+physical task failures.  Two representative reconstruction paths are:
+
+  /media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/pair_fixed_dwell_15/fixture_00/cases_0000_0003/case0001_guard16.log
+  /media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/pair_fixed_dwell_60/fixture_01/cases_0000_0003/case0001_guard32.log
+
+The first reports q/qdot/acceleration reconstruction errors
+0.06274201840644511 / 0.012072712383934535 / 0.20639484118877144; the second
+reports 0.045935966253844995 / 0.07221409733163589 / 0.038428125548763126.
+The pair_fixed_dwell_60 guard32 retry is a same-source accepted retry, not a
+fresh subject.  The pair_fixed_dwell_15 retry remains another replay mismatch.
+`scan_inventory.py` enumerates every matching log path and classifies
+replay_exception versus computation_interrupt.
+
+NATIVE_WITNESS and dIRD boundary
+---------------------------------
+
+  /media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_executable_skills_20261111/NATIVE_WITNESS.json
+
+records two selected direct transitions from one fixture/case.  Linkage is
+exact; complete input/output state fields include pose, q, qdot, acceleration,
+and snapshot schema `ultrapoc_qp_complete_history_v2`.  Fresh native replay
+passes both segments, exit states are valid, and 52/52 checks pass.  The
+provenance explicitly reports no live robot and no external network.
+
+The two exact exits each have 14 downstream saved proposals (28 total), all
+`predicted_unknown`, `native_checked=false`, with route-set kind
+`public_measured_frame_geometry_plus_baked_dird_prediction`.  These are only
+dIRD/public proposal evidence; they are not native feasibility certificates.
+
+Verification
+------------
+
+Run from this directory:
+
+  python scan_inventory.py > /tmp/native-exit-inventory.json
+
+The scanner re-reads saved checkpoint JSON and logs and should reproduce the
+headline counts, nine direct/returned fixture-action pairs, 452 exact groups,
+zero mixed groups, and 8/5 replay/interrupt log classifications.  Existing
+artifacts in this directory were preserved; this audit added only
+`INVENTORY.json`, `INVENTORY.txt`, and `scan_inventory.py`.

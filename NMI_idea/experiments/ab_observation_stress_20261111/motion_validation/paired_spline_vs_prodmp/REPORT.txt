@@ -1,0 +1,73 @@
+Paired native reference diagnostic
+==================================
+
+Question
+--------
+The first ProDMP native replay passed for a pure translation but three mixed
+translation/yaw segments missed the 2 mm / 2 deg gate.  This paired replay
+uses exactly the same public q seed, body anchor, two-point endpoint, native
+binary, scan profile, controller settings, deterministic model clock, and
+``settle_s=0.1 s`` for the ProDMP and the already audited
+``WorldPoseSplineReference``.  It does not modify the old profile or any
+controller/QP source.
+
+Frame and time audit
+--------------------
+
+* The trace's ``pose_desired`` agrees with an independent resampling of each
+  reference by at most ``9.2e-16`` in pose coordinates.
+* Both references are sampled at the native ``0.005 s`` model period.  The
+  reported trajectory times are the reference duration plus the common settle
+  interval, not wall-clock time.
+* ProDMP duration is its declared speed-limited integral-basis duration.  The
+  spline duration is the existing profile's ramped chord duration.  Their
+  durations therefore differ by design and are reported rather than silently
+  retimed.
+* The ProDMP analytic twist is the world/base geometric twist after the fixed
+  anchor decode.  The maximum reference FF magnitudes match the declared
+  ``0.02 m/s`` and ``0.5 rad/s`` limits (the largest per-component values in
+  the paired set are about ``0.01970 m/s`` and ``0.397 rad/s``).
+
+Results
+-------
+
+| local endpoint | ProDMP duration | spline duration | ProDMP same-time q-meas p95 | spline same-time q-meas p95 | ProDMP gate | spline gate |
+|---|---:|---:|---:|---:|:---:|:---:|
+| ``(+.004, 0, 0)`` | 0.448 s | 0.400 s | 0.033 mm | 0.022 mm | pass | pass |
+| ``(0, +.004, +.080)`` | 0.448 s | 0.400 s | 8.630 mm | 6.814 mm | fail | fail |
+| ``(-.004, +.003, -.080)`` | 0.560 s | 0.500 s | 4.959 mm | 3.871 mm | fail | fail |
+| ``(+.006, -.004, +.120)`` | 0.808 s | 0.721 s | 4.495 mm | 0.015 mm | fail | pass |
+
+The archived ``position_error_*`` fields in the native bridge use q-send
+against the same-tick reference and are retained.  The report also computes
+the more diagnostic ``q_meas_before[t]`` FK against the same reference.
+
+Where the error comes from
+--------------------------
+
+No segment had a solver fault, task pause, or reported joint/rail posture
+limit event.  The QP's feasible task twist differs materially from the
+received/requested twist on the mixed segments, for example the p95
+projection norms are approximately 0.184 (ProDMP) versus 0.136 (spline) for
+the ``+.004 y, +.080 yaw`` case.  The per-tick qdot box margin reaches only
+floating-point tolerance near zero, while the nominal global joint velocity
+margin remains positive.  Thus the evidence points to the Cartesian task
+velocity/acceleration allocation and per-tick QP box, not an added 140-degree
+wall or a native solver crash.  The position error grows while the requested
+twist is projected, then reduces after the transient.
+
+The ProDMP reference itself is not the frame/endpoint bug: its independent
+ODE, endpoint, pose/twist, and replan continuity tests pass, and the trace
+reference reproduces it to numerical precision.  The paired result does show
+that the ProDMP's transient/shape interacts more strongly with the existing
+QP allocation than the legacy spline on these mixed actions.  This is a
+controller/reference interaction, not evidence that changing QP limits or
+retiming should be hidden inside the motion primitive.
+
+Residual limits
+---------------
+
+This is still an ideal measured-joint offline replay.  It does not establish
+physical tracking, force/contact behavior, ultrasound visibility, or dynamic
+material-frame transport.  Strict jerk diagnostics are recorded in
+``RESULTS.json`` but are not used to rewrite the requested 2 mm / 2 deg gate.

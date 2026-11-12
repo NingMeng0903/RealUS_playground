@@ -1,0 +1,218 @@
+材料坐标、dIRD与少样本后果迁移：本地验证报告（2026-11-08）
+================================================================
+结论先行：已验证短段零目标训练迁移、dIRD有限提案效率，以及加入局部转接经历后的新请求链预测。
+没有证明整个方法全面优于同信息强基线，也没有证明长段/多脏器/真实超声的有效性。所有阴性结果保留。
+
+一、验证边界与数据单位
+使用原生SMPL-X、生产材料图册、当前严格哈希匹配dIRD、实测Genesis关节PD以及几何提取特征传感器。
+无实机运动，无接触/力控，无真实B-mode/UNet误差，无人体/床的环境碰撞；仅配置的机器人自碰撞审核。
+图像采集/接收/执行/验收使用仿真时钟。CPU模型/IK规划时间另有记录，未计入仿真完成时钟。
+旧近端证据是0°下9帧几何特征准备，未计为关节执行；不得把它说成已验证的真实扫描准备流程。
+源技能来自0°已有程序的公开参考路径，并非从专家示教学习新的运动手法。后果模型从实际局部执行学习。
+生产材料坐标数组顺序(theta,h,d)，d是归一化深度。当前等变性依赖固定材料对应及已知SMPL-X形变搬运。
+新姿态、新形状、内部配置分开记录；同一对象在两个体态出现不等于两个独立对象。
+
+二、E0：在线中断、切换和公共保留实现
+固定T=12.24s，两类后继、一个配对扰动实例：
+  early: 2/2及时，receipt=[10.6, 12.0]s
+  late_continue: 1/2及时，receipt=[12.7, 12.0]s
+  late_switch: 1/2及时，receipt=[21.46, 12.0]s
+  公共hedged实现：0/2及时，receipt=[13.08, 13.68]s。
+当前信息5.06s在线识别，切换保留q/qdot/实际命令历史，无瞬移；正式轨迹通过单独合同审核。
+范围：只测试了这些继续、转接和有限公共候选；其他探查、公共前缀或最优恢复仍UNKNOWN。
+不能从此宣布所有盲策略或所有连续控制都不可能。新增可选C1转接未回灌本轮E0，E0数字属于其冻结控制器。
+
+三、E1：零目标训练的动作迁移
+正式短段.56-.60（源支持.54-.66），统一命令速度裕量.75，9/12 fresh覆盖要求不变：
+  canonical3d: 2/2全合同完成，覆盖均值0.9167。
+  material: 6/6全合同完成，覆盖均值0.9583。
+  rigid_anchor: 4/4全合同完成，覆盖均值0.9792。
+  world_frozen: 0/6全合同完成，覆盖均值0.0278。
+源0°合法完成1/1；19次调用全部通过命令v/a、实测低速预算、关节位置及配置自碰撞审核。
+材料heldout6次来自4个独立内部/形状配置，其中2个配置分别在30°/60°执行。不能把6次当6个独立人体。
+刚性锚点和Jacobian非刚体对照也完成；同标架canonical与材料路径数值严格相同，是一致性上界，非独立试验。
+不能声称材料表示有独有的信息优势，或此短段已优于正确配准的非刚体迁移。
+
+长段压力测试.52-.68（约11–12cm）：公共点支持按预声明最长规则选择，15次执行全部保留。
+  canonical3d: 任务2/4，低速预算合格1/4。
+  material: 任务2/4，低速预算合格1/4。
+  rigid_anchor: 任务2/4，低速预算合格2/4。
+  world_frozen: 任务0/2，低速预算合格2/2。
+全合同任务完成：material 1/4、rigid 1/4、Jacobian canonical 1/4、world 0/2（逐条交集审计）。
+8/15超过预设.25*URDF保守实测速度预算；15/15仍满足完整URDF速度限制、命令v/a、位置和自碰撞要求。
+当前规划器只根据入口近邻q选实现；dIRD在此仅轻量排序，没有充分评价整个曲线、跟踪条件与后继出口。
+因此正确的材料任务搬运不等于当前关节实现、耗时与成功可以直接搬运。
+
+四、E2：冻结模型的少样本局部后果迁移
+80次局部调用：源0°16次/4对象；每个目标体态16次校准/4对象，16次测试/4对象。
+k=0,2,4,8,16为嵌套真实局部执行预算；k=8实际只来自两个目标配置。所有模型共享同一批测试执行。
+联合经验样本保留成功、时间和出口相关性。预测在每个测试动作前保存，test标签不进入冻结模型。
+60°测试：模型 / k=0,2,4,8,16 的耗时MAE(s)：
+  material_residual: 0.853, 0.707, 0.615, 0.520, 0.451
+  full_history_residual: 0.853, 0.643, 0.415, 0.311, 0.304
+  source_time_copy: 1.948, 1.619, 1.392, 1.114, 0.849
+  nominal_only: 1.025, 1.025, 1.025, 1.025, 1.025
+  target_only: UNKNOWN, 0.559 (8/16 known), 0.389, 0.240, 0.270
+nominal_only是名义耗时对照，成功概率仍使用同预算经验数据；source_time_copy是不做几何耗时残差修正的样本耗时复用。
+名为full_history_residual的原型加入q入口/名义出口/世界位姿等扩展特征，并非完整原始历史RNN/Transformer。
+这些真实机器人状态在60°明显有用。不能把材料对象特征当成完整执行状态；充分训练的完整历史序列基线尚未完成。
+打乱旧证据配对或隐藏旧证据没有稳定损失；本场景尚未激活强任务相关U–V辨识收益。
+这里只测试平衡正关联总体，尚未完成正/零/负关联、完整主动探针及高置信不确定性校准。
+
+五、E3：初始组合失败与工程修复（均保留）
+初始四个新对象、三种模型均0/4完整链通过；三者选择相同动作，未证明决策/效率增益。
+缺口：短段采样覆盖不足、终止时仍有命令运动、强制加速度连续的单一多项式桥有时被拒绝。
+拒绝的0tick调用属于UNKNOWN支持缺口，不能解读成物理碰撞或全球不可达。
+独立新对象工程确认：旧合同0/2，新合同2/2，三步A→B→A均以各自真实请求时刻fresh验收。
+新合同仅加入公开采样率/长度感知速度，以及保留真实qcmd/v但不强制加速度连续的有界加速度过渡。
+速度=min(10mm/s, 当前公开路径长度/(12bin*3frame/bin*0.1s/frame))；原+.6s终止驻留规则保留，非UV相关虚构代价。
+legacy/new有相同fresh规则，绝对请求时刻随各自实际前一步耗时改变；不是同一绝对释放时刻干预。
+这是工程可组合性正控制，收益不能归因于后果学习。新合同全部预测模型共享这些修复。
+整链预测仍过乐观：例如完整历史模型在两条确认链MAE约1.86s，故继续检查局部转接数据。
+
+六、哪些局部数据有用：转接配对与新检查链
+源0°及目标60°分别：原4次reset局部调用，加8次两程序配对调用，总各12次真实执行/两个独立对象。
+配对仅A→B和B→A，首个setup也计入采集成本；训练从未使用完整A→B→A终端标签。
+新测试对象86900/86901与全部训练和前轮测试分离；所有模型事前预测同一条实际执行链。
+两链完成2/2，实际时间=[21.8, 22.02]s。
+模型 / 整链耗时MAE(s) / 完成曲线Brier：
+  reset_only_full: 1.710 / 0.05104
+  boundary_source_only: 3.712 / 0.10870
+  boundary_source_plus_reset_calibration: UNKNOWN
+  boundary_full: 0.436 / 0.00787
+  boundary_structured: 1.450 / 0.02825
+  nominal_time: 1.682 / 0.05072
+boundary_full保留完整公开q状态并依据合法前驱程序匹配局部后果；boundary_structured压缩更多机器人状态，误差较大。
+缺少同一经验对象必要后继行时，有限bundle模型返回UNKNOWN；这不是所有可能学习器都不可能的证明。
+整链沿初始对象bundle传播联合样本，状态使用固定同一bundle权重的均值近似；不是完整Bayesian闭环最优规划。
+当前预测器还未把全部命令导数/伺服内部状态作为特征，前驱程序是局部近似，不能声称已验证完整Markov充分状态。
+
+七、同采集次数的独立确认
+{
+  "status": "completed",
+  "new_actual_program_calls": 22,
+  "new_reset_calibration_calls": 16,
+  "shared_new_test_calls": 6,
+  "independent_new_test_objects": 2,
+  "complete_chain_success": 2,
+  "actual_completion_s": [
+    21.879999999999622,
+    21.99999999999962
+  ],
+  "metrics": {
+    "reset4_plus4": {
+      "n": 2,
+      "known": 2,
+      "duration_mae_s": 1.7356215075867034,
+      "window_brier": 0.04379693915837095,
+      "success_brier": 0.0
+    },
+    "equal_budget_reset12_plus12": {
+      "n": 2,
+      "known": 2,
+      "duration_mae_s": 1.5473806610140084,
+      "window_brier": 0.03643809014678549,
+      "success_brier": 2.465190328815662e-32
+    },
+    "boundary_full12_plus12": {
+      "n": 2,
+      "known": 2,
+      "duration_mae_s": 0.45534682283082084,
+      "window_brier": 0.008440605211504717,
+      "success_brier": 0.0
+    },
+    "boundary_structured12_plus12": {
+      "n": 2,
+      "known": 2,
+      "duration_mae_s": 1.4732477627703542,
+      "window_brier": 0.02079732926045621,
+      "success_brier": 0.0
+    }
+  },
+  "acquisition_budget": {
+    "source": {
+      "independent_anatomies": 2,
+      "baseline_reset": {
+        "physical_program_calls": 4,
+        "training_rows": 4,
+        "actual_PD_seconds": 24.359999999999832
+      },
+      "equal_budget_reset": {
+        "physical_program_calls": 12,
+        "training_rows": 12,
+        "actual_PD_seconds": 73.0799999999995,
+        "additional_reset_calls": 8,
+        "independent_noise_repeats_per_anatomy": 3
+      },
+      "boundary_pairs": {
+        "physical_program_calls": 12,
+        "training_rows": 8,
+        "actual_PD_seconds": 70.8599999999992,
+        "original_reset_calls": 4,
+        "added_pair_setup_calls": 4,
+        "added_pair_successor_calls": 4,
+        "setup_seconds_included": true
+      }
+    },
+    "target_calibration": {
+      "independent_anatomies": 2,
+      "baseline_reset": {
+        "physical_program_calls": 4,
+        "training_rows": 4,
+        "actual_PD_seconds": 30.979999999999695
+      },
+      "equal_budget_reset": {
+        "physical_program_calls": 12,
+        "training_rows": 12,
+        "actual_PD_seconds": 94.15999999999906,
+        "additional_reset_calls": 8,
+        "independent_noise_repeats_per_anatomy": 3
+      },
+      "boundary_pairs": {
+        "physical_program_calls": 12,
+        "training_rows": 8,
+        "actual_PD_seconds": 91.77999999999875,
+        "original_reset_calls": 4,
+        "added_pair_setup_calls": 4,
+        "added_pair_successor_calls": 4,
+        "setup_seconds_included": true
+      }
+    }
+  },
+  "new_reset_fully_audited_success": {
+    "source": 8,
+    "adapt": 8
+  },
+  "new_actual_program_seconds": 155.77999999999827,
+  "source_independent_objects": 2,
+  "target_calibration_independent_objects": 2,
+  "model_predictions_do_not_change_test_actions": true,
+  "not_a_statistical_guarantee": true,
+  "no_contact_Bmode_or_hardware": true,
+  "wall_seconds": 130.97775974599972
+}
+
+此对照区分“更多reset样本”与“局部转接样本”；仍只有两个独立确认对象，不能声称统计普适保证。
+任何相同数据、相同状态、相同条件模型的完整历史方法都可能匹配本方法，不能据此宣称全面胜过它。
+
+八、dIRD独立贡献的实测范围
+18个姿态/形状/区段条件×5个公开导轨入口=90条件，450次完整静态SRS/FK/限位/密集配置自碰撞审计。
+一个候选预算：dIRD排序100%，最近入口导轨60%，均匀排列期望67.8%；两个候选预算100%、75.6%、93.9%。
+居中原入口下dIRD和最近导轨都100%；改善来自更广入口条件。静态条件不是独立人体、不是扫描成功率。
+dIRD field score不是概率，有限IK失败不是全局不可达证书；全路径/出口感知的执行策略仍待实现。
+
+九、对理论与下一轮实现的约束
+1. 共享材料任务(γ,ρ)及对象证据；当前Jacobian/度量控制物理长度与采样速度。q、接触、耗时不具有关节弯曲不变性。
+2. 执行状态x必须保留q/qdot、实际命令及其导数、伺服/队列状态、出口条件；不能只用对象图节点替代机器人状态。
+3. 一个技能合同应包含可转接终端集合、fresh/采样要求与真实持续时间；单程序成功不自动保证串联成功。
+4. 局部数据必须覆盖任务相关后继入口，且维持同对象潜变量；不能把独立reset样本当作所有转接都已学习。
+5. 坐标对应及完整当前形变已给定时，正确canonical表示可与材料表示等价；贡献应落在可复用合同/数据和完成预测，而非打败同一个函数。
+6. 局部配对有限样本不自动给出真实成功率/安全保证；预测分布还需校准、独立对象扩大和支持域审计。
+7. 未来多脏器图可使用同样的对象ID/材料区域/合法特征/时间账本接口，但血管不能替器官间可辨识性、声窗、接触或效率证明。
+下一步最明确的代码目标：用整个公开材料路径和可恢复出口来评价dIRD冗余实现，再校准其闭环残差；不是继续扩大静态图片数。
+
+十、复核文件
+METRICS.json：全部汇总与原始路径；overview.png：正/负结果同图；REPRODUCE.txt：命令与依赖。
+每组frozen_protocol/frozen_source、实际ticks.npz、before_execution预测、逐帧时间与独立验收保留。
+E2完成后、E3开始前的独立审计修复了bundle权重传播不一致；stage_boundary与旧源快照均保留，没有E3结果回灌训练。
+测试：最终187项现有和新增回归全部通过；日志随证据包保存。

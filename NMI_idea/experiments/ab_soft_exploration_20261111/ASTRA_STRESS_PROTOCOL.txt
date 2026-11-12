@@ -1,0 +1,30 @@
+软探索与未完成扫描续行：机制级合成压力协议（2026-11-11，非实测结论）
+
+定位：与 ab_continuing_rollout_20261111 的 native 实验严格分开。此例检查状态处理、身份复用和合法续行；不宣称真实声学、已训练新模型、连续控制平滑，或已达到胜强A的研究目标。
+
+任务/图：bin0 已合格，保留同一目标 reference；还须一个同身份 bin1 fresh 帧。初态 EL、未完成 primitive=[EL,TL]、方向L。节点 C,EL,ER,TL,TR；公共基本边 C↔EL、C↔ER、EL↔TL、ER↔TR；宽出口另有 EL↔ER，窄出口无此边。每条合法边移动后取一帧；E/T 可原地 peek/scan。每帧固定 dwell=.30；没有时间惩罚或任务截止。图是合成离散约束，不是已验证的真实声窗或native连续可达性。
+
+隐状态/似然（所有方法共享，8个状态可精确Bayes过滤）：
+  h∈{L,R}：bin1 的真目标侧；另一侧可出现 lookalike。
+  z∈{recoverable,permanent}；m∈{present,lost}。
+  共享初始 belief：P(h)=.5，P(z=permanent)=.1，P(m=present)=.2；压力真初态 lost。
+  每帧前转移：recoverable 下 present→lost=.03；lost→present 在真侧peek=.90、真侧scan/advance=.70、其它=.10；permanent 一直lost。
+  目标检测=.80，仅在 present 且该帧侧=h；公共shadow侧的E普通移动/scan检测=0，peek越过该遮挡；T不遮挡。C无目标。
+  无target时 clutter=.10。target 的 quality_pass、identity_match 独立Bern(.95)、Bern(.90)；clutter为Bern(.70)、Bern(.10)；都未检测则missing。
+  公共包不含h/z/m/kind。只有T覆盖bin1；其fresh包 quality_pass、identity_match 且公共后验P同目标且正确bin1≥.90才宣布完成。真实错误声明吸收为失败，不能继续补救。
+  这是人为失锁条件压力分布；已知似然和共享初始belief不等于已在真实失锁数据上校准风险。
+
+2×2：Hard/Soft × F0/F1，另保留完整belief的现有强A思想作第5参考；不得称MAP消融就是原强A。
+  所有方法保留真实coverage、reference、全部Bayes证据和实际节点，不因missing删除它们。
+  Hard只在决策时将visibility mode取MAP；missing释放pending option，再从实际节点有目的重选，允许重选原方向，不强迫退回C。
+  Soft按完整mode posterior积分，保存 pending={goal,remaining waypoints,cursor,direction,coverage mask}；missing本身不清。另一合法program同一Q严格更高（数值tol=1e−12），或原目标图上无路时才释放；Q平局留当前方向。
+  F1 从候选a的实际预测出口计算合法最短后续路；F0 统一用nominal C的同一后续路表作预测。这是显式忽略出口的消融。实际执行全部从真实节点走合法边，不混合左右pose，不跳过回撤边。
+
+统一动作价值：
+  Q_F(a,k)=P[程序 a→route_F(k)→目的地至多2次scan，正确补齐bin1先于任何错误公共停止 | 当前belief]。
+所有途中帧更新公共belief。首次抵达T的fresh帧计第1次scan，最多再1帧；任一合格T帧均可完成，不按probe/scan标签拒收。两次scan的正确值为 s1+Σ_{y公共拒绝}P(y)s2(b_y)，须含共享h/z和逐帧m转移；不可忽略第一次误停，也不可擅自独立化。
+每program固定128条共同随机轨迹，h/z每条只抽一次，m逐帧；只模拟公共策略/验收，hidden draw仅供world和reward使用。不建outcome×action树，不加新的切换显著性门。每次仅执行首个合法primitive，新包后重算。短期无完成价值时共同fallback：选同身份成功潜力最高的可达T，走真实最短路的一条边；平局优先pending方向再canonical。不把短动作不可行等同多步无路，不随机退出。规划值不是全任务成功率保证。
+
+冻结结构样本：h=L/R × public shadow侧=L/R × 宽/窄=8个可恢复正例；另2个无shadow宽出口控制(h各一)，2个永久遮挡负例(h各一、shadow无、窄出口)，共12个预定义strata。按上述顺序编号，case seed=721601+i，观测族721602并按case/acquisition-index/channel配对；无按结果挑样本。结构oracle只用h/z验证合法正确路径或永久无目标，不给policy私有状态/未来噪声。12例仅作机制压力诊断，不作显著优势结论。
+
+共同记录：正确覆盖完成/错误身份停止/未决；从失锁至首次真目标再见和bin1完成的帧数；实际换侧和A→B→A返回次数；合法回撤/无路次数；完成coverage是否保留；每次真实改向前后的Q及release原因。换向本身不必是坏事，不把内部mode重命名或phase清零次数当外显收益。行政8/16/32帧保存并续跑，末端未决保留上下界，不冒充最终失败。native末端取帧只能验证分段接续；连续控制平滑需后续真实短段轨迹检查。

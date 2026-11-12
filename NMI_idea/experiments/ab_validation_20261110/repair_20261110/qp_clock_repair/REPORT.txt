@@ -1,0 +1,60 @@
+QP离线时钟发布修正及同条件回放（2026-11-10）
+
+已确定并修复的是离线测试框架的时间注入竞争。旧qp_replay在_notify_request
+中把SHM t_mono改成1000+k*.005，但生产client在调用通知前已经发布seq。
+native进程直接轮询seq，无需等通知，就可以复制含真实wall时钟的请求。
+因此hook后读回1000+k*.005并不能证明native消费了该时间。
+
+修正：NativeWbcClient.update新增可选model_time_s，在发布seq之前写入，
+缺省仍用原wall时钟；请求超时、通知和IPC计时继续使用真实单调时间。
+回放在native.update传入model time，只对新请求递增，不再改已发布payload。
+没有改native二进制、QP算法/增益/限值、URDF、硬件或默认生产时钟。
+
+确定性证据
+1. 新发布顺序测试在seq变非零的瞬间捕获payload，旧通知hook可被确证
+   读到wall时间，新参数在该瞬间已是正确model时间。连同超时、abort、
+   notification相关回归共25项通过；默认wall时间行为保持。
+2. 一次冻结的实际native故障注入：只在tick80发布wall=30149.914856557，
+   等native已ack后才模拟旧hook把SHM改回1000.4；其余tick均为正确model
+   时间。下一tick81产生rail=-10.1721454435282m，桥接器在理想反馈前拒绝。
+   Astra用实际observer公式独立计算的输出与它逐值相等。故旧发布交错足以
+   确定地产生此前那类异常；此故障注入绝不是正常控制性能试验。
+3. 旧6D同速tick82坏帧反推的wall时间与当时实际wall只差约7.4ms，进一步
+   支持同一机制。旧坏帧未直接保存native消费时间，不能逐次声称全部溯源。
+
+应撤回的旧归因
+此前“native正常输入下间歇非法rail、根因未解”不能继续直接引用。
+旧测试时间接入存在确定缺陷；异常observer状态经后续shadow改写传播的
+源代码观察仍成立，但不能据此把回放输入污染说成正常生产QP故障。
+旧数据/报告保留，历史性能比较标为可能受时钟发布竞争污染。
+
+修复后按旧三组协议各跑一次，固定branch4/path0和同一17个命令pose：
+                         原2cm/s       完整6D 2cm/s       完整6D 0.5cm/s
+tick                      1180          1180                3396
+位置max(mm)               .603267       8.574433            .834685
+姿态max(deg)              9.074262      .766775             .094012
+姿态p95(deg)              7.907539      .655831             .039965
+非法q/暂停                0/0           0/0                 0/0
+路径progress p05          .998543       .848440             .999999988
+严格jerk最小余量          -.033958      -10.833928          -.039123
+max位姿2mm/2deg门         FAIL          FAIL                PASS
+严格q/v/a/j/碰撞总门      FAIL          FAIL                FAIL
+
+低速组只把匀速参数降为1/4，启动.4s和settle2s未同比例拉长，不能称整个
+时间轴严格t→4t。低速的极小加速度负余量与约.039 jerk余量属于数值尺度；
+冻结严格门依然判FAIL。同速6D最大jerk310.8339rad/s³在tick724/关节4，
+超300限值10.8339，不能都归因eps。该tick的速度约束箱收缩为等值，
+还需区分动态可行域与发布修正。没有通过放宽门槛制造成功。
+
+此结果区分了两个问题：离线时钟竞争已修；时间推进的姿态/位置跟踪和
+严格动态约束尚需改进。概率血管/路径先验可以提供名义短扫描命令；
+已选命令的完整六维导数不需要读取未知患者真血管。所有回放仍只为
+实际底层QP+理想关节反馈，无超声、接触或实机成像结论。
+
+证据：PROTOCOL.txt、input_manifest.json、RESULTS.json、三组trace、
+fault_injection.json/fault_trace.npz、run_clean_reference.py、
+inject_clock_interleaving.py及原client/replay快照。生产新回归文件：
+rm75_control/tests/test_wbc_rt_model_clock.py。
+独立审查：../audit/followup_20261110/FINAL_FOLLOWUP_AUDIT.txt，
+CLOCK_PUBLICATION_AUDIT.txt及clock_race_trace_consistency.json。
+后续governor/双端时间律实验独立封存，不能混进本次三个冻结组。

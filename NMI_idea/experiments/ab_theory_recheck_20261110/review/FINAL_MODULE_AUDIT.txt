@@ -1,0 +1,158 @@
+Final bounded independent module audit — 2026-11-11
+
+Decision
+The reviewed proposal density/importance/MH interfaces and corrected trained
+response derivatives pass the bounded checks described below. Publish them
+as separate numerical mechanisms with their negative results. They do not
+release the locked 720913 cohort, establish learned-response necessity,
+validate full B, or demonstrate physical/ultrasound acquisition. No training,
+native trajectory, or locked-cohort instantiation was performed in this audit.
+Existing reports and source files were not modified.
+
+1. Public-history informed proposal
+Reviewed current source SHA:
+9ecc2979e1aa24d3c05e06f44694dd004b80c07fe4bcb86ced94b1aa54cbf0b8
+It uses the actual28 continuous coordinates (2+10+10+2+2+2),16 discrete mode
+matrices, normalized correlated Gaussian prior factors and uniform depth,
+plus epsilon=.1 prior mixture. Earlier30D work is superseded, not current
+evidence. The Gaussian conditioning is an approximate proposal construction;
+it is not a replacement for the original full observation likelihood.
+
+Independent visible-history fixture:
+- Two informed Gaussian components at three points each were compared with
+  scipy.stats.multivariate_normal.logpdf: maximum discrepancy1.43e-14.
+- Independently assembled26D Gaussian prior plus two uniform depths and
+  discrete mass1/16 agrees to5.69e-14 at three points.
+- The complete component mixture, including the prior branch, agrees with
+  independent SciPy/logsumexp evaluation to5.69e-14. Component weights sum1.
+- q>=.1*p_prior on legal support. Informed Gaussian depth draws outside the
+  prior have finite q but zero target prior; no clipping or hidden rejection
+  changes their density.
+- Full-history log likelihood agrees with direct per-frame/per-world calls.
+  Importance weights equal log prior + full LL - log q, with no old-posterior
+  weight multiplication. All-zero target weights return explicit invalid
+  output, zero weights and no invented posterior.
+- A direct MH-target comparison gives zero difference from normalized prior
+  plus full LL. A fixed symmetric two-world proposal reproduces independently
+  computed acceptance decisions. Forcing log_q to raise does not affect MH:
+  q is correctly absent from this local symmetric mutation target.
+- A zero weight remains logw=-inf after unresampled zero-sweep rejuvenation.
+
+Initial source inspection identified two boundary issues: repeated frame IDs
+were not rejected, and log_q assigned finite prior-branch density to invalid
+mode labels. The current source now rejects both; the independent nontrivial
+visible-history fixture confirms that behavior. The first audit fixture used
+a missing-contact history with log LL=0; its duplicate-LL equality was
+uninformative, so it is retained but is NOT used as evidence for deduplication.
+The corrected fixture explicitly tests a visible frame and rejection. The
+test's known-world placement is only a density unit-test fixture, not a legal
+controller or a successful acquisition episode.
+
+The source calls logmeanexp(logw) “evidence_estimate”; this is a log-evidence
+estimate, not evidence on its original scale. At finite N it remains Monte
+Carlo. After resampling, raw ESS=N by construction does not show coverage;
+distinct mutated geometries and MH acceptance do not imply independent
+posterior draws. A prior mixture preserves mathematical support, not a useful
+finite-budget chance of discovering all relevant modes.
+
+Read-only PROPOSAL_DEV.txt reports that all four informed prefixes have pre-MH
+ESS1/maxweight1. MH produces distinct particles and some predictive-score
+improvement, but every public terminal flag remains false. This report's
+algorithm checks are independent; those DEV performance numbers are owner
+reported unless separately listed in a subsequent raw-record appendix. The
+formal cohort remains unopened/unreleased. Neither ESS nor a nonzero sample
+weight warrants a support-recovery success claim.
+
+2. Corrected response-learning experiment
+Source inspected:
+response_learning_geometry/geometry_addendum/run_corrected.py
+SHA8847cf71d435dec087e8039ffaac23e062d549b57d9e3c563c34d805b15effc1
+This actually imports vendor e3nn0.6.0 and calls ElementwiseTensorProduct
+1o x1o->0e and0e x1o->1o. The first manual-basis benchmark remains a different,
+superseded implementation, not retroactively called e3nn.
+
+The corrected MLPs receive dyadic tt^T; the typed model's apparent signed-t
+input enters only sign-invariant contractions. Thus the relevant unoriented
+information is shared. Both the canonical MLP and typed model first express
+geometry in the probe frame and rotate output back. Consequently canonical
+normalization already guarantees common-world SO(3) consistency, up to
+numerics; the result cannot attribute that consistency uniquely to e3nn.
+
+The typed output basis is u, n(n·u), t(t·u), the SAME declared basis as the
+synthetic plant. Its advantage is a strong correct structural prior plus
+learned coefficients. Actual e3nn contractions implement that prior, but this
+is not evidence that generic e3nn is uniquely necessary or that the response
+law is independently established for human tissue. Public compliance/depth/
+history descriptors, normal and vessel axis are supplied synthetic inputs.
+They are not inferred here from the real ultrasound or production atlas.
+
+Independent trained-weight derivative check
+Loaded the n2048/seed101 canonical MLP and e3nn checkpoints, converted copies
+to CPU float64, and checked three independent local-action points each.
+Central finite differences and autograd Frobenius errors were at most
+8.08e-12(canonical) and7.02e-12(e3nn). No checkpoint or source was changed.
+The owner's float32 FD values around4e-4 are absolute Frobenius errors, not
+relative errors or geometric millimeters. These tests validate derivatives of
+the learned models, not their agreement with real plant gradients.
+
+Task outcomes independently recounted from declared generated contexts and
+the saved chosen-action indices, without fitting or running a controller:
+- Original0.50mm regime: all corrected stored positive action rows are100%.
+- Posthoc1unit=10mm /2mm-gate OOD regime: analytic-zero488/512(95.3125%);
+  fixed-linear, online3-probe RLS, world/local MLP and e3nn each512/512.
+- Mean regret is a difference of Euclidean endpoint errors, not squared loss:
+                    normalized units       physical mm in NEW task
+  analytic-zero       .0248259280             .248259280
+  fixed-linear        .0055478794             .055478794
+  canonical MLP       .0041472233             .041472233
+  e3nn typed basis    .0001281255             .001281255
+  online3-probe RLS   .0003788864             .003788864
+  world MLP           .0042782971             .042782971
+
+REPORT.txt prints these regret/oracle values without explicit unit suffix;
+RESULTS.json correctly names them normalized. Multiply by10 for the new
+physical task. For example .000128125 is not .000128125mm. The new-task oracle
+mean error .062984 normalized is about .62984mm. Response RMSE fields inherited
+from the original1unit=1mm experiment must not silently use the new conversion
+without identifying which regime they describe.
+
+The new task is explicitly a posthoc scale/gate development extension with
+frozen weights and new seeds; it must not be described as the original
+preregistered confirmation. It includes a fixed moderate candidate among32,
+so the strong baselines' complete success is part of the result, not an
+anomaly to tune away. RLS also uses three additional observed probes; their
+cost is not compared here in a complete online budget. Neither RLS nor the
+shared model therefore establishes a full-task time advantage in this module.
+
+Negative control provenance
+Source inspection confirms separate q=0 negative training datasets, distinct
+derived seeds and separate saved negative checkpoints; the negative test seed
+is721053, separate from positive/test/task seeds. A fresh negative fixture has
+exact zero true q. Thus the corrected negative evaluation is genuinely trained
+and tested under its declared zero-residual mechanism, unlike the original
+positive-trained/changed-plant comparison. It is still a synthetic null, not
+an observed tissue condition. This audit did not rerun training or statistically
+revalidate all reported response RMSE curves.
+
+3. Claims suitable for the final synthesis
+Allowed: correct normalized public-conditioned importance sampling; explicit
+finite-sample degeneracy and failed terminal outcomes; actual vendor-e3nn
+contractions and derivative contracts; synthetic response fitting under a
+matched structural basis; smaller chosen-action regret in that declared law;
+correct null-control behavior; common-coordinate consistency already matched
+by a canonical ordinary network; separately verified production geometric
+transport/metric interfaces from the prior geometry audit.
+
+Not supported: learning/e3nn necessity, a general failure-to-success result
+against strong baselines, new POMDP/VOI theory, recovered continuous-patient
+posterior coverage, complete A/B superiority, integration of these separate
+modules into the full anatomy/ultrasound/control chain, or physical ultrasound
+evidence. B remains a research direction to test after a valid belief and
+response interface, not a result established by these module checks.
+
+Artifacts
+FINAL_MODULE_AUDIT_checks.py and the source-hash-named JSON files preserve the
+independent density/target/task/derivative checks. FINAL_MODULE_AUDIT_mh.json
+records the separate MH target/zero-weight check. The final manifest records
+the exact read-only source, result and checkpoint versions. No earlier sealed
+audit file was overwritten.

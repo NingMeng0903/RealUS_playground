@@ -1,0 +1,10 @@
+Composition diagnostic frozen after the separate component results,2026-11-10
+This is development on the same two frozen paths, not untouched held-out evidence.
+Combine existing two-ended cosine reference with existing feedback phase governor.
+Copy all parameter values without retuning: ramp .4s; nominal peak .02m/s;
+rate band .5 to1.5mm and .5 to1.5deg; filter .05s; rate slew4/s; settle2s; deadline60s.
+Both linear/angular feedforward get the same rate; feedback unscaled.
+Run once each branch4 path0/path1. Same native binary/limits/q seeds/geometry.
+Baseline component results remain in qp_governor_followup and qp_terminal_retime.
+Strict prior pose and mechanical gates unchanged. Preserve negative results.
+No hardware or production-default promotion, no post-result speed/gain tuning.

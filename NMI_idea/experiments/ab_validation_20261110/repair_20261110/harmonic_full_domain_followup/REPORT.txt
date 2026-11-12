@@ -1,0 +1,72 @@
+端部接触坐标续验封存 — contact_multichart，2026-11-10
+
+结论与范围
+本轮补齐了现有正确同腿皮肤的 d=0 接触表面坐标与模板扫描足迹覆盖。
+右29287顶点/58100原三角面、左29195顶点/57900原三角面全部保留，XYZ与面连接
+逐值不改。采用重叠intrinsic vertex-star坐标，地址为(chart_id,u_m,v_m)，不是把
+原shaft的h区间硬延伸，也不是全腿medial-depth三维体域。shaft_roi_v2全部资产与
+原有构造源码前缀保持原hash，仍是h∈[.14,.94]的已验证深体域。
+
+已交付数据/API
+contact_multichart_right.npz / contact_multichart_left.npz：完整接触表面多chart。
+right_template_prior_chart_addresses.npz / left_template_prior_chart_addresses.npz：
+旧模板投影足迹的实际新地址，含原3D vessel点、旧surface点/xi、source全局点索引、
+新chart/uv与canonical重投影点、投影残差；没有把原深部血管点改称表面真值。
+Source: Among_US/src/projects/genesis_ue_sync/anatomy_retarget/leg_volume_coordinates/shaft_rebuild.py
+API: SurfaceMaterialAtlas.from_surface/load/query/decode/transition/transition_options/posed_vertices。
+USAGE.md给出加载及过渡合同。未修改DMP/QP或其默认配置，没有把新局部坐标直接
+替换旧控制器的全局theta/h格式，也不声称因此修复QP横向误差。
+
+几何与坐标构造
+每个顶点的incident triangle fan在局部二维域展开：严格正扇区、固定canonical
+边长半径、拓扑顺序固定。每个原面由其3个顶点chart覆盖；每个chart局部满秩且
+内部不重叠。相邻chart通过相同原三角面及barycentric点进行分片仿射转换。
+这避免了近groin非星形皮肤必须服从一个全局径向/平面截面图的错误假设。
+表面过渡共用原节点及固定W，故在相同SMPL-X运动下不产生两套内部体插值的缝。
+PL边/顶点可有多个分面Jacobian，transition_options保留这些模式；不能当作
+全局C1光滑映射或自动具有正确概率覆盖的后验。
+
+双腿完整分辨率审计（contact_multichart_validation.json）
+right 29287 charts，left29195 charts；所有面均被3个chart覆盖，无拓扑拆fan。
+全部chart三角局部面积正、物理Jacobian秩2；最小奇异值right .028754/left .017271，
+最大局部metric条件数right69.53/left81.88。独立Shapely对所有同chart材料面求交：0内部重叠。
+每腿1024个随机真面内点，无reference正逆位置max<4.5e-16m；跨chart位置max<4.5e-16m，
+过渡Jacobian来回误差<1.4e-15。边与顶点公共chart过渡另有回归，域外与NaN严格拒绝。
+这些是同一保存mesh内部的一致性数值，不是患者配准或超声定位精度。
+
+固定模板W的有限姿态审计
+同一组非负W只在绑定时归一化一次，全姿态复用；源为原production CSR stencil
+继承的同腿skin权重，不借助血管点拟合W。两腿在膝0/15/30/45/60/75/90度：
+完整原skin CGAL自交均0；posed正逆/跨chart/公开查询位置误差均<5e-16m。
+不外推为任意患者、β、关节组合或连续姿态的全局保证。没有宣称实时伺服周期通过。
+
+模板/覆盖与因果角色
+模板、粗SMPL-X绑定血管/路径先验在当前任务中是允许的policy输入；只有held-out
+患者隐藏真值才被排除。这里按来源/用途区分，不按旧文件名一概称oracle。
+chart builder仅接收皮肤与W；未读血管/路径、未用held-out患者标签选择chart。
+旧模板用于独立覆盖/重投影验证，后续控制使用仍须保存其相关、多模态不确定性。
+本轮没有拟合患者后验、校准概率、把模板均值冒充真实受试者血管。
+
+全部827个旧skin-projected模板点（right414/left413）都完成实际新chart重投影，
+827/827原source face仍在，最大位移right1.963e-8m / left2.177e-8m，属原float32
+存储相对精确三角面的量化残差。核心扫描四链覆盖：
+right COM_FEM17/17, SUPFEM85/85, POP18/18, POST_TIB114/114（234/234）；
+left  COM_FEM17/17, SUPFEM90/90, POP15/15, POST_TIB113/113（235/235）。
+它包含旧legacy h约.05–.99的皮肤足迹端部；新地址不是同数值h区间。
+仅证明表面足迹覆盖，未证明原original_points深部血管均值位于新增三维体域。
+
+拒绝的体域尝试（冻结计划及失败均保留）
+1. 5种全局轴/连续core × 双腿、4径向层、保留全部原面的棱柱：每候选仍约
+   3.9k–4.7k非正tet；约194–207个近端面有径向投影方向问题，全部拒绝。
+2. 剔非正面后的单轴材料投影仍有周期重叠；保守剔面/center-star版本丢失扫描
+   足迹且未过全体积/全姿态门，不作为可用坐标资产。
+3. 冻结0.1/0.5/1/2mm法向接触collar，canonical非正tet：
+   right 1/13/45/56；left 6/19/55/67。全部拒绝，故没有新增合法的离面深度厚度。
+本轮不继续扩参数。深部端域、全腿单一(theta,h,d)图、真实组织运动仍未解决；
+不得将此完整皮肤d=0覆盖写成完整深体域修复。
+
+验证/封存
+26 passed,1 skipped（旧可选canonical fixture缺失）；source原有22项与新表面API4项。
+单独完整双腿几何/材料/七姿态/模板覆盖脚本与日志在本目录。manifest.json列出
+当前源码、资产、模板/几何/W输入、测试和失败证据SHA，并证明v2回退资产不变。
+最终独立agent审计可另附addendum；本报告不替其预先宣称审核结论。

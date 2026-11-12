@@ -1,0 +1,19 @@
+Offline model timestamp publication correction — frozen before rerun, 2026-11-10
+Hypothesis: previous replay mutated SHM t_mono inside _notify_request AFTER seq publication.
+Native polls seq independently of notification and could consume wall-clock t_mono.
+First validate a deterministic seq-publication snapshot against the real client assembly
+path, and validate wall-time deadlines remain wall-time. Replace only model-time injection:
+optional model_time_s is written before seq; default behavior remains wall time.
+Replay supplies deterministic timestamp to native.update; no published payload mutation.
+No change to native binary, QP gains, constraints, reference pose, initial q or plant.
+
+Fixed evaluation: repeat the prior three frozen branch4/path0 groups exactly once:
+original at .02m/s, consistent6D at .02m/s, consistent6D at .005m/s.
+Use prior qp_reference_followup input NPZ, 0.4s startup and2s settle, dt .005.
+No candidate/seeds/speeds retuned from outcomes. Preserve all old results.
+All absolute q, qdot, qddot, jerk, collision and max pose checks keep old thresholds.
+Do not equate failure-free sample with universal native certification.
+If needed demonstrate old race with one deliberate interleaving on the same offline input:
+let native read published wall timestamp at one fixed nonzero-velocity tick before old
+notification hook rewrites it, then verify prediction/rejection. This is a protocol fault
+injection, never a nominal control performance run. Capture actual published timestamps.

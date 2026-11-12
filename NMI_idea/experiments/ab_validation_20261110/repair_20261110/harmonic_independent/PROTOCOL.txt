@@ -1,0 +1,83 @@
+INDEPENDENT HARMONIC GEOMETRY AUDIT — frozen before full overlap/LBS runs
+2026-11-10. Read-only production code/assets. Outputs only in this directory.
+Preliminary signed determinant counts already revealed knee-cell orientation
+reversals(left2552,right169); these observations are disclosed, not held-out.
+The following acceptance definition and test schedule are fixed before full
+BVH/SAT, surface/ray or posed-transport outcomes and before any repaired asset.
+
+Inputs: both complete old production atlas_left/right.npz, and later sealed
+repaired assets with hashes. No failed tet, region, ray, pose or leg is dropped.
+Every tet signed determinant is checked(double precision). Degenerate numerical
+cutoff abs(det)<=1e-18 m^3(six times volume). Canonical orientation consistency
+is measured against modal sign and connectivity sign; swapping indices does not
+repair geometry. For posed transport use signed det_pose/det_rest; nonpositive
+is inversion; ratio<=1e-6 is near-collapse diagnostic, never hidden as success.
+
+Full overlap: exact AABB BVH broadphase on all tetrahedra; convex tet separating
+axes(face normals of both and edge cross products) test strictly positive
+interior overlap, tolerance1e-10m on normalized axes. Count all tested pairs,
+all overlaps, shared-topology and disjoint-node pairs, cross-station/layer pairs.
+Record deterministic first1024 pair witnesses plus total counts, independent LP
+interior-ball witness checks on first64 sorted overlaps. Boundary-only contacts
+are not volume overlaps. A timed incomplete audit is explicitly incomplete.
+
+Surface: every triangle and edge; count boundary/nonmanifold edges, connected
+components, edge winding consistency and cap evidence. Do not claim watertight
+for the intentionally open proximal/distal leg surface. A valid closed volume
+requires explicit nonintersecting caps, not implicit Delaunay convex hull fill.
+
+Sections/star-shaped:72 uniform station values over the old ring h span;
+for each, intersect the actual skin triangles with the actual declared plane.
+Keep full intersection segments and reconstruct contour graph; never angle-sort
+points to invent a polygon. At108 fixed angular rays use all positive segment
+intersection radii, deduplicated at1e-8m. Record zero/one/multiple positive hits,
+open/branched contours and origin-inside status. A multihit/non-star-shaped
+section rejects one-radius radial sweep for that section. Use original intended
+center/frame and compare actual section alignment; exact endpoints use1e-10m
+plane tolerance. Counts/rays/plane strategy are unchanged for repaired assets.
+
+SMPL-X transport: fixed0/30/60degree knee rotations on each leg, same canonical
+per-volume-node weights across poses. Use real canonical skeleton/inverse-bind
+and weight source if available; if volume weights are nearest-surface proxies,
+state that explicitly with interpolation rule/source hashes. No transport claim
+from identity-only or rigid-SE3 tests. Recompute all volumes and complete overlap
+checks per pose; preserve material labels/connectivity, report layer order and
+crossings. Local LBS orthonormal frame output is not an injectivity certificate.
+If an actual weight/registration contract is unavailable, report transport test
+as unverified rather than construct unlabelled weights. Repaired-asset transport
+must use the same rule/poses; changed correspondence is a separately recorded
+necessary repair, not silently reused old nearest vertex identities.
+
+Primary geometry acceptance: no degenerate/inverted local tet, no positive
+interior overlap beyond tolerance, valid intended boundary topology/caps, correct
+physical-to-baked surface correspondence and reproducible asset lineage. These
+numerical checks are finite asset tests, not a theorem over all SMPL-X poses or
+patient shapes. Geometric, coordinate-field, registration and posed-transport
+failures are classified separately; repairing interpolation does not repair mesh.
+Before first LBS audit: canonical source is recovered_smplx_20261108 weights,
+parents/rest_joints/inverse_bind; production surface CSR stencil applied to its
+source_full_vertex_indices. Common old/new proxy volume rule is k=6 nearest
+same-leg skin vertices, weights proportional1/(distance^2+1e-8), then normalized.
+This is a skin-derived volume-weight proxy, not independently measured volume
+skinning. Fixed resulting W is used unchanged at0/30/60degree local-X rotation
+of the named SMPL-X left_knee/right_knee joint. If repaired asset supplies native
+volume weights, run that additionally and label the changed correspondence.
+Before sealed TetGen candidate outcomes: additionally report corner scaled
+Jacobian=oriented determinant/max(product three incident edge lengths) over4
+corners; regular tetrahedron value1/sqrt(2). Fixed diagnostic bins1e-6,1e-3,
+1e-2 are quality descriptions, not replacements for orientation/overlap gates.
+Report actual stored vertex dtype, float32 roundtrip effects, and zero-pose node
+motion to expose sliver/serialization sensitivity. LP witnesses additionally
+recompute minimum signed face slack at returned xyz; optimizer success alone
+is not a strict-interior certificate. Candidate-provided fixed volume weights
+may be read explicitly, with source/hash/normalization recorded; they remain
+skinning-model evidence rather than measured anatomical deformation.
+Parent-requested pre-v2 extension: add15/45/75/90degree poses to original
+0/30/60, with identical fixed W and no changed thresholds. Compare full material
+coordinate space by per-tet angular-cell unwrap, theta/(2pi),h,d; run complete
+same BVH/SAT at1e-10 dimensionless tolerance plus full +/-2pi periodic copies.
+Inverse checks use1024 independent fixed seed41109 Dirichlet-barycentric interior
+points with no true-position reference passed to inverse. Domain probes are
+four out-of-range xi(h below/above,d below/above) and two axial outside points;
+report inverse's own rejection separately from forward rejection of its output.
+New shaft ROI h[.14,.94] is a reduced domain, not the old whole-leg atlas.

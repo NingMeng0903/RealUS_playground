@@ -1,0 +1,15 @@
+Frozen reference timing test, 2026-11-10, before this experiment's runs
+Same17-pose geometry and piecewise Slerp, same branch4 path0/path1 q seeds,
+same production outer/native QP/limits/default gains, repaired model clock.
+Only path time law changes: nominal peak .02m/s, cosine rise/fall ramp .4s
+at BOTH ends, constant cruise. No smoothing or waypoint/rotation alteration.
+Compare each path once: original start-only time law+consistent6D FF versus
+two-ended law+consistent6D FF. Existing start-only reports preserved; own
+paired baseline avoids combining different harnesses. 2s real endpoint hold.
+Input frozen audit/phase2_native_subset_inputs.npz, no seed search/retuning.
+Check analytic ds/dt and omega by finite difference away from knot times,
+also endpoint velocity exactly zero and geometry at equal arc length equal.
+Preserve strict max pose2mm/2deg, q/v/a/j/collision gates and all failures.
+This is an offline reference experiment, no hardware/default production change.
+Hypothesis only: endpoint deceleration may reduce terminal tracking error;
+it does not guarantee feasible jerk in the robot or solve all interior constraints.

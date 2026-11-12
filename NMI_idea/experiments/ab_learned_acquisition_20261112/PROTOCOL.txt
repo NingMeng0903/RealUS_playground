@@ -1,0 +1,39 @@
+Acoustic likelihood experiment
+2026-11-12
+
+The 28-station first sweep is identical between methods within each case and
+acoustic condition. In recheck, all arms acquire two frames at material sites
+4 and 3. Centered views 3, 7 and 8 can be used when the existing baked edge
+checker admits entry and a continuation to the next central view. The stage
+clock is fixed before observation. It includes a conservative translation and
+rotation allowance based on the baked geometry and nominal modeled speeds.
+This does not certify continuous joint tracking or contact control.
+
+Train from 256 new synthetic subjects and common exposures across views.
+The only fitted observation component is false-structure probability and
+location. Simulator labels select false centroids in training. The pooled
+and view-conditioned likelihoods have identical mixture structure, with
+components tied to each projected branch plus a uniform background. The
+view-conditioned fit shrinks towards the pooled parameters. No labels or
+private case variables are read by the filters and two-step planners.
+
+Primary closed-loop comparison is view-conditioned versus pooled fitting for
+two correct branch identities and strict completion (both correct and the
+same 3 mm map error threshold). Report confident wrong identity and abstention
+separately. Shared-frame predictive NLL compares learned replay to nominal
+on the nominal planner's exact recheck frames, with prediction scored before
+assimilation. Replay uses the same fitted model as the learned planner and
+separates observation interpretation from the effect of new views. Confidence
+can use historical witnesses; this is identity rechecking, not an independent
+test of reacquiring a currently lost target.
+
+128 held-out cases are paired in each acoustic condition. The original
+simulator is evaluated without changes. The structural stress only changes
+false detections' locations, preserving actual target observations, timestamps
+and false-detection counts for each queried action. Near ghosts are displaced
+by a smooth subject-specific physical-time signal rotated with view, with
+approximately matched marginal scale. This introduces temporal and view
+dependence without changing target visibility. All cases are included.
+Train only on original simulator records; there is no fitting to the stress
+results. Report actual modeled translation, accumulated rotation and paired
+case bootstrap intervals. Source, split and model settings are recorded.

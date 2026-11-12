@@ -1,0 +1,41 @@
+Corrected signless-input / real-e3nn addendum
+==============================================
+Previous manual benchmark is preserved; this report is an addendum.
+
+Task-scale addendum: 1 normalized unit=10 mm, target=[4,-3] mm, success<=2 mm (normalized target [.4,-.3], threshold .2).
+model | task success | task regret | oracle error
+analytic_zero_residual: success=0.953125, regret=0.0248259, oracle=0.062984
+global_fixed_linear: success=1, regret=0.00554788, oracle=0.062984
+world_dyadic_mlp: success=1, regret=0.0042783, oracle=0.062984
+probe_local_dyadic_mlp: success=1, regret=0.00414722, oracle=0.062984
+e3nn_typed_basis: success=1, regret=0.000128125, oracle=0.062984
+online_RLS_3probe: success=1, regret=0.000378886, oracle=0.062984
+oracle: success=1, oracle=0.062984
+ID task-scale (seed 720973):
+  analytic_zero_residual: success=0.941406, regret=0.0257429
+  global_fixed_linear: success=1, regret=0.0049975
+  world_dyadic_mlp: success=1, regret=0.00480774
+  probe_local_dyadic_mlp: success=1, regret=0.0049949
+  e3nn_typed_basis: success=1, regret=0.000144415
+  online_RLS_3probe: success=1, regret=0.000230551
+  oracle: success=1, oracle=0.0635229
+
+Corrected geometry (n2048/seed101)
+----------------------------------
+analytic_zero_residual: SO3=0/0, signflip=0/0, FD=nan/nan
+global_fixed_linear: SO3=0.00199378/0.00463855, signflip=0/0, FD=nan/nan
+world_dyadic_mlp: SO3=0.0213341/0.0372663, signflip=0/0, FD=0.000290539/0.000374948
+probe_local_dyadic_mlp: SO3=3.71983e-08/7.45058e-08, signflip=0/0, FD=0.000301953/0.000477942
+e3nn_typed_basis: SO3=2.96669e-08/7.0333e-08, signflip=0/0, FD=0.000230687/0.000418349
+
+Negative train/test (independent q=0 plant)
+------------------------------------------
+analytic_zero_residual: negative-test response RMSE=0 mm
+e3nn_typed_basis: negative-test response RMSE=0.0016991 mm
+global_fixed_linear: negative-test response RMSE=0.000393137 mm
+probe_local_dyadic_mlp: negative-test response RMSE=0.00284341 mm
+world_dyadic_mlp: negative-test response RMSE=0.00290097 mm
+
+e3nn vendor basis alignment: b1=1.19209e-07, b2=2.38419e-07, version=0.6.0
+
+Negative train/test are independent from positive data and reported separately. The task-scale experiment is posthoc; if fixed linear/RLS or all methods are adequate, no learning necessity is claimed.

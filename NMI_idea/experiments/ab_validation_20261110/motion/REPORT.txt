@@ -1,0 +1,116 @@
+E1 实际运动与生产坐标验证报告
+日期：2026-11-10
+
+结论：真实本地 DMP/KMP primitive 与完整因果重建伺服均已执行；在同一合成血管目标上，未启用 Module C 的局部横向反馈明显降低图像横向误差。共同 SE(3) 变换通过。规范注册 3D 在相同对应/附件信息下保持精确，调和表面地址有小量但非零解码误差，不能宣称表示本身优于规范注册 3D。
+生产部署门槛尚未通过：现有 Ruckig 接入使本测试失去可见目标；stock 主要生产伺服函数因未定义变量崩溃；stock 生产体坐标查询严重违反皮肤 d=0 边界；缺失检测时仍消费模拟器的几何 u。结果不支持把系统称为已部署、已物理验证或已完成首次合格超声成像。
+
+一、实际执行层级与信息契约
+1. adapter.py：真实导入 DMP_playground.dmp_honest.dmp.fit_discrete_dmp/DiscreteDMP.rollout 和 kmp_honest.kmp.fit_phase_kmp/PhaseKMP.predict。候选 demonstration 是调用方给定 start/goal/局部法线构造的正弦偏移候选；这只是实际 primitive 路径生成，不是完整伺服或机器人可执行保证。DMP 固定至少161点积分后采样，避免查询采样预算改变积分稳定性。端点拟合误差保留并报告，不强行覆盖。
+2. run_motion_validation.py 完整调用真实 run_honest_kmp_servo；DMP 主路径由真实 DMP prior/bake 生成，源码 run_honest_dmp_servo 也复用该同一分区伺服函数。包含当前位姿探头平面观测、因果历史点重建切线、接触表面投影和可选真实 Ruckig Module C。
+3. 生产 atlas 实际加载：右腿31785皮肤顶点/63104三角面；186624体顶点/1058184四面体。实际调用 SurfaceAtlasRefiner、query_atlas_coordinates、距离比深度算子、SMPL-X关节变换和 LBS；没有替换成圆柱几何。
+4. primary production 是源码中功能最多的配置候选，不能据此认定是实际部署过或质量最强。stock 函数调用首先保留失败；仅在 owned harness 中补模块全局变量别名后另记结果，未修改原源文件。
+5. 合法公开输入：测试表面 mesh/对应关系、身体位姿几何、法线、0/30度合法训练 anatomy ensemble、公共候选 start/goal、已取得的可见图像横向/深度观测和历史。test 60度血管曲线只给环境构造与评价；honest loop 的 gt_tangent 用于记录指标，在线 roll 使用已可见历史点因果重建。
+6. 特权/边界：scheduled synthetic vessel 的深度由测试 anatomy 构造；这属于环境生成。stock honest 观测函数在 visible=False 时仍返回几何 u/depth 且控制消费 u，超过 missing-only 真实传感器契约。primary 函数更直接使用 bent 真值 rho/roll、vessel tangent path、VesselOracle 和 nominal replay，故不能作为未知目标获取时的因果无真值基线。
+
+补充范围：build_prebake 的 crop 由已知vessel-centered footprint定义；0/30度合法prior由已知解剖扫描路径提取。完整伺服实验是已准备路径附近的继续扫描/居中测试，不能称为仅从粗人体区域、无目标路径先验启动的首次成像检验。
+
+二、公平的完整伺服对照
+原 stock run_dmp_benchmark.py 分别基于 DMP/KMP bake 生成 scheduled vessel，两方法各自有不同世界目标。因此其成功运行只作现有管线回归，不能据此比较方法。新测试将 KMP 固定世界血管曲线逐点复制给 DMP；两个方法共享曲线、表面、可见条件、局部伺服与相同步长。合法 prior knees=[0,30]，持出 pose=60度。
+以下 u 是合成探头平面横向误差。first_synthetic_centered_time_s 仅指 visible 且 |u|<=3mm 的首帧诊断，绝非合格超声/身份确认成功。全部计入启动观察；没有学习 A/B 响应模型。
+method/scenario/gain/ModuleC : mean|u|mm / p95mm / visible fraction / max translation step mm
+kmp_nominal_gain0: 16.992326 / 25.508839 / 0.904762 / 10.799485
+kmp_nominal_gain1: 1.515120 / 4.210651 / 1.000000 / 11.907718
+kmp_mismatch_lateral_plus10mm_gain0: 26.946699 / 35.434224 / 0.448980 / 10.799485
+kmp_mismatch_lateral_plus10mm_gain1: 2.250138 / 6.445049 / 0.993197 / 13.644933
+kmp_mismatch_lateral_minus10mm_gain0: 7.078439 / 15.510698 / 1.000000 / 10.799485
+kmp_mismatch_lateral_minus10mm_gain1: 1.196970 / 3.563685 / 1.000000 / 11.096539
+kmp_not_detected_depth_plus120mm_gain0: 17.402189 / 37.343467 / 0.000000 / 10.799485
+kmp_not_detected_depth_plus120mm_gain1: 18.899244 / 69.810993 / 0.000000 / 12.194847
+kmp_not_detected_depth_plus120mm_lateral_plus10mm_gain0: 25.680817 / 41.233421 / 0.000000 / 10.799485
+kmp_not_detected_depth_plus120mm_lateral_plus10mm_gain1: 24.737130 / 109.847991 / 0.000000 / 13.560692
+kmp_not_detected_depth_plus120mm_lateral_minus10mm_gain0: 9.896499 / 41.217041 / 0.000000 / 10.799485
+kmp_not_detected_depth_plus120mm_lateral_minus10mm_gain1: 15.497531 / 49.870502 / 0.000000 / 11.614096
+kmp_nominal_ruckig: 29.710928 / 58.931166 / 0.027211 / 16.053251
+dmp_nominal_gain0: 16.697255 / 27.040750 / 0.904762 / 11.260126
+dmp_nominal_gain1: 1.677213 / 4.603600 / 1.000000 / 12.211668
+dmp_mismatch_lateral_plus10mm_gain0: 26.631779 / 36.975670 / 0.510204 / 11.260126
+dmp_mismatch_lateral_plus10mm_gain1: 2.276048 / 5.611891 / 0.993197 / 12.642497
+dmp_mismatch_lateral_minus10mm_gain0: 6.848474 / 17.178826 / 0.993197 / 11.260126
+dmp_mismatch_lateral_minus10mm_gain1: 1.483303 / 4.724214 / 1.000000 / 12.271630
+dmp_not_detected_depth_plus120mm_gain0: 18.444766 / 45.854815 / 0.000000 / 11.260126
+dmp_not_detected_depth_plus120mm_gain1: 9.318958 / 37.762260 / 0.000000 / 12.644381
+dmp_not_detected_depth_plus120mm_lateral_plus10mm_gain0: 26.289512 / 49.676161 / 0.000000 / 11.260126
+dmp_not_detected_depth_plus120mm_lateral_plus10mm_gain1: 17.389071 / 55.926377 / 0.197279 / 12.772146
+dmp_not_detected_depth_plus120mm_lateral_minus10mm_gain0: 11.269433 / 45.778577 / 0.000000 / 11.260126
+dmp_not_detected_depth_plus120mm_lateral_minus10mm_gain1: 10.795580 / 37.058530 / 0.000000 / 11.881744
+dmp_nominal_ruckig: 31.613839 / 58.523558 / 0.027211 / 13.814709
+
+无 Module C 名义完整伺服：KMP 16.992->1.515mm，DMP16.697->1.677mm；±10mm固定目标错配也可纠偏。该单个合成 pose 的机械事实不能升级为独立对象上的统计疗效；147帧不是147个独立样本。
+Module C 未解决部署问题：使用现有 _closed_loop_module_c_cfg、真实 Ruckig，KMP/DMP 可见比例均降至0.0272，均未达到上述合成居中阈值；保留该失败，不替换为无平滑版本冒充执行控制器。确切根因/闭环延迟重设计尚未验证。
+
+三、缺失观察反事实
+只看走了多远不能判定泄漏；无检测时执行预定 nominal scan 是允许的。测试先比较相同全不可见世界 gain1/gain0，然后构造两个隐藏横向偏移±10mm的深目标世界，比较相同公共 missing 历史前缀内动作是否依赖隐藏几何。
+kmp: 两世界可见帧总数=[0, 0]；共同缺失前缀=147步；前缀gain1路径差均值=42.314979mm/max=84.392054mm；gain0路径差max=0.000000mm。
+dmp: 两世界可见帧总数=[29, 0]；共同缺失前缀=90步；前缀gain1路径差均值=42.580306mm/max=162.357311mm；gain0路径差max=0.000000mm。
+KMP 两世界全147步不可见；DMP只在前90步保证相同缺失观测，后续其中一世界出现检测，后续差异不能用作相同观测反事实。源码明确未门控横向 u，因此结论是 stock 消费模拟器全几何 u，违反 missing-only 数据接口；这不是其内部 richer simulator-observation 契约下的数学矛盾。
+
+四、几何、身份和生产深度
+真实 primitive 共同 SE(3) 最大位置误差=1.71e-15m；完整 honest KMP loop 位置最大误差=6.87e-16m，旋转元素最大误差=2.03e-15。
+生产表面96随机三角面/barycentric点，无 reference_points 真点提示：调和 surface decode 均值=0.068289mm，p95=0.155896mm，max=3.003732mm。
+公平规范注册3D：双方共享相同 mesh 对应面、barycentric系数、生产stencil派生SMPL-X权重、60度膝关节已求值变换。3D baseline 保留规范点并使用相同附件运输，误差为0（按构造代数精确）；调和额外经历地址解码，运输最大误差约3.004mm。因此此条件下未证明调和优于规范注册3D。
+LBS反变换最大位置误差=1.52e-07m；共同SE3运输max=2.02e-07m。错误theta地址+0.6rad平均移位=43.428mm，说明地址身份必须正确，坐标表示不会自动解决错身份。
+stock生产深度：16个真皮肤顶点存储d=0，但运行时d均值=0.475617、max=0.954376。同一个距离比算子传入真实skin数组则为0。原因：atlas.py把 harmonic_vertices前skin_count节点当皮肤；production layered顺序不符合此假设；这些假皮肤与真皮肤采样点距离最高0.622m。且runtime d重新计算解析距离比，不插值baked harmonic_d，本来就是不同深度场。
+depth_adapter.py source-free修正只把真实atlas.skin_vertices传给原距离比算子，保留原h/theta查询。修正后皮肤dmax=0，h/theta变化max=0，共同SE3深度误差max=1.89e-15。这是皮肤绑定修正，不代表已使解析深度等于layered baked深度，也没有解决所有体坐标契约。
+生产表面连续曲线80点h=0.1..0.9的步长max约11.1mm；这是特定采样曲线诊断，不是全域单射/连续性定理。
+
+五、primary production 执行状态
+{
+  "stock": {
+    "error": "NameError(\"name 'use_scheduled_vessel' is not defined\")",
+    "wall_s": 0.4926454479973472
+  },
+  "harness_global_alias_repair": {
+    "steps": 300,
+    "visible_fraction": 0.9866666666666667,
+    "u_abs_mm": {
+      "mean": 13.750892652646954,
+      "p95": 22.841740289152465,
+      "max": 27.223105110572167
+    },
+    "first_synthetic_centered_time_s": 14.0,
+    "path_length_m": 0.9321465859019686,
+    "translation_step_m": {
+      "mean": 0.0031175471100400288,
+      "p95": 0.005026541370656588,
+      "max": 0.006094771975132501
+    },
+    "rotation_step_rad": {
+      "mean": 0.032330834899230346,
+      "p95": 0.11999999999999997,
+      "max": 0.12000000000000025
+    },
+    "wall_s": 4.468312814999081,
+    "nonvisible_motion_length_m": 0.009627743434277622,
+    "last_phase": 1.0,
+    "change": "Set module global use_scheduled_vessel to scheduled_observation_truth_enabled(cfg[closed_loop_servo]); no source file modified."
+  },
+  "source": "DMP_playground.run_trajectory_extraction_demo.run_closed_loop_servo_on_bent + SurfaceScanDMPController",
+  "privileged_inputs": "Exact bent anatomy/vessel points and tangents, bent replay roll/rho, VesselOracle; not a blind first-image baseline."
+}
+修正仅为 owned harness 给 module global use_scheduled_vessel 赋现有 scheduled_observation_truth_enabled 的值，下一次 stock 调用仍会失败。此结果拥有更多特权信息且另有自身环境生成，不能与共享世界的 honest loop 性能直接排序。
+
+六、复现与交付
+所有命令在 /media/camp/EXT_DRIVE/Among_US 为工作目录，或运行绝对路径 harness（它自动切换）。无需GPU、torch或机器人设备。未更改原仓库源文件，已有dirty source/status原样保留。
+环境：{"python": "/home/camp/.local/bin/python", "version": "3.10.12 (main, Aug 31 2026, 10:18:17) [GCC 11.4.0]", "packages": {"numpy": "2.2.6", "scipy": "1.15.3", "matplotlib": "3.10.9", "ruckig": "0.17.3"}, "threads": {"OPENBLAS_NUM_THREADS": "1", "OMP_NUM_THREADS": "1"}}
+主命令：OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 MPLBACKEND=Agg python /media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/motion/run_motion_validation.py
+source tests：PYTHONPATH=.:src OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python -m unittest DMP_playground.dmp_honest.test_dmp DMP_playground.kmp_honest.test_kmp tests.test_leg_volume_coordinates -v；23 tests=22pass+1skip（旧latest_canonical不可用）。
+stock full CLI：PYTHONPATH=.:src OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 MPLBACKEND=Agg python -m DMP_playground.dmp_honest.run_dmp_benchmark --config DMP_playground/configs/smplx_recovered_20261108.json --output <owned motion>/full_servo；成功。默认default.json尝试失败，旧canonical/centerline缺失已记录。
+adapter API：generate_candidates(start_xyz,goal_xyz,normal_xyz=(0,0,1),n=41,rotation=None,frame="railbase",duration_s=1.,lateral_offsets_m=(-.015,0,.015),methods=("dmp","kmp")) -> list dict。T_tcp[W,4,4]/xyz_m/rotations/normal_xyz/phase；单位m，caller声明frame，提供rotation则常量保留；生成wall_s/path_length/max_step/start_error/goal_error/max_speed均返回。不能把该wall_s当真实机器人执行时长。
+metrics.json：全部结构化指标、包版本、原源文件/实际资产/本次harness SHA256、git HEAD、既有dirty status、随机种子20261110。candidate_paths.json：完整候选位姿。production_geometry_samples.npz：对应、解码、运输、权重/变换和连续曲线。depth_contract.json：stock/corrected逐样本。controlled_servo/*.npz：逐帧p/R/u/depth/visible/phase/环境目标。servo_metrics.csv：每方法情景聚合。logs/：实际命令输出、stock失败traceback、unit tests。
+
+七、审计定位（源根 /media/camp/EXT_DRIVE/Among_US）
+DMP_playground/kmp_honest/servo.py:226-230 visible观测判定；:289横向image_u未按visible门控；:304-308真实ModuleC接口；gt_tangent仅metrics，:350 estimator.ingest按visible门控。
+DMP_playground/run_trajectory_extraction_demo.py:1149-1153 bent GT rho；:1157-1159 bent replay roll；:1182-1190 vessel tangent/normal/nominal oracle输入；:1222未定义use_scheduled_vessel。
+src/projects/genesis_ue_sync/anatomy_retarget/leg_volume_coordinates/atlas.py:482假设前skin_count个体节点是skin；harmonic.py:1064-1068取这些节点；:1112重算解析距离比d。
+DMP_playground/kmp_honest/imaging.py:187由合法prior和测试公开patch bake；:188-191 test anatomy只用于环境生成scheduled depth。
+范围限制：这是实际源模块的CPU计算/合成观察检验，不是实际B-mode、真实机器人/探头接触、力控制、独立受试者或临床系统验证。未检测真实身份/错误停止，无条件反应学习，未在本目录内完成dIRD联合伺服。A/B集成由parent core使用本adapter另测；不能从本报告推断B已优于A。

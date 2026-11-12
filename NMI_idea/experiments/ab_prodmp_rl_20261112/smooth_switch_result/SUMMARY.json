@@ -1,0 +1,119 @@
+{
+  "seed": 201568239,
+  "clock_slot_s": 30.0,
+  "arms": {
+    "rule": {
+      "moves": 38,
+      "joins_checked": 37,
+      "old_linear_velocity_jump_max_mm_s": 1.7399270534412974,
+      "max_join_error": {
+        "position_mm": 0.0,
+        "orientation_deg": 0.0,
+        "linear_velocity_mm_s": 0.0,
+        "angular_velocity_deg_s": 0.0,
+        "linear_acceleration_mm_s2": 0.0,
+        "rotation_chart_acceleration_deg_s2": 0.0
+      },
+      "max_capture_error_mm": 2.2377260456559047e-13,
+      "max_capture_orientation_error_deg": 7.153714460741702e-14,
+      "max_fd_linear_error_mm_s": 1.7634291028538384e-08,
+      "max_fd_angular_error_deg_s": 6.416544362331762e-08,
+      "surface_interpolation_difference_mm_p95_max": [
+        0.42735704436311694,
+        7.1814847768465775
+      ],
+      "peak_linear_speed_mm_s": 18.26592013043039,
+      "peak_angular_speed_deg_s": 43.88952972949585,
+      "segments_using_learned_shape": 35,
+      "material_corridor_fallbacks": 1,
+      "public_trace_matches": true,
+      "strict_complete": false,
+      "adaptive_tail_switches": 0
+    },
+    "rl": {
+      "moves": 40,
+      "joins_checked": 39,
+      "old_linear_velocity_jump_max_mm_s": 1.7350356169519432,
+      "max_join_error": {
+        "position_mm": 0.0,
+        "orientation_deg": 0.0,
+        "linear_velocity_mm_s": 0.0,
+        "angular_velocity_deg_s": 0.0,
+        "linear_acceleration_mm_s2": 0.0,
+        "rotation_chart_acceleration_deg_s2": 0.0
+      },
+      "max_capture_error_mm": 3.61888430622384e-13,
+      "max_capture_orientation_error_deg": 5.760778294925769e-14,
+      "max_fd_linear_error_mm_s": 3.002551952311105e-08,
+      "max_fd_angular_error_deg_s": 7.876951431105686e-08,
+      "surface_interpolation_difference_mm_p95_max": [
+        0.4403940879970141,
+        4.102571922572319
+      ],
+      "peak_linear_speed_mm_s": 21.344882435113004,
+      "peak_angular_speed_deg_s": 43.85229020161126,
+      "segments_using_learned_shape": 38,
+      "material_corridor_fallbacks": 1,
+      "public_trace_matches": true,
+      "strict_complete": true,
+      "adaptive_tail_switches": 5
+    }
+  },
+  "causal_b_fork": {
+    "same_probe": [
+      1,
+      7,
+      4
+    ],
+    "probe_index": 1,
+    "cases": [
+      {
+        "observation_mm": [],
+        "selected": [
+          2,
+          7,
+          4
+        ],
+        "join_error": {
+          "position_mm": 0.0,
+          "orientation_deg": 0.0,
+          "linear_velocity_mm_s": 0.0,
+          "angular_velocity_deg_s": 0.0,
+          "linear_acceleration_mm_s2": 0.0,
+          "rotation_chart_acceleration_deg_s2": 0.0
+        }
+      },
+      {
+        "observation_mm": [
+          -1.9939641125181642
+        ],
+        "selected": [
+          2,
+          15,
+          4
+        ],
+        "join_error": {
+          "position_mm": 0.0,
+          "orientation_deg": 0.0,
+          "linear_velocity_mm_s": 0.0,
+          "angular_velocity_deg_s": 0.0,
+          "linear_acceleration_mm_s2": 0.0,
+          "rotation_chart_acceleration_deg_s2": 0.0
+        }
+      }
+    ],
+    "prefix_samples_bit_identical": true
+  },
+  "nonzero_velocity_replan": {
+    "incoming_relative_speed_mm_s": 8.057226908519867,
+    "lateral_target_change_mm": 8.0,
+    "join_error": {
+      "position_mm": 0.0,
+      "orientation_deg": 0.0,
+      "linear_velocity_mm_s": 0.0,
+      "angular_velocity_deg_s": 0.0,
+      "linear_acceleration_mm_s2": 2.0463867241566047e-16,
+      "rotation_chart_acceleration_deg_s2": 6.690551225696962e-17
+    }
+  }
+}

@@ -1,0 +1,114 @@
+ADAPTIVE STOPPING DEV PILOT — RUNTIME AUDIT (IN-PROGRESS SNAPSHOT)
+===================================================================
+
+Snapshot: 2026-11-11 20:12 CST
+Root: /media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_adaptive_stopping_20261111/study_v3
+Scope: read-only inspection of the running count=8 pilot.  This file is an
+audit note only; it does not modify runner, driver, model, freeze, or result
+files.  No outcome/effect conclusion is made from this partial sample.
+
+1. Runtime state
+---------------
+
+The root DRIVER_MANIFEST.json declares 14 jobs (7 configurations x two
+constrained fixture indexes), count=8, max_workers=6, max_probe_frames=8,
+and pair_dwell=.30 for the adaptive A/B arms.  The pair_fixed .15/.30/.60
+configurations are present in the plan.  The parent study_driver process and
+its worker processes were still running at this snapshot.
+
+Observed at the snapshot:
+
+  RESULT.json files: 26 (partial; expected 14 x 8 = 112 after completion)
+  runner manifests: 9
+  completed JOB_RESULT.json files: 3, all return_code=0/status=ok
+  non-empty stderr logs: 0
+  DRIVER_SOURCE_END.json / DRIVER_RUN_SUMMARY.json: not yet present
+
+Completed jobs were A_task fixture 0/1 and A_info fixture 1.  Other jobs were
+still running or had only begun.  The observed result case IDs are therefore
+not a balanced development sample and are not summarized for policy effect.
+
+2. Source/model freeze
+----------------------
+
+DRIVER_SOURCE_START.json is schema adaptive_study_source_manifest_v1, has ten
+hashed inputs, no missing paths, and points to:
+
+  models/v3/MODEL.json
+
+The current read-only hash recomputation matched the start manifest exactly;
+no source/model hash change was observed.  Runner RESULT/MANIFEST source
+manifests seen so far agree on the imported module hashes.  This is only a
+snapshot check; the final driver source-end manifest must still be checked
+after all jobs exit.  A source change during the remaining run would
+invalidate the batch and must not be resumed silently.
+
+3. Job/config path and pair-dwell checks
+-----------------------------------------
+
+Observed paths use separate arm/dwell/fixture roots, with mode constrained for
+both indexes.  All observed A_task/A_info/B_H1 manifests use pair_dwell=.30,
+and their arm/config tags match their parent directories.  No pair_fixed
+result was used in this snapshot; pair_fixed jobs had only started later.
+No index-1=open path was observed.  The global matrix still requires all 14
+jobs and exact case IDs 0..7 at both mirrors before any dev selection/freeze.
+
+4. Native work versus precompute
+---------------------------------
+
+Each runner manifest records one initial-decision precompute per fixture/arm
+and its wall time.  The result's planningwall starts after that precompute in
+run_adaptive.py, so precompute must be reported separately and added once per
+job when accounting total planning wall; it must not be charged once per case.
+
+The result schema includes both:
+
+  native_counts           per-case deltas
+  native_counts_cumulative shared-adapter cumulative counters
+
+For all inspected completed rows, native deltas were non-negative and
+cumulative checked-cache sizes were monotone in case order.  This avoids
+mistaking per-case deltas for cumulative values.  Native/cache fields seen in
+results include verification/execution calls, proposal/cache counts,
+new_checked_trajectories, checked_cache_hits, execution_reuse_count,
+execution_native_count, and realnative_count.  Final accounting must use the
+per-case deltas plus the manifest precompute field, not a single last-row
+cumulative counter.
+
+5. Outcome denominator and stop accounting
+-------------------------------------------
+
+The current rows carry explicit correct_complete, false_complete, abstain,
+watchdog, reason, probe_count, terminal_count, events, decisions, and
+privateeval fields.  One inspected A_task mirror includes a bounded terminal
+option with two public rejections and correct_complete=false; it is a
+committed failure when committed-failure denominators are later computed, not
+a correct completion.  Probe-only public acceptance rows have
+terminal_count=0 and remain probe completions rather than being silently
+relabelled as terminal commits.  No false_complete row was observed in the
+partial snapshot.  These observations are schema/denominator checks only;
+the partial rates are not inferential results.
+
+6. Public/private isolation
+---------------------------
+
+Every inspected event exposes only the public packet fields (detected,
+confidence, quality, noisy center/axis, candidate_type, address/window and
+timing) plus public/native route bookkeeping.  No hidden_kind,
+target_association, present_before/after, or private truth field appeared in
+the public event or public packet.  The separate privateeval list contains
+the evaluator-only truth fields (correct/false, ever_qualified,
+target_association, hidden_kind and visibility mode).  The isolation check
+therefore passes for the observed rows; it must be repeated over the final
+batch before analysis.
+
+7. Current audit disposition
+----------------------------
+
+Runtime/schema checks: no blocking defect observed in this partial snapshot.
+Data completeness: INCOMPLETE / RUNNING.  Do not call summarize_adaptive.py
+for a research result, do not select a winner, and do not write a freeze from
+these rows.  After root reports the final 112 pilot RESULT files and driver
+source-end/job summaries, repeat this audit for exact IDs, all 14 jobs,
+return codes, source hashes, public/private isolation, native delta totals,
+committed-failure denominators, and pair-dwell directories.

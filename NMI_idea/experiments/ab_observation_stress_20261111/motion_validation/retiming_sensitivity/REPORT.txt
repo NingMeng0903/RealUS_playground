@@ -1,0 +1,73 @@
+Fixed-time ProDMP sensitivity diagnostic
+=========================================
+
+Purpose
+-------
+This is a compact causal check on the previous paired replay.  The spatial
+curve, endpoint, q seed, body anchor, native binary, scan profile, secondary
+preferences, and QP settings are unchanged.  Only the ProDMP duration is
+multiplied by 2 or 4.  The original 1x trace is reused from
+``motion_validation/prodmp_segment_*_trace.npz``; the 2x and 4x runs are new
+deterministic offline native replays.  No planner timing, gate, or controller
+source was changed.
+
+Time and frame checks
+---------------------
+
+The normalized spatial curve is the same for all three factors.  The
+reference pose reconstructed from each trace agrees with the independently
+sampled reference to numerical precision.  The native model period remains
+0.005 s.  The ProDMP analytic twist is still the world/base geometric twist
+from the fixed anchor; scaling tau changes its magnitude and not its frame.
+
+Results
+-------
+
+Position and transverse numbers are same-time ``FK(q_meas_before[t])``
+against the reference.  The transverse column removes the component parallel
+to the fixed endpoint chord; the full position column remains the official
+position diagnostic.  Rotation is the geodesic SO(3) error.
+
+| segment endpoint (local) | factor | p95 position | max position | p95 transverse | max transverse | p95 rotation | received→feasible p95 | effective actual/reference speed | native gate |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|:---:|
+| ``(+.004, 0, 0)`` | 1x | 0.033 mm | 0.035 mm | 0.005 mm | 0.005 mm | 0.000° | ~0 | 1.002 | pass |
+|  | 2x | 0.012 mm | 0.012 mm | 0.004 mm | 0.004 mm | 0.000° | ~0 | 1.001 | pass |
+|  | 4x | 0.004 mm | 0.005 mm | 0.004 mm | 0.004 mm | 0.000° | ~0 | 1.001 | pass |
+| ``(0, +.004, +.080)`` | 1x | 8.630 mm | 8.760 mm | 1.218 mm | 1.278 mm | 0.828° | 0.184 | 5.543 | fail |
+|  | 2x | 1.651 mm | 1.792 mm | 0.337 mm | 0.371 mm | 0.177° | 0.036 | 1.429 | pass |
+|  | 4x | 0.005 mm | 0.005 mm | 0.001 mm | 0.001 mm | 0.010° | ~0 | 1.001 | pass |
+| ``(-.004, +.003, -.080)`` | 1x | 4.959 mm | 5.068 mm | 4.361 mm | 4.453 mm | 0.496° | 0.108 | 2.785 | fail |
+|  | 2x | 0.111 mm | 0.162 mm | 0.103 mm | 0.149 mm | 0.028° | 0.003 | 1.010 | pass |
+|  | 4x | 0.005 mm | 0.005 mm | 0.004 mm | 0.004 mm | 0.008° | ~0 | 1.001 | pass |
+| ``(+.006, -.004, +.120)`` | 1x | 4.495 mm | 4.648 mm | 4.101 mm | 4.259 mm | 0.485° | 0.095 | 1.832 | fail |
+|  | 2x | 0.029 mm | 0.036 mm | 0.029 mm | 0.035 mm | 0.019° | ~0 | 1.001 | pass |
+|  | 4x | 0.005 mm | 0.005 mm | 0.004 mm | 0.004 mm | 0.007° | ~0 | 1.001 | pass |
+
+Interpretation
+--------------
+
+The first three mixed-segment failures are strongly time-sensitive.  A fixed
+2x slowdown changes them from 8.630/4.959/4.495 mm p95 position error to
+1.651/0.111/0.029 mm, and a 4x slowdown reduces all three to about 0.005 mm.
+The corresponding QP received-to-feasible twist projection falls sharply,
+and the effective actual speed becomes close to the reference speed.  This is
+consistent with a transient interaction between the ProDMP spatial shape and
+the existing Cartesian task QP's per-tick allocation/box history.  It is not
+evidence of a missing endpoint constraint, wrong pose/twist frame, solver
+fault, or the extra J1 hard wall.
+
+The test does not decide that 2x/4x retiming belongs in deployment.  It only
+establishes that the prior failures are not intrinsic impossibility of the
+spatial ProDMP curve.  The formal A/B result remains the original 1x timing;
+the slower runs are a diagnostic and sensitivity result, not a revised planner
+or acceptance criterion.  Actual effective speed can exceed the reference
+effective speed at 1x because q_meas oscillates during the rejected transient;
+this is why both error and speed ratio are reported.
+
+Residual boundary
+-----------------
+
+This remains an ideal measured-joint native replay with no physical latency,
+contact/force, ultrasound, or dynamic material-frame transport.  Strict jerk
+margin is retained in ``RESULTS.json`` and is not used to alter the requested
+2 mm / 2 deg gate.

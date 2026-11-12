@@ -1,0 +1,45 @@
+Optional M8: exact geometric response gradient + original dIRD short-action objective
+2026-11-10; development only
+
+Conclusion
+The float64 Torch response matches the NumPy clipped-polyline u/depth/connected projected length to numerical precision. On the fixed16 public-prior fixtures, both20-step optimizers reduced mean expected image energy, but both retain3/16 non-improving cases. Joint proxy guidance gave NO incremental checked-endpoint benefit: all initial/image-only/joint endpoints were found and passed FK/limits/configured self-collision (16/16 each). No native path execution or B task-success gain is claimed. The original dIRD field remains a proxy, not a certificate.
+
+The geometry is piecewise differentiable, not globally differentiable. Two of16 objective gradient-comparison rows fail the predeclared tolerance at the larger finite-difference step, both in fixture5 where clipping/support changes. At the smaller step, all16 rows have max absolute error <=5.879e-7. Explicit equal-component and slab-boundary negatives show large AD/FD disagreement and remain in BRANCH_DIAGNOSTICS.json. These cannot be removed by citing the smooth-case checks.
+
+Frozen design and data boundary
+PROTOCOL.json, run_optimization.py, torch_geometry.py and hashes were frozen in FROZEN_CASES.json before evaluation. Fresh seed720520 generates16 public mode-conditioned prior fixtures,32 independent legal particles each, frozen weights. There is NO actual patient world or private target in this optimizer. Target mode conditioning is a declared public fixture, not an observation-derived posterior. Cases alternate a0_identity with a0_t2_-0.08m, the previously public lowest-score found-valid anchor. Existing checked q_solution seeds are public robot states. Body-to-world maps place the public initial body pose at its anchor; subsequent changes use proper SE3 with R_body*Rz(yaw).
+
+A separate seed720521 checks values. No heldout acquisition worlds or test seeds were instantiated. Stable observation, planning, capability and production source were not changed. The post-evaluation branch audit reads traces; it does not retune/reselect cases.
+
+Variables/objective/motion
+Scaled variable d=[dx/.004,dy/.004,dyaw/.1], trust box [-2,2]^3; thus max8mm/8mm/.2rad. Both optimized methods take20 normalized-gradient steps of .15 without line search, endpoint labels or hidden reward. Image cost averages the exact public source mixture, real misses, u centering at4mm scale,18mm connected length deficit, weak depth reference35mm at10mm scale and expected identity deficiency. Weights are detached.
+
+Joint loss adds .25*softplus(-path_softmin_raw_calibrated_margin/.10), with softmin temperature .05. Raw calibrated margin means original NN raw score minus original m_safe=.00244944728910923. These raw units are not metric clearance. Path aggregation evaluates all41 actual original-DMP samples, using the original source-fit/rollout normalized linear shape and explicitly recorded goal compensation. Independent compensated source fit agrees with scaled rollout numerically. ModuleC is bypassed. This test evaluates endpoint robot geometry and the path proxy; native C2 tracking, robot-body/environment collision and dynamics remain outside this optional diagnostic.
+
+Main results (all16 retained)
+                       initial          image-only        joint proxy
+Mean image energy      7.975355         6.475283          6.396519
+Image improved vs init --               13/16             13/16
+Mean min path NN margin1.573589         1.524196          1.532424
+Endpoint found         16/16            16/16             16/16
+FK/limits/selfcoll pass 16/16            16/16             16/16
+
+Joint vs image-only: image energy lower8/16; minimum path proxy margin higher7/16; incremental endpoints found0. Joint does not demonstrate additional executable-task benefit here. Initial endpoints are already valid, creating an explicit ceiling for endpoint success; failure to show gain must not be recast as proof of safety or unnecessary exact checks.
+
+Maximum FK position error across endpoints is~1.185e-6m, rotation error~5.398e-6rad. Minimum configured collision distance is~.03909m vs required.010m. Failed finite search would mean search_not_found rather than infeasible; there were none in this fixture set. Full per-endpoint search/FK/collision witnesses and query times are retained in RESULTS.json.
+
+Gradient and branch audit
+On32 fresh particles x8 poses, max absolute Torch/NumPy errors: u6.94e-18m, depth2.08e-17m, projected length6.94e-18m, geometric length1.39e-17m. Common-SE3 original NN relabelling error4.44e-15. Independent finite differences use NumPy geometry, scipy Rz and original capability.score, not the Torch response graph.
+
+16 objective-gradient rows cover first8 frozen fixtures ximage/joint. At scaled h=1e-4,2 failures occur in fixture5;6 rows cross a topology/support boundary. At h=1e-5, all rows agree within5.879e-7 max absolute error. All rows and both step sizes are retained. A branch change is not automatically a gradient failure; the exact implementation is nevertheless not globally smooth.
+
+BRANCH_DIAGNOSTICS.json reconstructs all20-step traces, retains every step and lists particle/source indices with changed selected segment/support or active clipping plane.640 transitions contain at least one selected-response branch change,17431 particle/source changes in total. There are0 tied-max samples on the actual optimization trajectories. Explicit equal disconnected components show a centroid AD/FD error about2240 in scaled coordinates; exact slab boundary shows depth error1500 and length error2500. The true max-component/visibility operation is non-differentiable there. These are audit-only negative controls, not optimizer training data.
+
+Correction trail
+The first post-run boundary audit found a diagnostic-only single-segment tie flag self-comparison. Fixed only that flag when there is one segment. All fixed16 worlds have100segments; no value, loss or gradient changed. Original source/manifest/results remain in before_single_segment_tie_fix/. Corrected source hash was frozen before repeating identical16 cases. Every expected image energy is exactly identical between runs (max difference0). No optimizer/candidate/threshold/case changed.
+
+Reproduce
+Use /media/camp/EXT_DRIVE/envs/genesis/bin/python with OPENBLAS_NUM_THREADS=OMP_NUM_THREADS=MKL_NUM_THREADS=1:
+  run_optimization.py --evaluate
+  diagnose_branches.py
+The loader checks frozen source hashes. --freeze recreates the declared development fixtures; do not use it to replace evaluated cases. RESULTS.json includes the frozen manifest hash. Independent Astra review is pending root coordination.

@@ -1,0 +1,42 @@
+Distance-matched supplementary knee recheck
+Date: 2026-11-12
+
+Frozen source
+------------
+World, prepared prefix, BUDGET=3, belief/threshold/evaluate_outcome,
+original policy.py and frozen cql_512_7.pt are loaded read-only from:
+  /media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_knee_latent_rl_20261112
+The moving-knee world is 3-D. No Fisher score, Fisher feature, or Fisher-based
+selection is used.
+
+Paired protocol
+---------------
+Each arm starts from the identical full rule first sweep (28 simulated frames)
+for a case and executes exactly 3 supplementary acquisitions. A common
+per-case cumulative actual path cap of 80.0 mm is enforced on each
+candidate. The same mask is applied to CQL and strong rule at every actual step;
+the rule lookahead applies it at both levels. Frozen geometric edge validity is
+also required.
+
+Price selection
+---------------
+On independent dev indices 0..63,
+CQL scores are adjusted by -lambda_distance*candidate_additional_distance_mm.
+The bracket and fixed mixture probability target the strong-rule dev mean travel
+using travel alone. Identity, RMSE, strict status and hidden truth are not read
+for selection. Held-out cases use a deterministic seeded outcome-blind mixture;
+the expected weighted arm is reported separately from the actual sampled arm.
+
+Held-out protocol
+-----------------
+Test indices 256..383 are fresh
+seeds relative to the frozen 0..255 held-out run. Raw rows retain strict and
+mis-ID branch/clutter/prefix replacement errors, 0.5/1.0 s and shared-clock
+3-D world RMSE, elapsed time, modeled actual travel, and simulated traces. Confidence intervals
+use 4000 case-paired bootstrap replicates.
+
+Outputs
+-------
+DEV_LADDER.jsonl, DEV_SUMMARY.json, PRICE_SELECTION.json,
+TEST_LADDER.jsonl, TEST_SUMMARY.json, MATCHED_3D.html, PLOT_CASE.json,
+and MANIFEST.json are written under this distance/ directory.

@@ -1,0 +1,71 @@
+Frozen paired native-QP task-weight diagnostic
+Date: 2026-11-10; offline ideal-q replay only; no hardware/default promotion.
+
+Input SHA256: 7e23c9a9d91faef05bfddbc9eb1275c156ceacc04798c20a6beb61425136e8e8
+Protocol SHA256: db3f848ed6587b596d12b2124dfad670d5672402e620851b3bd429182d3b8bc5
+Runner SHA256: f59d8ab84a5f1f4dc937426aa911f88761bd94f51a8535f874000c35c4ed36b2
+QP replay SHA256: 88b71baaa55c18a35d0bd3696b18ef9d24a54b813e766fbacbbdf2f0cffb09ec
+Native binary SHA256: cc34bf96b772ef463aa2a9468153e649da550192b8486d35ed52145ea07e7d07
+W = 50*(radians(2)/0.002)^2 = 15230.870989335432
+Reference: analytic full 6D pose/Slerp feed-forward, 0.02 m/s, 0.4 s soft-start, 2.0 s settle.
+Only bridge.raw['inner']['qp']['task_weight'] changed; no limits, gains, ramp, or defaults changed.
+
+Per-case results (signed along-track and signed cross-vector components are retained):
+
+path0_baseline: weight=baseline path=0 n=1180 whole_duration_s=5.9 nominal_path_s=3.89283
+  cfg.qp.task_weight=[100.0, 100.0, 100.0, 50.0, 50.0, 50.0] native_dump=[100.0, 100.0, 100.0, 50.0, 50.0, 50.0]
+  path position p95/max mm=6.62582/7.49179; full p95/max mm=7.06539/8.57443
+  path rotation p95/max deg=0.528276/0.566213; full p95/max deg=0.655831/0.766775
+  path along signed min/max mm=-6.037/0.589179 abs-p95=5.14307; normal norm p95/max mm=4.19955/6.96255
+  full along signed min/max mm=-6.037/4.86875 normal norm p95/max mm=5.41832/8.57143
+  mechanical margins min q/v/a/j/collision=0.279263/0.368554/-4.57678e-12/-10.8339/0.0408227
+  gates pose=False mechanical=False all=False failures=0
+  trace_sha256=4438234b06446f0085ef40d86e51b5ceb9563617c5ceeaec7b5b5039f5f5e847 raw_result_sha256=50df431fdf2d369b5e13913b18f3985002667b86d37f1bfc1cba85efce6cf87f
+  path cross-vector component min/max mm: x=-5.18612/1.56029, y=-0.51253/4.49921, z=-1.15687/2.38326
+  path rotation-vector component min/max deg: x=-0.0183997/0.191744, y=-0.301046/0.565772, z=-0.0359404/0.167323
+  full rotation-vector component min/max deg: x=-0.0183997/0.472325, y=-0.301046/0.565772, z=-0.0359404/0.506507
+
+path0_tolerance_unit: weight=tolerance_unit path=0 n=1180 whole_duration_s=5.9 nominal_path_s=3.89283
+  cfg.qp.task_weight=[15230.870989335432, 15230.870989335432, 15230.870989335432, 50.0, 50.0, 50.0] native_dump=[15230.870989335432, 15230.870989335432, 15230.870989335432, 50.0, 50.0, 50.0]
+  path position p95/max mm=0.12094/0.199064; full p95/max mm=0.126466/0.218888
+  path rotation p95/max deg=2.17942/2.27987; full p95/max deg=2.00488/2.27987
+  path along signed min/max mm=-0.0484506/0.107857 abs-p95=0.101106; normal norm p95/max mm=0.0771617/0.19704
+  full along signed min/max mm=-0.0484506/0.165187 normal norm p95/max mm=0.0769896/0.19704
+  mechanical margins min q/v/a/j/collision=0.279373/0.370231/-3.88845e-12/-209.699/0.0408227
+  gates pose=False mechanical=False all=False failures=0
+  trace_sha256=fd4adf4c0aaeaae46f905601e02d5ac6e41a040824edf0e2d1b4eca743f39fa8 raw_result_sha256=476e8d11b3ade75abedf043aec9041ef4996e178bd5705516e7da12cb653f61b
+  path cross-vector component min/max mm: x=-0.148986/0.0225675, y=-0.0400915/0.127403, z=-0.0199084/0.0520204
+  path rotation-vector component min/max deg: x=-0.118821/0.564564, y=-1.70998/2.27074, z=-0.167054/0.574651
+  full rotation-vector component min/max deg: x=-0.118821/0.676335, y=-1.72018/2.27074, z=-0.167054/0.744354
+
+path1_baseline: weight=baseline path=1 n=1197 whole_duration_s=5.985 nominal_path_s=3.9784
+  cfg.qp.task_weight=[100.0, 100.0, 100.0, 50.0, 50.0, 50.0] native_dump=[100.0, 100.0, 100.0, 50.0, 50.0, 50.0]
+  path position p95/max mm=6.4196/7.80042; full p95/max mm=6.90112/9.6959
+  path rotation p95/max deg=0.502831/0.532592; full p95/max deg=0.53645/0.69333
+  path along signed min/max mm=-5.73777/0.0944459 abs-p95=4.9207; normal norm p95/max mm=4.01739/6.97779
+  full along signed min/max mm=-5.73777/3.07757 normal norm p95/max mm=5.46176/9.66653
+  mechanical margins min q/v/a/j/collision=0.279373/0.371689/-6.1644e-12/-0.0393228/0.0408227
+  gates pose=False mechanical=False all=False failures=0
+  trace_sha256=5d765e1b74ffa37526984da866cac5d5ad3d22357e7115113d4e5975cd9d53df raw_result_sha256=a154cf93343b4de3c3e7351a37f15b9eee0e3c3c6462fbb720f118f10101a1a6
+  path cross-vector component min/max mm: x=-4.88475/1.47714, y=-0.202721/4.71797, z=-1.60295/2.30037
+  path rotation-vector component min/max deg: x=-0.0223336/0.153653, y=-0.360805/0.531749, z=-0.0515703/0.125388
+  full rotation-vector component min/max deg: x=-0.0223336/0.447301, y=-0.360805/0.531749, z=-0.0515703/0.502313
+
+path1_tolerance_unit: weight=tolerance_unit path=1 n=1197 whole_duration_s=5.985 nominal_path_s=3.9784
+  cfg.qp.task_weight=[15230.870989335432, 15230.870989335432, 15230.870989335432, 50.0, 50.0, 50.0] native_dump=[15230.870989335432, 15230.870989335432, 15230.870989335432, 50.0, 50.0, 50.0]
+  path position p95/max mm=0.107343/0.199625; full p95/max mm=0.114584/0.206155
+  path rotation p95/max deg=2.10832/2.21008; full p95/max deg=1.98446/2.21008
+  path along signed min/max mm=-0.0434067/0.106077 abs-p95=0.101469; normal norm p95/max mm=0.0762497/0.199406
+  full along signed min/max mm=-0.0434067/0.156632 normal norm p95/max mm=0.0760165/0.199406
+  mechanical margins min q/v/a/j/collision=0.279373/0.370829/-4.63096e-12/-181.123/0.0408227
+  gates pose=False mechanical=False all=False failures=0
+  trace_sha256=9cdb37ef5af2f07b97acb5117155edb6ca871662ed4004cbfa2031c812a7a214 raw_result_sha256=6da9bd0712a9d652326658d496021b607ea61d95c3f023d631b8e83de6ef883e
+  path cross-vector component min/max mm: x=-0.14529/0.0256937, y=-0.0276664/0.13564, z=-0.0159704/0.0508294
+  path rotation-vector component min/max deg: x=-0.111512/0.584366, y=-1.86761/2.20176, z=-0.157362/0.607438
+  full rotation-vector component min/max deg: x=-0.111512/0.677947, y=-1.88886/2.20176, z=-0.157362/0.776931
+
+Same-reference paired sensitivity (baseline vs tolerance-unit):
+path0: shared_ticks=1180 reference_time_diff_s=0 desired_pose_diff_m/deg=0/0 actual_pose_diff_m/deg=0.0085267/1.77546 q/qdot_diff=0.25096/0.728414
+path1: shared_ticks=1197 reference_time_diff_s=0 desired_pose_diff_m/deg=0/0 actual_pose_diff_m/deg=0.00965766/1.72642 q/qdot_diff=0.0576789/0.380336
+
+Interpretation: both weights use the same frozen full-6D reference and time law. Any shared-tick output difference is therefore attributable to task-weighted native-QP allocation/conditioning and numerical sensitivity, not a changed reference. W is a unit conversion diagnostic only, not a theoretically optimal tuning. Negative margins/errors remain visible; no failure was rerun.

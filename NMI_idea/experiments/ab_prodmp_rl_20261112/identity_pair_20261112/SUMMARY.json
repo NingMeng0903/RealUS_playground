@@ -1,0 +1,88 @@
+{
+  "cases": 48,
+  "arms": {
+    "rule": {
+      "n": 48,
+      "strict_successes": 43,
+      "success": 43,
+      "strict_success_rate": 0.8958333333333334,
+      "false_stops": 5,
+      "no_stops": 0,
+      "mean_captures": 36.0,
+      "mean_rechecks": 36.0,
+      "mean_path_m": 1.6229027958075068,
+      "mean_travel_m": 1.6229027958075068,
+      "mean_return": 0.7426881935429579,
+      "mean_undiscounted_return": 0.7426881935429579,
+      "wrong_identity_failures": 5,
+      "map_error_failures": 0,
+      "changed_cases": 0
+    },
+    "posterior": {
+      "n": 48,
+      "strict_successes": 44,
+      "success": 44,
+      "strict_success_rate": 0.9166666666666666,
+      "false_stops": 4,
+      "no_stops": 0,
+      "mean_captures": 36.145833333333336,
+      "mean_rechecks": 36.145833333333336,
+      "mean_path_m": 1.615747182656304,
+      "mean_travel_m": 1.615747182656304,
+      "mean_return": 0.7635876408671848,
+      "mean_undiscounted_return": 0.7635876408671848,
+      "wrong_identity_failures": 4,
+      "map_error_failures": 0,
+      "changed_cases": 6
+    },
+    "paired": {
+      "n": 48,
+      "strict_successes": 43,
+      "success": 43,
+      "strict_success_rate": 0.8958333333333334,
+      "false_stops": 5,
+      "no_stops": 0,
+      "mean_captures": 35.895833333333336,
+      "mean_rechecks": 35.895833333333336,
+      "mean_path_m": 1.6083830979704448,
+      "mean_travel_m": 1.6083830979704448,
+      "mean_return": 0.7436225117681445,
+      "mean_undiscounted_return": 0.7436225117681445,
+      "wrong_identity_failures": 5,
+      "map_error_failures": 0,
+      "changed_cases": 12
+    }
+  },
+  "paired": {
+    "posterior": {
+      "first": "posterior",
+      "second": "rule",
+      "n": 48,
+      "success_wins": 1,
+      "success_losses": 0,
+      "success_draws": 47,
+      "discordant": 1,
+      "success_delta_pp": 2.083333333333333,
+      "exact_binomial_p_two_sided": 1.0,
+      "exact_p_two_sided": 1.0,
+      "capture_delta": 0.14583333333333334,
+      "path_delta_m": -0.007155613151202861,
+      "return_delta": 0.020899447324226817
+    },
+    "paired": {
+      "first": "paired",
+      "second": "rule",
+      "n": 48,
+      "success_wins": 1,
+      "success_losses": 1,
+      "success_draws": 46,
+      "discordant": 2,
+      "success_delta_pp": 0.0,
+      "exact_binomial_p_two_sided": 1.0,
+      "exact_p_two_sided": 1.0,
+      "capture_delta": -0.10416666666666667,
+      "path_delta_m": -0.014519697837062279,
+      "return_delta": 0.0009343182251864476
+    }
+  }
+}

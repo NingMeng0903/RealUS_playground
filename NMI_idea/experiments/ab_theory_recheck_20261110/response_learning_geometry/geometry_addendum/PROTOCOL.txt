@@ -1,0 +1,61 @@
+补充冻结协议 — corrected geometry/input-type and real e3nn comparison
+====================================================================
+
+性质
+----
+这是对上一版 synthetic response_learning_geometry 的保守 addendum。上一版
+manual typed-basis结果、raw arrays 和报告全部保留；本目录不覆盖它们。
+本 addendum 修复两项方法学问题：所有 MLP 现在接收相同的 signless
+dyadic vessel representation tt^T；并在 vendor/e3nn 0.6.0 上加入真正的
+o3 ElementwiseTensorProduct contraction。仍然只是 synthetic contact
+response benchmark，不是真实超声或完整 A/B 结果。
+
+固定数据、任务和阈值
+--------------------
+* 完全复用上一版声明的 positive plant、训练规模 [128,512,2048]、三 seeds
+  [101,202,303]、positive OOD seed=720950、ID seed=720951、32 candidate
+  actions、target [0.40,-0.30] mm、success threshold 0.50 mm、label noise
+  0.01 mm、100 epochs、hidden width 64 和 Adam lr=1e-3。不得改 seed、门槛、
+  action budget 或 test contexts 来制造 failure/success。
+* 新增独立 negative plant：negative-train seeds [721050,721051,721052]
+  对应三 training seeds，negative-test seed=721053，仍使用相同 context/
+  rotation law、sizes、epochs、candidate count 和 threshold；negative
+  train/test 完全不混 positive 数据。其真实 q=0、total response=u。
+* 仍保留上一版的 all-success action result；若 0.50 mm 任务过宽导致
+  success 饱和，必须报告为任务敏感性不足，不能事后收紧门槛。
+
+正确输入类型
+------------
+* world MLP 和 probe-local MLP 都输入相同信息类型：s、u、n 和 signless
+  dyadic T=tt^T（9 个 Cartesian 分量）。world 版本使用 world frame；local
+  版本用 R^T 运输 u/n 并用 R^T T R 运输 dyadic。MLP 不再直接看到 signed t。
+  这样 typed 模型不再独占正确的 t-sign invariance 信息。
+* typed/e3nn 模型输入相同公开 s/u/n/T 条件，但输出由标量系数网络和
+  明确的 vector covariants 构成。标量网络使用 [s,|u|²,n·u,(t·u)²,
+  (n·t)²]，不读取 signed t。
+
+真实 e3nn contraction
+----------------------
+从旧理论目录的 vendor 加载 e3nn 0.6.0（不联网安装）。使用
+o3.ElementwiseTensorProduct(1o,1o→0e) 获得 dot product，乘 sqrt(3) 恢复
+Cartesian dot；再用 o3.ElementwiseTensorProduct(0e,1o→1o) 构造
+n(n·u) 与 t(t·u)。这是真实 e3nn module，不称 manual fallback。
+另做同一随机输入上的 e3nn contraction 与手写 Cartesian basis 对齐测试；
+FD/autograd 误差统一在同一 local action 坐标上计算，Jacobian reshape 后
+再比较，不能把 batch 维误当作 action 维。
+
+评估
+----
+对 corrected world/local/e3nn 三模型报告 positive ID/OOD response RMSE、
+candidate regret/success、SO(3) equivariance、t signflip 和 action
+gradient-vs-central-FD。所有 corrected models 对 negative-train/test
+独立报告，不把 positive-trained 模型在 q=0 上的表现误称为 negative
+control。正负数据的全套 weights、raw arrays、results、report、tests 和
+hashes 均保存。
+
+解释边界
+--------
+这只是修复公平输入类型、真实 e3nn contraction 和梯度验证的工程/机制
+实验。若 e3nn、local MLP 和 typed basis 相近，应降低 e3nn 必要性主张；
+若 RLS 仍强，也不能把学习模型写成必要。action success 饱和只说明本次
+固定 0.50 mm candidate task 没有足够区分度，不得改阈值后重新包装结论。

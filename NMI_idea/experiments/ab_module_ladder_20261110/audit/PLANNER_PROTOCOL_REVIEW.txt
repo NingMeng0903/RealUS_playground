@@ -1,0 +1,181 @@
+Independent pre-test review of the new A/B planner, 2026-11-10
+
+Decision on the initial reviewed revision: HOLD TEST RELEASE for the two budget
+contract defects below. Development may continue. This is a bounded L0 review;
+it does not require a full L1 implementation, another native run, or any repair
+of the explicitly nonblocking tiny jerk residual. The parent owns all changes.
+No locked test catalogue was instantiated or inspected by this audit.
+
+Reviewed source and reproducible evidence
+  planning/system.py (fixed-witness DEV_AMENDMENT_01 revision):
+    e3865dbe42db217b2887f6fe9046582d1ebcf521ab754d3023f3bcd40e4024de
+  planning/PROTOCOL.json:
+    deaf889f86e0c9fcfe27ea8fc3d73b5e5f0f9b65723f7522d88220bafbfd0255
+  planning/run_experiment.py:
+    bbd5d32303eda85ba7d9cfc79ca06e324b05a0327dda6bfa7654d7b2a097038d
+  observation/environment.py:
+    d4dc27e2822e7bf04fa533e9fb47e42f2ed22ee576ad6285ced4dde32ceeacef
+  observation/servo.py:
+    ae506a793d419118cf32e7ce466b8591721a7cc9fefe45c9b7cb16e8606b2697
+  Initial copies are retained in audit/planner_review_initial/. Audit-only script
+  check_planner_initial.py writes planner_initial_checks.json/.log. The actual
+  development geometric model was used for finite Bayes checks. Clock/robot
+  substitutes used for boundary tests are explicitly unit fixtures, never robot
+  performance evidence. Independently reran all 9 observation contract tests:
+  pass (observation_contract_recheck.log).
+
+Must correct before the approved run
+1. Remaining resources are absent from the planning state.
+   Planner.decide(pose,history,weights,q) and terminal(...,cap=True) do not receive
+   remaining action count or remaining deadline. The sixth/final actual action
+   can still be selected for its imagined seventh-action continuation; a root
+   or future action can be valued despite its acquisition not fitting the
+   remaining 60 seconds. This contradicts the same-budget decision problem.
+   Pass the remaining resources, shorten the horizon on the last action, and
+   include a real abandon/incomplete action when no evaluated action fits.
+   terminal currently returns min(60,value) while still returning a physical
+   action: the value of declining to act must not silently authorize movement.
+   A narrow unit regression should cover last-action equality to the one-step
+   decision, an unaffordable continuation, and executable abandonment.
+
+2. A correct stop can be credited after the deadline.
+   run_episode checks motion + .5-second acquisition before updating belief,
+   then charges belief_update_s and credits the stop without another deadline
+   check. A deterministic fixture reproduces correct_public_stop=True and
+   RMT=60.6 for a 60-second deadline. The exact charged stopping time must satisfy
+   the declared deadline; late evidence may remain diagnostic but must not
+   become an on-time success. Also cap restricted-time reporting at the fixed
+   deadline and record why an episode stopped. Checking the clock immediately
+   after planning/endpoint work and before moving avoids spending an already
+   exhausted budget. No hardware run is needed to verify this correction.
+
+Scope descriptions that must match the final source
+3. dIRD is presently evaluated but not used to choose an action.
+   Robot.endpoint stores proxy; no decision/tie/query-order code consumes it.
+   PROTOCOL's “proxy used for same-task tie preference/query ordering” is false
+   for this revision. Either implement a separately declared use or say that
+   this B couples the exact static endpoint witness and estimated joint time,
+   with dIRD only logged/benchmarked independently. No learned dIRD increment
+   or causal necessity follows merely because its forward pass was called.
+
+4. B_no_future_cap removes more than an endpoint availability mask.
+   use_cap=False uses DMP duration+.5 and drops max(...,joint displacement/vmax).
+   A unit fixture gives 4.5 seconds with the witness versus .6 seconds without.
+   Thus it removes future static witness availability AND the joint-time model.
+   Declare that joint ablation or preserve the same costs; do not attribute a
+   difference exclusively to availability. All methods still share the actual
+   current endpoint hard check, which is correct.
+
+5. Freeze the effective run as well as the JSON file.
+   --approved-protocol-sha checks only that file. Test still accepts arbitrary
+   --methods and --max-actions, and the output does not explicitly freeze those
+   effective options; source/servo changes do not change the protocol hash.
+   Record an approved source/protocol/dependency bundle and effective methods,
+   counts and action budget, and reject or explicitly amend test overrides.
+   This is reproducibility enforcement, not a new user approval requirement.
+
+Verified positive contracts
+- Private selected h is passed only to actual rendering/audit. Planner receives
+  the public legal catalogue, history, posterior and public robot model state.
+  Knowing the full finite catalogue is an intentionally strong lawful prior;
+  this is not an independent continuous-patient test. Frame IDs are overwritten
+  as acq-ordinal-frame-i and do not reveal the hidden selected catalogue index.
+- A hypothetical five-frame block uses one persistent h and its nuisance
+  variables. Every public frame likelihood sums target/decoy sources within
+  every catalogue hypothesis. The five likelihoods are multiplied within h
+  before summing/normalizing across h. A 16-hypothesis independent calculation
+  and the sequential Belief update match exactly. Duplicate evidence is ignored.
+- Virtual branches build a new list bh=history+[...], use a fresh posterior
+  array, and do not update the actual Belief or commit imaginary observations.
+  The private generating h is used to simulate Y, not select a posterior or a
+  future action. Different source identities producing the same public Y are
+  aggregated rather than exposed as planner branches.
+- public_stop and audit_stop are separate. All five frames must publicly pass;
+  audit additionally requires target identity and physical 3D geometry. Wrong
+  public stops end the episode with no audit-enabled retry. The planning branch
+  charges 60*(1-P(true stop | exact public block)), not zero for every public
+  pass. An ambiguous-source algebra fixture gives true probability
+  .06005859375 and false-stop loss 56.396484375, correctly reproduced.
+- Target/decoy geometries and noisy quality supports overlap. Missing numeric
+  image fields are None. No hidden 3D tangent is inserted into public images;
+  single-frame out-of-plane angle remains an independent audit quantity.
+- A_myopic and A_continuous_servo have the same continuous candidate generator,
+  exact legal-hypothesis response, finite posterior and current robot checks as
+  B. Continuous centering, small yaw/normal probes and template recovery exist;
+  this avoids the previous 10-mm-action/2-mm-acceptance defect. A_continuous_servo
+  maximizes public quality while A_myopic minimizes expected correct-stop loss;
+  retain both rather than presenting the public-quality heuristic as the only A.
+- fixed_two really precommits its second action before seeing the first block.
+  Its residual weights b[h]*(1-P(public_stop|h,a1)) correctly condition the
+  expected second cost/success on no first public stop while retaining a single
+  fixed action. The automatic public stop can cancel continuation. Do not call
+  this an image-conditioned second action or conditional fine servo.
+- Actual DMP rollout endpoint supplies the sensor pose. The shared primitive
+  and endpoint calibration use no selected-world anatomy. The static witness
+  transition and DMP path are not actual native execution; q_kin is never q_out.
+
+Numerical/model limitations that restrict claims, not a demand for new hardware
+- The posterior is a finite-catalogue Bayes calculation, but predictive value is
+  sampled. Eight fixed probability quantiles of a uniform 32-hypothesis prior
+  select indices [1,5,9,13,17,21,25,29], each with one noisy block. Direct/fixed
+  values use analytic probabilities whereas B's second-stage minimum is a noisy
+  predictive quadrature. This is sampled two-step full-belief MPC, not exact
+  continuous-observation Bellman integration. Fixed quantiles also depend on
+  catalogue ordering; they are a declared numerical approximation, not eight
+  newly independent patient objects. Give a bounded development accuracy/order
+  sensitivity check or retain this as an explicit limitation. A finite Bayes
+  posterior being exact does not certify its predictive integral.
+- Design M6 promised an independent same-horizon full-belief MPC comparison.
+  That check is not present in this planning runner. The separate coarse
+  operator algebra check is useful but does not verify the live continuous-
+  observation, history-dependent-candidate planner. An independent backup over
+  the SAME scenarios/candidates/resources can be a small non-native test; a
+  claimed exact-planner/compressed-operator advantage needs it. Until then,
+  report sampled-policy performance only, without a new-planning-principle claim.
+- The displayed stage objective is motion/observation cost + 60*failure risk.
+  The evaluation RMT is time on correct stop and 60 otherwise. These are not
+  algebraically the same loss: unsuccessful elapsed cost is additionally
+  charged by the former. Declare the optimization surrogate rather than claim
+  exact minimization of restricted mean correct-stop time. Online compute is
+  charged by execution, but its future cost is not forecast in this objective.
+- The source's finite Bayes stores log weights, but branch helpers consume
+  ordinary weights and floor positive values below 1e-300. This is floating-
+  point Bayes, not arbitrary-precision preservation of negligible hypotheses.
+  Report true-index log probability from retained log weights if it underflows.
+- The finite endpoint search checks real URDF/FK limits and 35 robot/probe
+  self-collision pairs. “Not found” remains bounded-search failure, not proof of
+  physical impossibility. The adopted fixed witness is anchored at public scene
+  q_seed, reused by pose; it is not the nearest feasible configuration from every
+  incoming q. Current/static endpoint checks cannot certify an intervening
+  Cartesian path, dynamic continuation, patient collision or contact force.
+  DEV_AMENDMENT_01 states this appropriately. Native subset evidence is separate.
+- Six action blocks, one finite catalogue and two public robot contexts are a
+  bounded mechanism experiment, not full long-axis scanning or population
+  generalization. The test uses 16 hidden objects across two contexts, so paired
+  uncertainty must cluster by 16 objects, not count frames or 32 contexts as
+  independent patients. The declared 2000-resample bootstrap/30-45-60 curves and
+  method-comparison interpretation should remain fixed before reading results.
+
+Independent operator overclaim check
+I recomputed all 32 saved alias pairs from theory/operator_experiment's frozen
+numeric arrays. Current terminal-risk vectors agree to 5.68e-14; 28/32 pairs
+change the best probe CONDITIONAL on probing. However the complete direct-versus-
+probe action changes in 0/32 pairs: every one of the 64 beliefs chooses direct,
+with probe cost at least .24660214 worse. This supports insufficiency of current
+risk for preserving the observation operator/conditional future values. These
+examples do not demonstrate a changed complete policy or task-performance gain.
+See audit/operator_alias_scope_check.json. The earlier binary-sign Gamma
+counterexample separately proves a full-decision contrast under its toy loss.
+
+Release criteria and final claim boundary
+After the two resource bugs are fixed, the effective-run freeze and description
+corrections are recorded, and narrow regression checks pass, release can be for
+the declared sampled L0 comparison. The approximate integration and missing
+independent live-planner backup check must be completed before stronger exact
+value/operator claims, or explicitly marked untested. New test results may be
+negative; do not tune the locked test catalogue or fabricate capability costs.
+“Information is valuable through subsequent executable decisions” remains
+standard POMDP logic. A positive B-vs-greedy result would show an instance-level
+benefit of this robot/geometric implementation, not novelty of that principle.
+No claim of native closed-loop ultrasound, force/contact, patient safety or
+physical ultrasound validation is authorized by this review.

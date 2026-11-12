@@ -1,0 +1,79 @@
+事后基线补充协议 — local action-response query-identifiability
+===============================================================
+
+性质与范围
+----------
+这是在原注册实验完成后增加的保守 baseline diagnostic，不能伪称为原先
+的前瞻性比较。原目录的 PROTOCOL、RAW_RESULTS、RESULTS 和 REPORT 不改动。
+本补充仍只是抽象的局部线性机制 y=c+J a；不代表真实超声、完整 A 学习、
+B 主动感知、dIRD 全局连续性或机器人控制器已经成立。
+
+固定数据与评分
+--------------
+* 使用原实验 seed=720940 的同一 512 个 test subjects、同一四次公开观测、
+  同一三个未来查询、同一 targets 和同一动作上限/成功阈值；不筛选样本。
+* y 和 a 的归一化、J 的旋转-对角-旋转生成分布、c、6 个无观测 nuisance、
+  measurement sigma=0.02 均与原协议完全相同。
+* 平移查询 delta=(0.5,0)，旋转查询 delta=(0,0.5)，组合查询
+  delta=(0.35,-0.40)。任务控制器仍为 a=pinv(J_hat)t、逐分量 clip 到
+  [-2,2]，t~Uniform[-0.3,0.3]^2，成功仍为 residual Linf<=0.08。
+* 所有学习器只接收公开 (y,a) 和公开 target。真实 J/c 仅在本补充的 scorer
+  和覆盖率计算中使用，代码将它们作为 audit-only 数组保存。
+
+Baseline 1 — J=I 的岭/RLS 先验
+------------------------------
+在六维 x=(c0,c1,J00,J01,J10,J11) 上做 MAP/岭估计：
+
+  min_x ||F6 x-y||^2 / sigma^2 + ||J-I||_F^2.
+
+因此先验均值为 J=I，c 使用独立的宽平坦先验（数值实现方差 1e12），
+不把绝对 c 当作可迁移技能。固定先验精度对应的 ridge 系数是
+lambda=sigma^2=0.0004；不根据本补充结果调节。无激励的第二列即使数据
+完全没有覆盖，也由这个明确先验补成 I 的第二列，而不是 minimum-norm
+解强制为零。两种 observation design 都评分。
+
+Baseline 2 — 独立训练得到的共享 Gaussian response prior
+---------------------------------------------------------
+* 新训练 seed=720941，4096 个独立 subjects；每个训练对象使用完整四动作
+  ACTIONS_COMPLETED 的公开 (y,a)，由同一个六维 minimum-norm/LS 回归拟合
+  c 和 J。学习器只使用这些公开数据，不能读训练对象的 GT J。
+* 从训练 LS 的 J estimates 学习共享均值 mu_J 和样本协方差 Sigma_J；
+  不使用测试 GT。这里保留 LS 噪声造成的协方差膨胀，并固定加
+  1e-8 I 作数值正定 jitter，避免事后缩窄区间。
+* 在原 512 个 test subjects 上，对两种四观测 design 用线性 Gaussian
+  posterior 更新 x=(c,J)：J 的 prior 是上述 (mu_J,Sigma_J)，c 独立
+  N(0,1e12 I)，观测噪声是 sigma^2 I。posterior mean 是预测 J，
+  posterior covariance 用于预测区间。训练 prior 在所有 test query 前
+  冻结，不能用 query 或 test GT 更新。
+* 对每个 query 报告 RMSE、controller success，以及 nominal 95% marginal
+  和 95% joint prediction-interval coverage。coverage 用真正的 test GT
+  query response 逐例核验，尤其单独报告 no-excitation rotation（数据
+  未识别的第二列）；后验方差小而真值不在区间仍计为 coverage failure，
+  不能把 posterior confidence 当作正确性。
+
+Baseline 3 — 固定几何 orthogonality completion
+-----------------------------------------------
+仅使用 minimum-norm LS 已估计的第一列 v=J[:,0]，令第二列为
+
+  J[:,1] = R90 v,   R90=[[0,-1],[1,0]],
+
+即固定正 90° 方向、相同列范数（scale=1），不读测试 GT、不学习测试
+分布、不为结果调符号或尺度。对 no-excitation 和 completed 两种 design
+都评分，作为便宜几何强基线；它不是响应学习器。
+
+必须保存与检查的证据
+--------------------
+* 本补充的事前协议、源代码、独立测试、原 test hash 快照、训练/test 原始
+  数组、RESULTS/REPORT 和 SHA256 manifest。
+* 记录三类 baseline 的 translation/rotation/combined query 误差、所有
+  512 个 controller 结果、shared-prior 区间 coverage、训练 prior 参数。
+* 用独立代码重建 F6、ridge normal equations、Gaussian posterior、R90
+  completion 和 coverage；检查原注册文件哈希在运行前后不变。
+
+解释边界
+--------
+如果 J=I prior 或 orthogonality completion 已足够好，必须如实报告，不能
+把原 minimum-norm 的失败归因成“任何未激励查询都必然失败”。如果共享
+Gaussian prior 接近 100% 或 coverage 达标，说明群体响应先验可补足抽象
+测试中的部分未观测方向；这仍不证明真实 A 技能迁移或 B 的主动观察价值。
+若 prior 的点预测不错但未激励方向 coverage 低，报告为过度自信而非成功。

@@ -1,0 +1,32 @@
+Prior-success comparison (read-only)
+====================================
+Scope: compare sealed smooth-reference/public capability runs with the new B native replay. No controller was instantiated or rerun by this worker.
+
+1. Strong no-regression control
+--------------------------------
+The parent-controlled-v2 fresh replays of old path0/path1 match every saved state/pose/command/residual array exactly, apart from tick_compute_seconds (wall timing). The old trace bundle has one extra vel_ff field; all common non-wall fields are identical.
+The old and fresh native_config.txt files are byte-identical (SHA256 7080702d84ed0c8e911c2a790af823af029eb7b42f28f8f8e9dd50e429690ba3). Fresh old path0/path1 retain 1.035/1.022 mm full maximum errors and pass the 2 mm/2 degree motion gate.
+
+2. What changed in B
+---------------------
+The old smooth paths start from the same branch4 q seed and use 17 pose waypoints, approximately 73.9/75.6 mm translation, zero net rotation, 0.02 m/s, about 4.50/4.586 s path time, and 2 s settle. The B identity first segment starts from the same q to within 5.44e-6, but commands a 15.159 mm path with net -0.2657995 rad yaw, about 1.516 s path time, and 0.5 s settle. Its saved trace reaches 17.059 mm and 2.291 degrees; the fresh controlled replay is identical.
+A B stress-context first move with essentially pure translation remains about 0.394 mm/0.0395 degrees. This is a within-stack contrast: the failing coupled short yaw/translation reference is not evidence that every native path regressed.
+
+3. Hold/state coverage
+----------------------
+Old smooth runs were isolated (return_state=False), with zero qdot/acceleration entry and only 2 s settle. The B runner carries exit_state and complete history into the next segment. Fresh 10 s holds expose a distinct long-hold issue: 7.70 mm nominal and 2.44 mm stress drift, both with QP solved and no failures. This regime was not covered by the old passing scan tests.
+
+4. Controller/source identity
+----------------------------
+The saved baseline-v2 metadata records the prior native binary, controller YAML, loop, QP builder, URDF, scan profile/reference and wrapper hashes consistently; the lower-level current hashes still match those sealed values. Both old and new saved runs use backend=native, tcp_mode=urdf, deterministic model time, and the same effective native config.
+The current on-disk scan_replay.py and scan_tracking_profile.yaml no longer match the sealed hashes: the parent added J1-policy support and the current profile now carries extra_posture_limits=false after baseline-v2. The saved baseline therefore must be interpreted as pre-adapter-edit; this comparison does not label the current adapter/profile edit as a broad controller regression. The stack is the custom offline wbc_rt native QP with ideal measured-q feedback; no RealMan vendor hardware session is instantiated.
+
+5. Constraint causal contrast
+-----------------------------
+The original sealed configuration has branch_barrier.j1_overfold_abs_rad=2.44346 rad (140 deg). The shared initial q1 is -2.60347 rad (-149.164 deg), while the URDF allows approximately +/-3.106 rad. With the negative sign, the lower J1 box is clamped at zero at the initial posture, so a negative J1 component of the B identity twist is unavailable and redundant joints can take a large detour.
+The parent-sealed J1-URDF-only contrast changed only that cap to 3.106 rad. On the same identity motion it reports 0.1027 mm maximum position error, 0.0796 deg rotation p95, 405/405 solved ticks and a passed 2 mm/2 deg gate; its 10 s hold reports 0.0051 mm and 0.00023 deg rotation p95. This is direct causal evidence for the artificial J1 wall in this case, not an inference from 'QP solved'.
+The current profile/source now exposes the final user-requested minimal flag (remove artificial branch-barrier/posture preferences; retain physical q/v/a/jerk/collision constraints), but no corresponding final-minimal result file is present in this directory, so it is not claimed verified here.
+
+Conclusion
+----------
+The old smooth tests are reproducible and do not show a broad native-controller regression. The original B failure is explained by a concrete artificial J1 hard wall exposed by B's short coupled yaw/translation reference; the guard-only causal replay removes that failure. Long-hold behavior was also outside the old 2 s coverage and should remain a separate check. RealMan hardware being normal is compatible because these saved experiments use the offline custom native QP path, not the vendor hardware communication/controller path. Await the final minimal-constraint replay before treating the full B execution contract as validated.

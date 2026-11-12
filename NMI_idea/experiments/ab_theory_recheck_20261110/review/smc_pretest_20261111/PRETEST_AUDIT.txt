@@ -1,0 +1,164 @@
+Independent SMC and matched-history pretest audit — 2026-11-11
+
+Decision
+The reviewed implementation satisfies the independently tested SMC contracts
+after the beta-zero/joint-callback correction. This is permission for bounded
+DEV development, NOT release of the locked 720913 cohort and NOT evidence of
+continuous-anatomy recovery. The completed CPU/CUDA DEV histories still expose
+an unfinished bridge and complete finite-particle support loss. No locked GT
+was instantiated by this audit. No native controller or full trajectory ran.
+
+Reviewed versions
+Root directory:
+/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_theory_recheck_20261110
+inference/continuous_smc.py:
+a65c01d2828f2b03e065ddb7920c153468f3ce9185ae9a4d991c6e96ecb8e7eb
+inference/gpu_predictor.py:
+0a5761c0b4b47e81b242a708db938584f0f8b7321b3bfdea98f3f505d34fc653
+shared_history_experiment.py:
+d7e0a00b0a6e824edaaea9176e3e8e41cee3afd7e4c2d22d2b3ca6b222ebe9d7
+STUDY_PROTOCOL.txt:
+f170634949c1ad3d511135d703ed1eb9ace5a1feb9ad34339ba2b5782b0bdd18
+The audit manifest records all other inputs. Later informed_proposal.py work
+is outside this release and requires its own mathematical/API check.
+
+Independent checks, not just the owner's tests
+check_smc_independent.py was run against the exact a65c01d... SHA. Its 10 groups
+passed; source SHA was unchanged between start and finish. The separate
+check_beta_zero_joint.py also passed on this SHA. Execution used
+/media/camp/EXT_DRIVE/envs/genesis/bin/python with BLAS/OpenMP threads set to 1.
+
+1. Nonuniform normalized weights, constants, zero weights and several
+   temperatures: CESS agrees with the direct formula
+   N (sum_i w_i exp(delta*l_i))^2 / sum_i w_i exp(2*delta*l_i).
+   Maximum formula difference 2.67e-15. At delta=0, CESS=N, not raw ESS.
+2. Independent bisection gives beta=.04094278944527605; implementation differs
+   by 1.4e-17. A hard-zero-support discontinuity is recognized as a support
+   step, not falsely reported as a .7N root. Such a step can violate the target
+   CESS; it does not manufacture missing positive-support particles.
+3. Two fixed seven-particle updates without resampling/moves reproduce exact
+   normalized weights and telescoping evidence: first logZ=2.2422647876,
+   joint logZ=-.3365788393. Generic finite-N resample/move logZ remains a Monte
+   Carlo estimate; this check does not prove finite-N accuracy or coverage.
+4. A finite two-state MH fixture independently evaluates prior + old full
+   history + beta*new block, checks exact accept/reject decisions, stationarity
+   and retention of weights when mutation is not preceded by resampling.
+5. A forced final beta=.9999999995 is uncommitted: no relabeling as beta=1.
+6. All seven geometric proposal blocks have paired symmetric increments/sign
+   flips; proposal input is immutable; illegal depth is rejected by the prior
+   rather than clipped. Paired geometry roundtrip error is 3.47e-18 m.
+7. Ten actual DEV public frames at two poses agree exactly with direct
+   per-particle env.log_likelihood sums. Old-history and new-block vectors stay
+   separate; five frames share one persistent particle, not five redraws.
+   Changed particle geometry produces fresh predictions, without object-id
+   cache aliasing.
+8. Frame IDs are assimilated once. Failed/unfinished updates preserve prior
+   particles, weights, history, seen IDs and committed logZ. All-particle
+   incompatibility produces an explicit failed uncommitted diagnostic. RNG
+   advancement is not claimed to roll back.
+9. Four independent 4096-particle linear-Gaussian trials agree within the
+   declared Monte Carlo tolerance with analytic mean .69252078, variance
+   .09972299 and joint logZ -3.71440975. This tests the same generic engine,
+   not the anatomical model or its empirical coverage.
+10. CUDA versus NumPy: eight public prior particles, five fixed poses including
+    contact/outside-contact cases. Maximum mean difference 5.56e-14, source
+    probability difference 1.12e-16, public frame LL difference 5.26e-12.
+    This is a numerical subset, not every visibility-boundary case or a speed
+    measurement. The existing likelihood and private renderer are unchanged.
+
+Additional bug found after the first ten tests
+The initially sealed b7016ed8... version passed those ten groups, but source
+inspection found an uncovered beta-zero edge. At low incoming ESS the initial
+move supplied a zero-block callback AND the real joint callback. The latter
+took precedence, so a hard-zero new likelihood produced 0*(-inf) and NaN.
+
+Independent fixture: particles=[0,1,2,3], w=[.8,.1,.05,.05], old-history/prior
+log density zero, new LL=[-inf,0,0,0], identity proposal, seed=0, one MH sweep.
+Incoming ESS=1.5267 < .6N=2.4. Separate callbacks completed; joint callback
+raised ValueError('log target contains NaN'). The first failed result is
+BETA_ZERO_JOINT_COUNTEREXAMPLE.json. The owner corrected both current and
+proposal MH targets to exclude the new block at beta=0. The a65c01d... replay
+has matching separate/joint output and no warning; see
+BETA_ZERO_JOINT_a65c01d2828f.json. The complete ten-group suite was rerun.
+The preserved before_beta_zero_fix source was independently imported and the
+failure reproduced again; BETA_ZERO_JOINT_b7016ed8fb0c.json records its exact
+old SHA, eliminating ambiguity from the intervening live source correction.
+
+Two earlier audit-fixture failures were different: the audit assumed the old
+single-pose spy and lacked the new backend keyword in a synthetic mock. Their
+original source/results remain in BEFORE_BATCH_API_ADAPTATION_*; correcting
+the audit to exercise batched APIs resolved them. They were not production
+failures and are not hidden as successful original tests.
+
+Target and release boundaries
+For a persistent patient theta the intended stage density is proportional to
+p0(theta) L_old(theta) L_new(theta)^beta. Five frame likelihoods multiply
+within each theta; old data enter every MH target once. Symmetric proposals
+permit the ordinary target ratio. A target-invariant move may retain incoming
+importance weights; uniformity is only required after resampling. Beta=1 must
+actually be reached before committing evidence and its normalizer.
+
+The sampled bridge can fail even when the continuous prior supports the true
+world. Resampling cannot create unsupported worlds; local MH need not cross
+hard likelihood barriers within a bounded budget. CESS and post-resampling ESS
+are not posterior coverage certificates. This distinction is essential here.
+
+Observed DEV boundary (read-only, no rerun)
+dev_shared_history_cpu/RESULTS.json uses older corrected CESS a58a3326...:
+one object with IID/shifted cases, both tempered prefix5/8 invalid. IID block
+index3 exhausted 20 stages; shifted block index4 lost all particle support.
+The old runner did not preserve the failed block's diagnostics; no temperature
+is retrospectively reconstructed.
+
+dev_shared_history_cuda/RESULTS.json uses b7016ed8..., with failure diagnostics:
+IID block index3 ended beta=.2298138090 after20 stages; shifted block index4
+reported all_particles_incompatible, beta=0, zero stages. Both prefix5/8 are
+invalid. Neither recorded failure is the beta-zero NaN found above. Thus the
+new beta-zero correction cannot be presented as observed support recovery.
+
+Matched-history runner review
+The current runner uses the same initial 128 prior draws; fixed32 is the first
+32. All methods receive the same five survey and three public-anchor blocks.
+The anchor reads visible/contact/identity/u plus actual pose, with a fixed
+zero fallback. Public line fitting is also available to the terminal selector.
+Neither uses the hidden target curve. Prefix5 and prefix8 terminal/prediction
+frames are diagnostic forks and never enter the posterior/history.
+
+The four previously requested runner fixes are present: approval verifies
+running files as well as the approval manifest; public-line evaluation obeys
+the same 60s deadline; valid-only predictive NLL exposes scored/invalid counts;
+predictive weights use exact zero support instead of a 1e-300 likelihood floor.
+Shared anchor compute is charged to every method. A failed update records its
+diagnostics before the explicit failure and prevents a false full-history
+posterior. The predictive NLL is per-frame marginal heldout density, not a
+joint five-frame density; the distinction must remain in any report.
+
+Wall inference/selection and modeled DMP motion/observation times are included.
+These motion costs are not native robot execution costs. Same permission does
+not mean identical terminal poses or identical terminal images when poses
+differ. Causal isolation here is an inspected data/API contract, not a separate
+OS security boundary. A final release must freeze all runtime choices,
+including backend, and every relevant dependency; the current audit does not
+approve an arbitrary later manifest or a new proposal module.
+
+Bounded support-recovery advice
+A linear likelihood bridge g_beta=(1-beta)+beta*exp(logL-s) can preserve the
+same final target if incremental weights use log g_new-log g_old, MH uses
+prior+old-history+log g_beta, and the evidence scale s is restored. It alone
+does not solve all-zero particle support: CESS may stay N until the singular
+endpoint. A bounded support-finding proposal is still needed.
+
+An observation-conditioned proposal is lawful if its complete normalized
+continuous/discrete density q is evaluated, the public source/target mixture
+is retained, and weights are p0*L_full/q. Fresh full-history importance weights
+must not also multiply old posterior weights. A positive prior mixture can
+protect model support but cannot guarantee finite-budget effective coverage.
+No unweighted translation to an observed detection or silent likelihood
+softening is acceptable. This is engineering/statistics, not the project's
+new theory. The pending module has not been audited in this report.
+
+Final scope
+Conditional implementation checks pass on a65c01d...; formal cohort remains
+unreleased pending bounded DEV support recovery and a separately frozen final
+protocol. No A/B superiority, anatomical recovery, trained response advantage,
+real ultrasound, or physical-system result follows from this audit.

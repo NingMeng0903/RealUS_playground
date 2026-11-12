@@ -1,0 +1,914 @@
+{
+  "format_version": 1,
+  "independent_checks": {
+    "belief_timeline_replay": true,
+    "covariance_symmetric_psd": true,
+    "no_truth_or_patient_simulation": true,
+    "pose_learning_audit": {
+      "fixed_angle_identifiability": {
+        "fixed_pose_fitted_slip_all_zero": true,
+        "fixed_pose_median_slip_sd_mm": 1.8,
+        "varied_pose_19deg_rmse_less_than_fixed": true,
+        "varied_pose_mean_slip_sd_mm": 0.5647410182254952,
+        "varied_pose_slip_sd_less_than_fixed": true
+      },
+      "heldout_pose_deg": 19,
+      "matches_sealed_summary": true,
+      "recomputed_summary": {
+        "single_pose_train": {
+          "holdout_19deg_rmse_mm": 1.1192805228266902,
+          "holdout_19deg_zero_slip_rmse_mm": 1.1192805228266902,
+          "mean_captures": 21.583333333333332,
+          "mean_slip_sd_mm": 1.8
+        },
+        "varied_train": {
+          "holdout_19deg_rmse_mm": 0.5341788938187928,
+          "holdout_19deg_zero_slip_rmse_mm": 1.6403296342863498,
+          "mean_captures": 21.583333333333332,
+          "mean_slip_sd_mm": 0.5647410182254952
+        }
+      },
+      "result": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_leg_dynamic_20261112/POSE_LEARNING_AUDIT.json",
+      "result_sha256": "c67ea8a208fa20c659b35884dca4e7aae0ae4a95a3cfd78427e43c7f2d208f4e",
+      "runs": 48,
+      "source": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_leg_dynamic_20261112/pose_learning_audit.py",
+      "source_sha256": "0b103adf2c1f7b24e5fdb4eaeab0dd97c21276b66f79d5f9ab2ed6a97f3c73e9",
+      "training_protocols": {
+        "heldout": [
+          19
+        ],
+        "single_pose_train": [
+          15
+        ],
+        "varied_train": [
+          11,
+          15
+        ]
+      }
+    },
+    "posterior_replay_sealed": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_fisher_continuation_20261112/POSTERIOR_REPLAY.json",
+      "scope": "public centroid replay of one 15\u00b0 case; posterior SD per trunk node",
+      "seed": 3589976929,
+      "sha256": "e2354fb1ad7ff72ba3d7403c37e5b8b0ccd25586a0d559ab39b55ca075c2ad08",
+      "zero_cross_covariance_control": {
+        "max_unseen_mean_change_mm": 0.0,
+        "max_unseen_sd_change_mm": 0.0
+      }
+    }
+  },
+  "interpretation": {
+    "cheap_execution": "This audit performs logged posterior replay plus matrix/vector queries and writes one static HTML payload; it does not run a rollout or generate observations.",
+    "dynamic_confidence": "The same posterior produces pose-dependent world centerlines and SDs through the signed slip gain and cross-covariance; at 15\u00b0 the calibrated slip gain is zero, while 11\u00b0/19\u00b0 expose the learned pose mode."
+  },
+  "query": {
+    "cross_covariance": {
+      "max_abs_term_mm2": 0.09729843890140065,
+      "mean_abs_term_mm2": 0.01598653996514892,
+      "nonzero_terms": 12
+    },
+    "formula": "Var[d_i(theta)] = C_ii + 2*g_i(theta)*C_i,slip + g_i(theta)^2*C_slip,slip",
+    "material_sites": [
+      0,
+      6,
+      12,
+      18,
+      24,
+      27
+    ],
+    "pose_degrees": [
+      11,
+      15,
+      19
+    ],
+    "rows": [
+      {
+        "angle_deg": 11.0,
+        "half_width90_mm": 1.4287882701241463,
+        "lateral_unit_world": [
+          -0.04313275106919699,
+          -0.9977441173118583,
+          0.051441638336887495
+        ],
+        "lower90_world_m": [
+          -0.09159503745264422,
+          -0.8171752041021376,
+          -0.024142182868528785
+        ],
+        "nominal_world_m": [
+          -0.09146886318922043,
+          -0.8142565488815308,
+          -0.024292662739753723
+        ],
+        "pose_index": 1,
+        "posterior_mean_world_m": [
+          -0.09165666502143008,
+          -0.8186007691935382,
+          -0.02406868365907707
+        ],
+        "s_mm": 0.0,
+        "sd_mm": 0.868641590177373,
+        "selected_address": true,
+        "signed_offset_mm": 4.354042521154346,
+        "site_index": 0,
+        "slip_gain": -0.8596327636025421,
+        "upper90_world_m": [
+          -0.09171829259021592,
+          -0.8200263342849388,
+          -0.023995184449625357
+        ],
+        "variance_components_mm2": {
+          "cross_covariance": 0.09729843890140065,
+          "node": 0.5785937962562226,
+          "slip": 0.07864597702825196,
+          "total": 0.7545382121858752
+        },
+        "variance_mm2": 0.7545382121858752
+      },
+      {
+        "angle_deg": 11.0,
+        "half_width90_mm": 1.1813367525633123,
+        "lateral_unit_world": [
+          -0.937380543353596,
+          0.04657736003689124,
+          -0.34517860083456947
+        ],
+        "lower90_world_m": [
+          -0.08468062058850238,
+          -0.8870773504998299,
+          -0.0706195440261895
+        ],
+        "nominal_world_m": [
+          -0.08548950403928757,
+          -0.8870371580123901,
+          -0.07091740518808365
+        ],
+        "pose_index": 1,
+        "posterior_mean_world_m": [
+          -0.08578798267550376,
+          -0.887022326952581,
+          -0.07102731619355376
+        ],
+        "s_mm": 89.16584931661389,
+        "sd_mm": 0.7182017495093288,
+        "selected_address": true,
+        "signed_offset_mm": 0.3184177848927241,
+        "site_index": 6,
+        "slip_gain": -0.9433053299902615,
+        "upper90_world_m": [
+          -0.08689534476250513,
+          -0.886967303405332,
+          -0.07143508836091803
+        ],
+        "variance_components_mm2": {
+          "cross_covariance": 0.015682956415971942,
+          "node": 0.40542966474544645,
+          "slip": 0.0947011318368422,
+          "total": 0.5158137529982606
+        },
+        "variance_mm2": 0.5158137529982606
+      },
+      {
+        "angle_deg": 11.0,
+        "half_width90_mm": 1.2493617776546204,
+        "lateral_unit_world": [
+          -0.9922611980231013,
+          0.09293364238300461,
+          -0.08234714938106501
+        ],
+        "lower90_world_m": [
+          -0.07618503684646834,
+          -0.9723027824257046,
+          -0.09311311561909524
+        ],
+        "nominal_world_m": [
+          -0.07182617485523224,
+          -0.9727110266685486,
+          -0.09275137633085251
+        ],
+        "pose_index": 1,
+        "posterior_mean_world_m": [
+          -0.07742473006072818,
+          -0.972186674685053,
+          -0.09321599700003076
+        ],
+        "s_mm": 179.83868889222717,
+        "sd_mm": 0.7595580282545591,
+        "selected_address": true,
+        "signed_offset_mm": 5.642219222771216,
+        "site_index": 12,
+        "slip_gain": -0.4587568663446871,
+        "upper90_world_m": [
+          -0.07866442327498802,
+          -0.9720705669444015,
+          -0.09331887838096628
+        ],
+        "variance_components_mm2": {
+          "cross_covariance": -0.030743398860833382,
+          "node": 0.5852734615260503,
+          "slip": 0.022398335620736717,
+          "total": 0.5769283982859537
+        },
+        "variance_mm2": 0.5769283982859537
+      },
+      {
+        "angle_deg": 11.0,
+        "half_width90_mm": 0.995844333449874,
+        "lateral_unit_world": [
+          -0.9835120398023537,
+          -0.17391909585512025,
+          0.04956022256559146
+        ],
+        "lower90_world_m": [
+          -0.07217608878229244,
+          -1.0624598152125964,
+          -0.1046944747059411
+        ],
+        "nominal_world_m": [
+          -0.07080362737178802,
+          -1.062217116355896,
+          -0.10476363450288773
+        ],
+        "pose_index": 1,
+        "posterior_mean_world_m": [
+          -0.07315551367400933,
+          -1.0626330115586824,
+          -0.10464512043913465
+        ],
+        "s_mm": 270.5622961266103,
+        "sd_mm": 0.6054303660414728,
+        "selected_address": true,
+        "signed_offset_mm": 2.3913141954967245,
+        "site_index": 18,
+        "slip_gain": -0.09794441299562556,
+        "upper90_world_m": [
+          -0.07413493856572623,
+          -1.0628062079047684,
+          -0.10459576617232819
+        ],
+        "variance_components_mm2": {
+          "cross_covariance": -0.0001429474767042706,
+          "node": 0.3656679127782327,
+          "slip": 0.0010209628235833572,
+          "total": 0.3665459281251118
+        },
+        "variance_mm2": 0.3665459281251118
+      },
+      {
+        "angle_deg": 11.0,
+        "half_width90_mm": 1.0547885708869422,
+        "lateral_unit_world": [
+          -0.9886561227021914,
+          -0.15003434113305605,
+          0.006983374845976818
+        ],
+        "lower90_world_m": [
+          -0.07523869090189841,
+          -1.1497197102837347,
+          -0.12683882037672814
+        ],
+        "nominal_world_m": [
+          -0.07657648622989655,
+          -1.1499227285385132,
+          -0.1268293708562851
+        ],
+        "pose_index": 1,
+        "posterior_mean_world_m": [
+          -0.07628151408066208,
+          -1.1498779647920023,
+          -0.12683145439275437
+        ],
+        "s_mm": 361.2774815188665,
+        "sd_mm": 0.6412659178931679,
+        "selected_address": true,
+        "signed_offset_mm": -0.2983566706978414,
+        "site_index": 24,
+        "slip_gain": -0.009183978464720301,
+        "upper90_world_m": [
+          -0.07732433725942575,
+          -1.15003621930027,
+          -0.12682408840878062
+        ],
+        "variance_components_mm2": {
+          "cross_covariance": 1.087204926095456e-05,
+          "node": 0.4112021287931579,
+          "slip": 8.976608948326673e-06,
+          "total": 0.4112219774513672
+        },
+        "variance_mm2": 0.4112219774513672
+      },
+      {
+        "angle_deg": 11.0,
+        "half_width90_mm": 0.9555046535250795,
+        "lateral_unit_world": [
+          -0.9953169043202648,
+          -0.06485538065109848,
+          -0.07168011980267665
+        ],
+        "lower90_world_m": [
+          -0.07657703669772396,
+          -1.1805368032388455,
+          -0.13412794573632658
+        ],
+        "nominal_world_m": [
+          -0.07512906193733215,
+          -1.180442452430725,
+          -0.13402366638183594
+        ],
+        "pose_index": 1,
+        "posterior_mean_world_m": [
+          -0.07752806663153415,
+          -1.1805987728568637,
+          -0.13419643642436327
+        ],
+        "s_mm": 392.67237873636196,
+        "sd_mm": 0.58090558203406,
+        "selected_address": true,
+        "signed_offset_mm": 2.410292323770345,
+        "site_index": 27,
+        "slip_gain": -0.0033421807427046124,
+        "upper90_world_m": [
+          -0.07847909656534434,
+          -1.1806607424748818,
+          -0.13426492711239996
+        ],
+        "variance_components_mm2": {
+          "cross_covariance": -2.459821690823118e-07,
+          "node": 0.33745035241595106,
+          "slip": 1.188804548049877e-06,
+          "total": 0.33745129523833
+        },
+        "variance_mm2": 0.33745129523833
+      },
+      {
+        "angle_deg": 15.0,
+        "half_width90_mm": 1.2511637215173874,
+        "lateral_unit_world": [
+          -0.022582404130996183,
+          -0.9993969120400977,
+          0.026378916361015563
+        ],
+        "lower90_world_m": [
+          -0.09153960458366382,
+          -0.8171762483746937,
+          -0.02381998308741381
+        ],
+        "nominal_world_m": [
+          -0.09146886318922043,
+          -0.8140455484390259,
+          -0.023902617394924164
+        ],
+        "pose_index": 2,
+        "posterior_mean_world_m": [
+          -0.09156785886845717,
+          -0.8184266575344348,
+          -0.023786978744249967
+        ],
+        "s_mm": 0.0,
+        "sd_mm": 0.7606535323366498,
+        "selected_address": true,
+        "signed_offset_mm": 4.3837528839924484,
+        "site_index": 0,
+        "slip_gain": 0.0,
+        "upper90_world_m": [
+          -0.09159611315325052,
+          -0.8196770666941758,
+          -0.023753974401086123
+        ],
+        "variance_components_mm2": {
+          "cross_covariance": -0.0,
+          "node": 0.5785937962562226,
+          "slip": 0.0,
+          "total": 0.5785937962562226
+        },
+        "variance_mm2": 0.5785937962562226
+      },
+      {
+        "angle_deg": 15.0,
+        "half_width90_mm": 1.0473335550569074,
+        "lateral_unit_world": [
+          -0.9187212437509535,
+          0.020355699253991645,
+          -0.3943816955546773
+        ],
+        "lower90_world_m": [
+          -0.08484978599607401,
+          -0.8836556553485806,
+          -0.0741703437622288
+        ],
+        "nominal_world_m": [
+          -0.08548950403928757,
+          -0.8836414813995361,
+          -0.0744449570775032
+        ],
+        "pose_index": 2,
+        "posterior_mean_world_m": [
+          -0.08581199358239801,
+          -0.8836343361417153,
+          -0.07458339294548344
+        ],
+        "s_mm": 89.16584931661389,
+        "sd_mm": 0.6367335900872879,
+        "selected_address": true,
+        "signed_offset_mm": 0.3510200132020261,
+        "site_index": 6,
+        "slip_gain": 0.0,
+        "upper90_world_m": [
+          -0.086774201168722,
+          -0.88361301693485,
+          -0.0749964421287381
+        ],
+        "variance_components_mm2": {
+          "cross_covariance": -0.0,
+          "node": 0.40542966474544645,
+          "slip": 0.0,
+          "total": 0.40542966474544645
+        },
+        "variance_mm2": 0.40542966474544645
+      },
+      {
+        "angle_deg": 15.0,
+        "half_width90_mm": 1.2583651229621589,
+        "lateral_unit_world": [
+          -0.9901810111451805,
+          0.04795714009519911,
+          -0.13130756977949648
+        ],
+        "lower90_world_m": [
+          -0.0761826836698985,
+          -0.9670619994169563,
+          -0.10300078702519978
+        ],
+        "nominal_world_m": [
+          -0.07182617485523224,
+          -0.9672729969024658,
+          -0.10242307186126709
+        ],
+        "pose_index": 2,
+        "posterior_mean_world_m": [
+          -0.07742869291974301,
+          -0.9670016518244635,
+          -0.10316601989139122
+        ],
+        "s_mm": 179.83868889222717,
+        "sd_mm": 0.7650316735443379,
+        "selected_address": true,
+        "signed_offset_mm": 5.6580746363043755,
+        "site_index": 12,
+        "slip_gain": 0.0,
+        "upper90_world_m": [
+          -0.07867470216958751,
+          -0.9669413042319707,
+          -0.10333125275758266
+        ],
+        "variance_components_mm2": {
+          "cross_covariance": 0.0,
+          "node": 0.5852734615260503,
+          "slip": 0.0,
+          "total": 0.5852734615260503
+        },
+        "variance_mm2": 0.5852734615260503
+      },
+      {
+        "angle_deg": 15.0,
+        "half_width90_mm": 0.9946509074996513,
+        "lateral_unit_world": [
+          -0.9740123737123453,
+          -0.22640812369909288,
+          0.006265570867759349
+        ],
+        "lower90_world_m": [
+          -0.07216729184949132,
+          -1.055924182003077,
+          -0.1208712356412878
+        ],
+        "nominal_world_m": [
+          -0.07080362737178802,
+          -1.0556071996688843,
+          -0.12088000774383545
+        ],
+        "pose_index": 2,
+        "posterior_mean_world_m": [
+          -0.07313609414092019,
+          -1.0561493790487795,
+          -0.12086500358553817
+        ],
+        "s_mm": 270.5622961266103,
+        "sd_mm": 0.6047048145816541,
+        "selected_address": true,
+        "signed_offset_mm": 2.3946993201351456,
+        "site_index": 18,
+        "slip_gain": 0.0,
+        "upper90_world_m": [
+          -0.07410489643234908,
+          -1.0563745760944823,
+          -0.12085877152978855
+        ],
+        "variance_components_mm2": {
+          "cross_covariance": 0.0,
+          "node": 0.3656679127782327,
+          "slip": 0.0,
+          "total": 0.3656679127782327
+        },
+        "variance_mm2": 0.3656679127782327
+      },
+      {
+        "angle_deg": 15.0,
+        "half_width90_mm": 1.054763114574276,
+        "lateral_unit_world": [
+          -0.9789468408730583,
+          -0.2000017862710786,
+          -0.040772150213554036
+        ],
+        "lower90_world_m": [
+          -0.07525216462205293,
+          -1.1412302677595705,
+          -0.1492495313153397
+        ],
+        "nominal_world_m": [
+          -0.07657648622989655,
+          -1.1415008306503296,
+          -0.14930468797683716
+        ],
+        "pose_index": 2,
+        "posterior_mean_world_m": [
+          -0.07628472164093485,
+          -1.1414412222665782,
+          -0.14929253627548683
+        ],
+        "s_mm": 361.2774815188665,
+        "sd_mm": 0.6412504415539672,
+        "selected_address": true,
+        "signed_offset_mm": -0.2980392568624954,
+        "site_index": 24,
+        "slip_gain": 0.0,
+        "upper90_world_m": [
+          -0.07731727865981676,
+          -1.1416521767735859,
+          -0.14933554123563397
+        ],
+        "variance_components_mm2": {
+          "cross_covariance": -0.0,
+          "node": 0.4112021287931579,
+          "slip": 0.0,
+          "total": 0.4112021287931579
+        },
+        "variance_mm2": 0.4112021287931579
+      },
+      {
+        "angle_deg": 15.0,
+        "half_width90_mm": 0.955503318707563,
+        "lateral_unit_world": [
+          -0.9862250772704868,
+          -0.11839435354024444,
+          -0.11551135880340917
+        ],
+        "lower90_world_m": [
+          -0.0765639252565231,
+          -1.1716163108979658,
+          -0.1587800559596263
+        ],
+        "nominal_world_m": [
+          -0.07512906193733215,
+          -1.171444058418274,
+          -0.15861199796199799
+        ],
+        "pose_index": 2,
+        "posterior_mean_world_m": [
+          -0.07750626659084767,
+          -1.1717294370956899,
+          -0.15889042744631138
+        ],
+        "s_mm": 392.67237873636196,
+        "sd_mm": 0.5809047705226315,
+        "selected_address": true,
+        "signed_offset_mm": 2.4104078351918967,
+        "site_index": 27,
+        "slip_gain": 0.0,
+        "upper90_world_m": [
+          -0.07844860792517225,
+          -1.1718425632934137,
+          -0.15900079893299646
+        ],
+        "variance_components_mm2": {
+          "cross_covariance": 0.0,
+          "node": 0.33745035241595106,
+          "slip": 0.0,
+          "total": 0.33745035241595106
+        },
+        "variance_mm2": 0.33745035241595106
+      },
+      {
+        "angle_deg": 19.0,
+        "half_width90_mm": 1.2308312686625964,
+        "lateral_unit_world": [
+          -0.0020225504871773754,
+          -0.9999971020430548,
+          0.0013058311601981405
+        ],
+        "lower90_world_m": [
+          -0.09147530022307838,
+          -0.8170448273067343,
+          -0.023494647397142954
+        ],
+        "nominal_world_m": [
+          -0.09146886318922043,
+          -0.8138622045516968,
+          -0.02349880337715149
+        ],
+        "pose_index": 3,
+        "posterior_mean_world_m": [
+          -0.09147778964146044,
+          -0.8182756550085009,
+          -0.02349304013931939
+        ],
+        "s_mm": 0.0,
+        "sd_mm": 0.7482922787140557,
+        "selected_address": true,
+        "signed_offset_mm": 4.413463246830551,
+        "site_index": 0,
+        "slip_gain": 0.8596327636025421,
+        "upper90_world_m": [
+          -0.09148027905984252,
+          -0.8195064827102674,
+          -0.023491432881495824
+        ],
+        "variance_components_mm2": {
+          "cross_covariance": -0.09729843890140065,
+          "node": 0.5785937962562226,
+          "slip": 0.07864597702825196,
+          "total": 0.5599413343830739
+        },
+        "variance_mm2": 0.5599413343830739
+      },
+      {
+        "angle_deg": 19.0,
+        "half_width90_mm": 1.1448557475999495,
+        "lateral_unit_world": [
+          -0.8968394646685552,
+          -0.005988862996751056,
+          -0.44231562049403744
+        ],
+        "lower90_world_m": [
+          -0.08480679978919928,
+          -0.8800033041215622,
+          -0.07739029941508709
+        ],
+        "nominal_world_m": [
+          -0.08548950403928757,
+          -0.8800078630447388,
+          -0.07772700488567352
+        ],
+        "pose_index": 3,
+        "posterior_mean_world_m": [
+          -0.08583355160499954,
+          -0.8800101605057857,
+          -0.07789668699546291
+        ],
+        "s_mm": 89.16584931661389,
+        "sd_mm": 0.6960228733068452,
+        "selected_address": true,
+        "signed_offset_mm": 0.38362224151132807,
+        "site_index": 6,
+        "slip_gain": 0.9433053299902615,
+        "upper90_world_m": [
+          -0.0868603034207998,
+          -0.8800170168900091,
+          -0.07840307457583875
+        ],
+        "variance_components_mm2": {
+          "cross_covariance": -0.015682956415971942,
+          "node": 0.40542966474544645,
+          "slip": 0.0947011318368422,
+          "total": 0.4844478401663167
+        },
+        "variance_mm2": 0.4844478401663167
+      },
+      {
+        "angle_deg": 19.0,
+        "half_width90_mm": 1.31425266008993,
+        "lateral_unit_world": [
+          -0.9837130980150913,
+          0.002732725602253805,
+          -0.17972499270923378
+        ],
+        "lower90_world_m": [
+          -0.0761148466066472,
+          -0.9611616801959348,
+          -0.11247537552950643
+        ],
+        "nominal_world_m": [
+          -0.07182617485523224,
+          -0.9611735939979553,
+          -0.11169183254241943
+        ],
+        "pose_index": 3,
+        "posterior_mean_world_m": [
+          -0.07740769416247885,
+          -0.9611580887040427,
+          -0.11271157957925919
+        ],
+        "s_mm": 179.83868889222717,
+        "sd_mm": 0.7990088835598891,
+        "selected_address": true,
+        "signed_offset_mm": 5.673930049837535,
+        "site_index": 12,
+        "slip_gain": 0.4587568663446871,
+        "upper90_world_m": [
+          -0.07870054171831048,
+          -0.9611544972121506,
+          -0.11294778362901194
+        ],
+        "variance_components_mm2": {
+          "cross_covariance": 0.030743398860833382,
+          "node": 0.5852734615260503,
+          "slip": 0.022398335620736717,
+          "total": 0.6384151960076203
+        },
+        "variance_mm2": 0.6384151960076203
+      },
+      {
+        "angle_deg": 19.0,
+        "half_width90_mm": 0.9962326222745254,
+        "lateral_unit_world": [
+          -0.9599109695080141,
+          -0.27784290351145063,
+          -0.037070899456461796
+        ],
+        "lower90_world_m": [
+          -0.07214928031382965,
+          -1.048278488797575,
+          -0.13654797535043908
+        ],
+        "nominal_world_m": [
+          -0.07080362737178802,
+          -1.047888994216919,
+          -0.13649600744247437
+        ],
+        "pose_index": 3,
+        "posterior_mean_world_m": [
+          -0.0731055749361327,
+          -1.0485552849619204,
+          -0.13658490658981468
+        ],
+        "s_mm": 270.5622961266103,
+        "sd_mm": 0.6056664288851746,
+        "selected_address": true,
+        "signed_offset_mm": 2.3980844447735667,
+        "site_index": 18,
+        "slip_gain": 0.09794441299562556,
+        "upper90_world_m": [
+          -0.07406186955843576,
+          -1.0488320811262661,
+          -0.13662183782919027
+        ],
+        "variance_components_mm2": {
+          "cross_covariance": 0.0001429474767042706,
+          "node": 0.3656679127782327,
+          "slip": 0.0010209628235833572,
+          "total": 0.36683182307852036
+        },
+        "variance_mm2": 0.36683182307852036
+      },
+      {
+        "angle_deg": 19.0,
+        "half_width90_mm": 1.054760683600928,
+        "lateral_unit_world": [
+          -0.9644684807606043,
+          -0.24899500649857223,
+          -0.08832913651852214
+        ],
+        "lower90_world_m": [
+          -0.0752720594621843,
+          -1.1311948347882699,
+          -0.17101825673271737
+        ],
+        "nominal_world_m": [
+          -0.07657648622989655,
+          -1.1315315961837769,
+          -0.1711377203464508
+        ],
+        "pose_index": 3,
+        "posterior_mean_world_m": [
+          -0.07628934289626291,
+          -1.1314574649315376,
+          -0.17111142283313352
+        ],
+        "s_mm": 361.2774815188665,
+        "sd_mm": 0.641248963627112,
+        "selected_address": true,
+        "signed_offset_mm": -0.2977218430271494,
+        "site_index": 24,
+        "slip_gain": 0.009183978464720301,
+        "upper90_world_m": [
+          -0.07730662633034151,
+          -1.1317200950748052,
+          -0.17120458893354967
+        ],
+        "variance_components_mm2": {
+          "cross_covariance": -1.087204926095456e-05,
+          "node": 0.4112021287931579,
+          "slip": 8.976608948326673e-06,
+          "total": 0.4112002333528452
+        },
+        "variance_mm2": 0.4112002333528452
+      },
+      {
+        "angle_deg": 19.0,
+        "half_width90_mm": 0.9555053500315825,
+        "lateral_unit_world": [
+          -0.9723300309687603,
+          -0.17135687122884566,
+          -0.15878014220597755
+        ],
+        "lower90_world_m": [
+          -0.0765438196310087,
+          -1.1610015045699402,
+          -0.18274381792908542
+        ],
+        "nominal_world_m": [
+          -0.07512906193733215,
+          -1.1607521772384644,
+          -0.1825127899646759
+        ],
+        "pose_index": 3,
+        "posterior_mean_world_m": [
+          -0.07747288617759573,
+          -1.1611652369771641,
+          -0.18289553320444202
+        ],
+        "s_mm": 392.67237873636196,
+        "sd_mm": 0.580906005479947,
+        "selected_address": true,
+        "signed_offset_mm": 2.4105233466134486,
+        "site_index": 27,
+        "slip_gain": 0.0033421807427046124,
+        "upper90_world_m": [
+          -0.07840195272418275,
+          -1.161328969384388,
+          -0.1830472484797986
+        ],
+        "variance_components_mm2": {
+          "cross_covariance": 2.459821690823118e-07,
+          "node": 0.33745035241595106,
+          "slip": 1.188804548049877e-06,
+          "total": 0.33745178720266816
+        },
+        "variance_mm2": 0.33745178720266816
+      }
+    ],
+    "sd_summary_by_pose": {
+      "11": {
+        "max_abs_cross_covariance_term_mm2": 0.12016768971977629,
+        "max_sd_mm": 0.895805599136232,
+        "mean_half_width90_mm": 1.1083198223870308,
+        "mean_sd_mm": 0.6738106079634338
+      },
+      "15": {
+        "max_abs_cross_covariance_term_mm2": 0.0,
+        "max_sd_mm": 0.8704475234023411,
+        "mean_half_width90_mm": 1.0544092620747725,
+        "mean_sd_mm": 0.641035314509405
+      },
+      "19": {
+        "max_abs_cross_covariance_term_mm2": 0.12016768971977629,
+        "max_sd_mm": 0.8804178088074464,
+        "mean_half_width90_mm": 1.0939852257420044,
+        "mean_sd_mm": 0.6650957920003905
+      }
+    },
+    "signed_offset_convention": "positive along scan.frames[pose, site, 1]",
+    "z90": 1.6448536269514722
+  },
+  "scope": "same public B-case posterior queried at calibrated pose knots; no simulation",
+  "selected_belief": {
+    "covariance_sha256": "0d07b722ba6f9648d795b70a6a894dfcab022dd2b6b28d7314ce1cd2006a4bd0",
+    "half_width_median_mm": 1.0532949347380873,
+    "mean_sha256": "7c36797bc63d3943afbffca0a3baa5d83f8767e228d9b7dd8410befbe51f8f64",
+    "ready_targets": 32,
+    "selection": "final B-case public posterior from belief_timeline",
+    "timeline_records": 75,
+    "timeline_widths_mm": {
+      "after_initial_scan": 1.4989287886504148,
+      "final": 1.0532949347380873,
+      "prior": 11.91696168935137
+    }
+  },
+  "source": {
+    "chapter_seed": 4087610863,
+    "chapter_title": "Observation-guided B",
+    "geometry": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_leg_dynamic_20261112/DYNAMIC_GEOMETRY_FROZEN.npz",
+    "geometry_sha256": "e61ff1a05ca957674d3b146dc225b96cce61286094f0e1da052b5874c8219180",
+    "prefix_steps": 43,
+    "public_log_fields": [
+      "prefix_steps",
+      "steps",
+      "observation_mm",
+      "centroids_mm",
+      "evidence_gains"
+    ],
+    "render_search_replay": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_prodmp_rl_20261112/render_search_replay.py",
+    "render_search_replay_sha256": "d552c51e57fdc44d9dc652b8519edb5713b378fd2bcc72137fc39c8f882d29e2",
+    "suffix_steps": 31
+  }
+}

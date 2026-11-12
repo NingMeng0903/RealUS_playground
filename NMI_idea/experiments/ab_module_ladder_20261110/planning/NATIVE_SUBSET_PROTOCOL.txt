@@ -1,0 +1,31 @@
+Prespecified post-policy native motion replay, 2026-11-10
+
+Fixed subset: all B_two_step actions for first two heldout object indices0,1,
+in both registered robot contexts, regardless of policy success/failure.
+This subset was declared while the224episode policy experiment was running.
+It is a replay of frozen policy commands, not a native image-feedback episode.
+
+Use actual original41sample DMP decoded body poses, map through the registered
+T_world_body to world TCP, and existing production ScanReplayBridge/C2 6D profile.
+At every segment start use actual native q_out and complete initial_state history;
+do not reset to the static q_kin witness. Include actual FK start to avoid
+silently replacing the controller state by the intended endpoint. Hold/observe
+durations remain declared by the reusable profile. All results and unsupported
+segments/errors are retained; no outcome-based subset replacement or retuning.
+
+Report measured same-time tracking, native QP status, real limits/self-collision,
+actual endpoint errors and motion duration versus L0 estimate. A good replay is
+only robot-motion evidence: observation images were generated in the L0 run at
+its kinematic intended pose, so the replay cannot certify closed-loop imaging,
+contact/force, SMPL-X movement or full-system task success. Tiny jerk residuals
+are recorded only, consistent with the user's instruction.
+
+Implementation timing detail (before any native subset replay): the decoded
+planar family has proportional yaw and translation. Bound the replay scan rate
+by min(.02, .5*path_translation_length/abs(delta_yaw)), preserving the registered
+20mm/s and .5rad/s caps. This C2 start/stop time law differs from the L0 idealized
+DMP duration; compare actual durations rather than transplanting L0 success.
+For a moving segment replace only the first reference pose by measured FK;
+all subsequent DMP nodes stay fixed. Stationary holds use the existing hold.
+Grade tracking from FK(q_meas_before[t]) versus pose_desired[t], not the legacy
+bridge field comparing q_next[t+dt] to the current reference. Retain both metrics.

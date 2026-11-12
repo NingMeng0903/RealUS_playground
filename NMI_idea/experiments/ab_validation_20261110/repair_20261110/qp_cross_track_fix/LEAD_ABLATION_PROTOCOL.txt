@@ -1,0 +1,13 @@
+Offline causal diagnostic frozen before runs,2026-11-10
+Compare branch4 path0/path1 once each: ordinary6deg command-lead envelope,
+then arm command-lead envelope disabled ONLY inside the ideal-feedback test.
+Not a production default or hardware recommendation. No physical URDF/v/a/j,
+position margin, collision, gains, task weights, q seed or reference changes.
+Nominal .02m/s, consistent6D FF, original .4s start time law,2ssettle,dt.005.
+Input audit/phase2_native_subset_inputs.npz. No seed sweep or result-dependent tuning.
+The lead envelope caps absolute commanded speed at .777807rad/s even when
+q_cmd=q_meas exactly, below configured physical vmax2.512rad/s. Test whether
+this software guard causes the observed cross-track error; do not assume it does.
+Save full ordinary traces plus native per-tick solver iterations/CBF count.
+All original strict pose2mm/2deg and physical q/v/a/j/collision gates retained.
+Report full normal/tangential error, rotation, costs, and any remaining violations.

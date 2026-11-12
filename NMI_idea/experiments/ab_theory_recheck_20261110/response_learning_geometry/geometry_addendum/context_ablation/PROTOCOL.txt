@@ -1,0 +1,50 @@
+冻结协议 — context ablation of the synthetic typed response mechanism
+=====================================================================
+
+性质与数据边界
+--------------
+这是在 corrected signless-input/e3nn addendum 完成后记录的最后一个 bounded
+causal ablation。它不覆盖任何既有结果，也不声称真实超声、长轴/声窗任务
+迁移或完整 A/B 性能。目标只隔离：在完全相同的 geometric basis
+ b0=u, b1=n(n^T u), b2=t(t^T u)
+下，学习 context s 是否产生额外作用。
+
+固定训练、测试和物理任务
+------------------------
+* 正训练数据完全复用 corrected addendum 的 n=2048、seed=101 public
+  observations/labels 和 synthetic plant；不得读取训练 GT 系数或 test GT。
+* 新 test 使用 seed=720984、512 independent OOD contexts、同一 32 个
+  candidate action 生成规则和同一 candidate budget。1 normalized unit=10 mm，
+  target/门固定为 [0.40,-0.30] normalized（[4,-3] mm）和 0.20 normalized
+  （2 mm）。不得按 test 调参。
+* response RMSE、chosen action error、oracle regret 均换算为物理 mm（乘10）；
+  success 是实际 x/z Euclidean error<=2 mm。所有样本保留。
+
+三种只差 context 的模型
+------------------------
+1. constant_basis_ls：使用相同 b0/b1/b2，普通公开 label LS 只拟合三个
+   constant coefficients。basis、candidate、训练 labels 完全相同；无 s。
+2. typed_no_context：使用相同 exact e3nn (b0,b1,b2) contraction 和同样
+   scalar coefficient MLP/100 epochs/seed=101，但 scalar 输入删除 s，仅保留
+   [|u|²,n^T u,(t^T u)²,(n^T t)²]。它只删 context，不改几何类型或容量
+   训练流程的其余合同。
+3. typed_full_context：直接复用 corrected addendum 已冻结的
+   e3nn_typed_basis_positive_n2048_seed101 权重；不重新选模型、不用新 test
+   调参、不重新训练。
+
+评估与多目标复用
+----------------
+三模型在同一新 test、同一 candidates 上报告 response RMSE、chosen actual
+error、oracle ceiling、regret、2 mm success。另对同一冻结模型、同一候选集
+分别读出三个新的 centering targets
+ [0.40,-0.30], [-0.40,0.30], [0.20,0.40]
+（物理 [4,-3],[-4,3],[2,4] mm），不重新训练、不改变 action budget；这只
+是新的居中目标读出，不称为长轴或声窗任务迁移。
+
+证据保存和解释
+--------------
+保存事前协议、源文件/原始数组/权重 SHA256、训练 label/source weight
+快照、RESULTS/REPORT、独立 exhaustive test。若 no-context 已接近 full
+context，说明本 synthetic plant 下几何 basis 已解释主要响应；若 full
+context 明显更好，才支持条件信息在此机制中的增量作用。无论结果如何，
+不把它包装成 e3nn 必要性、跨个体解剖迁移或完整 B 成功。

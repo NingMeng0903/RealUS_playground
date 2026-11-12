@@ -1,0 +1,62 @@
+ORACLE_LEAKED_TRUTH upper-bound diagnostic, 2026-11-10
+
+Scope and exclusion
+-------------------
+This is an explicitly invalid-policy diagnostic upper bound.  The uppercase
+marker ``ORACLE_LEAKED_TRUTH`` is mandatory in every result.  It is not a
+legal A/B experiment, not a prescan, not a controller change, and must never
+be merged into the formal finite-prior A/B summary.  Its only purpose is to
+test whether giving the planner the exact private GT world removes the
+geometry/candidate/six-action-budget failure observed under the legal finite
+32-point prior.  No result here establishes a causal explanation by itself.
+
+Frozen source and worlds
+------------------------
+Regenerate exactly the same 8 private worlds used by the legal experiment:
+``env.sample_worlds(seed=720380, n=8, split='test')`` for ``iid`` and the
+same copied shifted worlds for ``shifted`` (+0.008 m common registration y,
+``modes[:,1] += .4`` for each source, rebuilt with ``env._world``).  Verify
+their audit digest against the legal run's private-GT hashes before any
+episode.  The GT object remains persistent through the renderer.
+
+Oracle leakage
+--------------
+For each of the 16 condition/object cases, the planner's particle list is
+exactly ``[that case's private GT World]``.  This is deliberate truth leakage
+and is recorded as ``ORACLE_LEAKED_TRUTH=true``; no public prior particle is
+used.  The private GT is still passed to ``run_episode`` only as its private
+render/audit world, but the same object is also exposed as the sole planning
+particle for this invalid upper-bound diagnostic.
+
+Episodes and unchanged execution contract
+-------------------------------------------
+Run exactly 8 iid + 8 shifted episodes, method ``A_continuous_servo`` only,
+in the existing ``a0_identity`` context.  Reuse the existing
+``planning.system.run_episode`` with the unchanged public stop verifier,
+sensor, candidate generator, motion, maximum six actions, 60 s deadline,
+and compute/wall charging.  Fresh Robot caches are used per episode.  No
+candidate, acceptance, budget, sensor, model, seed, or controller parameter
+may be changed.  Native replay is not run; any future native comparison is
+outside this diagnostic and must not be counted as online strategy wall time.
+
+Renderer key and CRN
+---------------------
+Use exactly the legal experiment's key
+``('continuous_mismatch', condition, object_index, 'a0_identity')``.  The
+actor appends action ordinal and rounded actual pose.  This preserves GT
+continuity and same-action noise identity with the legal experiment when the
+same pose/ordinal is revisited, while allowing different poses to receive
+different noise.
+
+Failure handling and outputs
+----------------------------
+All 16 episodes remain in the result.  Exceptions, exact-zero incompatible
+public likelihoods, endpoint failures, and numeric anomalies are retained
+with detail and assigned RMT=60 rather than being dropped.  Save full events,
+public/audit outcomes, posterior diagnostics, source hashes, legal-result
+hash, private GT hashes, and per-condition summaries.  Compare oracle
+success/false-stop/RMT descriptively with the legal finite-prior A result;
+this comparison is context only and does not alter the legal protocol.
+
+Artifacts are written only under this ``oracle_diagnostic`` directory:
+``RESULTS.json``, ``RESULTS.sha256``, ``REPORT.txt``, and the run log.

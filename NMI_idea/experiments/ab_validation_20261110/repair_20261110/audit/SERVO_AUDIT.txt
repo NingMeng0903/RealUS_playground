@@ -1,0 +1,60 @@
+伺服修复独立审计（其余模块完成前的分项报告）
+日期：2026-11-10
+范围：新检查与输出仅在 repair_20261110/audit/。未修改生产源码或其他工作者输出。
+
+结论：本次 missing-only 因果修复和生产入口局部开关修复通过独立复跑。
+主验证配置是整个 Module C 旁路；仅关闭 Ruckig 保留 fallback 是单独消融。
+以上通过不表示 Ruckig/fallback 闭环动态问题已修复，也不表示机器人关节执行或真实超声已验证。
+
+新鲜完整复跑
+reproduce_servo.py 读取并审查真实 harness，通过改写其输出目录与复制配置，
+在 audit/servo_fresh 独立重跑全部 14 个场景，包括真实生产几何、KMP/DMP
+完整循环、Ruckig/fallback/bypass、缺失隐藏目标对照、主入口 scheduled 开/关。
+所有逐帧 p_cmd、r_cmd、phase、控制输入、confidence、测量、公开 NaN 掩码和
+真值评价数组与 worker 输出一致（容限 1e-10；实际关键控制数组差为零）。
+每个 Ruckig-on 场景确实构造一次 Ruckig；off/fallback/bypass 均未构造。
+主入口不使用模块全局 use_scheduled_vessel 别名，四种组合均完成真实调用。
+证据：servo_reproduction.json、servo_reproduction.log、servo_fresh/。
+
+独立扩展非干扰测试
+check_servo_noninterference.py 使用另一独立公开平面场景，调用实际完整 loop，
+先给两个隐藏世界相同 5 步可见观察，再给相同 missing 序列但不同隐藏 u、
+depth、out-of-plane、目标切向和 segment index。对 KMP/DMP 分别运行
+Ruckig、fallback、bypass，共 6 组：p/R、控制输入、先验状态、原始命令状态、
+相位均逐元素相同。缺失公开测量及重建点为 NaN，confidence 为零；模拟器
+真值诊断量确实不同。因此此测试不是重复同一世界，也不是只比较过滤函数。
+证据：servo_noninterference.json、servo_noninterference.log、hidden_prefix_runs/。
+
+源码契约
+filter_obs_for_control 在 visible=False 时删除目标几何并将所有 gamma 置零；
+真实循环调用该过滤器，反馈按 visible && gamma>0 门控；缺失时不重建目标点。
+reconstruction.ingest 仍以 visibility 门控。缺失时继续公共 nominal 扫描或保留
+既有可见历史估计是允许的。真实可见 u=0 仍是有效测量，不被当作 missing。
+gt_tangent、lookat 和 image_* 原始数组用于评价而非控制。结果新增 public_*
+数组，缺失为 NaN；harness 保存 truth_image_* 与 public_image_*，避免日志混淆。
+主入口新增局部 use_scheduled_vessel=scheduled_observation_truth_enabled(cfg)，
+不依赖此前临时全局修复。该修复不会移除其其他 oracle 输入。
+
+配置与性能结论
+causal_module_c_bypass_config.json 的 enable:false/use_ruckig:false 经配置合并后
+真正传入 honest loop 与生产主入口；这是用户指定的本轮主路径。
+仅 Ruckig off 的 fallback：KMP/DMP 可见率均 0.789116，平均几何误差分别
+10.481992/10.980709 mm；完整 Module C 旁路：可见率均 1，误差
+1.515120/1.677213 mm。Ruckig on：可见率均 0.027211。
+不能把完整旁路的结果说成仅关闭 Ruckig 的效果，也不能声称平滑器问题已解决。
+全帧 truth 几何误差与可见帧 public 误差分别记录；后者有可见选择偏差。
+
+仍未解决且不得误述
+1. 主入口仍使用 bent 真值 rho/roll、vessel tangent path、VesselOracle、nominal
+   replay；它是 oracle-assisted 参考，不是 missing-only 未知目标因果策略。
+2. honest 实验依赖预制 vessel-centered crop、已知路径示教和测试身体表面；
+   属于准备路径附近的继续扫描/居中，不能代表仅粗人体先验的首次获取。
+3. 此层输出探头 pose；本次伺服结果不包含 UltraPOC 关节 QP、接触力学或
+   真实 B-mode。旁路上层平滑后，真实机器人执行仍须由实际底层控制验证。
+4. 旧 B 的 capability oracle 是固定分支/有限 psi 格点 SRS 抬升加采样检查。
+   其失败只能说明该桥接器失败，不能直接称作原 pose 路径或 UltraPOC 执行
+   失败。旧 B/no-capability 差值是在该有限检查器定义的动作集合中成立；
+   要将其解释成实际系统收益，必须用真实 UltraPOC 评价接口重新验证。
+
+后续：等待 harmonic 与 dIRD/UltraPOC 结果，另行完成边界/域外/性能、权重分组、
+校准、机器人资产契约和实际关节 QP 回放审计。当前无新增伺服修复阻断错误。

@@ -1,0 +1,233 @@
+Independent final module/policy audit, 2026-11-10
+
+Judgment
+The repaired experiment is a valid bounded comparison of the frozen sampled L0
+policies. It does NOT establish that B is better than the strong continuous A,
+or that either fixed-finite-belief implementation generalizes to continuous
+objects. The user may retain B as the preferred research direction; this round
+does not support presenting B as the empirical winner or a validated complete
+ultrasound system. Strong A remains the required comparator.
+
+The principal source/protocol contracts, finite Bayes aggregation, resource
+corrections and sampled-backup arithmetic passed independent review. Negative
+module and policy results were retained. Standard POMDP information value and
+value-directed compression are existing foundations; no new general theorem is
+established by renaming these operations.
+
+Authoritative frozen inputs
+  planning/PROTOCOL.json:
+    a1221257b245977bbf8888d996e76f2213cc3002e3b156c967e62797fd900d84
+  planning/system.py:
+    c9983d1fd606223612d7f6b3dffac132bf4f8bd176c8d1ac46a88ae5be7c29c7
+  planning/test_frozen/results.json:
+    913be5af55c0d85b969e203635bdbb0979413ccfbd4e1192668bec9efd69ab85
+  planning/test_frozen/ANALYSIS.json:
+    bcdc9bab27ea6785d8ae888ab139cc543d418d46ffb01433c91e5779d6f8b60f
+  continuous_mismatch/formal_run_20261110/RESULTS.json:
+    6da6319338367651d235a9c82b245dedea987888484ee02e87bc87b976f4adbe
+
+1. Finite-catalogue policy result: the strong-A comparison is negative for B
+There are16 independent catalogue objects x2 public robot contexts x7 methods,
+224 episodes total. Each method has32 episodes; frames/contexts are not additional
+independent patients. Ground truth is one member of the public32-model catalogue;
+the selected index is hidden. This strong finite-support assumption is declared
+and lawful for a mechanism test, but differs from continuous-person generalization.
+
+Method                   correct   wrong   incomplete   mean censored RMT(s)
+A_continuous_servo          16        1         15             32.276887
+B_two_step                 15        0         17             35.661444
+A_myopic                    8        1         23             45.998695
+entropy                     3        0         29             55.002552
+fixed_two                  11        1         20             41.151804
+B_no_future_cap            13        1         18             37.771065
+B_frozen_belief              5        1         26             54.007131
+
+B minus strong A: correct-stop difference-3.125 percentage points, paired16-
+object bootstrap95% interval[-18.75,+12.5]pp. RMT difference+3.384557s, interval
+[-4.906022,+11.715148]s. Neither establishes B superiority; the intervals also
+do not prove general A superiority. B's zero observed wrong stops versus A's one
+is a sparse descriptive observation. An all-zero bootstrap interval[0,0] is not
+evidence that the population wrong-stop probability is zero or clinically safe.
+
+B improves these frozen summaries versus myopic A, entropy and repeatedly
+resetting the belief to its prior. Those are useful instance-level contrasts,
+but cannot replace the stronger A comparator. Versus fixed_two the success
+difference is+12.5pp with interval[-3.125,+31.25]pp; versus no_future_cap it is
++6.25pp with interval[-6.25,+18.75]pp. These do not establish isolated observation-
+contingency or capability gains. Intervals are descriptive and not adjusted for
+multiple comparisons. No predeclared noninferiority margin is established here.
+
+The B_frozen_belief ablation resets the ACTUAL carried posterior at each planning
+call but still allows public servo history and hypothetical within-call Bayes.
+Its comparison concerns carrying public evidence forward, not removal of every
+Bayes operation. A_continuous_servo here is an analytic continuous-image policy,
+not a newly trained reusable response skill.
+
+2. Independent record, timing and statistics checks
+check_final_policy_records.py independently checked every one of1183 finite
+blocks/5915 frames and192 continuous blocks/960 frames: public field schema,
+missing values, unique non-private acquisition IDs, exact five-frame timing,
+public gate, hidden geometry/identity audit, no audit-enabled retry, posterior
+prior/next-state chain, complete correct/wrong/incomplete partition, and RMT.
+Clock reconstruction residual is0; cost decomposition residual<=3.56e-15s.
+All224 finite and32 continuous scheduled episodes are present; no exceptions or
+sample exclusion occurred. All registered primary-success rows satisfy deadline.
+
+All failed/incomplete episodes reached the SIX-ACTION limit; none exhausted the
+60-second clock. Finite maximum actual elapsed time is29.125s overall and13.002s
+for B. Thus “60s RMT” is the explicitly censored failure loss of this six-action
+policy, not evidence that an unsuccessful robot searched continuously for60s.
+Every finite correct stop occurred by15s. Actual movement, acquisition and compute
+must remain separate from the fixed60s failure penalty.
+
+Mean charged planning time is3.340615s/episode for B versus .538325s for strong A;
+static endpoint queries are4800 versus886. These are measured method costs, not
+imagined free lookahead. The independent2000-resample bootstrap used the frozen
+seed720504 and sampled16 object clusters with both contexts together; every
+reported CI endpoint matches exactly. Evidence: final_policy_record_checks.json.
+
+3. Wrong stops and false-target support
+All FIVE wrong stops across methods involve the actual target in every frame.
+Four occur at object3/stress-context with true axis-plane angle13.7588deg and
+true |u|2.169mm; strong A's other wrong stop has angle11.2954deg. The limit is
+10deg. These are 2D public-proxy/3D-audit discrepancies, not wrong-vessel identity
+errors. B's zero wrong stops therefore does not demonstrate superior rejection
+of false vessels in this cohort.
+
+The decoy quality support does overlap: the finite records contain596 visible
+decoy frames with projected length>=15mm, including54 frames that individually
+pass all public gates. Continuous records contain159 such long decoy frames,
+including5 single-frame passes. This fixes the earlier structurally impossible
+decoy-length test, while leaving five-frame false association sparsely tested.
+
+4. Continuous independent objects: fixed-finite-belief transfer fails
+The independent test uses8 new geometric objects, two private conditions (iid;
++8mm registration/+0.10 physical slope), and the same strong A/B, for32 episodes.
+Each of the four condition-method groups has0/8 correct stops,0 wrong stops,
+8 incomplete, and RMT60. All run6 actions. Final ESS is approximately1 in every
+row. The shifted B group has one episode with ever-audit-quality, but still no
+correct public stop; that secondary event cannot replace the primary endpoint.
+
+This rejects a generalization claim for THIS fixed32-atom model/controller on
+these objects. It does not show that lawful broad template/path priors are wrong,
+that probability should remove them, or that a properly adapting continuous
+belief would fail. The iid GT already comes from the same broad generating law
+as the model particles, but is not any of the32 finite support points. No
+continuous-state proposal/rejuvenation or model adaptation is active in this
+actor. Near-unit posterior mass is confidence conditional on a misspecified
+finite catalogue, not calibrated knowledge of the real object. Low ESS alone
+is not a validated mismatch detector: it also occurs in the successful finite
+catalogue cases. The shift comparison has a floor effect and cannot quantify
+additional damage from the shift.
+
+The initial separate shifted-oracle fixture used noncanonical modes outside
+the template API's +/-1 category contract. Its zero successes are unqualified
+as evidence about geometric attainability or the action budget. A separately
+retained, physically equivalent canonical-label diagnostic gives 5/8 correct,
+1/8 false and 2/8 incomplete in EACH condition. Independent reconstruction of
+all 16 hypotheses/567 public poses verifies source geometry within 6.94e-18 m,
+prediction means within 1.914e-9 and source probabilities within 7.55e-15.
+All 16 cases, 58 blocks and 290 frames pass independent outcome/cost recount;
+the original and formal result hashes are unchanged. The retained guard-error
+traceback was a pre-episode hypothesis-validation failure, not an excluded
+actor episode. Its old guard source was not separately archived; this provenance
+limit remains explicit in ORACLE_CORRECTION_AUDIT.txt.
+
+This is ORACLE_LEAKED_TRUTH: true anatomy is intentionally the sole model particle.
+It demonstrates completable cases after privileged information, not lawful A/B
+success, not an optimal performance upper bound, and not proof that inference
+is the sole remaining failure cause. It must not modify or replace formal results.
+
+5. Module-by-module increment versus contract evidence
+- Observation/response: exact segment clipping, continuous source-mixture
+  likelihoods, persistent nuisance/hypothesis, missing masks and public stopping
+  pass independent numerical/record checks. These are valid simulator contracts;
+  no acoustic/B-mode or real ultrasound calibration is demonstrated.
+- Continuous A and belief: the strong analytic A is a necessary practical
+  comparator. Carrying the posterior helps the B implementation relative to
+  resetting it, within the finite model. A learned response increment, broad-
+  prior structural ablation, or continuous posterior coverage is not established.
+- B two-step information planning: independent224-branch unnormalized-mass
+  enumeration agrees with the live sampled backup within7.11e-15. This verifies
+  arithmetic for that finite sampled kernel. It does not establish empirical
+  superiority over strong A or exact integration of the continuous image law.
+- Capability: all policies retain current real static FK/limit/self-collision
+  checks and real q_kin witness costs. no_future_cap removes both future mask
+  and joint-time estimate, so its comparison cannot isolate availability alone.
+  q_kin remains a static witness, not executed q_out or a path/contact certificate.
+- dIRD retrieval: an independently recounted task-free frozen86-pose diagnostic
+  finds53 valid endpoint witnesses and33 unresolved finite searches. At32 queries,
+  dIRD finds32 versus geometry-only29 and manifest-order23; at8/16 the two stronger
+  orders tie, and both find a first valid endpoint at query1. This is a limited
+  positive query-ordering increment, not a proven ultrasound-task or path gain.
+- M8 optimization: independently reproduced all48 image energies/path proxy
+  values and rechecked all48 actual q witnesses. Both optimizers improve13/16
+  image surrogates, but initial/image/joint all have16/16 valid endpoints: added
+  endpoint gain0. Case5 large-FD failures and explicit branch-boundary negative
+  controls reproduce. Piecewise AD is not global smoothness or guaranteed descent.
+- Operator identification: the binary-sign Gamma counterexample is valid under
+  its specified quadratic toy loss. The real-geometry alias test preserves all
+  current terminal risks while changing future operator/probe values, but its
+ 28/32 conditional best-probe changes yield0/32 COMPLETE policy changes at c=.5.
+  This is identification/mechanism evidence, not a task-performance gain.
+- Compression: a fresh SVD confirms full matrix rank64. Rank32 changes34/96 global
+  policies, has .969899 value error and3611 negative Xi entries. It is a failed
+  preservation candidate. Rank64 recovers values to2.20e-13/global policies exactly,
+  but increases factor storage versus the full matrix; no compression win.
+- Body coordinates/equivariant representations/EM: existing separate contracts
+  must not be relabelled as incremental A/B gains. These modules are not isolated
+  by this policy comparison and cannot all be declared necessary from it.
+
+6. Approximation and evidence scope must remain explicit
+DEV8/32/64 compact backups select three different initial actions; max root-value
+differences versus32 reach5.43s and2.13s. Compact/full future families can disagree
+by .9205s at a root, though selected actions match in the two checked states.
+This is not converged-value or lossless-compression evidence. The actual formal
+result belongs to the frozen32-sample compact-forecast policy, with common actual
+continuous permissions. See DEV_PRECISION_REVIEW.txt.
+
+This audit separates (i) synthetic geometric/POMDP mechanism and policy evidence,
+(ii) actual production kinematics, NN and endpoint-collision evidence,
+(iii) native ideal-plant replay, and (iv) true physical ultrasound evidence.
+Neither (iii) nor (iv) is inferred from (i)/(ii). The current L0 scene is a local
+planar contact model with two geometric curves and Boolean contact, not an
+integrated SMPL-X full vascular scan chain or an acoustic image simulator.
+The root's separately declared native replay of
+four fixed episodes is motion evidence only; images in the formal run were
+generated at L0 kinematic endpoints and are not retrospectively measured images.
+The completed native subset is itself a negative execution result: independent
+recount of its sealed diagnostic gives20 segments/6476 ticks,8 passing the
+same-time2mm/2deg gate and12 failing, with maximum30.038mm/5.004deg. All QPs report
+solved and no pause. The diagnostic records strongly restricted feasible twist
+under local velocity-history/dynamic boxes. A separate independent worker's
+BOX_FEASIBILITY.json checks four preselected maximum-residual ticks: all four
+exact Cartesian equalities are infeasible under the saved local qdot boxes;
+bounded least-squares residuals are .22910, .40034, .04690 and .04326. Three are
+exactly feasible under physical velocity limits alone; one retains .01022
+residual in the saved frame/limit convention. All four Jacobians have rank six;
+saved model-time increments are 5 ms including segment transitions. The local
+box is sufficient to restrict the task at these ticks, while a solved QP did
+not become an execution failure. These fields do not isolate acceleration,
+jerk or any single historical term. This auditor read and records the worker's
+LP evidence; this auditor did not independently rerun those LPs, native, or redo
+every FK trace here, and explicitly records that narrower level of verification
+in native_subset_scope_recount.json. These are material tracking failures, not
+the tiny jerk numerical residual. A static valid endpoint or solved QP cannot
+be counted as successful execution of the intended sensing action.
+No physical probe contact/force, patient motion or hardware ultrasound was
+validated here. Tiny jerk residuals are recorded without blocking, as requested.
+
+Final source/report review and reproducibility
+The root FINAL_REPORT.txt and MODULE_STATUS.txt were checked against this audit.
+Their final frozen versions are recorded in FINAL_AUDIT_MANIFEST.json. The final
+summary preserves the strong-A negative comparison, all four legal continuous
+0/8 groups, excluded known-anatomy 5/8 diagnostics, native 8/20 passing segments,
+and the narrow local-box causal statement. Primary source/protocol hashes and
+all audit reproduction scripts/results are sealed in that manifest. Earlier
+review files remain historical snapshots; completed subset/oracle addenda
+supersede their then-pending status, without changing their original contents.
+
+Result integrity and reproducibility passed for the examined scope. Empirical B
+superiority, continuous transfer, useful low-rank preservation and complete-system
+validation did not pass or remain unestablished. Those distinctions are the final
+audit conclusion, not an instruction to abandon the user's B research objective.

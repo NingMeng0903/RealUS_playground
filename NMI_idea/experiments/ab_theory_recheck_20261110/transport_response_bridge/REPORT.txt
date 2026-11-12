@@ -1,0 +1,79 @@
+Transport-response bridge
+=========================
+Synthetic compliance bridge over the audited atlas/tet geometry; not real ultrasound and not an independent-patient test.
+
+mode | pose | response RMSE mm | chosen error mm | success <=2mm | regret mm | oracle success
+e3nn_correct | right 0 | 0.0422066 | 1.31018 | 0.808594 | 0.000389639 | 0.808594
+e3nn_frozen_world | right 0 | 0.0422066 | 1.31018 | 0.808594 | 0.000389639 | 0.808594
+e3nn_wrong_F_normal | right 0 | 0.0422066 | 1.31018 | 0.808594 | 0.000389639 | 0.808594
+local_dyadic_correct | right 0 | 0.234151 | 1.32188 | 0.796875 | 0.0120863 | 0.808594
+e3nn_correct | right 15 | 0.0422066 | 1.31018 | 0.808594 | 0.000389639 | 0.808594
+e3nn_frozen_world | right 15 | 0.0727313 | 1.31167 | 0.808594 | 0.0018736 | 0.808594
+e3nn_wrong_F_normal | right 15 | 0.0429208 | 1.31011 | 0.808594 | 0.000312568 | 0.808594
+local_dyadic_correct | right 15 | 0.234151 | 1.32188 | 0.796875 | 0.0120863 | 0.808594
+e3nn_correct | right 30 | 0.0422066 | 1.31018 | 0.808594 | 0.000389639 | 0.808594
+e3nn_frozen_world | right 30 | 0.122416 | 1.31297 | 0.804688 | 0.00317808 | 0.808594
+e3nn_wrong_F_normal | right 30 | 0.0450673 | 1.30994 | 0.808594 | 0.000141109 | 0.808594
+local_dyadic_correct | right 30 | 0.234151 | 1.32188 | 0.796875 | 0.0120863 | 0.808594
+e3nn_correct | right 45 | 0.0422066 | 1.31018 | 0.808594 | 0.000389639 | 0.808594
+e3nn_frozen_world | right 45 | 0.168932 | 1.31894 | 0.804688 | 0.00914337 | 0.808594
+e3nn_wrong_F_normal | right 45 | 0.048704 | 1.30983 | 0.808594 | 4.01419e-05 | 0.808594
+local_dyadic_correct | right 45 | 0.234151 | 1.32188 | 0.796875 | 0.0120863 | 0.808594
+e3nn_correct | right 60 | 0.0422066 | 1.31018 | 0.808594 | 0.000389639 | 0.808594
+e3nn_frozen_world | right 60 | 0.20686 | 1.33473 | 0.796875 | 0.0249358 | 0.808594
+e3nn_wrong_F_normal | right 60 | 0.0538766 | 1.30991 | 0.808594 | 0.000119858 | 0.808594
+local_dyadic_correct | right 60 | 0.234151 | 1.32188 | 0.796875 | 0.0120863 | 0.808594
+e3nn_correct | right 75 | 0.0422066 | 1.31018 | 0.808594 | 0.000389639 | 0.808594
+e3nn_frozen_world | right 75 | 0.233813 | 1.33579 | 0.796875 | 0.0259918 | 0.808594
+e3nn_wrong_F_normal | right 75 | 0.060642 | 1.31101 | 0.808594 | 0.00121213 | 0.808594
+local_dyadic_correct | right 75 | 0.234151 | 1.32188 | 0.796875 | 0.0120863 | 0.808594
+e3nn_correct | right 90 | 0.0422066 | 1.31018 | 0.808594 | 0.000389639 | 0.808594
+e3nn_frozen_world | right 90 | 0.24897 | 1.33934 | 0.792969 | 0.0295505 | 0.808594
+e3nn_wrong_F_normal | right 90 | 0.0690225 | 1.31108 | 0.808594 | 0.00129053 | 0.808594
+local_dyadic_correct | right 90 | 0.234151 | 1.32188 | 0.796875 | 0.0120863 | 0.808594
+e3nn_correct | left 0 | 0.0422066 | 1.31018 | 0.808594 | 0.000389639 | 0.808594
+e3nn_frozen_world | left 0 | 0.0422066 | 1.31018 | 0.808594 | 0.000389639 | 0.808594
+e3nn_wrong_F_normal | left 0 | 0.0422066 | 1.31018 | 0.808594 | 0.000389639 | 0.808594
+local_dyadic_correct | left 0 | 0.234151 | 1.32188 | 0.796875 | 0.0120863 | 0.808594
+e3nn_correct | left 15 | 0.0422066 | 1.31018 | 0.808594 | 0.000389639 | 0.808594
+e3nn_frozen_world | left 15 | 0.0683192 | 1.31146 | 0.808594 | 0.00166609 | 0.808594
+e3nn_wrong_F_normal | left 15 | 0.0429147 | 1.31019 | 0.808594 | 0.000392284 | 0.808594
+local_dyadic_correct | left 15 | 0.234151 | 1.32188 | 0.796875 | 0.0120863 | 0.808594
+e3nn_correct | left 30 | 0.0422066 | 1.31018 | 0.808594 | 0.000389639 | 0.808594
+e3nn_frozen_world | left 30 | 0.112313 | 1.31269 | 0.808594 | 0.00289082 | 0.808594
+e3nn_wrong_F_normal | left 30 | 0.045235 | 1.31002 | 0.808594 | 0.000228158 | 0.808594
+local_dyadic_correct | left 30 | 0.234151 | 1.32188 | 0.796875 | 0.0120863 | 0.808594
+e3nn_correct | left 45 | 0.0422066 | 1.31018 | 0.808594 | 0.000389639 | 0.808594
+e3nn_frozen_world | left 45 | 0.154055 | 1.31407 | 0.804688 | 0.00427799 | 0.808594
+e3nn_wrong_F_normal | left 45 | 0.0492628 | 1.31024 | 0.808594 | 0.000441517 | 0.808594
+local_dyadic_correct | left 45 | 0.234151 | 1.32188 | 0.796875 | 0.0120863 | 0.808594
+e3nn_correct | left 60 | 0.0422066 | 1.31018 | 0.808594 | 0.000389639 | 0.808594
+e3nn_frozen_world | left 60 | 0.18835 | 1.31895 | 0.804688 | 0.00915572 | 0.808594
+e3nn_wrong_F_normal | left 60 | 0.055069 | 1.31034 | 0.808594 | 0.000546154 | 0.808594
+local_dyadic_correct | left 60 | 0.234151 | 1.32188 | 0.796875 | 0.0120863 | 0.808594
+e3nn_correct | left 75 | 0.0422066 | 1.31018 | 0.808594 | 0.000389639 | 0.808594
+e3nn_frozen_world | left 75 | 0.212975 | 1.32709 | 0.804688 | 0.0172933 | 0.808594
+e3nn_wrong_F_normal | left 75 | 0.0627425 | 1.31033 | 0.808594 | 0.000533344 | 0.808594
+local_dyadic_correct | left 75 | 0.234151 | 1.32188 | 0.796875 | 0.0120863 | 0.808594
+e3nn_correct | left 90 | 0.0422066 | 1.31018 | 0.808594 | 0.000389639 | 0.808594
+e3nn_frozen_world | left 90 | 0.227185 | 1.33464 | 0.804688 | 0.0248465 | 0.808594
+e3nn_wrong_F_normal | left 90 | 0.0723512 | 1.3121 | 0.808594 | 0.00230392 | 0.808594
+local_dyadic_correct | left 90 | 0.234151 | 1.32188 | 0.796875 | 0.0120863 | 0.808594
+
+Geometry checks:
+right 0: frame orth max=5.4e-16, det min=1, t-n cosine max=1.39e-16, ordinary tet error m=2.24e-16
+right 15: frame orth max=5.54e-16, det min=1, t-n cosine max=2.22e-16, ordinary tet error m=2.25e-16
+right 30: frame orth max=5.68e-16, det min=1, t-n cosine max=2.22e-16, ordinary tet error m=2.29e-16
+right 45: frame orth max=5.53e-16, det min=1, t-n cosine max=3.33e-16, ordinary tet error m=2.29e-16
+right 60: frame orth max=5.56e-16, det min=1, t-n cosine max=2.22e-16, ordinary tet error m=2.29e-16
+right 75: frame orth max=6.35e-16, det min=1, t-n cosine max=1.67e-16, ordinary tet error m=2.24e-16
+right 90: frame orth max=5.45e-16, det min=1, t-n cosine max=2.22e-16, ordinary tet error m=2.29e-16
+left 0: frame orth max=5.13e-16, det min=1, t-n cosine max=1.11e-16, ordinary tet error m=2.24e-16
+left 15: frame orth max=5.53e-16, det min=1, t-n cosine max=1.67e-16, ordinary tet error m=2.25e-16
+left 30: frame orth max=5.52e-16, det min=1, t-n cosine max=1.67e-16, ordinary tet error m=2.25e-16
+left 45: frame orth max=5.5e-16, det min=1, t-n cosine max=1.67e-16, ordinary tet error m=2.31e-16
+left 60: frame orth max=6.75e-16, det min=1, t-n cosine max=1.67e-16, ordinary tet error m=2.29e-16
+left 75: frame orth max=5.98e-16, det min=1, t-n cosine max=1.11e-16, ordinary tet error m=2.31e-16
+left 90: frame orth max=5.62e-16, det min=1, t-n cosine max=1.67e-16, ordinary tet error m=2.24e-16
+
+All predictions use public context/action/body geometry and frozen checkpoints. Scorer truth uses the current transported frame; no held-out truth is an input.

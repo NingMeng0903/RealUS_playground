@@ -1,0 +1,24 @@
+Frozen offline phase-governor diagnostic, 2026-11-10
+Purpose: distinguish geometric pose feasibility from a reference clock that keeps
+advancing despite QP tracking lag. No hardware or force/contact/image controller.
+Same native binary, dt .005, config/limits/gains, URDF TCP and repaired model clock.
+Use frozen audit/phase2_native_subset_inputs.npz branch4 paths0 and1, same q seeds.
+Consistent six-dimensional analytic reference feedforward for every group.
+For each path run once: fixed2cm/s then governed nominal2cm/s, no seed/tuning search.
+The existing path0 is a development diagnostic; path1 is a distinct frozen path,
+not independent-patient or robot generalization evidence.
+
+Governor observes only measured q/FK and the current commanded reference.
+Rate target=min(linear error band, angular error band): 1 below .5mm/.5deg,
+linearly decreases to0 at1.5mm/1.5deg. First-order rate filter tau .05s and
+rate slew limit4/s, bounded[0,1]. These values frozen before results.
+Reference phase advances by rate*dt; full linear AND angular reference velocity
+is multiplied by the same rate. Pose feedback is not multiplied by rate.
+Initial rate1 with unchanged .4s reference soft start; 2s real settle at endpoint;
+deadline60s. All computation and extra motion duration reported.
+No posterior/vessel truth or desired-curve motion is inferred from simulator truth.
+
+Keep previous gates: every commanded q/v/a/j and sampled self-collision margin,
+full-run max position2mm and max orientation2deg. Strict dynamic margins>=0,
+including tiny numerical violations; report magnitude as well as gate result.
+If no improvement, preserve failure. No promotion to production from this small test.

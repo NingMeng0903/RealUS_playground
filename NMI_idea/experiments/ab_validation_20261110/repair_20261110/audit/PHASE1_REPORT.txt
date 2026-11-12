@@ -1,0 +1,45 @@
+第一阶段独立审计交付：伺服修复
+日期：2026-11-10
+
+状态：伺服部分审计完成。应主任务要求，停止读取其他仍在生成的模块结果，
+释放执行槽；harmonic 与 dIRD/UltraPOC 最终核验等待后续明确通知。
+
+通过项
+1. 审查修复源码并在独立 audit/servo_fresh 中重跑 14 个完整真实生产几何
+   场景，所有逐帧输出与原结果一致。包含 KMP/DMP、Ruckig on、Ruckig off
+   fallback、整个 Module C bypass、全缺失隐藏目标对照、主入口 scheduled
+   开/关四组合。旧输出未被覆盖。
+2. 独立新增六组完整 loop 非干扰测试：KMP/DMP × 三种平滑模式。相同 5 步
+   可见前缀后改变隐藏 u/depth/切向/segment，但给定相同 missing 历史，
+   命令 p/R、控制输入、相位逐元素一致；缺失公开量为 NaN，confidence 为零。
+3. 用户指定的 causal_module_c_bypass_config.json 实际合并为
+   enable:false/use_ruckig:false，并传入 honest loop 和主入口。Ruckig 构造
+   次数为零；Ruckig-on 消融确实构造一次。主入口不再依赖全局变量别名。
+
+结果边界
+仅关闭 Ruckig 的 fallback 可见率为 0.789116；整个 Module C 旁路才恢复到
+本场景下的 1.0。主路径旁路不表示平滑器的动态问题已修好。主入口仍为
+oracle-assisted 参考；honest loop 仍基于已知路径/预制 crop，不能升级为
+仅粗人体先验启动的首次合格超声获取。当前完整 loop 是探头 pose 仿真，
+不是 UltraPOC 关节 QP 回放、真实接触或 B-mode。
+
+需要在最终结论中收紧的旧 B 解释
+旧 B 的能力 oracle 是固定分支、有限 psi 网格 SRS 抬升与采样几何检查。
+其失败不能直接推出原 pose 路径或实际 UltraPOC 控制器执行失败。旧 B 的
+能力差值有效范围是该检查器定义的有限动作模型，实际执行收益尚待验证。
+
+已向主任务即时上报的校准接口问题（其他模块最终报告尚未审计）
+旧 dird/adapter.py 用 raw_score >= safety_threshold 标记 proxy_pass；校准
+定义的 raw 阈值应为 m_safe=zero_bias+safety_threshold。旧模型 raw 正确
+阈值为 0.002449447，而旧桥接器使用 0.018667413；新候选为 0.029835574，
+不能误用其 safety_threshold=0.012095079。已检查的新独立评分脚本使用
+m_safe 正确。该问题不直接改变旧 B 的 raw softplus 成本和 SRS gate，但
+影响 calibrated proxy_pass 的解释。最终桥接器修复/复核由后续审计确认。
+
+交付
+SERVO_AUDIT.txt：详细源码、信息契约、模式切换与范围审计。
+reproduce_servo.py、servo_reproduction.json、servo_reproduction.log：14 场景复跑。
+check_servo_noninterference.py、servo_noninterference.json/.log：六组独立扩展测试。
+servo_fresh/、hidden_prefix_runs/：独立新鲜逐帧/回放输出。
+
+当前判断：伺服修复通过；未发现新的伺服阻断错误。其他模块不在本阶段结论内。

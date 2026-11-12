@@ -1,0 +1,6 @@
+[uniform-gt] 128/512 reachable=5 unreachable=123
+[uniform-gt] 256/512 reachable=10 unreachable=246
+[uniform-gt] 384/512 reachable=15 unreachable=369
+[uniform-gt] 512/512 reachable=26 unreachable=486
+old {'global': {'n_positive': 26, 'n_negative': 486, 'balanced_accuracy_at_geometric_zero': np.float64(0.9797404241848686), 'false_accept_rate_at_calibrated_threshold': np.float64(0.00205761316872428)}, 'local': {'n_positive': 98, 'n_negative': 158, 'balanced_accuracy_at_geometric_zero': np.float64(1.0), 'false_accept_rate_at_calibrated_threshold': np.float64(0.0)}}
+new {'global': {'n_positive': 26, 'n_negative': 486, 'balanced_accuracy_at_geometric_zero': np.float64(0.9776828110161444), 'false_accept_rate_at_calibrated_threshold': np.float64(0.006172839506172839)}, 'local': {'n_positive': 98, 'n_negative': 158, 'balanced_accuracy_at_geometric_zero': np.float64(1.0), 'false_accept_rate_at_calibrated_threshold': np.float64(0.0)}}

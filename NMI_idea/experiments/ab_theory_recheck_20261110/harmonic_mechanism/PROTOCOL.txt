@@ -1,0 +1,33 @@
+Production harmonic material-coordinate mechanism, frozen before execution
+
+Inputs: unchanged audited shaft_roi_v2 right/left atlases and saved actual
+SMPL-X/LBS posed volume vertices at knee 0/15/30/45/60/75/90 degrees.
+Scope is their h=.14-.94 depth volume. No new endpoint volume, patient tissue
+model, or full scan trial is asserted. The complete contact-surface multiatlas
+is a separate existing result, not renamed a harmonic deep volume.
+
+Sample256 native tetrahedra per leg uniformly without replacement, seed720960.
+Draw interior barycentric coordinates as .1+.6*Dirichlet(2,2,2,2). Every sample
+and every saved pose is retained. Public atlas queries evaluate transported
+points without giving the API the originating cell. Addresses theta/h/d are
+material scalar labels; actual Euclidean embedding and metric change.
+
+Mechanisms:
+1. Same material labels survive pose deformation; frozen world points do not.
+   Compare native material decode with a strong ordinary tet/barycentric
+   correspondence baseline. Both may be exact: harmonic coordinates are not
+   claimed uniquely necessary where the same correspondence is already known.
+2. Compute exact local piecewise-affine deformation F from native cell vertex
+   differences. Compare transported tangent Fv and covector F^-T n with frozen
+   world directions and the deliberate wrong-normal Fn ablation. This is a
+   geometric transport check, not a global nonrigid equivariance theorem.
+3. Harmonic-coordinate gradient must use physical metric J^T J. Reparameterize
+   the exact same local address by diag(.1,10,2). Equal physically normalized
+   raw-coordinate-gradient directions may change; metric-gradient physical
+   directions must agree and match Cartesian descent. The strong Cartesian
+   baseline is expected to match. This validates the optimizer interface, not
+   a new theorem or real ultrasound quality.
+
+Report maximum/p95/median per pose, full arrays, all input/source hashes,
+the original scope, and failures. No gate or sample subset is changed after
+inspection. Ordinary correspondence/Cartesian baselines remain in results.

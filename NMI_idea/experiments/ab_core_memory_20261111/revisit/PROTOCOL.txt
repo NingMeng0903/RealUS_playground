@@ -1,0 +1,25 @@
+Independent paired revisit at a known material patch
+
+Seed 721229, 128 independent objects, two declared response epochs. Reuse the
+frozen local residual model, curve generator, five checked poses and ProDMP
+time from residual_scene. All methods first receive the same two lawful probes
+at the same address, then return to the same start pose. Four unrelated
+address events follow and cost 0.2 s each in the synthetic clock. None
+contains a target or a new measurement about the original patch.
+
+The fresh revisit has the original 5.4 s budget, three-probe limit, terminal
+criteria, cost and world-noise pairing. A fresh acquisition is required.
+Stable arm retains the old response. Reset arm independently redraws both
+acoustic coefficients, retains geometry, and exposes an epoch change. The
+current terminal and probe noises are independent of preparation noise.
+
+Compare address cache with known epoch, full history replay with known epoch,
+recent four-event window, direct query from the epoch-aware cache, stale
+cache ignoring epoch, and fixed pair using only new measurements. All
+learned predictions use the same frozen coefficients and observation update.
+Cache and full replay must choose identical actions and realize equal
+outcomes. Report fresh time plus common preparation time, number of new
+probes, correct completion and paired object intervals. Preserve both
+epochs regardless of result. This is a local synthetic revisit with static
+robot endpoints and reference travel times, excluding computation, native
+tracking and real acoustics.

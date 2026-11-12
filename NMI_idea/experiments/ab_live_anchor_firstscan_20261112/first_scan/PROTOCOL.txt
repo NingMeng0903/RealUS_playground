@@ -1,0 +1,41 @@
+First-scan Y-window selection trial
+Date: 2026-11-12
+
+Scope
+-----
+This is first-scan window selection only, not a full scan reorder. Every arm
+uses the frozen station order 27 -> 0, one frame per station, fixed view 3 at
+non-fork stations, and the shared frozen Filter. Only legal window choices at
+Y-fork stations 4 -> 3 -> 2 are changed. Candidate ingress from the previous
+station and connection to the next default route are checked with the frozen
+edge validator. The original fixed view is always included.
+
+Timing and travel
+-----------------
+Per-case stage durations are padded to the maximum legal candidate envelope,
+including all possible previous fork views. Thus the three fork acquisition
+timestamps are identical across fixed rule, shared-estimator belief rule, and
+CQL arms; modeled actual probe travel remains separately reported. The final
+fixed stations 1 and 0 are also padded over the possible incoming envelope so
+the shared clock is meaningful.
+Raw rows retain legal view counts/options at each fork and the common true
+world-clock forecast time. Observation noise is the frozen view/site/time-seeded
+simulator noise, so changing a window can change simulated centroids even when
+timestamps match.
+
+Learning
+--------
+Training uses 128 new subjects at seed indices offset from the
+frozen train split, two limited epsilon trajectories per subject, and terminal
+truth only for offline reward generation. New CQL checkpoints are trained from
+scratch for this first-scan action space; no recheck CQL checkpoint is loaded.
+The primary held-out model is seed 7; seed 29 is reported as a stability check.
+No Fisher variable or score is used.
+
+Held-out
+--------
+The 128 held-out subjects start at fresh test index 512,
+disjoint from the older train/test indices. Reported fields include strict and
+both-correct identity, clutter/branch mis-ID, prefix replacement, current and
+0.5/1.0 s/shared-clock 3-D map RMSE, modeled travel/time, and case-paired
+bootstrap intervals.

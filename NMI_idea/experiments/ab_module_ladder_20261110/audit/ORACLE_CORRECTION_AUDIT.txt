@@ -1,0 +1,86 @@
+Independent oracle correction audit, 2026-11-10
+
+Decision
+The corrected known-anatomy diagnostic is qualified for its explicitly privileged
+scope. It is not a legal no-prescan A/B result or an optimal performance bound.
+The original shifted diagnostic was an invalid template-interface fixture and
+must not be used as evidence that its anatomy or action budget was infeasible.
+The formal finite 224 episodes and independent-continuous 32 episodes remain
+unchanged. This audit ran no actor, inverse-kinematics search, or native process.
+
+Independent reconstruction
+check_oracle_correction.py rebuilt the original private 8 iid worlds (seed720380)
+and their declared +8mm registration/+0.10 slope counterparts. Both sets exactly
+match the private-world byte hashes in the legal run and original oracle run.
+It independently reconstructed the correction, without importing the worker's
+canonicalization/equivalence helpers: move the extra linear slope into the natural
+cubic-spline y controls while restoring the two categorical slope labels to +/-1.
+The original private worlds remain the renderer inputs; only the privileged sole
+model hypothesis receives the physically equivalent representation.
+
+All 16 reconstructed model hashes match the saved results. Across 101 source
+knots and an independent 1001-x spline check, maximum physical difference is
+6.938893903907228e-18 m. Across all 16 worlds and 567 public poses, maximum
+prediction-means difference is 1.9137461615414963e-9 and p_source difference is
+7.549516567451064e-15. The declared tolerances pass. Every canonical hypothesis
+has a nonempty initial template family; every original shifted hypothesis has
+an empty template family because its slope category is -0.6 or +1.4. This is the
+specific interface defect, not a proof of inaccessible geometry.
+
+Outcome and accounting recount
+All 16 unique planned cases have status completed with no exception/anomaly row.
+Independent checks cover all 58 acquisition blocks and 290 frames: public field
+schema, private-free ordinal IDs, missing values, five-frame public and hidden
+audit gates, stop/no-retry logic, single-particle posterior, deadline and cost.
+Clock reconstruction error is zero and maximum cost error is 8.88e-16 seconds.
+
+condition   completed  correct  false  incomplete  ever quality  mean RMT(s)
+iid             8         5      1        2            7          23.684828
+shifted         8         5      1        2            7          24.638283
+
+The two false stops concern the real target, with true out-of-plane angles
+13.7744 and 11.7315 degrees, above the 10-degree audit limit. They are not
+wrong-vessel association events. Original versus corrected iid outcomes, action
+targets, q_kin witnesses, and all non-time public observation fields are exactly
+identical. Timing varies because computation is measured again.
+
+Historical preflight failure and preservation
+The retained concatenated log contains an unexpected-shift-label traceback and
+a subsequent complete/16-episode record. The traceback ends in hypothesis
+canonicalization inside the all-particle validation loop, before the first actor
+episode or RESULTS write. In the current source the affected guard accepts the
+two expected floating-point magnitudes with tolerance; all subsequent line
+positions move by four relative to the logged traceback. The pre-change guard
+source is not separately archived, so this audit does not claim a byte-for-byte
+reconstruction of that failed invocation. The log itself is retained and hashed.
+
+The runner refuses an existing output directory and creates an empty directory
+before this preflight. Therefore the logged failed attempt could leave an empty
+directory; no episode result is written on that path before the failed guard.
+The successful output contains every planned case, not a filtered subset. Original
+oracle, formal continuous, and formal finite result hashes all exactly match their
+previously recorded seals. There is no evidence of an overwritten old result or
+of guard failures being relabelled completed episodes. The historical preflight
+limitation is documented here rather than silently removed from the log.
+
+Interpretation
+Known geometry restores correct public stops to 5/8 in each condition, showing
+that some cases are completable by this same heuristic after truth is supplied.
+It motivates diagnosing the finite representation/inference gap. It does not
+prove that all remaining failures are due to inference, that every candidate
+family is sufficient, or that optimal B with lawful information has succeeded.
+The legal A/B continuous groups remain 0/8 each. Keep ORACLE_LEAKED_TRUTH visible
+and never pool these rows into legal performance, training, or calibration.
+
+Seals
+corrected RESULTS.json:
+  70b423baaf48f5e15a0a984f55a908366e8edcc57f369ebe60fbc6ba4a464165
+original oracle RESULTS.json:
+  7f3b71a8629c2dd599b7851eb85c3ff5c288fb584a9bc7ff493fd9d585e3b9af
+formal continuous RESULTS.json:
+  6da6319338367651d235a9c82b245dedea987888484ee02e87bc87b976f4adbe
+formal finite results.json:
+  913be5af55c0d85b969e203635bdbb0979413ccfbd4e1192668bec9efd69ab85
+
+Reproduction evidence: check_oracle_correction.py, oracle_correction_checks.json,
+oracle_correction_checks.log. All source/protocol/log hashes are recorded there.

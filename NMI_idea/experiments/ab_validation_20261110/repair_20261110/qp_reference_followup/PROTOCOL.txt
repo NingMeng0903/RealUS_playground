@@ -1,0 +1,33 @@
+Offline native QP 6D reference test, frozen before performance runs; 2026-11-10.
+
+Input: audit/phase2_native_subset_inputs.npz branch4_path0_T and
+branch4_path0_q_seed, 17 commanded TCP poses; no dIRD/vessel truth.
+Backend: original native QP + production CartesianTrackOuterLoop, URDF TCP,
+ideal accepted-q feedback, deterministic model clock, dt=.005s, same limits.
+Single run each, order original 0.020m/s, consistent-6D 0.020m/s, then
+consistent-6D 0.005m/s. The final case is a fixed fourfold global time
+retime of the SAME translation and Slerp pose parameter, using previously
+predeclared slow speed. Same .4s soft start and 2s final settle, no adaptive
+choice after results. Any illegal q proposal stops before plant integration.
+
+6D only changes WorldPolylineReference.vel_ff[3:6] to the exact world/base
+SO(3) derivative of its own Slerp segment: R(u)=R_i Exp(u phi_i),
+phi_i=Log(R_i^T R_{i+1}), u=(s-s_i)/(s_{i+1}-s_i),
+omega_base=R_i phi_i * speed*tau_dot/(s_{i+1}-s_i).
+Outside the moving path omega=0; no change to pose, linear velocity, QP,
+gains or limits. Check analytic angular velocity against centered finite
+difference away from knots and verify original pose/linear velocity identical.
+
+Record each tick's q, qdot, desired/actual pose, reference vel_ff, QP
+progress/pause/limits, collision, command derivatives. Keep original and
+6D-only outputs regardless of failure. Primary pose gate is maximum over all
+ticks, position<=.002m AND orientation<=2deg, not p95. Mechanical checks:
+no illegal q proposal, actual q in URDF bounds, configured velocity and
+acceleration and jerk margins >=0 as reported individually, self distance
+>=.01m, no solver fault. Numeric tolerances are reported separately; a
+negative jerk margin cannot be called strict pass. Report full/p95, path-only,
+final settling, and any fail tick. If slow 6D fails, do not tune and repeat.
+
+No production source patch until results and parent coordination. This is
+only the bottom commanded-pose reference, not patient vessel velocity or a
+full physical UltraPOC execution certificate.

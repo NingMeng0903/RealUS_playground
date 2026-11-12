@@ -1,0 +1,119 @@
+第二阶段独立审计：dIRD 与实际关节 QP 离线接口
+日期：2026-11-10。所有新检查/输出仅在 repair_20261110/audit/。
+worker 封存文件只读；未改生产源码、权重或其他工作者结果。
+
+结论
+新旧模型分组与 raw 校准接口修复通过；54 项回归独立复跑通过。
+但当前接口存在两项阻断：
+（1）native 原二进制仍可返回极端非法 rail；本次独立运行新增 branch0 案例，
+     异常并不局限于先前报告的 branch4 敏感性路径。
+（2）连续 path/hold 结果的加速度与 jerk 统计在每段起点错误归零，可能制造
+     动态约束失败；必须修正后才能用于新 B 连续边的执行门。
+桥接器对已发生的非法 rail 确实 fail-closed，未将非法命令写入理想反馈。
+上述发现不等于真实机器人已经故障或某条几何路径不可执行；此轮没有硬件。
+
+一、封存、分组、权重与校准
+读取 SEALED_MANIFEST.json 后逐个重算全部列出文件的 SHA256，均匹配。
+独立从 canonical.npz 的 source_pose_id/boundary_id 重建五组分配：
+train 1171211，selection 264762，zero_calibration 89155，
+safety_calibration 92100，test 179136；全部行有且仅有一个归属。
+独立检查任意两组的非负 source ID、boundary ID 均无交集。
+重算 fingerprint 与新旧报告一致：
+426d0ecad514935c9cffb87543ce6c45eaa3a3a3ea42e5e73c0e3bbed2985b70。
+仅新增 initialization_seed；split seed 保持 20261128，初始化为 20261110。
+数据、选择组、独立校准组、测试组没有因新初始化换分组。
+
+新旧 checkpoint 实际文件哈希与各自 calibration 一致；实际加载两者重新
+评分独立 global512 集，分数与已封存数组一致。旧 BA=.9797404242、校准
+误接受 1/486；新 BA=.9776828110、误接受 3/486。没有新模型可靠胜出的证据。
+旧已看测试集只算开发回归，新候选 eval pass=false（严格角跨界率未达门），
+不应由某一指标改善推出发布/替换旧权重。本审计未再次训练或选择模型。
+
+calibration 拟合 raw-zero_bias，正确 raw 判定为 raw>=m_safe：
+旧 m_safe=.00244944728910923，新=.029835574328899384。
+当前桥接器已改用 m_safe，并记录 zero_bias、centered threshold 与公式。
+实际神经场边界回归包含一个介于旧错误阈值与正确阈值之间的真实查询，
+因此不是只改字段名。每个 m_safe 与 zero_bias+safety_threshold 一致。
+54 项实际训练/分组/校准/离开段回归在本审计独立通过，日志
+dird_54_regressions.log：54 passed in 2.30s。
+
+二、机器人与 TCP 范围
+实际导入 rm75_control 原工作副本；调用真实 JointIkController.update、
+QpIkController/ProxQP、生产 WorldPolylineReference 与 track phase。
+主回放显式 tcp_mode=urdf，q 为 raw rail 米 + 7 关节弧度，pose 为 rail_base。
+实际 checkpoint/URDF/碰撞资产契约为 probe45，完整哈希已保存。没有证据
+可把这份结果改称 probe50 或其他活动工具的验证。
+缓存活动名 gripper2 与 URDF 工具差 1 微米/0.000437153 rad；它只说明缓存
+数值接近，不能证明当前实机工具。live_active_tcp_confirmed=false 保留。
+未连接机器人、同步工具或触发设备命令。
+
+三、固定时钟、固定路径和真实回放层级
+回放真实 QP 与 Cartesian outer，理想 plant 用上一 q_send 作下一 q_meas，
+dt=.005s，native 模型时钟为1000+tick*.005；IPC 超时仍用真实墙钟。
+独立查询的所有 native 时间戳逐 tick 符合该规则。
+这不是完整 live reference governor/publication/20ms rail 设备链，也没有
+接触/图像/力外环。参考的角速度前馈为零，名义参考始终按预定时间推进；
+这些假设影响跟踪误差。不能把固定时钟称为完整物理时序验证。
+
+独立 fresh 子集沿用原冻结 no_dird pose 路径、2cm/s、.4s软启动、末端2s：
+运行顺序和每例次数均封存；本审计每例只运行一次，没有挑选重跑结果。
+1. branch0/path0：642 tick 后停止；位置p95=58.911676 mm（已截断，不能
+   与完整路径原 p95 直接同义比较）；tick641触发非法rail拒绝。
+2. branch4/path0：完整1180 tick，无非法命令；位置p95=.106325429 mm，
+   与封存值一致。初始分支敏感性确实存在，但不能现场瞬移至另一初始q。
+3. branch4/path1：完整1197 tick，本次无非法命令，位置p95=.156018533 mm；
+   原封存的同路径tick684异常本次未复现。
+
+新增首坏tick的完整 SHM input/output 与命令快照保存于
+phase2_native_first_invalid_tick.json。关键值：
+tick641，q_meas[0]=.298021185919 m，q_send[0]=58.282671290689 m，
+qdot[0]=-.001350347698 m/s。返回值明确超出URDF rail范围，并非正常微米级
+observer rebasing。桥接器在反馈积分前拒绝；q_exit保持最后合法q，
+exit_state.valid=false；再次传入该状态继续，实际接口抛出 ValueError。
+不能仅凭 solved 或小 qdot 把此命令当合法。
+
+这次异常位置变化表明：封存批次“branch0 12/12位置/速度合法”只能描述那个
+具体批次，不能升级为可重复保证。确定模型时钟修复不消除 native 后端异常。
+本审计不猜测内存、observer、solver或具体赋值的唯一原因；仍需原源码/二进制
+内部定位。仪表版未复现也不能自动说明原二进制已修复。
+
+输入和复现范围诚实说明：完整冻结 pose 数组及初始q保存于
+phase2_native_subset_inputs.npz；首坏tick完整SHM input/output已保存。
+本次检查没有逐tick保存首坏tick之前的所有SHM结构，因此不声称提供了不存在
+的全历史原生I/O。所有既有路径汇总、坏tick、源码/配置/二进制/URDF指纹、
+输入/输出文件哈希和每例一次的运行计数记录于 PHASE2_PROVENANCE.json。
+
+四、连续段 acceleration/jerk 的确定性统计缺陷
+源码向真实控制器传入了 _qdot_seed，连续 q/qdot 与完整历史重放的思路成立；
+但输出统计做：aa=diff([zeros;vv])/dt，jj=diff([zeros;aa])/dt，忽略上段出口
+速度与加速度。单独从静止根开始的主路径不受此段界问题影响；连续边与hold受影响。
+
+使用封存完整 prefix 末两帧和 hold 全部帧，独立按真实连续命令序列重算：
+native：最大加速度统计差 3.567425，最大jerk统计差 713.484960；
+原最小加速度余量 -.527184，修正后 +1.562790；
+原jerk余量 -406.624315，修正后 -.008656，仍有小量超箱，不能隐去。
+Python：最大加速度统计差 9.228699，最大jerk统计差 1845.739770；
+原最小加速度余量 -6.300315，修正后 +1.519000；
+原jerk余量 -1560.063090，修正后约 +1.36e-7。
+以上余量沿用现有逐坐标限值；rail量纲与arm量纲不同，不能将这些数当统一
+物理标量用于跨机器人比较。逐坐标数值在 continuation_derivatives_*.json。
+
+窄修要求：结果差分必须继承上一命令速度和上一命令加速度（或直接拼接完整
+历史再差分）；不能只换进 qdot_seed 后仍把 jerk 的前一加速度归零。恢复状态
+和hold也需覆盖，并保留真实小量超界。修复必须与冻结trace独立差分一致。
+本审计不改 worker 源码，等待其窄修后复核。
+
+五、对旧 B 结论的修订
+旧 B 的“能力oracle”是有限格点/固定分支 SRS 加采样验证。无解只表示该
+离线求解器未找到解，不表示真实 UltraPOC 不可跟踪。旧 no-capability 评价
+遇到 SRS 拒绝就计失败，因此差值是针对该有限动作模型成立，不能直接作为
+实际系统机械执行收益。真实关节QP确有独立执行路径，模型重训不会自动改变
+固定输入pose下的QP输出。当前native阻断、连续段统计缺陷和未验证执行链
+使得新 B 连续机械增益结论尚不成立。观察条件规划的纯合成数学结果不因此
+作废，但必须保留其模型范围。所有物理超声/接触/临床证据仍缺失。
+
+阶段状态
+dIRD分组、校准修复与54回归：通过其限定检查。
+native执行证书：阻断，出现新的独立非法rail证据。
+连续段动态指标：需窄修，不得直接作为新B门。
+坐标新资产：本阶段未审，等待封存后的followup。

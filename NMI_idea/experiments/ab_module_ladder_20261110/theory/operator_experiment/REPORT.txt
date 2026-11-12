@@ -1,0 +1,32 @@
+Finite-observation decision-operator check: PASS
+
+Scope: offline geometric-surrogate mechanism check only; no controller,
+selected hidden world, hardware, production mutation, or task-performance claim.
+The real observation.environment sample_prior/predict_batch APIs were used.
+
+Catalogue: sample_prior(seed=720510, n=64); actions=15; observations=19.
+Observation rows integrate source-mixture Gaussian image fields analytically;
+length=0 and identity=0/1 clipping atoms are represented and checked.
+Max observation-row normalization residual: 2.220e-16
+Max source/missing consistency residual: 2.220e-16
+
+Uniform belief exact backup:
+  best probe action 10 value 59.8866063533
+  direct terminal action 11 value 59.637346999
+  overall choice direct_terminal value 59.637346999
+  normalized-vs-unnormalized residual 2.842e-14
+
+Aliases: 32 frozen nullspace direction pairs, rank=4,
+nullspace dimension=60, min belief entry=8.594e-03.
+Max current-risk-vector residual: 7.816e-14
+Max current-risk-only direct-value residual: 5.684e-14
+Max predictive observation TV across alias pairs: 0.0774738890997
+Max probe-value difference across alias pairs: 0.14811512791
+  28/32 alias pairs change the exact argmin probe action.
+Full Xi branch backups reproduce the same one-step values; no prior,
+sensor, or cost tuning was performed.
+
+Raw arrays: operator_arrays.npz sha256=69dee7a49016a0b66ff020a4bd6b0f858aecfe7c48ced65867102525661859d4
+Results: RESULTS.json sha256=cb02cf84f6fd93bf684e1039e3f715699eb66e5b3e8418d5904dca066fc3e6bf
+Protocol sha256=f8d589ef9f6619223974b973c4fa0f52588b9b120069b4ebd4f1d5ebf2d42a09
+Theory conditions sha256=d81f7fa650cbceb527d2e0c6e56bab35646ea843b0cd4d3eefe5bc4d6b553830

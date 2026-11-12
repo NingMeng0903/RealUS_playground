@@ -1,0 +1,4396 @@
+{
+  "branch_tables": [
+    {
+      "branches": [
+        {
+          "action": 1,
+          "action_label": "+",
+          "action_risk_margin_plus_minus": -0.30000000000000004,
+          "branch_probability": 0.5,
+          "chosen_unnormalized_risk": 0.09999999999999998,
+          "joint_mass_h_minus": 0.09999999999999998,
+          "joint_mass_h_plus": 0.4,
+          "posterior_p_plus": 0.8,
+          "unnormalized_risk_minus": 0.4,
+          "unnormalized_risk_plus": 0.09999999999999998,
+          "y": 1
+        },
+        {
+          "action": -1,
+          "action_label": "-",
+          "action_risk_margin_plus_minus": 0.30000000000000004,
+          "branch_probability": 0.5,
+          "chosen_unnormalized_risk": 0.09999999999999998,
+          "joint_mass_h_minus": 0.4,
+          "joint_mass_h_plus": 0.09999999999999998,
+          "posterior_p_plus": 0.19999999999999996,
+          "unnormalized_risk_minus": 0.09999999999999998,
+          "unnormalized_risk_plus": 0.4,
+          "y": -1
+        }
+      ],
+      "c": 0.1,
+      "delta": 0.0,
+      "name": "default_delta_0",
+      "p": 0.5,
+      "r": 0.8
+    },
+    {
+      "branches": [
+        {
+          "action": 1,
+          "action_label": "+",
+          "action_risk_margin_plus_minus": -0.20000000000000004,
+          "branch_probability": 0.5,
+          "chosen_unnormalized_risk": 0.19999999999999998,
+          "joint_mass_h_minus": 0.09999999999999998,
+          "joint_mass_h_plus": 0.4,
+          "posterior_p_plus": 0.8,
+          "unnormalized_risk_minus": 0.4,
+          "unnormalized_risk_plus": 0.19999999999999998,
+          "y": 1
+        },
+        {
+          "action": -1,
+          "action_label": "-",
+          "action_risk_margin_plus_minus": 0.4,
+          "branch_probability": 0.5,
+          "chosen_unnormalized_risk": 0.09999999999999998,
+          "joint_mass_h_minus": 0.4,
+          "joint_mass_h_plus": 0.09999999999999998,
+          "posterior_p_plus": 0.19999999999999996,
+          "unnormalized_risk_minus": 0.09999999999999998,
+          "unnormalized_risk_plus": 0.5,
+          "y": -1
+        }
+      ],
+      "c": 0.1,
+      "delta": 0.2,
+      "name": "default_delta_0.2",
+      "p": 0.5,
+      "r": 0.8
+    },
+    {
+      "branches": [
+        {
+          "action": 1,
+          "action_label": "+",
+          "action_risk_margin_plus_minus": -0.10500000000000004,
+          "branch_probability": 0.5,
+          "chosen_unnormalized_risk": 0.295,
+          "joint_mass_h_minus": 0.09999999999999998,
+          "joint_mass_h_plus": 0.4,
+          "posterior_p_plus": 0.8,
+          "unnormalized_risk_minus": 0.4,
+          "unnormalized_risk_plus": 0.295,
+          "y": 1
+        },
+        {
+          "action": -1,
+          "action_label": "-",
+          "action_risk_margin_plus_minus": 0.495,
+          "branch_probability": 0.5,
+          "chosen_unnormalized_risk": 0.09999999999999998,
+          "joint_mass_h_minus": 0.4,
+          "joint_mass_h_plus": 0.09999999999999998,
+          "posterior_p_plus": 0.19999999999999996,
+          "unnormalized_risk_minus": 0.09999999999999998,
+          "unnormalized_risk_plus": 0.595,
+          "y": -1
+        }
+      ],
+      "c": 0.1,
+      "delta": 0.39,
+      "name": "default_delta_0.39",
+      "p": 0.5,
+      "r": 0.8
+    },
+    {
+      "branches": [
+        {
+          "action": 1,
+          "action_label": "+",
+          "action_risk_margin_plus_minus": -0.10000000000000003,
+          "branch_probability": 0.5,
+          "chosen_unnormalized_risk": 0.3,
+          "joint_mass_h_minus": 0.09999999999999998,
+          "joint_mass_h_plus": 0.4,
+          "posterior_p_plus": 0.8,
+          "unnormalized_risk_minus": 0.4,
+          "unnormalized_risk_plus": 0.3,
+          "y": 1
+        },
+        {
+          "action": -1,
+          "action_label": "-",
+          "action_risk_margin_plus_minus": 0.5000000000000001,
+          "branch_probability": 0.5,
+          "chosen_unnormalized_risk": 0.09999999999999998,
+          "joint_mass_h_minus": 0.4,
+          "joint_mass_h_plus": 0.09999999999999998,
+          "posterior_p_plus": 0.19999999999999996,
+          "unnormalized_risk_minus": 0.09999999999999998,
+          "unnormalized_risk_plus": 0.6000000000000001,
+          "y": -1
+        }
+      ],
+      "c": 0.1,
+      "delta": 0.4,
+      "name": "default_delta_0.4",
+      "p": 0.5,
+      "r": 0.8
+    },
+    {
+      "branches": [
+        {
+          "action": 1,
+          "action_label": "+",
+          "action_risk_margin_plus_minus": -0.09500000000000008,
+          "branch_probability": 0.5,
+          "chosen_unnormalized_risk": 0.30499999999999994,
+          "joint_mass_h_minus": 0.09999999999999998,
+          "joint_mass_h_plus": 0.4,
+          "posterior_p_plus": 0.8,
+          "unnormalized_risk_minus": 0.4,
+          "unnormalized_risk_plus": 0.30499999999999994,
+          "y": 1
+        },
+        {
+          "action": -1,
+          "action_label": "-",
+          "action_risk_margin_plus_minus": 0.505,
+          "branch_probability": 0.5,
+          "chosen_unnormalized_risk": 0.09999999999999998,
+          "joint_mass_h_minus": 0.4,
+          "joint_mass_h_plus": 0.09999999999999998,
+          "posterior_p_plus": 0.19999999999999996,
+          "unnormalized_risk_minus": 0.09999999999999998,
+          "unnormalized_risk_plus": 0.605,
+          "y": -1
+        }
+      ],
+      "c": 0.1,
+      "delta": 0.41,
+      "name": "default_delta_0.41",
+      "p": 0.5,
+      "r": 0.8
+    },
+    {
+      "branches": [
+        {
+          "action": -1,
+          "action_label": "-",
+          "action_risk_margin_plus_minus": -5.551115123125783e-17,
+          "branch_probability": 0.5,
+          "chosen_unnormalized_risk": 0.39999999999999997,
+          "joint_mass_h_minus": 0.09999999999999998,
+          "joint_mass_h_plus": 0.4,
+          "posterior_p_plus": 0.8,
+          "unnormalized_risk_minus": 0.4,
+          "unnormalized_risk_plus": 0.39999999999999997,
+          "y": 1
+        },
+        {
+          "action": -1,
+          "action_label": "-",
+          "action_risk_margin_plus_minus": 0.6,
+          "branch_probability": 0.5,
+          "chosen_unnormalized_risk": 0.09999999999999998,
+          "joint_mass_h_minus": 0.4,
+          "joint_mass_h_plus": 0.09999999999999998,
+          "posterior_p_plus": 0.19999999999999996,
+          "unnormalized_risk_minus": 0.09999999999999998,
+          "unnormalized_risk_plus": 0.7,
+          "y": -1
+        }
+      ],
+      "c": 0.1,
+      "delta": 0.6,
+      "name": "default_delta_0.6",
+      "p": 0.5,
+      "r": 0.8
+    },
+    {
+      "branches": [
+        {
+          "action": -1,
+          "action_label": "-",
+          "action_risk_margin_plus_minus": 0.19999999999999996,
+          "branch_probability": 0.5,
+          "chosen_unnormalized_risk": 0.4,
+          "joint_mass_h_minus": 0.09999999999999998,
+          "joint_mass_h_plus": 0.4,
+          "posterior_p_plus": 0.8,
+          "unnormalized_risk_minus": 0.4,
+          "unnormalized_risk_plus": 0.6,
+          "y": 1
+        },
+        {
+          "action": -1,
+          "action_label": "-",
+          "action_risk_margin_plus_minus": 0.8,
+          "branch_probability": 0.5,
+          "chosen_unnormalized_risk": 0.09999999999999998,
+          "joint_mass_h_minus": 0.4,
+          "joint_mass_h_plus": 0.09999999999999998,
+          "posterior_p_plus": 0.19999999999999996,
+          "unnormalized_risk_minus": 0.09999999999999998,
+          "unnormalized_risk_plus": 0.9,
+          "y": -1
+        }
+      ],
+      "c": 0.1,
+      "delta": 1.0,
+      "name": "default_delta_1",
+      "p": 0.5,
+      "r": 0.8
+    },
+    {
+      "branches": [
+        {
+          "action": 1,
+          "action_label": "+",
+          "action_risk_margin_plus_minus": -0.552,
+          "branch_probability": 0.7400000000000001,
+          "chosen_unnormalized_risk": 0.168,
+          "joint_mass_h_minus": 0.01999999999999999,
+          "joint_mass_h_plus": 0.7200000000000001,
+          "posterior_p_plus": 0.9729729729729729,
+          "unnormalized_risk_minus": 0.7200000000000001,
+          "unnormalized_risk_plus": 0.168,
+          "y": 1
+        },
+        {
+          "action": 1,
+          "action_label": "+",
+          "action_risk_margin_plus_minus": -0.04799999999999999,
+          "branch_probability": 0.25999999999999995,
+          "chosen_unnormalized_risk": 0.13199999999999998,
+          "joint_mass_h_minus": 0.07999999999999999,
+          "joint_mass_h_plus": 0.17999999999999997,
+          "posterior_p_plus": 0.6923076923076923,
+          "unnormalized_risk_minus": 0.17999999999999997,
+          "unnormalized_risk_plus": 0.13199999999999998,
+          "y": -1
+        }
+      ],
+      "c": 0.1,
+      "delta": 0.2,
+      "name": "skewed_prior",
+      "p": 0.9,
+      "r": 0.8
+    },
+    {
+      "branches": [
+        {
+          "action": -1,
+          "action_label": "-",
+          "action_risk_margin_plus_minus": 0.0,
+          "branch_probability": 0.5,
+          "chosen_unnormalized_risk": 0.25,
+          "joint_mass_h_minus": 0.25,
+          "joint_mass_h_plus": 0.25,
+          "posterior_p_plus": 0.5,
+          "unnormalized_risk_minus": 0.25,
+          "unnormalized_risk_plus": 0.25,
+          "y": 1
+        },
+        {
+          "action": -1,
+          "action_label": "-",
+          "action_risk_margin_plus_minus": 0.0,
+          "branch_probability": 0.5,
+          "chosen_unnormalized_risk": 0.25,
+          "joint_mass_h_minus": 0.25,
+          "joint_mass_h_plus": 0.25,
+          "posterior_p_plus": 0.5,
+          "unnormalized_risk_minus": 0.25,
+          "unnormalized_risk_plus": 0.25,
+          "y": -1
+        }
+      ],
+      "c": 0.1,
+      "delta": 0.0,
+      "name": "uninformative_signal",
+      "p": 0.5,
+      "r": 0.5
+    },
+    {
+      "branches": [
+        {
+          "action": 1,
+          "action_label": "+",
+          "action_risk_margin_plus_minus": -0.30000000000000004,
+          "branch_probability": 0.5,
+          "chosen_unnormalized_risk": 0.09999999999999998,
+          "joint_mass_h_minus": 0.09999999999999998,
+          "joint_mass_h_plus": 0.4,
+          "posterior_p_plus": 0.8,
+          "unnormalized_risk_minus": 0.4,
+          "unnormalized_risk_plus": 0.09999999999999998,
+          "y": 1
+        },
+        {
+          "action": -1,
+          "action_label": "-",
+          "action_risk_margin_plus_minus": 0.30000000000000004,
+          "branch_probability": 0.5,
+          "chosen_unnormalized_risk": 0.09999999999999998,
+          "joint_mass_h_minus": 0.4,
+          "joint_mass_h_plus": 0.09999999999999998,
+          "posterior_p_plus": 0.19999999999999996,
+          "unnormalized_risk_minus": 0.09999999999999998,
+          "unnormalized_risk_plus": 0.4,
+          "y": -1
+        }
+      ],
+      "c": 0.35,
+      "delta": 0.0,
+      "name": "high_observation_cost",
+      "p": 0.5,
+      "r": 0.8
+    },
+    {
+      "branches": [
+        {
+          "action": -1,
+          "action_label": "-",
+          "action_risk_margin_plus_minus": -5.551115123125783e-17,
+          "branch_probability": 0.5,
+          "chosen_unnormalized_risk": 0.39999999999999997,
+          "joint_mass_h_minus": 0.09999999999999998,
+          "joint_mass_h_plus": 0.4,
+          "posterior_p_plus": 0.8,
+          "unnormalized_risk_minus": 0.4,
+          "unnormalized_risk_plus": 0.39999999999999997,
+          "y": 1
+        },
+        {
+          "action": -1,
+          "action_label": "-",
+          "action_risk_margin_plus_minus": 0.6,
+          "branch_probability": 0.5,
+          "chosen_unnormalized_risk": 0.09999999999999998,
+          "joint_mass_h_minus": 0.4,
+          "joint_mass_h_plus": 0.09999999999999998,
+          "posterior_p_plus": 0.19999999999999996,
+          "unnormalized_risk_minus": 0.09999999999999998,
+          "unnormalized_risk_plus": 0.7,
+          "y": -1
+        }
+      ],
+      "c": 0.1,
+      "delta": 0.6,
+      "name": "all_branches_choose_minus",
+      "p": 0.5,
+      "r": 0.8
+    }
+  ],
+  "default_grid": {
+    "analytic": [
+      {
+        "always_informative": {
+          "branch_actions": [
+            1,
+            -1
+          ],
+          "choice": "probe",
+          "probe": {
+            "branch_actions": [
+              1,
+              -1
+            ],
+            "branch_actions_same": false,
+            "branches": [
+              {
+                "action": 1,
+                "action_label": "+",
+                "action_risk_margin_plus_minus": -0.30000000000000004,
+                "branch_probability": 0.5,
+                "chosen_unnormalized_risk": 0.09999999999999998,
+                "joint_mass_h_minus": 0.09999999999999998,
+                "joint_mass_h_plus": 0.4,
+                "posterior_p_plus": 0.8,
+                "unnormalized_risk_minus": 0.4,
+                "unnormalized_risk_plus": 0.09999999999999998,
+                "y": 1
+              },
+              {
+                "action": -1,
+                "action_label": "-",
+                "action_risk_margin_plus_minus": 0.30000000000000004,
+                "branch_probability": 0.5,
+                "chosen_unnormalized_risk": 0.09999999999999998,
+                "joint_mass_h_minus": 0.4,
+                "joint_mass_h_plus": 0.09999999999999998,
+                "posterior_p_plus": 0.19999999999999996,
+                "unnormalized_risk_minus": 0.09999999999999998,
+                "unnormalized_risk_plus": 0.4,
+                "y": -1
+              }
+            ],
+            "decision_information_before_probe_cost": 0.30000000000000004,
+            "probe_cost": 0.1,
+            "risk": 0.29999999999999993,
+            "risk_without_probe_cost": 0.19999999999999996
+          },
+          "risk": 0.29999999999999993
+        },
+        "cheap_exact_threshold": {
+          "choice": "probe",
+          "direct": {
+            "action": -1,
+            "margin_plus_minus": 0.0,
+            "risk": 0.5,
+            "risk_minus": 0.5,
+            "risk_plus": 0.5
+          },
+          "net_gain_of_probe": 0.20000000000000007,
+          "probe": {
+            "branch_actions": [
+              1,
+              -1
+            ],
+            "branch_actions_same": false,
+            "branches": [
+              {
+                "action": 1,
+                "action_label": "+",
+                "action_risk_margin_plus_minus": -0.30000000000000004,
+                "branch_probability": 0.5,
+                "chosen_unnormalized_risk": 0.09999999999999998,
+                "joint_mass_h_minus": 0.09999999999999998,
+                "joint_mass_h_plus": 0.4,
+                "posterior_p_plus": 0.8,
+                "unnormalized_risk_minus": 0.4,
+                "unnormalized_risk_plus": 0.09999999999999998,
+                "y": 1
+              },
+              {
+                "action": -1,
+                "action_label": "-",
+                "action_risk_margin_plus_minus": 0.30000000000000004,
+                "branch_probability": 0.5,
+                "chosen_unnormalized_risk": 0.09999999999999998,
+                "joint_mass_h_minus": 0.4,
+                "joint_mass_h_plus": 0.09999999999999998,
+                "posterior_p_plus": 0.19999999999999996,
+                "unnormalized_risk_minus": 0.09999999999999998,
+                "unnormalized_risk_plus": 0.4,
+                "y": -1
+              }
+            ],
+            "decision_information_before_probe_cost": 0.30000000000000004,
+            "probe_cost": 0.1,
+            "risk": 0.29999999999999993,
+            "risk_without_probe_cost": 0.19999999999999996
+          },
+          "risk": 0.29999999999999993
+        },
+        "direct_myopic": {
+          "action": -1,
+          "margin_plus_minus": 0.0,
+          "risk": 0.5,
+          "risk_minus": 0.5,
+          "risk_plus": 0.5
+        },
+        "entropy_equal_mi_favor_H": {
+          "branch_actions": [
+            1,
+            -1
+          ],
+          "h_probe": {
+            "branch_actions": [
+              1,
+              -1
+            ],
+            "branch_actions_same": false,
+            "branches": [
+              {
+                "action": 1,
+                "action_label": "+",
+                "action_risk_margin_plus_minus": -0.30000000000000004,
+                "branch_probability": 0.5,
+                "chosen_unnormalized_risk": 0.09999999999999998,
+                "joint_mass_h_minus": 0.09999999999999998,
+                "joint_mass_h_plus": 0.4,
+                "posterior_p_plus": 0.8,
+                "unnormalized_risk_minus": 0.4,
+                "unnormalized_risk_plus": 0.09999999999999998,
+                "y": 1
+              },
+              {
+                "action": -1,
+                "action_label": "-",
+                "action_risk_margin_plus_minus": 0.30000000000000004,
+                "branch_probability": 0.5,
+                "chosen_unnormalized_risk": 0.09999999999999998,
+                "joint_mass_h_minus": 0.4,
+                "joint_mass_h_plus": 0.09999999999999998,
+                "posterior_p_plus": 0.19999999999999996,
+                "unnormalized_risk_minus": 0.09999999999999998,
+                "unnormalized_risk_plus": 0.4,
+                "y": -1
+              }
+            ],
+            "decision_information_before_probe_cost": 0.30000000000000004,
+            "probe_cost": 0.1,
+            "risk": 0.29999999999999993,
+            "risk_without_probe_cost": 0.19999999999999996
+          },
+          "mi_h_bits": 0.2780719051126377,
+          "mi_u_bits": 0.2780719051126377,
+          "risk": 0.29999999999999993,
+          "selected_sensor": "H",
+          "tie_break": "H",
+          "u_risk": 0.6
+        },
+        "entropy_equal_mi_favor_U": {
+          "branch_actions": [
+            -1,
+            -1
+          ],
+          "h_probe": {
+            "branch_actions": [
+              1,
+              -1
+            ],
+            "branch_actions_same": false,
+            "branches": [
+              {
+                "action": 1,
+                "action_label": "+",
+                "action_risk_margin_plus_minus": -0.30000000000000004,
+                "branch_probability": 0.5,
+                "chosen_unnormalized_risk": 0.09999999999999998,
+                "joint_mass_h_minus": 0.09999999999999998,
+                "joint_mass_h_plus": 0.4,
+                "posterior_p_plus": 0.8,
+                "unnormalized_risk_minus": 0.4,
+                "unnormalized_risk_plus": 0.09999999999999998,
+                "y": 1
+              },
+              {
+                "action": -1,
+                "action_label": "-",
+                "action_risk_margin_plus_minus": 0.30000000000000004,
+                "branch_probability": 0.5,
+                "chosen_unnormalized_risk": 0.09999999999999998,
+                "joint_mass_h_minus": 0.4,
+                "joint_mass_h_plus": 0.09999999999999998,
+                "posterior_p_plus": 0.19999999999999996,
+                "unnormalized_risk_minus": 0.09999999999999998,
+                "unnormalized_risk_plus": 0.4,
+                "y": -1
+              }
+            ],
+            "decision_information_before_probe_cost": 0.30000000000000004,
+            "probe_cost": 0.1,
+            "risk": 0.29999999999999993,
+            "risk_without_probe_cost": 0.19999999999999996
+          },
+          "mi_h_bits": 0.2780719051126377,
+          "mi_u_bits": 0.2780719051126377,
+          "risk": 0.6,
+          "selected_sensor": "U",
+          "tie_break": "U",
+          "u_risk": 0.6
+        },
+        "entropy_strictly_higher_mi_U": {
+          "branch_actions": [
+            -1,
+            -1
+          ],
+          "h_probe": {
+            "branch_actions": [
+              1,
+              -1
+            ],
+            "branch_actions_same": false,
+            "branches": [
+              {
+                "action": 1,
+                "action_label": "+",
+                "action_risk_margin_plus_minus": -0.30000000000000004,
+                "branch_probability": 0.5,
+                "chosen_unnormalized_risk": 0.09999999999999998,
+                "joint_mass_h_minus": 0.09999999999999998,
+                "joint_mass_h_plus": 0.4,
+                "posterior_p_plus": 0.8,
+                "unnormalized_risk_minus": 0.4,
+                "unnormalized_risk_plus": 0.09999999999999998,
+                "y": 1
+              },
+              {
+                "action": -1,
+                "action_label": "-",
+                "action_risk_margin_plus_minus": 0.30000000000000004,
+                "branch_probability": 0.5,
+                "chosen_unnormalized_risk": 0.09999999999999998,
+                "joint_mass_h_minus": 0.4,
+                "joint_mass_h_plus": 0.09999999999999998,
+                "posterior_p_plus": 0.19999999999999996,
+                "unnormalized_risk_minus": 0.09999999999999998,
+                "unnormalized_risk_plus": 0.4,
+                "y": -1
+              }
+            ],
+            "decision_information_before_probe_cost": 0.30000000000000004,
+            "probe_cost": 0.1,
+            "risk": 0.29999999999999993,
+            "risk_without_probe_cost": 0.19999999999999996
+          },
+          "mi_h_bits": 0.2780719051126377,
+          "mi_u_bits": 0.7136030428840436,
+          "risk": 0.6,
+          "selected_sensor": "U",
+          "tie_break": "U",
+          "u_risk": 0.6
+        },
+        "group": "default_grid",
+        "mi_equal_bits": 0.2780719051126377,
+        "mi_h_bits_high_u": 0.2780719051126377,
+        "mi_u_bits_high_u": 0.7136030428840436,
+        "name": "default_delta_0",
+        "parameters": {
+          "L": 1.0,
+          "c": 0.1,
+          "delta": 0.0,
+          "p": 0.5,
+          "r": 0.8
+        },
+        "two_step_bellman": {
+          "action_if_skip": -1,
+          "choice": "probe",
+          "direct_risk": 0.5,
+          "probe_branch_actions": [
+            1,
+            -1
+          ],
+          "probe_risk": 0.29999999999999993,
+          "risk": 0.29999999999999993
+        }
+      },
+      {
+        "always_informative": {
+          "branch_actions": [
+            1,
+            -1
+          ],
+          "choice": "probe",
+          "probe": {
+            "branch_actions": [
+              1,
+              -1
+            ],
+            "branch_actions_same": false,
+            "branches": [
+              {
+                "action": 1,
+                "action_label": "+",
+                "action_risk_margin_plus_minus": -0.20000000000000004,
+                "branch_probability": 0.5,
+                "chosen_unnormalized_risk": 0.19999999999999998,
+                "joint_mass_h_minus": 0.09999999999999998,
+                "joint_mass_h_plus": 0.4,
+                "posterior_p_plus": 0.8,
+                "unnormalized_risk_minus": 0.4,
+                "unnormalized_risk_plus": 0.19999999999999998,
+                "y": 1
+              },
+              {
+                "action": -1,
+                "action_label": "-",
+                "action_risk_margin_plus_minus": 0.4,
+                "branch_probability": 0.5,
+                "chosen_unnormalized_risk": 0.09999999999999998,
+                "joint_mass_h_minus": 0.4,
+                "joint_mass_h_plus": 0.09999999999999998,
+                "posterior_p_plus": 0.19999999999999996,
+                "unnormalized_risk_minus": 0.09999999999999998,
+                "unnormalized_risk_plus": 0.5,
+                "y": -1
+              }
+            ],
+            "decision_information_before_probe_cost": 0.20000000000000007,
+            "probe_cost": 0.1,
+            "risk": 0.3999999999999999,
+            "risk_without_probe_cost": 0.29999999999999993
+          },
+          "risk": 0.3999999999999999
+        },
+        "cheap_exact_threshold": {
+          "choice": "probe",
+          "direct": {
+            "action": -1,
+            "margin_plus_minus": 0.19999999999999996,
+            "risk": 0.5,
+            "risk_minus": 0.5,
+            "risk_plus": 0.7
+          },
+          "net_gain_of_probe": 0.10000000000000009,
+          "probe": {
+            "branch_actions": [
+              1,
+              -1
+            ],
+            "branch_actions_same": false,
+            "branches": [
+              {
+                "action": 1,
+                "action_label": "+",
+                "action_risk_margin_plus_minus": -0.20000000000000004,
+                "branch_probability": 0.5,
+                "chosen_unnormalized_risk": 0.19999999999999998,
+                "joint_mass_h_minus": 0.09999999999999998,
+                "joint_mass_h_plus": 0.4,
+                "posterior_p_plus": 0.8,
+                "unnormalized_risk_minus": 0.4,
+                "unnormalized_risk_plus": 0.19999999999999998,
+                "y": 1
+              },
+              {
+                "action": -1,
+                "action_label": "-",
+                "action_risk_margin_plus_minus": 0.4,
+                "branch_probability": 0.5,
+                "chosen_unnormalized_risk": 0.09999999999999998,
+                "joint_mass_h_minus": 0.4,
+                "joint_mass_h_plus": 0.09999999999999998,
+                "posterior_p_plus": 0.19999999999999996,
+                "unnormalized_risk_minus": 0.09999999999999998,
+                "unnormalized_risk_plus": 0.5,
+                "y": -1
+              }
+            ],
+            "decision_information_before_probe_cost": 0.20000000000000007,
+            "probe_cost": 0.1,
+            "risk": 0.3999999999999999,
+            "risk_without_probe_cost": 0.29999999999999993
+          },
+          "risk": 0.3999999999999999
+        },
+        "direct_myopic": {
+          "action": -1,
+          "margin_plus_minus": 0.19999999999999996,
+          "risk": 0.5,
+          "risk_minus": 0.5,
+          "risk_plus": 0.7
+        },
+        "entropy_equal_mi_favor_H": {
+          "branch_actions": [
+            1,
+            -1
+          ],
+          "h_probe": {
+            "branch_actions": [
+              1,
+              -1
+            ],
+            "branch_actions_same": false,
+            "branches": [
+              {
+                "action": 1,
+                "action_label": "+",
+                "action_risk_margin_plus_minus": -0.20000000000000004,
+                "branch_probability": 0.5,
+                "chosen_unnormalized_risk": 0.19999999999999998,
+                "joint_mass_h_minus": 0.09999999999999998,
+                "joint_mass_h_plus": 0.4,
+                "posterior_p_plus": 0.8,
+                "unnormalized_risk_minus": 0.4,
+                "unnormalized_risk_plus": 0.19999999999999998,
+                "y": 1
+              },
+              {
+                "action": -1,
+                "action_label": "-",
+                "action_risk_margin_plus_minus": 0.4,
+                "branch_probability": 0.5,
+                "chosen_unnormalized_risk": 0.09999999999999998,
+                "joint_mass_h_minus": 0.4,
+                "joint_mass_h_plus": 0.09999999999999998,
+                "posterior_p_plus": 0.19999999999999996,
+                "unnormalized_risk_minus": 0.09999999999999998,
+                "unnormalized_risk_plus": 0.5,
+                "y": -1
+              }
+            ],
+            "decision_information_before_probe_cost": 0.20000000000000007,
+            "probe_cost": 0.1,
+            "risk": 0.3999999999999999,
+            "risk_without_probe_cost": 0.29999999999999993
+          },
+          "mi_h_bits": 0.2780719051126377,
+          "mi_u_bits": 0.2780719051126377,
+          "risk": 0.3999999999999999,
+          "selected_sensor": "H",
+          "tie_break": "H",
+          "u_risk": 0.6
+        },
+        "entropy_equal_mi_favor_U": {
+          "branch_actions": [
+            -1,
+            -1
+          ],
+          "h_probe": {
+            "branch_actions": [
+              1,
+              -1
+            ],
+            "branch_actions_same": false,
+            "branches": [
+              {
+                "action": 1,
+                "action_label": "+",
+                "action_risk_margin_plus_minus": -0.20000000000000004,
+                "branch_probability": 0.5,
+                "chosen_unnormalized_risk": 0.19999999999999998,
+                "joint_mass_h_minus": 0.09999999999999998,
+                "joint_mass_h_plus": 0.4,
+                "posterior_p_plus": 0.8,
+                "unnormalized_risk_minus": 0.4,
+                "unnormalized_risk_plus": 0.19999999999999998,
+                "y": 1
+              },
+              {
+                "action": -1,
+                "action_label": "-",
+                "action_risk_margin_plus_minus": 0.4,
+                "branch_probability": 0.5,
+                "chosen_unnormalized_risk": 0.09999999999999998,
+                "joint_mass_h_minus": 0.4,
+                "joint_mass_h_plus": 0.09999999999999998,
+                "posterior_p_plus": 0.19999999999999996,
+                "unnormalized_risk_minus": 0.09999999999999998,
+                "unnormalized_risk_plus": 0.5,
+                "y": -1
+              }
+            ],
+            "decision_information_before_probe_cost": 0.20000000000000007,
+            "probe_cost": 0.1,
+            "risk": 0.3999999999999999,
+            "risk_without_probe_cost": 0.29999999999999993
+          },
+          "mi_h_bits": 0.2780719051126377,
+          "mi_u_bits": 0.2780719051126377,
+          "risk": 0.6,
+          "selected_sensor": "U",
+          "tie_break": "U",
+          "u_risk": 0.6
+        },
+        "entropy_strictly_higher_mi_U": {
+          "branch_actions": [
+            -1,
+            -1
+          ],
+          "h_probe": {
+            "branch_actions": [
+              1,
+              -1
+            ],
+            "branch_actions_same": false,
+            "branches": [
+              {
+                "action": 1,
+                "action_label": "+",
+                "action_risk_margin_plus_minus": -0.20000000000000004,
+                "branch_probability": 0.5,
+                "chosen_unnormalized_risk": 0.19999999999999998,
+                "joint_mass_h_minus": 0.09999999999999998,
+                "joint_mass_h_plus": 0.4,
+                "posterior_p_plus": 0.8,
+                "unnormalized_risk_minus": 0.4,
+                "unnormalized_risk_plus": 0.19999999999999998,
+                "y": 1
+              },
+              {
+                "action": -1,
+                "action_label": "-",
+                "action_risk_margin_plus_minus": 0.4,
+                "branch_probability": 0.5,
+                "chosen_unnormalized_risk": 0.09999999999999998,
+                "joint_mass_h_minus": 0.4,
+                "joint_mass_h_plus": 0.09999999999999998,
+                "posterior_p_plus": 0.19999999999999996,
+                "unnormalized_risk_minus": 0.09999999999999998,
+                "unnormalized_risk_plus": 0.5,
+                "y": -1
+              }
+            ],
+            "decision_information_before_probe_cost": 0.20000000000000007,
+            "probe_cost": 0.1,
+            "risk": 0.3999999999999999,
+            "risk_without_probe_cost": 0.29999999999999993
+          },
+          "mi_h_bits": 0.2780719051126377,
+          "mi_u_bits": 0.7136030428840436,
+          "risk": 0.6,
+          "selected_sensor": "U",
+          "tie_break": "U",
+          "u_risk": 0.6
+        },
+        "group": "default_grid",
+        "mi_equal_bits": 0.2780719051126377,
+        "mi_h_bits_high_u": 0.2780719051126377,
+        "mi_u_bits_high_u": 0.7136030428840436,
+        "name": "default_delta_0.2",
+        "parameters": {
+          "L": 1.0,
+          "c": 0.1,
+          "delta": 0.2,
+          "p": 0.5,
+          "r": 0.8
+        },
+        "two_step_bellman": {
+          "action_if_skip": -1,
+          "choice": "probe",
+          "direct_risk": 0.5,
+          "probe_branch_actions": [
+            1,
+            -1
+          ],
+          "probe_risk": 0.3999999999999999,
+          "risk": 0.3999999999999999
+        }
+      },
+      {
+        "always_informative": {
+          "branch_actions": [
+            1,
+            -1
+          ],
+          "choice": "probe",
+          "probe": {
+            "branch_actions": [
+              1,
+              -1
+            ],
+            "branch_actions_same": false,
+            "branches": [
+              {
+                "action": 1,
+                "action_label": "+",
+                "action_risk_margin_plus_minus": -0.10500000000000004,
+                "branch_probability": 0.5,
+                "chosen_unnormalized_risk": 0.295,
+                "joint_mass_h_minus": 0.09999999999999998,
+                "joint_mass_h_plus": 0.4,
+                "posterior_p_plus": 0.8,
+                "unnormalized_risk_minus": 0.4,
+                "unnormalized_risk_plus": 0.295,
+                "y": 1
+              },
+              {
+                "action": -1,
+                "action_label": "-",
+                "action_risk_margin_plus_minus": 0.495,
+                "branch_probability": 0.5,
+                "chosen_unnormalized_risk": 0.09999999999999998,
+                "joint_mass_h_minus": 0.4,
+                "joint_mass_h_plus": 0.09999999999999998,
+                "posterior_p_plus": 0.19999999999999996,
+                "unnormalized_risk_minus": 0.09999999999999998,
+                "unnormalized_risk_plus": 0.595,
+                "y": -1
+              }
+            ],
+            "decision_information_before_probe_cost": 0.10500000000000004,
+            "probe_cost": 0.1,
+            "risk": 0.495,
+            "risk_without_probe_cost": 0.39499999999999996
+          },
+          "risk": 0.495
+        },
+        "cheap_exact_threshold": {
+          "choice": "probe",
+          "direct": {
+            "action": -1,
+            "margin_plus_minus": 0.39,
+            "risk": 0.5,
+            "risk_minus": 0.5,
+            "risk_plus": 0.89
+          },
+          "net_gain_of_probe": 0.0050000000000000044,
+          "probe": {
+            "branch_actions": [
+              1,
+              -1
+            ],
+            "branch_actions_same": false,
+            "branches": [
+              {
+                "action": 1,
+                "action_label": "+",
+                "action_risk_margin_plus_minus": -0.10500000000000004,
+                "branch_probability": 0.5,
+                "chosen_unnormalized_risk": 0.295,
+                "joint_mass_h_minus": 0.09999999999999998,
+                "joint_mass_h_plus": 0.4,
+                "posterior_p_plus": 0.8,
+                "unnormalized_risk_minus": 0.4,
+                "unnormalized_risk_plus": 0.295,
+                "y": 1
+              },
+              {
+                "action": -1,
+                "action_label": "-",
+                "action_risk_margin_plus_minus": 0.495,
+                "branch_probability": 0.5,
+                "chosen_unnormalized_risk": 0.09999999999999998,
+                "joint_mass_h_minus": 0.4,
+                "joint_mass_h_plus": 0.09999999999999998,
+                "posterior_p_plus": 0.19999999999999996,
+                "unnormalized_risk_minus": 0.09999999999999998,
+                "unnormalized_risk_plus": 0.595,
+                "y": -1
+              }
+            ],
+            "decision_information_before_probe_cost": 0.10500000000000004,
+            "probe_cost": 0.1,
+            "risk": 0.495,
+            "risk_without_probe_cost": 0.39499999999999996
+          },
+          "risk": 0.495
+        },
+        "direct_myopic": {
+          "action": -1,
+          "margin_plus_minus": 0.39,
+          "risk": 0.5,
+          "risk_minus": 0.5,
+          "risk_plus": 0.89
+        },
+        "entropy_equal_mi_favor_H": {
+          "branch_actions": [
+            1,
+            -1
+          ],
+          "h_probe": {
+            "branch_actions": [
+              1,
+              -1
+            ],
+            "branch_actions_same": false,
+            "branches": [
+              {
+                "action": 1,
+                "action_label": "+",
+                "action_risk_margin_plus_minus": -0.10500000000000004,
+                "branch_probability": 0.5,
+                "chosen_unnormalized_risk": 0.295,
+                "joint_mass_h_minus": 0.09999999999999998,
+                "joint_mass_h_plus": 0.4,
+                "posterior_p_plus": 0.8,
+                "unnormalized_risk_minus": 0.4,
+                "unnormalized_risk_plus": 0.295,
+                "y": 1
+              },
+              {
+                "action": -1,
+                "action_label": "-",
+                "action_risk_margin_plus_minus": 0.495,
+                "branch_probability": 0.5,
+                "chosen_unnormalized_risk": 0.09999999999999998,
+                "joint_mass_h_minus": 0.4,
+                "joint_mass_h_plus": 0.09999999999999998,
+                "posterior_p_plus": 0.19999999999999996,
+                "unnormalized_risk_minus": 0.09999999999999998,
+                "unnormalized_risk_plus": 0.595,
+                "y": -1
+              }
+            ],
+            "decision_information_before_probe_cost": 0.10500000000000004,
+            "probe_cost": 0.1,
+            "risk": 0.495,
+            "risk_without_probe_cost": 0.39499999999999996
+          },
+          "mi_h_bits": 0.2780719051126377,
+          "mi_u_bits": 0.2780719051126377,
+          "risk": 0.495,
+          "selected_sensor": "H",
+          "tie_break": "H",
+          "u_risk": 0.6
+        },
+        "entropy_equal_mi_favor_U": {
+          "branch_actions": [
+            -1,
+            -1
+          ],
+          "h_probe": {
+            "branch_actions": [
+              1,
+              -1
+            ],
+            "branch_actions_same": false,
+            "branches": [
+              {
+                "action": 1,
+                "action_label": "+",
+                "action_risk_margin_plus_minus": -0.10500000000000004,
+                "branch_probability": 0.5,
+                "chosen_unnormalized_risk": 0.295,
+                "joint_mass_h_minus": 0.09999999999999998,
+                "joint_mass_h_plus": 0.4,
+                "posterior_p_plus": 0.8,
+                "unnormalized_risk_minus": 0.4,
+                "unnormalized_risk_plus": 0.295,
+                "y": 1
+              },
+              {
+                "action": -1,
+                "action_label": "-",
+                "action_risk_margin_plus_minus": 0.495,
+                "branch_probability": 0.5,
+                "chosen_unnormalized_risk": 0.09999999999999998,
+                "joint_mass_h_minus": 0.4,
+                "joint_mass_h_plus": 0.09999999999999998,
+                "posterior_p_plus": 0.19999999999999996,
+                "unnormalized_risk_minus": 0.09999999999999998,
+                "unnormalized_risk_plus": 0.595,
+                "y": -1
+              }
+            ],
+            "decision_information_before_probe_cost": 0.10500000000000004,
+            "probe_cost": 0.1,
+            "risk": 0.495,
+            "risk_without_probe_cost": 0.39499999999999996
+          },
+          "mi_h_bits": 0.2780719051126377,
+          "mi_u_bits": 0.2780719051126377,
+          "risk": 0.6,
+          "selected_sensor": "U",
+          "tie_break": "U",
+          "u_risk": 0.6
+        },
+        "entropy_strictly_higher_mi_U": {
+          "branch_actions": [
+            -1,
+            -1
+          ],
+          "h_probe": {
+            "branch_actions": [
+              1,
+              -1
+            ],
+            "branch_actions_same": false,
+            "branches": [
+              {
+                "action": 1,
+                "action_label": "+",
+                "action_risk_margin_plus_minus": -0.10500000000000004,
+                "branch_probability": 0.5,
+                "chosen_unnormalized_risk": 0.295,
+                "joint_mass_h_minus": 0.09999999999999998,
+                "joint_mass_h_plus": 0.4,
+                "posterior_p_plus": 0.8,
+                "unnormalized_risk_minus": 0.4,
+                "unnormalized_risk_plus": 0.295,
+                "y": 1
+              },
+              {
+                "action": -1,
+                "action_label": "-",
+                "action_risk_margin_plus_minus": 0.495,
+                "branch_probability": 0.5,
+                "chosen_unnormalized_risk": 0.09999999999999998,
+                "joint_mass_h_minus": 0.4,
+                "joint_mass_h_plus": 0.09999999999999998,
+                "posterior_p_plus": 0.19999999999999996,
+                "unnormalized_risk_minus": 0.09999999999999998,
+                "unnormalized_risk_plus": 0.595,
+                "y": -1
+              }
+            ],
+            "decision_information_before_probe_cost": 0.10500000000000004,
+            "probe_cost": 0.1,
+            "risk": 0.495,
+            "risk_without_probe_cost": 0.39499999999999996
+          },
+          "mi_h_bits": 0.2780719051126377,
+          "mi_u_bits": 0.7136030428840436,
+          "risk": 0.6,
+          "selected_sensor": "U",
+          "tie_break": "U",
+          "u_risk": 0.6
+        },
+        "group": "default_grid",
+        "mi_equal_bits": 0.2780719051126377,
+        "mi_h_bits_high_u": 0.2780719051126377,
+        "mi_u_bits_high_u": 0.7136030428840436,
+        "name": "default_delta_0.39",
+        "parameters": {
+          "L": 1.0,
+          "c": 0.1,
+          "delta": 0.39,
+          "p": 0.5,
+          "r": 0.8
+        },
+        "two_step_bellman": {
+          "action_if_skip": -1,
+          "choice": "probe",
+          "direct_risk": 0.5,
+          "probe_branch_actions": [
+            1,
+            -1
+          ],
+          "probe_risk": 0.495,
+          "risk": 0.495
+        }
+      },
+      {
+        "always_informative": {
+          "branch_actions": [
+            1,
+            -1
+          ],
+          "choice": "probe",
+          "probe": {
+            "branch_actions": [
+              1,
+              -1
+            ],
+            "branch_actions_same": false,
+            "branches": [
+              {
+                "action": 1,
+                "action_label": "+",
+                "action_risk_margin_plus_minus": -0.10000000000000003,
+                "branch_probability": 0.5,
+                "chosen_unnormalized_risk": 0.3,
+                "joint_mass_h_minus": 0.09999999999999998,
+                "joint_mass_h_plus": 0.4,
+                "posterior_p_plus": 0.8,
+                "unnormalized_risk_minus": 0.4,
+                "unnormalized_risk_plus": 0.3,
+                "y": 1
+              },
+              {
+                "action": -1,
+                "action_label": "-",
+                "action_risk_margin_plus_minus": 0.5000000000000001,
+                "branch_probability": 0.5,
+                "chosen_unnormalized_risk": 0.09999999999999998,
+                "joint_mass_h_minus": 0.4,
+                "joint_mass_h_plus": 0.09999999999999998,
+                "posterior_p_plus": 0.19999999999999996,
+                "unnormalized_risk_minus": 0.09999999999999998,
+                "unnormalized_risk_plus": 0.6000000000000001,
+                "y": -1
+              }
+            ],
+            "decision_information_before_probe_cost": 0.10000000000000003,
+            "probe_cost": 0.1,
+            "risk": 0.5,
+            "risk_without_probe_cost": 0.39999999999999997
+          },
+          "risk": 0.5
+        },
+        "cheap_exact_threshold": {
+          "choice": "skip",
+          "direct": {
+            "action": -1,
+            "margin_plus_minus": 0.4,
+            "risk": 0.5,
+            "risk_minus": 0.5,
+            "risk_plus": 0.9
+          },
+          "net_gain_of_probe": 0.0,
+          "probe": {
+            "branch_actions": [
+              1,
+              -1
+            ],
+            "branch_actions_same": false,
+            "branches": [
+              {
+                "action": 1,
+                "action_label": "+",
+                "action_risk_margin_plus_minus": -0.10000000000000003,
+                "branch_probability": 0.5,
+                "chosen_unnormalized_risk": 0.3,
+                "joint_mass_h_minus": 0.09999999999999998,
+                "joint_mass_h_plus": 0.4,
+                "posterior_p_plus": 0.8,
+                "unnormalized_risk_minus": 0.4,
+                "unnormalized_risk_plus": 0.3,
+                "y": 1
+              },
+              {
+                "action": -1,
+                "action_label": "-",
+                "action_risk_margin_plus_minus": 0.5000000000000001,
+                "branch_probability": 0.5,
+                "chosen_unnormalized_risk": 0.09999999999999998,
+                "joint_mass_h_minus": 0.4,
+                "joint_mass_h_plus": 0.09999999999999998,
+                "posterior_p_plus": 0.19999999999999996,
+                "unnormalized_risk_minus": 0.09999999999999998,
+                "unnormalized_risk_plus": 0.6000000000000001,
+                "y": -1
+              }
+            ],
+            "decision_information_before_probe_cost": 0.10000000000000003,
+            "probe_cost": 0.1,
+            "risk": 0.5,
+            "risk_without_probe_cost": 0.39999999999999997
+          },
+          "risk": 0.5
+        },
+        "direct_myopic": {
+          "action": -1,
+          "margin_plus_minus": 0.4,
+          "risk": 0.5,
+          "risk_minus": 0.5,
+          "risk_plus": 0.9
+        },
+        "entropy_equal_mi_favor_H": {
+          "branch_actions": [
+            1,
+            -1
+          ],
+          "h_probe": {
+            "branch_actions": [
+              1,
+              -1
+            ],
+            "branch_actions_same": false,
+            "branches": [
+              {
+                "action": 1,
+                "action_label": "+",
+                "action_risk_margin_plus_minus": -0.10000000000000003,
+                "branch_probability": 0.5,
+                "chosen_unnormalized_risk": 0.3,
+                "joint_mass_h_minus": 0.09999999999999998,
+                "joint_mass_h_plus": 0.4,
+                "posterior_p_plus": 0.8,
+                "unnormalized_risk_minus": 0.4,
+                "unnormalized_risk_plus": 0.3,
+                "y": 1
+              },
+              {
+                "action": -1,
+                "action_label": "-",
+                "action_risk_margin_plus_minus": 0.5000000000000001,
+                "branch_probability": 0.5,
+                "chosen_unnormalized_risk": 0.09999999999999998,
+                "joint_mass_h_minus": 0.4,
+                "joint_mass_h_plus": 0.09999999999999998,
+                "posterior_p_plus": 0.19999999999999996,
+                "unnormalized_risk_minus": 0.09999999999999998,
+                "unnormalized_risk_plus": 0.6000000000000001,
+                "y": -1
+              }
+            ],
+            "decision_information_before_probe_cost": 0.10000000000000003,
+            "probe_cost": 0.1,
+            "risk": 0.5,
+            "risk_without_probe_cost": 0.39999999999999997
+          },
+          "mi_h_bits": 0.2780719051126377,
+          "mi_u_bits": 0.2780719051126377,
+          "risk": 0.5,
+          "selected_sensor": "H",
+          "tie_break": "H",
+          "u_risk": 0.6
+        },
+        "entropy_equal_mi_favor_U": {
+          "branch_actions": [
+            -1,
+            -1
+          ],
+          "h_probe": {
+            "branch_actions": [
+              1,
+              -1
+            ],
+            "branch_actions_same": false,
+            "branches": [
+              {
+                "action": 1,
+                "action_label": "+",
+                "action_risk_margin_plus_minus": -0.10000000000000003,
+                "branch_probability": 0.5,
+                "chosen_unnormalized_risk": 0.3,
+                "joint_mass_h_minus": 0.09999999999999998,
+                "joint_mass_h_plus": 0.4,
+                "posterior_p_plus": 0.8,
+                "unnormalized_risk_minus": 0.4,
+                "unnormalized_risk_plus": 0.3,
+                "y": 1
+              },
+              {
+                "action": -1,
+                "action_label": "-",
+                "action_risk_margin_plus_minus": 0.5000000000000001,
+                "branch_probability": 0.5,
+                "chosen_unnormalized_risk": 0.09999999999999998,
+                "joint_mass_h_minus": 0.4,
+                "joint_mass_h_plus": 0.09999999999999998,
+                "posterior_p_plus": 0.19999999999999996,
+                "unnormalized_risk_minus": 0.09999999999999998,
+                "unnormalized_risk_plus": 0.6000000000000001,
+                "y": -1
+              }
+            ],
+            "decision_information_before_probe_cost": 0.10000000000000003,
+            "probe_cost": 0.1,
+            "risk": 0.5,
+            "risk_without_probe_cost": 0.39999999999999997
+          },
+          "mi_h_bits": 0.2780719051126377,
+          "mi_u_bits": 0.2780719051126377,
+          "risk": 0.6,
+          "selected_sensor": "U",
+          "tie_break": "U",
+          "u_risk": 0.6
+        },
+        "entropy_strictly_higher_mi_U": {
+          "branch_actions": [
+            -1,
+            -1
+          ],
+          "h_probe": {
+            "branch_actions": [
+              1,
+              -1
+            ],
+            "branch_actions_same": false,
+            "branches": [
+              {
+                "action": 1,
+                "action_label": "+",
+                "action_risk_margin_plus_minus": -0.10000000000000003,
+                "branch_probability": 0.5,
+                "chosen_unnormalized_risk": 0.3,
+                "joint_mass_h_minus": 0.09999999999999998,
+                "joint_mass_h_plus": 0.4,
+                "posterior_p_plus": 0.8,
+                "unnormalized_risk_minus": 0.4,
+                "unnormalized_risk_plus": 0.3,
+                "y": 1
+              },
+              {
+                "action": -1,
+                "action_label": "-",
+                "action_risk_margin_plus_minus": 0.5000000000000001,
+                "branch_probability": 0.5,
+                "chosen_unnormalized_risk": 0.09999999999999998,
+                "joint_mass_h_minus": 0.4,
+                "joint_mass_h_plus": 0.09999999999999998,
+                "posterior_p_plus": 0.19999999999999996,
+                "unnormalized_risk_minus": 0.09999999999999998,
+                "unnormalized_risk_plus": 0.6000000000000001,
+                "y": -1
+              }
+            ],
+            "decision_information_before_probe_cost": 0.10000000000000003,
+            "probe_cost": 0.1,
+            "risk": 0.5,
+            "risk_without_probe_cost": 0.39999999999999997
+          },
+          "mi_h_bits": 0.2780719051126377,
+          "mi_u_bits": 0.7136030428840436,
+          "risk": 0.6,
+          "selected_sensor": "U",
+          "tie_break": "U",
+          "u_risk": 0.6
+        },
+        "group": "default_grid",
+        "mi_equal_bits": 0.2780719051126377,
+        "mi_h_bits_high_u": 0.2780719051126377,
+        "mi_u_bits_high_u": 0.7136030428840436,
+        "name": "default_delta_0.4",
+        "parameters": {
+          "L": 1.0,
+          "c": 0.1,
+          "delta": 0.4,
+          "p": 0.5,
+          "r": 0.8
+        },
+        "two_step_bellman": {
+          "action_if_skip": -1,
+          "choice": "skip",
+          "direct_risk": 0.5,
+          "probe_branch_actions": [
+            1,
+            -1
+          ],
+          "probe_risk": 0.5,
+          "risk": 0.5
+        }
+      },
+      {
+        "always_informative": {
+          "branch_actions": [
+            1,
+            -1
+          ],
+          "choice": "probe",
+          "probe": {
+            "branch_actions": [
+              1,
+              -1
+            ],
+            "branch_actions_same": false,
+            "branches": [
+              {
+                "action": 1,
+                "action_label": "+",
+                "action_risk_margin_plus_minus": -0.09500000000000008,
+                "branch_probability": 0.5,
+                "chosen_unnormalized_risk": 0.30499999999999994,
+                "joint_mass_h_minus": 0.09999999999999998,
+                "joint_mass_h_plus": 0.4,
+                "posterior_p_plus": 0.8,
+                "unnormalized_risk_minus": 0.4,
+                "unnormalized_risk_plus": 0.30499999999999994,
+                "y": 1
+              },
+              {
+                "action": -1,
+                "action_label": "-",
+                "action_risk_margin_plus_minus": 0.505,
+                "branch_probability": 0.5,
+                "chosen_unnormalized_risk": 0.09999999999999998,
+                "joint_mass_h_minus": 0.4,
+                "joint_mass_h_plus": 0.09999999999999998,
+                "posterior_p_plus": 0.19999999999999996,
+                "unnormalized_risk_minus": 0.09999999999999998,
+                "unnormalized_risk_plus": 0.605,
+                "y": -1
+              }
+            ],
+            "decision_information_before_probe_cost": 0.09500000000000008,
+            "probe_cost": 0.1,
+            "risk": 0.5049999999999999,
+            "risk_without_probe_cost": 0.4049999999999999
+          },
+          "risk": 0.5049999999999999
+        },
+        "cheap_exact_threshold": {
+          "choice": "skip",
+          "direct": {
+            "action": -1,
+            "margin_plus_minus": 0.4099999999999999,
+            "risk": 0.5,
+            "risk_minus": 0.5,
+            "risk_plus": 0.9099999999999999
+          },
+          "net_gain_of_probe": -0.004999999999999893,
+          "probe": {
+            "branch_actions": [
+              1,
+              -1
+            ],
+            "branch_actions_same": false,
+            "branches": [
+              {
+                "action": 1,
+                "action_label": "+",
+                "action_risk_margin_plus_minus": -0.09500000000000008,
+                "branch_probability": 0.5,
+                "chosen_unnormalized_risk": 0.30499999999999994,
+                "joint_mass_h_minus": 0.09999999999999998,
+                "joint_mass_h_plus": 0.4,
+                "posterior_p_plus": 0.8,
+                "unnormalized_risk_minus": 0.4,
+                "unnormalized_risk_plus": 0.30499999999999994,
+                "y": 1
+              },
+              {
+                "action": -1,
+                "action_label": "-",
+                "action_risk_margin_plus_minus": 0.505,
+                "branch_probability": 0.5,
+                "chosen_unnormalized_risk": 0.09999999999999998,
+                "joint_mass_h_minus": 0.4,
+                "joint_mass_h_plus": 0.09999999999999998,
+                "posterior_p_plus": 0.19999999999999996,
+                "unnormalized_risk_minus": 0.09999999999999998,
+                "unnormalized_risk_plus": 0.605,
+                "y": -1
+              }
+            ],
+            "decision_information_before_probe_cost": 0.09500000000000008,
+            "probe_cost": 0.1,
+            "risk": 0.5049999999999999,
+            "risk_without_probe_cost": 0.4049999999999999
+          },
+          "risk": 0.5
+        },
+        "direct_myopic": {
+          "action": -1,
+          "margin_plus_minus": 0.4099999999999999,
+          "risk": 0.5,
+          "risk_minus": 0.5,
+          "risk_plus": 0.9099999999999999
+        },
+        "entropy_equal_mi_favor_H": {
+          "branch_actions": [
+            1,
+            -1
+          ],
+          "h_probe": {
+            "branch_actions": [
+              1,
+              -1
+            ],
+            "branch_actions_same": false,
+            "branches": [
+              {
+                "action": 1,
+                "action_label": "+",
+                "action_risk_margin_plus_minus": -0.09500000000000008,
+                "branch_probability": 0.5,
+                "chosen_unnormalized_risk": 0.30499999999999994,
+                "joint_mass_h_minus": 0.09999999999999998,
+                "joint_mass_h_plus": 0.4,
+                "posterior_p_plus": 0.8,
+                "unnormalized_risk_minus": 0.4,
+                "unnormalized_risk_plus": 0.30499999999999994,
+                "y": 1
+              },
+              {
+                "action": -1,
+                "action_label": "-",
+                "action_risk_margin_plus_minus": 0.505,
+                "branch_probability": 0.5,
+                "chosen_unnormalized_risk": 0.09999999999999998,
+                "joint_mass_h_minus": 0.4,
+                "joint_mass_h_plus": 0.09999999999999998,
+                "posterior_p_plus": 0.19999999999999996,
+                "unnormalized_risk_minus": 0.09999999999999998,
+                "unnormalized_risk_plus": 0.605,
+                "y": -1
+              }
+            ],
+            "decision_information_before_probe_cost": 0.09500000000000008,
+            "probe_cost": 0.1,
+            "risk": 0.5049999999999999,
+            "risk_without_probe_cost": 0.4049999999999999
+          },
+          "mi_h_bits": 0.2780719051126377,
+          "mi_u_bits": 0.2780719051126377,
+          "risk": 0.5049999999999999,
+          "selected_sensor": "H",
+          "tie_break": "H",
+          "u_risk": 0.6
+        },
+        "entropy_equal_mi_favor_U": {
+          "branch_actions": [
+            -1,
+            -1
+          ],
+          "h_probe": {
+            "branch_actions": [
+              1,
+              -1
+            ],
+            "branch_actions_same": false,
+            "branches": [
+              {
+                "action": 1,
+                "action_label": "+",
+                "action_risk_margin_plus_minus": -0.09500000000000008,
+                "branch_probability": 0.5,
+                "chosen_unnormalized_risk": 0.30499999999999994,
+                "joint_mass_h_minus": 0.09999999999999998,
+                "joint_mass_h_plus": 0.4,
+                "posterior_p_plus": 0.8,
+                "unnormalized_risk_minus": 0.4,
+                "unnormalized_risk_plus": 0.30499999999999994,
+                "y": 1
+              },
+              {
+                "action": -1,
+                "action_label": "-",
+                "action_risk_margin_plus_minus": 0.505,
+                "branch_probability": 0.5,
+                "chosen_unnormalized_risk": 0.09999999999999998,
+                "joint_mass_h_minus": 0.4,
+                "joint_mass_h_plus": 0.09999999999999998,
+                "posterior_p_plus": 0.19999999999999996,
+                "unnormalized_risk_minus": 0.09999999999999998,
+                "unnormalized_risk_plus": 0.605,
+                "y": -1
+              }
+            ],
+            "decision_information_before_probe_cost": 0.09500000000000008,
+            "probe_cost": 0.1,
+            "risk": 0.5049999999999999,
+            "risk_without_probe_cost": 0.4049999999999999
+          },
+          "mi_h_bits": 0.2780719051126377,
+          "mi_u_bits": 0.2780719051126377,
+          "risk": 0.6,
+          "selected_sensor": "U",
+          "tie_break": "U",
+          "u_risk": 0.6
+        },
+        "entropy_strictly_higher_mi_U": {
+          "branch_actions": [
+            -1,
+            -1
+          ],
+          "h_probe": {
+            "branch_actions": [
+              1,
+              -1
+            ],
+            "branch_actions_same": false,
+            "branches": [
+              {
+                "action": 1,
+                "action_label": "+",
+                "action_risk_margin_plus_minus": -0.09500000000000008,
+                "branch_probability": 0.5,
+                "chosen_unnormalized_risk": 0.30499999999999994,
+                "joint_mass_h_minus": 0.09999999999999998,
+                "joint_mass_h_plus": 0.4,
+                "posterior_p_plus": 0.8,
+                "unnormalized_risk_minus": 0.4,
+                "unnormalized_risk_plus": 0.30499999999999994,
+                "y": 1
+              },
+              {
+                "action": -1,
+                "action_label": "-",
+                "action_risk_margin_plus_minus": 0.505,
+                "branch_probability": 0.5,
+                "chosen_unnormalized_risk": 0.09999999999999998,
+                "joint_mass_h_minus": 0.4,
+                "joint_mass_h_plus": 0.09999999999999998,
+                "posterior_p_plus": 0.19999999999999996,
+                "unnormalized_risk_minus": 0.09999999999999998,
+                "unnormalized_risk_plus": 0.605,
+                "y": -1
+              }
+            ],
+            "decision_information_before_probe_cost": 0.09500000000000008,
+            "probe_cost": 0.1,
+            "risk": 0.5049999999999999,
+            "risk_without_probe_cost": 0.4049999999999999
+          },
+          "mi_h_bits": 0.2780719051126377,
+          "mi_u_bits": 0.7136030428840436,
+          "risk": 0.6,
+          "selected_sensor": "U",
+          "tie_break": "U",
+          "u_risk": 0.6
+        },
+        "group": "default_grid",
+        "mi_equal_bits": 0.2780719051126377,
+        "mi_h_bits_high_u": 0.2780719051126377,
+        "mi_u_bits_high_u": 0.7136030428840436,
+        "name": "default_delta_0.41",
+        "parameters": {
+          "L": 1.0,
+          "c": 0.1,
+          "delta": 0.41,
+          "p": 0.5,
+          "r": 0.8
+        },
+        "two_step_bellman": {
+          "action_if_skip": -1,
+          "choice": "skip",
+          "direct_risk": 0.5,
+          "probe_branch_actions": [
+            1,
+            -1
+          ],
+          "probe_risk": 0.5049999999999999,
+          "risk": 0.5
+        }
+      },
+      {
+        "always_informative": {
+          "branch_actions": [
+            -1,
+            -1
+          ],
+          "choice": "probe",
+          "probe": {
+            "branch_actions": [
+              -1,
+              -1
+            ],
+            "branch_actions_same": true,
+            "branches": [
+              {
+                "action": -1,
+                "action_label": "-",
+                "action_risk_margin_plus_minus": -5.551115123125783e-17,
+                "branch_probability": 0.5,
+                "chosen_unnormalized_risk": 0.39999999999999997,
+                "joint_mass_h_minus": 0.09999999999999998,
+                "joint_mass_h_plus": 0.4,
+                "posterior_p_plus": 0.8,
+                "unnormalized_risk_minus": 0.4,
+                "unnormalized_risk_plus": 0.39999999999999997,
+                "y": 1
+              },
+              {
+                "action": -1,
+                "action_label": "-",
+                "action_risk_margin_plus_minus": 0.6,
+                "branch_probability": 0.5,
+                "chosen_unnormalized_risk": 0.09999999999999998,
+                "joint_mass_h_minus": 0.4,
+                "joint_mass_h_plus": 0.09999999999999998,
+                "posterior_p_plus": 0.19999999999999996,
+                "unnormalized_risk_minus": 0.09999999999999998,
+                "unnormalized_risk_plus": 0.7,
+                "y": -1
+              }
+            ],
+            "decision_information_before_probe_cost": 5.551115123125783e-17,
+            "probe_cost": 0.1,
+            "risk": 0.6,
+            "risk_without_probe_cost": 0.49999999999999994
+          },
+          "risk": 0.6
+        },
+        "cheap_exact_threshold": {
+          "choice": "skip",
+          "direct": {
+            "action": -1,
+            "margin_plus_minus": 0.6000000000000001,
+            "risk": 0.5,
+            "risk_minus": 0.5,
+            "risk_plus": 1.1
+          },
+          "net_gain_of_probe": -0.09999999999999998,
+          "probe": {
+            "branch_actions": [
+              -1,
+              -1
+            ],
+            "branch_actions_same": true,
+            "branches": [
+              {
+                "action": -1,
+                "action_label": "-",
+                "action_risk_margin_plus_minus": -5.551115123125783e-17,
+                "branch_probability": 0.5,
+                "chosen_unnormalized_risk": 0.39999999999999997,
+                "joint_mass_h_minus": 0.09999999999999998,
+                "joint_mass_h_plus": 0.4,
+                "posterior_p_plus": 0.8,
+                "unnormalized_risk_minus": 0.4,
+                "unnormalized_risk_plus": 0.39999999999999997,
+                "y": 1
+              },
+              {
+                "action": -1,
+                "action_label": "-",
+                "action_risk_margin_plus_minus": 0.6,
+                "branch_probability": 0.5,
+                "chosen_unnormalized_risk": 0.09999999999999998,
+                "joint_mass_h_minus": 0.4,
+                "joint_mass_h_plus": 0.09999999999999998,
+                "posterior_p_plus": 0.19999999999999996,
+                "unnormalized_risk_minus": 0.09999999999999998,
+                "unnormalized_risk_plus": 0.7,
+                "y": -1
+              }
+            ],
+            "decision_information_before_probe_cost": 5.551115123125783e-17,
+            "probe_cost": 0.1,
+            "risk": 0.6,
+            "risk_without_probe_cost": 0.49999999999999994
+          },
+          "risk": 0.5
+        },
+        "direct_myopic": {
+          "action": -1,
+          "margin_plus_minus": 0.6000000000000001,
+          "risk": 0.5,
+          "risk_minus": 0.5,
+          "risk_plus": 1.1
+        },
+        "entropy_equal_mi_favor_H": {
+          "branch_actions": [
+            -1,
+            -1
+          ],
+          "h_probe": {
+            "branch_actions": [
+              -1,
+              -1
+            ],
+            "branch_actions_same": true,
+            "branches": [
+              {
+                "action": -1,
+                "action_label": "-",
+                "action_risk_margin_plus_minus": -5.551115123125783e-17,
+                "branch_probability": 0.5,
+                "chosen_unnormalized_risk": 0.39999999999999997,
+                "joint_mass_h_minus": 0.09999999999999998,
+                "joint_mass_h_plus": 0.4,
+                "posterior_p_plus": 0.8,
+                "unnormalized_risk_minus": 0.4,
+                "unnormalized_risk_plus": 0.39999999999999997,
+                "y": 1
+              },
+              {
+                "action": -1,
+                "action_label": "-",
+                "action_risk_margin_plus_minus": 0.6,
+                "branch_probability": 0.5,
+                "chosen_unnormalized_risk": 0.09999999999999998,
+                "joint_mass_h_minus": 0.4,
+                "joint_mass_h_plus": 0.09999999999999998,
+                "posterior_p_plus": 0.19999999999999996,
+                "unnormalized_risk_minus": 0.09999999999999998,
+                "unnormalized_risk_plus": 0.7,
+                "y": -1
+              }
+            ],
+            "decision_information_before_probe_cost": 5.551115123125783e-17,
+            "probe_cost": 0.1,
+            "risk": 0.6,
+            "risk_without_probe_cost": 0.49999999999999994
+          },
+          "mi_h_bits": 0.2780719051126377,
+          "mi_u_bits": 0.2780719051126377,
+          "risk": 0.6,
+          "selected_sensor": "H",
+          "tie_break": "H",
+          "u_risk": 0.6
+        },
+        "entropy_equal_mi_favor_U": {
+          "branch_actions": [
+            -1,
+            -1
+          ],
+          "h_probe": {
+            "branch_actions": [
+              -1,
+              -1
+            ],
+            "branch_actions_same": true,
+            "branches": [
+              {
+                "action": -1,
+                "action_label": "-",
+                "action_risk_margin_plus_minus": -5.551115123125783e-17,
+                "branch_probability": 0.5,
+                "chosen_unnormalized_risk": 0.39999999999999997,
+                "joint_mass_h_minus": 0.09999999999999998,
+                "joint_mass_h_plus": 0.4,
+                "posterior_p_plus": 0.8,
+                "unnormalized_risk_minus": 0.4,
+                "unnormalized_risk_plus": 0.39999999999999997,
+                "y": 1
+              },
+              {
+                "action": -1,
+                "action_label": "-",
+                "action_risk_margin_plus_minus": 0.6,
+                "branch_probability": 0.5,
+                "chosen_unnormalized_risk": 0.09999999999999998,
+                "joint_mass_h_minus": 0.4,
+                "joint_mass_h_plus": 0.09999999999999998,
+                "posterior_p_plus": 0.19999999999999996,
+                "unnormalized_risk_minus": 0.09999999999999998,
+                "unnormalized_risk_plus": 0.7,
+                "y": -1
+              }
+            ],
+            "decision_information_before_probe_cost": 5.551115123125783e-17,
+            "probe_cost": 0.1,
+            "risk": 0.6,
+            "risk_without_probe_cost": 0.49999999999999994
+          },
+          "mi_h_bits": 0.2780719051126377,
+          "mi_u_bits": 0.2780719051126377,
+          "risk": 0.6,
+          "selected_sensor": "U",
+          "tie_break": "U",
+          "u_risk": 0.6
+        },
+        "entropy_strictly_higher_mi_U": {
+          "branch_actions": [
+            -1,
+            -1
+          ],
+          "h_probe": {
+            "branch_actions": [
+              -1,
+              -1
+            ],
+            "branch_actions_same": true,
+            "branches": [
+              {
+                "action": -1,
+                "action_label": "-",
+                "action_risk_margin_plus_minus": -5.551115123125783e-17,
+                "branch_probability": 0.5,
+                "chosen_unnormalized_risk": 0.39999999999999997,
+                "joint_mass_h_minus": 0.09999999999999998,
+                "joint_mass_h_plus": 0.4,
+                "posterior_p_plus": 0.8,
+                "unnormalized_risk_minus": 0.4,
+                "unnormalized_risk_plus": 0.39999999999999997,
+                "y": 1
+              },
+              {
+                "action": -1,
+                "action_label": "-",
+                "action_risk_margin_plus_minus": 0.6,
+                "branch_probability": 0.5,
+                "chosen_unnormalized_risk": 0.09999999999999998,
+                "joint_mass_h_minus": 0.4,
+                "joint_mass_h_plus": 0.09999999999999998,
+                "posterior_p_plus": 0.19999999999999996,
+                "unnormalized_risk_minus": 0.09999999999999998,
+                "unnormalized_risk_plus": 0.7,
+                "y": -1
+              }
+            ],
+            "decision_information_before_probe_cost": 5.551115123125783e-17,
+            "probe_cost": 0.1,
+            "risk": 0.6,
+            "risk_without_probe_cost": 0.49999999999999994
+          },
+          "mi_h_bits": 0.2780719051126377,
+          "mi_u_bits": 0.7136030428840436,
+          "risk": 0.6,
+          "selected_sensor": "U",
+          "tie_break": "U",
+          "u_risk": 0.6
+        },
+        "group": "default_grid",
+        "mi_equal_bits": 0.2780719051126377,
+        "mi_h_bits_high_u": 0.2780719051126377,
+        "mi_u_bits_high_u": 0.7136030428840436,
+        "name": "default_delta_0.6",
+        "parameters": {
+          "L": 1.0,
+          "c": 0.1,
+          "delta": 0.6,
+          "p": 0.5,
+          "r": 0.8
+        },
+        "two_step_bellman": {
+          "action_if_skip": -1,
+          "choice": "skip",
+          "direct_risk": 0.5,
+          "probe_branch_actions": [
+            -1,
+            -1
+          ],
+          "probe_risk": 0.6,
+          "risk": 0.5
+        }
+      },
+      {
+        "always_informative": {
+          "branch_actions": [
+            -1,
+            -1
+          ],
+          "choice": "probe",
+          "probe": {
+            "branch_actions": [
+              -1,
+              -1
+            ],
+            "branch_actions_same": true,
+            "branches": [
+              {
+                "action": -1,
+                "action_label": "-",
+                "action_risk_margin_plus_minus": 0.19999999999999996,
+                "branch_probability": 0.5,
+                "chosen_unnormalized_risk": 0.4,
+                "joint_mass_h_minus": 0.09999999999999998,
+                "joint_mass_h_plus": 0.4,
+                "posterior_p_plus": 0.8,
+                "unnormalized_risk_minus": 0.4,
+                "unnormalized_risk_plus": 0.6,
+                "y": 1
+              },
+              {
+                "action": -1,
+                "action_label": "-",
+                "action_risk_margin_plus_minus": 0.8,
+                "branch_probability": 0.5,
+                "chosen_unnormalized_risk": 0.09999999999999998,
+                "joint_mass_h_minus": 0.4,
+                "joint_mass_h_plus": 0.09999999999999998,
+                "posterior_p_plus": 0.19999999999999996,
+                "unnormalized_risk_minus": 0.09999999999999998,
+                "unnormalized_risk_plus": 0.9,
+                "y": -1
+              }
+            ],
+            "decision_information_before_probe_cost": 0.0,
+            "probe_cost": 0.1,
+            "risk": 0.6,
+            "risk_without_probe_cost": 0.5
+          },
+          "risk": 0.6
+        },
+        "cheap_exact_threshold": {
+          "choice": "skip",
+          "direct": {
+            "action": -1,
+            "margin_plus_minus": 1.0,
+            "risk": 0.5,
+            "risk_minus": 0.5,
+            "risk_plus": 1.5
+          },
+          "net_gain_of_probe": -0.09999999999999998,
+          "probe": {
+            "branch_actions": [
+              -1,
+              -1
+            ],
+            "branch_actions_same": true,
+            "branches": [
+              {
+                "action": -1,
+                "action_label": "-",
+                "action_risk_margin_plus_minus": 0.19999999999999996,
+                "branch_probability": 0.5,
+                "chosen_unnormalized_risk": 0.4,
+                "joint_mass_h_minus": 0.09999999999999998,
+                "joint_mass_h_plus": 0.4,
+                "posterior_p_plus": 0.8,
+                "unnormalized_risk_minus": 0.4,
+                "unnormalized_risk_plus": 0.6,
+                "y": 1
+              },
+              {
+                "action": -1,
+                "action_label": "-",
+                "action_risk_margin_plus_minus": 0.8,
+                "branch_probability": 0.5,
+                "chosen_unnormalized_risk": 0.09999999999999998,
+                "joint_mass_h_minus": 0.4,
+                "joint_mass_h_plus": 0.09999999999999998,
+                "posterior_p_plus": 0.19999999999999996,
+                "unnormalized_risk_minus": 0.09999999999999998,
+                "unnormalized_risk_plus": 0.9,
+                "y": -1
+              }
+            ],
+            "decision_information_before_probe_cost": 0.0,
+            "probe_cost": 0.1,
+            "risk": 0.6,
+            "risk_without_probe_cost": 0.5
+          },
+          "risk": 0.5
+        },
+        "direct_myopic": {
+          "action": -1,
+          "margin_plus_minus": 1.0,
+          "risk": 0.5,
+          "risk_minus": 0.5,
+          "risk_plus": 1.5
+        },
+        "entropy_equal_mi_favor_H": {
+          "branch_actions": [
+            -1,
+            -1
+          ],
+          "h_probe": {
+            "branch_actions": [
+              -1,
+              -1
+            ],
+            "branch_actions_same": true,
+            "branches": [
+              {
+                "action": -1,
+                "action_label": "-",
+                "action_risk_margin_plus_minus": 0.19999999999999996,
+                "branch_probability": 0.5,
+                "chosen_unnormalized_risk": 0.4,
+                "joint_mass_h_minus": 0.09999999999999998,
+                "joint_mass_h_plus": 0.4,
+                "posterior_p_plus": 0.8,
+                "unnormalized_risk_minus": 0.4,
+                "unnormalized_risk_plus": 0.6,
+                "y": 1
+              },
+              {
+                "action": -1,
+                "action_label": "-",
+                "action_risk_margin_plus_minus": 0.8,
+                "branch_probability": 0.5,
+                "chosen_unnormalized_risk": 0.09999999999999998,
+                "joint_mass_h_minus": 0.4,
+                "joint_mass_h_plus": 0.09999999999999998,
+                "posterior_p_plus": 0.19999999999999996,
+                "unnormalized_risk_minus": 0.09999999999999998,
+                "unnormalized_risk_plus": 0.9,
+                "y": -1
+              }
+            ],
+            "decision_information_before_probe_cost": 0.0,
+            "probe_cost": 0.1,
+            "risk": 0.6,
+            "risk_without_probe_cost": 0.5
+          },
+          "mi_h_bits": 0.2780719051126377,
+          "mi_u_bits": 0.2780719051126377,
+          "risk": 0.6,
+          "selected_sensor": "H",
+          "tie_break": "H",
+          "u_risk": 0.6
+        },
+        "entropy_equal_mi_favor_U": {
+          "branch_actions": [
+            -1,
+            -1
+          ],
+          "h_probe": {
+            "branch_actions": [
+              -1,
+              -1
+            ],
+            "branch_actions_same": true,
+            "branches": [
+              {
+                "action": -1,
+                "action_label": "-",
+                "action_risk_margin_plus_minus": 0.19999999999999996,
+                "branch_probability": 0.5,
+                "chosen_unnormalized_risk": 0.4,
+                "joint_mass_h_minus": 0.09999999999999998,
+                "joint_mass_h_plus": 0.4,
+                "posterior_p_plus": 0.8,
+                "unnormalized_risk_minus": 0.4,
+                "unnormalized_risk_plus": 0.6,
+                "y": 1
+              },
+              {
+                "action": -1,
+                "action_label": "-",
+                "action_risk_margin_plus_minus": 0.8,
+                "branch_probability": 0.5,
+                "chosen_unnormalized_risk": 0.09999999999999998,
+                "joint_mass_h_minus": 0.4,
+                "joint_mass_h_plus": 0.09999999999999998,
+                "posterior_p_plus": 0.19999999999999996,
+                "unnormalized_risk_minus": 0.09999999999999998,
+                "unnormalized_risk_plus": 0.9,
+                "y": -1
+              }
+            ],
+            "decision_information_before_probe_cost": 0.0,
+            "probe_cost": 0.1,
+            "risk": 0.6,
+            "risk_without_probe_cost": 0.5
+          },
+          "mi_h_bits": 0.2780719051126377,
+          "mi_u_bits": 0.2780719051126377,
+          "risk": 0.6,
+          "selected_sensor": "U",
+          "tie_break": "U",
+          "u_risk": 0.6
+        },
+        "entropy_strictly_higher_mi_U": {
+          "branch_actions": [
+            -1,
+            -1
+          ],
+          "h_probe": {
+            "branch_actions": [
+              -1,
+              -1
+            ],
+            "branch_actions_same": true,
+            "branches": [
+              {
+                "action": -1,
+                "action_label": "-",
+                "action_risk_margin_plus_minus": 0.19999999999999996,
+                "branch_probability": 0.5,
+                "chosen_unnormalized_risk": 0.4,
+                "joint_mass_h_minus": 0.09999999999999998,
+                "joint_mass_h_plus": 0.4,
+                "posterior_p_plus": 0.8,
+                "unnormalized_risk_minus": 0.4,
+                "unnormalized_risk_plus": 0.6,
+                "y": 1
+              },
+              {
+                "action": -1,
+                "action_label": "-",
+                "action_risk_margin_plus_minus": 0.8,
+                "branch_probability": 0.5,
+                "chosen_unnormalized_risk": 0.09999999999999998,
+                "joint_mass_h_minus": 0.4,
+                "joint_mass_h_plus": 0.09999999999999998,
+                "posterior_p_plus": 0.19999999999999996,
+                "unnormalized_risk_minus": 0.09999999999999998,
+                "unnormalized_risk_plus": 0.9,
+                "y": -1
+              }
+            ],
+            "decision_information_before_probe_cost": 0.0,
+            "probe_cost": 0.1,
+            "risk": 0.6,
+            "risk_without_probe_cost": 0.5
+          },
+          "mi_h_bits": 0.2780719051126377,
+          "mi_u_bits": 0.7136030428840436,
+          "risk": 0.6,
+          "selected_sensor": "U",
+          "tie_break": "U",
+          "u_risk": 0.6
+        },
+        "group": "default_grid",
+        "mi_equal_bits": 0.2780719051126377,
+        "mi_h_bits_high_u": 0.2780719051126377,
+        "mi_u_bits_high_u": 0.7136030428840436,
+        "name": "default_delta_1",
+        "parameters": {
+          "L": 1.0,
+          "c": 0.1,
+          "delta": 1.0,
+          "p": 0.5,
+          "r": 0.8
+        },
+        "two_step_bellman": {
+          "action_if_skip": -1,
+          "choice": "skip",
+          "direct_risk": 0.5,
+          "probe_branch_actions": [
+            -1,
+            -1
+          ],
+          "probe_risk": 0.6,
+          "risk": 0.5
+        }
+      }
+    ],
+    "bellman_choices": [
+      "probe",
+      "probe",
+      "probe",
+      "skip",
+      "skip",
+      "skip",
+      "skip"
+    ],
+    "cheap_choices": [
+      "probe",
+      "probe",
+      "probe",
+      "skip",
+      "skip",
+      "skip",
+      "skip"
+    ],
+    "cheap_equals_bellman": true,
+    "expected_threshold_choices": [
+      "probe",
+      "probe",
+      "probe",
+      "skip",
+      "skip",
+      "skip",
+      "skip"
+    ],
+    "threshold_grid_matches": true
+  },
+  "interpretation": {
+    "failure_to_success": "The unconditioned always-probe/entropy choices can pay for an observation outside its decision-value threshold; cheap-exact and two-step Bellman switch at Delta=.4 on the default grid.",
+    "same_mi_caveat": "Equal-MI H/U is a tie; favoring U is an allowed but unfavorable tie-break, not a universal entropy failure.",
+    "scope": "This is a standard binary Bayes threshold mechanism, not a claim of novel VOI theory, complete B, or real robot performance."
+  },
+  "mc": [
+    {
+      "name": "default_delta_0",
+      "policies": {
+        "always_informative_H": {
+          "analytic_minus_mc": 0.009570312499999956,
+          "analytic_risk": 0.29999999999999993,
+          "ci95": [
+            0.27840383833744187,
+            0.3024555366625581
+          ],
+          "mc_mean": 0.2904296875,
+          "mc_sd": 0.39268800471572735
+        },
+        "cheap_exact_threshold": {
+          "analytic_minus_mc": 0.009570312499999956,
+          "analytic_risk": 0.29999999999999993,
+          "ci95": [
+            0.27840383833744187,
+            0.3024555366625581
+          ],
+          "mc_mean": 0.2904296875,
+          "mc_sd": 0.39268800471572735
+        },
+        "entropy_equal_mi_favor_H": {
+          "analytic_minus_mc": 0.009570312499999956,
+          "analytic_risk": 0.29999999999999993,
+          "ci95": [
+            0.27840383833744187,
+            0.3024555366625581
+          ],
+          "mc_mean": 0.2904296875,
+          "mc_sd": 0.39268800471572735
+        },
+        "entropy_equal_mi_favor_U": {
+          "analytic_minus_mc": 1.1102230246251565e-16,
+          "analytic_risk": 0.6,
+          "ci95": [
+            0.5846859118611432,
+            0.6153140881388566
+          ],
+          "mc_mean": 0.5999999999999999,
+          "mc_sd": 0.5000610463343951
+        },
+        "entropy_strictly_higher_mi_U": {
+          "analytic_minus_mc": 1.1102230246251565e-16,
+          "analytic_risk": 0.6,
+          "ci95": [
+            0.5846859118611432,
+            0.6153140881388566
+          ],
+          "mc_mean": 0.5999999999999999,
+          "mc_sd": 0.5000610463343951
+        },
+        "myopic_no_observation": {
+          "analytic_minus_mc": 0.0,
+          "analytic_risk": 0.5,
+          "ci95": [
+            0.4846859118611433,
+            0.5153140881388567
+          ],
+          "mc_mean": 0.5,
+          "mc_sd": 0.5000610463343951
+        },
+        "two_step_bellman": {
+          "analytic_minus_mc": 0.009570312499999956,
+          "analytic_risk": 0.29999999999999993,
+          "ci95": [
+            0.27840383833744187,
+            0.3024555366625581
+          ],
+          "mc_mean": 0.2904296875,
+          "mc_sd": 0.39268800471572735
+        }
+      }
+    },
+    {
+      "name": "default_delta_0.2",
+      "policies": {
+        "always_informative_H": {
+          "analytic_minus_mc": 0.009570312499999956,
+          "analytic_risk": 0.3999999999999999,
+          "ci95": [
+            0.3780199373050288,
+            0.4028394376949711
+          ],
+          "mc_mean": 0.39042968749999996,
+          "mc_sd": 0.4052237789790489
+        },
+        "cheap_exact_threshold": {
+          "analytic_minus_mc": 0.009570312499999956,
+          "analytic_risk": 0.3999999999999999,
+          "ci95": [
+            0.3780199373050288,
+            0.4028394376949711
+          ],
+          "mc_mean": 0.39042968749999996,
+          "mc_sd": 0.4052237789790489
+        },
+        "entropy_equal_mi_favor_H": {
+          "analytic_minus_mc": 0.009570312499999956,
+          "analytic_risk": 0.3999999999999999,
+          "ci95": [
+            0.3780199373050288,
+            0.4028394376949711
+          ],
+          "mc_mean": 0.39042968749999996,
+          "mc_sd": 0.4052237789790489
+        },
+        "entropy_equal_mi_favor_U": {
+          "analytic_minus_mc": 1.1102230246251565e-16,
+          "analytic_risk": 0.6,
+          "ci95": [
+            0.5846859118611432,
+            0.6153140881388566
+          ],
+          "mc_mean": 0.5999999999999999,
+          "mc_sd": 0.5000610463343951
+        },
+        "entropy_strictly_higher_mi_U": {
+          "analytic_minus_mc": 1.1102230246251565e-16,
+          "analytic_risk": 0.6,
+          "ci95": [
+            0.5846859118611432,
+            0.6153140881388566
+          ],
+          "mc_mean": 0.5999999999999999,
+          "mc_sd": 0.5000610463343951
+        },
+        "myopic_no_observation": {
+          "analytic_minus_mc": 0.0,
+          "analytic_risk": 0.5,
+          "ci95": [
+            0.4846859118611433,
+            0.5153140881388567
+          ],
+          "mc_mean": 0.5,
+          "mc_sd": 0.5000610463343951
+        },
+        "two_step_bellman": {
+          "analytic_minus_mc": 0.009570312499999956,
+          "analytic_risk": 0.3999999999999999,
+          "ci95": [
+            0.3780199373050288,
+            0.4028394376949711
+          ],
+          "mc_mean": 0.39042968749999996,
+          "mc_sd": 0.4052237789790489
+        }
+      }
+    },
+    {
+      "name": "default_delta_0.39",
+      "policies": {
+        "always_informative_H": {
+          "analytic_minus_mc": 0.009570312500000067,
+          "analytic_risk": 0.495,
+          "ci95": [
+            0.4720024116359275,
+            0.49885696336407237
+          ],
+          "mc_mean": 0.48542968749999993,
+          "mc_sd": 0.4384497174841202
+        },
+        "cheap_exact_threshold": {
+          "analytic_minus_mc": 0.009570312500000067,
+          "analytic_risk": 0.495,
+          "ci95": [
+            0.4720024116359275,
+            0.49885696336407237
+          ],
+          "mc_mean": 0.48542968749999993,
+          "mc_sd": 0.4384497174841202
+        },
+        "entropy_equal_mi_favor_H": {
+          "analytic_minus_mc": 0.009570312500000067,
+          "analytic_risk": 0.495,
+          "ci95": [
+            0.4720024116359275,
+            0.49885696336407237
+          ],
+          "mc_mean": 0.48542968749999993,
+          "mc_sd": 0.4384497174841202
+        },
+        "entropy_equal_mi_favor_U": {
+          "analytic_minus_mc": 1.1102230246251565e-16,
+          "analytic_risk": 0.6,
+          "ci95": [
+            0.5846859118611432,
+            0.6153140881388566
+          ],
+          "mc_mean": 0.5999999999999999,
+          "mc_sd": 0.5000610463343951
+        },
+        "entropy_strictly_higher_mi_U": {
+          "analytic_minus_mc": 1.1102230246251565e-16,
+          "analytic_risk": 0.6,
+          "ci95": [
+            0.5846859118611432,
+            0.6153140881388566
+          ],
+          "mc_mean": 0.5999999999999999,
+          "mc_sd": 0.5000610463343951
+        },
+        "myopic_no_observation": {
+          "analytic_minus_mc": 0.0,
+          "analytic_risk": 0.5,
+          "ci95": [
+            0.4846859118611433,
+            0.5153140881388567
+          ],
+          "mc_mean": 0.5,
+          "mc_sd": 0.5000610463343951
+        },
+        "two_step_bellman": {
+          "analytic_minus_mc": 0.009570312500000067,
+          "analytic_risk": 0.495,
+          "ci95": [
+            0.4720024116359275,
+            0.49885696336407237
+          ],
+          "mc_mean": 0.48542968749999993,
+          "mc_sd": 0.4384497174841202
+        }
+      }
+    },
+    {
+      "name": "default_delta_0.4",
+      "policies": {
+        "always_informative_H": {
+          "analytic_minus_mc": 0.009570312500000067,
+          "analytic_risk": 0.5,
+          "ci95": [
+            0.47693359712669003,
+            0.5039257778733098
+          ],
+          "mc_mean": 0.49042968749999993,
+          "mc_sd": 0.44069676315737455
+        },
+        "cheap_exact_threshold": {
+          "analytic_minus_mc": 0.0,
+          "analytic_risk": 0.5,
+          "ci95": [
+            0.4846859118611433,
+            0.5153140881388567
+          ],
+          "mc_mean": 0.5,
+          "mc_sd": 0.5000610463343951
+        },
+        "entropy_equal_mi_favor_H": {
+          "analytic_minus_mc": 0.009570312500000067,
+          "analytic_risk": 0.5,
+          "ci95": [
+            0.47693359712669003,
+            0.5039257778733098
+          ],
+          "mc_mean": 0.49042968749999993,
+          "mc_sd": 0.44069676315737455
+        },
+        "entropy_equal_mi_favor_U": {
+          "analytic_minus_mc": 1.1102230246251565e-16,
+          "analytic_risk": 0.6,
+          "ci95": [
+            0.5846859118611432,
+            0.6153140881388566
+          ],
+          "mc_mean": 0.5999999999999999,
+          "mc_sd": 0.5000610463343951
+        },
+        "entropy_strictly_higher_mi_U": {
+          "analytic_minus_mc": 1.1102230246251565e-16,
+          "analytic_risk": 0.6,
+          "ci95": [
+            0.5846859118611432,
+            0.6153140881388566
+          ],
+          "mc_mean": 0.5999999999999999,
+          "mc_sd": 0.5000610463343951
+        },
+        "myopic_no_observation": {
+          "analytic_minus_mc": 0.0,
+          "analytic_risk": 0.5,
+          "ci95": [
+            0.4846859118611433,
+            0.5153140881388567
+          ],
+          "mc_mean": 0.5,
+          "mc_sd": 0.5000610463343951
+        },
+        "two_step_bellman": {
+          "analytic_minus_mc": 0.0,
+          "analytic_risk": 0.5,
+          "ci95": [
+            0.4846859118611433,
+            0.5153140881388567
+          ],
+          "mc_mean": 0.5,
+          "mc_sd": 0.5000610463343951
+        }
+      }
+    },
+    {
+      "name": "default_delta_0.41",
+      "policies": {
+        "always_informative_H": {
+          "analytic_minus_mc": 0.009570312500000011,
+          "analytic_risk": 0.5049999999999999,
+          "ci95": [
+            0.48186340289962765,
+            0.5089959721003722
+          ],
+          "mc_mean": 0.4954296874999999,
+          "mc_sd": 0.44298886166909607
+        },
+        "cheap_exact_threshold": {
+          "analytic_minus_mc": 0.0,
+          "analytic_risk": 0.5,
+          "ci95": [
+            0.4846859118611433,
+            0.5153140881388567
+          ],
+          "mc_mean": 0.5,
+          "mc_sd": 0.5000610463343951
+        },
+        "entropy_equal_mi_favor_H": {
+          "analytic_minus_mc": 0.009570312500000011,
+          "analytic_risk": 0.5049999999999999,
+          "ci95": [
+            0.48186340289962765,
+            0.5089959721003722
+          ],
+          "mc_mean": 0.4954296874999999,
+          "mc_sd": 0.44298886166909607
+        },
+        "entropy_equal_mi_favor_U": {
+          "analytic_minus_mc": 1.1102230246251565e-16,
+          "analytic_risk": 0.6,
+          "ci95": [
+            0.5846859118611432,
+            0.6153140881388566
+          ],
+          "mc_mean": 0.5999999999999999,
+          "mc_sd": 0.5000610463343951
+        },
+        "entropy_strictly_higher_mi_U": {
+          "analytic_minus_mc": 1.1102230246251565e-16,
+          "analytic_risk": 0.6,
+          "ci95": [
+            0.5846859118611432,
+            0.6153140881388566
+          ],
+          "mc_mean": 0.5999999999999999,
+          "mc_sd": 0.5000610463343951
+        },
+        "myopic_no_observation": {
+          "analytic_minus_mc": 0.0,
+          "analytic_risk": 0.5,
+          "ci95": [
+            0.4846859118611433,
+            0.5153140881388567
+          ],
+          "mc_mean": 0.5,
+          "mc_sd": 0.5000610463343951
+        },
+        "two_step_bellman": {
+          "analytic_minus_mc": 0.0,
+          "analytic_risk": 0.5,
+          "ci95": [
+            0.4846859118611433,
+            0.5153140881388567
+          ],
+          "mc_mean": 0.5,
+          "mc_sd": 0.5000610463343951
+        }
+      }
+    },
+    {
+      "name": "default_delta_0.6",
+      "policies": {
+        "always_informative_H": {
+          "analytic_minus_mc": 1.1102230246251565e-16,
+          "analytic_risk": 0.6,
+          "ci95": [
+            0.5846859118611432,
+            0.6153140881388566
+          ],
+          "mc_mean": 0.5999999999999999,
+          "mc_sd": 0.5000610463343951
+        },
+        "cheap_exact_threshold": {
+          "analytic_minus_mc": 0.0,
+          "analytic_risk": 0.5,
+          "ci95": [
+            0.4846859118611433,
+            0.5153140881388567
+          ],
+          "mc_mean": 0.5,
+          "mc_sd": 0.5000610463343951
+        },
+        "entropy_equal_mi_favor_H": {
+          "analytic_minus_mc": 1.1102230246251565e-16,
+          "analytic_risk": 0.6,
+          "ci95": [
+            0.5846859118611432,
+            0.6153140881388566
+          ],
+          "mc_mean": 0.5999999999999999,
+          "mc_sd": 0.5000610463343951
+        },
+        "entropy_equal_mi_favor_U": {
+          "analytic_minus_mc": 1.1102230246251565e-16,
+          "analytic_risk": 0.6,
+          "ci95": [
+            0.5846859118611432,
+            0.6153140881388566
+          ],
+          "mc_mean": 0.5999999999999999,
+          "mc_sd": 0.5000610463343951
+        },
+        "entropy_strictly_higher_mi_U": {
+          "analytic_minus_mc": 1.1102230246251565e-16,
+          "analytic_risk": 0.6,
+          "ci95": [
+            0.5846859118611432,
+            0.6153140881388566
+          ],
+          "mc_mean": 0.5999999999999999,
+          "mc_sd": 0.5000610463343951
+        },
+        "myopic_no_observation": {
+          "analytic_minus_mc": 0.0,
+          "analytic_risk": 0.5,
+          "ci95": [
+            0.4846859118611433,
+            0.5153140881388567
+          ],
+          "mc_mean": 0.5,
+          "mc_sd": 0.5000610463343951
+        },
+        "two_step_bellman": {
+          "analytic_minus_mc": 0.0,
+          "analytic_risk": 0.5,
+          "ci95": [
+            0.4846859118611433,
+            0.5153140881388567
+          ],
+          "mc_mean": 0.5,
+          "mc_sd": 0.5000610463343951
+        }
+      }
+    },
+    {
+      "name": "default_delta_1",
+      "policies": {
+        "always_informative_H": {
+          "analytic_minus_mc": 1.1102230246251565e-16,
+          "analytic_risk": 0.6,
+          "ci95": [
+            0.5846859118611432,
+            0.6153140881388566
+          ],
+          "mc_mean": 0.5999999999999999,
+          "mc_sd": 0.5000610463343951
+        },
+        "cheap_exact_threshold": {
+          "analytic_minus_mc": 0.0,
+          "analytic_risk": 0.5,
+          "ci95": [
+            0.4846859118611433,
+            0.5153140881388567
+          ],
+          "mc_mean": 0.5,
+          "mc_sd": 0.5000610463343951
+        },
+        "entropy_equal_mi_favor_H": {
+          "analytic_minus_mc": 1.1102230246251565e-16,
+          "analytic_risk": 0.6,
+          "ci95": [
+            0.5846859118611432,
+            0.6153140881388566
+          ],
+          "mc_mean": 0.5999999999999999,
+          "mc_sd": 0.5000610463343951
+        },
+        "entropy_equal_mi_favor_U": {
+          "analytic_minus_mc": 1.1102230246251565e-16,
+          "analytic_risk": 0.6,
+          "ci95": [
+            0.5846859118611432,
+            0.6153140881388566
+          ],
+          "mc_mean": 0.5999999999999999,
+          "mc_sd": 0.5000610463343951
+        },
+        "entropy_strictly_higher_mi_U": {
+          "analytic_minus_mc": 1.1102230246251565e-16,
+          "analytic_risk": 0.6,
+          "ci95": [
+            0.5846859118611432,
+            0.6153140881388566
+          ],
+          "mc_mean": 0.5999999999999999,
+          "mc_sd": 0.5000610463343951
+        },
+        "myopic_no_observation": {
+          "analytic_minus_mc": 0.0,
+          "analytic_risk": 0.5,
+          "ci95": [
+            0.4846859118611433,
+            0.5153140881388567
+          ],
+          "mc_mean": 0.5,
+          "mc_sd": 0.5000610463343951
+        },
+        "two_step_bellman": {
+          "analytic_minus_mc": 0.0,
+          "analytic_risk": 0.5,
+          "ci95": [
+            0.4846859118611433,
+            0.5153140881388567
+          ],
+          "mc_mean": 0.5,
+          "mc_sd": 0.5000610463343951
+        }
+      }
+    },
+    {
+      "name": "skewed_prior",
+      "policies": {
+        "always_informative_H": {
+          "analytic_minus_mc": -9.765624999991118e-05,
+          "analytic_risk": 0.4,
+          "ci95": [
+            0.3909052166745958,
+            0.40929009582540404
+          ],
+          "mc_mean": 0.40009765624999993,
+          "mc_sd": 0.3001668078936279
+        },
+        "cheap_exact_threshold": {
+          "analytic_minus_mc": -9.765625000007772e-05,
+          "analytic_risk": 0.3,
+          "ci95": [
+            0.29090521667459596,
+            0.3092900958254042
+          ],
+          "mc_mean": 0.30009765625000007,
+          "mc_sd": 0.30016680789362776
+        },
+        "entropy_equal_mi_favor_H": {
+          "analytic_minus_mc": -9.765624999991118e-05,
+          "analytic_risk": 0.4,
+          "ci95": [
+            0.3909052166745958,
+            0.40929009582540404
+          ],
+          "mc_mean": 0.40009765624999993,
+          "mc_sd": 0.3001668078936279
+        },
+        "entropy_equal_mi_favor_U": {
+          "analytic_minus_mc": -9.765624999991118e-05,
+          "analytic_risk": 0.4,
+          "ci95": [
+            0.3909052166745958,
+            0.40929009582540404
+          ],
+          "mc_mean": 0.40009765624999993,
+          "mc_sd": 0.3001668078936279
+        },
+        "entropy_strictly_higher_mi_U": {
+          "analytic_minus_mc": -9.765624999991118e-05,
+          "analytic_risk": 0.4,
+          "ci95": [
+            0.3909052166745958,
+            0.40929009582540404
+          ],
+          "mc_mean": 0.40009765624999993,
+          "mc_sd": 0.3001668078936279
+        },
+        "myopic_no_observation": {
+          "analytic_minus_mc": -9.765625000007772e-05,
+          "analytic_risk": 0.3,
+          "ci95": [
+            0.29090521667459596,
+            0.3092900958254042
+          ],
+          "mc_mean": 0.30009765625000007,
+          "mc_sd": 0.30016680789362776
+        },
+        "two_step_bellman": {
+          "analytic_minus_mc": -9.765625000007772e-05,
+          "analytic_risk": 0.3,
+          "ci95": [
+            0.29090521667459596,
+            0.3092900958254042
+          ],
+          "mc_mean": 0.30009765625000007,
+          "mc_sd": 0.30016680789362776
+        }
+      }
+    },
+    {
+      "name": "uninformative_signal",
+      "policies": {
+        "always_informative_H": {
+          "analytic_minus_mc": 1.1102230246251565e-16,
+          "analytic_risk": 0.6,
+          "ci95": [
+            0.5846859118611432,
+            0.6153140881388566
+          ],
+          "mc_mean": 0.5999999999999999,
+          "mc_sd": 0.5000610463343951
+        },
+        "cheap_exact_threshold": {
+          "analytic_minus_mc": 0.0,
+          "analytic_risk": 0.5,
+          "ci95": [
+            0.4846859118611433,
+            0.5153140881388567
+          ],
+          "mc_mean": 0.5,
+          "mc_sd": 0.5000610463343951
+        },
+        "entropy_equal_mi_favor_H": {
+          "analytic_minus_mc": 1.1102230246251565e-16,
+          "analytic_risk": 0.6,
+          "ci95": [
+            0.5846859118611432,
+            0.6153140881388566
+          ],
+          "mc_mean": 0.5999999999999999,
+          "mc_sd": 0.5000610463343951
+        },
+        "entropy_equal_mi_favor_U": {
+          "analytic_minus_mc": 1.1102230246251565e-16,
+          "analytic_risk": 0.6,
+          "ci95": [
+            0.5846859118611432,
+            0.6153140881388566
+          ],
+          "mc_mean": 0.5999999999999999,
+          "mc_sd": 0.5000610463343951
+        },
+        "entropy_strictly_higher_mi_U": {
+          "analytic_minus_mc": 1.1102230246251565e-16,
+          "analytic_risk": 0.6,
+          "ci95": [
+            0.5846859118611432,
+            0.6153140881388566
+          ],
+          "mc_mean": 0.5999999999999999,
+          "mc_sd": 0.5000610463343951
+        },
+        "myopic_no_observation": {
+          "analytic_minus_mc": 0.0,
+          "analytic_risk": 0.5,
+          "ci95": [
+            0.4846859118611433,
+            0.5153140881388567
+          ],
+          "mc_mean": 0.5,
+          "mc_sd": 0.5000610463343951
+        },
+        "two_step_bellman": {
+          "analytic_minus_mc": 0.0,
+          "analytic_risk": 0.5,
+          "ci95": [
+            0.4846859118611433,
+            0.5153140881388567
+          ],
+          "mc_mean": 0.5,
+          "mc_sd": 0.5000610463343951
+        }
+      }
+    },
+    {
+      "name": "high_observation_cost",
+      "policies": {
+        "always_informative_H": {
+          "analytic_minus_mc": 0.009570312500000067,
+          "analytic_risk": 0.5499999999999999,
+          "ci95": [
+            0.5284038383374418,
+            0.552455536662558
+          ],
+          "mc_mean": 0.5404296874999999,
+          "mc_sd": 0.39268800471572735
+        },
+        "cheap_exact_threshold": {
+          "analytic_minus_mc": 0.0,
+          "analytic_risk": 0.5,
+          "ci95": [
+            0.4846859118611433,
+            0.5153140881388567
+          ],
+          "mc_mean": 0.5,
+          "mc_sd": 0.5000610463343951
+        },
+        "entropy_equal_mi_favor_H": {
+          "analytic_minus_mc": 0.009570312500000067,
+          "analytic_risk": 0.5499999999999999,
+          "ci95": [
+            0.5284038383374418,
+            0.552455536662558
+          ],
+          "mc_mean": 0.5404296874999999,
+          "mc_sd": 0.39268800471572735
+        },
+        "entropy_equal_mi_favor_U": {
+          "analytic_minus_mc": 1.1102230246251565e-16,
+          "analytic_risk": 0.85,
+          "ci95": [
+            0.8346859118611432,
+            0.8653140881388566
+          ],
+          "mc_mean": 0.8499999999999999,
+          "mc_sd": 0.5000610463343951
+        },
+        "entropy_strictly_higher_mi_U": {
+          "analytic_minus_mc": 1.1102230246251565e-16,
+          "analytic_risk": 0.85,
+          "ci95": [
+            0.8346859118611432,
+            0.8653140881388566
+          ],
+          "mc_mean": 0.8499999999999999,
+          "mc_sd": 0.5000610463343951
+        },
+        "myopic_no_observation": {
+          "analytic_minus_mc": 0.0,
+          "analytic_risk": 0.5,
+          "ci95": [
+            0.4846859118611433,
+            0.5153140881388567
+          ],
+          "mc_mean": 0.5,
+          "mc_sd": 0.5000610463343951
+        },
+        "two_step_bellman": {
+          "analytic_minus_mc": 0.0,
+          "analytic_risk": 0.5,
+          "ci95": [
+            0.4846859118611433,
+            0.5153140881388567
+          ],
+          "mc_mean": 0.5,
+          "mc_sd": 0.5000610463343951
+        }
+      }
+    },
+    {
+      "name": "all_branches_choose_minus",
+      "policies": {
+        "always_informative_H": {
+          "analytic_minus_mc": 1.1102230246251565e-16,
+          "analytic_risk": 0.6,
+          "ci95": [
+            0.5846859118611432,
+            0.6153140881388566
+          ],
+          "mc_mean": 0.5999999999999999,
+          "mc_sd": 0.5000610463343951
+        },
+        "cheap_exact_threshold": {
+          "analytic_minus_mc": 0.0,
+          "analytic_risk": 0.5,
+          "ci95": [
+            0.4846859118611433,
+            0.5153140881388567
+          ],
+          "mc_mean": 0.5,
+          "mc_sd": 0.5000610463343951
+        },
+        "entropy_equal_mi_favor_H": {
+          "analytic_minus_mc": 1.1102230246251565e-16,
+          "analytic_risk": 0.6,
+          "ci95": [
+            0.5846859118611432,
+            0.6153140881388566
+          ],
+          "mc_mean": 0.5999999999999999,
+          "mc_sd": 0.5000610463343951
+        },
+        "entropy_equal_mi_favor_U": {
+          "analytic_minus_mc": 1.1102230246251565e-16,
+          "analytic_risk": 0.6,
+          "ci95": [
+            0.5846859118611432,
+            0.6153140881388566
+          ],
+          "mc_mean": 0.5999999999999999,
+          "mc_sd": 0.5000610463343951
+        },
+        "entropy_strictly_higher_mi_U": {
+          "analytic_minus_mc": 1.1102230246251565e-16,
+          "analytic_risk": 0.6,
+          "ci95": [
+            0.5846859118611432,
+            0.6153140881388566
+          ],
+          "mc_mean": 0.5999999999999999,
+          "mc_sd": 0.5000610463343951
+        },
+        "myopic_no_observation": {
+          "analytic_minus_mc": 0.0,
+          "analytic_risk": 0.5,
+          "ci95": [
+            0.4846859118611433,
+            0.5153140881388567
+          ],
+          "mc_mean": 0.5,
+          "mc_sd": 0.5000610463343951
+        },
+        "two_step_bellman": {
+          "analytic_minus_mc": 0.0,
+          "analytic_risk": 0.5,
+          "ci95": [
+            0.4846859118611433,
+            0.5153140881388567
+          ],
+          "mc_mean": 0.5,
+          "mc_sd": 0.5000610463343951
+        }
+      }
+    }
+  ],
+  "mi": {
+    "equal_mi_bits": 0.2780719051126377,
+    "h_default_bits": 0.2780719051126377,
+    "u_high_bits": 0.7136030428840436,
+    "u_high_strictly_greater": true
+  },
+  "pressure_groups": [
+    {
+      "always_informative": {
+        "branch_actions": [
+          1,
+          1
+        ],
+        "choice": "probe",
+        "probe": {
+          "branch_actions": [
+            1,
+            1
+          ],
+          "branch_actions_same": true,
+          "branches": [
+            {
+              "action": 1,
+              "action_label": "+",
+              "action_risk_margin_plus_minus": -0.552,
+              "branch_probability": 0.7400000000000001,
+              "chosen_unnormalized_risk": 0.168,
+              "joint_mass_h_minus": 0.01999999999999999,
+              "joint_mass_h_plus": 0.7200000000000001,
+              "posterior_p_plus": 0.9729729729729729,
+              "unnormalized_risk_minus": 0.7200000000000001,
+              "unnormalized_risk_plus": 0.168,
+              "y": 1
+            },
+            {
+              "action": 1,
+              "action_label": "+",
+              "action_risk_margin_plus_minus": -0.04799999999999999,
+              "branch_probability": 0.25999999999999995,
+              "chosen_unnormalized_risk": 0.13199999999999998,
+              "joint_mass_h_minus": 0.07999999999999999,
+              "joint_mass_h_plus": 0.17999999999999997,
+              "posterior_p_plus": 0.6923076923076923,
+              "unnormalized_risk_minus": 0.17999999999999997,
+              "unnormalized_risk_plus": 0.13199999999999998,
+              "y": -1
+            }
+          ],
+          "decision_information_before_probe_cost": 0.0,
+          "probe_cost": 0.1,
+          "risk": 0.4,
+          "risk_without_probe_cost": 0.3
+        },
+        "risk": 0.4
+      },
+      "cheap_exact_threshold": {
+        "choice": "skip",
+        "direct": {
+          "action": 1,
+          "margin_plus_minus": -0.6000000000000001,
+          "risk": 0.3,
+          "risk_minus": 0.9,
+          "risk_plus": 0.3
+        },
+        "net_gain_of_probe": -0.10000000000000003,
+        "probe": {
+          "branch_actions": [
+            1,
+            1
+          ],
+          "branch_actions_same": true,
+          "branches": [
+            {
+              "action": 1,
+              "action_label": "+",
+              "action_risk_margin_plus_minus": -0.552,
+              "branch_probability": 0.7400000000000001,
+              "chosen_unnormalized_risk": 0.168,
+              "joint_mass_h_minus": 0.01999999999999999,
+              "joint_mass_h_plus": 0.7200000000000001,
+              "posterior_p_plus": 0.9729729729729729,
+              "unnormalized_risk_minus": 0.7200000000000001,
+              "unnormalized_risk_plus": 0.168,
+              "y": 1
+            },
+            {
+              "action": 1,
+              "action_label": "+",
+              "action_risk_margin_plus_minus": -0.04799999999999999,
+              "branch_probability": 0.25999999999999995,
+              "chosen_unnormalized_risk": 0.13199999999999998,
+              "joint_mass_h_minus": 0.07999999999999999,
+              "joint_mass_h_plus": 0.17999999999999997,
+              "posterior_p_plus": 0.6923076923076923,
+              "unnormalized_risk_minus": 0.17999999999999997,
+              "unnormalized_risk_plus": 0.13199999999999998,
+              "y": -1
+            }
+          ],
+          "decision_information_before_probe_cost": 0.0,
+          "probe_cost": 0.1,
+          "risk": 0.4,
+          "risk_without_probe_cost": 0.3
+        },
+        "risk": 0.3
+      },
+      "direct_myopic": {
+        "action": 1,
+        "margin_plus_minus": -0.6000000000000001,
+        "risk": 0.3,
+        "risk_minus": 0.9,
+        "risk_plus": 0.3
+      },
+      "entropy_equal_mi_favor_H": {
+        "branch_actions": [
+          1,
+          1
+        ],
+        "h_probe": {
+          "branch_actions": [
+            1,
+            1
+          ],
+          "branch_actions_same": true,
+          "branches": [
+            {
+              "action": 1,
+              "action_label": "+",
+              "action_risk_margin_plus_minus": -0.552,
+              "branch_probability": 0.7400000000000001,
+              "chosen_unnormalized_risk": 0.168,
+              "joint_mass_h_minus": 0.01999999999999999,
+              "joint_mass_h_plus": 0.7200000000000001,
+              "posterior_p_plus": 0.9729729729729729,
+              "unnormalized_risk_minus": 0.7200000000000001,
+              "unnormalized_risk_plus": 0.168,
+              "y": 1
+            },
+            {
+              "action": 1,
+              "action_label": "+",
+              "action_risk_margin_plus_minus": -0.04799999999999999,
+              "branch_probability": 0.25999999999999995,
+              "chosen_unnormalized_risk": 0.13199999999999998,
+              "joint_mass_h_minus": 0.07999999999999999,
+              "joint_mass_h_plus": 0.17999999999999997,
+              "posterior_p_plus": 0.6923076923076923,
+              "unnormalized_risk_minus": 0.17999999999999997,
+              "unnormalized_risk_plus": 0.13199999999999998,
+              "y": -1
+            }
+          ],
+          "decision_information_before_probe_cost": 0.0,
+          "probe_cost": 0.1,
+          "risk": 0.4,
+          "risk_without_probe_cost": 0.3
+        },
+        "mi_h_bits": 0.2780719051126377,
+        "mi_u_bits": 0.2780719051126377,
+        "risk": 0.4,
+        "selected_sensor": "H",
+        "tie_break": "H",
+        "u_risk": 0.4
+      },
+      "entropy_equal_mi_favor_U": {
+        "branch_actions": [
+          1,
+          1
+        ],
+        "h_probe": {
+          "branch_actions": [
+            1,
+            1
+          ],
+          "branch_actions_same": true,
+          "branches": [
+            {
+              "action": 1,
+              "action_label": "+",
+              "action_risk_margin_plus_minus": -0.552,
+              "branch_probability": 0.7400000000000001,
+              "chosen_unnormalized_risk": 0.168,
+              "joint_mass_h_minus": 0.01999999999999999,
+              "joint_mass_h_plus": 0.7200000000000001,
+              "posterior_p_plus": 0.9729729729729729,
+              "unnormalized_risk_minus": 0.7200000000000001,
+              "unnormalized_risk_plus": 0.168,
+              "y": 1
+            },
+            {
+              "action": 1,
+              "action_label": "+",
+              "action_risk_margin_plus_minus": -0.04799999999999999,
+              "branch_probability": 0.25999999999999995,
+              "chosen_unnormalized_risk": 0.13199999999999998,
+              "joint_mass_h_minus": 0.07999999999999999,
+              "joint_mass_h_plus": 0.17999999999999997,
+              "posterior_p_plus": 0.6923076923076923,
+              "unnormalized_risk_minus": 0.17999999999999997,
+              "unnormalized_risk_plus": 0.13199999999999998,
+              "y": -1
+            }
+          ],
+          "decision_information_before_probe_cost": 0.0,
+          "probe_cost": 0.1,
+          "risk": 0.4,
+          "risk_without_probe_cost": 0.3
+        },
+        "mi_h_bits": 0.2780719051126377,
+        "mi_u_bits": 0.2780719051126377,
+        "risk": 0.4,
+        "selected_sensor": "U",
+        "tie_break": "U",
+        "u_risk": 0.4
+      },
+      "entropy_strictly_higher_mi_U": {
+        "branch_actions": [
+          1,
+          1
+        ],
+        "h_probe": {
+          "branch_actions": [
+            1,
+            1
+          ],
+          "branch_actions_same": true,
+          "branches": [
+            {
+              "action": 1,
+              "action_label": "+",
+              "action_risk_margin_plus_minus": -0.552,
+              "branch_probability": 0.7400000000000001,
+              "chosen_unnormalized_risk": 0.168,
+              "joint_mass_h_minus": 0.01999999999999999,
+              "joint_mass_h_plus": 0.7200000000000001,
+              "posterior_p_plus": 0.9729729729729729,
+              "unnormalized_risk_minus": 0.7200000000000001,
+              "unnormalized_risk_plus": 0.168,
+              "y": 1
+            },
+            {
+              "action": 1,
+              "action_label": "+",
+              "action_risk_margin_plus_minus": -0.04799999999999999,
+              "branch_probability": 0.25999999999999995,
+              "chosen_unnormalized_risk": 0.13199999999999998,
+              "joint_mass_h_minus": 0.07999999999999999,
+              "joint_mass_h_plus": 0.17999999999999997,
+              "posterior_p_plus": 0.6923076923076923,
+              "unnormalized_risk_minus": 0.17999999999999997,
+              "unnormalized_risk_plus": 0.13199999999999998,
+              "y": -1
+            }
+          ],
+          "decision_information_before_probe_cost": 0.0,
+          "probe_cost": 0.1,
+          "risk": 0.4,
+          "risk_without_probe_cost": 0.3
+        },
+        "mi_h_bits": 0.2780719051126377,
+        "mi_u_bits": 0.7136030428840436,
+        "risk": 0.4,
+        "selected_sensor": "U",
+        "tie_break": "U",
+        "u_risk": 0.4
+      },
+      "group": "zero_decision_gain",
+      "mi_equal_bits": 0.2780719051126377,
+      "mi_h_bits_high_u": 0.2780719051126377,
+      "mi_u_bits_high_u": 0.7136030428840436,
+      "name": "skewed_prior",
+      "parameters": {
+        "L": 1.0,
+        "c": 0.1,
+        "delta": 0.2,
+        "p": 0.9,
+        "r": 0.8
+      },
+      "two_step_bellman": {
+        "action_if_skip": 1,
+        "choice": "skip",
+        "direct_risk": 0.3,
+        "probe_branch_actions": [
+          1,
+          1
+        ],
+        "probe_risk": 0.4,
+        "risk": 0.3
+      }
+    },
+    {
+      "always_informative": {
+        "branch_actions": [
+          -1,
+          -1
+        ],
+        "choice": "probe",
+        "probe": {
+          "branch_actions": [
+            -1,
+            -1
+          ],
+          "branch_actions_same": true,
+          "branches": [
+            {
+              "action": -1,
+              "action_label": "-",
+              "action_risk_margin_plus_minus": 0.0,
+              "branch_probability": 0.5,
+              "chosen_unnormalized_risk": 0.25,
+              "joint_mass_h_minus": 0.25,
+              "joint_mass_h_plus": 0.25,
+              "posterior_p_plus": 0.5,
+              "unnormalized_risk_minus": 0.25,
+              "unnormalized_risk_plus": 0.25,
+              "y": 1
+            },
+            {
+              "action": -1,
+              "action_label": "-",
+              "action_risk_margin_plus_minus": 0.0,
+              "branch_probability": 0.5,
+              "chosen_unnormalized_risk": 0.25,
+              "joint_mass_h_minus": 0.25,
+              "joint_mass_h_plus": 0.25,
+              "posterior_p_plus": 0.5,
+              "unnormalized_risk_minus": 0.25,
+              "unnormalized_risk_plus": 0.25,
+              "y": -1
+            }
+          ],
+          "decision_information_before_probe_cost": 0.0,
+          "probe_cost": 0.1,
+          "risk": 0.6,
+          "risk_without_probe_cost": 0.5
+        },
+        "risk": 0.6
+      },
+      "cheap_exact_threshold": {
+        "choice": "skip",
+        "direct": {
+          "action": -1,
+          "margin_plus_minus": 0.0,
+          "risk": 0.5,
+          "risk_minus": 0.5,
+          "risk_plus": 0.5
+        },
+        "net_gain_of_probe": -0.09999999999999998,
+        "probe": {
+          "branch_actions": [
+            -1,
+            -1
+          ],
+          "branch_actions_same": true,
+          "branches": [
+            {
+              "action": -1,
+              "action_label": "-",
+              "action_risk_margin_plus_minus": 0.0,
+              "branch_probability": 0.5,
+              "chosen_unnormalized_risk": 0.25,
+              "joint_mass_h_minus": 0.25,
+              "joint_mass_h_plus": 0.25,
+              "posterior_p_plus": 0.5,
+              "unnormalized_risk_minus": 0.25,
+              "unnormalized_risk_plus": 0.25,
+              "y": 1
+            },
+            {
+              "action": -1,
+              "action_label": "-",
+              "action_risk_margin_plus_minus": 0.0,
+              "branch_probability": 0.5,
+              "chosen_unnormalized_risk": 0.25,
+              "joint_mass_h_minus": 0.25,
+              "joint_mass_h_plus": 0.25,
+              "posterior_p_plus": 0.5,
+              "unnormalized_risk_minus": 0.25,
+              "unnormalized_risk_plus": 0.25,
+              "y": -1
+            }
+          ],
+          "decision_information_before_probe_cost": 0.0,
+          "probe_cost": 0.1,
+          "risk": 0.6,
+          "risk_without_probe_cost": 0.5
+        },
+        "risk": 0.5
+      },
+      "direct_myopic": {
+        "action": -1,
+        "margin_plus_minus": 0.0,
+        "risk": 0.5,
+        "risk_minus": 0.5,
+        "risk_plus": 0.5
+      },
+      "entropy_equal_mi_favor_H": {
+        "branch_actions": [
+          -1,
+          -1
+        ],
+        "h_probe": {
+          "branch_actions": [
+            -1,
+            -1
+          ],
+          "branch_actions_same": true,
+          "branches": [
+            {
+              "action": -1,
+              "action_label": "-",
+              "action_risk_margin_plus_minus": 0.0,
+              "branch_probability": 0.5,
+              "chosen_unnormalized_risk": 0.25,
+              "joint_mass_h_minus": 0.25,
+              "joint_mass_h_plus": 0.25,
+              "posterior_p_plus": 0.5,
+              "unnormalized_risk_minus": 0.25,
+              "unnormalized_risk_plus": 0.25,
+              "y": 1
+            },
+            {
+              "action": -1,
+              "action_label": "-",
+              "action_risk_margin_plus_minus": 0.0,
+              "branch_probability": 0.5,
+              "chosen_unnormalized_risk": 0.25,
+              "joint_mass_h_minus": 0.25,
+              "joint_mass_h_plus": 0.25,
+              "posterior_p_plus": 0.5,
+              "unnormalized_risk_minus": 0.25,
+              "unnormalized_risk_plus": 0.25,
+              "y": -1
+            }
+          ],
+          "decision_information_before_probe_cost": 0.0,
+          "probe_cost": 0.1,
+          "risk": 0.6,
+          "risk_without_probe_cost": 0.5
+        },
+        "mi_h_bits": 0.0,
+        "mi_u_bits": 0.0,
+        "risk": 0.6,
+        "selected_sensor": "H",
+        "tie_break": "H",
+        "u_risk": 0.6
+      },
+      "entropy_equal_mi_favor_U": {
+        "branch_actions": [
+          -1,
+          -1
+        ],
+        "h_probe": {
+          "branch_actions": [
+            -1,
+            -1
+          ],
+          "branch_actions_same": true,
+          "branches": [
+            {
+              "action": -1,
+              "action_label": "-",
+              "action_risk_margin_plus_minus": 0.0,
+              "branch_probability": 0.5,
+              "chosen_unnormalized_risk": 0.25,
+              "joint_mass_h_minus": 0.25,
+              "joint_mass_h_plus": 0.25,
+              "posterior_p_plus": 0.5,
+              "unnormalized_risk_minus": 0.25,
+              "unnormalized_risk_plus": 0.25,
+              "y": 1
+            },
+            {
+              "action": -1,
+              "action_label": "-",
+              "action_risk_margin_plus_minus": 0.0,
+              "branch_probability": 0.5,
+              "chosen_unnormalized_risk": 0.25,
+              "joint_mass_h_minus": 0.25,
+              "joint_mass_h_plus": 0.25,
+              "posterior_p_plus": 0.5,
+              "unnormalized_risk_minus": 0.25,
+              "unnormalized_risk_plus": 0.25,
+              "y": -1
+            }
+          ],
+          "decision_information_before_probe_cost": 0.0,
+          "probe_cost": 0.1,
+          "risk": 0.6,
+          "risk_without_probe_cost": 0.5
+        },
+        "mi_h_bits": 0.0,
+        "mi_u_bits": 0.0,
+        "risk": 0.6,
+        "selected_sensor": "U",
+        "tie_break": "U",
+        "u_risk": 0.6
+      },
+      "entropy_strictly_higher_mi_U": {
+        "branch_actions": [
+          -1,
+          -1
+        ],
+        "h_probe": {
+          "branch_actions": [
+            -1,
+            -1
+          ],
+          "branch_actions_same": true,
+          "branches": [
+            {
+              "action": -1,
+              "action_label": "-",
+              "action_risk_margin_plus_minus": 0.0,
+              "branch_probability": 0.5,
+              "chosen_unnormalized_risk": 0.25,
+              "joint_mass_h_minus": 0.25,
+              "joint_mass_h_plus": 0.25,
+              "posterior_p_plus": 0.5,
+              "unnormalized_risk_minus": 0.25,
+              "unnormalized_risk_plus": 0.25,
+              "y": 1
+            },
+            {
+              "action": -1,
+              "action_label": "-",
+              "action_risk_margin_plus_minus": 0.0,
+              "branch_probability": 0.5,
+              "chosen_unnormalized_risk": 0.25,
+              "joint_mass_h_minus": 0.25,
+              "joint_mass_h_plus": 0.25,
+              "posterior_p_plus": 0.5,
+              "unnormalized_risk_minus": 0.25,
+              "unnormalized_risk_plus": 0.25,
+              "y": -1
+            }
+          ],
+          "decision_information_before_probe_cost": 0.0,
+          "probe_cost": 0.1,
+          "risk": 0.6,
+          "risk_without_probe_cost": 0.5
+        },
+        "mi_h_bits": 0.0,
+        "mi_u_bits": 0.7136030428840436,
+        "risk": 0.6,
+        "selected_sensor": "U",
+        "tie_break": "U",
+        "u_risk": 0.6
+      },
+      "group": "zero_decision_gain",
+      "mi_equal_bits": 0.0,
+      "mi_h_bits_high_u": 0.0,
+      "mi_u_bits_high_u": 0.7136030428840436,
+      "name": "uninformative_signal",
+      "parameters": {
+        "L": 1.0,
+        "c": 0.1,
+        "delta": 0.0,
+        "p": 0.5,
+        "r": 0.5
+      },
+      "two_step_bellman": {
+        "action_if_skip": -1,
+        "choice": "skip",
+        "direct_risk": 0.5,
+        "probe_branch_actions": [
+          -1,
+          -1
+        ],
+        "probe_risk": 0.6,
+        "risk": 0.5
+      }
+    },
+    {
+      "always_informative": {
+        "branch_actions": [
+          1,
+          -1
+        ],
+        "choice": "probe",
+        "probe": {
+          "branch_actions": [
+            1,
+            -1
+          ],
+          "branch_actions_same": false,
+          "branches": [
+            {
+              "action": 1,
+              "action_label": "+",
+              "action_risk_margin_plus_minus": -0.30000000000000004,
+              "branch_probability": 0.5,
+              "chosen_unnormalized_risk": 0.09999999999999998,
+              "joint_mass_h_minus": 0.09999999999999998,
+              "joint_mass_h_plus": 0.4,
+              "posterior_p_plus": 0.8,
+              "unnormalized_risk_minus": 0.4,
+              "unnormalized_risk_plus": 0.09999999999999998,
+              "y": 1
+            },
+            {
+              "action": -1,
+              "action_label": "-",
+              "action_risk_margin_plus_minus": 0.30000000000000004,
+              "branch_probability": 0.5,
+              "chosen_unnormalized_risk": 0.09999999999999998,
+              "joint_mass_h_minus": 0.4,
+              "joint_mass_h_plus": 0.09999999999999998,
+              "posterior_p_plus": 0.19999999999999996,
+              "unnormalized_risk_minus": 0.09999999999999998,
+              "unnormalized_risk_plus": 0.4,
+              "y": -1
+            }
+          ],
+          "decision_information_before_probe_cost": 0.30000000000000004,
+          "probe_cost": 0.35,
+          "risk": 0.5499999999999999,
+          "risk_without_probe_cost": 0.19999999999999996
+        },
+        "risk": 0.5499999999999999
+      },
+      "cheap_exact_threshold": {
+        "choice": "skip",
+        "direct": {
+          "action": -1,
+          "margin_plus_minus": 0.0,
+          "risk": 0.5,
+          "risk_minus": 0.5,
+          "risk_plus": 0.5
+        },
+        "net_gain_of_probe": -0.04999999999999993,
+        "probe": {
+          "branch_actions": [
+            1,
+            -1
+          ],
+          "branch_actions_same": false,
+          "branches": [
+            {
+              "action": 1,
+              "action_label": "+",
+              "action_risk_margin_plus_minus": -0.30000000000000004,
+              "branch_probability": 0.5,
+              "chosen_unnormalized_risk": 0.09999999999999998,
+              "joint_mass_h_minus": 0.09999999999999998,
+              "joint_mass_h_plus": 0.4,
+              "posterior_p_plus": 0.8,
+              "unnormalized_risk_minus": 0.4,
+              "unnormalized_risk_plus": 0.09999999999999998,
+              "y": 1
+            },
+            {
+              "action": -1,
+              "action_label": "-",
+              "action_risk_margin_plus_minus": 0.30000000000000004,
+              "branch_probability": 0.5,
+              "chosen_unnormalized_risk": 0.09999999999999998,
+              "joint_mass_h_minus": 0.4,
+              "joint_mass_h_plus": 0.09999999999999998,
+              "posterior_p_plus": 0.19999999999999996,
+              "unnormalized_risk_minus": 0.09999999999999998,
+              "unnormalized_risk_plus": 0.4,
+              "y": -1
+            }
+          ],
+          "decision_information_before_probe_cost": 0.30000000000000004,
+          "probe_cost": 0.35,
+          "risk": 0.5499999999999999,
+          "risk_without_probe_cost": 0.19999999999999996
+        },
+        "risk": 0.5
+      },
+      "direct_myopic": {
+        "action": -1,
+        "margin_plus_minus": 0.0,
+        "risk": 0.5,
+        "risk_minus": 0.5,
+        "risk_plus": 0.5
+      },
+      "entropy_equal_mi_favor_H": {
+        "branch_actions": [
+          1,
+          -1
+        ],
+        "h_probe": {
+          "branch_actions": [
+            1,
+            -1
+          ],
+          "branch_actions_same": false,
+          "branches": [
+            {
+              "action": 1,
+              "action_label": "+",
+              "action_risk_margin_plus_minus": -0.30000000000000004,
+              "branch_probability": 0.5,
+              "chosen_unnormalized_risk": 0.09999999999999998,
+              "joint_mass_h_minus": 0.09999999999999998,
+              "joint_mass_h_plus": 0.4,
+              "posterior_p_plus": 0.8,
+              "unnormalized_risk_minus": 0.4,
+              "unnormalized_risk_plus": 0.09999999999999998,
+              "y": 1
+            },
+            {
+              "action": -1,
+              "action_label": "-",
+              "action_risk_margin_plus_minus": 0.30000000000000004,
+              "branch_probability": 0.5,
+              "chosen_unnormalized_risk": 0.09999999999999998,
+              "joint_mass_h_minus": 0.4,
+              "joint_mass_h_plus": 0.09999999999999998,
+              "posterior_p_plus": 0.19999999999999996,
+              "unnormalized_risk_minus": 0.09999999999999998,
+              "unnormalized_risk_plus": 0.4,
+              "y": -1
+            }
+          ],
+          "decision_information_before_probe_cost": 0.30000000000000004,
+          "probe_cost": 0.35,
+          "risk": 0.5499999999999999,
+          "risk_without_probe_cost": 0.19999999999999996
+        },
+        "mi_h_bits": 0.2780719051126377,
+        "mi_u_bits": 0.2780719051126377,
+        "risk": 0.5499999999999999,
+        "selected_sensor": "H",
+        "tie_break": "H",
+        "u_risk": 0.85
+      },
+      "entropy_equal_mi_favor_U": {
+        "branch_actions": [
+          -1,
+          -1
+        ],
+        "h_probe": {
+          "branch_actions": [
+            1,
+            -1
+          ],
+          "branch_actions_same": false,
+          "branches": [
+            {
+              "action": 1,
+              "action_label": "+",
+              "action_risk_margin_plus_minus": -0.30000000000000004,
+              "branch_probability": 0.5,
+              "chosen_unnormalized_risk": 0.09999999999999998,
+              "joint_mass_h_minus": 0.09999999999999998,
+              "joint_mass_h_plus": 0.4,
+              "posterior_p_plus": 0.8,
+              "unnormalized_risk_minus": 0.4,
+              "unnormalized_risk_plus": 0.09999999999999998,
+              "y": 1
+            },
+            {
+              "action": -1,
+              "action_label": "-",
+              "action_risk_margin_plus_minus": 0.30000000000000004,
+              "branch_probability": 0.5,
+              "chosen_unnormalized_risk": 0.09999999999999998,
+              "joint_mass_h_minus": 0.4,
+              "joint_mass_h_plus": 0.09999999999999998,
+              "posterior_p_plus": 0.19999999999999996,
+              "unnormalized_risk_minus": 0.09999999999999998,
+              "unnormalized_risk_plus": 0.4,
+              "y": -1
+            }
+          ],
+          "decision_information_before_probe_cost": 0.30000000000000004,
+          "probe_cost": 0.35,
+          "risk": 0.5499999999999999,
+          "risk_without_probe_cost": 0.19999999999999996
+        },
+        "mi_h_bits": 0.2780719051126377,
+        "mi_u_bits": 0.2780719051126377,
+        "risk": 0.85,
+        "selected_sensor": "U",
+        "tie_break": "U",
+        "u_risk": 0.85
+      },
+      "entropy_strictly_higher_mi_U": {
+        "branch_actions": [
+          -1,
+          -1
+        ],
+        "h_probe": {
+          "branch_actions": [
+            1,
+            -1
+          ],
+          "branch_actions_same": false,
+          "branches": [
+            {
+              "action": 1,
+              "action_label": "+",
+              "action_risk_margin_plus_minus": -0.30000000000000004,
+              "branch_probability": 0.5,
+              "chosen_unnormalized_risk": 0.09999999999999998,
+              "joint_mass_h_minus": 0.09999999999999998,
+              "joint_mass_h_plus": 0.4,
+              "posterior_p_plus": 0.8,
+              "unnormalized_risk_minus": 0.4,
+              "unnormalized_risk_plus": 0.09999999999999998,
+              "y": 1
+            },
+            {
+              "action": -1,
+              "action_label": "-",
+              "action_risk_margin_plus_minus": 0.30000000000000004,
+              "branch_probability": 0.5,
+              "chosen_unnormalized_risk": 0.09999999999999998,
+              "joint_mass_h_minus": 0.4,
+              "joint_mass_h_plus": 0.09999999999999998,
+              "posterior_p_plus": 0.19999999999999996,
+              "unnormalized_risk_minus": 0.09999999999999998,
+              "unnormalized_risk_plus": 0.4,
+              "y": -1
+            }
+          ],
+          "decision_information_before_probe_cost": 0.30000000000000004,
+          "probe_cost": 0.35,
+          "risk": 0.5499999999999999,
+          "risk_without_probe_cost": 0.19999999999999996
+        },
+        "mi_h_bits": 0.2780719051126377,
+        "mi_u_bits": 0.7136030428840436,
+        "risk": 0.85,
+        "selected_sensor": "U",
+        "tie_break": "U",
+        "u_risk": 0.85
+      },
+      "group": "zero_net_gain",
+      "mi_equal_bits": 0.2780719051126377,
+      "mi_h_bits_high_u": 0.2780719051126377,
+      "mi_u_bits_high_u": 0.7136030428840436,
+      "name": "high_observation_cost",
+      "parameters": {
+        "L": 1.0,
+        "c": 0.35,
+        "delta": 0.0,
+        "p": 0.5,
+        "r": 0.8
+      },
+      "two_step_bellman": {
+        "action_if_skip": -1,
+        "choice": "skip",
+        "direct_risk": 0.5,
+        "probe_branch_actions": [
+          1,
+          -1
+        ],
+        "probe_risk": 0.5499999999999999,
+        "risk": 0.5
+      }
+    },
+    {
+      "always_informative": {
+        "branch_actions": [
+          -1,
+          -1
+        ],
+        "choice": "probe",
+        "probe": {
+          "branch_actions": [
+            -1,
+            -1
+          ],
+          "branch_actions_same": true,
+          "branches": [
+            {
+              "action": -1,
+              "action_label": "-",
+              "action_risk_margin_plus_minus": -5.551115123125783e-17,
+              "branch_probability": 0.5,
+              "chosen_unnormalized_risk": 0.39999999999999997,
+              "joint_mass_h_minus": 0.09999999999999998,
+              "joint_mass_h_plus": 0.4,
+              "posterior_p_plus": 0.8,
+              "unnormalized_risk_minus": 0.4,
+              "unnormalized_risk_plus": 0.39999999999999997,
+              "y": 1
+            },
+            {
+              "action": -1,
+              "action_label": "-",
+              "action_risk_margin_plus_minus": 0.6,
+              "branch_probability": 0.5,
+              "chosen_unnormalized_risk": 0.09999999999999998,
+              "joint_mass_h_minus": 0.4,
+              "joint_mass_h_plus": 0.09999999999999998,
+              "posterior_p_plus": 0.19999999999999996,
+              "unnormalized_risk_minus": 0.09999999999999998,
+              "unnormalized_risk_plus": 0.7,
+              "y": -1
+            }
+          ],
+          "decision_information_before_probe_cost": 5.551115123125783e-17,
+          "probe_cost": 0.1,
+          "risk": 0.6,
+          "risk_without_probe_cost": 0.49999999999999994
+        },
+        "risk": 0.6
+      },
+      "cheap_exact_threshold": {
+        "choice": "skip",
+        "direct": {
+          "action": -1,
+          "margin_plus_minus": 0.6000000000000001,
+          "risk": 0.5,
+          "risk_minus": 0.5,
+          "risk_plus": 1.1
+        },
+        "net_gain_of_probe": -0.09999999999999998,
+        "probe": {
+          "branch_actions": [
+            -1,
+            -1
+          ],
+          "branch_actions_same": true,
+          "branches": [
+            {
+              "action": -1,
+              "action_label": "-",
+              "action_risk_margin_plus_minus": -5.551115123125783e-17,
+              "branch_probability": 0.5,
+              "chosen_unnormalized_risk": 0.39999999999999997,
+              "joint_mass_h_minus": 0.09999999999999998,
+              "joint_mass_h_plus": 0.4,
+              "posterior_p_plus": 0.8,
+              "unnormalized_risk_minus": 0.4,
+              "unnormalized_risk_plus": 0.39999999999999997,
+              "y": 1
+            },
+            {
+              "action": -1,
+              "action_label": "-",
+              "action_risk_margin_plus_minus": 0.6,
+              "branch_probability": 0.5,
+              "chosen_unnormalized_risk": 0.09999999999999998,
+              "joint_mass_h_minus": 0.4,
+              "joint_mass_h_plus": 0.09999999999999998,
+              "posterior_p_plus": 0.19999999999999996,
+              "unnormalized_risk_minus": 0.09999999999999998,
+              "unnormalized_risk_plus": 0.7,
+              "y": -1
+            }
+          ],
+          "decision_information_before_probe_cost": 5.551115123125783e-17,
+          "probe_cost": 0.1,
+          "risk": 0.6,
+          "risk_without_probe_cost": 0.49999999999999994
+        },
+        "risk": 0.5
+      },
+      "direct_myopic": {
+        "action": -1,
+        "margin_plus_minus": 0.6000000000000001,
+        "risk": 0.5,
+        "risk_minus": 0.5,
+        "risk_plus": 1.1
+      },
+      "entropy_equal_mi_favor_H": {
+        "branch_actions": [
+          -1,
+          -1
+        ],
+        "h_probe": {
+          "branch_actions": [
+            -1,
+            -1
+          ],
+          "branch_actions_same": true,
+          "branches": [
+            {
+              "action": -1,
+              "action_label": "-",
+              "action_risk_margin_plus_minus": -5.551115123125783e-17,
+              "branch_probability": 0.5,
+              "chosen_unnormalized_risk": 0.39999999999999997,
+              "joint_mass_h_minus": 0.09999999999999998,
+              "joint_mass_h_plus": 0.4,
+              "posterior_p_plus": 0.8,
+              "unnormalized_risk_minus": 0.4,
+              "unnormalized_risk_plus": 0.39999999999999997,
+              "y": 1
+            },
+            {
+              "action": -1,
+              "action_label": "-",
+              "action_risk_margin_plus_minus": 0.6,
+              "branch_probability": 0.5,
+              "chosen_unnormalized_risk": 0.09999999999999998,
+              "joint_mass_h_minus": 0.4,
+              "joint_mass_h_plus": 0.09999999999999998,
+              "posterior_p_plus": 0.19999999999999996,
+              "unnormalized_risk_minus": 0.09999999999999998,
+              "unnormalized_risk_plus": 0.7,
+              "y": -1
+            }
+          ],
+          "decision_information_before_probe_cost": 5.551115123125783e-17,
+          "probe_cost": 0.1,
+          "risk": 0.6,
+          "risk_without_probe_cost": 0.49999999999999994
+        },
+        "mi_h_bits": 0.2780719051126377,
+        "mi_u_bits": 0.2780719051126377,
+        "risk": 0.6,
+        "selected_sensor": "H",
+        "tie_break": "H",
+        "u_risk": 0.6
+      },
+      "entropy_equal_mi_favor_U": {
+        "branch_actions": [
+          -1,
+          -1
+        ],
+        "h_probe": {
+          "branch_actions": [
+            -1,
+            -1
+          ],
+          "branch_actions_same": true,
+          "branches": [
+            {
+              "action": -1,
+              "action_label": "-",
+              "action_risk_margin_plus_minus": -5.551115123125783e-17,
+              "branch_probability": 0.5,
+              "chosen_unnormalized_risk": 0.39999999999999997,
+              "joint_mass_h_minus": 0.09999999999999998,
+              "joint_mass_h_plus": 0.4,
+              "posterior_p_plus": 0.8,
+              "unnormalized_risk_minus": 0.4,
+              "unnormalized_risk_plus": 0.39999999999999997,
+              "y": 1
+            },
+            {
+              "action": -1,
+              "action_label": "-",
+              "action_risk_margin_plus_minus": 0.6,
+              "branch_probability": 0.5,
+              "chosen_unnormalized_risk": 0.09999999999999998,
+              "joint_mass_h_minus": 0.4,
+              "joint_mass_h_plus": 0.09999999999999998,
+              "posterior_p_plus": 0.19999999999999996,
+              "unnormalized_risk_minus": 0.09999999999999998,
+              "unnormalized_risk_plus": 0.7,
+              "y": -1
+            }
+          ],
+          "decision_information_before_probe_cost": 5.551115123125783e-17,
+          "probe_cost": 0.1,
+          "risk": 0.6,
+          "risk_without_probe_cost": 0.49999999999999994
+        },
+        "mi_h_bits": 0.2780719051126377,
+        "mi_u_bits": 0.2780719051126377,
+        "risk": 0.6,
+        "selected_sensor": "U",
+        "tie_break": "U",
+        "u_risk": 0.6
+      },
+      "entropy_strictly_higher_mi_U": {
+        "branch_actions": [
+          -1,
+          -1
+        ],
+        "h_probe": {
+          "branch_actions": [
+            -1,
+            -1
+          ],
+          "branch_actions_same": true,
+          "branches": [
+            {
+              "action": -1,
+              "action_label": "-",
+              "action_risk_margin_plus_minus": -5.551115123125783e-17,
+              "branch_probability": 0.5,
+              "chosen_unnormalized_risk": 0.39999999999999997,
+              "joint_mass_h_minus": 0.09999999999999998,
+              "joint_mass_h_plus": 0.4,
+              "posterior_p_plus": 0.8,
+              "unnormalized_risk_minus": 0.4,
+              "unnormalized_risk_plus": 0.39999999999999997,
+              "y": 1
+            },
+            {
+              "action": -1,
+              "action_label": "-",
+              "action_risk_margin_plus_minus": 0.6,
+              "branch_probability": 0.5,
+              "chosen_unnormalized_risk": 0.09999999999999998,
+              "joint_mass_h_minus": 0.4,
+              "joint_mass_h_plus": 0.09999999999999998,
+              "posterior_p_plus": 0.19999999999999996,
+              "unnormalized_risk_minus": 0.09999999999999998,
+              "unnormalized_risk_plus": 0.7,
+              "y": -1
+            }
+          ],
+          "decision_information_before_probe_cost": 5.551115123125783e-17,
+          "probe_cost": 0.1,
+          "risk": 0.6,
+          "risk_without_probe_cost": 0.49999999999999994
+        },
+        "mi_h_bits": 0.2780719051126377,
+        "mi_u_bits": 0.7136030428840436,
+        "risk": 0.6,
+        "selected_sensor": "U",
+        "tie_break": "U",
+        "u_risk": 0.6
+      },
+      "group": "zero_decision_gain",
+      "mi_equal_bits": 0.2780719051126377,
+      "mi_h_bits_high_u": 0.2780719051126377,
+      "mi_u_bits_high_u": 0.7136030428840436,
+      "name": "all_branches_choose_minus",
+      "parameters": {
+        "L": 1.0,
+        "c": 0.1,
+        "delta": 0.6,
+        "p": 0.5,
+        "r": 0.8
+      },
+      "two_step_bellman": {
+        "action_if_skip": -1,
+        "choice": "skip",
+        "direct_risk": 0.5,
+        "probe_branch_actions": [
+          -1,
+          -1
+        ],
+        "probe_risk": 0.6,
+        "risk": 0.5
+      }
+    }
+  ],
+  "protocol": {
+    "L": 1.0,
+    "c_default": 0.1,
+    "delta_grid": [
+      0.0,
+      0.2,
+      0.39,
+      0.4,
+      0.41,
+      0.6,
+      1.0
+    ],
+    "mc_seed": 720942,
+    "n_mc": 4096,
+    "p_default": 0.5,
+    "r_default": 0.8,
+    "tie_rule": "terminal ties choose minus; probe ties choose skip",
+    "u_equal_accuracy": 0.8,
+    "u_high_accuracy": 0.95
+  },
+  "status": "exact_binary_decision_mechanism"
+}

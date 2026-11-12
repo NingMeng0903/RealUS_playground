@@ -1,0 +1,7 @@
+{
+  "common_rows": 128,
+  "rollout_rows": 768,
+  "common_sha256": "281a12ac7bf3207f836dd7fc2da54aa5afc151ef1a7a65ba2372b0590b99d781",
+  "rollouts_sha256": "096820ccac79f9cf708a082fe646795d75a5bac5d800c21608c1bac87709f613",
+  "elapsed_wall_seconds": 94.93249199300772
+}

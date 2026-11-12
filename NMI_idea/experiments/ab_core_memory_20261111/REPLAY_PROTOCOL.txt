@@ -1,0 +1,39 @@
+Archived continuation audit
+
+The previous dense held-out run 721129 is frozen. Its original closed-loop
+results remain the efficacy evidence for those algorithms. This audit uses
+each A_task episode's first three public decision prefixes that still allow
+two acquisitions. The initial context and each history are paired across
+all compared policies. Two layouts from one object are repeated measures.
+
+Use the existing 305 candidate library, public likelihood, actual static
+endpoint mask, model travel times, acquisition budget and 0.65 stopping
+gate. Compare a greedy first action with adaptive optimal second action,
+the exact two-step adaptive policy, the exact two-step fixed continuation,
+and a fixed continuation at the adaptive policy's identical first action.
+All stop after the first accepted result. No new thresholds are fit.
+
+For each planned policy, integrate its actual two-step true conditional
+return exactly using the archived private synthetic renderer. It is only
+used to audit, never to select an action or condition the policy. True good/
+bad mode is marginalized using the private world's emitted likelihood
+along the identical prefix. Both forecasts and audit omit additional
+algorithm compute time after the snapshot. Truth integration also records
+correct completion and false stopping probabilities.
+
+Add a prospective policy variant for diagnosis on these archived prefixes.
+Draw an independent public catalogue of the same size and prior family
+with seed 721212. Recompute the prefix posterior in each catalogue. Keep
+the first/second actions and stop gates of the primary policies identical
+when calculating the alternate model's value. Switch from the greedy
+first action to adaptive planning only if both catalogues predict a
+strictly positive difference in correct time saved. This checks sensitivity
+to public model sampling. It is not a confidence bound or an independent
+closed-loop evaluation. Results apply to these histories, under the
+declared synthetic renderer and modeled motion.
+
+Read out absolute and paired model versus true values, positive forecast
+gaps and realized signs, oracle versus chosen continuations, and a fixed
+same-first control. Compute intervals by resampling independent objects
+and keeping their shared histories and layouts together. Only the prefixes
+present in the original logs enter this audit.

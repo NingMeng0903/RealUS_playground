@@ -1,0 +1,87 @@
+Held-knee w/z separation diagnostic — final 2026-11-12
+
+Scope
+-----
+This is a paired estimator diagnostic only.  It reuses the frozen atlas and
+rule sweep from ../ab_knee_latent_rl_20261112 and trains no RL model.  The
+final split is the exact frozen-test indices 384–511 (128 cases), disjoint
+from the earlier 0–255 and 256–383 reports.  The complete index-to-seed map is
+in summary/SEEDS.json.
+
+Data convention and schedule
+----------------------------
+Each scalar-w case has one shared 28-frame rule sweep (the full 28-site route),
+one common legal preposition capture at trunk site i=8, and one common measured
+15-degree stationary-stop frame.  The preposition and stop are generated with
+the frozen world travel/capture clock.  The knee follows its frozen sinusoidal
+trajectory until the first q=15 crossing after preposition, then is held at
+q=15, qdot=0.  This is an explicit abrupt-stop diagnostic; it does not claim
+continuous deceleration between the last moving frame and the hold.
+
+Four paired arms then acquire exactly three frames, with the same first and
+third physical times and a one-second difference in the middle slot:
+
+  early/burst, one response:   (8, 8, 8)
+  early/burst, two response:   (8, 11, 8)
+  late/separated, one response: (8, 8, 8)
+  late/separated, two response: (8, 11, 8)
+
+The (8,11,8) travel is legal under the frozen eligible geometry (about
+0.721 s minimum per leg including capture); waits fill the exact common slot.
+Atlas response profiles are 0.806581 at site 8 and 0.540771 at site 11.
+The public frames include the frozen pose noise.  All four arms use the same
+prior and the same observations in their paired Filter instances.
+
+Estimands and controls
+----------------------
+The primary truth is a scalar global w within the frozen W-axis support.  The
+held response has case-specific tau (0.496–1.338 s over this split) and a
+generated stationary process (truth-only).  `latent` is Filter(latent=True)
+with all frames.  `no_lag_plus_US` is Filter(latent=False) with the identical
+frames and w,b prior.  `latent_no_post_stop_US` keeps the latent filter but
+propagates the shared prefix/stop posterior to the common final clock without
+the three post-stop ultrasound frames.  z at the stop is a fixed-lag smoother
+using the complete prefix, stop frame, and post-stop frames; it is explicitly
+labelled smoothed rather than online.
+
+At common final T, w and z are reported separately.  World 3D prediction is
+scored at T+0.5 and T+1.0 s on the frozen query locations.  CIs in
+summary/SUMMARY.json are deterministic 2,000-resample case bootstraps; paired
+contrasts resample the within-case differences.
+
+Selected latent results (RMSE, mm)
+-----------------------------------
+                         w       z_start(smoothed)  z_T   3D T+0.5  3D T+1
+early one-site          0.530   1.093               0.440 0.715      0.717
+early two-response      0.518   1.098               0.445 0.714      0.713
+late one-site           0.502   1.088               0.434 0.713      0.711
+late two-response       0.516   1.100               0.447 0.701      0.710
+
+The truth RMS at common T is only 0.402 mm for z, so z_T error is a late-state
+metric and should not be read as recovery of the start state.  The paired
+early/late one-site z_start difference is -0.020 mm (95% CI -0.036, -0.006);
+the two-response versus one-site burst z_start difference is -0.009 mm (95%
+CI -0.023, 0.006).  These modest intervals do not establish a large spatial
+identifiability gain.
+
+Known limitations
+-----------------
+This is a synthetic centroid/dropout model, not raw ultrasound or clinical
+data.  The abrupt stop is a controlled intervention, and truth-only process
+noise is not learned.  Sites 8/11 are trunk sites, so this diagnostic avoids
+identity confusion and cannot stand in for the Y-branch association task.
+The scalar-w primary removes site mismatch by construction; per-site mismatch
+is not a primary estimand.  A fixed finite parameter grid and the frozen
+latent prior remain in force.  Late z has small physical amplitude, and the
+3D query score averages atlas points rather than validating a continuous
+surface or a physical probe.
+
+Outputs
+-------
+raw/case_0384.json … raw/case_0511.json: per-case paired frames, schedules,
+truth, estimates, and future predictions.
+summary/SUMMARY.json: numerical metrics and paired bootstrap CIs.
+summary/SEEDS.json: exact held-out index/seed map.
+3D/SEPARATION_3D.html: standalone Plotly 3D view of the shared sweep, legal
+post-stop trajectories, selected locations, acquisitions, and latent T+1
+predictions.

@@ -1,0 +1,193 @@
+{
+  "scope": "mechanical-only enrollment on fixed 15-degree frozen atlas knot, native QP ideal measured-joint plant; no acoustic outcome, force or hardware contact",
+  "prior_wide_witness": "/tmp/realus-moving-y-native-smoke-w5tc8caa/WITNESSES.json",
+  "prior_wide_witness_hash": "7212f2d3cb93cd63212fff8f8fd6e570cea1cccbcb06cc183d17bd62d381dc1d",
+  "controller": {
+    "backend": "native",
+    "tcp_mode": "urdf",
+    "native_model_clock": "deterministic",
+    "wrapper_sha256": "18f659fcd87a80461d582137dcdaa6c3cc70712ed0ad8ce26582f2f5ad33b36c",
+    "native_binary_sha256": "a212b43c4df2cbbbbcb5671d1973484e5fd587f18984ad9c1ead8668f5171e04",
+    "config_sha256": "71134e9e16a952e688085a996ab192b41886b4e12094949082b748f0f186748f",
+    "loop_sha256": "2f94fb2a88aaa518f3c078c844858aa89f40e6749aac7d315fa63d5659dc2a40",
+    "qp_sha256": "1953302f0e20990c4ac762c78a22e135344ebaf0e673c948a3cee5e1b5fcc57a",
+    "tcp_cache_sha256": null,
+    "kinematics_urdf_sha256": "7578310c5ce7b03a301c171175fd4eca2bd8e4b15903a7a9a3ed9bfc366e4ec0",
+    "scan_profile_sha256": "f9e07c984347e83f7768adf812565bfec119475fc4a0a627043b8c87d4617033",
+    "scan_reference_sha256": "9dc0f3008673eb25fced09db2129a3548c20e0547779136070ac1e00ea1ed757"
+  },
+  "geometry_and_timing": {
+    "knee_deg": 15.0,
+    "root_site": 3,
+    "root_view": 3,
+    "views": [
+      2,
+      3,
+      4
+    ],
+    "offsets_mm": [
+      -8.0,
+      0.0,
+      8.0
+    ],
+    "next_site": 4,
+    "common_pro_dmp_correction_s": 0.55,
+    "common_pro_dmp_next_s": 1.004197529756746,
+    "common_settle_s": 0.21,
+    "root_hold_s": 0.21,
+    "nominal_stage_timings_rule": "max over three frozen variants of prior max(.55,1.68*distance_m/.027,1.68*turn_rad/.30)"
+  },
+  "timing_unchanged": true,
+  "selection_rule": "independent of image/case outcomes; SRS branch 4, same TCP and fixed prior rail, -180..175 degrees at 5-degree swivel increments, legal FK/limits and 35 collision pairs with minimum 10 mm. Closest positive configured runtime arm slack to each target in the frozen order, tie lower swivel.",
+  "outcome_rule": "after common 0.21-s HOLD and exact snapshot reconstruction, zero chain plus exactly one of the two signed 8-mm chains must pass unchanged gates. Run all three checks per candidate, stop after first match.",
+  "candidate_list": [
+    {
+      "target_margin_deg": 3.0,
+      "margin_deg": 3.138759762402461,
+      "branch": 4,
+      "swivel_deg": -155,
+      "q": [
+        0.27521369825951136,
+        3.045982319960979,
+        -0.7220953552413886,
+        -2.4663817678520985,
+        1.692345878607868,
+        -1.3953524393352315,
+        0.5905040516719421,
+        -2.1407054742376723
+      ],
+      "check": {
+        "valid": true,
+        "limits_pass": true,
+        "fk_pass": true,
+        "self_collision_pass": true,
+        "joint_limit_margin_by_coordinate": [
+          0.27521369825951136,
+          0.06001768003902086,
+          1.5468046447586112,
+          0.6396182321479014,
+          0.6636541213921319,
+          1.7106475606647684,
+          1.643495948328058,
+          4.1392945257623275
+        ],
+        "fk_position_error_m": 9.979180179294014e-07,
+        "fk_rotation_error_rad": 7.006193287994595e-06,
+        "min_self_collision_distance_m": 0.04171113484227798,
+        "self_collision_required_m": 0.01,
+        "pair_count": 35
+      }
+    },
+    {
+      "target_margin_deg": 5.0,
+      "margin_deg": 5.099508242402244,
+      "branch": 4,
+      "swivel_deg": -40,
+      "q": [
+        0.27521369825951136,
+        3.0117608031815086,
+        -1.9241420699394531,
+        -0.7338699912387074,
+        1.692345878607868,
+        -2.639282952865738,
+        2.0159389498118934,
+        -2.7684758442691964
+      ],
+      "check": {
+        "valid": true,
+        "limits_pass": true,
+        "fk_pass": true,
+        "self_collision_pass": true,
+        "joint_limit_margin_by_coordinate": [
+          0.27521369825951136,
+          0.09423919681849124,
+          0.3447579300605468,
+          2.3721300087612924,
+          0.6636541213921319,
+          0.4667170471342619,
+          0.21806105018810662,
+          3.511524155730804
+        ],
+        "fk_position_error_m": 1.596150103746251e-06,
+        "fk_rotation_error_rad": 8.465980069601472e-06,
+        "min_self_collision_distance_m": 0.0286786547835106,
+        "self_collision_required_m": 0.01,
+        "pair_count": 35
+      }
+    },
+    {
+      "target_margin_deg": 10.0,
+      "margin_deg": 10.007122933743569,
+      "branch": 4,
+      "swivel_deg": -145,
+      "q": [
+        0.27521369825951136,
+        2.9261067683983573,
+        -0.8047663572090568,
+        -2.250045054771644,
+        1.692345878607868,
+        -1.517013895986179,
+        0.7322158897687021,
+        -2.1141682208822563
+      ],
+      "check": {
+        "valid": true,
+        "limits_pass": true,
+        "fk_pass": true,
+        "self_collision_pass": true,
+        "joint_limit_margin_by_coordinate": [
+          0.27521369825951136,
+          0.1798932316016426,
+          1.464133642790943,
+          0.8559549452283557,
+          0.6636541213921319,
+          1.588986104013821,
+          1.5017841102312979,
+          4.1658317791177435
+        ],
+        "fk_position_error_m": 9.003879901742362e-07,
+        "fk_rotation_error_rad": 7.50988586249911e-06,
+        "min_self_collision_distance_m": 0.041614894403495355,
+        "self_collision_required_m": 0.01,
+        "pair_count": 35
+      }
+    },
+    {
+      "target_margin_deg": 20.0,
+      "margin_deg": 19.92282226791194,
+      "branch": 4,
+      "swivel_deg": -85,
+      "q": [
+        0.27521369825951136,
+        2.7530451673793097,
+        -1.471565670732527,
+        -1.3638697820968564,
+        1.692345878607868,
+        -2.0691710605362528,
+        1.5567894248283607,
+        -2.3124651811778234
+      ],
+      "check": {
+        "valid": true,
+        "limits_pass": true,
+        "fk_pass": true,
+        "self_collision_pass": true,
+        "joint_limit_margin_by_coordinate": [
+          0.27521369825951136,
+          0.35295483262069016,
+          0.7973343292674728,
+          1.7421302179031435,
+          0.6636541213921319,
+          1.036828939463747,
+          0.6772105751716393,
+          3.967534818822177
+        ],
+        "fk_position_error_m": 1.38149625934628e-06,
+        "fk_rotation_error_rad": 9.799004252345403e-06,
+        "min_self_collision_distance_m": 0.04177536151673702,
+        "self_collision_required_m": 0.01,
+        "pair_count": 35
+      }
+    }
+  ]
+}

@@ -1,0 +1,89 @@
+Native motion diagnosis (read-only)
+===================================
+
+Scope
+-----
+This is an offline analysis of the already frozen native traces.  It did not
+run the controller, change a QP parameter, change the reference, or modify a
+production file.  The 20 trace files contain 6,476 ticks; all QP1 statuses are
+``solved``, with zero task-paused ticks and zero failure ticks.
+
+The source fingerprints are:
+
+* native replay results: 102acc248945aeeca6c45cb8c21c62c007fef30e84902263374c4c3344493caf
+* replay runner: 861ef2cc4a421154148e587ee06e33818a31c9dc9f20a3e2a69f5c5e2c9b9d9f
+* registered native subset protocol: 01b39ab0b557ae850aecd9edcd0993ea3eb4d06c04acd86a6cafd2da5020ce1f
+
+Evidence
+--------
+
+Eight segments pass the same-tick 2 mm / 2 degree gate and twelve fail.  The
+worst same-tick error is 30.04 mm and 5.00 degrees.  The severe nominal first
+segments have zero entry pose error, so their error is not inherited from a
+bad starting FK state.  Repeated hold segments begin with the preceding
+segment's residual: in the stress context the entry position error increases
+from about 0.03 mm to 2.74--3.60 mm across the repeated holds.
+
+The raw command arrays have a frame distinction.  The outer Cartesian tracker
+command is in the tool frame, while native ``v_cmd_received`` is stored in the
+base frame.  Rotating each saved command by the measured TCP rotation reproduces
+the native received command to at most 0.502 mm/s-equivalent across these
+traces.  The opposite signs seen when comparing the raw arrays directly are
+therefore a frame mismatch, not evidence of a clock race or a sign bug.
+
+The dominant failure is local dynamic feasibility.  In the failed rows:
+
+* the median norm of ``v_cmd_feasible`` divided by the received command falls
+  as low as 0.067 (0.075 in the worst nominal continuation);
+* the QP equality residual reaches 0.338 m/s and is above 0.01 in the failed
+  rows;
+* the local qdot boxes are active on roughly 45--100% of ticks, including
+  84--94% of ticks on the nominal residual holds; and
+* ``task_progress`` falls to zero while the solver still reports ``solved``.
+
+These boxes are local qdot rate/history bounds, not the static URDF velocity
+limit.  For example, the saved arm box widths are about 0.015 rad/s, matching
+the configured acceleration envelope at a 5 ms tick.  The static IK witness
+can therefore exist while the current reference twist is infeasible under the
+current qdot history.  The controller returns the closest constrained result,
+but does not pause or mark the segment as failed.
+
+The saved robot Jacobian check gives a smaller secondary discrepancy:
+``max |J(q) qdot - v_cmd_feasible| = 6.09e-3`` in the 20 traces.  Native's
+``v_cmd_feasible`` and ``v_tcp_estimated`` are internally consistent; this
+smaller residual may reflect the rail observer/frame convention and should be
+resolved before claiming sub-millimetre execution.  It does not account for
+the centimetre-scale failures.
+
+Why the hold drifts
+-------------------
+
+The next hold starts before the preceding residual has been removed and while
+the previous qdot is still carried in the dynamic box.  The hold's correction
+twist is then largely infeasible under that local box; its realized feasible
+twist can be small or opposite to the requested correction.  The position
+error consequently grows during the one-second hold even though QP1 remains
+``solved``.  This is a transition/feasibility problem, not a hidden anatomical
+target, native clock, or tiny jerk residual.
+
+What is and is not proven
+-------------------------
+
+The traces establish that the primary failure is active local dynamic
+feasibility plus an execution gate that treats a solved QP as success.  They do
+not identify whether the unique implementation defect is the qdot-box
+construction, the secondary objective, or the reference retiming.  Static IK
+existence does not contradict this finding: it does not include the current
+qdot history and rate envelope.
+
+Minimum next diagnostic
+----------------------
+
+Use one frozen failing tick and log the box construction terms, task residual,
+and the unconstrained/box-constrained task solution.  Then apply the smallest
+execution-layer rule: treat low task progress or a residual above the declared
+tolerance as infeasible, retime the Cartesian primitive against the active
+qdot box, and insert a settle/zero-qdot transition before a hold.  Recheck the
+same-tick metric from measured ``q_meas_before`` against the desired pose.  No
+AB policy result should be interpreted as native execution success until that
+gate is in place.

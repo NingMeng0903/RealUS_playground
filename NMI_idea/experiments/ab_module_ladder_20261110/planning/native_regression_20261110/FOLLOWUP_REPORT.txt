@@ -1,0 +1,85 @@
+Native执行差异、姿态偏好与布局修复
+2026-11-10
+
+最终设置
+保留用户要求的臂角、肘型、滑轨与普通nullspace次级偏好。
+仅移除额外branch/140deg硬墙，不将真实URDF q/v/a或碰撞约束放宽。
+task_only清偏好版本仅是诊断对照，已从最终入口移除；不能以它的结果
+作为最终修复。离线profile现在明确使用独立修复binary，真机全局YAML
+和原production binary没有改动。
+
+旧通过为什么仍然成立
+旧两条路径用当前原控制器复跑，所有非墙钟state/pose/command数组与
+保存旧trace逐值相同，native_config逐字节相同。旧配置完整误差仍为
+1.035/1.022mm、.0766/.0721deg，通过原跟踪门。此前通过只覆盖这些路径，
+不能概括成任意方向/停留/状态续接均已验证。
+
+此次失败的主要具体机制
+初始J1约-149.17deg，真实URDF范围约+-177.96deg；额外branch策略却把
+140deg外继续向外转的速度设为0。旧两条扫描需要J1向内回到约-127.74/
+-126.38deg，不会暴露此约束；新的短平移+转动需要向外到约-158.33deg。
+仅把额外J1墙对齐URDF，一次单因果对照即从17.0589mm/2.2906deg变成
+.012747mm/.027800deg；10s nominal hold由7.7028mm漂移变为.005105mm。
+这说明主要是额外测试策略的域限制，不是RealMan厂商真机控制板坏了。
+
+但单项修复不能冒充全部修好
+J1-only全20固定动作仍仅14个完整跟踪通过；branch-off保留其它旧姿态
+策略时也会在不佳起始布局出现物理限位冲突。所有中间结果原样保留，
+不把已拒绝命令之前的合格trace前缀算作完整动作成功。
+
+另修复了真实发布缺陷
+当位置上限与历史加速度/jerk交集已空，旧lead/collapse修补会把arm上限
+抬到加速度下界，误发越URDF命令并报solved。本轮保留arm空交集为
+真实失败，并给一般QP/direct-PTP最终全8坐标q_send加独立位置认证。
+失败恢复已提交历史/保持原命令，不静默clip冒充加速度合格。
+没有声称所有历史状态都可停，也没有将这一修复当任意轨迹可执行保证。
+三个真实native回归（冻结冲突拒绝、direct超限拒绝、正常命令通过）和
+独立CTest通过；原binary留存，修复在独立build中。
+
+保留偏好后，重新选择合理局部摆放与初始构型
+在配置的q_nominal附近9个公开候选，对局部扫描路径评分并作端点检查；
+选出rail=.4m、J2相对q_nominal+5deg的设置。一次使用已知公开命令集的
+事后布局诊断；另一次严格只使用人工宽prior（32假设、4模式、3站位及
+yaw小扰动，共36端点），完全不读取完成episode/GT，选出相同q和T。
+两个搜索及等价核对都保留。此为有限候选/局部扫描面测试，不是全局最优
+整腿摆放证明，也不是SMPL-X全腿/人体实验。
+
+新设置与新修复binary，按原20条body-local命令和实际q_out连续回放：
+20/20完整执行并通过2mm/2deg；共5098ticks。
+最大同tick位置误差 .03745795mm，姿态误差 .05497471deg。
+实际q/v检查通过，a最小余量约-5.84e-12数值残余，保存自碰撞距离>=.03909m。
+微小jerk残余仅记录，不按用户已排除的问题阻断。
+旧两条路径在最终设置/新binary也再次通过，最大位置误差.032987/.033009mm。
+默认离线入口smoke无需显式bin override，实际使用新binary，33个非墙钟
+trace数组与已验新设置首段逐值相同。
+最终新布局另作10s完整静止保持：2101tick全solved、无pause/failure，
+最大位置偏离.0047624mm、姿态.0000905deg。此为该摆放的有限时长验证。
+最终profile的8项合同测试（含保留secondary参数）通过。
+
+这些20条是新摆放+新初始q下的运动证据，不能把原8/20改写成原条件20/20；
+更不能移植为成像闭环或真实硬件验证。原A/B策略224例和连续GT32例结果
+没有重写。下一阶段仍须修连续解剖后验，再检验完整B的任务增量。
+
+dIRD范围的另一个重要更正
+当前checkpoint的训练标签是混合selected-witness/branch/psi条件，而非
+每个位姿全8分支存在性并集；条件却没有进入NN输入。它只能作所声明
+支持中的平滑排序代理，不能保证全局可达或当前状态连续可执行。
+软偏好不改变那一瞬间的物理解集合，但会选择未来关节状态和余量；
+所以布局与执行验证必须联合当前状态处理。详见DIRD_CONTRACT_FINDING.txt。
+
+主要证据
+production_before_fix/：旧source/profile/runner快照
+baseline_v2/：旧成功/新失败/长hold同配置对照
+j1_guard_only/、causal_2x2/：单因果及负对照
+native20_fixed/、native20_minimal/、native20_task_only/：完整中间失败记录
+public_layout/、public_prior_layout/、LAYOUT_EQUIVALENCE.json：两种公开布局选择
+layout20_preserved_preferences/：最终保留偏好布局20段与所有trace
+fixed_binary_old_paths/：旧两路径回归
+DEFAULT_PROFILE_SMOKE.json：默认入口实际消费新binary/profile
+audit/：独立FK/导数/碰撞/状态续接与最终审计
+
+修复binary
+/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/native/wbc_rt/build_position_admission_20261110/wbc_rt
+SHA256 a212b43c4df2cbbbbcb5671d1973484e5fd587f18984ad9c1ead8668f5171e04
+原production binary SHA256仍为cc34bf96b772ef463aa2a9468153e649da550192b8486d35ed52145ea07e7d07
+全局controller.yaml SHA256仍为71134e9e16a952e688085a996ab192b41886b4e12094949082b748f0f186748f

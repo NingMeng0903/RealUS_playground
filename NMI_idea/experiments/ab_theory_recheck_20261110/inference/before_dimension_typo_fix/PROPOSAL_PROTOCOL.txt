@@ -1,0 +1,101 @@
+Public-history informed importance proposal protocol
+=====================================================
+
+Scope
+-----
+This is a bounded support-recovery proposal for the continuous belief
+experiment.  It is not a new sensor model, a likelihood floor, a replacement
+for tempered SMC, or a task-success claim.  It reads only public frames and
+their executed probe poses.  It never receives audit fields, the private
+world, a target/source label, planner reward, or old particle weights.
+
+Parameterization
+----------------
+The rendered world coordinates are
+
+  registration(2), y_controls(10), z_controls(10), depths(2),
+  identity_z(2), detect_z(2),
+
+which sum to 28 continuous values.  The requested 30D API therefore appends
+two explicit auxiliary standard-normal coordinates.  They are not decoded by
+the renderer and remain prior-only.  The 16 mode matrices (two sources, each
+with lane and slope signs) are discrete components with probability 1/16.
+The public proposal vector is consequently 30D continuous plus a 16-way
+discrete mode.
+
+Normalized prior
+----------------
+The continuous prior uses the exact sample_worlds distributions:
+
+  registration ~ N(0, .004^2 I),
+  each five-control row ~ N(0, .003^2 CHOL CHOL^T) for y and
+                           N(0, .0015^2 CHOL CHOL^T) for z,
+  depth ~ Uniform[.025,.045]^2,
+  identity_z, detect_z, auxiliary ~ N(0,I),
+  mode probability = 1/16.
+
+All Gaussian normalizers, the correlated-control log determinant, uniform
+depth density, and discrete mode mass are included in log p.  A depth outside
+the interval has log p=-infinity; it is not clipped or silently rejected.
+
+Public-conditioned mixture q
+----------------------------
+For a history H, the proposal is
+
+  q(x,m | H) = epsilon p(x,m)
+                + (1-epsilon) sum_c pi_c q_c(x | m,H) / 16,
+
+with epsilon=.1.  Every one of the 16 modes is present in every informed
+component mixture.  q_c is a normalized 30D Gaussian; its depth marginal is
+allowed to leave the prior interval because the prior term in the importance
+ratio then becomes -infinity.  The full mixture density, not a selected
+component density, is used for every sampled vector.
+
+Association patterns
+--------------------
+Visible public frames are assigned to source 0/1 by a soft probability derived
+only from identity_score (clipped to [.05,.95]).  Eight assignment patterns
+are sampled with deterministic seed 720907 and duplicate patterns are
+aggregated.  No pattern is treated as the target.  Invisible frames add no
+source assignment.  All mode/pattern combinations remain proper mixture
+components.
+
+Gaussian conditioning
+----------------------
+For an assigned visible frame, the approximate linear observations are
+
+  worldx = pose_x + cos(yaw) image_u,
+  observedY = pose_y + sin(yaw) image_u,
+
+  y = reg_y - mode_slope*.25 reg_x
+      + spline_basis(worldx) y_controls_source
+      + lane*.014 + mode_slope*.25 worldx,
+  depth = depth_source + spline_basis(worldx) z_controls_source.
+
+Natural cubic-spline basis weights use the same CONTROL_X and boundary rule as
+the environment.  Measurement standard deviations are .0015 for Y and .001
+for depth.  Identity supplies a noisy local logistic linearization to
+identity_z; it is not a hard association.  detect_z and the two auxiliary
+coordinates stay at their prior Gaussian in every informed component.
+
+Importance update
+-----------------
+For N=128 proposal samples, decode each (x,m) into a World and evaluate every
+public history frame.  The only weight is
+
+  logw = log p(x,m) + log p(H|x,m) - log q(x,m|H).
+
+Old particle weights are never multiplied.  The diagnostics retain finite
+likelihood/log-weight count, raw ESS, max weight, evidence estimate
+logmeanexp(logw), component/pattern counts and hashes.  If every sample has
+zero likelihood, the update returns posterior_valid=false and an explicit
+zero_likelihood_support failure; no floor, dropped block, or fake posterior is
+created.
+
+DEV boundary
+------------
+Only the first world from sample_worlds(720902, 1) is used, with the exact
+public-history keys (0,'iid','dev') and (0,'shifted','dev').  Prefixes 5 and 8
+are scored against fixed128 using the same public history.  720913 is not
+opened.  Predictive and terminal quantities are retrospective diagnostics;
+they never enter q or logw.

@@ -1,0 +1,82 @@
+离线时钟发布竞争独立审计 — 2026-11-10
+
+结论：父任务指出的竞争在实际源码中成立，确定性故障注入已验证它足以
+产生数米/数十米非法rail。此前异常不能直接归因正常输入下的生产native
+控制器。此附注修正本审计PHASE2和FINAL_HARMONIC_AUDIT中“尚未定位”的
+旧因果状态；旧输入/输出/失败记录继续保留，不删除或改写历史。
+
+旧发布顺序
+qp_clock_repair/client_before.py对应原client的update：
+  t_mono = wall monotonic；seq = new sequence；调用_notify_request。
+旧qp_replay_before.py在_notify_request hook里才将t_mono改为1000+k*.005。
+native/main.cpp:561首先直接poll seq，notification只在seq未变时等待；
+:572在检测到新seq后复制SHM snapshot。因此消费者合法地可在hook之前
+读到wall时间。通知不是消费屏障；hook后读取SHM已经改成model时间的日志
+不能证明native实际消费了model时间。
+
+放大量的数学机制
+native/inner.cpp:1579–1587，在已有model时间last_sample_t后，若一次now
+变为wall时间，则age很大：q_pred=q_hat+v_pred*dt；
+q_hat=q_pred+gain*(q_meas-q_pred+v_pred*age)。当前gain=.35。
+:1549–1552在下一tick首先用q_hat作为rail q_prev/q_cmd，导致巨大位置，
+即使qdot本身很小。更新顺序解释了异常通常落在污染时间的下一tick。
+
+历史trace相容性：旧6D同速坏tick82之前，v_pred=qdot80=-.0013683342656m/s。
+由输出倒推tick81应消费age=27636.495170785s；加前一model时间1000.4，
+得到wall=28636.895170785，距离坏tick82保存wall时间仅7.42ms。
+这是从trace反推的高度相容证据，并非当时native snapshot时间的直接记录。
+见clock_race_trace_consistency.json。
+
+确定性注入：父任务只在固定tick80公开wall=30149.914856557，等待native
+对该seq ack后才把SHM恢复为1000.4；其他tick均用正确model时间。
+原native二进制不变。tick81 q_send rail=-10.1721454435282m，被反馈前拒绝。
+本审计按完整trace独立代入observer公式，预测下一命令恰为同一数值，
+绝对差0；核对ack-before-cleanup、q保留最后合法值、exit_state.valid=false。
+见clock_fault_independent.json。故此不是正常性能试验，而是证明错误
+输入发布能产生观察到异常机制的控制故障注入。
+
+窄修和独立回归
+当前client可选model_time_s在seq发布前写入；默认仍使用wall monotonic。
+_inflight_t0、IPC等待/超时继续使用wall时间，没有全局替换monotonic。
+非法model_time非有限或≤0在发布前拒绝。离线replay在native.update调用
+前提供时间，只在真实新seq时推进模型时钟；不再在notify后改已发布payload。
+本审计独立运行真实client组装路径的发布瞬时snapshot测试7项：7 passed，
+包括旧notify改写必然太迟的反例、默认wall时钟及非法时间不发布。
+父任务另报共25项相关回归；本报告不将未亲自重跑的其余18项冒称独立执行。
+
+修复后固定三组只读再计算
+未改native二进制、配置、增益、限值、初始q、冻结17位姿或速度组。
+所有组保存的q逐帧Pinocchio FK与pose_actual完全一致；位置/旋转误差与
+命令a/j独立差分一致。三组均完成、无非法q且无pause；不是普遍稳定性证书。
+
+组                 tick   max位置(mm) max姿态(deg)  最小jerk余量
+原2cm/s            1180    .603267      9.074262      −.033958045
+6D同速2cm/s        1180   8.574433       .766775      −10.833928295
+6D降速0.5cm/s      3396    .834685       .094012      −.039122776
+
+原速无角FF未过姿态门；同速补角FF未过位置门。降速6D通过本次整路最大
+2mm/2°位姿门，但严格动态门仍失败：加速度余量−2.578e-12，jerk超量
+.039122776rad/s³，在dt=.005下等价速度箱超量9.78069e-7rad/s，与实际
+记录box超量一致，接近配置eps_abs=1e-6。这个数值解释不改变严格失败，
+也不能推广为同速6D的−10.8339都只是求解容差。
+
+参考导数与框架
+R(u)=R_i Exp(u Log(R_i^T R_j))的base角速度R_i*phi*du/dt正确；线速度
+为TCP原点的base平移导数，非完整spatial twist的跨原点adjoint。
+实际outer再以当前R^T将linear/angular转换到tool控制框架。独立重构
+全部保存desired pose最大元素差<9.8e-16；SO(3)中心差分误差<2.1e-10rad/s。
+Slerp段结点/终点处可能有速度跳变，未宣称全局C1/C2参考。
+
+“四倍重定时”准确地说是共享路径参数速度降为1/4；.4s启动与2ssettle
+固定，非全信号严格t→4t。路径时长3.892828→14.971312s，比3.845870。
+名义6D速度来自已选命令，不来自隐藏患者血管/组织真速度。
+
+旧三组被时钟发布风险污染，应作历史诊断保留，不能再当干净因果比较；
+新的三组仍是生产软件+理想反馈的有限离线试验，没有接触/图像/真实硬件。
+本轮不建议因此全局打开角FF或改变默认速度。参考/SRS/dIRD/图像与实际
+系统执行的证据层级保持分开。
+
+复算：check_qp_reference.py（旧组）和check_qp_reference.py clean（新组）
+只读封存trace；没有重跑native。新输入指纹明确增加client/config/binary。
+旧RESULTS只有protocol/input/replay/reference/trace直接hash，其完整配置
+和binary来源只能另链旧manifest，不能事后伪装为当时逐次捕获。

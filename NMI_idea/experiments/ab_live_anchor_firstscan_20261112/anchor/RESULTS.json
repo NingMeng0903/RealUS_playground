@@ -1,0 +1,134 @@
+{
+  "scope": "Offline kinematic replay with synthetic local plane readings. No contact-controller execution.",
+  "geometry_sha256": "e61ff1a05ca957674d3b146dc225b96cce61286094f0e1da052b5874c8219180",
+  "seed": 2026111211,
+  "motions": 32,
+  "stations": [
+    2,
+    5,
+    8,
+    11,
+    14,
+    17,
+    20,
+    23,
+    26
+  ],
+  "samples_per_station": 401,
+  "atlas_interval_s": 1.0,
+  "atlas_delay_s": 0.2,
+  "local_interval_s": 0.04,
+  "local_delay_s": 0.04,
+  "surface_height_bias_range_mm": [
+    -6.0,
+    6.0
+  ],
+  "surface_tilt_components_range_deg": [
+    -8.0,
+    8.0
+  ],
+  "local_height_noise_sd_mm": 0.25,
+  "local_normal_noise_component_sd_deg": 0.5,
+  "now": {
+    "Delayed atlas": {
+      "height_mm": {
+        "median": 3.6471179094570827,
+        "p95": 9.744017066568116
+      },
+      "normal_deg": {
+        "median": 6.352428145746181,
+        "p95": 9.860299045538103
+      }
+    },
+    "Atlas with pose prediction": {
+      "height_mm": {
+        "median": 3.135130087444643,
+        "p95": 6.192991623039762
+      },
+      "normal_deg": {
+        "median": 6.359385709705641,
+        "p95": 9.76875528028825
+      }
+    },
+    "Time-aligned local plane": {
+      "height_mm": {
+        "median": 0.23580030229404156,
+        "p95": 0.7184198168753796
+      },
+      "normal_deg": {
+        "median": 0.5898833615610459,
+        "p95": 1.228147648875766
+      }
+    }
+  },
+  "same_packet_at_capture": {
+    "Capture-time FK": {
+      "height_mm": {
+        "median": 0.17109646386040442,
+        "p95": 0.494318240824179
+      },
+      "normal_deg": {
+        "median": 0.5864496406350298,
+        "p95": 1.2206798548575042
+      }
+    },
+    "Current FK": {
+      "height_mm": {
+        "median": 0.23627494527084056,
+        "p95": 0.7185290215272538
+      },
+      "normal_deg": {
+        "median": 0.9957597292269644,
+        "p95": 1.9113242609755998
+      }
+    }
+  },
+  "zero_motion_zero_bias": {
+    "Delayed atlas": {
+      "height_mm": {
+        "median": 0.0,
+        "p95": 0.0
+      },
+      "normal_deg": {
+        "median": 0.0,
+        "p95": 3.1805546814635168e-15
+      }
+    },
+    "Atlas with pose prediction": {
+      "height_mm": {
+        "median": 0.0,
+        "p95": 0.0
+      },
+      "normal_deg": {
+        "median": 0.0,
+        "p95": 3.1805546814635168e-15
+      }
+    },
+    "Time-aligned local plane": {
+      "height_mm": {
+        "median": 0.1735774118050963,
+        "p95": 0.4949673089553914
+      },
+      "normal_deg": {
+        "median": 0.6040552575359177,
+        "p95": 1.2303507607205337
+      }
+    }
+  },
+  "required_body_displacement_when_scan_pauses_0_5s_mm": {
+    "median": 2.3284231656953525,
+    "p95": 8.027185743493197
+  },
+  "stationary_pause_max_mm": 0.0,
+  "rebase": {
+    "frame_updates": 256,
+    "unchanged_local_coordinates_position_jump_mm": {
+      "median": 5.10801526152944,
+      "p95": 9.182846218036218
+    },
+    "rebased_max_position_jump_mm": 5.684341886080802e-14,
+    "rebased_max_rotation_matrix_error": 1.5489128225058954e-15,
+    "rebased_max_linear_velocity_jump_mm_s": 5.07429009285179e-14,
+    "rebased_max_angular_velocity_jump_rad_s": 7.448895334061035e-16
+  }
+}

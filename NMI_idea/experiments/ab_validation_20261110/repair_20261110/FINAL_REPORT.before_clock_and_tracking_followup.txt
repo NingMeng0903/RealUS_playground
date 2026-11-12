@@ -1,0 +1,101 @@
+A/B共用坐标与底层QP修正汇总（2026-11-10）
+本文件是上一轮FINAL_REPORT.txt的后续勘误；旧证据保留，不覆盖原结果。
+当前优先结论：双腿中段可验证的分层体坐标已经建成并能随固定SMPL-X权重运动；
+完整腿部及旧整条血管扫描链仍未迁移。底层QP的部分大位姿误差是移动参考的
+控制律/初始关节分支问题，不能由dIRD已烘焙或单点IK有解推出零跟踪误差。
+不存在“整条规划轨迹已被证明不可执行”的结论。
+
+一、坐标资产：已修与范围
+1. 生产旧图册把错误的体节点当皮肤，皮肤深度应为0却可到.954；已改用真实
+   skin网格求解析距离比，baked深度单独在原生tet上查询并拒绝歧义/域外。
+2. 旧腿部域的几何本身有自交与重叠：left/right静止状态分别347794/7529
+   对四面体正体积重叠，左膝附近有反向单元；原皮肤混入对侧脸片。修复了
+   单腿皮肤面归属，并重建明确的shaft ROI。标量调和深度的最大原则本身
+   不保证三维坐标映射单射，也不保证SMPL-X变形后不折叠。
+3. 当前唯一可用候选为harmonic/shaft_roi_v2/，左右腿h∈[.14,.94]，
+   周期角theta与d∈[0,1]，72×108×8层；每腿62208顶点、322056 tet。
+   d为正边权图Laplace的Dirichlet解，h/theta为输运的层标签，不把整个
+   三维图称为FEM调和映射定理。d=0是真实tet外壳，d=1是半径.04的内壳。
+   原source三角和CSR SMPL-X权重保留，体权重由固定凸组合扩展；每姿态
+   重用同一绑定，按当前SMPL-X pose对所有体节点LBS，然后在该体查询。
+4. 边界误拒确实修好了，而非只加越界报错：外皮三角直接取tet真实外边界，
+   不再用不一致的四边形对角；物理点与逆输出保留float64。两腿各15336个
+   外皮面中心、抽样外/内面内点和1036个d=0/1及h端点查询都通过，边界
+   深度误差≤1.58e-15。几何/深度/权重数组未因边界补丁改值。
+5. 独立全量验收：写盘重载后两腿raw与膝0/15/30/45/60/75/90度七姿态，
+   每个tet都无反转，BVH/SAT正体积重叠0；材料坐标及theta±2pi副本亦0
+   重叠。90度最小pose/rest体积比left .16833、right .18717。每腿1024个
+   随机体内点无reference逆解往返误差约6e-8m。有限数值检查不外推为
+   任意SMPL-X姿态的数学保证。
+6. DMP点查询入口与显式配置已落：真实canonical loader、asset SHA检查、
+   原生tet点运输及60度pose后材料回查通过。它是单点、明确域内入口，非
+   完整血管投影、实时伺服、超声/接触或旧DMP默认迁移。
+7. 两端问题没有包装为解决：全腿端盖/极薄tet仍未通过质量与姿态验收。
+   冻结低分辨率探索可到right [.12,.96]、left [.12,.94]，尚非生产资产。
+   旧扫描链烘焙h含大量当前域外点（R_COM_FEM_V全17点；R_SUPFEMV
+   13/85；R_POST_TIB_V 15/114），且旧h不等于新图册重新投影。
+   故当前完整scan chain不能仅换路径即运行。合法边界面误拒已消除；
+   真正域外仍须拒绝，不能靠clip/最近点伪装坐标有效。
+
+二、底层关节QP与dIRD：为何理想仿真仍有pose误差
+本轮只离线调用实际底层JointIkController.update/native QP、生产Cartesian
+reference、真实URDF TCP。理想反馈是q_meas(t+1)=上一合法q_send(t)，消除了
+关节plant跟随误差；它不令移动参考pose与FK(q_meas)逐时刻恒等。
+位置/姿态参考仍随时间前进，速度级QP在限位、碰撞、任务和分支条件下求qdot。
+
+原branch0初始q与生产偏好branch4有相同首pose但不同关节分支：branch0的
+某条路径约30.8%时刻task_progress<.01；原主批次p95 58–126mm不能用来
+判定几何pose路径不可执行。生产偏好的branch4有效回放位置p95 .105–.433mm。
+独立fresh branch4/path0为.1063mm；同路径降速.02→.005m/s位置p95
+.1063→.0261mm，角p95 7.9075→2.6511度，一次各跑、无非法rail/暂停。
+原速path进度p05=.998543、最小=.953809；physical_saturated/joint_limited/
+rail_limited全0，角命令最高.320rad/s低于1.5上限，速度使用≤26.1%箱值。
+因此该冻结路径的原速角滞后主要不是“2cm/s已达QP速度极限”。
+
+实际WorldPolylineReference插值Slerp姿态，却提供vel[:3]而角速度前馈恒0；
+角误差靠约2/s比例反馈。参考角速p95=.391rad/s，简单常速闭环估算稳态
+e≈omega/k=.1955rad≈11.2度，量级与7.9–11.6度实测吻合。理想q反馈下
+此误差仍会存在，因为目标在动而控制器在e=0时未给旋转速度。单独补角FF
+的诊断让角p95 7.91→.547度，但位置p95 .106→6.93mm，进度p05降到.408；
+加速度近限且jerk略超。故不能只打开角FF或任意调高增益就宣布修好；
+应以同一Slerp导数给一致6D twist，并配合时间推进/约束门重新检验。
+
+native后端另有间歇性非法rail，独立fresh branch0/path0 tick641从外部
+q_meas=.298021m返回q_send=58.282671m而qdot仅-.001350m/s。已定位
+传播防护缺口：内部observer q_hat替换rail基点，第一次位置裁剪之后shadow
+clamp可能再以异常基点覆盖q_send，而没有第二次位置/单步检查。q_hat跳变
+的根源尚未证实，未修改生产C++，离线桥接器在理想反馈前拒绝非法命令。
+原“branch0 12条合法”只描述当次回放，不能推广为稳定保证。
+连续path/hold的acceleration/jerk统计段首归零缺陷已窄修，6项精确回归通过；
+native真实jerk余量仍有-0.008656，不能当合格。
+
+dIRD已烘焙并可重训：新初始化独立GPU训练62epoch，但在原持出和新审计集
+均无可靠胜旧证据，不替换旧checkpoint。raw分数阈值的zero_bias校准接口
+已修。dIRD分数/离线候选碰撞检查不决定初始关节分支、QP参考角速度、
+时间参数化或native内部observer；原有限SRS 0/6不等于底层QP 0/6。
+当前既不能说pose规划本身不可执行，也不能由已烘焙场保证任意动态跟踪。
+
+三、A/B共用伺服与Module C
+不可见时隐藏模拟器u/depth不再进入KMP/DMP控制。两隐藏世界147步全缺失
+时公开观测、动作完全一致；22项源回归及独立审计通过。主生产入口的
+use_scheduled_vessel NameError已修。关闭Ruckig但保留fallback时本实验
+可见率78.91%；旁路整个仅做平滑的Module C时100%，KMP/DMP几何平均|u|
+约1.515/1.677mm。它们是预制路径附近的pose层模拟，不是无预扫描人体首次
+成像、关节执行或真实B-mode。旧B有限SRS动作图仅在其声明模型内有效；
+不能把其能力增益归为当前底层QP机械收益。B仍是研究方向，尚未达到用户
+“所有B模块有效再选B”的条件。
+
+四、证据、复现和限制
+harmonic/REPORT.txt及harmonic/manifest.json：当前资产/源码/测试。
+harmonic/shaft_roi_v2/：只此目录为当前ROI；before_boundary_fix历史保留。
+harmonic_independent/REPORT.txt：原hash版本独立几何全量；
+audit/FINAL_HARMONIC_AUDIT.txt：最终边界/元数据版本独立复核。
+harmonic/legacy_vessel_h_coverage.json：旧扫描链h覆盖，不是新投影。
+qp_pose_diagnosis/REPORT.txt、ADDENDUM_SLOW_REFERENCE.txt、
+ADDENDUM_QP_LIMITS_REFERENCE.txt：底层QP来源、慢速对照和约束诊断。
+dird/REPORT.txt、ADDENDUM_PHASE2.txt、audit/PHASE2_REPORT.txt：重训、
+校准、native异常与段界勘误。servo/REPORT.txt、audit/PHASE1_REPORT.txt：
+缺失观测、Module C和主入口复核。
+所有实际控制回放均为离线理想关节反馈；没有设备动作、接触、力反馈、
+超声质量或真人实验。未将候选模型发布、未把ROI替换成旧全腿默认资产，
+未推送远端。旧仓库存在大量预先脏改动，未回退、未全量提交。

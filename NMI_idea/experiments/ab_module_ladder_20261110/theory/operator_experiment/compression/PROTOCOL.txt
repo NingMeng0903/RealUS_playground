@@ -1,0 +1,103 @@
+Frozen low-rank Xi operator audit, 2026-11-10
+
+Scope and claim boundary
+------------------------
+This is a bounded offline linear-algebra test of the already sealed finite
+observation operator.  It makes no controller, production, hardware, sensor,
+prior, or world changes.  It is not a robot/task-performance result and does
+not claim novelty for standard SVD/value-operator compression.  The purpose
+is to distinguish the exact current-risk vector from the observation-
+conditioned future operator and to measure a fixed computational
+approximation at horizon two.
+
+Frozen inputs
+-------------
+Read-only inputs are the parent module's sealed ``operator_arrays.npz`` and
+``RESULTS.json``.  The array hash at protocol freeze is
+69dee7a49016a0b66ff020a4bd6b0f858aecfe7c48ced65867102525661859d4 and the
+result hash is cb02cf84f6fd93bf684e1039e3f715699eb66e5b3e8418d5904dca066fc3e6bf.
+No new ``sample_prior`` call, geometric prediction, sensor setting, cost
+setting, or retuning is permitted.  The parent module's exact likelihood
+L[h,a,y], terminal risk R[h,j], and saved aliases are the only numerical
+inputs.
+
+Linear Xi operator
+------------------
+Use A=15 probe/terminal actions, Y=19 public observations, H=64 catalogue
+latents, and row order ``row=((a*Y)+y)*A+j``.  Compile exactly
+
+  M[row,h] = L[h,a,y] * R[h,j],
+
+so that Xi[b,a,y,j] is the row-wise matvec ``M @ b`` reshaped to [A,Y,A].
+The exact future-risk backup has no probe cost:
+
+  F(b,a) = sum_y min_j Xi[b,a,y,j].
+
+For comparison with the parent audit, the fixed frozen option cost c=.5 is
+added only after this operator evaluation, V_probe(b,a)=c+F(b,a).  Direct
+terminal risk D(b)=min_j b@R remains exact and is never compressed.
+
+SVD approximation and ranks
+---------------------------
+Compute the economy SVD M=U diag(S) V^T once.  Numerical rank uses
+tol=max(M.shape)*eps*S[0].  For each requested r in [1,4,8,16,32,64],
+including ranks above the numerical rank, use the unmodified truncated
+reconstruction
+
+  M_r = (U[:, :r] * S[:r]) @ V[:r, :].
+
+No entries of M_r or Xi_r=M_r@b are clipped or renormalized.  Negative
+entries are explicitly counted and reported as signed algebraic
+approximation values; they must not be called probabilities or posteriors.
+
+Belief test sets
+----------------
+Evaluate every one of the 64 sealed alias beliefs (the 32 plus/minus pairs)
+and 32 held-out belief weights generated exactly as
+``np.random.default_rng(720512).dirichlet(np.ones(64), size=32)``.  These
+are belief-weight tests only, not new patients/worlds.  The uniform belief is
+also retained as a named reference check.  The direct-risk vector b@R is
+computed exactly for every test belief.
+
+Required error and policy measurements
+--------------------------------------
+For every r and every test belief, save exact and reconstructed Xi, F, and
+the fixed-cost probe value.  Report tensor-entry sup error, per-belief future
+risk/value errors, conditional probe argmin action changes, terminal-action
+argmin changes by observation, and the complete direct-versus-probe decision
+at c=.5.  Because the parent audit finds direct termination globally at the
+frozen cost, report conditional probe rankings/values separately; do not
+tune c to manufacture a global policy change.
+
+The simplex-uniform entry bound is the maximum column-entry reconstruction
+error per Xi row, then globally
+
+  epsilon_entry = max_{row,h} |M_r[row,h]-M[row,h]|.
+
+The conservative future-backup propagation bound is reported as
+
+  epsilon_backup = max_a sum_y max_j max_h
+      |M_r[(a,y,j),h]-M[(a,y,j),h]|.
+
+This is a uniform simplex bound, not a sampled RMSE.  Descriptive test-set
+errors may be reported separately but are never substituted for this bound.
+
+Cost and representation accounting
+-----------------------------------
+Report operator-only and exact-direct-risk bookkeeping.  A full belief
+matvec uses rows*H multiplications.  A rank-r factor matvec uses
+r*(H+rows) multiplications (belief-to-coefficients plus row synthesis).
+Direct b@R costs H*A multiplications in both paths and is retained exactly.
+Report factor representation bytes for (U[:, :r]*S[:r]) and V[:r, :],
+full M bytes, the unchanged exact-R bytes, and measured batch timings with
+the required single-thread interpreter.  Timing is descriptive hardware
+evidence; the multiplication/byte counts are the portable accounting.
+
+Artifacts and integrity
+-----------------------
+The runner writes ``compression_arrays.npz``, ``RESULTS.json``,
+``RESULTS.sha256``, and ``REPORT.txt`` only in this ``compression``
+directory.  It records source/protocol/runner/array/result hashes, SVD
+singular values, all test weights, exact/compressed backups, signed negative
+counts/minima, bounds, policy/action counts, and cost accounting.  The
+parent module's frozen files are not modified.

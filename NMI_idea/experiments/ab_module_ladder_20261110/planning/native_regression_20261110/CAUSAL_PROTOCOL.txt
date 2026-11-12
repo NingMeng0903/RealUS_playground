@@ -1,0 +1,17 @@
+Debugging protocol, 2026-11-10
+The goal is to explain the disagreement between old successful native tests and
+new B command replay, not to improve a heldout research score by changing it.
+All earlier frozen policy/native results remain intact.
+
+Controlled baseline reruns the two original frozen17-node paths and seeds, the
+new first nominal B command, and two zero-motion10s holds, using the current
+unchanged production native binary and scan profile. No hardware API is used.
+
+Prespecified diagnostic2x2: task weights original100/50 versus weights scaled by
+the registered2mm/2deg tolerances; original jerk bounds300rad/s^3 and320m/s^3 versus
+very loose1e9 jerk bounds (effectively removing just that history restriction).
+All physical velocity, acceleration, position and collision settings stay fixed.
+Both the first failed B motion and a6s stationary hold are tested in every cell.
+This diagnostic never changes the saved profile or hardware defaults; a loose
+jerk control is causal evidence only, not automatic permission to remove hardware
+constraints or count trajectories as physically validated.

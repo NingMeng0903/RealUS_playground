@@ -1,0 +1,78 @@
+Frozen versus online material map during recheck
+2026-11-12
+
+Primary question
+
+Does continued online updating of the material-map marginal after the same
+first sweep change useful follow-up decisions and strict completion?
+Primary comparison is online versus frozen in the combined stress condition.
+All independent cases are included. The nominal condition is a check on
+ordinary operation. The common case seed is the paired statistical unit.
+
+Both estimators receive one complete 28-frame rule sweep. Each comparison
+starts from a clone of this same posterior and executes three captures.
+In the frozen arm the entire static map marginal from this sweep remains
+fixed. Conditional transient and identity states still assimilate each new
+mask. The online arm performs the same measurement update and also reweights
+the static hypotheses. Both retain the local material correction basis,
+global lateral correction and daughter-branch correction.
+
+Budgets and policies
+
+Shared recheck action slots are the frozen knee simulator's repeat, fork,
+alternate window, junction, branch and wait candidates. Use the same baked
+edge checks with cumulative limits 95 mm, 180 degrees and 3.30 seconds.
+Duration includes translation/capture and a rotation allowance at 120 deg/s.
+Reserve a capture interval for each remaining mandatory observation. Each
+policy may use a different amount of the allowed budget. First-sweep data,
+candidate function, belief likelihood, terminal cost and physical budgets
+are shared. The two-step planner draws four first-action outcomes and two
+at the tail, then replans after the actual observation. All terminal
+positions are scored at the same cutoff with a common simulated pose packet.
+No segmentation after the last action is allowed. This is endpoint-based
+acoustic simulation with modeled travel and turn, without controller runs.
+
+Offline and information ablations
+
+Online+Fisher adds 0.10 times a bounded task-position covariance reduction
+proxy with visibility weighting. This is a local continuous information
+proxy and does not count discrete identity discrimination. CQL seeds 7 and
+29 and FQI seed 7 train on the same fixed transitions, features, cost and
+legal masks. Log every legal first action per case, then uniformly sample
+legal continuations. The 256 training cases alternate nominal and stress.
+Use the same budget and three captures for each fitted policy. Compare
+each to the online two-step planner. These are secondary comparisons.
+
+Conditions and outcomes
+
+Stress combines a local material displacement, intermittent physically
+timed loss and a persistent near-branch false structure. The synthetic
+world is defined separately from the observation model. The random field
+depends on case and physical capture coordinates, not the selected policy
+or action count. One label-specific loss lasts 0.45–0.90 s. The burst is
+anchored around the nominal fork arrival for 65% of cases, and at nominal
+first-sweep end plus 1.1 s for 35%, with independent 0.32 s SD jitter.
+A persistent material-frame displacement near a branch is projected
+through the actual selected view; appearance can depend on the window.
+Train and held-out seeds are disjoint. There are 128
+nominal and 128 stress replays of the held-out subjects. The stress
+parameters are fixed before these outcomes are examined.
+
+Strict completion requires both branch identities confirmed correctly
+at the common 0.87 threshold and a maximum world position error of 3 mm
+on the frozen query addresses. Separately count wrong confirms, opposite
+branch vs false structure, and unresolved cases. Historic witnesses can
+contribute to this outcome. Each observed recheck is compared with a
+shadow that has the same pose and time but no new mask. An immediately
+non-improving recheck neither improves correct/wrong identity counts nor
+reduces the query RMSE by at least 0.10 mm. Report identity-only
+non-improvement too. This diagnoses immediate evidence, while an
+observation can still enable later decisions. All methods take exactly
+three frames, so the comparison is wasted-frame count within this quota.
+
+Run both cross-replays with the exact real capture frames from the other
+planner. This separates map interpretation from action selection. Report
+individual routes, actual modeled travel/time/rotation, paired discordances,
+case bootstrap intervals and the two-sided exact paired test for binary
+outcomes. The 3D plot shows acquisition positions, not continuous QP or
+skin-contact trajectories.

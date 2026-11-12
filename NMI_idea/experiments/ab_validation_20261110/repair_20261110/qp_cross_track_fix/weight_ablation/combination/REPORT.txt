@@ -1,0 +1,75 @@
+Frozen W-weight + software-lead/timing combination diagnostic
+Offline ideal-q native replay only; no hardware/default promotion.
+
+Input SHA256: 7e23c9a9d91faef05bfddbc9eb1275c156ceacc04798c20a6beb61425136e8e8
+Protocol SHA256: d74e25a85a29e4e1cd5a47297f1ad04c63233d178070e4dd4034f63e41a2997f
+Runner SHA256: 1e621f9c9d2af91af7507072971c0a363fe08ff575eb5f7b14bc91dcd8d54bea
+QP replay SHA256: 88b71baaa55c18a35d0bd3696b18ef9d24a54b813e766fbacbbdf2f0cffb09ec
+Native binary SHA256: cc34bf96b772ef463aa2a9468153e649da550192b8486d35ed52145ea07e7d07
+W = 50*(radians(2)/0.002)^2 = 15230.870989335432; lead = 20 deg (0.3490658503988659 rad)
+All runs use full 6D feed-forward, 0.02 m/s peak, and 2 s settle.
+Physical q/v/a/j/collision gates are unchanged; only software lead is relaxed.
+
+Window metrics are fixed before results: full, path-only, middle t_ref [.8,duration-.8], arc 20-80%, and fixed 10% arc bins.
+
+Sealed W-only comparison (parent weight_ablation; no rerun):
+path0: prior W-only full arm jerk margin=-209.699; lead20 A/B full margins=-0.0393108/-0.0350078; prior W-only full excess ticks=179
+path1: prior W-only full arm jerk margin=-181.123; lead20 A/B full margins=-0.0351993/-0.0302302; prior W-only full excess ticks=199
+
+path0_A_start04: combo=A_start04 path=0 n=1180 whole_duration_s=5.9 reference_duration_s=3.89283
+  weights=[15230.870989335432, 15230.870989335432, 15230.870989335432, 50.0, 50.0, 50.0] native_weights=[15230.870989335432, 15230.870989335432, 15230.870989335432, 50.0, 50.0, 50.0] lead_rad=0.349066 native_lead_rad=0.349066
+  cfg_dump=path0_A_start04_native_config.txt cfg_sha256=2f706100dcc01478b9b0e4b2ce56077eb86a75ba2a5c5a3197226ed650fd1326
+  full pose p95/max mm=0.159345/0.236543; rot p95/max deg=1.38453/1.6596
+  middle pose p95/max mm=0.104738/0.111816; rot p95/max deg=0.273714/0.434133
+  middle along signed min/max mm=0.0773223/0.105193; normal p95/max mm=0.0336175/0.0415837
+  middle jerk arm max/margin/excess=300.034/-0.0335993/68; full jerk arm max/margin/excess=300.039/-0.0393108/266
+  strict gates pose=True mechanical=False all=False failures=0
+  trace_sha256=c70d78a6472d62a8fde4d89c53a2809eeddc916e3f7e76493ab384ae409ec66c raw_result_sha256=ae9b06f9afb4bf6b0266c227ab87738c682f06e216e9dc97c0b0a95711e4d658
+  middle cross-vector signed component min/max mm: x=-0.0318569/-0.000280504, y=-0.0327893/0.00579769, z=-0.00960741/0.00173828
+  middle rotation-vector signed component min/max deg: x=-0.00444521/0.0149759, y=-0.191947/0.433636, z=-0.0302371/-0.0019085
+  arc20-80 pose p95/max mm=0.102951/0.109341; normal p95/max mm=0.0314839/0.0415837; rot p95/max deg=0.191927/0.255936
+  arc10% bins (position max mm / normal max mm / rotation max deg / arm jerk margin): bin_00_10=0.108471/0.0533785/1.14283/-0.00510217; bin_01_20=0.111816/0.0468337/0.753308/-0.00617287; bin_02_30=0.102184/0.0415837/0.255936/-0.0310572; bin_03_40=0.109341/0.0308572/0.145445/-0.020798; bin_04_50=0.104736/0.0193074/0.144825/-0.0185057; bin_05_60=0.10057/0.00873161/0.0802743/-0.0280972; bin_06_70=0.0998934/0.0325828/0.140105/-0.0335993; bin_07_80=0.0947604/0.0270916/0.192409/-0.0261167; bin_08_90=0.0803136/0.0128986/0.186403/-0.0176205; bin_09_100=0.199485/0.194384/1.64511/-0.000666881
+
+path0_B_symmetric08: combo=B_symmetric08 path=0 n=1300 whole_duration_s=6.5 reference_duration_s=4.49283
+  weights=[15230.870989335432, 15230.870989335432, 15230.870989335432, 50.0, 50.0, 50.0] native_weights=[15230.870989335432, 15230.870989335432, 15230.870989335432, 50.0, 50.0, 50.0] lead_rad=0.349066 native_lead_rad=0.349066
+  cfg_dump=path0_B_symmetric08_native_config.txt cfg_sha256=2f706100dcc01478b9b0e4b2ce56077eb86a75ba2a5c5a3197226ed650fd1326
+  full pose p95/max mm=0.103307/0.111093; rot p95/max deg=0.425439/0.659287
+  middle pose p95/max mm=0.104515/0.109728; rot p95/max deg=0.233627/0.258457
+  middle along signed min/max mm=0.0685987/0.104405; normal p95/max mm=0.0321971/0.0350902
+  middle jerk arm max/margin/excess=300.035/-0.0350078/55; full jerk arm max/margin/excess=300.035/-0.0350078/169
+  strict gates pose=True mechanical=False all=False failures=0
+  trace_sha256=282c5730cb532105a9f018425bc485ccff49c514f6fe57471854eb59cdef81c1 raw_result_sha256=b80f0cbdc29e39a64a7dc934ecc699b3090eb80fd69a845c9b5684e1c2c881d4
+  middle cross-vector signed component min/max mm: x=-0.0309866/0.00174083, y=-0.0300087/0.00580691, z=-0.00970605/0.0116877
+  middle rotation-vector signed component min/max deg: x=-0.0010315/0.0267852, y=-0.257645/-0.0556906, z=-0.0149785/0.0192394
+  arc20-80 pose p95/max mm=0.102682/0.105257; normal p95/max mm=0.0286604/0.0350902; rot p95/max deg=0.238275/0.258457
+  arc10% bins (position max mm / normal max mm / rotation max deg / arm jerk margin): bin_00_10=0.111093/0.0370438/0.111367/-0.00280703; bin_01_20=0.11084/0.0364187/0.158882/-0.00761367; bin_02_30=0.103353/0.0350902/0.247162/-0.0157529; bin_03_40=0.10492/0.0225915/0.258457/-0.0304341; bin_04_50=0.105257/0.0168307/0.218805/-0.0187276; bin_05_60=0.100627/0.00867366/0.110392/-0.0271253; bin_06_70=0.0999515/0.0317598/0.134621/-0.0350078; bin_07_80=0.0948153/0.0270663/0.187962/-0.028813; bin_08_90=0.0811108/0.0122484/0.139354/-0.00718904; bin_09_100=0.0961942/0.0733472/0.659287/-0.00699226
+
+path1_A_start04: combo=A_start04 path=1 n=1197 whole_duration_s=5.985 reference_duration_s=3.9784
+  weights=[15230.870989335432, 15230.870989335432, 15230.870989335432, 50.0, 50.0, 50.0] native_weights=[15230.870989335432, 15230.870989335432, 15230.870989335432, 50.0, 50.0, 50.0] lead_rad=0.349066 native_lead_rad=0.349066
+  cfg_dump=path1_A_start04_native_config.txt cfg_sha256=2f706100dcc01478b9b0e4b2ce56077eb86a75ba2a5c5a3197226ed650fd1326
+  full pose p95/max mm=0.171992/0.2435; rot p95/max deg=1.51491/1.81274
+  middle pose p95/max mm=0.104861/0.111207; rot p95/max deg=0.265232/0.412739
+  middle along signed min/max mm=0.0777264/0.103357; normal p95/max mm=0.036586/0.0508801
+  middle jerk arm max/margin/excess=300.035/-0.0351993/65; full jerk arm max/margin/excess=300.035/-0.0351993/171
+  strict gates pose=True mechanical=False all=False failures=0
+  trace_sha256=4896429c3b2c9ce6c84592e0927ce358269b488fb62305e1eaad610967a7ea2f raw_result_sha256=db9b61627edbd340ffc392ea0774bd13f45369421896ec34e34c9ce5b96462f4
+  middle cross-vector signed component min/max mm: x=-0.0334061/0.000672423, y=-0.0379845/0.00772743, z=-0.0126913/0.00283906
+  middle rotation-vector signed component min/max deg: x=-0.0127791/0.0147211, y=-0.250631/0.41234, z=-0.0296509/-0.000333361
+  arc20-80 pose p95/max mm=0.10226/0.110454; normal p95/max mm=0.0328496/0.0508801; rot p95/max deg=0.224497/0.251458
+  arc10% bins (position max mm / normal max mm / rotation max deg / arm jerk margin): bin_00_10=0.111919/0.0531478/1.1142/-0.013329; bin_01_20=0.112136/0.0429522/0.696345/-0.0172927; bin_02_30=0.110454/0.0508801/0.237503/-0.0187891; bin_03_40=0.104222/0.025055/0.107168/-0.0302613; bin_04_50=0.102313/0.00606358/0.104775/-0.0274013; bin_05_60=0.10089/0.0327077/0.11048/-0.0235504; bin_06_70=0.0997264/0.0286607/0.199351/-0.0351993; bin_07_80=0.0939254/0.023262/0.251458/-0.0155586; bin_08_90=0.0807472/0.0151226/0.161251/-0.00567899; bin_09_100=0.202393/0.200587/1.78792/-0.0128501
+
+path1_B_symmetric08: combo=B_symmetric08 path=1 n=1317 whole_duration_s=6.585 reference_duration_s=4.5784
+  weights=[15230.870989335432, 15230.870989335432, 15230.870989335432, 50.0, 50.0, 50.0] native_weights=[15230.870989335432, 15230.870989335432, 15230.870989335432, 50.0, 50.0, 50.0] lead_rad=0.349066 native_lead_rad=0.349066
+  cfg_dump=path1_B_symmetric08_native_config.txt cfg_sha256=2f706100dcc01478b9b0e4b2ce56077eb86a75ba2a5c5a3197226ed650fd1326
+  full pose p95/max mm=0.104174/0.110883; rot p95/max deg=0.510024/0.720801
+  middle pose p95/max mm=0.105587/0.110458; rot p95/max deg=0.219445/0.251583
+  middle along signed min/max mm=0.0622901/0.104483; normal p95/max mm=0.0329924/0.0376145
+  middle jerk arm max/margin/excess=300.03/-0.0302302/86; full jerk arm max/margin/excess=300.03/-0.0302302/233
+  strict gates pose=True mechanical=False all=False failures=0
+  trace_sha256=09f63a14e655c28851af164e4c721af08d86f755b91b4eb437fad001e3ea6429 raw_result_sha256=7cf5e9cb2c56630043b19405a522cc416c0da3cf51c45d62c0c50e5d0efb3c9b
+  middle cross-vector signed component min/max mm: x=-0.0323047/0.00374842, y=-0.0306786/0.00795504, z=-0.0129514/0.0122059
+  middle rotation-vector signed component min/max deg: x=-0.0208234/0.0246349, y=-0.249643/-0.0669378, z=-0.0275526/0.0207253
+  arc20-80 pose p95/max mm=0.104074/0.110458; normal p95/max mm=0.0295164/0.0376145; rot p95/max deg=0.222849/0.251583
+  arc10% bins (position max mm / normal max mm / rotation max deg / arm jerk margin): bin_00_10=0.110883/0.0384192/0.111297/-0.0116681; bin_01_20=0.109712/0.0361297/0.148221/-0.0164079; bin_02_30=0.110458/0.0376145/0.220454/-0.0161626; bin_03_40=0.106279/0.0305263/0.223659/-0.0302302; bin_04_50=0.10472/0.0140041/0.192234/-0.0264829; bin_05_60=0.101011/0.0331009/0.129844/-0.0243019; bin_06_70=0.0996768/0.0293514/0.201764/-0.0229666; bin_07_80=0.092819/0.0239874/0.251583/-0.00886897; bin_08_90=0.0793396/0.0132214/0.159545/-0.0170969; bin_09_100=0.102542/0.0838139/0.720801/-0.00837684
+
+Interpretation: A and B retain the same frozen geometry, W task weight, lead20, and physical gates; only the declared reference time law differs. The middle/arc windows are fixed profile windows, not error-selected. Negative signed errors and jerk margins are intentionally preserved. A middle-window improvement would not certify startup/end behavior or physical execution.
