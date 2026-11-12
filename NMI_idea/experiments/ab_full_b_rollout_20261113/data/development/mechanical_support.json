@@ -1,0 +1,206 @@
+{
+  "daughter": {
+    "complete_routes": 1622,
+    "with_opposite_tilts": 422,
+    "with_other_realization": 1060,
+    "root_nodes": [
+      6,
+      12,
+      13,
+      14,
+      16
+    ],
+    "equivalent_support": [
+      {
+        "nodes": [
+          0,
+          1
+        ],
+        "first_only": [],
+        "second_only": []
+      },
+      {
+        "nodes": [
+          2,
+          3
+        ],
+        "first_only": [],
+        "second_only": []
+      },
+      {
+        "nodes": [
+          4,
+          5
+        ],
+        "first_only": [],
+        "second_only": []
+      },
+      {
+        "nodes": [
+          6,
+          7
+        ],
+        "first_only": [],
+        "second_only": []
+      },
+      {
+        "nodes": [
+          8,
+          9
+        ],
+        "first_only": [],
+        "second_only": []
+      },
+      {
+        "nodes": [
+          10,
+          11
+        ],
+        "first_only": [],
+        "second_only": []
+      },
+      {
+        "nodes": [
+          12,
+          13
+        ],
+        "first_only": [],
+        "second_only": []
+      },
+      {
+        "nodes": [
+          14,
+          15
+        ],
+        "first_only": [],
+        "second_only": []
+      },
+      {
+        "nodes": [
+          16,
+          17
+        ],
+        "first_only": [],
+        "second_only": []
+      }
+    ],
+    "example_opposite": [
+      6,
+      6,
+      6,
+      8,
+      10,
+      4
+    ],
+    "example_realization": [
+      6,
+      6,
+      6,
+      6,
+      7,
+      1
+    ]
+  },
+  "trunk": {
+    "complete_routes": 934,
+    "with_opposite_tilts": 124,
+    "with_other_realization": 587,
+    "root_nodes": [
+      12,
+      13,
+      14,
+      16,
+      18
+    ],
+    "equivalent_support": [
+      {
+        "nodes": [
+          12,
+          13
+        ],
+        "first_only": [],
+        "second_only": []
+      },
+      {
+        "nodes": [
+          14,
+          15
+        ],
+        "first_only": [],
+        "second_only": []
+      },
+      {
+        "nodes": [
+          16,
+          17
+        ],
+        "first_only": [],
+        "second_only": []
+      },
+      {
+        "nodes": [
+          18,
+          19
+        ],
+        "first_only": [],
+        "second_only": []
+      },
+      {
+        "nodes": [
+          20,
+          21
+        ],
+        "first_only": [],
+        "second_only": []
+      },
+      {
+        "nodes": [
+          22,
+          23
+        ],
+        "first_only": [],
+        "second_only": []
+      },
+      {
+        "nodes": [
+          24,
+          25
+        ],
+        "first_only": [],
+        "second_only": []
+      },
+      {
+        "nodes": [
+          26,
+          27
+        ],
+        "first_only": [],
+        "second_only": []
+      },
+      {
+        "nodes": [
+          28,
+          29
+        ],
+        "first_only": [],
+        "second_only": []
+      }
+    ],
+    "example_opposite": [
+      12,
+      12,
+      14,
+      16,
+      22,
+      28
+    ],
+    "example_realization": [
+      12,
+      12,
+      12,
+      13,
+      19,
+      25
+    ]
+  }
+}

@@ -1,5 +1,7 @@
 # Independent review of B versus replanning MPC
 
+[Full-episode B rollout follow-up](../ab_full_b_rollout_20261113/README.md)
+
 This package records the attempted redesign of B for robotic ultrasound. The reference commit is `cdb1705a02f60382ffbe9e42f2ed420e27a28ddb`. The [original review request](../../B_REVIEW_REQUEST.md) and the [frozen moving-Y report](../ab_tro_y_continuation_20261112/REPORT.md) describe the original system and endpoint. New results are from development simulations. Neither redesign passed the promotion criteria, and the prospective confirmation split was kept unused.
 
 [Download the reproduction bundle](b-validation-reproduction.zip) · [Reproduction instructions](reproduction/README.md) · [Full paired statistics](reproduction/results.json) · [Development protocol](reproduction/benchmark/development_protocol.md)

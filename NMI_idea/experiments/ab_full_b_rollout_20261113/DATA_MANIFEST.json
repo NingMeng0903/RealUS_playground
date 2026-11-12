@@ -1,0 +1,143 @@
+{
+  "files": {
+    "acoustics.py": "b36b5b49ab57460553c2061779f121e69ac4e10d831e10f13d7317a39502cc39",
+    "control.py": "bfe70e6965d4272152f4c063781725f66058b50f3be463c9e8a406f42a7f5982",
+    "run.py": "cc70d16ac34d76a24756c9e8d468e0b9a7418c205851276ca82a55b6bf7b0954",
+    "audit.py": "9a157dce069a3891a925543e1c23720d27518a9b6ee644deb36a95c7970b5d7c",
+    "calibrate.py": "73298464828ff011737d869f1a84e8b5c13943c163c1a1467247afc504babae2",
+    "cost_match.py": "ff5bd203f6c364b73c354b4393f749c09a01fddeff262810f3f2fa88c0f0e4a3",
+    "selfcheck.py": "34eaa4e70ea9cbe125ecbb7fd714ed7786881a3c7c2338b40a3599c60033eb6b",
+    "motion_bank.py": "cebd4db066aea9807401ebb575050a2f99bb94997447e93c311f1a9433b0a9d2",
+    "retime_bank.py": "e0eb5fb2f12b3a61d1d24d49374eda9fb943b53e4df653a9fb80af599873e7e0",
+    "PROTOCOL.md": "99024b6b6ab5b4eaf1dc242653b6d5b2dc96d52065b462085f84d76b7ad826fb",
+    "COST_MATCH_PROTOCOL.md": "8c9101bf854359ded828619f57cb3640ddc428f87e20e9025ca2f648ec15b259",
+    "FREEZE.json": "920d79a2e5367df70254ca97eb1e37df311af7d315c992af86107327fe6b90d7",
+    "motion/BANK_MAIN.json.xz": "f834013839500edcb686a08b045bb4c909d35164620f4056e45cf93d1b78d32f",
+    "motion/PREFLIGHT_MAIN.json.xz": "88ef84d580c65c3b1a6235eea3b7b7de56c3db52ea009130e79a6dca9784c271",
+    "motion/BANK_DERATED.json.xz": "393af7284cc6d00882b4bfed95bd46164c3e897708e05437a4725fafe6c2d9d2",
+    "motion/BANK_UNIFORM.json.xz": "97eaf60445e1ef405aaa2e5b59260d940adebfd1cc98a57528cc6739e338db3e",
+    "motion/BANK_CARTESIAN.json.xz": "0eea74bda4e453524452f341803fab70146dd8d030a17c9f2ca0f29be2260121",
+    "motion/PREFLIGHT_BANK_CARTESIAN.json.xz": "9e57a3ea2af6c9a498eef2e2dea4f2bafa2d8442102d7f8804b96ac8e9a4354a",
+    "motion/BANK_FAR.json.xz": "490f0f047c0d0bb1eaf9b77be946651039f23a915d77d307bf2e63255c2890f6",
+    "motion/REJECTIONS_MAIN.json": "c099a4bdb5753d581ec0a8167e203cb9a893476510796f2ac86111fff7fe90cb",
+    "motion/REJECTIONS_BANK_CARTESIAN.json": "50cfc7cfeaefbac95aba6e114ba7a79ffcc696273762194134f086713421e661",
+    "motion/REJECTIONS_FAR.json": "c099a4bdb5753d581ec0a8167e203cb9a893476510796f2ac86111fff7fe90cb",
+    "motion/REJECTIONS_BANK_UNIFORM.json": "c099a4bdb5753d581ec0a8167e203cb9a893476510796f2ac86111fff7fe90cb",
+    "data/development/cases.jsonl.xz": "94661dff0f4f0409bebb22b7553277f3a57f86f4e22d16ff2592f777ad797d71",
+    "data/development/counts.json": "0572562aeb665c4239b0bbd48856d4c939093451364db652da050b262f6f1292",
+    "data/development/mechanical_support.json": "702802fac78ee1fdb34e4dcd6043f83819730d05ecbb40a68a2ffdf7a3678520",
+    "data/development/paired.json": "e4d631b573c1f882ad7dcb6b2fef18f4b753f70a99d6e7c0f14006d43c93734b",
+    "data/development/plans.json.xz": "a7d5bf35c20905554d6e29310bee2133e773270a381244507118c5226f37c78c",
+    "data/development/settings.json": "297e8ce70acb567169d876120216878bed96dd629de08ada7d00d41a5da5642a",
+    "data/confirmation/cases.jsonl.xz": "3d1eab6ceb1dd6b4bef28d39be8937dbd92ba831995eaf0ca9817f70a5fff49a",
+    "data/confirmation/counts.json": "bfba3873658ae198d3e2111269362c6932f6e62d45b79a4b4b2d49de11e53c30",
+    "data/confirmation/mechanical_support.json": "702802fac78ee1fdb34e4dcd6043f83819730d05ecbb40a68a2ffdf7a3678520",
+    "data/confirmation/paired.json": "fb41e85ee7e168212471172586f4d786248fcb6a930a966017315ad3b8a4a6b7",
+    "data/confirmation/plans.json.xz": "5caba7a369a1d4416efeee0188f8268fb1f9671356dd2feffdf4712290911251",
+    "data/confirmation/settings.json": "afee1a302c46af0aa7d3e0497b93e7a539dabe96b15eccc47409d18a6baec3d9",
+    "data/headroom/cases.jsonl.xz": "c2c1bfb2152034f0386eb8fcb6330a2e8eb3f713240253efda6c4b28f0bb2f6d",
+    "data/headroom/counts.json": "66940d0d93446619ac35b57c7aceae3249afa7e99c913dd33445783ce795295b",
+    "data/headroom/mechanical_support.json": "702802fac78ee1fdb34e4dcd6043f83819730d05ecbb40a68a2ffdf7a3678520",
+    "data/headroom/paired.json": "e3531d2fc509c388044a501dec8ff353c65e8ad7bc6d2506683c8c1256c5aaea",
+    "data/headroom/plans.json.xz": "cd2432a40a4aee3da4acc1844a9427ad489184553c287e44122c0f563eb6dd72",
+    "data/headroom/settings.json": "fd9b3569d30cfd97658420aeaa477e93444b42ef48db3b4e04e3d3ab17e2bd2c",
+    "data/sensitivity768/cases.jsonl.xz": "6b1b06e803809da1411fedc3b7c6a171399eac1c7ed9db909963639ae387d535",
+    "data/sensitivity768/counts.json": "c439f7d6b7186dabc6b26bfa463655137a95b8c53e3c04194539649afc74eefc",
+    "data/sensitivity768/mechanical_support.json": "702802fac78ee1fdb34e4dcd6043f83819730d05ecbb40a68a2ffdf7a3678520",
+    "data/sensitivity768/paired.json": "064d19f8c35e80dbd976ab6528facc4716c5f7248db1b7848165ab4edb411f94",
+    "data/sensitivity768/plans.json.xz": "76163afd5e608f08cbec035dff676ec9ee697dd7aa207384b8228fb3ee04c33f",
+    "data/sensitivity768/settings.json": "16e491b1cb63a57a8d532fb187ea227f6892534b5d1160bcb700851d8d1addb8",
+    "data/timing_sensitivity/cases.jsonl.xz": "861f26a44bb76db9463ed5041c8366383c79d6ea4c16e7b051877d8f11a29973",
+    "data/timing_sensitivity/counts.json": "b5633f4e5cb3bb8b37e13988d5c087299503c518b1ecbd012ef76a133386b0ea",
+    "data/timing_sensitivity/mechanical_support.json": "702802fac78ee1fdb34e4dcd6043f83819730d05ecbb40a68a2ffdf7a3678520",
+    "data/timing_sensitivity/paired.json": "7c77ec199bee0c11ebb87793af361395908a775a589619268becf2ee39877ad3",
+    "data/timing_sensitivity/plans.json.xz": "2d6d0952d43a10a84053890bd7507a837ce5bfde490213ea54d2976a543eabe0",
+    "data/timing_sensitivity/settings.json": "95849f1c61321d070c9fbbf4f6855a840e247cdd6767765fc0c6e2fd6b005911",
+    "data/cost_diagnostic/cases.jsonl.xz": "bbf5bdf8dacf6aeb3e491705ddfc46b311202821bce979f818f5678342540e9d",
+    "data/cost_diagnostic/paired.json": "f3e528c888cc1015a788ff6ad969e899df58958c219523d94c43a9fc6a007e2b",
+    "data/cost_diagnostic/settings.json": "fbd2bf0c32a41f5df290963cebd54a7dfaa236c43f2ef0bb9c8ee95be0b4cce6",
+    "data/calibration.json.xz": "9099b5175395649a4b36ff08ffb7bcf85d53a7a0ffc8c4b2878fb064d0adf6b1",
+    "data/mechanics_final_open/mechanical_support.json": "05905eae5a3da287d4e6e5a359aa454034f281a2202e5d28babbfe100ccbdcba",
+    "data/main_rate80/mechanical_support.json": "702802fac78ee1fdb34e4dcd6043f83819730d05ecbb40a68a2ffdf7a3678520",
+    "data/derated_preflight/mechanical_support.json": "702802fac78ee1fdb34e4dcd6043f83819730d05ecbb40a68a2ffdf7a3678520",
+    "data/calibration_summary.json": "fbd849c1fdbf7d516bda1b970f17428fa052277f2f99b985d4dd95c45ce99281"
+  },
+  "decompressed": {
+    "motion/BANK_MAIN.json": {
+      "bytes": 5479199,
+      "sha256": "a29cad4b5fe37760093e312c5be7a140d7905252c51fe42905908b9fad339e47"
+    },
+    "motion/PREFLIGHT_MAIN.json": {
+      "bytes": 765542,
+      "sha256": "a0cc5b7aac857732ee9179de57786eb12120f60e1dda5f2dacfbe0278cb1c2ca"
+    },
+    "motion/BANK_DERATED.json": {
+      "bytes": 2953832,
+      "sha256": "a8d5a52d94b6779da8f05869a2a3d8d438b09a9a48abdd91777c7a6b35507a4e"
+    },
+    "motion/BANK_UNIFORM.json": {
+      "bytes": 8952353,
+      "sha256": "3dd4c104e0d6686ea38a6edc6cde21b1ce1466c4ce20c08ebcd1a4a05bf54d1b"
+    },
+    "motion/BANK_CARTESIAN.json": {
+      "bytes": 3612493,
+      "sha256": "17c1a1c0506f8d82a6592c69504f51df5c1b1bd0154687f44bef71927da44514"
+    },
+    "motion/PREFLIGHT_BANK_CARTESIAN.json": {
+      "bytes": 846457,
+      "sha256": "d297403b4daca847732d0f9e498a5f9fbd4ab620e14d2e1fce219eafdadd223e"
+    },
+    "motion/BANK_FAR.json": {
+      "bytes": 4492271,
+      "sha256": "c4853d7eae18849b968cc7c29cda798fc36e85fe793a85862c3ca765e6f97a47"
+    },
+    "data/development/cases.jsonl": {
+      "bytes": 1320602,
+      "sha256": "414aa61f800abb43f8efa52140ff1cdfbbc44f6514dea5770675cfaa6a7feeb4"
+    },
+    "data/development/plans.json": {
+      "bytes": 1233044,
+      "sha256": "b035806fbfb2bb9a2cb5c36c46ea206616d33161315f50c08eaacc1f9dd909eb"
+    },
+    "data/confirmation/cases.jsonl": {
+      "bytes": 7446779,
+      "sha256": "48b1ec76d9ed1f2cd2c38699be25cf6afac8323e041c2547bea539e759718d21"
+    },
+    "data/confirmation/plans.json": {
+      "bytes": 2128790,
+      "sha256": "0675a7343ad46b1a5e4df98b231156e387f0b24d20ca5dd409e5c2e08a66e5c9"
+    },
+    "data/headroom/cases.jsonl": {
+      "bytes": 732676,
+      "sha256": "35dc237aa907263f952d844848a8594d32279ae418baa9831fe8feab93b44f59"
+    },
+    "data/headroom/plans.json": {
+      "bytes": 349511,
+      "sha256": "3224dc99f68f92b793fef908966dc66eeedbb10d46936c4867148129800666b1"
+    },
+    "data/sensitivity768/cases.jsonl": {
+      "bytes": 275889,
+      "sha256": "24314bdc60e21cdc5ae7ab60bf4b76f1fdc7f6cba4afb3d1f3cac2f03d27feec"
+    },
+    "data/sensitivity768/plans.json": {
+      "bytes": 418518,
+      "sha256": "c5681a772f333f6f3e22bdca2d5eee8b8fe05d2eb3a5e04a223dd8f4e1466b57"
+    },
+    "data/timing_sensitivity/cases.jsonl": {
+      "bytes": 283090,
+      "sha256": "852ae448f8f6fa2555705a878ff6d0d03949f0d94d7571be322df43f1ff45828"
+    },
+    "data/timing_sensitivity/plans.json": {
+      "bytes": 413104,
+      "sha256": "a45f808d927756af2fd0705d3882a68d6ee6d3090fa3bfe885359eef51d5da3c"
+    },
+    "data/cost_diagnostic/cases.jsonl": {
+      "bytes": 1529460,
+      "sha256": "b8c1d14900c26ada5d06eb311039ff078915eb21068f7a2e916a58a57d06621d"
+    },
+    "data/calibration.json": {
+      "bytes": 1636752,
+      "sha256": "7a528a4ab7f5e1fb2136b39d16eae18a6cb5de36a8ccb5857893b257898b1d99"
+    }
+  }
+}

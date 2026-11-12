@@ -1,0 +1,30 @@
+{
+  "reference": "cdb1705a02f60382ffbe9e42f2ed420e27a28ddb",
+  "test_seed_namespace": 716903,
+  "n_cases": 192,
+  "model_size": 256,
+  "initial": [
+    "coarse",
+    "anchor"
+  ],
+  "tasks": [
+    "daughter",
+    "trunk"
+  ],
+  "arms": [
+    "MPC",
+    "B",
+    "one",
+    "fixed",
+    "unguarded"
+  ],
+  "sha256": {
+    "PROTOCOL.md": "99024b6b6ab5b4eaf1dc242653b6d5b2dc96d52065b462085f84d76b7ad826fb",
+    "run.py": "cc70d16ac34d76a24756c9e8d468e0b9a7418c205851276ca82a55b6bf7b0954",
+    "control.py": "bfe70e6965d4272152f4c063781725f66058b50f3be463c9e8a406f42a7f5982",
+    "acoustics.py": "b36b5b49ab57460553c2061779f121e69ac4e10d831e10f13d7317a39502cc39",
+    "audit.py": "9a157dce069a3891a925543e1c23720d27518a9b6ee644deb36a95c7970b5d7c",
+    "calibrate.py": "73298464828ff011737d869f1a84e8b5c13943c163c1a1467247afc504babae2",
+    "motion/BANK_MAIN.json": "a29cad4b5fe37760093e312c5be7a140d7905252c51fe42905908b9fad339e47"
+  }
+}

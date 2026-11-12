@@ -1,0 +1,1461 @@
+[
+  {
+    "archive_dird_margin": -1.3225756539323132,
+    "archive_proxy_pass": 0,
+    "archive_static_found": 1,
+    "candidate_index": 0,
+    "rail_m": 0.0,
+    "reason": "archived dIRD proxy below calibrated threshold",
+    "site": 3,
+    "status": "rejected",
+    "view": 3
+  },
+  {
+    "archive_dird_margin": -4.499409492604419,
+    "archive_proxy_pass": 0,
+    "archive_static_found": 1,
+    "candidate_index": 4,
+    "rail_m": 0.8,
+    "reason": "archived dIRD proxy below calibrated threshold",
+    "site": 3,
+    "status": "rejected",
+    "view": 3
+  },
+  {
+    "archive_dird_margin": -4.19832744977616,
+    "archive_proxy_pass": 0,
+    "archive_static_found": 1,
+    "candidate_index": 4,
+    "rail_m": 0.8,
+    "reason": "archived dIRD proxy below calibrated threshold",
+    "site": 3,
+    "status": "rejected",
+    "view": 7
+  },
+  {
+    "archive_dird_margin": -4.574110101544736,
+    "archive_proxy_pass": 0,
+    "archive_static_found": 1,
+    "candidate_index": 0,
+    "rail_m": 0.0,
+    "reason": "archived dIRD proxy below calibrated threshold",
+    "site": 3,
+    "status": "rejected",
+    "view": 8
+  },
+  {
+    "archive_dird_margin": -4.562472442018934,
+    "archive_proxy_pass": 0,
+    "archive_static_found": 1,
+    "candidate_index": 4,
+    "rail_m": 0.8,
+    "reason": "archived dIRD proxy below calibrated threshold",
+    "site": 3,
+    "status": "rejected",
+    "view": 8
+  },
+  {
+    "archive_dird_margin": -2.264322578944781,
+    "archive_proxy_pass": 0,
+    "archive_static_found": 1,
+    "candidate_index": 0,
+    "rail_m": 0.0,
+    "reason": "archived dIRD proxy below calibrated threshold",
+    "site": 4,
+    "status": "rejected",
+    "view": 3
+  },
+  {
+    "archive_dird_margin": -5.179782156775554,
+    "archive_proxy_pass": 0,
+    "archive_static_found": 1,
+    "candidate_index": 4,
+    "rail_m": 0.8,
+    "reason": "archived dIRD proxy below calibrated threshold",
+    "site": 4,
+    "status": "rejected",
+    "view": 3
+  },
+  {
+    "archive_dird_margin": -4.362179620601017,
+    "archive_proxy_pass": 0,
+    "archive_static_found": 1,
+    "candidate_index": 4,
+    "rail_m": 0.8,
+    "reason": "archived dIRD proxy below calibrated threshold",
+    "site": 4,
+    "status": "rejected",
+    "view": 7
+  },
+  {
+    "archive_dird_margin": -5.33022651529204,
+    "archive_proxy_pass": 0,
+    "archive_static_found": 1,
+    "candidate_index": 0,
+    "rail_m": 0.0,
+    "reason": "archived dIRD proxy below calibrated threshold",
+    "site": 4,
+    "status": "rejected",
+    "view": 8
+  },
+  {
+    "archive_dird_margin": -5.507061092134424,
+    "archive_proxy_pass": 0,
+    "archive_static_found": 1,
+    "candidate_index": 4,
+    "rail_m": 0.8,
+    "reason": "archived dIRD proxy below calibrated threshold",
+    "site": 4,
+    "status": "rejected",
+    "view": 8
+  },
+  {
+    "archive_dird_margin": -2.2945668245450284,
+    "archive_proxy_pass": 0,
+    "archive_static_found": 1,
+    "candidate_index": 0,
+    "rail_m": 0.0,
+    "reason": "archived dIRD proxy below calibrated threshold",
+    "site": 5,
+    "status": "rejected",
+    "view": 3
+  },
+  {
+    "archive_dird_margin": -4.611675510400003,
+    "archive_proxy_pass": 0,
+    "archive_static_found": 1,
+    "candidate_index": 4,
+    "rail_m": 0.8,
+    "reason": "archived dIRD proxy below calibrated threshold",
+    "site": 5,
+    "status": "rejected",
+    "view": 3
+  },
+  {
+    "archive_dird_margin": -3.809693958952685,
+    "archive_proxy_pass": 0,
+    "archive_static_found": 1,
+    "candidate_index": 4,
+    "rail_m": 0.8,
+    "reason": "archived dIRD proxy below calibrated threshold",
+    "site": 5,
+    "status": "rejected",
+    "view": 7
+  },
+  {
+    "archive_dird_margin": -5.359520961907414,
+    "archive_proxy_pass": 0,
+    "archive_static_found": 1,
+    "candidate_index": 0,
+    "rail_m": 0.0,
+    "reason": "archived dIRD proxy below calibrated threshold",
+    "site": 5,
+    "status": "rejected",
+    "view": 8
+  },
+  {
+    "archive_dird_margin": -4.922584411313153,
+    "archive_proxy_pass": 0,
+    "archive_static_found": 1,
+    "candidate_index": 4,
+    "rail_m": 0.8,
+    "reason": "archived dIRD proxy below calibrated threshold",
+    "site": 5,
+    "status": "rejected",
+    "view": 8
+  },
+  {
+    "archive_dird_margin": -4.3322373581234555,
+    "archive_proxy_pass": 0,
+    "archive_static_found": 1,
+    "candidate_index": 0,
+    "rail_m": 0.0,
+    "reason": "archived dIRD proxy below calibrated threshold",
+    "site": 6,
+    "status": "rejected",
+    "view": 3
+  },
+  {
+    "archive_dird_margin": -3.521501253670304,
+    "archive_proxy_pass": 0,
+    "archive_static_found": 1,
+    "candidate_index": 4,
+    "rail_m": 0.8,
+    "reason": "archived dIRD proxy below calibrated threshold",
+    "site": 6,
+    "status": "rejected",
+    "view": 3
+  },
+  {
+    "archive_dird_margin": -0.9631130726313023,
+    "archive_proxy_pass": 0,
+    "archive_static_found": 1,
+    "candidate_index": 0,
+    "rail_m": 0.0,
+    "reason": "archived dIRD proxy below calibrated threshold",
+    "site": 6,
+    "status": "rejected",
+    "view": 7
+  },
+  {
+    "archive_dird_margin": -2.3943759079832363,
+    "archive_proxy_pass": 0,
+    "archive_static_found": 1,
+    "candidate_index": 4,
+    "rail_m": 0.8,
+    "reason": "archived dIRD proxy below calibrated threshold",
+    "site": 6,
+    "status": "rejected",
+    "view": 7
+  },
+  {
+    "archive_dird_margin": -6.798922164871397,
+    "archive_proxy_pass": 0,
+    "archive_static_found": 1,
+    "candidate_index": 0,
+    "rail_m": 0.0,
+    "reason": "archived dIRD proxy below calibrated threshold",
+    "site": 6,
+    "status": "rejected",
+    "view": 8
+  },
+  {
+    "archive_dird_margin": -4.0842865978166145,
+    "archive_proxy_pass": 0,
+    "archive_static_found": 1,
+    "candidate_index": 4,
+    "rail_m": 0.8,
+    "reason": "archived dIRD proxy below calibrated threshold",
+    "site": 6,
+    "status": "rejected",
+    "view": 8
+  },
+  {
+    "archive_dird_margin": -0.6110365262591487,
+    "archive_proxy_pass": 0,
+    "archive_static_found": 1,
+    "candidate_index": 5,
+    "rail_m": 0.09725924426986626,
+    "reason": "archived dIRD proxy below calibrated threshold",
+    "site": 6,
+    "status": "rejected",
+    "view": 8
+  },
+  {
+    "archive_dird_margin": -5.720869365672284,
+    "archive_proxy_pass": 0,
+    "archive_static_found": 1,
+    "candidate_index": 0,
+    "rail_m": 0.0,
+    "reason": "archived dIRD proxy below calibrated threshold",
+    "site": 7,
+    "status": "rejected",
+    "view": 3
+  },
+  {
+    "archive_dird_margin": -2.3547128877522674,
+    "archive_proxy_pass": 0,
+    "archive_static_found": 1,
+    "candidate_index": 4,
+    "rail_m": 0.8,
+    "reason": "archived dIRD proxy below calibrated threshold",
+    "site": 7,
+    "status": "rejected",
+    "view": 3
+  },
+  {
+    "archive_dird_margin": -2.545260471401164,
+    "archive_proxy_pass": 0,
+    "archive_static_found": 1,
+    "candidate_index": 0,
+    "rail_m": 0.0,
+    "reason": "archived dIRD proxy below calibrated threshold",
+    "site": 7,
+    "status": "rejected",
+    "view": 7
+  },
+  {
+    "archive_dird_margin": -1.287468938571305,
+    "archive_proxy_pass": 0,
+    "archive_static_found": 1,
+    "candidate_index": 4,
+    "rail_m": 0.8,
+    "reason": "archived dIRD proxy below calibrated threshold",
+    "site": 7,
+    "status": "rejected",
+    "view": 7
+  },
+  {
+    "archive_dird_margin": -7.780841389460431,
+    "archive_proxy_pass": 0,
+    "archive_static_found": 1,
+    "candidate_index": 0,
+    "rail_m": 0.0,
+    "reason": "archived dIRD proxy below calibrated threshold",
+    "site": 7,
+    "status": "rejected",
+    "view": 8
+  },
+  {
+    "archive_dird_margin": -2.9027320119507376,
+    "archive_proxy_pass": 0,
+    "archive_static_found": 1,
+    "candidate_index": 4,
+    "rail_m": 0.8,
+    "reason": "archived dIRD proxy below calibrated threshold",
+    "site": 7,
+    "status": "rejected",
+    "view": 8
+  },
+  {
+    "archive_dird_margin": -1.2413422689099067,
+    "archive_proxy_pass": 0,
+    "archive_static_found": 1,
+    "candidate_index": 5,
+    "rail_m": 0.10626143460901422,
+    "reason": "archived dIRD proxy below calibrated threshold",
+    "site": 7,
+    "status": "rejected",
+    "view": 8
+  },
+  {
+    "goal": 6,
+    "kind": "edge",
+    "metrics": {
+      "duration_s": 1.5,
+      "legal": 0,
+      "max_cartesian_position_error_mm": 0.003994762265640057,
+      "max_cartesian_rotation_error_deg": 0.0007872685303341026,
+      "max_joint_rate_fraction": 1.7776655785155362,
+      "min_joint_limit_margin": 0.27521369825951136,
+      "min_self_collision_distance_m": 0.03957298906960873,
+      "rail_mm": 124.78630174048865,
+      "reason": "sampled velocity limit",
+      "travel_mm": 15.518797041737088,
+      "turn_deg": 5.326830931327159
+    },
+    "reason": "sampled velocity limit",
+    "start": 0
+  },
+  {
+    "goal": 0,
+    "kind": "edge",
+    "metrics": {
+      "duration_s": 1.5,
+      "legal": 0,
+      "max_cartesian_position_error_mm": 0.003990535254467237,
+      "max_cartesian_rotation_error_deg": 0.0008033186483065224,
+      "max_joint_rate_fraction": 1.821084765164268,
+      "min_joint_limit_margin": 0.27521369825951136,
+      "min_self_collision_distance_m": 0.03957298906960873,
+      "rail_mm": 124.78630174048865,
+      "reason": "sampled velocity limit",
+      "travel_mm": 15.518794651283205,
+      "turn_deg": 5.326832696217965
+    },
+    "reason": "sampled velocity limit",
+    "start": 6
+  },
+  {
+    "goal": 7,
+    "kind": "edge",
+    "metrics": {
+      "duration_s": 1.5,
+      "legal": 0,
+      "max_cartesian_position_error_mm": 0.00102025713038423,
+      "max_cartesian_rotation_error_deg": 0.0001898415906845577,
+      "max_joint_rate_fraction": 1.447978580515846,
+      "min_joint_limit_margin": 0.26521369825951135,
+      "min_self_collision_distance_m": 0.039326849858402194,
+      "rail_mm": 159.78630174048868,
+      "reason": "sampled velocity limit",
+      "travel_mm": 15.518785923678301,
+      "turn_deg": 5.326863995217965
+    },
+    "reason": "sampled velocity limit",
+    "start": 1
+  },
+  {
+    "goal": 1,
+    "kind": "edge",
+    "metrics": {
+      "duration_s": 1.5,
+      "legal": 0,
+      "max_cartesian_position_error_mm": 0.0009627911243193907,
+      "max_cartesian_rotation_error_deg": 9.479452901922987e-05,
+      "max_joint_rate_fraction": 1.5014526445408598,
+      "min_joint_limit_margin": 0.26521369825951135,
+      "min_self_collision_distance_m": 0.039326849858402194,
+      "rail_mm": 159.78630174048868,
+      "reason": "sampled velocity limit",
+      "travel_mm": 15.518788460707096,
+      "turn_deg": 5.326863478218234
+    },
+    "reason": "sampled velocity limit",
+    "start": 7
+  },
+  {
+    "goal": 8,
+    "kind": "edge",
+    "metrics": {
+      "duration_s": 1.5,
+      "legal": 0,
+      "max_cartesian_position_error_mm": 0.003935777625104579,
+      "max_cartesian_rotation_error_deg": 0.0008404872853774344,
+      "max_joint_rate_fraction": 2.025315259802156,
+      "min_joint_limit_margin": 0.27521369825951136,
+      "min_self_collision_distance_m": 0.039329514875529395,
+      "rail_mm": 124.78630174048865,
+      "reason": "sampled velocity limit",
+      "travel_mm": 15.51877187312296,
+      "turn_deg": 5.326852733574921
+    },
+    "reason": "sampled velocity limit",
+    "start": 2
+  },
+  {
+    "goal": 2,
+    "kind": "edge",
+    "metrics": {
+      "duration_s": 1.5,
+      "legal": 0,
+      "max_cartesian_position_error_mm": 0.003945593156359219,
+      "max_cartesian_rotation_error_deg": 0.0008304038547789208,
+      "max_joint_rate_fraction": 2.1188242266053194,
+      "min_joint_limit_margin": 0.27521369825951136,
+      "min_self_collision_distance_m": 0.039329514875529395,
+      "rail_mm": 124.78630174048865,
+      "reason": "sampled velocity limit",
+      "travel_mm": 15.518768114591404,
+      "turn_deg": 5.326855256224667
+    },
+    "reason": "sampled velocity limit",
+    "start": 8
+  },
+  {
+    "goal": 9,
+    "kind": "edge",
+    "metrics": {
+      "duration_s": 1.5,
+      "legal": 0,
+      "max_cartesian_position_error_mm": 0.0012672534571054417,
+      "max_cartesian_rotation_error_deg": 0.00028016512453526586,
+      "max_joint_rate_fraction": 1.7919230417006737,
+      "min_joint_limit_margin": 0.26521369825951135,
+      "min_self_collision_distance_m": 0.039164544888963,
+      "rail_mm": 159.78630174048868,
+      "reason": "sampled velocity limit",
+      "travel_mm": 15.5187480721633,
+      "turn_deg": 5.326893029243088
+    },
+    "reason": "sampled velocity limit",
+    "start": 3
+  },
+  {
+    "goal": 3,
+    "kind": "edge",
+    "metrics": {
+      "duration_s": 1.5,
+      "legal": 0,
+      "max_cartesian_position_error_mm": 0.0011421197267508613,
+      "max_cartesian_rotation_error_deg": 8.661672576562461e-05,
+      "max_joint_rate_fraction": 1.9520770941286705,
+      "min_joint_limit_margin": 0.26521369825951135,
+      "min_self_collision_distance_m": 0.039164544888963,
+      "rail_mm": 159.78630174048868,
+      "reason": "sampled velocity limit",
+      "travel_mm": 15.518753401307038,
+      "turn_deg": 5.32689201263315
+    },
+    "reason": "sampled velocity limit",
+    "start": 9
+  },
+  {
+    "goal": 10,
+    "kind": "edge",
+    "metrics": {
+      "duration_s": 1.5,
+      "legal": 0,
+      "max_cartesian_position_error_mm": 0.003819245013785181,
+      "max_cartesian_rotation_error_deg": 0.0006477469616928105,
+      "max_joint_rate_fraction": 1.6617986369930582,
+      "min_joint_limit_margin": 0.27521369825951136,
+      "min_self_collision_distance_m": 0.03995797450638534,
+      "rail_mm": 124.78630174048865,
+      "reason": "sampled velocity limit",
+      "travel_mm": 15.518816000850546,
+      "turn_deg": 5.326805271041764
+    },
+    "reason": "sampled velocity limit",
+    "start": 4
+  },
+  {
+    "goal": 4,
+    "kind": "edge",
+    "metrics": {
+      "duration_s": 1.5,
+      "legal": 0,
+      "max_cartesian_position_error_mm": 0.003821744264959361,
+      "max_cartesian_rotation_error_deg": 0.0006509033995456165,
+      "max_joint_rate_fraction": 1.6694829721388098,
+      "min_joint_limit_margin": 0.27521369825951136,
+      "min_self_collision_distance_m": 0.039964642699163916,
+      "rail_mm": 124.78630174048865,
+      "reason": "sampled velocity limit",
+      "travel_mm": 15.518821271191335,
+      "turn_deg": 5.326805862583898
+    },
+    "reason": "sampled velocity limit",
+    "start": 10
+  },
+  {
+    "goal": 11,
+    "kind": "edge",
+    "metrics": {
+      "duration_s": 1.5,
+      "legal": 0,
+      "max_cartesian_position_error_mm": 0.003840631420085348,
+      "max_cartesian_rotation_error_deg": 0.00047093338121454673,
+      "max_joint_rate_fraction": 1.3291038189823408,
+      "min_joint_limit_margin": 0.26521369825951135,
+      "min_self_collision_distance_m": 0.039609795048924985,
+      "rail_mm": 159.78630174048868,
+      "reason": "sampled velocity limit",
+      "travel_mm": 15.518848756665824,
+      "turn_deg": 5.326840550592172
+    },
+    "reason": "sampled velocity limit",
+    "start": 5
+  },
+  {
+    "goal": 5,
+    "kind": "edge",
+    "metrics": {
+      "duration_s": 1.5,
+      "legal": 0,
+      "max_cartesian_position_error_mm": 0.0038861196941619353,
+      "max_cartesian_rotation_error_deg": 0.00045585403218475855,
+      "max_joint_rate_fraction": 1.3291587126737874,
+      "min_joint_limit_margin": 0.26521369825951135,
+      "min_self_collision_distance_m": 0.039609795048924985,
+      "rail_mm": 159.78630174048868,
+      "reason": "sampled velocity limit",
+      "travel_mm": 15.51882781429166,
+      "turn_deg": 5.326839246207358
+    },
+    "reason": "sampled velocity limit",
+    "start": 11
+  },
+  {
+    "goal": 6,
+    "kind": "edge",
+    "metrics": {
+      "duration_s": 1.5,
+      "legal": 0,
+      "max_cartesian_position_error_mm": 0.001465450289508699,
+      "max_cartesian_rotation_error_deg": 0.0003077099555499442,
+      "max_joint_rate_fraction": 1.0071889571856159,
+      "min_joint_limit_margin": 0.4,
+      "min_self_collision_distance_m": 0.0395391401309009,
+      "rail_mm": 0.0,
+      "reason": "sampled velocity limit",
+      "travel_mm": 0.0029595908707450162,
+      "turn_deg": 11.999961194198448
+    },
+    "reason": "sampled velocity limit",
+    "start": 10
+  },
+  {
+    "goal": 7,
+    "kind": "edge",
+    "metrics": {
+      "duration_s": 1.5,
+      "legal": 0,
+      "max_cartesian_position_error_mm": 0.0012787375008822483,
+      "max_cartesian_rotation_error_deg": 0.00027962200549422306,
+      "max_joint_rate_fraction": 1.0389693165737757,
+      "min_joint_limit_margin": 0.375,
+      "min_self_collision_distance_m": 0.039297219452933824,
+      "rail_mm": 0.0,
+      "reason": "sampled velocity limit",
+      "travel_mm": 0.002587506181553632,
+      "turn_deg": 11.999960455830111
+    },
+    "reason": "sampled velocity limit",
+    "start": 11
+  },
+  {
+    "goal": 10,
+    "kind": "edge",
+    "metrics": {
+      "duration_s": 1.5,
+      "legal": 0,
+      "max_cartesian_position_error_mm": 0.00393219795547753,
+      "max_cartesian_rotation_error_deg": 0.000813765258724874,
+      "max_joint_rate_fraction": 1.7120339875724502,
+      "min_joint_limit_margin": 0.4,
+      "min_self_collision_distance_m": 0.039329514875529395,
+      "rail_mm": 0.0,
+      "reason": "sampled velocity limit",
+      "travel_mm": 0.010200246847645908,
+      "turn_deg": 23.99991839653371
+    },
+    "reason": "sampled velocity limit",
+    "start": 8
+  },
+  {
+    "goal": 8,
+    "kind": "edge",
+    "metrics": {
+      "duration_s": 1.5,
+      "legal": 0,
+      "max_cartesian_position_error_mm": 0.0038954935871743437,
+      "max_cartesian_rotation_error_deg": 0.0008427347986463622,
+      "max_joint_rate_fraction": 1.9227010942535983,
+      "min_joint_limit_margin": 0.4,
+      "min_self_collision_distance_m": 0.03919612729785021,
+      "rail_mm": 0.0,
+      "reason": "sampled velocity limit",
+      "travel_mm": 0.00813755035468278,
+      "turn_deg": 23.99991768248307
+    },
+    "reason": "sampled velocity limit",
+    "start": 10
+  },
+  {
+    "goal": 11,
+    "kind": "edge",
+    "metrics": {
+      "duration_s": 1.5,
+      "legal": 0,
+      "max_cartesian_position_error_mm": 0.003937933736750858,
+      "max_cartesian_rotation_error_deg": 0.0008434858693517697,
+      "max_joint_rate_fraction": 1.8388700496206938,
+      "min_joint_limit_margin": 0.375,
+      "min_self_collision_distance_m": 0.039164544888963,
+      "rail_mm": 0.0,
+      "reason": "sampled velocity limit",
+      "travel_mm": 0.015817351777511673,
+      "turn_deg": 23.99991914224241
+    },
+    "reason": "sampled velocity limit",
+    "start": 9
+  },
+  {
+    "goal": 9,
+    "kind": "edge",
+    "metrics": {
+      "duration_s": 1.5,
+      "legal": 0,
+      "max_cartesian_position_error_mm": 0.003955523278515282,
+      "max_cartesian_rotation_error_deg": 0.000889493507421596,
+      "max_joint_rate_fraction": 2.0093400011627542,
+      "min_joint_limit_margin": 0.375,
+      "min_self_collision_distance_m": 0.03909342725137078,
+      "rail_mm": 0.0,
+      "reason": "sampled velocity limit",
+      "travel_mm": 0.00829251539818354,
+      "turn_deg": 23.999917181962577
+    },
+    "reason": "sampled velocity limit",
+    "start": 11
+  },
+  {
+    "goal": 12,
+    "kind": "edge",
+    "metrics": {
+      "duration_s": 1.5,
+      "legal": 0,
+      "max_cartesian_position_error_mm": 0.0013738156547252172,
+      "max_cartesian_rotation_error_deg": 0.0002904616976765264,
+      "max_joint_rate_fraction": 1.0157164016467344,
+      "min_joint_limit_margin": 0.4,
+      "min_self_collision_distance_m": 0.03950906141461875,
+      "rail_mm": 0.0,
+      "reason": "sampled velocity limit",
+      "travel_mm": 0.002779578000862629,
+      "turn_deg": 11.999965797883817
+    },
+    "reason": "sampled velocity limit",
+    "start": 16
+  },
+  {
+    "goal": 18,
+    "kind": "edge",
+    "metrics": {
+      "duration_s": 1.5,
+      "legal": 0,
+      "max_cartesian_position_error_mm": 0.002654002504800358,
+      "max_cartesian_rotation_error_deg": 0.0008234010695388232,
+      "max_joint_rate_fraction": 1.490669322320731,
+      "min_joint_limit_margin": 0.2972592442698663,
+      "min_self_collision_distance_m": 0.039534679201339344,
+      "rail_mm": 102.74075573013374,
+      "reason": "sampled velocity limit",
+      "travel_mm": 14.435535717371256,
+      "turn_deg": 4.128640479102204
+    },
+    "reason": "sampled velocity limit",
+    "start": 12
+  },
+  {
+    "goal": 12,
+    "kind": "edge",
+    "metrics": {
+      "duration_s": 1.5,
+      "legal": 0,
+      "max_cartesian_position_error_mm": 0.0026516254624112698,
+      "max_cartesian_rotation_error_deg": 0.0008005080340789033,
+      "max_joint_rate_fraction": 1.608802344827646,
+      "min_joint_limit_margin": 0.2972592442698663,
+      "min_self_collision_distance_m": 0.039534679201339344,
+      "rail_mm": 102.74075573013374,
+      "reason": "sampled velocity limit",
+      "travel_mm": 14.43553187170689,
+      "turn_deg": 4.128639875392435
+    },
+    "reason": "sampled velocity limit",
+    "start": 18
+  },
+  {
+    "goal": 13,
+    "kind": "edge",
+    "metrics": {
+      "duration_s": 1.5,
+      "legal": 0,
+      "max_cartesian_position_error_mm": 0.0011931890619176417,
+      "max_cartesian_rotation_error_deg": 0.000263443778038087,
+      "max_joint_rate_fraction": 1.0519062376871595,
+      "min_joint_limit_margin": 0.375,
+      "min_self_collision_distance_m": 0.0392679074162556,
+      "rail_mm": 0.0,
+      "reason": "sampled velocity limit",
+      "travel_mm": 0.0024248694898910106,
+      "turn_deg": 11.99996505871299
+    },
+    "reason": "sampled velocity limit",
+    "start": 17
+  },
+  {
+    "goal": 19,
+    "kind": "edge",
+    "metrics": {
+      "duration_s": 1.5,
+      "legal": 0,
+      "max_cartesian_position_error_mm": 0.0030194639737132615,
+      "max_cartesian_rotation_error_deg": 0.00086517796320502,
+      "max_joint_rate_fraction": 1.5392362982197187,
+      "min_joint_limit_margin": 0.3172592442698663,
+      "min_self_collision_distance_m": 0.039290614985931734,
+      "rail_mm": 107.74075573013376,
+      "reason": "sampled velocity limit",
+      "travel_mm": 14.435494134831233,
+      "turn_deg": 4.1286489018725305
+    },
+    "reason": "sampled velocity limit",
+    "start": 13
+  },
+  {
+    "goal": 13,
+    "kind": "edge",
+    "metrics": {
+      "duration_s": 1.5,
+      "legal": 0,
+      "max_cartesian_position_error_mm": 0.0030154881256708576,
+      "max_cartesian_rotation_error_deg": 0.0008377236278676295,
+      "max_joint_rate_fraction": 1.5861501908951123,
+      "min_joint_limit_margin": 0.3172592442698663,
+      "min_self_collision_distance_m": 0.039290614985931734,
+      "rail_mm": 107.74075573013376,
+      "reason": "sampled velocity limit",
+      "travel_mm": 14.435495068352074,
+      "turn_deg": 4.128648007791368
+    },
+    "reason": "sampled velocity limit",
+    "start": 19
+  },
+  {
+    "goal": 16,
+    "kind": "edge",
+    "metrics": {
+      "duration_s": 1.5,
+      "legal": 0,
+      "max_cartesian_position_error_mm": 0.00394686860539077,
+      "max_cartesian_rotation_error_deg": 0.0008204381375587447,
+      "max_joint_rate_fraction": 1.697821443690791,
+      "min_joint_limit_margin": 0.4,
+      "min_self_collision_distance_m": 0.039309134283320626,
+      "rail_mm": 0.0,
+      "reason": "sampled velocity limit",
+      "travel_mm": 0.010136041060656468,
+      "turn_deg": 23.99992072126211
+    },
+    "reason": "sampled velocity limit",
+    "start": 14
+  },
+  {
+    "goal": 14,
+    "kind": "edge",
+    "metrics": {
+      "duration_s": 1.5,
+      "legal": 0,
+      "max_cartesian_position_error_mm": 0.0039048969710893788,
+      "max_cartesian_rotation_error_deg": 0.0008490332596941102,
+      "max_joint_rate_fraction": 1.9730415160650798,
+      "min_joint_limit_margin": 0.4,
+      "min_self_collision_distance_m": 0.039190670764215035,
+      "rail_mm": 0.0,
+      "reason": "sampled velocity limit",
+      "travel_mm": 0.008163389870631296,
+      "turn_deg": 23.99992010061386
+    },
+    "reason": "sampled velocity limit",
+    "start": 16
+  },
+  {
+    "goal": 20,
+    "kind": "edge",
+    "metrics": {
+      "duration_s": 1.5,
+      "legal": 0,
+      "max_cartesian_position_error_mm": 0.003959511596989126,
+      "max_cartesian_rotation_error_deg": 0.0013149775051971807,
+      "max_joint_rate_fraction": 1.8485692637570053,
+      "min_joint_limit_margin": 0.2972592442698663,
+      "min_self_collision_distance_m": 0.039309134283320626,
+      "rail_mm": 102.74075573013374,
+      "reason": "sampled velocity limit",
+      "travel_mm": 14.435542085457817,
+      "turn_deg": 4.128649387589377
+    },
+    "reason": "sampled velocity limit",
+    "start": 14
+  },
+  {
+    "goal": 14,
+    "kind": "edge",
+    "metrics": {
+      "duration_s": 1.5,
+      "legal": 0,
+      "max_cartesian_position_error_mm": 0.0038073341884974805,
+      "max_cartesian_rotation_error_deg": 0.0012402205450523054,
+      "max_joint_rate_fraction": 1.7197751830804695,
+      "min_joint_limit_margin": 0.2972592442698663,
+      "min_self_collision_distance_m": 0.039309134283320626,
+      "rail_mm": 102.74075573013374,
+      "reason": "sampled velocity limit",
+      "travel_mm": 14.435547617978019,
+      "turn_deg": 4.128646603621309
+    },
+    "reason": "sampled velocity limit",
+    "start": 20
+  },
+  {
+    "goal": 17,
+    "kind": "edge",
+    "metrics": {
+      "duration_s": 1.5,
+      "legal": 0,
+      "max_cartesian_position_error_mm": 0.003981775773812525,
+      "max_cartesian_rotation_error_deg": 0.0008540542461178433,
+      "max_joint_rate_fraction": 1.8254753085999182,
+      "min_joint_limit_margin": 0.375,
+      "min_self_collision_distance_m": 0.03914489813071213,
+      "rail_mm": 0.0,
+      "reason": "sampled velocity limit",
+      "travel_mm": 0.01624091504070228,
+      "turn_deg": 23.99992156857464
+    },
+    "reason": "sampled velocity limit",
+    "start": 15
+  },
+  {
+    "goal": 15,
+    "kind": "edge",
+    "metrics": {
+      "duration_s": 1.5,
+      "legal": 0,
+      "max_cartesian_position_error_mm": 0.003928721446225472,
+      "max_cartesian_rotation_error_deg": 0.0008875919205942019,
+      "max_joint_rate_fraction": 2.0647700897985226,
+      "min_joint_limit_margin": 0.375,
+      "min_self_collision_distance_m": 0.03909160816755845,
+      "rail_mm": 0.0,
+      "reason": "sampled velocity limit",
+      "travel_mm": 0.008235782043906681,
+      "turn_deg": 23.999919591711087
+    },
+    "reason": "sampled velocity limit",
+    "start": 17
+  },
+  {
+    "goal": 21,
+    "kind": "edge",
+    "metrics": {
+      "duration_s": 1.5,
+      "legal": 0,
+      "max_cartesian_position_error_mm": 0.003996665412467387,
+      "max_cartesian_rotation_error_deg": 0.0013203221598468218,
+      "max_joint_rate_fraction": 1.859491758410779,
+      "min_joint_limit_margin": 0.3172592442698663,
+      "min_self_collision_distance_m": 0.03914489813071213,
+      "rail_mm": 107.74075573013376,
+      "reason": "sampled velocity limit",
+      "travel_mm": 14.43552430425465,
+      "turn_deg": 4.128676399868235
+    },
+    "reason": "sampled velocity limit",
+    "start": 15
+  },
+  {
+    "goal": 15,
+    "kind": "edge",
+    "metrics": {
+      "duration_s": 1.5,
+      "legal": 0,
+      "max_cartesian_position_error_mm": 0.003995919773369132,
+      "max_cartesian_rotation_error_deg": 0.0012613658259449931,
+      "max_joint_rate_fraction": 1.6777586760815044,
+      "min_joint_limit_margin": 0.3172592442698663,
+      "min_self_collision_distance_m": 0.03914489813071213,
+      "rail_mm": 107.74075573013376,
+      "reason": "sampled velocity limit",
+      "travel_mm": 14.435528639823866,
+      "turn_deg": 4.128672115341064
+    },
+    "reason": "sampled velocity limit",
+    "start": 21
+  },
+  {
+    "goal": 22,
+    "kind": "edge",
+    "metrics": {
+      "duration_s": 1.5,
+      "legal": 0,
+      "max_cartesian_position_error_mm": 0.0033612501217580282,
+      "max_cartesian_rotation_error_deg": 0.0005664008907031884,
+      "max_joint_rate_fraction": 1.7784237928967634,
+      "min_joint_limit_margin": 0.2972592442698663,
+      "min_self_collision_distance_m": 0.039885053094685256,
+      "rail_mm": 102.74075573013374,
+      "reason": "sampled velocity limit",
+      "travel_mm": 14.435608609941214,
+      "turn_deg": 4.128601521993923
+    },
+    "reason": "sampled velocity limit",
+    "start": 16
+  },
+  {
+    "goal": 16,
+    "kind": "edge",
+    "metrics": {
+      "duration_s": 1.5,
+      "legal": 0,
+      "max_cartesian_position_error_mm": 0.0035360508902701243,
+      "max_cartesian_rotation_error_deg": 0.0005734776285843527,
+      "max_joint_rate_fraction": 1.8765528934955276,
+      "min_joint_limit_margin": 0.2972592442698663,
+      "min_self_collision_distance_m": 0.039885053094685256,
+      "rail_mm": 102.74075573013374,
+      "reason": "sampled velocity limit",
+      "travel_mm": 14.435594150209662,
+      "turn_deg": 4.128601465403887
+    },
+    "reason": "sampled velocity limit",
+    "start": 22
+  },
+  {
+    "goal": 23,
+    "kind": "edge",
+    "metrics": {
+      "duration_s": 1.5,
+      "legal": 0,
+      "max_cartesian_position_error_mm": 0.0032889536451320076,
+      "max_cartesian_rotation_error_deg": 0.0005935165940113202,
+      "max_joint_rate_fraction": 1.742185752732489,
+      "min_joint_limit_margin": 0.3172592442698663,
+      "min_self_collision_distance_m": 0.03954346923800607,
+      "rail_mm": 107.74075573013376,
+      "reason": "sampled velocity limit",
+      "travel_mm": 14.43556280750233,
+      "turn_deg": 4.128607015663823
+    },
+    "reason": "sampled velocity limit",
+    "start": 17
+  },
+  {
+    "goal": 17,
+    "kind": "edge",
+    "metrics": {
+      "duration_s": 1.5,
+      "legal": 0,
+      "max_cartesian_position_error_mm": 0.00340570837217302,
+      "max_cartesian_rotation_error_deg": 0.0006034600906116431,
+      "max_joint_rate_fraction": 1.8350389269124958,
+      "min_joint_limit_margin": 0.3172592442698663,
+      "min_self_collision_distance_m": 0.03954346923800607,
+      "rail_mm": 107.74075573013376,
+      "reason": "sampled velocity limit",
+      "travel_mm": 14.435552423929296,
+      "turn_deg": 4.1286069004119454
+    },
+    "reason": "sampled velocity limit",
+    "start": 23
+  },
+  {
+    "goal": 22,
+    "kind": "edge",
+    "metrics": {
+      "duration_s": 1.5,
+      "legal": 0,
+      "max_cartesian_position_error_mm": 0.001674049388209945,
+      "max_cartesian_rotation_error_deg": 0.0002311104508550316,
+      "max_joint_rate_fraction": 3.7526296686705463,
+      "min_joint_limit_margin": 0.2972592442698663,
+      "min_self_collision_distance_m": 0.04141173334759998,
+      "rail_mm": 0.0,
+      "reason": "sampled velocity limit",
+      "travel_mm": 0.0033880283563921592,
+      "turn_deg": 11.9999499908249
+    },
+    "reason": "sampled velocity limit",
+    "start": 18
+  },
+  {
+    "goal": 18,
+    "kind": "edge",
+    "metrics": {
+      "duration_s": 1.5,
+      "legal": 0,
+      "max_cartesian_position_error_mm": 0.0021296863864532093,
+      "max_cartesian_rotation_error_deg": 0.00034188523977547996,
+      "max_joint_rate_fraction": 3.8408948983793105,
+      "min_joint_limit_margin": 0.2972592442698663,
+      "min_self_collision_distance_m": 0.04141173334759998,
+      "rail_mm": 0.0,
+      "reason": "sampled velocity limit",
+      "travel_mm": 0.00432536797575766,
+      "turn_deg": 11.999950261154929
+    },
+    "reason": "sampled velocity limit",
+    "start": 22
+  },
+  {
+    "goal": 24,
+    "kind": "edge",
+    "metrics": {
+      "duration_s": 1.5,
+      "legal": 0,
+      "max_cartesian_position_error_mm": 0.002612369673522055,
+      "max_cartesian_rotation_error_deg": 0.00017135920951428713,
+      "max_joint_rate_fraction": 1.0904804859114714,
+      "min_joint_limit_margin": 0.2972592442698663,
+      "min_self_collision_distance_m": 0.04058565125868901,
+      "rail_mm": 102.74075573013374,
+      "reason": "sampled velocity limit",
+      "travel_mm": 15.8676684192033,
+      "turn_deg": 2.675999117153357
+    },
+    "reason": "sampled velocity limit",
+    "start": 18
+  },
+  {
+    "goal": 18,
+    "kind": "edge",
+    "metrics": {
+      "duration_s": 1.5,
+      "legal": 0,
+      "max_cartesian_position_error_mm": 0.00260013255887368,
+      "max_cartesian_rotation_error_deg": 0.00017567140754069495,
+      "max_joint_rate_fraction": 1.0182350830989293,
+      "min_joint_limit_margin": 0.2972592442698663,
+      "min_self_collision_distance_m": 0.04058838793189929,
+      "rail_mm": 102.74075573013374,
+      "reason": "sampled velocity limit",
+      "travel_mm": 15.867671521898219,
+      "turn_deg": 2.675999171359663
+    },
+    "reason": "sampled velocity limit",
+    "start": 24
+  },
+  {
+    "goal": 23,
+    "kind": "edge",
+    "metrics": {
+      "duration_s": 1.5,
+      "legal": 0,
+      "max_cartesian_position_error_mm": 0.0015666886404666128,
+      "max_cartesian_rotation_error_deg": 0.00022684143521087388,
+      "max_joint_rate_fraction": 3.755742818000393,
+      "min_joint_limit_margin": 0.3172592442698663,
+      "min_self_collision_distance_m": 0.0411866776281858,
+      "rail_mm": 0.0,
+      "reason": "sampled velocity limit",
+      "travel_mm": 0.0031927933274607024,
+      "turn_deg": 11.999947250280341
+    },
+    "reason": "sampled velocity limit",
+    "start": 19
+  },
+  {
+    "goal": 19,
+    "kind": "edge",
+    "metrics": {
+      "duration_s": 1.5,
+      "legal": 0,
+      "max_cartesian_position_error_mm": 0.002017851629460556,
+      "max_cartesian_rotation_error_deg": 0.0003382713943038161,
+      "max_joint_rate_fraction": 3.965949310862664,
+      "min_joint_limit_margin": 0.3172592442698663,
+      "min_self_collision_distance_m": 0.0411866776281858,
+      "rail_mm": 0.0,
+      "reason": "sampled velocity limit",
+      "travel_mm": 0.00411527668951316,
+      "turn_deg": 11.999947517908888
+    },
+    "reason": "sampled velocity limit",
+    "start": 23
+  },
+  {
+    "goal": 25,
+    "kind": "edge",
+    "metrics": {
+      "duration_s": 1.5,
+      "legal": 0,
+      "max_cartesian_position_error_mm": 0.0026556706045103287,
+      "max_cartesian_rotation_error_deg": 0.00018637406916904544,
+      "max_joint_rate_fraction": 1.1229908500803216,
+      "min_joint_limit_margin": 0.3172592442698663,
+      "min_self_collision_distance_m": 0.040166427260571416,
+      "rail_mm": 107.74075573013376,
+      "reason": "sampled velocity limit",
+      "travel_mm": 15.867708687160501,
+      "turn_deg": 2.675987171668072
+    },
+    "reason": "sampled velocity limit",
+    "start": 19
+  },
+  {
+    "goal": 19,
+    "kind": "edge",
+    "metrics": {
+      "duration_s": 1.5,
+      "legal": 0,
+      "max_cartesian_position_error_mm": 0.0026467154218494616,
+      "max_cartesian_rotation_error_deg": 0.00018986674689524532,
+      "max_joint_rate_fraction": 1.073677568373102,
+      "min_joint_limit_margin": 0.3172592442698663,
+      "min_self_collision_distance_m": 0.0401757122950304,
+      "rail_mm": 107.74075573013376,
+      "reason": "sampled velocity limit",
+      "travel_mm": 15.867710724869937,
+      "turn_deg": 2.675987186159344
+    },
+    "reason": "sampled velocity limit",
+    "start": 25
+  },
+  {
+    "goal": 22,
+    "kind": "edge",
+    "metrics": {
+      "duration_s": 1.5,
+      "legal": 0,
+      "max_cartesian_position_error_mm": 0.003951143983136713,
+      "max_cartesian_rotation_error_deg": 0.0005479201589794309,
+      "max_joint_rate_fraction": 3.992412401254477,
+      "min_joint_limit_margin": 0.2972592442698663,
+      "min_self_collision_distance_m": 0.041378414172308045,
+      "rail_mm": 0.0,
+      "reason": "sampled velocity limit",
+      "travel_mm": 0.010373643209484635,
+      "turn_deg": 23.99993006496248
+    },
+    "reason": "sampled velocity limit",
+    "start": 20
+  },
+  {
+    "goal": 20,
+    "kind": "edge",
+    "metrics": {
+      "duration_s": 1.5,
+      "legal": 0,
+      "max_cartesian_position_error_mm": 0.0010172365167416715,
+      "max_cartesian_rotation_error_deg": 0.00015961747906187177,
+      "max_joint_rate_fraction": 4.773114708049206,
+      "min_joint_limit_margin": 0.2972592442698663,
+      "min_self_collision_distance_m": 0.04125346033664524,
+      "rail_mm": 0.0,
+      "reason": "sampled velocity limit",
+      "travel_mm": 0.0022824466803647793,
+      "turn_deg": 23.999928651665577
+    },
+    "reason": "sampled velocity limit",
+    "start": 22
+  },
+  {
+    "goal": 26,
+    "kind": "edge",
+    "metrics": {
+      "duration_s": 1.5,
+      "legal": 0,
+      "max_cartesian_position_error_mm": 0.0026334044585913786,
+      "max_cartesian_rotation_error_deg": 0.0003104052300363008,
+      "max_joint_rate_fraction": 1.2674040696580526,
+      "min_joint_limit_margin": 0.2972592442698663,
+      "min_self_collision_distance_m": 0.04037478534462365,
+      "rail_mm": 102.74075573013374,
+      "reason": "sampled velocity limit",
+      "travel_mm": 15.867621402286408,
+      "turn_deg": 2.6760029709040944
+    },
+    "reason": "sampled velocity limit",
+    "start": 20
+  },
+  {
+    "goal": 20,
+    "kind": "edge",
+    "metrics": {
+      "duration_s": 1.5,
+      "legal": 0,
+      "max_cartesian_position_error_mm": 0.00263061336612212,
+      "max_cartesian_rotation_error_deg": 0.0003147282127886002,
+      "max_joint_rate_fraction": 1.2238234395502807,
+      "min_joint_limit_margin": 0.2972592442698663,
+      "min_self_collision_distance_m": 0.04045678800226628,
+      "rail_mm": 102.74075573013374,
+      "reason": "sampled velocity limit",
+      "travel_mm": 15.867623553331846,
+      "turn_deg": 2.6760030124474086
+    },
+    "reason": "sampled velocity limit",
+    "start": 26
+  },
+  {
+    "goal": 23,
+    "kind": "edge",
+    "metrics": {
+      "duration_s": 1.5,
+      "legal": 0,
+      "max_cartesian_position_error_mm": 0.003893675634197672,
+      "max_cartesian_rotation_error_deg": 0.0005661520679240519,
+      "max_joint_rate_fraction": 4.067248248581869,
+      "min_joint_limit_margin": 0.3172592442698663,
+      "min_self_collision_distance_m": 0.04115731404099715,
+      "rail_mm": 0.0,
+      "reason": "sampled velocity limit",
+      "travel_mm": 0.010243581455599421,
+      "turn_deg": 23.999923466001036
+    },
+    "reason": "sampled velocity limit",
+    "start": 21
+  },
+  {
+    "goal": 21,
+    "kind": "edge",
+    "metrics": {
+      "duration_s": 1.5,
+      "legal": 0,
+      "max_cartesian_position_error_mm": 0.0009499603380594479,
+      "max_cartesian_rotation_error_deg": 0.0001571188370099303,
+      "max_joint_rate_fraction": 4.922470469269812,
+      "min_joint_limit_margin": 0.3172592442698663,
+      "min_self_collision_distance_m": 0.04107332422717276,
+      "rail_mm": 0.0,
+      "reason": "sampled velocity limit",
+      "travel_mm": 0.0022214838096695556,
+      "turn_deg": 23.999922085828914
+    },
+    "reason": "sampled velocity limit",
+    "start": 23
+  },
+  {
+    "goal": 27,
+    "kind": "edge",
+    "metrics": {
+      "duration_s": 1.5,
+      "legal": 0,
+      "max_cartesian_position_error_mm": 0.002710561781674365,
+      "max_cartesian_rotation_error_deg": 0.0003454168526118415,
+      "max_joint_rate_fraction": 1.2942199243196149,
+      "min_joint_limit_margin": 0.3172592442698663,
+      "min_self_collision_distance_m": 0.03996487768904272,
+      "rail_mm": 107.74075573013376,
+      "reason": "sampled velocity limit",
+      "travel_mm": 15.867674478134484,
+      "turn_deg": 2.675987713185957
+    },
+    "reason": "sampled velocity limit",
+    "start": 21
+  },
+  {
+    "goal": 21,
+    "kind": "edge",
+    "metrics": {
+      "duration_s": 1.5,
+      "legal": 0,
+      "max_cartesian_position_error_mm": 0.0027074634134569182,
+      "max_cartesian_rotation_error_deg": 0.00034978111276794664,
+      "max_joint_rate_fraction": 1.274427844314263,
+      "min_joint_limit_margin": 0.3172592442698663,
+      "min_self_collision_distance_m": 0.040075877608102724,
+      "rail_mm": 107.74075573013376,
+      "reason": "sampled velocity limit",
+      "travel_mm": 15.867674632059144,
+      "turn_deg": 2.6759878154598664
+    },
+    "reason": "sampled velocity limit",
+    "start": 27
+  },
+  {
+    "goal": 28,
+    "kind": "edge",
+    "metrics": {
+      "duration_s": 1.5,
+      "legal": 0,
+      "max_cartesian_position_error_mm": 0.001092219028032371,
+      "max_cartesian_rotation_error_deg": 0.00018982489162469143,
+      "max_joint_rate_fraction": 3.822260977453055,
+      "min_joint_limit_margin": 0.4,
+      "min_self_collision_distance_m": 0.04058838793189929,
+      "rail_mm": 0.0,
+      "reason": "sampled velocity limit",
+      "travel_mm": 0.0023387021758517522,
+      "turn_deg": 11.999942151954144
+    },
+    "reason": "sampled velocity limit",
+    "start": 24
+  },
+  {
+    "goal": 24,
+    "kind": "edge",
+    "metrics": {
+      "duration_s": 1.5,
+      "legal": 0,
+      "max_cartesian_position_error_mm": 0.0014319915653311316,
+      "max_cartesian_rotation_error_deg": 0.00027829309653328423,
+      "max_joint_rate_fraction": 4.239538896179623,
+      "min_joint_limit_margin": 0.4,
+      "min_self_collision_distance_m": 0.04058838793189929,
+      "rail_mm": 0.0,
+      "reason": "sampled velocity limit",
+      "travel_mm": 0.0030146672231138537,
+      "turn_deg": 11.99994233235845
+    },
+    "reason": "sampled velocity limit",
+    "start": 28
+  },
+  {
+    "goal": 29,
+    "kind": "edge",
+    "metrics": {
+      "duration_s": 1.5,
+      "legal": 0,
+      "max_cartesian_position_error_mm": 0.0009740012490166966,
+      "max_cartesian_rotation_error_deg": 0.00018126824030587576,
+      "max_joint_rate_fraction": 3.8899760243412547,
+      "min_joint_limit_margin": 0.375,
+      "min_self_collision_distance_m": 0.0401757122950304,
+      "rail_mm": 0.0,
+      "reason": "sampled velocity limit",
+      "travel_mm": 0.0021376842865093904,
+      "turn_deg": 11.999942344535857
+    },
+    "reason": "sampled velocity limit",
+    "start": 25
+  },
+  {
+    "goal": 25,
+    "kind": "edge",
+    "metrics": {
+      "duration_s": 1.5,
+      "legal": 0,
+      "max_cartesian_position_error_mm": 0.0012659144282158319,
+      "max_cartesian_rotation_error_deg": 0.00026044078783333196,
+      "max_joint_rate_fraction": 4.317969326563261,
+      "min_joint_limit_margin": 0.375,
+      "min_self_collision_distance_m": 0.0401757122950304,
+      "rail_mm": 0.0,
+      "reason": "sampled velocity limit",
+      "travel_mm": 0.0027068906743358523,
+      "turn_deg": 11.999942497950256
+    },
+    "reason": "sampled velocity limit",
+    "start": 29
+  },
+  {
+    "goal": 28,
+    "kind": "edge",
+    "metrics": {
+      "duration_s": 1.5,
+      "legal": 0,
+      "max_cartesian_position_error_mm": 0.00395196403322653,
+      "max_cartesian_rotation_error_deg": 0.0006773156692662077,
+      "max_joint_rate_fraction": 4.398038211746358,
+      "min_joint_limit_margin": 0.4,
+      "min_self_collision_distance_m": 0.04045678800226628,
+      "rail_mm": 0.0,
+      "reason": "sampled velocity limit",
+      "travel_mm": 0.0159973341557109,
+      "turn_deg": 23.999911900551226
+    },
+    "reason": "sampled velocity limit",
+    "start": 26
+  },
+  {
+    "goal": 26,
+    "kind": "edge",
+    "metrics": {
+      "duration_s": 1.5,
+      "legal": 0,
+      "max_cartesian_position_error_mm": 0.003920983407594931,
+      "max_cartesian_rotation_error_deg": 0.0007683801031390463,
+      "max_joint_rate_fraction": 5.452932700756742,
+      "min_joint_limit_margin": 0.4,
+      "min_self_collision_distance_m": 0.0402139459439799,
+      "rail_mm": 0.0,
+      "reason": "sampled velocity limit",
+      "travel_mm": 0.008374633408502802,
+      "turn_deg": 23.999911019360265
+    },
+    "reason": "sampled velocity limit",
+    "start": 28
+  },
+  {
+    "goal": 29,
+    "kind": "edge",
+    "metrics": {
+      "duration_s": 1.5,
+      "legal": 0,
+      "max_cartesian_position_error_mm": 0.0039921337696718975,
+      "max_cartesian_rotation_error_deg": 0.0007216623702817963,
+      "max_joint_rate_fraction": 4.572487971562228,
+      "min_joint_limit_margin": 0.375,
+      "min_self_collision_distance_m": 0.040075877608102724,
+      "rail_mm": 0.0,
+      "reason": "sampled velocity limit",
+      "travel_mm": 0.01631506371388692,
+      "turn_deg": 23.99991020148096
+    },
+    "reason": "sampled velocity limit",
+    "start": 27
+  },
+  {
+    "goal": 27,
+    "kind": "edge",
+    "metrics": {
+      "duration_s": 1.5,
+      "legal": 0,
+      "max_cartesian_position_error_mm": 0.003988694090714996,
+      "max_cartesian_rotation_error_deg": 0.0008305839329451112,
+      "max_joint_rate_fraction": 5.586822496906068,
+      "min_joint_limit_margin": 0.375,
+      "min_self_collision_distance_m": 0.03974898913554024,
+      "rail_mm": 0.0,
+      "reason": "sampled velocity limit",
+      "travel_mm": 0.008553210281776365,
+      "turn_deg": 23.9999092743381
+    },
+    "reason": "sampled velocity limit",
+    "start": 29
+  }
+]

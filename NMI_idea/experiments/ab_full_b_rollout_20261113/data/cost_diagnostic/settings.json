@@ -1,0 +1,39 @@
+{
+  "split": "independent_cost_diagnostic",
+  "captures": 6,
+  "n": 192,
+  "seed_namespace": 716906,
+  "model_size": 256,
+  "initial": [
+    "anchor"
+  ],
+  "sites_and_labels": {
+    "daughter": [
+      [
+        4,
+        3
+      ],
+      1
+    ],
+    "trunk": [
+      [
+        6,
+        7
+      ],
+      0
+    ]
+  },
+  "forecast_sha256": "0675a7343ad46b1a5e4df98b231156e387f0b24d20ca5dd409e5c2e08a66e5c9",
+  "motion_bank_sha256": "a29cad4b5fe37760093e312c5be7a140d7905252c51fe42905908b9fad339e47",
+  "admission_margins": [
+    2.0,
+    2.0,
+    0.1
+  ],
+  "source_sha256": {
+    "cost_match.py": "ff5bd203f6c364b73c354b4393f749c09a01fddeff262810f3f2fa88c0f0e4a3",
+    "control.py": "bfe70e6965d4272152f4c063781725f66058b50f3be463c9e8a406f42a7f5982",
+    "run.py": "cc70d16ac34d76a24756c9e8d468e0b9a7418c205851276ca82a55b6bf7b0954",
+    "acoustics.py": "b36b5b49ab57460553c2061779f121e69ac4e10d831e10f13d7317a39502cc39"
+  }
+}

@@ -1,0 +1,166 @@
+{
+  "daughter": {
+    "complete_routes": 0,
+    "with_opposite_tilts": 0,
+    "with_other_realization": 0,
+    "root_nodes": [],
+    "equivalent_support": [
+      {
+        "nodes": [
+          0,
+          1
+        ],
+        "first_only": [],
+        "second_only": []
+      },
+      {
+        "nodes": [
+          2,
+          3
+        ],
+        "first_only": [],
+        "second_only": []
+      },
+      {
+        "nodes": [
+          4,
+          5
+        ],
+        "first_only": [],
+        "second_only": []
+      },
+      {
+        "nodes": [
+          6,
+          7
+        ],
+        "first_only": [],
+        "second_only": []
+      },
+      {
+        "nodes": [
+          8,
+          9
+        ],
+        "first_only": [],
+        "second_only": []
+      },
+      {
+        "nodes": [
+          10,
+          11
+        ],
+        "first_only": [],
+        "second_only": []
+      },
+      {
+        "nodes": [
+          12,
+          13
+        ],
+        "first_only": [],
+        "second_only": []
+      },
+      {
+        "nodes": [
+          14,
+          15
+        ],
+        "first_only": [],
+        "second_only": []
+      },
+      {
+        "nodes": [
+          16,
+          17
+        ],
+        "first_only": [],
+        "second_only": []
+      }
+    ],
+    "example_opposite": null,
+    "example_realization": null
+  },
+  "trunk": {
+    "complete_routes": 0,
+    "with_opposite_tilts": 0,
+    "with_other_realization": 0,
+    "root_nodes": [],
+    "equivalent_support": [
+      {
+        "nodes": [
+          12,
+          13
+        ],
+        "first_only": [],
+        "second_only": []
+      },
+      {
+        "nodes": [
+          14,
+          15
+        ],
+        "first_only": [],
+        "second_only": []
+      },
+      {
+        "nodes": [
+          16,
+          17
+        ],
+        "first_only": [],
+        "second_only": []
+      },
+      {
+        "nodes": [
+          18,
+          19
+        ],
+        "first_only": [],
+        "second_only": []
+      },
+      {
+        "nodes": [
+          20,
+          21
+        ],
+        "first_only": [],
+        "second_only": []
+      },
+      {
+        "nodes": [
+          22,
+          23
+        ],
+        "first_only": [],
+        "second_only": []
+      },
+      {
+        "nodes": [
+          24,
+          25
+        ],
+        "first_only": [],
+        "second_only": []
+      },
+      {
+        "nodes": [
+          26,
+          27
+        ],
+        "first_only": [],
+        "second_only": []
+      },
+      {
+        "nodes": [
+          28,
+          29
+        ],
+        "first_only": [],
+        "second_only": []
+      }
+    ],
+    "example_opposite": null,
+    "example_realization": null
+  }
+}
