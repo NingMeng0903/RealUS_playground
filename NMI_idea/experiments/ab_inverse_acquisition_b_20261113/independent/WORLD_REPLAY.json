@@ -1,0 +1,21 @@
+{
+  "legacy_view_clock_seed_checks": 2016,
+  "novel_view_clock_seed_checks": 4032,
+  "max_new_world_mean_error_mm": 8.406057232512865e-07,
+  "new_kernel_total_variation_nearest_legacy": {
+    "daughter": {
+      "mean": 0.11671238073284365,
+      "range": [
+        0.0010478341236950781,
+        0.7684030445709303
+      ]
+    },
+    "NONBRANCH": {
+      "mean": 0.05615816500278357,
+      "range": [
+        0.0010478341236950781,
+        0.2729050826774181
+      ]
+    }
+  }
+}

@@ -1,0 +1,1918 @@
+{
+  "kind": "prior_only_geometry_and_aperture_preflight",
+  "model_size": 256,
+  "prior_seed": 51884473,
+  "clocks_s": [
+    1.5,
+    3.0,
+    4.5
+  ],
+  "views": [
+    3,
+    4,
+    5,
+    6
+  ],
+  "offsets_mm": [
+    0.0,
+    8.0,
+    16.0,
+    24.0
+  ],
+  "geometry_sha256": "e61ff1a05ca957674d3b146dc225b96cce61286094f0e1da052b5874c8219180",
+  "scenario_source": "public model particles only; no screen/training/confirmation cases or outcome access",
+  "sensor_control": "one center-view ghost world anchor per model particle/site, transported rigidly to offsets; center raw detection probabilities retained",
+  "constraints": "geometry-only endpoint lower bounds and archived endpoint metadata; no new checked bank or motion execution",
+  "tasks": {
+    "daughter": {
+      "prior_only_acoustic_rows": [
+        {
+          "site": 4,
+          "view": 3,
+          "offset_mm": 0.0,
+          "clock_s": 1.5,
+          "aperture_survival_by_kind": [
+            0.9957466166610744,
+            0.999999999971614,
+            0.9999589598430967
+          ],
+          "presence_after_aperture_by_kind": [
+            0.580185830268816,
+            0.6760738004103455,
+            0.7077641015591287
+          ],
+          "target_detection_delta_from_center": 0.0,
+          "non_target_expected_count_delta_from_center": 0.0,
+          "target_fraction_of_expected_detected_returns": 0.29540673096022624,
+          "selected_target_probability": 0.42613959762082637,
+          "coarse_prior_correct_accept_probability": 0.06749839689286623,
+          "coarse_prior_wrong_accept_probability": 0.007038933218214747,
+          "prior_predictive_tv_from_center": 0.0,
+          "mean_particle_tv_from_center": 0.0,
+          "without_aperture_mean_particle_tv_from_center": 0.0,
+          "no_target_fraction": 0.0,
+          "target_favored_aperture_fraction": 0.0
+        },
+        {
+          "site": 4,
+          "view": 3,
+          "offset_mm": 0.0,
+          "clock_s": 3.0,
+          "aperture_survival_by_kind": [
+            0.9950272436227106,
+            0.9999999999689123,
+            0.9999589598430967
+          ],
+          "presence_after_aperture_by_kind": [
+            0.6873479872647038,
+            0.7481544791197366,
+            0.7077641015591287
+          ],
+          "target_detection_delta_from_center": 0.0,
+          "non_target_expected_count_delta_from_center": 0.0,
+          "target_fraction_of_expected_detected_returns": 0.3207011192845711,
+          "selected_target_probability": 0.5149375387177483,
+          "coarse_prior_correct_accept_probability": 0.11545623881701456,
+          "coarse_prior_wrong_accept_probability": 0.011428027111968485,
+          "prior_predictive_tv_from_center": 0.0,
+          "mean_particle_tv_from_center": 0.0,
+          "without_aperture_mean_particle_tv_from_center": 0.0,
+          "no_target_fraction": 0.0,
+          "target_favored_aperture_fraction": 0.0
+        },
+        {
+          "site": 4,
+          "view": 3,
+          "offset_mm": 0.0,
+          "clock_s": 4.5,
+          "aperture_survival_by_kind": [
+            0.9957557923662281,
+            0.9999999999985016,
+            0.9999589598430967
+          ],
+          "presence_after_aperture_by_kind": [
+            0.7451057962664777,
+            0.7481544791416277,
+            0.7077641015591287
+          ],
+          "target_detection_delta_from_center": 0.0,
+          "non_target_expected_count_delta_from_center": 0.0,
+          "target_fraction_of_expected_detected_returns": 0.3385268259923363,
+          "selected_target_probability": 0.558949953166037,
+          "coarse_prior_correct_accept_probability": 0.1664603884034277,
+          "coarse_prior_wrong_accept_probability": 0.015257726803663238,
+          "prior_predictive_tv_from_center": 0.0,
+          "mean_particle_tv_from_center": 0.0,
+          "without_aperture_mean_particle_tv_from_center": 0.0,
+          "no_target_fraction": 0.0,
+          "target_favored_aperture_fraction": 0.0
+        },
+        {
+          "site": 4,
+          "view": 4,
+          "offset_mm": 8.0,
+          "clock_s": 1.5,
+          "aperture_survival_by_kind": [
+            0.9999969437974877,
+            0.9999977359439353,
+            0.9999999592323079
+          ],
+          "presence_after_aperture_by_kind": [
+            0.5827629789640643,
+            0.6760721905775942,
+            0.7077943415022425
+          ],
+          "target_detection_delta_from_center": 0.00257714869524861,
+          "non_target_expected_count_delta_from_center": 2.8630110362026784e-05,
+          "target_fraction_of_expected_detected_returns": 0.2963257571858209,
+          "selected_target_probability": 0.42725373613721923,
+          "coarse_prior_correct_accept_probability": 0.06857592689377634,
+          "coarse_prior_wrong_accept_probability": 0.007058455867105126,
+          "prior_predictive_tv_from_center": 0.0018973014391563416,
+          "mean_particle_tv_from_center": 0.0026079010403199524,
+          "without_aperture_mean_particle_tv_from_center": 0.0009081663993380726,
+          "no_target_fraction": 0.0,
+          "target_favored_aperture_fraction": 0.0
+        },
+        {
+          "site": 4,
+          "view": 4,
+          "offset_mm": 8.0,
+          "clock_s": 3.0,
+          "aperture_survival_by_kind": [
+            0.9999962684402564,
+            0.9999987891923672,
+            0.9999999592323079
+          ],
+          "presence_after_aperture_by_kind": [
+            0.6911471601887238,
+            0.7481535736066282,
+            0.7077943415022425
+          ],
+          "target_detection_delta_from_center": 0.003799172924019878,
+          "non_target_expected_count_delta_from_center": 2.933443000507907e-05,
+          "target_fraction_of_expected_detected_returns": 0.3218987217382205,
+          "selected_target_probability": 0.51597905854799,
+          "coarse_prior_correct_accept_probability": 0.11647097560297806,
+          "coarse_prior_wrong_accept_probability": 0.011453908374961744,
+          "prior_predictive_tv_from_center": 0.0020773844645978336,
+          "mean_particle_tv_from_center": 0.002819273175318088,
+          "without_aperture_mean_particle_tv_from_center": 0.0007890515642402323,
+          "no_target_fraction": 0.0,
+          "target_favored_aperture_fraction": 0.0
+        },
+        {
+          "site": 4,
+          "view": 4,
+          "offset_mm": 8.0,
+          "clock_s": 4.5,
+          "aperture_survival_by_kind": [
+            0.9999967606917217,
+            0.9999997103529965,
+            0.9999999592323079
+          ],
+          "presence_after_aperture_by_kind": [
+            0.7481521518293244,
+            0.7481542640342433,
+            0.7077943415022425
+          ],
+          "target_detection_delta_from_center": 0.0030463555628470473,
+          "non_target_expected_count_delta_from_center": 3.002483572878134e-05,
+          "target_fraction_of_expected_detected_returns": 0.33943645694467456,
+          "selected_target_probability": 0.5598313504708491,
+          "coarse_prior_correct_accept_probability": 0.1674547369683142,
+          "coarse_prior_wrong_accept_probability": 0.01531952339910855,
+          "prior_predictive_tv_from_center": 0.0013374246106173163,
+          "mean_particle_tv_from_center": 0.0020049076825361684,
+          "without_aperture_mean_particle_tv_from_center": 0.0007424323613798037,
+          "no_target_fraction": 0.0,
+          "target_favored_aperture_fraction": 0.0
+        },
+        {
+          "site": 4,
+          "view": 5,
+          "offset_mm": 16.0,
+          "clock_s": 1.5,
+          "aperture_survival_by_kind": [
+            0.9999999962714371,
+            0.9977095802046451,
+            0.9998273347440333
+          ],
+          "presence_after_aperture_by_kind": [
+            0.5827647600399302,
+            0.6744541852966458,
+            0.7076602376791763
+          ],
+          "target_detection_delta_from_center": 0.002578929771113847,
+          "non_target_expected_count_delta_from_center": -0.0017234789936513284,
+          "target_fraction_of_expected_detected_returns": 0.29659063268484825,
+          "selected_target_probability": 0.427448282975307,
+          "coarse_prior_correct_accept_probability": 0.06850123753373104,
+          "coarse_prior_wrong_accept_probability": 0.007055017646948076,
+          "prior_predictive_tv_from_center": 0.0020603943157785384,
+          "mean_particle_tv_from_center": 0.004237705920169471,
+          "without_aperture_mean_particle_tv_from_center": 0.002074852062384414,
+          "no_target_fraction": 0.0,
+          "target_favored_aperture_fraction": 0.0
+        },
+        {
+          "site": 4,
+          "view": 5,
+          "offset_mm": 16.0,
+          "clock_s": 3.0,
+          "aperture_survival_by_kind": [
+            0.999999998666712,
+            0.9985646593083859,
+            0.9998273347440333
+          ],
+          "presence_after_aperture_by_kind": [
+            0.6911499928596022,
+            0.7470832638341238,
+            0.7076602376791763
+          ],
+          "target_detection_delta_from_center": 0.0038020055948975173,
+          "non_target_expected_count_delta_from_center": -0.0011750791655642523,
+          "target_fraction_of_expected_detected_returns": 0.3220802871493756,
+          "selected_target_probability": 0.5160674921841304,
+          "coarse_prior_correct_accept_probability": 0.11639657610804921,
+          "coarse_prior_wrong_accept_probability": 0.011454482549740306,
+          "prior_predictive_tv_from_center": 0.002259518001240231,
+          "mean_particle_tv_from_center": 0.0040314279693669285,
+          "without_aperture_mean_particle_tv_from_center": 0.0018029773800298013,
+          "no_target_fraction": 0.0,
+          "target_favored_aperture_fraction": 0.0
+        },
+        {
+          "site": 4,
+          "view": 5,
+          "offset_mm": 16.0,
+          "clock_s": 4.5,
+          "aperture_survival_by_kind": [
+            0.9999999985492428,
+            0.9994379608546845,
+            0.9998273347440333
+          ],
+          "presence_after_aperture_by_kind": [
+            0.7481544780671268,
+            0.7477373766167027,
+            0.7076602376791763
+          ],
+          "target_detection_delta_from_center": 0.003048681800649433,
+          "non_target_expected_count_delta_from_center": -0.0005209664048770879,
+          "target_fraction_of_expected_detected_returns": 0.33952202929989916,
+          "selected_target_probability": 0.5598436269642657,
+          "coarse_prior_correct_accept_probability": 0.16742691855409894,
+          "coarse_prior_wrong_accept_probability": 0.015324615052138838,
+          "prior_predictive_tv_from_center": 0.0015085632492092618,
+          "mean_particle_tv_from_center": 0.002981771602850418,
+          "without_aperture_mean_particle_tv_from_center": 0.001696489302701552,
+          "no_target_fraction": 0.0,
+          "target_favored_aperture_fraction": 0.0
+        },
+        {
+          "site": 4,
+          "view": 6,
+          "offset_mm": 24.0,
+          "clock_s": 1.5,
+          "aperture_survival_by_kind": [
+            0.9999813340297424,
+            0.7993737175008762,
+            0.9209871202638255
+          ],
+          "presence_after_aperture_by_kind": [
+            0.5827511496683755,
+            0.5368061459754281,
+            0.6491028521074641
+          ],
+          "target_detection_delta_from_center": 0.002565319399559396,
+          "non_target_expected_count_delta_from_center": -0.19792890388658213,
+          "target_fraction_of_expected_detected_returns": 0.329487352564202,
+          "selected_target_probability": 0.4323930533978924,
+          "coarse_prior_correct_accept_probability": 0.049822457587573754,
+          "coarse_prior_wrong_accept_probability": 0.0043855858820298025,
+          "prior_predictive_tv_from_center": 0.08889610565424258,
+          "mean_particle_tv_from_center": 0.10828966445289936,
+          "without_aperture_mean_particle_tv_from_center": 0.00355659204709093,
+          "no_target_fraction": 0.0,
+          "target_favored_aperture_fraction": 0.05859375
+        },
+        {
+          "site": 4,
+          "view": 6,
+          "offset_mm": 24.0,
+          "clock_s": 3.0,
+          "aperture_survival_by_kind": [
+            0.9999878392788634,
+            0.786602891227306,
+            0.9209871202638255
+          ],
+          "presence_after_aperture_by_kind": [
+            0.691141660692356,
+            0.5896979633510373,
+            0.6491028521074641
+          ],
+          "target_detection_delta_from_center": 0.0037936734276518003,
+          "non_target_expected_count_delta_from_center": -0.2171177652203644,
+          "target_fraction_of_expected_detected_returns": 0.3581151610646926,
+          "selected_target_probability": 0.5206029917367799,
+          "coarse_prior_correct_accept_probability": 0.08776392956375052,
+          "coarse_prior_wrong_accept_probability": 0.006839360998583201,
+          "prior_predictive_tv_from_center": 0.0894584452335691,
+          "mean_particle_tv_from_center": 0.10202206265111462,
+          "without_aperture_mean_particle_tv_from_center": 0.0030911287501390154,
+          "no_target_fraction": 0.0,
+          "target_favored_aperture_fraction": 0.05859375
+        },
+        {
+          "site": 4,
+          "view": 6,
+          "offset_mm": 24.0,
+          "clock_s": 4.5,
+          "aperture_survival_by_kind": [
+            0.999988539384468,
+            0.8022253754343145,
+            0.9209871202638255
+          ],
+          "presence_after_aperture_by_kind": [
+            0.748146001265,
+            0.601502186379235,
+            0.6491028521074641
+          ],
+          "target_detection_delta_from_center": 0.0030402049985225332,
+          "non_target_expected_count_delta_from_center": -0.20531354221405795,
+          "target_fraction_of_expected_detected_returns": 0.3743067477568095,
+          "selected_target_probability": 0.5629550660485424,
+          "coarse_prior_correct_accept_probability": 0.1707043781643445,
+          "coarse_prior_wrong_accept_probability": 0.01706467351179888,
+          "prior_predictive_tv_from_center": 0.08489609099818371,
+          "mean_particle_tv_from_center": 0.09349943072313553,
+          "without_aperture_mean_particle_tv_from_center": 0.0029086511658249796,
+          "no_target_fraction": 0.0,
+          "target_favored_aperture_fraction": 0.05859375
+        },
+        {
+          "site": 3,
+          "view": 3,
+          "offset_mm": 0.0,
+          "clock_s": 1.5,
+          "aperture_survival_by_kind": [
+            0.9999934559168804,
+            0.9999999998565223,
+            0.9999999657680646
+          ],
+          "presence_after_aperture_by_kind": [
+            0.5827606218393893,
+            0.6760738003261559,
+            0.6981292467395683
+          ],
+          "target_detection_delta_from_center": 0.0,
+          "non_target_expected_count_delta_from_center": 0.0,
+          "target_fraction_of_expected_detected_returns": 0.2977881659731748,
+          "selected_target_probability": 0.3940754863885031,
+          "coarse_prior_correct_accept_probability": 0.0007013587778051585,
+          "coarse_prior_wrong_accept_probability": 3.4387810708700924e-05,
+          "prior_predictive_tv_from_center": 0.0,
+          "mean_particle_tv_from_center": 0.0,
+          "without_aperture_mean_particle_tv_from_center": 0.0,
+          "no_target_fraction": 0.0,
+          "target_favored_aperture_fraction": 0.0
+        },
+        {
+          "site": 3,
+          "view": 3,
+          "offset_mm": 0.0,
+          "clock_s": 3.0,
+          "aperture_survival_by_kind": [
+            0.9999916740091741,
+            0.9999999996660106,
+            0.9999999657680646
+          ],
+          "presence_after_aperture_by_kind": [
+            0.6911437697096842,
+            0.7481544788966766,
+            0.6981292467395683
+          ],
+          "target_detection_delta_from_center": 0.0,
+          "non_target_expected_count_delta_from_center": 0.0,
+          "target_fraction_of_expected_detected_returns": 0.32335308271957397,
+          "selected_target_probability": 0.4613888686221477,
+          "coarse_prior_correct_accept_probability": 0.017798405423996883,
+          "coarse_prior_wrong_accept_probability": 0.002057932666419786,
+          "prior_predictive_tv_from_center": 0.0,
+          "mean_particle_tv_from_center": 0.0,
+          "without_aperture_mean_particle_tv_from_center": 0.0,
+          "no_target_fraction": 0.0,
+          "target_favored_aperture_fraction": 0.0
+        },
+        {
+          "site": 3,
+          "view": 3,
+          "offset_mm": 0.0,
+          "clock_s": 4.5,
+          "aperture_survival_by_kind": [
+            0.9999900217639175,
+            0.99999999998543,
+            0.9999999657680646
+          ],
+          "presence_after_aperture_by_kind": [
+            0.7481474905010126,
+            0.7481544791321738,
+            0.6981292467395683
+          ],
+          "target_detection_delta_from_center": 0.0,
+          "non_target_expected_count_delta_from_center": 0.0,
+          "target_fraction_of_expected_detected_returns": 0.34093002547496076,
+          "selected_target_probability": 0.5058033855372059,
+          "coarse_prior_correct_accept_probability": 0.01848904452722531,
+          "coarse_prior_wrong_accept_probability": 0.0019254989782260066,
+          "prior_predictive_tv_from_center": 0.0,
+          "mean_particle_tv_from_center": 0.0,
+          "without_aperture_mean_particle_tv_from_center": 0.0,
+          "no_target_fraction": 0.0,
+          "target_favored_aperture_fraction": 0.0
+        },
+        {
+          "site": 3,
+          "view": 4,
+          "offset_mm": 8.0,
+          "clock_s": 1.5,
+          "aperture_survival_by_kind": [
+            0.9999999996305367,
+            0.9999941470322405,
+            0.9999999492113137
+          ],
+          "presence_after_aperture_by_kind": [
+            0.5827647626639627,
+            0.676069543574103,
+            0.6981292325907104
+          ],
+          "target_detection_delta_from_center": 4.140824573117818e-06,
+          "non_target_expected_count_delta_from_center": -4.270900911373943e-06,
+          "target_fraction_of_expected_detected_returns": 0.2977903017103434,
+          "selected_target_probability": 0.3940740561243186,
+          "coarse_prior_correct_accept_probability": 0.0007016012777979355,
+          "coarse_prior_wrong_accept_probability": 3.4387510726679875e-05,
+          "prior_predictive_tv_from_center": 7.410942494775082e-05,
+          "mean_particle_tv_from_center": 0.00019658483182619893,
+          "without_aperture_mean_particle_tv_from_center": 0.00019546081496284702,
+          "no_target_fraction": 0.0,
+          "target_favored_aperture_fraction": 0.0
+        },
+        {
+          "site": 3,
+          "view": 4,
+          "offset_mm": 8.0,
+          "clock_s": 3.0,
+          "aperture_survival_by_kind": [
+            0.9999999998099564,
+            0.9999957725001842,
+            0.9999999492113137
+          ],
+          "presence_after_aperture_by_kind": [
+            0.6911499936947058,
+            0.7481512763073694,
+            0.6981292325907104
+          ],
+          "target_detection_delta_from_center": 6.223985021591716e-06,
+          "non_target_expected_count_delta_from_center": -3.216738165168209e-06,
+          "target_fraction_of_expected_detected_returns": 0.32335553968015057,
+          "selected_target_probability": 0.4613863157324789,
+          "coarse_prior_correct_accept_probability": 0.017801185175911862,
+          "coarse_prior_wrong_accept_probability": 0.0020579000637402554,
+          "prior_predictive_tv_from_center": 6.688215193069642e-05,
+          "mean_particle_tv_from_center": 0.0001827564166285291,
+          "without_aperture_mean_particle_tv_from_center": 0.00018212493655520677,
+          "no_target_fraction": 0.0,
+          "target_favored_aperture_fraction": 0.0
+        },
+        {
+          "site": 3,
+          "view": 4,
+          "offset_mm": 8.0,
+          "clock_s": 4.5,
+          "aperture_survival_by_kind": [
+            0.9999999996408094,
+            0.9999992914614387,
+            0.9999999492113137
+          ],
+          "presence_after_aperture_by_kind": [
+            0.748154478896369,
+            0.7481539376026383,
+            0.6981292325907104
+          ],
+          "target_detection_delta_from_center": 6.98839535617779e-06,
+          "non_target_expected_count_delta_from_center": -5.556783939653087e-07,
+          "target_fraction_of_expected_detected_returns": 0.34093221067671414,
+          "selected_target_probability": 0.5058005902229873,
+          "coarse_prior_correct_accept_probability": 0.018491593806782357,
+          "coarse_prior_wrong_accept_probability": 0.0019253394226461974,
+          "prior_predictive_tv_from_center": 5.87492165758492e-05,
+          "mean_particle_tv_from_center": 0.00017558726199245645,
+          "without_aperture_mean_particle_tv_from_center": 0.000174353312345776,
+          "no_target_fraction": 0.0,
+          "target_favored_aperture_fraction": 0.0
+        },
+        {
+          "site": 3,
+          "view": 5,
+          "offset_mm": 16.0,
+          "clock_s": 1.5,
+          "aperture_survival_by_kind": [
+            0.9999912325575981,
+            0.992806148013012,
+            0.999744289158903
+          ],
+          "presence_after_aperture_by_kind": [
+            0.5827583917065747,
+            0.6708651429780469,
+            0.6979401178257881
+          ],
+          "target_detection_delta_from_center": -2.2301328147511512e-06,
+          "non_target_expected_count_delta_from_center": -0.00539778626188947,
+          "target_fraction_of_expected_detected_returns": 0.2986110091551144,
+          "selected_target_probability": 0.39482758581662425,
+          "coarse_prior_correct_accept_probability": 0.0007015599596789425,
+          "coarse_prior_wrong_accept_probability": 3.46431571137041e-05,
+          "prior_predictive_tv_from_center": 0.0019268590184082337,
+          "mean_particle_tv_from_center": 0.0024895510770787136,
+          "without_aperture_mean_particle_tv_from_center": 0.00044458397067458153,
+          "no_target_fraction": 0.0,
+          "target_favored_aperture_fraction": 0.0
+        },
+        {
+          "site": 3,
+          "view": 5,
+          "offset_mm": 16.0,
+          "clock_s": 3.0,
+          "aperture_survival_by_kind": [
+            0.9999953761839252,
+            0.9948169652421064,
+            0.999744289158903
+          ],
+          "presence_after_aperture_by_kind": [
+            0.6911465682508123,
+            0.7442309438097856,
+            0.6979401178257881
+          ],
+          "target_detection_delta_from_center": 2.7985411280573302e-06,
+          "non_target_expected_count_delta_from_center": -0.004112664000671451,
+          "target_fraction_of_expected_detected_returns": 0.3239773386617634,
+          "selected_target_probability": 0.46174866618773597,
+          "coarse_prior_correct_accept_probability": 0.016571868919971627,
+          "coarse_prior_wrong_accept_probability": 0.001893370559570575,
+          "prior_predictive_tv_from_center": 0.0015988228831491068,
+          "mean_particle_tv_from_center": 0.0019450487607244563,
+          "without_aperture_mean_particle_tv_from_center": 0.00041439174364060294,
+          "no_target_fraction": 0.0,
+          "target_favored_aperture_fraction": 0.0
+        },
+        {
+          "site": 3,
+          "view": 5,
+          "offset_mm": 16.0,
+          "clock_s": 4.5,
+          "aperture_survival_by_kind": [
+            0.9999968499672929,
+            0.9987867114655337,
+            0.999744289158903
+          ],
+          "presence_after_aperture_by_kind": [
+            0.7481521318291834,
+            0.747240549099996,
+            0.6979401178257881
+          ],
+          "target_detection_delta_from_center": 4.641328171239856e-06,
+          "non_target_expected_count_delta_from_center": -0.001103058945958857,
+          "target_fraction_of_expected_detected_returns": 0.34110287880337536,
+          "selected_target_probability": 0.5058135805074088,
+          "coarse_prior_correct_accept_probability": 0.018494517732295056,
+          "coarse_prior_wrong_accept_probability": 0.0019281716883797044,
+          "prior_predictive_tv_from_center": 0.0004666816581225761,
+          "mean_particle_tv_from_center": 0.0007607876086268588,
+          "without_aperture_mean_particle_tv_from_center": 0.00039670818694389294,
+          "no_target_fraction": 0.0,
+          "target_favored_aperture_fraction": 0.0
+        },
+        {
+          "site": 3,
+          "view": 6,
+          "offset_mm": 24.0,
+          "clock_s": 1.5,
+          "aperture_survival_by_kind": [
+            0.9895230023623393,
+            0.6528919670109107,
+            0.848923509612918
+          ],
+          "presence_after_aperture_by_kind": [
+            0.575190096833603,
+            0.4366604294709195,
+            0.5920152570776723
+          ],
+          "target_detection_delta_from_center": -0.007570525005786588,
+          "non_target_expected_count_delta_from_center": -0.34552736051713295,
+          "target_fraction_of_expected_detected_returns": 0.35862732579820694,
+          "selected_target_probability": 0.39553292961970155,
+          "coarse_prior_correct_accept_probability": 0.0009419243304521589,
+          "coarse_prior_wrong_accept_probability": 7.700198502352454e-05,
+          "prior_predictive_tv_from_center": 0.1925124977889219,
+          "mean_particle_tv_from_center": 0.19953237804864302,
+          "without_aperture_mean_particle_tv_from_center": 0.0007847117075041564,
+          "no_target_fraction": 0.0,
+          "target_favored_aperture_fraction": 0.13671875
+        },
+        {
+          "site": 3,
+          "view": 6,
+          "offset_mm": 24.0,
+          "clock_s": 3.0,
+          "aperture_survival_by_kind": [
+            0.9934916707409042,
+            0.6281043728214809,
+            0.848923509612918
+          ],
+          "presence_after_aperture_by_kind": [
+            0.6863424408899036,
+            0.4702390947778162,
+            0.5920152570776723
+          ],
+          "target_detection_delta_from_center": -0.004801328819780681,
+          "non_target_expected_count_delta_from_center": -0.38402937378075697,
+          "target_fraction_of_expected_detected_returns": 0.3925104081955387,
+          "selected_target_probability": 0.4643047551563921,
+          "coarse_prior_correct_accept_probability": 0.016218940290627835,
+          "coarse_prior_wrong_accept_probability": 0.0015889066560854335,
+          "prior_predictive_tv_from_center": 0.19443016026740592,
+          "mean_particle_tv_from_center": 0.20144123623999782,
+          "without_aperture_mean_particle_tv_from_center": 0.0007317876465630422,
+          "no_target_fraction": 0.0,
+          "target_favored_aperture_fraction": 0.13671875
+        },
+        {
+          "site": 3,
+          "view": 6,
+          "offset_mm": 24.0,
+          "clock_s": 4.5,
+          "aperture_survival_by_kind": [
+            0.9954401247641399,
+            0.6359415539743456,
+            0.848923509612918
+          ],
+          "presence_after_aperture_by_kind": [
+            0.7447489105205141,
+            0.47559174864121406,
+            0.5920152570776723
+          ],
+          "target_detection_delta_from_center": -0.0033985799804980843,
+          "non_target_expected_count_delta_from_center": -0.37867672015285647,
+          "target_fraction_of_expected_detected_returns": 0.4109286171922855,
+          "selected_target_probability": 0.5082343968738243,
+          "coarse_prior_correct_accept_probability": 0.02062148832626076,
+          "coarse_prior_wrong_accept_probability": 0.002157557747714513,
+          "prior_predictive_tv_from_center": 0.19083724971957028,
+          "mean_particle_tv_from_center": 0.19457604334733206,
+          "without_aperture_mean_particle_tv_from_center": 0.0007005829795526943,
+          "no_target_fraction": 0.0,
+          "target_favored_aperture_fraction": 0.14453125
+        }
+      ],
+      "geometry": [
+        {
+          "site": 4,
+          "view": 3,
+          "offset_mm": 0.0,
+          "actual_contact_shift_mm": 0.0,
+          "frame_rotation_from_center_deg": 6.588203009377884e-15,
+          "projection_feasible": true,
+          "projection_residual_mm": 1.1188630228279524e-13,
+          "archived_static_found": true,
+          "archived_dird_margin": 6.123516525317041,
+          "shortest_two_capture_chord_route": {
+            "views": [
+              3,
+              3
+            ],
+            "chord_tcp_mm": 27.876090730138838,
+            "endpoint_turn_lower_bound_deg": 6.486640244808337
+          },
+          "necessary_endpoint_bounds_permit_65mm_90deg": true
+        },
+        {
+          "site": 4,
+          "view": 4,
+          "offset_mm": 8.0,
+          "actual_contact_shift_mm": 7.843493518045123,
+          "frame_rotation_from_center_deg": 0.15685699258544758,
+          "projection_feasible": true,
+          "projection_residual_mm": 1.435043273981107,
+          "archived_static_found": true,
+          "archived_dird_margin": 6.116526403024327,
+          "shortest_two_capture_chord_route": {
+            "views": [
+              4,
+              4
+            ],
+            "chord_tcp_mm": 29.72761903912851,
+            "endpoint_turn_lower_bound_deg": 6.617184847770556
+          },
+          "necessary_endpoint_bounds_permit_65mm_90deg": true
+        },
+        {
+          "site": 4,
+          "view": 5,
+          "offset_mm": 16.0,
+          "actual_contact_shift_mm": 15.540899600231775,
+          "frame_rotation_from_center_deg": 0.360074797799123,
+          "projection_feasible": true,
+          "projection_residual_mm": 3.524419439539984,
+          "archived_static_found": true,
+          "archived_dird_margin": 6.093129895568236,
+          "shortest_two_capture_chord_route": {
+            "views": [
+              5,
+              5
+            ],
+            "chord_tcp_mm": 34.607129250505636,
+            "endpoint_turn_lower_bound_deg": 6.7946287430895405
+          },
+          "necessary_endpoint_bounds_permit_65mm_90deg": true
+        },
+        {
+          "site": 4,
+          "view": 6,
+          "offset_mm": 24.0,
+          "actual_contact_shift_mm": 22.92537193241511,
+          "frame_rotation_from_center_deg": 0.6210451163546273,
+          "projection_feasible": false,
+          "projection_residual_mm": 5.9976245080852415,
+          "archived_static_found": true,
+          "archived_dird_margin": 6.0562177690644585,
+          "shortest_two_capture_chord_route": {
+            "views": [
+              6,
+              6
+            ],
+            "chord_tcp_mm": 40.457071925796185,
+            "endpoint_turn_lower_bound_deg": 7.037821570354698
+          },
+          "necessary_endpoint_bounds_permit_65mm_90deg": true
+        },
+        {
+          "site": 3,
+          "view": 3,
+          "offset_mm": 0.0,
+          "actual_contact_shift_mm": 0.0,
+          "frame_rotation_from_center_deg": 8.439649503070857e-15,
+          "projection_feasible": true,
+          "projection_residual_mm": 0.0,
+          "archived_static_found": true,
+          "archived_dird_margin": 6.1372362286110285,
+          "shortest_two_capture_chord_route": {
+            "views": [
+              3,
+              3
+            ],
+            "chord_tcp_mm": 27.876090730138838,
+            "endpoint_turn_lower_bound_deg": 6.486640244808337
+          },
+          "necessary_endpoint_bounds_permit_65mm_90deg": true
+        },
+        {
+          "site": 3,
+          "view": 4,
+          "offset_mm": 8.0,
+          "actual_contact_shift_mm": 7.943048829280661,
+          "frame_rotation_from_center_deg": 0.15968708191476685,
+          "projection_feasible": true,
+          "projection_residual_mm": 0.8971861775119121,
+          "archived_static_found": true,
+          "archived_dird_margin": 6.158840752132743,
+          "shortest_two_capture_chord_route": {
+            "views": [
+              3,
+              4
+            ],
+            "chord_tcp_mm": 29.275297688790566,
+            "endpoint_turn_lower_bound_deg": 6.525529886122394
+          },
+          "necessary_endpoint_bounds_permit_65mm_90deg": true
+        },
+        {
+          "site": 3,
+          "view": 5,
+          "offset_mm": 16.0,
+          "actual_contact_shift_mm": 15.787851881212418,
+          "frame_rotation_from_center_deg": 0.3685252125114413,
+          "projection_feasible": true,
+          "projection_residual_mm": 2.285194340799574,
+          "archived_static_found": true,
+          "archived_dird_margin": 6.166026256569761,
+          "shortest_two_capture_chord_route": {
+            "views": [
+              4,
+              5
+            ],
+            "chord_tcp_mm": 31.333678797178237,
+            "endpoint_turn_lower_bound_deg": 6.6690448297359115
+          },
+          "necessary_endpoint_bounds_permit_65mm_90deg": true
+        },
+        {
+          "site": 3,
+          "view": 6,
+          "offset_mm": 24.0,
+          "actual_contact_shift_mm": 23.721972204280068,
+          "frame_rotation_from_center_deg": 0.6641375258158418,
+          "projection_feasible": true,
+          "projection_residual_mm": 3.775643555124111,
+          "archived_static_found": true,
+          "archived_dird_margin": 6.15918376081094,
+          "shortest_two_capture_chord_route": {
+            "views": [
+              4,
+              6
+            ],
+            "chord_tcp_mm": 36.1213535595061,
+            "endpoint_turn_lower_bound_deg": 6.755260546700507
+          },
+          "necessary_endpoint_bounds_permit_65mm_90deg": true
+        }
+      ],
+      "endpoint_lower_bound_routes": [
+        {
+          "views": [
+            3,
+            3
+          ],
+          "chord_tcp_mm": 27.876090730138838,
+          "endpoint_turn_lower_bound_deg": 6.486640244808337
+        },
+        {
+          "views": [
+            3,
+            4
+          ],
+          "chord_tcp_mm": 29.275297688790566,
+          "endpoint_turn_lower_bound_deg": 6.525529886122394
+        },
+        {
+          "views": [
+            3,
+            5
+          ],
+          "chord_tcp_mm": 33.80242011057101,
+          "endpoint_turn_lower_bound_deg": 6.583063396732881
+        },
+        {
+          "views": [
+            3,
+            6
+          ],
+          "chord_tcp_mm": 40.03436227499438,
+          "endpoint_turn_lower_bound_deg": 6.676997150443357
+        },
+        {
+          "views": [
+            4,
+            3
+          ],
+          "chord_tcp_mm": 32.155364343631355,
+          "endpoint_turn_lower_bound_deg": 6.582745243533227
+        },
+        {
+          "views": [
+            4,
+            4
+          ],
+          "chord_tcp_mm": 29.72761903912851,
+          "endpoint_turn_lower_bound_deg": 6.617184847770556
+        },
+        {
+          "views": [
+            4,
+            5
+          ],
+          "chord_tcp_mm": 31.333678797178237,
+          "endpoint_turn_lower_bound_deg": 6.6690448297359115
+        },
+        {
+          "views": [
+            4,
+            6
+          ],
+          "chord_tcp_mm": 36.1213535595061,
+          "endpoint_turn_lower_bound_deg": 6.755260546700507
+        },
+        {
+          "views": [
+            5,
+            3
+          ],
+          "chord_tcp_mm": 42.007394432415126,
+          "endpoint_turn_lower_bound_deg": 6.7217555161016564
+        },
+        {
+          "views": [
+            5,
+            4
+          ],
+          "chord_tcp_mm": 36.84268956446434,
+          "endpoint_turn_lower_bound_deg": 6.75030361416701
+        },
+        {
+          "views": [
+            5,
+            5
+          ],
+          "chord_tcp_mm": 34.607129250505636,
+          "endpoint_turn_lower_bound_deg": 6.7946287430895405
+        },
+        {
+          "views": [
+            5,
+            6
+          ],
+          "chord_tcp_mm": 36.54364225672176,
+          "endpoint_turn_lower_bound_deg": 6.870553170989291
+        },
+        {
+          "views": [
+            6,
+            3
+          ],
+          "chord_tcp_mm": 53.90440227659023,
+          "endpoint_turn_lower_bound_deg": 6.920369411193121
+        },
+        {
+          "views": [
+            6,
+            4
+          ],
+          "chord_tcp_mm": 47.39538381604955,
+          "endpoint_turn_lower_bound_deg": 6.94117456328599
+        },
+        {
+          "views": [
+            6,
+            5
+          ],
+          "chord_tcp_mm": 42.363067509282786,
+          "endpoint_turn_lower_bound_deg": 6.975554855641678
+        },
+        {
+          "views": [
+            6,
+            6
+          ],
+          "chord_tcp_mm": 40.457071925796185,
+          "endpoint_turn_lower_bound_deg": 7.037821570354698
+        }
+      ],
+      "pure_translation_unbounded_bins_max_abs_error": 4.218847493575595e-15
+    },
+    "trunk": {
+      "prior_only_acoustic_rows": [
+        {
+          "site": 6,
+          "view": 3,
+          "offset_mm": 0.0,
+          "clock_s": 1.5,
+          "aperture_survival_by_kind": [
+            0.9999999999964125,
+            5.1265751485063404e-06,
+            0.9999999999998314
+          ],
+          "presence_after_aperture_by_kind": [
+            0.6724095754191395,
+            0.0,
+            0.12066739859742087
+          ],
+          "target_detection_delta_from_center": 0.0,
+          "non_target_expected_count_delta_from_center": 0.0,
+          "target_fraction_of_expected_detected_returns": 0.8478490707070997,
+          "selected_target_probability": 0.6303297236207209,
+          "coarse_prior_correct_accept_probability": 0.5844056182544614,
+          "coarse_prior_wrong_accept_probability": 0.037384866299637894,
+          "prior_predictive_tv_from_center": 0.0,
+          "mean_particle_tv_from_center": 0.0,
+          "without_aperture_mean_particle_tv_from_center": 0.0,
+          "no_target_fraction": 0.0,
+          "target_favored_aperture_fraction": 0.0
+        },
+        {
+          "site": 6,
+          "view": 3,
+          "offset_mm": 0.0,
+          "clock_s": 3.0,
+          "aperture_survival_by_kind": [
+            0.9999999999934118,
+            5.1265751485063404e-06,
+            0.9999999999998314
+          ],
+          "presence_after_aperture_by_kind": [
+            0.7280249938350132,
+            0.0,
+            0.12066739859742087
+          ],
+          "target_detection_delta_from_center": 0.0,
+          "non_target_expected_count_delta_from_center": 0.0,
+          "target_fraction_of_expected_detected_returns": 0.8578196297346596,
+          "selected_target_probability": 0.6825897229698118,
+          "coarse_prior_correct_accept_probability": 0.6387932292727991,
+          "coarse_prior_wrong_accept_probability": 0.0317055876044772,
+          "prior_predictive_tv_from_center": 0.0,
+          "mean_particle_tv_from_center": 0.0,
+          "without_aperture_mean_particle_tv_from_center": 0.0,
+          "no_target_fraction": 0.0,
+          "target_favored_aperture_fraction": 0.0
+        },
+        {
+          "site": 6,
+          "view": 3,
+          "offset_mm": 0.0,
+          "clock_s": 4.5,
+          "aperture_survival_by_kind": [
+            0.9999999999995768,
+            5.1265751485063404e-06,
+            0.9999999999998314
+          ],
+          "presence_after_aperture_by_kind": [
+            0.7881544791423831,
+            0.0,
+            0.12066739859742087
+          ],
+          "target_detection_delta_from_center": 0.0,
+          "non_target_expected_count_delta_from_center": 0.0,
+          "target_fraction_of_expected_detected_returns": 0.8672265693058414,
+          "selected_target_probability": 0.7402953472829182,
+          "coarse_prior_correct_accept_probability": 0.6907175421515744,
+          "coarse_prior_wrong_accept_probability": 0.024924699835090946,
+          "prior_predictive_tv_from_center": 0.0,
+          "mean_particle_tv_from_center": 0.0,
+          "without_aperture_mean_particle_tv_from_center": 0.0,
+          "no_target_fraction": 0.0,
+          "target_favored_aperture_fraction": 0.0
+        },
+        {
+          "site": 6,
+          "view": 4,
+          "offset_mm": 8.0,
+          "clock_s": 1.5,
+          "aperture_survival_by_kind": [
+            0.9999995940545626,
+            5.1265751485063404e-06,
+            0.9999999702468475
+          ],
+          "presence_after_aperture_by_kind": [
+            0.6724092699394169,
+            0.0,
+            0.12066739477169242
+          ],
+          "target_detection_delta_from_center": -3.054797221846428e-07,
+          "non_target_expected_count_delta_from_center": -3.825728539519346e-09,
+          "target_fraction_of_expected_detected_returns": 0.8478490161910798,
+          "selected_target_probability": 0.6303288618669759,
+          "coarse_prior_correct_accept_probability": 0.5844017356188875,
+          "coarse_prior_wrong_accept_probability": 0.03738436110137719,
+          "prior_predictive_tv_from_center": 9.795174979568004e-05,
+          "mean_particle_tv_from_center": 0.00026582706648673165,
+          "without_aperture_mean_particle_tv_from_center": 0.0002656710397473485,
+          "no_target_fraction": 0.0,
+          "target_favored_aperture_fraction": 0.0
+        },
+        {
+          "site": 6,
+          "view": 4,
+          "offset_mm": 8.0,
+          "clock_s": 3.0,
+          "aperture_survival_by_kind": [
+            0.9999996009410037,
+            5.1265751485063404e-06,
+            0.9999999702468475
+          ],
+          "presence_after_aperture_by_kind": [
+            0.7280246810449699,
+            0.0,
+            0.12066739477169242
+          ],
+          "target_detection_delta_from_center": -3.12790042533706e-07,
+          "non_target_expected_count_delta_from_center": -3.825728539519346e-09,
+          "target_fraction_of_expected_detected_returns": 0.8578195812001909,
+          "selected_target_probability": 0.6825892582691762,
+          "coarse_prior_correct_accept_probability": 0.6387925502419637,
+          "coarse_prior_wrong_accept_probability": 0.0317053580595028,
+          "prior_predictive_tv_from_center": 0.00011052675153296732,
+          "mean_particle_tv_from_center": 0.00029088778257651285,
+          "without_aperture_mean_particle_tv_from_center": 0.000290727635675247,
+          "no_target_fraction": 0.0,
+          "target_favored_aperture_fraction": 0.0
+        },
+        {
+          "site": 6,
+          "view": 4,
+          "offset_mm": 8.0,
+          "clock_s": 4.5,
+          "aperture_survival_by_kind": [
+            0.999999908256242,
+            5.1265751485063404e-06,
+            0.9999999702468475
+          ],
+          "presence_after_aperture_by_kind": [
+            0.7881544079294269,
+            0.0,
+            0.12066739477169242
+          ],
+          "target_detection_delta_from_center": -7.121295642065206e-08,
+          "non_target_expected_count_delta_from_center": -3.825728539519346e-09,
+          "target_fraction_of_expected_detected_returns": 0.8672265625526857,
+          "selected_target_probability": 0.7402947186277806,
+          "coarse_prior_correct_accept_probability": 0.6907157439937087,
+          "coarse_prior_wrong_accept_probability": 0.024924588692919167,
+          "prior_predictive_tv_from_center": 0.00010828804770251611,
+          "mean_particle_tv_from_center": 0.0002866078026676863,
+          "without_aperture_mean_particle_tv_from_center": 0.0002865775788883225,
+          "no_target_fraction": 0.0,
+          "target_favored_aperture_fraction": 0.0
+        },
+        {
+          "site": 6,
+          "view": 5,
+          "offset_mm": 16.0,
+          "clock_s": 1.5,
+          "aperture_survival_by_kind": [
+            0.9996888343392144,
+            5.1265751485063404e-06,
+            0.9998864605601497
+          ],
+          "presence_after_aperture_by_kind": [
+            0.6721873924891612,
+            0.0,
+            0.12065355243430435
+          ],
+          "target_detection_delta_from_center": -0.00022218292997766564,
+          "non_target_expected_count_delta_from_center": -1.3846163116615351e-05,
+          "target_fraction_of_expected_detected_returns": 0.8478212392954161,
+          "selected_target_probability": 0.6301351216445965,
+          "coarse_prior_correct_accept_probability": 0.5842128408789861,
+          "coarse_prior_wrong_accept_probability": 0.037406424458009103,
+          "prior_predictive_tv_from_center": 0.0004175471901335045,
+          "mean_particle_tv_from_center": 0.0008042392103739009,
+          "without_aperture_mean_particle_tv_from_center": 0.000600530035696439,
+          "no_target_fraction": 0.0,
+          "target_favored_aperture_fraction": 0.0
+        },
+        {
+          "site": 6,
+          "view": 5,
+          "offset_mm": 16.0,
+          "clock_s": 3.0,
+          "aperture_survival_by_kind": [
+            0.9997080001517211,
+            5.1265751485063404e-06,
+            0.9998864605601497
+          ],
+          "presence_after_aperture_by_kind": [
+            0.7278027012569787,
+            0.0,
+            0.12065355243430435
+          ],
+          "target_detection_delta_from_center": -0.00022229257803441094,
+          "non_target_expected_count_delta_from_center": -1.3846163116615351e-05,
+          "target_fraction_of_expected_detected_returns": 0.857796377940064,
+          "selected_target_probability": 0.6823977396070968,
+          "coarse_prior_correct_accept_probability": 0.6386112743548058,
+          "coarse_prior_wrong_accept_probability": 0.03173194567842971,
+          "prior_predictive_tv_from_center": 0.0004435050472415466,
+          "mean_particle_tv_from_center": 0.0008592899722342632,
+          "without_aperture_mean_particle_tv_from_center": 0.0006571286264344441,
+          "no_target_fraction": 0.0,
+          "target_favored_aperture_fraction": 0.0
+        },
+        {
+          "site": 6,
+          "view": 5,
+          "offset_mm": 16.0,
+          "clock_s": 4.5,
+          "aperture_survival_by_kind": [
+            0.9998069220751741,
+            5.1265751485063404e-06,
+            0.9998864605601497
+          ],
+          "presence_after_aperture_by_kind": [
+            0.7880041085079922,
+            0.0,
+            0.12065355243430435
+          ],
+          "target_detection_delta_from_center": -0.00015037063439149456,
+          "non_target_expected_count_delta_from_center": -1.3846163116615351e-05,
+          "target_fraction_of_expected_detected_returns": 0.867217811921396,
+          "selected_target_probability": 0.7401628292786894,
+          "coarse_prior_correct_accept_probability": 0.6905931348119914,
+          "coarse_prior_wrong_accept_probability": 0.024940091860811985,
+          "prior_predictive_tv_from_center": 0.0003801476475981839,
+          "mean_particle_tv_from_center": 0.0007885171310754615,
+          "without_aperture_mean_particle_tv_from_center": 0.0006476865920437328,
+          "no_target_fraction": 0.0,
+          "target_favored_aperture_fraction": 0.0
+        },
+        {
+          "site": 6,
+          "view": 6,
+          "offset_mm": 24.0,
+          "clock_s": 1.5,
+          "aperture_survival_by_kind": [
+            0.9484921974961807,
+            5.1265751485063404e-06,
+            0.9788994594675565
+          ],
+          "presence_after_aperture_by_kind": [
+            0.6368252732331389,
+            0.0,
+            0.11807010636270616
+          ],
+          "target_detection_delta_from_center": -0.03558430218600006,
+          "non_target_expected_count_delta_from_center": -0.0025972922347147487,
+          "target_fraction_of_expected_detected_returns": 0.843594079982423,
+          "selected_target_probability": 0.5987686108960374,
+          "coarse_prior_correct_accept_probability": 0.5544705581010465,
+          "coarse_prior_wrong_accept_probability": 0.040381348656376145,
+          "prior_predictive_tv_from_center": 0.037783191713780286,
+          "mean_particle_tv_from_center": 0.03825699401127644,
+          "without_aperture_mean_particle_tv_from_center": 0.0009644183719046876,
+          "no_target_fraction": 0.0078125,
+          "target_favored_aperture_fraction": 0.0
+        },
+        {
+          "site": 6,
+          "view": 6,
+          "offset_mm": 24.0,
+          "clock_s": 3.0,
+          "aperture_survival_by_kind": [
+            0.9548160052811987,
+            5.1265751485063404e-06,
+            0.9788994594675565
+          ],
+          "presence_after_aperture_by_kind": [
+            0.6940107260586416,
+            0.0,
+            0.11807010636270616
+          ],
+          "target_detection_delta_from_center": -0.034014267776371065,
+          "non_target_expected_count_delta_from_center": -0.0025972922347147487,
+          "target_fraction_of_expected_detected_returns": 0.8546079384601882,
+          "selected_target_probability": 0.6526229687828771,
+          "coarse_prior_correct_accept_probability": 0.610824511937468,
+          "coarse_prior_wrong_accept_probability": 0.0351401352978511,
+          "prior_predictive_tv_from_center": 0.036067935850687065,
+          "mean_particle_tv_from_center": 0.0365870329530891,
+          "without_aperture_mean_particle_tv_from_center": 0.0010552416647153324,
+          "no_target_fraction": 0.00390625,
+          "target_favored_aperture_fraction": 0.00390625
+        },
+        {
+          "site": 6,
+          "view": 6,
+          "offset_mm": 24.0,
+          "clock_s": 4.5,
+          "aperture_survival_by_kind": [
+            0.9612172947881752,
+            5.1265751485063404e-06,
+            0.9788994594675565
+          ],
+          "presence_after_aperture_by_kind": [
+            0.7579113573226846,
+            0.0,
+            0.11807010636270616
+          ],
+          "target_detection_delta_from_center": -0.03024312181969835,
+          "non_target_expected_count_delta_from_center": -0.0025972922347147487,
+          "target_fraction_of_expected_detected_returns": 0.8652139214613437,
+          "selected_target_probability": 0.713600042215969,
+          "coarse_prior_correct_accept_probability": 0.6661154794234122,
+          "coarse_prior_wrong_accept_probability": 0.027958558162863464,
+          "prior_predictive_tv_from_center": 0.03225802368060504,
+          "mean_particle_tv_from_center": 0.03278089439458063,
+          "without_aperture_mean_particle_tv_from_center": 0.0010399686156018426,
+          "no_target_fraction": 0.0,
+          "target_favored_aperture_fraction": 0.00390625
+        },
+        {
+          "site": 7,
+          "view": 3,
+          "offset_mm": 0.0,
+          "clock_s": 1.5,
+          "aperture_survival_by_kind": [
+            0.9999999999962342,
+            5.1265751485063404e-06,
+            0.9999999999998294
+          ],
+          "presence_after_aperture_by_kind": [
+            0.6724095754189978,
+            0.0,
+            0.12066739859742057
+          ],
+          "target_detection_delta_from_center": 0.0,
+          "non_target_expected_count_delta_from_center": 0.0,
+          "target_fraction_of_expected_detected_returns": 0.8478490707070728,
+          "selected_target_probability": 0.6306200653466293,
+          "coarse_prior_correct_accept_probability": 0.5878167374022258,
+          "coarse_prior_wrong_accept_probability": 0.037903918150575894,
+          "prior_predictive_tv_from_center": 0.0,
+          "mean_particle_tv_from_center": 0.0,
+          "without_aperture_mean_particle_tv_from_center": 0.0,
+          "no_target_fraction": 0.0,
+          "target_favored_aperture_fraction": 0.0
+        },
+        {
+          "site": 7,
+          "view": 3,
+          "offset_mm": 0.0,
+          "clock_s": 3.0,
+          "aperture_survival_by_kind": [
+            0.9999999999949316,
+            5.1265751485063404e-06,
+            0.9999999999998294
+          ],
+          "presence_after_aperture_by_kind": [
+            0.7280249938362201,
+            0.0,
+            0.12066739859742057
+          ],
+          "target_detection_delta_from_center": 0.0,
+          "non_target_expected_count_delta_from_center": 0.0,
+          "target_fraction_of_expected_detected_returns": 0.8578196297348621,
+          "selected_target_probability": 0.6831007609858963,
+          "coarse_prior_correct_accept_probability": 0.638590914094748,
+          "coarse_prior_wrong_accept_probability": 0.03169620532819024,
+          "prior_predictive_tv_from_center": 0.0,
+          "mean_particle_tv_from_center": 0.0,
+          "without_aperture_mean_particle_tv_from_center": 0.0,
+          "no_target_fraction": 0.0,
+          "target_favored_aperture_fraction": 0.0
+        },
+        {
+          "site": 7,
+          "view": 3,
+          "offset_mm": 0.0,
+          "clock_s": 4.5,
+          "aperture_survival_by_kind": [
+            0.9999999999992271,
+            5.1265751485063404e-06,
+            0.9999999999998294
+          ],
+          "presence_after_aperture_by_kind": [
+            0.7881544791421174,
+            0.0,
+            0.12066739859742057
+          ],
+          "target_detection_delta_from_center": 0.0,
+          "non_target_expected_count_delta_from_center": 0.0,
+          "target_fraction_of_expected_detected_returns": 0.8672265693058029,
+          "selected_target_probability": 0.7405550225131965,
+          "coarse_prior_correct_accept_probability": 0.6913081769570049,
+          "coarse_prior_wrong_accept_probability": 0.02501359603596215,
+          "prior_predictive_tv_from_center": 0.0,
+          "mean_particle_tv_from_center": 0.0,
+          "without_aperture_mean_particle_tv_from_center": 0.0,
+          "no_target_fraction": 0.0,
+          "target_favored_aperture_fraction": 0.0
+        },
+        {
+          "site": 7,
+          "view": 4,
+          "offset_mm": 8.0,
+          "clock_s": 1.5,
+          "aperture_survival_by_kind": [
+            0.9999995685264141,
+            5.1265751485063404e-06,
+            0.9999999715951849
+          ],
+          "presence_after_aperture_by_kind": [
+            0.6724092503535957,
+            0.0,
+            0.12066739494408255
+          ],
+          "target_detection_delta_from_center": -3.250654012632026e-07,
+          "non_target_expected_count_delta_from_center": -3.6533380765035872e-09,
+          "target_fraction_of_expected_detected_returns": 0.8478490122492631,
+          "selected_target_probability": 0.6306194840104435,
+          "coarse_prior_correct_accept_probability": 0.5878146914313006,
+          "coarse_prior_wrong_accept_probability": 0.03790363330991894,
+          "prior_predictive_tv_from_center": 7.577631499631504e-05,
+          "mean_particle_tv_from_center": 0.0002054219213589382,
+          "without_aperture_mean_particle_tv_from_center": 0.0002052606151182693,
+          "no_target_fraction": 0.0,
+          "target_favored_aperture_fraction": 0.0
+        },
+        {
+          "site": 7,
+          "view": 4,
+          "offset_mm": 8.0,
+          "clock_s": 3.0,
+          "aperture_survival_by_kind": [
+            0.9999996323681373,
+            5.1265751485063404e-06,
+            0.9999999715951849
+          ],
+          "presence_after_aperture_by_kind": [
+            0.7280247083461497,
+            0.0,
+            0.12066739494408255
+          ],
+          "target_detection_delta_from_center": -2.8549006980682634e-07,
+          "non_target_expected_count_delta_from_center": -3.6533380765035872e-09,
+          "target_fraction_of_expected_detected_returns": 0.8578195855996822,
+          "selected_target_probability": 0.6831004717068888,
+          "coarse_prior_correct_accept_probability": 0.6385906114756652,
+          "coarse_prior_wrong_accept_probability": 0.03169603503464425,
+          "prior_predictive_tv_from_center": 8.165045243452022e-05,
+          "mean_particle_tv_from_center": 0.000222496235570723,
+          "without_aperture_mean_particle_tv_from_center": 0.0002223500465953471,
+          "no_target_fraction": 0.0,
+          "target_favored_aperture_fraction": 0.0
+        },
+        {
+          "site": 7,
+          "view": 4,
+          "offset_mm": 8.0,
+          "clock_s": 4.5,
+          "aperture_survival_by_kind": [
+            0.9999998633081826,
+            5.1265751485063404e-06,
+            0.9999999715951849
+          ],
+          "presence_after_aperture_by_kind": [
+            0.7881543733637614,
+            0.0,
+            0.12066739494408255
+          ],
+          "target_detection_delta_from_center": -1.0577835607428199e-07,
+          "non_target_expected_count_delta_from_center": -3.6533380765035872e-09,
+          "target_fraction_of_expected_detected_returns": 0.8672265573383481,
+          "selected_target_probability": 0.7405544814769554,
+          "coarse_prior_correct_accept_probability": 0.6904251677332938,
+          "coarse_prior_wrong_accept_probability": 0.02488179175458524,
+          "prior_predictive_tv_from_center": 8.417305670833904e-05,
+          "mean_particle_tv_from_center": 0.00022005384853324467,
+          "without_aperture_mean_particle_tv_from_center": 0.00022001340519158875,
+          "no_target_fraction": 0.0,
+          "target_favored_aperture_fraction": 0.0
+        },
+        {
+          "site": 7,
+          "view": 5,
+          "offset_mm": 16.0,
+          "clock_s": 1.5,
+          "aperture_survival_by_kind": [
+            0.9997027810845407,
+            5.1265751485063404e-06,
+            0.9998918835671733
+          ],
+          "presence_after_aperture_by_kind": [
+            0.6721944630331751,
+            0.0,
+            0.12065420995371648
+          ],
+          "target_detection_delta_from_center": -0.00021511238582228032,
+          "non_target_expected_count_delta_from_center": -1.318864370417061e-05,
+          "target_fraction_of_expected_detected_returns": 0.8478218933013069,
+          "selected_target_probability": 0.6304311138133505,
+          "coarse_prior_correct_accept_probability": 0.5876328146283898,
+          "coarse_prior_wrong_accept_probability": 0.0379247934494085,
+          "prior_predictive_tv_from_center": 0.00036464727169419677,
+          "mean_particle_tv_from_center": 0.0006598546225956095,
+          "without_aperture_mean_particle_tv_from_center": 0.00046008856048525867,
+          "no_target_fraction": 0.0,
+          "target_favored_aperture_fraction": 0.0
+        },
+        {
+          "site": 7,
+          "view": 5,
+          "offset_mm": 16.0,
+          "clock_s": 3.0,
+          "aperture_survival_by_kind": [
+            0.9997222131672827,
+            5.1265751485063404e-06,
+            0.9998918835671733
+          ],
+          "presence_after_aperture_by_kind": [
+            0.7278154804963728,
+            0.0,
+            0.12065420995371648
+          ],
+          "target_detection_delta_from_center": -0.00020951333984742249,
+          "non_target_expected_count_delta_from_center": -1.318864370417061e-05,
+          "target_fraction_of_expected_detected_returns": 0.8577978549950172,
+          "selected_target_probability": 0.6829192465189172,
+          "coarse_prior_correct_accept_probability": 0.6384194640493458,
+          "coarse_prior_wrong_accept_probability": 0.031720416108519216,
+          "prior_predictive_tv_from_center": 0.0003708585755910064,
+          "mean_particle_tv_from_center": 0.0006922860339475379,
+          "without_aperture_mean_particle_tv_from_center": 0.0004983733355522154,
+          "no_target_fraction": 0.0,
+          "target_favored_aperture_fraction": 0.0
+        },
+        {
+          "site": 7,
+          "view": 5,
+          "offset_mm": 16.0,
+          "clock_s": 4.5,
+          "aperture_survival_by_kind": [
+            0.9997973501762862,
+            5.1265751485063404e-06,
+            0.9998918835671733
+          ],
+          "presence_after_aperture_by_kind": [
+            0.7879968576936963,
+            0.0,
+            0.12065420995371648
+          ],
+          "target_detection_delta_from_center": -0.00015762144842157433,
+          "non_target_expected_count_delta_from_center": -1.318864370417061e-05,
+          "target_fraction_of_expected_detected_returns": 0.8672161248144438,
+          "selected_target_probability": 0.7404159161087533,
+          "coarse_prior_correct_accept_probability": 0.6902959808808795,
+          "coarse_prior_wrong_accept_probability": 0.02489803126017723,
+          "prior_predictive_tv_from_center": 0.0003335074852636236,
+          "mean_particle_tv_from_center": 0.0006423913662007752,
+          "without_aperture_mean_particle_tv_from_center": 0.0004930989797428567,
+          "no_target_fraction": 0.0,
+          "target_favored_aperture_fraction": 0.0
+        },
+        {
+          "site": 7,
+          "view": 6,
+          "offset_mm": 24.0,
+          "clock_s": 1.5,
+          "aperture_survival_by_kind": [
+            0.966239665437074,
+            5.1265751485063404e-06,
+            0.9869986167132675
+          ],
+          "presence_after_aperture_by_kind": [
+            0.648339061925377,
+            0.0,
+            0.11905428136269221
+          ],
+          "target_detection_delta_from_center": -0.024070513493620438,
+          "non_target_expected_count_delta_from_center": -0.0016131172347284561,
+          "target_fraction_of_expected_detected_returns": 0.8448588557563227,
+          "selected_target_probability": 0.6092828428425805,
+          "coarse_prior_correct_accept_probability": 0.5639088409066245,
+          "coarse_prior_wrong_accept_probability": 0.03948547002243,
+          "prior_predictive_tv_from_center": 0.025319598168198964,
+          "mean_particle_tv_from_center": 0.025670518238961132,
+          "without_aperture_mean_particle_tv_from_center": 0.0007157655360845465,
+          "no_target_fraction": 0.0078125,
+          "target_favored_aperture_fraction": 0.0
+        },
+        {
+          "site": 7,
+          "view": 6,
+          "offset_mm": 24.0,
+          "clock_s": 3.0,
+          "aperture_survival_by_kind": [
+            0.967913898238937,
+            5.1265751485063404e-06,
+            0.9869986167132675
+          ],
+          "presence_after_aperture_by_kind": [
+            0.7038498505227683,
+            0.0,
+            0.11905428136269221
+          ],
+          "target_detection_delta_from_center": -0.024175143313452052,
+          "non_target_expected_count_delta_from_center": -0.0016131172347284561,
+          "target_fraction_of_expected_detected_returns": 0.8553242391797062,
+          "selected_target_probability": 0.6618419294801215,
+          "coarse_prior_correct_accept_probability": 0.618714240960957,
+          "coarse_prior_wrong_accept_probability": 0.034307446530607855,
+          "prior_predictive_tv_from_center": 0.025349608194033143,
+          "mean_particle_tv_from_center": 0.02572462517682781,
+          "without_aperture_mean_particle_tv_from_center": 0.0007752920599675191,
+          "no_target_fraction": 0.00390625,
+          "target_favored_aperture_fraction": 0.00390625
+        },
+        {
+          "site": 7,
+          "view": 6,
+          "offset_mm": 24.0,
+          "clock_s": 4.5,
+          "aperture_survival_by_kind": [
+            0.9725568938647562,
+            5.1265751485063404e-06,
+            0.9869986167132675
+          ],
+          "presence_after_aperture_by_kind": [
+            0.7667508410899732,
+            0.0,
+            0.11905428136269221
+          ],
+          "target_detection_delta_from_center": -0.021403638052144736,
+          "non_target_expected_count_delta_from_center": -0.0016131172347284561,
+          "target_fraction_of_expected_detected_returns": 0.8655976598633249,
+          "selected_target_probability": 0.7216453262956576,
+          "coarse_prior_correct_accept_probability": 0.6729298878951037,
+          "coarse_prior_wrong_accept_probability": 0.027119014863870302,
+          "prior_predictive_tv_from_center": 0.0226057219292795,
+          "mean_particle_tv_from_center": 0.022991601180492413,
+          "without_aperture_mean_particle_tv_from_center": 0.0007670293179387856,
+          "no_target_fraction": 0.0,
+          "target_favored_aperture_fraction": 0.00390625
+        }
+      ],
+      "geometry": [
+        {
+          "site": 6,
+          "view": 3,
+          "offset_mm": 0.0,
+          "actual_contact_shift_mm": 0.0,
+          "frame_rotation_from_center_deg": 3.6813644331751205e-15,
+          "projection_feasible": true,
+          "projection_residual_mm": 1.962615573354719e-14,
+          "archived_static_found": true,
+          "archived_dird_margin": 6.134867526534636,
+          "shortest_two_capture_chord_route": {
+            "views": [
+              3,
+              3
+            ],
+            "chord_tcp_mm": 30.303273706060633,
+            "endpoint_turn_lower_bound_deg": 6.804645056937979
+          },
+          "necessary_endpoint_bounds_permit_65mm_90deg": true
+        },
+        {
+          "site": 6,
+          "view": 4,
+          "offset_mm": 8.0,
+          "actual_contact_shift_mm": 7.720372947369144,
+          "frame_rotation_from_center_deg": 0.11779190169776181,
+          "projection_feasible": true,
+          "projection_residual_mm": 1.8651140844820857,
+          "archived_static_found": true,
+          "archived_dird_margin": 6.122679267096436,
+          "shortest_two_capture_chord_route": {
+            "views": [
+              4,
+              4
+            ],
+            "chord_tcp_mm": 31.603918084795303,
+            "endpoint_turn_lower_bound_deg": 6.867544812151916
+          },
+          "necessary_endpoint_bounds_permit_65mm_90deg": true
+        },
+        {
+          "site": 6,
+          "view": 5,
+          "offset_mm": 16.0,
+          "actual_contact_shift_mm": 14.939640204100375,
+          "frame_rotation_from_center_deg": 0.2668331969404179,
+          "projection_feasible": true,
+          "projection_residual_mm": 4.586759932924327,
+          "archived_static_found": true,
+          "archived_dird_margin": 6.097380656803283,
+          "shortest_two_capture_chord_route": {
+            "views": [
+              5,
+              5
+            ],
+            "chord_tcp_mm": 35.527990426812735,
+            "endpoint_turn_lower_bound_deg": 6.950067581351134
+          },
+          "necessary_endpoint_bounds_permit_65mm_90deg": true
+        },
+        {
+          "site": 6,
+          "view": 6,
+          "offset_mm": 24.0,
+          "actual_contact_shift_mm": 21.43798634113522,
+          "frame_rotation_from_center_deg": 0.42955046640779526,
+          "projection_feasible": false,
+          "projection_residual_mm": 8.101987378094627,
+          "archived_static_found": true,
+          "archived_dird_margin": 6.060294484384926,
+          "shortest_two_capture_chord_route": {
+            "views": [
+              6,
+              6
+            ],
+            "chord_tcp_mm": 40.194374423808924,
+            "endpoint_turn_lower_bound_deg": 7.042131557640473
+          },
+          "necessary_endpoint_bounds_permit_65mm_90deg": true
+        },
+        {
+          "site": 7,
+          "view": 3,
+          "offset_mm": 0.0,
+          "actual_contact_shift_mm": 0.0,
+          "frame_rotation_from_center_deg": 9.249010220657568e-15,
+          "projection_feasible": true,
+          "projection_residual_mm": 1.962615573354719e-14,
+          "archived_static_found": true,
+          "archived_dird_margin": 6.163496959182099,
+          "shortest_two_capture_chord_route": {
+            "views": [
+              3,
+              3
+            ],
+            "chord_tcp_mm": 30.303273706060633,
+            "endpoint_turn_lower_bound_deg": 6.804645056937979
+          },
+          "necessary_endpoint_bounds_permit_65mm_90deg": true
+        },
+        {
+          "site": 7,
+          "view": 4,
+          "offset_mm": 8.0,
+          "actual_contact_shift_mm": 7.700212229103118,
+          "frame_rotation_from_center_deg": 0.09174497002192994,
+          "projection_feasible": true,
+          "projection_residual_mm": 1.8871269639292276,
+          "archived_static_found": true,
+          "archived_dird_margin": 6.147652509369481,
+          "shortest_two_capture_chord_route": {
+            "views": [
+              4,
+              4
+            ],
+            "chord_tcp_mm": 31.603918084795303,
+            "endpoint_turn_lower_bound_deg": 6.867544812151916
+          },
+          "necessary_endpoint_bounds_permit_65mm_90deg": true
+        },
+        {
+          "site": 7,
+          "view": 5,
+          "offset_mm": 16.0,
+          "actual_contact_shift_mm": 14.9353870710774,
+          "frame_rotation_from_center_deg": 0.20602783440393027,
+          "projection_feasible": true,
+          "projection_residual_mm": 4.742714316520637,
+          "archived_static_found": true,
+          "archived_dird_margin": 6.113145089673635,
+          "shortest_two_capture_chord_route": {
+            "views": [
+              4,
+              5
+            ],
+            "chord_tcp_mm": 33.04358645592694,
+            "endpoint_turn_lower_bound_deg": 6.898273829347639
+          },
+          "necessary_endpoint_bounds_permit_65mm_90deg": true
+        },
+        {
+          "site": 7,
+          "view": 6,
+          "offset_mm": 24.0,
+          "actual_contact_shift_mm": 21.095199059296714,
+          "frame_rotation_from_center_deg": 0.3211147524707541,
+          "projection_feasible": false,
+          "projection_residual_mm": 8.574321973495787,
+          "archived_static_found": true,
+          "archived_dird_margin": 6.071856839983921,
+          "shortest_two_capture_chord_route": {
+            "views": [
+              4,
+              6
+            ],
+            "chord_tcp_mm": 36.11124447674048,
+            "endpoint_turn_lower_bound_deg": 6.933698433233285
+          },
+          "necessary_endpoint_bounds_permit_65mm_90deg": true
+        }
+      ],
+      "endpoint_lower_bound_routes": [
+        {
+          "views": [
+            3,
+            3
+          ],
+          "chord_tcp_mm": 30.303273706060633,
+          "endpoint_turn_lower_bound_deg": 6.804645056937979
+        },
+        {
+          "views": [
+            3,
+            4
+          ],
+          "chord_tcp_mm": 32.02740368273763,
+          "endpoint_turn_lower_bound_deg": 6.829783807154621
+        },
+        {
+          "views": [
+            3,
+            5
+          ],
+          "chord_tcp_mm": 36.05414772167145,
+          "endpoint_turn_lower_bound_deg": 6.86507876857195
+        },
+        {
+          "views": [
+            3,
+            6
+          ],
+          "chord_tcp_mm": 40.397436136924654,
+          "endpoint_turn_lower_bound_deg": 6.9049257065557885
+        },
+        {
+          "views": [
+            4,
+            3
+          ],
+          "chord_tcp_mm": 33.43775627697951,
+          "endpoint_turn_lower_bound_deg": 6.846187819800618
+        },
+        {
+          "views": [
+            4,
+            4
+          ],
+          "chord_tcp_mm": 31.603918084795303,
+          "endpoint_turn_lower_bound_deg": 6.867544812151916
+        },
+        {
+          "views": [
+            4,
+            5
+          ],
+          "chord_tcp_mm": 33.04358645592694,
+          "endpoint_turn_lower_bound_deg": 6.898273829347639
+        },
+        {
+          "views": [
+            4,
+            6
+          ],
+          "chord_tcp_mm": 36.11124447674048,
+          "endpoint_turn_lower_bound_deg": 6.933698433233285
+        },
+        {
+          "views": [
+            5,
+            3
+          ],
+          "chord_tcp_mm": 41.673215609584666,
+          "endpoint_turn_lower_bound_deg": 6.908944725196671
+        },
+        {
+          "views": [
+            5,
+            4
+          ],
+          "chord_tcp_mm": 37.27459058681346,
+          "endpoint_turn_lower_bound_deg": 6.925348851044663
+        },
+        {
+          "views": [
+            5,
+            5
+          ],
+          "chord_tcp_mm": 35.527990426812735,
+          "endpoint_turn_lower_bound_deg": 6.950067581351134
+        },
+        {
+          "views": [
+            5,
+            6
+          ],
+          "chord_tcp_mm": 36.337588498809126,
+          "endpoint_turn_lower_bound_deg": 6.979640089888619
+        },
+        {
+          "views": [
+            6,
+            3
+          ],
+          "chord_tcp_mm": 51.48432493633334,
+          "endpoint_turn_lower_bound_deg": 6.990511096335954
+        },
+        {
+          "views": [
+            6,
+            4
+          ],
+          "chord_tcp_mm": 45.847756377277754,
+          "endpoint_turn_lower_bound_deg": 7.001335136270747
+        },
+        {
+          "views": [
+            6,
+            5
+          ],
+          "chord_tcp_mm": 41.88744426867983,
+          "endpoint_turn_lower_bound_deg": 7.019239171132904
+        },
+        {
+          "views": [
+            6,
+            6
+          ],
+          "chord_tcp_mm": 40.194374423808924,
+          "endpoint_turn_lower_bound_deg": 7.042131557640473
+        }
+      ],
+      "pure_translation_unbounded_bins_max_abs_error": 1.887379141862766e-15
+    }
+  }
+}

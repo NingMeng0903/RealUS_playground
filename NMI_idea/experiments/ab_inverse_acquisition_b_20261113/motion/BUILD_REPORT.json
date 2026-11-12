@@ -1,0 +1,45 @@
+{
+  "bank": "/home/camp/Documents/Codex/2026-11-13/ieee-t-ro-b-mpc-b/work/inverse_b/motion/BANK.json",
+  "elapsed_build_s": 531.8259967869963,
+  "preflight": "/home/camp/Documents/Codex/2026-11-13/ieee-t-ro-b-mpc-b/work/inverse_b/motion/PREFLIGHT.json",
+  "rejections": "/home/camp/Documents/Codex/2026-11-13/ieee-t-ro-b-mpc-b/work/inverse_b/motion/REJECTIONS.json",
+  "summary": {
+    "added_edge_count": 2028,
+    "added_node_count": 60,
+    "all_retained_edges_legal": 1,
+    "all_retained_edges_uniform_duration": 1,
+    "angles_deg": [
+      -12.0,
+      -9.0,
+      -6.0,
+      -3.0,
+      0.0,
+      3.0,
+      6.0,
+      9.0,
+      12.0
+    ],
+    "base_edge_count": 168,
+    "base_node_count": 30,
+    "edge_count": 2196,
+    "edge_duration_options_s": [
+      1.5
+    ],
+    "edge_duration_s": 1.5,
+    "edge_sample_dt_s": 0.02,
+    "hold_edge_count": 90,
+    "new_node_failures": 0,
+    "new_view_ids": [
+      9,
+      10,
+      11,
+      12,
+      13,
+      14
+    ],
+    "node_count": 90,
+    "rejected_count": 29,
+    "requested_undirected_edge_count": 1053,
+    "trace_mode": "joint"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "new_endpoints": 60,
+  "max_fk_position_mm": 0.0013360834308110698,
+  "max_fk_angle_deg": 0.0005624017901659173,
+  "new_edges_rate_and_limits_checked": 2028,
+  "replayed_edges": 173,
+  "replayed_samples": 13148,
+  "min_replayed_clearance_mm": 39.144898130712136,
+  "max_replayed_rate_fraction": 0.38233880752236404
+}

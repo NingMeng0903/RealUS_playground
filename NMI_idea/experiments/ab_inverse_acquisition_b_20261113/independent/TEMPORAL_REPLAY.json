@@ -1,0 +1,25 @@
+{
+  "verification": {
+    "causal_packet_commands": 768,
+    "checked_hold_values_and_witnesses": 1083,
+    "model_public_states": 512
+  },
+  "cells": {
+    "daughter/1": {
+      "contextual_nominal_minus_best_fixed": 0.002528536883297683,
+      "mean_added_hold_s": 0.59375
+    },
+    "daughter/2": {
+      "contextual_nominal_minus_best_fixed": 0.004225059940074383,
+      "mean_added_hold_s": 0.4453125
+    },
+    "trunk/1": {
+      "contextual_nominal_minus_best_fixed": 0.0003885247772692224,
+      "mean_added_hold_s": 0.08984375
+    },
+    "trunk/2": {
+      "contextual_nominal_minus_best_fixed": 0.0003443321844462943,
+      "mean_added_hold_s": 0.36328125
+    }
+  }
+}

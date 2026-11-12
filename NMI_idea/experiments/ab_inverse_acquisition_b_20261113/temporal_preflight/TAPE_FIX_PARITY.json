@@ -1,0 +1,7 @@
+{
+  "reason": "Avoid overlapping uniforms at unused fine-only clocks for future reuse; prefix consumes only restored legacy clocks.",
+  "all_512_public_records_bit_identical": true,
+  "all_summary_values_identical": true,
+  "old_source_sha256": "334709dffec943ddd7f988228f64c708186ee3715efba765b8c045b24adad6bc",
+  "current_source_sha256": "4cdbf3a9a948250313f98b0a4cc4ff40bcb22b15e9033939313eddb130db33f5"
+}

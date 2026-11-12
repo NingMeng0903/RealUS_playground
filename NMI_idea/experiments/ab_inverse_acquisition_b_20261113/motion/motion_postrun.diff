@@ -1,0 +1,50 @@
+--- motion_at_screen.py
++++ motion.py
+@@ -17,7 +17,9 @@
+ import argparse
+ import copy
+ import hashlib
++import importlib
+ import importlib.util
++import inspect
+ import json
+ from pathlib import Path
+ import sys
+@@ -92,6 +94,33 @@
+     if str(repo) in sys.path:
+         sys.path.remove(str(repo))
+     sys.path.insert(0, str(repo))
++    # The inherited builder computes its own fallback mount path from
++    # ``__file__``.  When loaded from a checkout-local source that path is not
++    # the checkout root, so the builder would otherwise prepend the mounted
++    # archive and import a different capability module.  Preload the
++    # capability package from the explicit repo before executing the builder;
++    # Python then reuses this exact module even if the builder adds its mount
++    # fallback to sys.path.
++    capability_name = (
++        "NMI_idea.experiments.ab_module_ladder_20261110.capability.capability"
++    )
++    capability_path = (
++        repo
++        / "NMI_idea/experiments/ab_module_ladder_20261110/capability/capability.py"
++    ).resolve()
++    if capability_path.exists():
++        existing = sys.modules.get(capability_name)
++        if existing is not None:
++            try:
++                existing_path = Path(inspect.getsourcefile(existing)).resolve()
++            except (TypeError, OSError):
++                existing_path = None
++            if existing_path != capability_path:
++                for name in list(sys.modules):
++                    if name == "NMI_idea" or name.startswith("NMI_idea."):
++                        del sys.modules[name]
++        importlib.invalidate_caches()
++        imported = importlib.import_module(capability_name)
++        imported_path = Path(inspect.getsourcefile(imported)).resolve()
++        if imported_path != capability_path:
++            raise ImportError(
++                f"explicit repo capability import resolved to {imported_path}, "
++                f"expected {capability_path}"
++            )
+     spec = importlib.util.spec_from_file_location("inverse_b_inherited_motion_bank", source)
