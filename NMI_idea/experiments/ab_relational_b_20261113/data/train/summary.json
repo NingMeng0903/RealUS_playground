@@ -1,0 +1,556 @@
+{
+  "daughter": {
+    "checkpoint": {
+      "opportunity": {
+        "n_cases": 64,
+        "n_repeats": 16,
+        "repeated_case_clustered": true,
+        "candidate_rate": {
+          "correct_completion": 0.296875,
+          "any_wrong": 0.0869140625
+        },
+        "baseline_rate": {
+          "correct_completion": 0.2783203125,
+          "any_wrong": 0.083984375
+        },
+        "delta": {
+          "correct_completion": 0.0185546875,
+          "any_wrong": 0.0029296875,
+          "tcp_mm": 1.4334107424905331,
+          "turn_deg": 1.5516426595510229,
+          "motion_s": 0.0263671875,
+          "rail_mm": 2.071647587488581,
+          "captures": 0.017578125,
+          "combined_s": 0.024721375245117187
+        },
+        "delta_ci95_case_clustered": {
+          "correct_completion": [
+            0.0009765625,
+            0.041015625
+          ],
+          "any_wrong": [
+            -0.0009765625,
+            0.0068359375
+          ],
+          "tcp_mm": [
+            0.29825724954684724,
+            2.7671866554781297
+          ],
+          "turn_deg": [
+            0.23633377729383648,
+            3.0965865236117764
+          ],
+          "motion_s": [
+            -0.0322265625,
+            0.09375
+          ],
+          "rail_mm": [
+            -0.24372324558689196,
+            4.996326534531283
+          ],
+          "captures": [
+            -0.021484375,
+            0.0625
+          ],
+          "combined_s": [
+            -0.0340686505634033,
+            0.0929742051727049
+          ]
+        },
+        "success_wins_losses_ties": [
+          6,
+          4,
+          54
+        ],
+        "wrong_harm_benefit_ties_cases": [
+          4,
+          1,
+          59
+        ],
+        "wrong_harm_975_upper": null,
+        "success_sign_p_greater": null,
+        "wrong_harm_sign_p_greater": null,
+        "cost_delta": {
+          "tcp_mm": 1.4334107424905331,
+          "turn_deg": 1.5516426595510229,
+          "motion_s": 0.0263671875
+        },
+        "cost_bonferroni_ci95": {
+          "tcp_mm": [
+            0.0998412809298733,
+            3.1028176282724496
+          ],
+          "turn_deg": [
+            -0.022832772130182713,
+            3.473731115440262
+          ],
+          "motion_s": [
+            -0.0439453125,
+            0.1142578125
+          ]
+        },
+        "cost_margins": {
+          "tcp_mm": 2.0,
+          "turn_deg": 2.0,
+          "motion_s": 0.1
+        },
+        "cost_equivalent": {
+          "tcp_mm": false,
+          "turn_deg": false,
+          "motion_s": false
+        },
+        "cost_nonincrease": {
+          "tcp_mm": false,
+          "turn_deg": false,
+          "motion_s": false
+        },
+        "cost_noninferior_with_margin": {
+          "tcp_mm": false,
+          "turn_deg": false,
+          "motion_s": false
+        },
+        "all_costs_equivalent": false,
+        "all_costs_nonincrease": false,
+        "all_costs_noninferior_with_margin": false,
+        "strong_gate_single_repeat": false,
+        "inference_note": "Repeated tapes are clustered by latent case. Case-level bootstrap intervals are descriptive and no binomial discordance inference is reported.",
+        "bootstrap_samples": 20000,
+        "bootstrap_seed": 57216
+      },
+      "case_options": {
+        "MPC": 64,
+        "view": 23,
+        "advance": 40
+      },
+      "ranking_half_choices": {
+        "MPC": 104,
+        "view": 7,
+        "advance": 17
+      },
+      "half_signs": {
+        "view/-1,+0": 6,
+        "advance/+0,+0": 17,
+        "advance/-1,-1": 4,
+        "view/+1,+1": 2,
+        "view/+0,+0": 8,
+        "advance/+1,+0": 2,
+        "advance/+0,+1": 5,
+        "advance/+1,-1": 2,
+        "advance/-1,+0": 4,
+        "advance/+1,+1": 4,
+        "view/-1,+1": 2,
+        "view/-1,-1": 3,
+        "view/+0,+1": 2,
+        "advance/+0,-1": 1,
+        "advance/-1,+1": 1
+      }
+    },
+    "probe": {
+      "opportunity": {
+        "n_cases": 64,
+        "n_repeats": 16,
+        "repeated_case_clustered": true,
+        "candidate_rate": {
+          "correct_completion": 0.275390625,
+          "any_wrong": 0.076171875
+        },
+        "baseline_rate": {
+          "correct_completion": 0.27734375,
+          "any_wrong": 0.078125
+        },
+        "delta": {
+          "correct_completion": -0.001953125,
+          "any_wrong": -0.001953125,
+          "tcp_mm": 0.14432147410657703,
+          "turn_deg": 0.5271501432361102,
+          "motion_s": 0.0087890625,
+          "rail_mm": -0.12186162279344598,
+          "captures": 0.005859375,
+          "combined_s": 0.007950568034179678
+        },
+        "delta_ci95_case_clustered": {
+          "correct_completion": [
+            -0.0078125,
+            0.00390625
+          ],
+          "any_wrong": [
+            -0.0078125,
+            0.00390625
+          ],
+          "tcp_mm": [
+            -0.7058253275401203,
+            1.343869642422244
+          ],
+          "turn_deg": [
+            -0.20368926013904182,
+            1.6079775356469854
+          ],
+          "motion_s": [
+            -0.01611328125,
+            0.0498046875
+          ],
+          "rail_mm": [
+            -1.4623394735213515,
+            1.5842010963147972
+          ],
+          "captures": [
+            -0.0107421875,
+            0.033203125
+          ],
+          "combined_s": [
+            -0.01712710036606448,
+            0.0492129402243408
+          ]
+        },
+        "success_wins_losses_ties": [
+          1,
+          3,
+          60
+        ],
+        "wrong_harm_benefit_ties_cases": [
+          1,
+          3,
+          60
+        ],
+        "wrong_harm_975_upper": null,
+        "success_sign_p_greater": null,
+        "wrong_harm_sign_p_greater": null,
+        "cost_delta": {
+          "tcp_mm": 0.14432147410657703,
+          "turn_deg": 0.5271501432361102,
+          "motion_s": 0.0087890625
+        },
+        "cost_bonferroni_ci95": {
+          "tcp_mm": [
+            -0.8345725578548162,
+            1.6830996907368736
+          ],
+          "turn_deg": [
+            -0.2744372176189013,
+            1.9023367121423516
+          ],
+          "motion_s": [
+            -0.01904296875,
+            0.064453125
+          ]
+        },
+        "cost_margins": {
+          "tcp_mm": 2.0,
+          "turn_deg": 2.0,
+          "motion_s": 0.1
+        },
+        "cost_equivalent": {
+          "tcp_mm": true,
+          "turn_deg": true,
+          "motion_s": true
+        },
+        "cost_nonincrease": {
+          "tcp_mm": false,
+          "turn_deg": false,
+          "motion_s": false
+        },
+        "cost_noninferior_with_margin": {
+          "tcp_mm": true,
+          "turn_deg": true,
+          "motion_s": true
+        },
+        "all_costs_equivalent": true,
+        "all_costs_nonincrease": false,
+        "all_costs_noninferior_with_margin": true,
+        "strong_gate_single_repeat": false,
+        "inference_note": "Repeated tapes are clustered by latent case. Case-level bootstrap intervals are descriptive and no binomial discordance inference is reported.",
+        "bootstrap_samples": 20000,
+        "bootstrap_seed": 57216
+      },
+      "case_options": {
+        "MPC": 64,
+        "advance": 23,
+        "view": 22
+      },
+      "ranking_half_choices": {
+        "advance": 6,
+        "MPC": 118,
+        "view": 4
+      },
+      "half_signs": {
+        "advance/+1,+0": 2,
+        "advance/+0,+0": 11,
+        "view/+0,+0": 17,
+        "advance/+0,+1": 1,
+        "advance/+0,-1": 2,
+        "advance/-1,-1": 3,
+        "advance/-1,+0": 1,
+        "view/+0,+1": 1,
+        "advance/+1,-1": 2,
+        "view/+0,-1": 1,
+        "advance/-1,+1": 1,
+        "view/+1,+0": 1,
+        "view/+1,+1": 1,
+        "view/-1,-1": 1
+      }
+    }
+  },
+  "trunk": {
+    "checkpoint": {
+      "opportunity": {
+        "n_cases": 64,
+        "n_repeats": 16,
+        "repeated_case_clustered": true,
+        "candidate_rate": {
+          "correct_completion": 0.830078125,
+          "any_wrong": 0.0615234375
+        },
+        "baseline_rate": {
+          "correct_completion": 0.828125,
+          "any_wrong": 0.0634765625
+        },
+        "delta": {
+          "correct_completion": 0.001953125,
+          "any_wrong": -0.001953125,
+          "tcp_mm": 0.04230435111887121,
+          "turn_deg": 0.1528474942649699,
+          "motion_s": -0.02490234375,
+          "rail_mm": 0.0,
+          "captures": -0.0166015625,
+          "combined_s": -0.02496126074511719
+        },
+        "delta_ci95_case_clustered": {
+          "correct_completion": [
+            0.0,
+            0.005859375
+          ],
+          "any_wrong": [
+            -0.005859375,
+            0.0
+          ],
+          "tcp_mm": [
+            0.0,
+            0.11474782271090525
+          ],
+          "turn_deg": [
+            0.0,
+            0.4463768848962685
+          ],
+          "motion_s": [
+            -0.0703125,
+            0.0
+          ],
+          "rail_mm": [
+            0.0,
+            0.0
+          ],
+          "captures": [
+            -0.046875,
+            0.0
+          ],
+          "combined_s": [
+            -0.07045698403613282,
+            0.0
+          ]
+        },
+        "success_wins_losses_ties": [
+          1,
+          0,
+          63
+        ],
+        "wrong_harm_benefit_ties_cases": [
+          0,
+          1,
+          63
+        ],
+        "wrong_harm_975_upper": null,
+        "success_sign_p_greater": null,
+        "wrong_harm_sign_p_greater": null,
+        "cost_delta": {
+          "tcp_mm": 0.04230435111887121,
+          "turn_deg": 0.1528474942649699,
+          "motion_s": -0.02490234375
+        },
+        "cost_bonferroni_ci95": {
+          "tcp_mm": [
+            0.0,
+            0.13272171253835974
+          ],
+          "turn_deg": [
+            0.0,
+            0.5748931833639559
+          ],
+          "motion_s": [
+            -0.08642578125,
+            0.0
+          ]
+        },
+        "cost_margins": {
+          "tcp_mm": 2.0,
+          "turn_deg": 2.0,
+          "motion_s": 0.1
+        },
+        "cost_equivalent": {
+          "tcp_mm": true,
+          "turn_deg": true,
+          "motion_s": true
+        },
+        "cost_nonincrease": {
+          "tcp_mm": false,
+          "turn_deg": false,
+          "motion_s": true
+        },
+        "cost_noninferior_with_margin": {
+          "tcp_mm": true,
+          "turn_deg": true,
+          "motion_s": true
+        },
+        "all_costs_equivalent": true,
+        "all_costs_nonincrease": false,
+        "all_costs_noninferior_with_margin": true,
+        "strong_gate_single_repeat": false,
+        "inference_note": "Repeated tapes are clustered by latent case. Case-level bootstrap intervals are descriptive and no binomial discordance inference is reported.",
+        "bootstrap_samples": 20000,
+        "bootstrap_seed": 57216
+      },
+      "case_options": {
+        "MPC": 64,
+        "advance": 1,
+        "view": 1
+      },
+      "ranking_half_choices": {
+        "MPC": 125,
+        "advance": 1,
+        "view": 2
+      },
+      "half_signs": {
+        "advance/+1,+0": 1,
+        "view/+1,+1": 1
+      }
+    },
+    "probe": {
+      "opportunity": {
+        "n_cases": 64,
+        "n_repeats": 16,
+        "repeated_case_clustered": true,
+        "candidate_rate": {
+          "correct_completion": 0.7353515625,
+          "any_wrong": 0.05078125
+        },
+        "baseline_rate": {
+          "correct_completion": 0.736328125,
+          "any_wrong": 0.05078125
+        },
+        "delta": {
+          "correct_completion": -0.0009765625,
+          "any_wrong": 0.0,
+          "tcp_mm": 0.010520838421547711,
+          "turn_deg": 0.06906497129661972,
+          "motion_s": -0.00146484375,
+          "rail_mm": 0.0,
+          "captures": -0.0009765625,
+          "combined_s": -0.001474849019531251
+        },
+        "delta_ci95_case_clustered": {
+          "correct_completion": [
+            -0.0029296875,
+            0.0
+          ],
+          "any_wrong": [
+            0.0,
+            0.0
+          ],
+          "tcp_mm": [
+            0.0,
+            0.03156251526464313
+          ],
+          "turn_deg": [
+            0.0,
+            0.20719491388985917
+          ],
+          "motion_s": [
+            -0.00439453125,
+            0.0
+          ],
+          "rail_mm": [
+            0.0,
+            0.0
+          ],
+          "captures": [
+            -0.0029296875,
+            0.0
+          ],
+          "combined_s": [
+            -0.004424547058593753,
+            0.0
+          ]
+        },
+        "success_wins_losses_ties": [
+          0,
+          1,
+          63
+        ],
+        "wrong_harm_benefit_ties_cases": [
+          0,
+          0,
+          64
+        ],
+        "wrong_harm_975_upper": null,
+        "success_sign_p_greater": null,
+        "wrong_harm_sign_p_greater": null,
+        "cost_delta": {
+          "tcp_mm": 0.010520838421547711,
+          "turn_deg": 0.06906497129661972,
+          "motion_s": -0.00146484375
+        },
+        "cost_bonferroni_ci95": {
+          "tcp_mm": [
+            0.0,
+            0.042083353686190844
+          ],
+          "turn_deg": [
+            0.0,
+            0.27625988518647887
+          ],
+          "motion_s": [
+            -0.005859375,
+            0.0
+          ]
+        },
+        "cost_margins": {
+          "tcp_mm": 2.0,
+          "turn_deg": 2.0,
+          "motion_s": 0.1
+        },
+        "cost_equivalent": {
+          "tcp_mm": true,
+          "turn_deg": true,
+          "motion_s": true
+        },
+        "cost_nonincrease": {
+          "tcp_mm": false,
+          "turn_deg": false,
+          "motion_s": true
+        },
+        "cost_noninferior_with_margin": {
+          "tcp_mm": true,
+          "turn_deg": true,
+          "motion_s": true
+        },
+        "all_costs_equivalent": true,
+        "all_costs_nonincrease": false,
+        "all_costs_noninferior_with_margin": true,
+        "strong_gate_single_repeat": false,
+        "inference_note": "Repeated tapes are clustered by latent case. Case-level bootstrap intervals are descriptive and no binomial discordance inference is reported.",
+        "bootstrap_samples": 20000,
+        "bootstrap_seed": 57216
+      },
+      "case_options": {
+        "MPC": 64,
+        "advance": 1
+      },
+      "ranking_half_choices": {
+        "MPC": 127,
+        "advance": 1
+      },
+      "half_signs": {
+        "advance/+1,-1": 1
+      }
+    }
+  }
+}

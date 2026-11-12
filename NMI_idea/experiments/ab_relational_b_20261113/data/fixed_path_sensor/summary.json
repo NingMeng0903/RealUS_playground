@@ -1,0 +1,86 @@
+{
+  "daughter": {
+    "legacy_nearest_7x7": {
+      "eligible_frames": 392,
+      "missed_target_frames": 211,
+      "wrong_accepts": 25,
+      "target_present_frames": 276,
+      "correct_accepts": 52
+    },
+    "matched_nearest": {
+      "eligible_frames": 392,
+      "missed_target_frames": 269,
+      "wrong_accepts": 0,
+      "target_present_frames": 276,
+      "correct_accepts": 7,
+      "bootstrap_correct_vs_legacy": {
+        "case_n": 96,
+        "mean_delta": -0.46875,
+        "ci95": [
+          -0.6145833333333334,
+          -0.3333333333333333
+        ]
+      }
+    },
+    "all_returns": {
+      "eligible_frames": 392,
+      "missed_target_frames": 204,
+      "correct_accept_where_coarse_nearest_wrong": 35,
+      "wrong_accepts": 18,
+      "target_present_frames": 276,
+      "correct_accepts": 59,
+      "correct_accept_where_legacy_nearest_wrong": 14,
+      "correct_selection_where_coarse_nearest_wrong": 71,
+      "bootstrap_correct_vs_legacy": {
+        "case_n": 96,
+        "mean_delta": 0.07291666666666667,
+        "ci95": [
+          -0.14583333333333334,
+          0.3020833333333333
+        ]
+      }
+    }
+  },
+  "trunk": {
+    "legacy_nearest_7x7": {
+      "eligible_frames": 259,
+      "missed_target_frames": 33,
+      "wrong_accepts": 3,
+      "target_present_frames": 206,
+      "correct_accepts": 173
+    },
+    "matched_nearest": {
+      "eligible_frames": 259,
+      "missed_target_frames": 30,
+      "wrong_accepts": 4,
+      "target_present_frames": 206,
+      "correct_accepts": 176,
+      "bootstrap_correct_vs_legacy": {
+        "case_n": 96,
+        "mean_delta": 0.03125,
+        "ci95": [
+          0.0,
+          0.07291666666666667
+        ]
+      }
+    },
+    "all_returns": {
+      "eligible_frames": 259,
+      "missed_target_frames": 26,
+      "correct_accept_where_coarse_nearest_wrong": 2,
+      "wrong_accepts": 5,
+      "target_present_frames": 206,
+      "correct_accepts": 179,
+      "correct_accept_where_legacy_nearest_wrong": 2,
+      "correct_selection_where_coarse_nearest_wrong": 11,
+      "bootstrap_correct_vs_legacy": {
+        "case_n": 96,
+        "mean_delta": 0.0625,
+        "ci95": [
+          0.010416666666666666,
+          0.125
+        ]
+      }
+    }
+  }
+}

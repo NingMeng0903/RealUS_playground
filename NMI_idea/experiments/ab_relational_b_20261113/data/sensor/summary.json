@@ -1,0 +1,776 @@
+{
+  "daughter": {
+    "counts": {
+      "legacy_nearest_7x7": {
+        "correct": 16,
+        "wrong": 17
+      },
+      "matched_nearest": {
+        "correct": 0,
+        "wrong": 0
+      },
+      "all_returns": {
+        "correct": 24,
+        "wrong": 12
+      }
+    },
+    "identity": {
+      "legacy_nearest_7x7": {
+        "current_target_frames": 392,
+        "target_present_frames": 276,
+        "correct_claims": 52,
+        "wrong_claims": 25,
+        "correct_claim_where_coarse_nearest_wrong": 26
+      },
+      "matched_nearest": {
+        "current_target_frames": 64,
+        "target_present_frames": 46,
+        "correct_claims": 2,
+        "wrong_claims": 0,
+        "correct_claim_where_coarse_nearest_wrong": 0
+      },
+      "all_returns": {
+        "current_target_frames": 293,
+        "target_present_frames": 205,
+        "correct_claims": 58,
+        "wrong_claims": 18,
+        "correct_claim_where_coarse_nearest_wrong": 32
+      }
+    },
+    "all_vs_matched_nearest": {
+      "n_cases": 96,
+      "n_repeats": 1,
+      "repeated_case_clustered": false,
+      "candidate_rate": {
+        "correct_completion": 0.25,
+        "any_wrong": 0.125
+      },
+      "baseline_rate": {
+        "correct_completion": 0.0,
+        "any_wrong": 0.0
+      },
+      "delta": {
+        "correct_completion": 0.25,
+        "any_wrong": 0.125,
+        "tcp_mm": 20.015684938776875,
+        "turn_deg": 14.280802148034054,
+        "motion_s": 0.859375,
+        "rail_mm": 58.493578940854114,
+        "captures": 0.5729166666666666,
+        "combined_s": 0.9046475663124999
+      },
+      "delta_ci95_case_clustered": {
+        "correct_completion": [
+          0.16666666666666666,
+          0.34375
+        ],
+        "any_wrong": [
+          0.0625,
+          0.19791666666666666
+        ],
+        "tcp_mm": [
+          16.925216444165148,
+          23.160096091472354
+        ],
+        "turn_deg": [
+          11.351863343765444,
+          17.29855805741919
+        ],
+        "motion_s": [
+          0.53125,
+          1.171875
+        ],
+        "rail_mm": [
+          45.49500584288652,
+          71.4921520388217
+        ],
+        "captures": [
+          0.3541666666666667,
+          0.78125
+        ],
+        "combined_s": [
+          0.575601095953125,
+          1.2181372261070311
+        ]
+      },
+      "success_wins_losses_ties": [
+        24,
+        0,
+        72
+      ],
+      "wrong_harm_benefit_ties_cases": [
+        12,
+        0,
+        84
+      ],
+      "wrong_harm_975_upper": 0.20817188843746187,
+      "success_sign_p_greater": 5.960464477539063e-08,
+      "wrong_harm_sign_p_greater": 0.000244140625,
+      "cost_delta": {
+        "tcp_mm": 20.015684938776875,
+        "turn_deg": 14.280802148034054,
+        "motion_s": 0.859375
+      },
+      "cost_bonferroni_ci95": {
+        "tcp_mm": [
+          16.15180310994825,
+          23.889846169011125
+        ],
+        "turn_deg": [
+          10.758781884538715,
+          17.96124384639164
+        ],
+        "motion_s": [
+          0.453125,
+          1.234375
+        ]
+      },
+      "cost_margins": {
+        "tcp_mm": 2.0,
+        "turn_deg": 2.0,
+        "motion_s": 0.1
+      },
+      "cost_equivalent": {
+        "tcp_mm": false,
+        "turn_deg": false,
+        "motion_s": false
+      },
+      "cost_nonincrease": {
+        "tcp_mm": false,
+        "turn_deg": false,
+        "motion_s": false
+      },
+      "cost_noninferior_with_margin": {
+        "tcp_mm": false,
+        "turn_deg": false,
+        "motion_s": false
+      },
+      "all_costs_equivalent": false,
+      "all_costs_nonincrease": false,
+      "all_costs_noninferior_with_margin": false,
+      "strong_gate_single_repeat": false,
+      "inference_note": "One repeat per latent case. Exact paired sign tests and the one-sided harmful-discordance bound are reported.",
+      "bootstrap_samples": 20000,
+      "bootstrap_seed": 57216
+    },
+    "all_vs_legacy": {
+      "n_cases": 96,
+      "n_repeats": 1,
+      "repeated_case_clustered": false,
+      "candidate_rate": {
+        "correct_completion": 0.25,
+        "any_wrong": 0.125
+      },
+      "baseline_rate": {
+        "correct_completion": 0.16666666666666666,
+        "any_wrong": 0.17708333333333334
+      },
+      "delta": {
+        "correct_completion": 0.08333333333333333,
+        "any_wrong": -0.052083333333333336,
+        "tcp_mm": -4.73183585571055,
+        "turn_deg": -5.415390998231753,
+        "motion_s": -0.359375,
+        "rail_mm": 3.899571929390271,
+        "captures": -0.23958333333333334,
+        "combined_s": -0.32895130084375007
+      },
+      "delta_ci95_case_clustered": {
+        "correct_completion": [
+          -0.010416666666666666,
+          0.1875
+        ],
+        "any_wrong": [
+          -0.13541666666666666,
+          0.03125
+        ],
+        "tcp_mm": [
+          -8.738247447327852,
+          -0.7472308940867699
+        ],
+        "turn_deg": [
+          -9.2506468601744,
+          -1.5427170439583742
+        ],
+        "motion_s": [
+          -0.734375,
+          0.015625
+        ],
+        "rail_mm": [
+          -14.298430407764323,
+          22.097574266544864
+        ],
+        "captures": [
+          -0.4895833333333333,
+          0.010416666666666666
+        ],
+        "combined_s": [
+          -0.7070359873593749,
+          0.04482814455546874
+        ]
+      },
+      "success_wins_losses_ties": [
+        16,
+        8,
+        72
+      ],
+      "wrong_harm_benefit_ties_cases": [
+        7,
+        12,
+        77
+      ],
+      "wrong_harm_975_upper": 0.14447970722569897,
+      "success_sign_p_greater": 0.07579481601715088,
+      "wrong_harm_sign_p_greater": 0.9164657592773438,
+      "cost_delta": {
+        "tcp_mm": -4.73183585571055,
+        "turn_deg": -5.415390998231753,
+        "motion_s": -0.359375
+      },
+      "cost_bonferroni_ci95": {
+        "tcp_mm": [
+          -9.671986163127974,
+          0.10717831775704317
+        ],
+        "turn_deg": [
+          -10.120180946865046,
+          -0.6747928755006298
+        ],
+        "motion_s": [
+          -0.8178385416666667,
+          0.09375
+        ]
+      },
+      "cost_margins": {
+        "tcp_mm": 2.0,
+        "turn_deg": 2.0,
+        "motion_s": 0.1
+      },
+      "cost_equivalent": {
+        "tcp_mm": false,
+        "turn_deg": false,
+        "motion_s": false
+      },
+      "cost_nonincrease": {
+        "tcp_mm": false,
+        "turn_deg": true,
+        "motion_s": false
+      },
+      "cost_noninferior_with_margin": {
+        "tcp_mm": true,
+        "turn_deg": true,
+        "motion_s": true
+      },
+      "all_costs_equivalent": false,
+      "all_costs_nonincrease": false,
+      "all_costs_noninferior_with_margin": true,
+      "strong_gate_single_repeat": false,
+      "inference_note": "One repeat per latent case. Exact paired sign tests and the one-sided harmful-discordance bound are reported.",
+      "bootstrap_samples": 20000,
+      "bootstrap_seed": 57216
+    },
+    "matched_nearest_vs_legacy": {
+      "n_cases": 96,
+      "n_repeats": 1,
+      "repeated_case_clustered": false,
+      "candidate_rate": {
+        "correct_completion": 0.0,
+        "any_wrong": 0.0
+      },
+      "baseline_rate": {
+        "correct_completion": 0.16666666666666666,
+        "any_wrong": 0.17708333333333334
+      },
+      "delta": {
+        "correct_completion": -0.16666666666666666,
+        "any_wrong": -0.17708333333333334,
+        "tcp_mm": -24.74752079448741,
+        "turn_deg": -19.69619314626581,
+        "motion_s": -1.21875,
+        "rail_mm": -54.59400701146384,
+        "captures": -0.8125,
+        "combined_s": -1.2335988671562506
+      },
+      "delta_ci95_case_clustered": {
+        "correct_completion": [
+          -0.25,
+          -0.09375
+        ],
+        "any_wrong": [
+          -0.2604166666666667,
+          -0.10416666666666667
+        ],
+        "tcp_mm": [
+          -27.89888048127896,
+          -21.628344693389014
+        ],
+        "turn_deg": [
+          -22.4908904898514,
+          -16.91321137199085
+        ],
+        "motion_s": [
+          -1.484375,
+          -0.9375
+        ],
+        "rail_mm": [
+          -67.59258010943142,
+          -41.595433913496244
+        ],
+        "captures": [
+          -0.9895833333333334,
+          -0.625
+        ],
+        "combined_s": [
+          -1.4997114101669267,
+          -0.9530332502950521
+        ]
+      },
+      "success_wins_losses_ties": [
+        0,
+        16,
+        80
+      ],
+      "wrong_harm_benefit_ties_cases": [
+        0,
+        17,
+        79
+      ],
+      "wrong_harm_975_upper": 0.037696921623587565,
+      "success_sign_p_greater": 1.0,
+      "wrong_harm_sign_p_greater": 1.0,
+      "cost_delta": {
+        "tcp_mm": -24.74752079448741,
+        "turn_deg": -19.69619314626581,
+        "motion_s": -1.21875
+      },
+      "cost_bonferroni_ci95": {
+        "tcp_mm": [
+          -28.583014332276257,
+          -20.97316423536627
+        ],
+        "turn_deg": [
+          -23.150857211361195,
+          -16.33888207983759
+        ],
+        "motion_s": [
+          -1.546875,
+          -0.890625
+        ]
+      },
+      "cost_margins": {
+        "tcp_mm": 2.0,
+        "turn_deg": 2.0,
+        "motion_s": 0.1
+      },
+      "cost_equivalent": {
+        "tcp_mm": false,
+        "turn_deg": false,
+        "motion_s": false
+      },
+      "cost_nonincrease": {
+        "tcp_mm": true,
+        "turn_deg": true,
+        "motion_s": true
+      },
+      "cost_noninferior_with_margin": {
+        "tcp_mm": true,
+        "turn_deg": true,
+        "motion_s": true
+      },
+      "all_costs_equivalent": false,
+      "all_costs_nonincrease": true,
+      "all_costs_noninferior_with_margin": true,
+      "strong_gate_single_repeat": false,
+      "inference_note": "One repeat per latent case. Exact paired sign tests and the one-sided harmful-discordance bound are reported.",
+      "bootstrap_samples": 20000,
+      "bootstrap_seed": 57216
+    }
+  },
+  "trunk": {
+    "counts": {
+      "legacy_nearest_7x7": {
+        "correct": 81,
+        "wrong": 3
+      },
+      "matched_nearest": {
+        "correct": 82,
+        "wrong": 5
+      },
+      "all_returns": {
+        "correct": 79,
+        "wrong": 6
+      }
+    },
+    "identity": {
+      "legacy_nearest_7x7": {
+        "current_target_frames": 259,
+        "target_present_frames": 206,
+        "correct_claims": 173,
+        "wrong_claims": 3,
+        "correct_claim_where_coarse_nearest_wrong": 0
+      },
+      "matched_nearest": {
+        "current_target_frames": 258,
+        "target_present_frames": 205,
+        "correct_claims": 175,
+        "wrong_claims": 5,
+        "correct_claim_where_coarse_nearest_wrong": 0
+      },
+      "all_returns": {
+        "current_target_frames": 259,
+        "target_present_frames": 204,
+        "correct_claims": 172,
+        "wrong_claims": 6,
+        "correct_claim_where_coarse_nearest_wrong": 2
+      }
+    },
+    "all_vs_matched_nearest": {
+      "n_cases": 96,
+      "n_repeats": 1,
+      "repeated_case_clustered": false,
+      "candidate_rate": {
+        "correct_completion": 0.8229166666666666,
+        "any_wrong": 0.0625
+      },
+      "baseline_rate": {
+        "correct_completion": 0.8541666666666666,
+        "any_wrong": 0.052083333333333336
+      },
+      "delta": {
+        "correct_completion": -0.03125,
+        "any_wrong": 0.010416666666666666,
+        "tcp_mm": 0.25257024789116705,
+        "turn_deg": 0.505170522289048,
+        "motion_s": 0.015625,
+        "rail_mm": 0.0,
+        "captures": 0.010416666666666666,
+        "combined_s": 0.020415416583333356
+      },
+      "delta_ci95_case_clustered": {
+        "correct_completion": [
+          -0.07291666666666667,
+          0.0
+        ],
+        "any_wrong": [
+          0.0,
+          0.03125
+        ],
+        "tcp_mm": [
+          -0.543435516707235,
+          1.0794760656763667
+        ],
+        "turn_deg": [
+          -0.6373872088177484,
+          1.6488884544013445
+        ],
+        "motion_s": [
+          -0.125,
+          0.15625
+        ],
+        "rail_mm": [
+          0.0,
+          0.0
+        ],
+        "captures": [
+          -0.08333333333333333,
+          0.10416666666666667
+        ],
+        "combined_s": [
+          -0.12027339520807302,
+          0.16118861688281247
+        ]
+      },
+      "success_wins_losses_ties": [
+        0,
+        3,
+        93
+      ],
+      "wrong_harm_benefit_ties_cases": [
+        1,
+        0,
+        95
+      ],
+      "wrong_harm_975_upper": 0.05667470698831473,
+      "success_sign_p_greater": 1.0,
+      "wrong_harm_sign_p_greater": 0.5,
+      "cost_delta": {
+        "tcp_mm": 0.25257024789116705,
+        "turn_deg": 0.505170522289048,
+        "motion_s": 0.015625
+      },
+      "cost_bonferroni_ci95": {
+        "tcp_mm": [
+          -0.7017428075812504,
+          1.2504080336316141
+        ],
+        "turn_deg": [
+          -0.8929811971710996,
+          1.9039439573007664
+        ],
+        "motion_s": [
+          -0.15625,
+          0.1875
+        ]
+      },
+      "cost_margins": {
+        "tcp_mm": 2.0,
+        "turn_deg": 2.0,
+        "motion_s": 0.1
+      },
+      "cost_equivalent": {
+        "tcp_mm": true,
+        "turn_deg": true,
+        "motion_s": false
+      },
+      "cost_nonincrease": {
+        "tcp_mm": false,
+        "turn_deg": false,
+        "motion_s": false
+      },
+      "cost_noninferior_with_margin": {
+        "tcp_mm": true,
+        "turn_deg": true,
+        "motion_s": false
+      },
+      "all_costs_equivalent": false,
+      "all_costs_nonincrease": false,
+      "all_costs_noninferior_with_margin": false,
+      "strong_gate_single_repeat": false,
+      "inference_note": "One repeat per latent case. Exact paired sign tests and the one-sided harmful-discordance bound are reported.",
+      "bootstrap_samples": 20000,
+      "bootstrap_seed": 57216
+    },
+    "all_vs_legacy": {
+      "n_cases": 96,
+      "n_repeats": 1,
+      "repeated_case_clustered": false,
+      "candidate_rate": {
+        "correct_completion": 0.8229166666666666,
+        "any_wrong": 0.0625
+      },
+      "baseline_rate": {
+        "correct_completion": 0.84375,
+        "any_wrong": 0.03125
+      },
+      "delta": {
+        "correct_completion": -0.020833333333333332,
+        "any_wrong": 0.03125,
+        "tcp_mm": 0.22144863853657015,
+        "turn_deg": -0.34358896959398333,
+        "motion_s": 0.03125,
+        "rail_mm": 1.0702162055222264,
+        "captures": 0.020833333333333332,
+        "combined_s": 0.0291831410625
+      },
+      "delta_ci95_case_clustered": {
+        "correct_completion": [
+          -0.08333333333333333,
+          0.041666666666666664
+        ],
+        "any_wrong": [
+          -0.010416666666666666,
+          0.08333333333333333
+        ],
+        "tcp_mm": [
+          -0.8275351927547082,
+          1.2767488308845685
+        ],
+        "turn_deg": [
+          -1.8303049668715146,
+          1.125923098207687
+        ],
+        "motion_s": [
+          -0.171875,
+          0.234375
+        ],
+        "rail_mm": [
+          0.0,
+          3.2106486165666794
+        ],
+        "captures": [
+          -0.11458333333333333,
+          0.15625
+        ],
+        "combined_s": [
+          -0.17414230667630212,
+          0.23258361736979158
+        ]
+      },
+      "success_wins_losses_ties": [
+        3,
+        5,
+        88
+      ],
+      "wrong_harm_benefit_ties_cases": [
+        4,
+        1,
+        91
+      ],
+      "wrong_harm_975_upper": 0.10325744444981882,
+      "success_sign_p_greater": 0.85546875,
+      "wrong_harm_sign_p_greater": 0.1875,
+      "cost_delta": {
+        "tcp_mm": 0.22144863853657015,
+        "turn_deg": -0.34358896959398333,
+        "motion_s": 0.03125
+      },
+      "cost_bonferroni_ci95": {
+        "tcp_mm": [
+          -1.0625618642648036,
+          1.519575825887533
+        ],
+        "turn_deg": [
+          -2.1372626323202635,
+          1.419794396621177
+        ],
+        "motion_s": [
+          -0.21875,
+          0.296875
+        ]
+      },
+      "cost_margins": {
+        "tcp_mm": 2.0,
+        "turn_deg": 2.0,
+        "motion_s": 0.1
+      },
+      "cost_equivalent": {
+        "tcp_mm": true,
+        "turn_deg": false,
+        "motion_s": false
+      },
+      "cost_nonincrease": {
+        "tcp_mm": false,
+        "turn_deg": false,
+        "motion_s": false
+      },
+      "cost_noninferior_with_margin": {
+        "tcp_mm": true,
+        "turn_deg": true,
+        "motion_s": false
+      },
+      "all_costs_equivalent": false,
+      "all_costs_nonincrease": false,
+      "all_costs_noninferior_with_margin": false,
+      "strong_gate_single_repeat": false,
+      "inference_note": "One repeat per latent case. Exact paired sign tests and the one-sided harmful-discordance bound are reported.",
+      "bootstrap_samples": 20000,
+      "bootstrap_seed": 57216
+    },
+    "matched_nearest_vs_legacy": {
+      "n_cases": 96,
+      "n_repeats": 1,
+      "repeated_case_clustered": false,
+      "candidate_rate": {
+        "correct_completion": 0.8541666666666666,
+        "any_wrong": 0.052083333333333336
+      },
+      "baseline_rate": {
+        "correct_completion": 0.84375,
+        "any_wrong": 0.03125
+      },
+      "delta": {
+        "correct_completion": 0.010416666666666666,
+        "any_wrong": 0.020833333333333332,
+        "tcp_mm": -0.031121609354596885,
+        "turn_deg": -0.8487594918830315,
+        "motion_s": 0.015625,
+        "rail_mm": 1.0702162055222264,
+        "captures": 0.010416666666666666,
+        "combined_s": 0.008767724479166636
+      },
+      "delta_ci95_case_clustered": {
+        "correct_completion": [
+          -0.041666666666666664,
+          0.0625
+        ],
+        "any_wrong": [
+          -0.020833333333333332,
+          0.0625
+        ],
+        "tcp_mm": [
+          -1.0567343206954933,
+          0.9984203227350422
+        ],
+        "turn_deg": [
+          -2.2778353924558292,
+          0.5389079635446834
+        ],
+        "motion_s": [
+          -0.140625,
+          0.171875
+        ],
+        "rail_mm": [
+          0.0,
+          3.2106486165666794
+        ],
+        "captures": [
+          -0.09375,
+          0.11458333333333333
+        ],
+        "combined_s": [
+          -0.14749180552395844,
+          0.16515837601901048
+        ]
+      },
+      "success_wins_losses_ties": [
+        4,
+        3,
+        89
+      ],
+      "wrong_harm_benefit_ties_cases": [
+        3,
+        1,
+        92
+      ],
+      "wrong_harm_975_upper": 0.08861809966156092,
+      "success_sign_p_greater": 0.5,
+      "wrong_harm_sign_p_greater": 0.3125,
+      "cost_delta": {
+        "tcp_mm": -0.031121609354596885,
+        "turn_deg": -0.8487594918830315,
+        "motion_s": 0.015625
+      },
+      "cost_bonferroni_ci95": {
+        "tcp_mm": [
+          -1.2783872224006223,
+          1.2112307277721344
+        ],
+        "turn_deg": [
+          -2.5776621487608518,
+          0.8061142919077856
+        ],
+        "motion_s": [
+          -0.171875,
+          0.21875
+        ]
+      },
+      "cost_margins": {
+        "tcp_mm": 2.0,
+        "turn_deg": 2.0,
+        "motion_s": 0.1
+      },
+      "cost_equivalent": {
+        "tcp_mm": true,
+        "turn_deg": false,
+        "motion_s": false
+      },
+      "cost_nonincrease": {
+        "tcp_mm": false,
+        "turn_deg": false,
+        "motion_s": false
+      },
+      "cost_noninferior_with_margin": {
+        "tcp_mm": true,
+        "turn_deg": true,
+        "motion_s": false
+      },
+      "all_costs_equivalent": false,
+      "all_costs_nonincrease": false,
+      "all_costs_noninferior_with_margin": false,
+      "strong_gate_single_repeat": false,
+      "inference_note": "One repeat per latent case. Exact paired sign tests and the one-sided harmful-discordance bound are reported.",
+      "bootstrap_samples": 20000,
+      "bootstrap_seed": 57216
+    }
+  }
+}

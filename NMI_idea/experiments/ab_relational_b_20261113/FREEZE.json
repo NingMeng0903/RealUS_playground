@@ -1,0 +1,22 @@
+{
+  "frozen_local_time": "2026-11-13T05:15:34+08:00",
+  "reference": "a7b682cb065b12d87924a4fe2f553e469287b049",
+  "training_namespace": 719502,
+  "n_training": 64,
+  "training_raw_sha256": "e9df23b75cf7a755dcc39966c02c66620c37c47574f671452ed8af610be47f66",
+  "namespace": 719503,
+  "n_heldout": 64,
+  "repeats": 16,
+  "model_size": 256,
+  "grid": 3,
+  "sha256": {
+    "PROTOCOL.md": "6ae229fa858fb08b3161c221716db355119ca0b712799190839c701539bc5c77",
+    "bench.py": "02800836212ca6992985494acf9fbb21223da7faba11baab5c14f76723bf10b5",
+    "set_mpc.py": "c330e9a986841c9588827351f077fe25a126abe93dd5febe43c5fb31e750f2c9",
+    "return_sets.py": "f38a8ff62a5bdb96e3774112cb34b1dd150af80d46fa54145c2f2074351e6103",
+    "fixed_path.py": "fef9f7d94375b8e21d79613a61850bded640fd4fbbc1b2c667f04b51917ccd0e",
+    "route_b.py": "0fdc48ee76e10d3739357ab41b4cec0f09462040b197d5dcb98d06c618504342",
+    "route_predictor.py": "387baace3c0b5d09e6309ed3084b50f9b1347d1b91e3944c44f05024e4a10dfc",
+    "route_fit.json": "00e4156dda4448b305cac2259055a252da36dd6771946603e15359884c869752"
+  }
+}

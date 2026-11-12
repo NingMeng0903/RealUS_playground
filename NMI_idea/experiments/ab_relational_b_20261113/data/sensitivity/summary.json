@@ -1,0 +1,776 @@
+{
+  "daughter": {
+    "counts": {
+      "legacy_nearest_7x7": {
+        "correct": 13,
+        "wrong": 3
+      },
+      "matched_nearest": {
+        "correct": 3,
+        "wrong": 0
+      },
+      "all_returns": {
+        "correct": 9,
+        "wrong": 5
+      }
+    },
+    "identity": {
+      "legacy_nearest_7x7": {
+        "current_target_frames": 143,
+        "target_present_frames": 100,
+        "correct_claims": 33,
+        "wrong_claims": 3,
+        "correct_claim_where_coarse_nearest_wrong": 12
+      },
+      "matched_nearest": {
+        "current_target_frames": 65,
+        "target_present_frames": 48,
+        "correct_claims": 7,
+        "wrong_claims": 0,
+        "correct_claim_where_coarse_nearest_wrong": 0
+      },
+      "all_returns": {
+        "current_target_frames": 124,
+        "target_present_frames": 88,
+        "correct_claims": 24,
+        "wrong_claims": 6,
+        "correct_claim_where_coarse_nearest_wrong": 6
+      }
+    },
+    "all_vs_matched_nearest": {
+      "n_cases": 32,
+      "n_repeats": 1,
+      "repeated_case_clustered": false,
+      "candidate_rate": {
+        "correct_completion": 0.28125,
+        "any_wrong": 0.15625
+      },
+      "baseline_rate": {
+        "correct_completion": 0.09375,
+        "any_wrong": 0.0
+      },
+      "delta": {
+        "correct_completion": 0.1875,
+        "any_wrong": 0.15625,
+        "tcp_mm": 15.719311758022634,
+        "turn_deg": 12.158495113765788,
+        "motion_s": 0.046875,
+        "rail_mm": 54.59400701146378,
+        "captures": 0.03125,
+        "combined_s": 0.21480312656249997
+      },
+      "delta_ci95_case_clustered": {
+        "correct_completion": [
+          0.0,
+          0.375
+        ],
+        "any_wrong": [
+          0.03125,
+          0.28125
+        ],
+        "tcp_mm": [
+          9.98079875566021,
+          21.557929694047402
+        ],
+        "turn_deg": [
+          6.908282235809087,
+          17.596931334241983
+        ],
+        "motion_s": [
+          -0.5625,
+          0.65625
+        ],
+        "rail_mm": [
+          31.19657543512216,
+          77.99143858780542
+        ],
+        "captures": [
+          -0.375,
+          0.4375
+        ],
+        "combined_s": [
+          -0.4050132981828125,
+          0.8226847353789049
+        ]
+      },
+      "success_wins_losses_ties": [
+        8,
+        2,
+        22
+      ],
+      "wrong_harm_benefit_ties_cases": [
+        5,
+        0,
+        27
+      ],
+      "wrong_harm_975_upper": 0.3278787656820418,
+      "success_sign_p_greater": 0.0546875,
+      "wrong_harm_sign_p_greater": 0.03125,
+      "cost_delta": {
+        "tcp_mm": 15.719311758022634,
+        "turn_deg": 12.158495113765788,
+        "motion_s": 0.046875
+      },
+      "cost_bonferroni_ci95": {
+        "tcp_mm": [
+          8.716309541961424,
+          22.82227652087424
+        ],
+        "turn_deg": [
+          5.68861406682761,
+          18.78158908597158
+        ],
+        "motion_s": [
+          -0.703125,
+          0.75
+        ]
+      },
+      "cost_margins": {
+        "tcp_mm": 2.0,
+        "turn_deg": 2.0,
+        "motion_s": 0.1
+      },
+      "cost_equivalent": {
+        "tcp_mm": false,
+        "turn_deg": false,
+        "motion_s": false
+      },
+      "cost_nonincrease": {
+        "tcp_mm": false,
+        "turn_deg": false,
+        "motion_s": false
+      },
+      "cost_noninferior_with_margin": {
+        "tcp_mm": false,
+        "turn_deg": false,
+        "motion_s": false
+      },
+      "all_costs_equivalent": false,
+      "all_costs_nonincrease": false,
+      "all_costs_noninferior_with_margin": false,
+      "strong_gate_single_repeat": false,
+      "inference_note": "One repeat per latent case. Exact paired sign tests and the one-sided harmful-discordance bound are reported.",
+      "bootstrap_samples": 20000,
+      "bootstrap_seed": 57216
+    },
+    "all_vs_legacy": {
+      "n_cases": 32,
+      "n_repeats": 1,
+      "repeated_case_clustered": false,
+      "candidate_rate": {
+        "correct_completion": 0.28125,
+        "any_wrong": 0.15625
+      },
+      "baseline_rate": {
+        "correct_completion": 0.40625,
+        "any_wrong": 0.09375
+      },
+      "delta": {
+        "correct_completion": -0.125,
+        "any_wrong": 0.0625,
+        "tcp_mm": 0.3273150754594798,
+        "turn_deg": 2.680806324783186,
+        "motion_s": -0.5625,
+        "rail_mm": -15.598287717561082,
+        "captures": -0.375,
+        "combined_s": -0.4048676156875002
+      },
+      "delta_ci95_case_clustered": {
+        "correct_completion": [
+          -0.28125,
+          0.03125
+        ],
+        "any_wrong": [
+          -0.0625,
+          0.1875
+        ],
+        "tcp_mm": [
+          -4.9467969882494005,
+          5.551084909541063
+        ],
+        "turn_deg": [
+          -3.3968091045397015,
+          8.827072972992601
+        ],
+        "motion_s": [
+          -1.171875,
+          0.0
+        ],
+        "rail_mm": [
+          -38.9957192939027,
+          7.799143858780542
+        ],
+        "captures": [
+          -0.78125,
+          0.0
+        ],
+        "combined_s": [
+          -1.0222882044695314,
+          0.17342520487265456
+        ]
+      },
+      "success_wins_losses_ties": [
+        2,
+        6,
+        24
+      ],
+      "wrong_harm_benefit_ties_cases": [
+        3,
+        1,
+        28
+      ],
+      "wrong_harm_975_upper": 0.25022695068379475,
+      "success_sign_p_greater": 0.96484375,
+      "wrong_harm_sign_p_greater": 0.3125,
+      "cost_delta": {
+        "tcp_mm": 0.3273150754594798,
+        "turn_deg": 2.680806324783186,
+        "motion_s": -0.5625
+      },
+      "cost_bonferroni_ci95": {
+        "tcp_mm": [
+          -6.0820302557320804,
+          6.632899235293901
+        ],
+        "turn_deg": [
+          -4.924067914060451,
+          10.243592561127167
+        ],
+        "motion_s": [
+          -1.3125,
+          0.140625
+        ]
+      },
+      "cost_margins": {
+        "tcp_mm": 2.0,
+        "turn_deg": 2.0,
+        "motion_s": 0.1
+      },
+      "cost_equivalent": {
+        "tcp_mm": false,
+        "turn_deg": false,
+        "motion_s": false
+      },
+      "cost_nonincrease": {
+        "tcp_mm": false,
+        "turn_deg": false,
+        "motion_s": false
+      },
+      "cost_noninferior_with_margin": {
+        "tcp_mm": false,
+        "turn_deg": false,
+        "motion_s": false
+      },
+      "all_costs_equivalent": false,
+      "all_costs_nonincrease": false,
+      "all_costs_noninferior_with_margin": false,
+      "strong_gate_single_repeat": false,
+      "inference_note": "One repeat per latent case. Exact paired sign tests and the one-sided harmful-discordance bound are reported.",
+      "bootstrap_samples": 20000,
+      "bootstrap_seed": 57216
+    },
+    "matched_nearest_vs_legacy": {
+      "n_cases": 32,
+      "n_repeats": 1,
+      "repeated_case_clustered": false,
+      "candidate_rate": {
+        "correct_completion": 0.09375,
+        "any_wrong": 0.0
+      },
+      "baseline_rate": {
+        "correct_completion": 0.40625,
+        "any_wrong": 0.09375
+      },
+      "delta": {
+        "correct_completion": -0.3125,
+        "any_wrong": -0.09375,
+        "tcp_mm": -15.391996682563152,
+        "turn_deg": -9.477688788982602,
+        "motion_s": -0.609375,
+        "rail_mm": -70.19229472902487,
+        "captures": -0.40625,
+        "combined_s": -0.6196707422500002
+      },
+      "delta_ci95_case_clustered": {
+        "correct_completion": [
+          -0.46875,
+          -0.15625
+        ],
+        "any_wrong": [
+          -0.21875,
+          0.0
+        ],
+        "tcp_mm": [
+          -21.072891918435094,
+          -9.795272867007212
+        ],
+        "turn_deg": [
+          -15.31731313797927,
+          -3.351714138497663
+        ],
+        "motion_s": [
+          -1.078125,
+          -0.140625
+        ],
+        "rail_mm": [
+          -89.69015437597625,
+          -46.79486315268324
+        ],
+        "captures": [
+          -0.71875,
+          -0.09375
+        ],
+        "combined_s": [
+          -1.089156119664844,
+          -0.1507913635453125
+        ]
+      },
+      "success_wins_losses_ties": [
+        0,
+        10,
+        22
+      ],
+      "wrong_harm_benefit_ties_cases": [
+        0,
+        3,
+        29
+      ],
+      "wrong_harm_975_upper": 0.10888116067935288,
+      "success_sign_p_greater": 1.0,
+      "wrong_harm_sign_p_greater": 1.0,
+      "cost_delta": {
+        "tcp_mm": -15.391996682563152,
+        "turn_deg": -9.477688788982602,
+        "motion_s": -0.609375
+      },
+      "cost_bonferroni_ci95": {
+        "tcp_mm": [
+          -22.301728848843165,
+          -8.45146741670258
+        ],
+        "turn_deg": [
+          -16.596239924378036,
+          -1.9429112815375134
+        ],
+        "motion_s": [
+          -1.171875,
+          -0.046875
+        ]
+      },
+      "cost_margins": {
+        "tcp_mm": 2.0,
+        "turn_deg": 2.0,
+        "motion_s": 0.1
+      },
+      "cost_equivalent": {
+        "tcp_mm": false,
+        "turn_deg": false,
+        "motion_s": false
+      },
+      "cost_nonincrease": {
+        "tcp_mm": true,
+        "turn_deg": true,
+        "motion_s": true
+      },
+      "cost_noninferior_with_margin": {
+        "tcp_mm": true,
+        "turn_deg": true,
+        "motion_s": true
+      },
+      "all_costs_equivalent": false,
+      "all_costs_nonincrease": true,
+      "all_costs_noninferior_with_margin": true,
+      "strong_gate_single_repeat": false,
+      "inference_note": "One repeat per latent case. Exact paired sign tests and the one-sided harmful-discordance bound are reported.",
+      "bootstrap_samples": 20000,
+      "bootstrap_seed": 57216
+    }
+  },
+  "trunk": {
+    "counts": {
+      "legacy_nearest_7x7": {
+        "correct": 27,
+        "wrong": 1
+      },
+      "matched_nearest": {
+        "correct": 26,
+        "wrong": 1
+      },
+      "all_returns": {
+        "correct": 28,
+        "wrong": 0
+      }
+    },
+    "identity": {
+      "legacy_nearest_7x7": {
+        "current_target_frames": 88,
+        "target_present_frames": 67,
+        "correct_claims": 58,
+        "wrong_claims": 1,
+        "correct_claim_where_coarse_nearest_wrong": 0
+      },
+      "matched_nearest": {
+        "current_target_frames": 85,
+        "target_present_frames": 66,
+        "correct_claims": 57,
+        "wrong_claims": 1,
+        "correct_claim_where_coarse_nearest_wrong": 0
+      },
+      "all_returns": {
+        "current_target_frames": 88,
+        "target_present_frames": 69,
+        "correct_claims": 59,
+        "wrong_claims": 0,
+        "correct_claim_where_coarse_nearest_wrong": 2
+      }
+    },
+    "all_vs_matched_nearest": {
+      "n_cases": 32,
+      "n_repeats": 1,
+      "repeated_case_clustered": false,
+      "candidate_rate": {
+        "correct_completion": 0.875,
+        "any_wrong": 0.0
+      },
+      "baseline_rate": {
+        "correct_completion": 0.8125,
+        "any_wrong": 0.03125
+      },
+      "delta": {
+        "correct_completion": 0.0625,
+        "any_wrong": -0.03125,
+        "tcp_mm": 0.599093038443266,
+        "turn_deg": 0.7667256280336288,
+        "motion_s": 0.28125,
+        "rail_mm": 0.0,
+        "captures": 0.1875,
+        "combined_s": 0.2944479315937498
+      },
+      "delta_ci95_case_clustered": {
+        "correct_completion": [
+          0.0,
+          0.15625
+        ],
+        "any_wrong": [
+          -0.09375,
+          0.0
+        ],
+        "tcp_mm": [
+          -0.22232893141789578,
+          1.6810673448991704
+        ],
+        "turn_deg": [
+          -1.1155426739050203,
+          2.651285247588547
+        ],
+        "motion_s": [
+          0.0,
+          0.65625
+        ],
+        "rail_mm": [
+          0.0,
+          0.0
+        ],
+        "captures": [
+          0.0,
+          0.4375
+        ],
+        "combined_s": [
+          0.012843649510937251,
+          0.6697173039429686
+        ]
+      },
+      "success_wins_losses_ties": [
+        2,
+        0,
+        30
+      ],
+      "wrong_harm_benefit_ties_cases": [
+        0,
+        1,
+        31
+      ],
+      "wrong_harm_975_upper": 0.10888116067935288,
+      "success_sign_p_greater": 0.25,
+      "wrong_harm_sign_p_greater": 1.0,
+      "cost_delta": {
+        "tcp_mm": 0.599093038443266,
+        "turn_deg": 0.7667256280336288,
+        "motion_s": 0.28125
+      },
+      "cost_bonferroni_ci95": {
+        "tcp_mm": [
+          -0.33349339712684367,
+          1.97067262410157
+        ],
+        "turn_deg": [
+          -1.4925130214467703,
+          3.037891107048415
+        ],
+        "motion_s": [
+          0.0,
+          0.75
+        ]
+      },
+      "cost_margins": {
+        "tcp_mm": 2.0,
+        "turn_deg": 2.0,
+        "motion_s": 0.1
+      },
+      "cost_equivalent": {
+        "tcp_mm": true,
+        "turn_deg": false,
+        "motion_s": false
+      },
+      "cost_nonincrease": {
+        "tcp_mm": false,
+        "turn_deg": false,
+        "motion_s": false
+      },
+      "cost_noninferior_with_margin": {
+        "tcp_mm": true,
+        "turn_deg": false,
+        "motion_s": false
+      },
+      "all_costs_equivalent": false,
+      "all_costs_nonincrease": false,
+      "all_costs_noninferior_with_margin": false,
+      "strong_gate_single_repeat": false,
+      "inference_note": "One repeat per latent case. Exact paired sign tests and the one-sided harmful-discordance bound are reported.",
+      "bootstrap_samples": 20000,
+      "bootstrap_seed": 57216
+    },
+    "all_vs_legacy": {
+      "n_cases": 32,
+      "n_repeats": 1,
+      "repeated_case_clustered": false,
+      "candidate_rate": {
+        "correct_completion": 0.875,
+        "any_wrong": 0.0
+      },
+      "baseline_rate": {
+        "correct_completion": 0.84375,
+        "any_wrong": 0.03125
+      },
+      "delta": {
+        "correct_completion": 0.03125,
+        "any_wrong": -0.03125,
+        "tcp_mm": -1.3256189145272665,
+        "turn_deg": -1.5333469124220014,
+        "motion_s": 0.375,
+        "rail_mm": 0.0,
+        "captures": 0.25,
+        "combined_s": 0.3836250776562498
+      },
+      "delta_ci95_case_clustered": {
+        "correct_completion": [
+          -0.0625,
+          0.125
+        ],
+        "any_wrong": [
+          -0.09375,
+          0.0
+        ],
+        "tcp_mm": [
+          -3.8381520861028093,
+          0.7415001350899966
+        ],
+        "turn_deg": [
+          -4.5867850371763454,
+          1.170886304496192
+        ],
+        "motion_s": [
+          0.09375,
+          0.75
+        ],
+        "rail_mm": [
+          0.0,
+          0.0
+        ],
+        "captures": [
+          0.0625,
+          0.5
+        ],
+        "combined_s": [
+          0.10168660892187487,
+          0.759087120197656
+        ]
+      },
+      "success_wins_losses_ties": [
+        2,
+        1,
+        29
+      ],
+      "wrong_harm_benefit_ties_cases": [
+        0,
+        1,
+        31
+      ],
+      "wrong_harm_975_upper": 0.10888116067935288,
+      "success_sign_p_greater": 0.5,
+      "wrong_harm_sign_p_greater": 1.0,
+      "cost_delta": {
+        "tcp_mm": -1.3256189145272665,
+        "turn_deg": -1.5333469124220014,
+        "motion_s": 0.375
+      },
+      "cost_bonferroni_ci95": {
+        "tcp_mm": [
+          -4.440779651521483,
+          1.1173811148882336
+        ],
+        "turn_deg": [
+          -5.323934226693763,
+          1.9022469560621993
+        ],
+        "motion_s": [
+          0.046875,
+          0.84375
+        ]
+      },
+      "cost_margins": {
+        "tcp_mm": 2.0,
+        "turn_deg": 2.0,
+        "motion_s": 0.1
+      },
+      "cost_equivalent": {
+        "tcp_mm": false,
+        "turn_deg": false,
+        "motion_s": false
+      },
+      "cost_nonincrease": {
+        "tcp_mm": false,
+        "turn_deg": false,
+        "motion_s": false
+      },
+      "cost_noninferior_with_margin": {
+        "tcp_mm": true,
+        "turn_deg": true,
+        "motion_s": false
+      },
+      "all_costs_equivalent": false,
+      "all_costs_nonincrease": false,
+      "all_costs_noninferior_with_margin": false,
+      "strong_gate_single_repeat": false,
+      "inference_note": "One repeat per latent case. Exact paired sign tests and the one-sided harmful-discordance bound are reported.",
+      "bootstrap_samples": 20000,
+      "bootstrap_seed": 57216
+    },
+    "matched_nearest_vs_legacy": {
+      "n_cases": 32,
+      "n_repeats": 1,
+      "repeated_case_clustered": false,
+      "candidate_rate": {
+        "correct_completion": 0.8125,
+        "any_wrong": 0.03125
+      },
+      "baseline_rate": {
+        "correct_completion": 0.84375,
+        "any_wrong": 0.03125
+      },
+      "delta": {
+        "correct_completion": -0.03125,
+        "any_wrong": 0.0,
+        "tcp_mm": -1.924711952970532,
+        "turn_deg": -2.30007254045563,
+        "motion_s": 0.09375,
+        "rail_mm": 0.0,
+        "captures": 0.0625,
+        "combined_s": 0.08917714606250005
+      },
+      "delta_ci95_case_clustered": {
+        "correct_completion": [
+          -0.09375,
+          0.0
+        ],
+        "any_wrong": [
+          0.0,
+          0.0
+        ],
+        "tcp_mm": [
+          -4.193688866387604,
+          -0.22232893132784556
+        ],
+        "turn_deg": [
+          -5.005573354975645,
+          0.33358937245642034
+        ],
+        "motion_s": [
+          -0.09375,
+          0.28125
+        ],
+        "rail_mm": [
+          0.0,
+          0.0
+        ],
+        "captures": [
+          -0.0625,
+          0.1875
+        ],
+        "combined_s": [
+          -0.0983586713875,
+          0.27682740053359384
+        ]
+      },
+      "success_wins_losses_ties": [
+        0,
+        1,
+        31
+      ],
+      "wrong_harm_benefit_ties_cases": [
+        0,
+        0,
+        32
+      ],
+      "wrong_harm_975_upper": 0.10888116067935288,
+      "success_sign_p_greater": 1.0,
+      "wrong_harm_sign_p_greater": 1.0,
+      "cost_delta": {
+        "tcp_mm": -1.924711952970532,
+        "turn_deg": -2.30007254045563,
+        "motion_s": 0.09375
+      },
+      "cost_bonferroni_ci95": {
+        "tcp_mm": [
+          -4.731112720091976,
+          0.029052946209665143
+        ],
+        "turn_deg": [
+          -5.747763617534078,
+          0.7372438062345967
+        ],
+        "motion_s": [
+          -0.09375,
+          0.328125
+        ]
+      },
+      "cost_margins": {
+        "tcp_mm": 2.0,
+        "turn_deg": 2.0,
+        "motion_s": 0.1
+      },
+      "cost_equivalent": {
+        "tcp_mm": false,
+        "turn_deg": false,
+        "motion_s": false
+      },
+      "cost_nonincrease": {
+        "tcp_mm": false,
+        "turn_deg": false,
+        "motion_s": false
+      },
+      "cost_noninferior_with_margin": {
+        "tcp_mm": true,
+        "turn_deg": true,
+        "motion_s": false
+      },
+      "all_costs_equivalent": false,
+      "all_costs_nonincrease": false,
+      "all_costs_noninferior_with_margin": false,
+      "strong_gate_single_repeat": false,
+      "inference_note": "One repeat per latent case. Exact paired sign tests and the one-sided harmful-discordance bound are reported.",
+      "bootstrap_samples": 20000,
+      "bootstrap_seed": 57216
+    }
+  }
+}

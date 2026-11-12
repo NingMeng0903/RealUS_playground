@@ -1,0 +1,86 @@
+{
+  "daughter": {
+    "legacy_nearest_7x7": {
+      "eligible_frames": 143,
+      "correct_accepts": 33,
+      "target_present_frames": 100,
+      "wrong_accepts": 3,
+      "missed_target_frames": 66
+    },
+    "matched_nearest": {
+      "eligible_frames": 143,
+      "correct_accepts": 14,
+      "target_present_frames": 100,
+      "wrong_accepts": 3,
+      "missed_target_frames": 84,
+      "bootstrap_correct_vs_legacy": {
+        "case_n": 32,
+        "mean_delta": -0.59375,
+        "ci95": [
+          -0.875,
+          -0.3125
+        ]
+      }
+    },
+    "all_returns": {
+      "eligible_frames": 143,
+      "correct_accepts": 38,
+      "correct_accept_where_coarse_nearest_wrong": 12,
+      "correct_accept_where_legacy_nearest_wrong": 7,
+      "correct_selection_where_coarse_nearest_wrong": 25,
+      "target_present_frames": 100,
+      "wrong_accepts": 6,
+      "missed_target_frames": 59,
+      "bootstrap_correct_vs_legacy": {
+        "case_n": 32,
+        "mean_delta": 0.15625,
+        "ci95": [
+          -0.25,
+          0.5625
+        ]
+      }
+    }
+  },
+  "trunk": {
+    "legacy_nearest_7x7": {
+      "eligible_frames": 88,
+      "correct_accepts": 58,
+      "target_present_frames": 67,
+      "wrong_accepts": 1,
+      "missed_target_frames": 8
+    },
+    "matched_nearest": {
+      "eligible_frames": 88,
+      "correct_accepts": 58,
+      "target_present_frames": 67,
+      "wrong_accepts": 1,
+      "missed_target_frames": 8,
+      "bootstrap_correct_vs_legacy": {
+        "case_n": 32,
+        "mean_delta": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      }
+    },
+    "all_returns": {
+      "eligible_frames": 88,
+      "correct_accepts": 60,
+      "correct_accept_where_coarse_nearest_wrong": 2,
+      "correct_accept_where_legacy_nearest_wrong": 2,
+      "correct_selection_where_coarse_nearest_wrong": 3,
+      "target_present_frames": 67,
+      "wrong_accepts": 0,
+      "missed_target_frames": 7,
+      "bootstrap_correct_vs_legacy": {
+        "case_n": 32,
+        "mean_delta": 0.0625,
+        "ci95": [
+          0.0,
+          0.15625
+        ]
+      }
+    }
+  }
+}
