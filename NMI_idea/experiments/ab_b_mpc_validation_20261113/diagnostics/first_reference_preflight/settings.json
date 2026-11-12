@@ -1,0 +1,48 @@
+{
+  "repo": "/home/camp/Documents/Codex/2026-11-13/ieee-t-ro-b-mpc-b/work/RealUS_playground",
+  "fit": "/home/camp/Documents/Codex/2026-11-13/ieee-t-ro-b-mpc-b/work/b_validation/clutter_fit.json",
+  "out": "work/b_validation/development_b",
+  "n": 32,
+  "workers": 12,
+  "audit_roots": true,
+  "samples": 16,
+  "split": "development",
+  "tasks": {
+    "daughter": [
+      1,
+      2,
+      3,
+      1
+    ],
+    "trunk": [
+      5,
+      6,
+      7,
+      0
+    ]
+  },
+  "modes": [
+    "nominal",
+    "fitted",
+    "reference"
+  ],
+  "arms": [
+    "MPC",
+    "B_feedback",
+    "B_challenge",
+    "Ref_fixed",
+    "Near_fixed"
+  ],
+  "seed_base": 6173091,
+  "source_sha256": {
+    "challenge.py": "d319f0ead30e0f1f9224662952f5d13fb6c5e2132ac0c64f7b3d936e40c45d50",
+    "clutter_fit.json": "65318f25d0c90d24a7051525ffc3a7522ea78576de4008977bbf29e7757361b4",
+    "clutter_model.py": "1b9d2f7dd58be1cce1d97168a12ed89b7bd77abf30c7fbfe7ef4b6d1159ca0b0"
+  },
+  "cost_caps": [
+    60.0,
+    60.0,
+    1.7,
+    26.0
+  ]
+}

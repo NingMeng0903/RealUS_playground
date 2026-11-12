@@ -1,0 +1,3840 @@
+{
+  "repo": "/home/camp/Documents/Codex/2026-11-13/ieee-t-ro-b-mpc-b/work/RealUS_playground",
+  "out": "work/b_validation/smoke_v2",
+  "split": "smoke",
+  "n": 4,
+  "start": 0,
+  "workers": 4,
+  "samples": 16,
+  "mode": "stress",
+  "tasks": [
+    "daughter",
+    "trunk"
+  ],
+  "reserves": [
+    "wide"
+  ],
+  "arms": [
+    "MPC",
+    "MPC_rec1",
+    "B_status",
+    "B_bound"
+  ],
+  "estimators": [
+    "nominal"
+  ],
+  "preflight_s": 235.4771964219981,
+  "seed_base": 6173060,
+  "captures": 5,
+  "slot_s": 0.85,
+  "travel_cap_mm": 60.0,
+  "turn_cap_deg": 60.0,
+  "stroke_mm": {
+    "narrow": 10.0,
+    "wide": 26.0
+  },
+  "source_sha256": {
+    "benchmark.py": "5d99c6b266dee0e94561ac17f7fba2df5c6d7db37a5d184b009fc07c67e3d5cf",
+    "search.py": "e146b8c07733e455964aa1663a43b5d1a921a02048fa2205bfd766bffc2db684"
+  },
+  "graphs": {
+    "daughter": {
+      "points": [
+        [
+          3,
+          3
+        ],
+        [
+          3,
+          2
+        ],
+        [
+          3,
+          4
+        ],
+        [
+          3,
+          7
+        ],
+        [
+          3,
+          8
+        ],
+        [
+          4,
+          3
+        ],
+        [
+          4,
+          2
+        ],
+        [
+          4,
+          4
+        ],
+        [
+          4,
+          7
+        ],
+        [
+          4,
+          8
+        ]
+      ],
+      "targets": [
+        [
+          3,
+          1
+        ],
+        [
+          4,
+          1
+        ]
+      ],
+      "paths": [
+        {
+          "start": [
+            3,
+            3
+          ],
+          "goal": [
+            3,
+            3
+          ],
+          "duration": 0.85,
+          "stroke_mm": 0.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 0.0,
+          "max_reference_speed_fraction": 0.06240961775677674,
+          "min_self_collision_m": 0.04063137602693058,
+          "min_joint_margin": 0.6543004458149249,
+          "max_ref_fk_error_mm": 0.003685621218475081
+        },
+        {
+          "start": [
+            3,
+            3
+          ],
+          "goal": [
+            3,
+            2
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 8.006921076191741,
+          "max_reference_speed_fraction": 0.12407181976953188,
+          "min_self_collision_m": 0.04028961040625889,
+          "min_joint_margin": 0.6129525438495791,
+          "max_ref_fk_error_mm": 0.003685621218475081
+        },
+        {
+          "start": [
+            3,
+            3
+          ],
+          "goal": [
+            3,
+            4
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 7.943048829280659,
+          "max_reference_speed_fraction": 0.11928965183510941,
+          "min_self_collision_m": 0.04063137602693058,
+          "min_joint_margin": 0.6543004458149249,
+          "max_ref_fk_error_mm": 0.003685621218475081
+        },
+        {
+          "start": [
+            3,
+            3
+          ],
+          "goal": [
+            3,
+            7
+          ],
+          "duration": 0.85,
+          "stroke_mm": 0.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 0.0,
+          "max_reference_speed_fraction": 0.7653692563890178,
+          "min_self_collision_m": 0.039288858783286904,
+          "min_joint_margin": 0.4594802841235619,
+          "max_ref_fk_error_mm": 0.003685621218475081
+        },
+        {
+          "start": [
+            3,
+            3
+          ],
+          "goal": [
+            3,
+            8
+          ],
+          "duration": 0.85,
+          "stroke_mm": 0.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 0.0,
+          "max_reference_speed_fraction": 0.3113076915797796,
+          "min_self_collision_m": 0.04063137602693058,
+          "min_joint_margin": 0.6543004458149249,
+          "max_ref_fk_error_mm": 0.003685621218475081
+        },
+        {
+          "start": [
+            3,
+            3
+          ],
+          "goal": [
+            4,
+            3
+          ],
+          "duration": 0.85,
+          "stroke_mm": 0.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 15.518940716060852,
+          "max_reference_speed_fraction": 0.2257962203190295,
+          "min_self_collision_m": 0.04063137602693058,
+          "min_joint_margin": 0.6543004458149249,
+          "max_ref_fk_error_mm": 0.003685621218475081
+        },
+        {
+          "start": [
+            3,
+            3
+          ],
+          "goal": [
+            4,
+            2
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 17.413890693824243,
+          "max_reference_speed_fraction": 0.18146752107247505,
+          "min_self_collision_m": 0.04063137602693058,
+          "min_joint_margin": 0.6543004458149249,
+          "max_ref_fk_error_mm": 0.003990492928537067
+        },
+        {
+          "start": [
+            3,
+            3
+          ],
+          "goal": [
+            4,
+            4
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 17.396578849152718,
+          "max_reference_speed_fraction": 0.27003820785061355,
+          "min_self_collision_m": 0.04063137602693058,
+          "min_joint_margin": 0.6543004458149249,
+          "max_ref_fk_error_mm": 0.003685621218475081
+        },
+        {
+          "start": [
+            3,
+            3
+          ],
+          "goal": [
+            4,
+            7
+          ],
+          "duration": 0.85,
+          "stroke_mm": 0.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 15.518940716060852,
+          "max_reference_speed_fraction": 0.2700221175713341,
+          "min_self_collision_m": 0.04037795832072347,
+          "min_joint_margin": 0.5151337668929805,
+          "max_ref_fk_error_mm": 0.0039842920111571685
+        },
+        {
+          "start": [
+            3,
+            3
+          ],
+          "goal": [
+            4,
+            8
+          ],
+          "duration": 0.85,
+          "stroke_mm": 0.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 15.518940716060852,
+          "max_reference_speed_fraction": 0.4170052557465827,
+          "min_self_collision_m": 0.04063137602693058,
+          "min_joint_margin": 0.6543004458149249,
+          "max_ref_fk_error_mm": 0.003685621218475081
+        },
+        {
+          "start": [
+            3,
+            2
+          ],
+          "goal": [
+            3,
+            3
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 8.006921076191741,
+          "max_reference_speed_fraction": 0.12399646000968405,
+          "min_self_collision_m": 0.04028961040625889,
+          "min_joint_margin": 0.6129525438495791,
+          "max_ref_fk_error_mm": 0.0004309254339340585
+        },
+        {
+          "start": [
+            3,
+            2
+          ],
+          "goal": [
+            3,
+            2
+          ],
+          "duration": 0.85,
+          "stroke_mm": 0.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 0.0,
+          "max_reference_speed_fraction": 0.06552466216026248,
+          "min_self_collision_m": 0.04028961040625889,
+          "min_joint_margin": 0.6129525438495791,
+          "max_ref_fk_error_mm": 0.0004181722678970513
+        },
+        {
+          "start": [
+            3,
+            2
+          ],
+          "goal": [
+            3,
+            4
+          ],
+          "duration": 0.85,
+          "stroke_mm": 16.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 15.948710215377686,
+          "max_reference_speed_fraction": 0.18081860597102184,
+          "min_self_collision_m": 0.04028961040625889,
+          "min_joint_margin": 0.6129525438495791,
+          "max_ref_fk_error_mm": 0.0017127621267507376
+        },
+        {
+          "start": [
+            3,
+            2
+          ],
+          "goal": [
+            3,
+            7
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 8.006921076191741,
+          "max_reference_speed_fraction": 0.7054038538702718,
+          "min_self_collision_m": 0.03928438121799139,
+          "min_joint_margin": 0.45948028823692844,
+          "max_ref_fk_error_mm": 0.0004181722678970513
+        },
+        {
+          "start": [
+            3,
+            2
+          ],
+          "goal": [
+            3,
+            8
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 8.006921076191741,
+          "max_reference_speed_fraction": 0.35640723683680287,
+          "min_self_collision_m": 0.04028961040625889,
+          "min_joint_margin": 0.6129525438495791,
+          "max_ref_fk_error_mm": 0.0004181722678970513
+        },
+        {
+          "start": [
+            3,
+            2
+          ],
+          "goal": [
+            4,
+            3
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 18.0731945122971,
+          "max_reference_speed_fraction": 0.28831470280344706,
+          "min_self_collision_m": 0.04028961040625889,
+          "min_joint_margin": 0.6129525438495791,
+          "max_ref_fk_error_mm": 0.0004181722678970513
+        },
+        {
+          "start": [
+            3,
+            2
+          ],
+          "goal": [
+            4,
+            2
+          ],
+          "duration": 0.85,
+          "stroke_mm": 0.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 16.13888887109056,
+          "max_reference_speed_fraction": 0.24368158811946328,
+          "min_self_collision_m": 0.04028961040625889,
+          "min_joint_margin": 0.6129525438495791,
+          "max_ref_fk_error_mm": 0.0004181722678970513
+        },
+        {
+          "start": [
+            3,
+            2
+          ],
+          "goal": [
+            4,
+            4
+          ],
+          "duration": 0.85,
+          "stroke_mm": 16.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 22.662371141644382,
+          "max_reference_speed_fraction": 0.33236451375177245,
+          "min_self_collision_m": 0.04028961040625889,
+          "min_joint_margin": 0.6129525438495791,
+          "max_ref_fk_error_mm": 0.0004181722678970513
+        },
+        {
+          "start": [
+            3,
+            2
+          ],
+          "goal": [
+            4,
+            7
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 18.0731945122971,
+          "max_reference_speed_fraction": 0.2308794723163568,
+          "min_self_collision_m": 0.04028961040625889,
+          "min_joint_margin": 0.5151355091103083,
+          "max_ref_fk_error_mm": 0.0039856690355951465
+        },
+        {
+          "start": [
+            3,
+            2
+          ],
+          "goal": [
+            4,
+            8
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 18.0731945122971,
+          "max_reference_speed_fraction": 0.45048889986144175,
+          "min_self_collision_m": 0.04028961040625889,
+          "min_joint_margin": 0.6129525438495791,
+          "max_ref_fk_error_mm": 0.0004181722678970513
+        },
+        {
+          "start": [
+            3,
+            4
+          ],
+          "goal": [
+            3,
+            3
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 7.943048829280659,
+          "max_reference_speed_fraction": 0.11937590760635544,
+          "min_self_collision_m": 0.04063142114895433,
+          "min_joint_margin": 0.6543026665895453,
+          "max_ref_fk_error_mm": 0.00036024770828227615
+        },
+        {
+          "start": [
+            3,
+            4
+          ],
+          "goal": [
+            3,
+            2
+          ],
+          "duration": 0.85,
+          "stroke_mm": 16.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 15.948716494129645,
+          "max_reference_speed_fraction": 0.18048920885257227,
+          "min_self_collision_m": 0.04028960660974721,
+          "min_joint_margin": 0.6129510727820617,
+          "max_ref_fk_error_mm": 0.001684504776645087
+        },
+        {
+          "start": [
+            3,
+            4
+          ],
+          "goal": [
+            3,
+            4
+          ],
+          "duration": 0.85,
+          "stroke_mm": 0.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 0.0,
+          "max_reference_speed_fraction": 0.059357971398576126,
+          "min_self_collision_m": 0.04104216533793841,
+          "min_joint_margin": 0.6971408660269662,
+          "max_ref_fk_error_mm": 0.0003574300615821374
+        },
+        {
+          "start": [
+            3,
+            4
+          ],
+          "goal": [
+            3,
+            7
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 7.943048829280659,
+          "max_reference_speed_fraction": 0.811621899973438,
+          "min_self_collision_m": 0.03929341988677884,
+          "min_joint_margin": 0.4594802795107471,
+          "max_ref_fk_error_mm": 0.0003574300615821374
+        },
+        {
+          "start": [
+            3,
+            4
+          ],
+          "goal": [
+            3,
+            8
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 7.943048829280659,
+          "max_reference_speed_fraction": 0.27428310967226216,
+          "min_self_collision_m": 0.04104062154915361,
+          "min_joint_margin": 0.6971408660269662,
+          "max_ref_fk_error_mm": 0.0003574300615821374
+        },
+        {
+          "start": [
+            3,
+            4
+          ],
+          "goal": [
+            4,
+            3
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 16.922714601234425,
+          "max_reference_speed_fraction": 0.165683221664764,
+          "min_self_collision_m": 0.04104062995775966,
+          "min_joint_margin": 0.6971408660269662,
+          "max_ref_fk_error_mm": 0.003769362321776893
+        },
+        {
+          "start": [
+            3,
+            4
+          ],
+          "goal": [
+            4,
+            2
+          ],
+          "duration": 0.85,
+          "stroke_mm": 16.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 21.828056125736264,
+          "max_reference_speed_fraction": 0.1321854222337104,
+          "min_self_collision_m": 0.0410406151984482,
+          "min_joint_margin": 0.6835365700414071,
+          "max_ref_fk_error_mm": 0.0015863261637207705
+        },
+        {
+          "start": [
+            3,
+            4
+          ],
+          "goal": [
+            4,
+            4
+          ],
+          "duration": 0.85,
+          "stroke_mm": 0.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 14.965123995509531,
+          "max_reference_speed_fraction": 0.2093767600285151,
+          "min_self_collision_m": 0.041040615218511434,
+          "min_joint_margin": 0.6971408660269662,
+          "max_ref_fk_error_mm": 0.0003574300615821374
+        },
+        {
+          "start": [
+            3,
+            4
+          ],
+          "goal": [
+            4,
+            7
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 16.922714601234425,
+          "max_reference_speed_fraction": 0.30494500584192036,
+          "min_self_collision_m": 0.04038045871399657,
+          "min_joint_margin": 0.5151337644709881,
+          "max_ref_fk_error_mm": 0.0003574300615821374
+        },
+        {
+          "start": [
+            3,
+            4
+          ],
+          "goal": [
+            4,
+            8
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 16.922714601234425,
+          "max_reference_speed_fraction": 0.38537367656847205,
+          "min_self_collision_m": 0.04103842869939364,
+          "min_joint_margin": 0.6971408660269662,
+          "max_ref_fk_error_mm": 0.0003574300615821374
+        },
+        {
+          "start": [
+            3,
+            7
+          ],
+          "goal": [
+            3,
+            3
+          ],
+          "duration": 0.85,
+          "stroke_mm": 0.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 0.0,
+          "max_reference_speed_fraction": 0.7940136048589592,
+          "min_self_collision_m": 0.039288858783286904,
+          "min_joint_margin": 0.4594802841235619,
+          "max_ref_fk_error_mm": 1.2338863501481701e-05
+        },
+        {
+          "start": [
+            3,
+            7
+          ],
+          "goal": [
+            3,
+            2
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 8.006921076191741,
+          "max_reference_speed_fraction": 0.7286569123692274,
+          "min_self_collision_m": 0.039288858783286904,
+          "min_joint_margin": 0.4594802841235619,
+          "max_ref_fk_error_mm": 9.035578473150379e-06
+        },
+        {
+          "start": [
+            3,
+            7
+          ],
+          "goal": [
+            3,
+            4
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 7.943048829280659,
+          "max_reference_speed_fraction": 0.8612582996367887,
+          "min_self_collision_m": 0.039288858783286904,
+          "min_joint_margin": 0.4594802841235619,
+          "max_ref_fk_error_mm": 2.030920549357492e-05
+        },
+        {
+          "start": [
+            3,
+            7
+          ],
+          "goal": [
+            3,
+            7
+          ],
+          "duration": 0.85,
+          "stroke_mm": 0.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 0.0,
+          "max_reference_speed_fraction": 0.05650365366993728,
+          "min_self_collision_m": 0.039288858783286904,
+          "min_joint_margin": 0.4594802841235619,
+          "max_ref_fk_error_mm": 9.035578473150379e-06
+        },
+        {
+          "start": [
+            3,
+            7
+          ],
+          "goal": [
+            4,
+            2
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 17.413890693824243,
+          "max_reference_speed_fraction": 0.9661548020756758,
+          "min_self_collision_m": 0.039288858783286904,
+          "min_joint_margin": 0.4594802841235619,
+          "max_ref_fk_error_mm": 4.5683073998872896e-05
+        },
+        {
+          "start": [
+            3,
+            7
+          ],
+          "goal": [
+            4,
+            7
+          ],
+          "duration": 0.85,
+          "stroke_mm": 0.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 15.518940716060852,
+          "max_reference_speed_fraction": 0.5115898496254097,
+          "min_self_collision_m": 0.039288858783286904,
+          "min_joint_margin": 0.4594802841235619,
+          "max_ref_fk_error_mm": 9.035578473150379e-06
+        },
+        {
+          "start": [
+            3,
+            8
+          ],
+          "goal": [
+            3,
+            3
+          ],
+          "duration": 0.85,
+          "stroke_mm": 0.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 0.0,
+          "max_reference_speed_fraction": 0.31009730686052395,
+          "min_self_collision_m": 0.04063180129750742,
+          "min_joint_margin": 0.6543031663755536,
+          "max_ref_fk_error_mm": 3.226103731116184e-06
+        },
+        {
+          "start": [
+            3,
+            8
+          ],
+          "goal": [
+            3,
+            2
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 8.006921076191741,
+          "max_reference_speed_fraction": 0.3539026165953154,
+          "min_self_collision_m": 0.04028919735447104,
+          "min_joint_margin": 0.6129530105101562,
+          "max_ref_fk_error_mm": 7.069819426736152e-06
+        },
+        {
+          "start": [
+            3,
+            8
+          ],
+          "goal": [
+            3,
+            4
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 7.943048829280659,
+          "max_reference_speed_fraction": 0.2732208752697189,
+          "min_self_collision_m": 0.04104062090827079,
+          "min_joint_margin": 0.6971414525751503,
+          "max_ref_fk_error_mm": 1.38832240230738e-06
+        },
+        {
+          "start": [
+            3,
+            8
+          ],
+          "goal": [
+            3,
+            8
+          ],
+          "duration": 0.85,
+          "stroke_mm": 0.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 0.0,
+          "max_reference_speed_fraction": 0.04921595003832421,
+          "min_self_collision_m": 0.041083881234406164,
+          "min_joint_margin": 0.8828904655720962,
+          "max_ref_fk_error_mm": 6.200000506668776e-07
+        },
+        {
+          "start": [
+            3,
+            8
+          ],
+          "goal": [
+            4,
+            3
+          ],
+          "duration": 0.85,
+          "stroke_mm": 0.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 15.518940716060852,
+          "max_reference_speed_fraction": 0.17047973287727827,
+          "min_self_collision_m": 0.04106344228117959,
+          "min_joint_margin": 0.7287168622680393,
+          "max_ref_fk_error_mm": 0.003999538924502807
+        },
+        {
+          "start": [
+            3,
+            8
+          ],
+          "goal": [
+            4,
+            2
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 17.413890693824243,
+          "max_reference_speed_fraction": 0.20396097072842548,
+          "min_self_collision_m": 0.04104061099556618,
+          "min_joint_margin": 0.6835373408224714,
+          "max_ref_fk_error_mm": 0.003974583969321724
+        },
+        {
+          "start": [
+            3,
+            8
+          ],
+          "goal": [
+            4,
+            4
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 17.396578849152718,
+          "max_reference_speed_fraction": 0.1509120317881691,
+          "min_self_collision_m": 0.041083881234406164,
+          "min_joint_margin": 0.7737113266149074,
+          "max_ref_fk_error_mm": 0.003612348768420759
+        },
+        {
+          "start": [
+            3,
+            8
+          ],
+          "goal": [
+            4,
+            7
+          ],
+          "duration": 0.85,
+          "stroke_mm": 0.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 15.518940716060852,
+          "max_reference_speed_fraction": 0.5305631011554067,
+          "min_self_collision_m": 0.04038540181093963,
+          "min_joint_margin": 0.5151337519274002,
+          "max_ref_fk_error_mm": 3.1533408181468814e-05
+        },
+        {
+          "start": [
+            3,
+            8
+          ],
+          "goal": [
+            4,
+            8
+          ],
+          "duration": 0.85,
+          "stroke_mm": 0.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 15.518940716060852,
+          "max_reference_speed_fraction": 0.16131846004551123,
+          "min_self_collision_m": 0.041044694681817394,
+          "min_joint_margin": 0.8828904655720962,
+          "max_ref_fk_error_mm": 0.003996301838710877
+        },
+        {
+          "start": [
+            4,
+            3
+          ],
+          "goal": [
+            3,
+            3
+          ],
+          "duration": 0.85,
+          "stroke_mm": 0.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 15.518940716060852,
+          "max_reference_speed_fraction": 0.22587922522492973,
+          "min_self_collision_m": 0.040631532735633996,
+          "min_joint_margin": 0.6543031664835834,
+          "max_ref_fk_error_mm": 3.2398152232430963e-07
+        },
+        {
+          "start": [
+            4,
+            3
+          ],
+          "goal": [
+            3,
+            2
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 18.0731945122971,
+          "max_reference_speed_fraction": 0.287887434801774,
+          "min_self_collision_m": 0.04028951621233303,
+          "min_joint_margin": 0.6129530095968014,
+          "max_ref_fk_error_mm": 9.591540011999518e-07
+        },
+        {
+          "start": [
+            4,
+            3
+          ],
+          "goal": [
+            3,
+            4
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 16.922714601234425,
+          "max_reference_speed_fraction": 0.1657316905133256,
+          "min_self_collision_m": 0.04104063256161015,
+          "min_joint_margin": 0.6971382301271316,
+          "max_ref_fk_error_mm": 0.00373068253374901
+        },
+        {
+          "start": [
+            4,
+            3
+          ],
+          "goal": [
+            3,
+            7
+          ],
+          "duration": 0.85,
+          "stroke_mm": 0.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 15.518940716060852,
+          "max_reference_speed_fraction": 0.9218762656834291,
+          "min_self_collision_m": 0.039299858507440506,
+          "min_joint_margin": 0.4594802692436091,
+          "max_ref_fk_error_mm": 4.814427382240318e-05
+        },
+        {
+          "start": [
+            4,
+            3
+          ],
+          "goal": [
+            3,
+            8
+          ],
+          "duration": 0.85,
+          "stroke_mm": 0.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 15.518940716060852,
+          "max_reference_speed_fraction": 0.17116651182036458,
+          "min_self_collision_m": 0.041064362805068,
+          "min_joint_margin": 0.7287147522964688,
+          "max_ref_fk_error_mm": 0.003962626889482117
+        },
+        {
+          "start": [
+            4,
+            3
+          ],
+          "goal": [
+            4,
+            3
+          ],
+          "duration": 0.85,
+          "stroke_mm": 0.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 0.0,
+          "max_reference_speed_fraction": 0.056655274313762986,
+          "min_self_collision_m": 0.041064362805068,
+          "min_joint_margin": 0.7287147522964688,
+          "max_ref_fk_error_mm": 1.1138735260488421e-07
+        },
+        {
+          "start": [
+            4,
+            3
+          ],
+          "goal": [
+            4,
+            2
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 8.05685326258234,
+          "max_reference_speed_fraction": 0.10600522669853629,
+          "min_self_collision_m": 0.0410406165235503,
+          "min_joint_margin": 0.6835382810161963,
+          "max_ref_fk_error_mm": 0.0003027929419748226
+        },
+        {
+          "start": [
+            4,
+            3
+          ],
+          "goal": [
+            4,
+            4
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 7.843493518045123,
+          "max_reference_speed_fraction": 0.10251788973959562,
+          "min_self_collision_m": 0.041064362805068,
+          "min_joint_margin": 0.7287147522964688,
+          "max_ref_fk_error_mm": 0.00029345353230543844
+        },
+        {
+          "start": [
+            4,
+            3
+          ],
+          "goal": [
+            4,
+            7
+          ],
+          "duration": 0.85,
+          "stroke_mm": 0.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 0.0,
+          "max_reference_speed_fraction": 0.4008033515682734,
+          "min_self_collision_m": 0.04038724707431957,
+          "min_joint_margin": 0.5151337567796228,
+          "max_ref_fk_error_mm": 6.274814138450009e-06
+        },
+        {
+          "start": [
+            4,
+            3
+          ],
+          "goal": [
+            4,
+            8
+          ],
+          "duration": 0.85,
+          "stroke_mm": 0.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 0.0,
+          "max_reference_speed_fraction": 0.2586660514758605,
+          "min_self_collision_m": 0.041030829992755785,
+          "min_joint_margin": 0.7287147522964688,
+          "max_ref_fk_error_mm": 9.540336802498185e-07
+        },
+        {
+          "start": [
+            4,
+            2
+          ],
+          "goal": [
+            3,
+            3
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 17.413890693824243,
+          "max_reference_speed_fraction": 0.1816252387076881,
+          "min_self_collision_m": 0.040631600677646096,
+          "min_joint_margin": 0.6542999763330761,
+          "max_ref_fk_error_mm": 0.003994814277791227
+        },
+        {
+          "start": [
+            4,
+            2
+          ],
+          "goal": [
+            3,
+            2
+          ],
+          "duration": 0.85,
+          "stroke_mm": 0.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 16.138888871090565,
+          "max_reference_speed_fraction": 0.2434417907478637,
+          "min_self_collision_m": 0.04028954929237676,
+          "min_joint_margin": 0.6129530094634772,
+          "max_ref_fk_error_mm": 0.0030188580905418207
+        },
+        {
+          "start": [
+            4,
+            2
+          ],
+          "goal": [
+            3,
+            4
+          ],
+          "duration": 0.85,
+          "stroke_mm": 16.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 21.82805441841536,
+          "max_reference_speed_fraction": 0.13187365546675378,
+          "min_self_collision_m": 0.04104061427221564,
+          "min_joint_margin": 0.683536267924522,
+          "max_ref_fk_error_mm": 0.0030188580905418207
+        },
+        {
+          "start": [
+            4,
+            2
+          ],
+          "goal": [
+            3,
+            7
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 17.413890693824243,
+          "max_reference_speed_fraction": 0.8851703339364336,
+          "min_self_collision_m": 0.03929675911337423,
+          "min_joint_margin": 0.4594802743775046,
+          "max_ref_fk_error_mm": 0.0030188580905418207
+        },
+        {
+          "start": [
+            4,
+            2
+          ],
+          "goal": [
+            3,
+            8
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 17.413890693824243,
+          "max_reference_speed_fraction": 0.20407717060329983,
+          "min_self_collision_m": 0.041040612298087586,
+          "min_joint_margin": 0.683536267924522,
+          "max_ref_fk_error_mm": 0.003983639564196348
+        },
+        {
+          "start": [
+            4,
+            2
+          ],
+          "goal": [
+            4,
+            3
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 8.05685326258234,
+          "max_reference_speed_fraction": 0.10601469646743955,
+          "min_self_collision_m": 0.04104061641854392,
+          "min_joint_margin": 0.683536267924522,
+          "max_ref_fk_error_mm": 0.0030188580905418207
+        },
+        {
+          "start": [
+            4,
+            2
+          ],
+          "goal": [
+            4,
+            2
+          ],
+          "duration": 0.85,
+          "stroke_mm": 0.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 0.0,
+          "max_reference_speed_fraction": 0.0592416799512939,
+          "min_self_collision_m": 0.04104241742186753,
+          "min_joint_margin": 0.683536267924522,
+          "max_ref_fk_error_mm": 0.0030188580905418207
+        },
+        {
+          "start": [
+            4,
+            2
+          ],
+          "goal": [
+            4,
+            4
+          ],
+          "duration": 0.85,
+          "stroke_mm": 16.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 15.899030343716793,
+          "max_reference_speed_fraction": 0.1520395512869735,
+          "min_self_collision_m": 0.041040615279911305,
+          "min_joint_margin": 0.683536267924522,
+          "max_ref_fk_error_mm": 0.0030188580905418207
+        },
+        {
+          "start": [
+            4,
+            2
+          ],
+          "goal": [
+            4,
+            7
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 8.05685326258234,
+          "max_reference_speed_fraction": 0.37513805733034206,
+          "min_self_collision_m": 0.040385512328893015,
+          "min_joint_margin": 0.5151337589626339,
+          "max_ref_fk_error_mm": 0.0030188580905418207
+        },
+        {
+          "start": [
+            4,
+            2
+          ],
+          "goal": [
+            4,
+            8
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 8.05685326258234,
+          "max_reference_speed_fraction": 0.29203939447106186,
+          "min_self_collision_m": 0.0410298578808942,
+          "min_joint_margin": 0.683536267924522,
+          "max_ref_fk_error_mm": 0.0030188580905418207
+        },
+        {
+          "start": [
+            4,
+            4
+          ],
+          "goal": [
+            3,
+            3
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 17.396578849152718,
+          "max_reference_speed_fraction": 0.27001957838420915,
+          "min_self_collision_m": 0.04063159399446838,
+          "min_joint_margin": 0.6543031666617616,
+          "max_ref_fk_error_mm": 6.966434370965307e-07
+        },
+        {
+          "start": [
+            4,
+            4
+          ],
+          "goal": [
+            3,
+            2
+          ],
+          "duration": 0.85,
+          "stroke_mm": 16.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 22.66238370303857,
+          "max_reference_speed_fraction": 0.33182391862575517,
+          "min_self_collision_m": 0.04028947488415454,
+          "min_joint_margin": 0.6129530096273219,
+          "max_ref_fk_error_mm": 1.8475919744785584e-06
+        },
+        {
+          "start": [
+            4,
+            4
+          ],
+          "goal": [
+            3,
+            4
+          ],
+          "duration": 0.85,
+          "stroke_mm": 0.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 14.965123995509531,
+          "max_reference_speed_fraction": 0.20965993480052514,
+          "min_self_collision_m": 0.04104061672295258,
+          "min_joint_margin": 0.6971414541275773,
+          "max_ref_fk_error_mm": 2.3519926324774553e-07
+        },
+        {
+          "start": [
+            4,
+            4
+          ],
+          "goal": [
+            3,
+            7
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 17.396578849152718,
+          "max_reference_speed_fraction": 0.9588155747677338,
+          "min_self_collision_m": 0.0393030211512616,
+          "min_joint_margin": 0.4594802631903816,
+          "max_ref_fk_error_mm": 6.493237639605093e-05
+        },
+        {
+          "start": [
+            4,
+            4
+          ],
+          "goal": [
+            3,
+            8
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 17.396578849152718,
+          "max_reference_speed_fraction": 0.1512771150538052,
+          "min_self_collision_m": 0.04108610576203527,
+          "min_joint_margin": 0.7737063700017033,
+          "max_ref_fk_error_mm": 0.003661869068690102
+        },
+        {
+          "start": [
+            4,
+            4
+          ],
+          "goal": [
+            4,
+            3
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 7.843493518045124,
+          "max_reference_speed_fraction": 0.10250029176233416,
+          "min_self_collision_m": 0.04106436789256472,
+          "min_joint_margin": 0.7287142107372047,
+          "max_ref_fk_error_mm": 0.0002853838985051624
+        },
+        {
+          "start": [
+            4,
+            4
+          ],
+          "goal": [
+            4,
+            2
+          ],
+          "duration": 0.85,
+          "stroke_mm": 16.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 15.899052203760915,
+          "max_reference_speed_fraction": 0.15194502958193506,
+          "min_self_collision_m": 0.04104061521796786,
+          "min_joint_margin": 0.6835366788809525,
+          "max_ref_fk_error_mm": 0.0012202445217088908
+        },
+        {
+          "start": [
+            4,
+            4
+          ],
+          "goal": [
+            4,
+            4
+          ],
+          "duration": 0.85,
+          "stroke_mm": 0.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 0.0,
+          "max_reference_speed_fraction": 0.05429946072664851,
+          "min_self_collision_m": 0.041133810338578956,
+          "min_joint_margin": 0.7737063700017033,
+          "max_ref_fk_error_mm": 1.9466025962959372e-07
+        },
+        {
+          "start": [
+            4,
+            4
+          ],
+          "goal": [
+            4,
+            7
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 7.843493518045124,
+          "max_reference_speed_fraction": 0.4232589026241324,
+          "min_self_collision_m": 0.04038882996331088,
+          "min_joint_margin": 0.5151337545738017,
+          "max_ref_fk_error_mm": 9.655858788057706e-06
+        },
+        {
+          "start": [
+            4,
+            4
+          ],
+          "goal": [
+            4,
+            8
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 7.843493518045124,
+          "max_reference_speed_fraction": 0.2319692209760896,
+          "min_self_collision_m": 0.04103182051579725,
+          "min_joint_margin": 0.7737063700017033,
+          "max_ref_fk_error_mm": 4.451935007706267e-07
+        },
+        {
+          "start": [
+            4,
+            7
+          ],
+          "goal": [
+            3,
+            3
+          ],
+          "duration": 0.85,
+          "stroke_mm": 0.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 15.518940716060852,
+          "max_reference_speed_fraction": 0.27132190546388946,
+          "min_self_collision_m": 0.04037795832072347,
+          "min_joint_margin": 0.5151337668929805,
+          "max_ref_fk_error_mm": 0.003971819349668711
+        },
+        {
+          "start": [
+            4,
+            7
+          ],
+          "goal": [
+            3,
+            2
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 18.0731945122971,
+          "max_reference_speed_fraction": 0.23078697452045854,
+          "min_self_collision_m": 0.04028985169010482,
+          "min_joint_margin": 0.5151337668929805,
+          "max_ref_fk_error_mm": 0.003999587107536952
+        },
+        {
+          "start": [
+            4,
+            7
+          ],
+          "goal": [
+            3,
+            4
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 16.922714601234425,
+          "max_reference_speed_fraction": 0.3072823357586139,
+          "min_self_collision_m": 0.04037795832072347,
+          "min_joint_margin": 0.5151337668929805,
+          "max_ref_fk_error_mm": 1.0075361757936164e-06
+        },
+        {
+          "start": [
+            4,
+            7
+          ],
+          "goal": [
+            3,
+            7
+          ],
+          "duration": 0.85,
+          "stroke_mm": 0.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 15.518940716060852,
+          "max_reference_speed_fraction": 0.4632605363242488,
+          "min_self_collision_m": 0.03931302440920622,
+          "min_joint_margin": 0.4594802701961276,
+          "max_ref_fk_error_mm": 1.0099221774894312e-06
+        },
+        {
+          "start": [
+            4,
+            7
+          ],
+          "goal": [
+            3,
+            8
+          ],
+          "duration": 0.85,
+          "stroke_mm": 0.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 15.518940716060852,
+          "max_reference_speed_fraction": 0.540684969989242,
+          "min_self_collision_m": 0.04037795832072347,
+          "min_joint_margin": 0.5151337668929805,
+          "max_ref_fk_error_mm": 3.467923263016119e-05
+        },
+        {
+          "start": [
+            4,
+            7
+          ],
+          "goal": [
+            4,
+            3
+          ],
+          "duration": 0.85,
+          "stroke_mm": 0.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 0.0,
+          "max_reference_speed_fraction": 0.4084051352601352,
+          "min_self_collision_m": 0.04037795832072347,
+          "min_joint_margin": 0.5151337668929805,
+          "max_ref_fk_error_mm": 6.97853254116868e-06
+        },
+        {
+          "start": [
+            4,
+            7
+          ],
+          "goal": [
+            4,
+            2
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 8.05685326258234,
+          "max_reference_speed_fraction": 0.3818040949061919,
+          "min_self_collision_m": 0.04037795832072347,
+          "min_joint_margin": 0.5151337668929805,
+          "max_ref_fk_error_mm": 4.087080661188215e-06
+        },
+        {
+          "start": [
+            4,
+            7
+          ],
+          "goal": [
+            4,
+            4
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 7.843493518045123,
+          "max_reference_speed_fraction": 0.43102756741895376,
+          "min_self_collision_m": 0.04037795832072347,
+          "min_joint_margin": 0.5151337668929805,
+          "max_ref_fk_error_mm": 1.0820330220765644e-05
+        },
+        {
+          "start": [
+            4,
+            7
+          ],
+          "goal": [
+            4,
+            7
+          ],
+          "duration": 0.85,
+          "stroke_mm": 0.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 0.0,
+          "max_reference_speed_fraction": 0.06727419116762702,
+          "min_self_collision_m": 0.04037795832072347,
+          "min_joint_margin": 0.5151337668929805,
+          "max_ref_fk_error_mm": 4.688379656368827e-07
+        },
+        {
+          "start": [
+            4,
+            7
+          ],
+          "goal": [
+            4,
+            8
+          ],
+          "duration": 0.85,
+          "stroke_mm": 0.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 0.0,
+          "max_reference_speed_fraction": 0.6149807552985885,
+          "min_self_collision_m": 0.04037795832072347,
+          "min_joint_margin": 0.5151337668929805,
+          "max_ref_fk_error_mm": 0.00010492634210779971
+        },
+        {
+          "start": [
+            4,
+            8
+          ],
+          "goal": [
+            3,
+            3
+          ],
+          "duration": 0.85,
+          "stroke_mm": 0.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 15.518940716060852,
+          "max_reference_speed_fraction": 0.41759141162514674,
+          "min_self_collision_m": 0.0406320909639779,
+          "min_joint_margin": 0.6543031575943861,
+          "max_ref_fk_error_mm": 1.4778168831444557e-05
+        },
+        {
+          "start": [
+            4,
+            8
+          ],
+          "goal": [
+            3,
+            2
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 18.0731945122971,
+          "max_reference_speed_fraction": 0.45080109050446826,
+          "min_self_collision_m": 0.0402890903794252,
+          "min_joint_margin": 0.6129529975743246,
+          "max_ref_fk_error_mm": 2.8219761567057645e-05
+        },
+        {
+          "start": [
+            4,
+            8
+          ],
+          "goal": [
+            3,
+            4
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 16.922714601234425,
+          "max_reference_speed_fraction": 0.3862456498997638,
+          "min_self_collision_m": 0.041037636743457326,
+          "min_joint_margin": 0.6971414473646727,
+          "max_ref_fk_error_mm": 7.496394451438589e-06
+        },
+        {
+          "start": [
+            4,
+            8
+          ],
+          "goal": [
+            3,
+            8
+          ],
+          "duration": 0.85,
+          "stroke_mm": 0.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 15.518940716060852,
+          "max_reference_speed_fraction": 0.1617997172601829,
+          "min_self_collision_m": 0.041037636743457326,
+          "min_joint_margin": 0.8828904746429573,
+          "max_ref_fk_error_mm": 0.003992399816060279
+        },
+        {
+          "start": [
+            4,
+            8
+          ],
+          "goal": [
+            4,
+            3
+          ],
+          "duration": 0.85,
+          "stroke_mm": 0.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 0.0,
+          "max_reference_speed_fraction": 0.2584333992521626,
+          "min_self_collision_m": 0.041037636743457326,
+          "min_joint_margin": 0.7287147460236993,
+          "max_ref_fk_error_mm": 1.7758720388454086e-06
+        },
+        {
+          "start": [
+            4,
+            8
+          ],
+          "goal": [
+            4,
+            2
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 8.05685326258234,
+          "max_reference_speed_fraction": 0.29230502589381707,
+          "min_self_collision_m": 0.041037636743457326,
+          "min_joint_margin": 0.6835387882359114,
+          "max_ref_fk_error_mm": 1.8678907437460134e-06
+        },
+        {
+          "start": [
+            4,
+            8
+          ],
+          "goal": [
+            4,
+            4
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 7.843493518045123,
+          "max_reference_speed_fraction": 0.23199053278752443,
+          "min_self_collision_m": 0.041037636743457326,
+          "min_joint_margin": 0.7737063634653596,
+          "max_ref_fk_error_mm": 1.7758720388454086e-06
+        },
+        {
+          "start": [
+            4,
+            8
+          ],
+          "goal": [
+            4,
+            7
+          ],
+          "duration": 0.85,
+          "stroke_mm": 0.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 0.0,
+          "max_reference_speed_fraction": 0.6037559046639115,
+          "min_self_collision_m": 0.04039010071838376,
+          "min_joint_margin": 0.5151337266980296,
+          "max_ref_fk_error_mm": 8.909546785046856e-05
+        },
+        {
+          "start": [
+            4,
+            8
+          ],
+          "goal": [
+            4,
+            8
+          ],
+          "duration": 0.85,
+          "stroke_mm": 0.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 0.0,
+          "max_reference_speed_fraction": 0.04694340034442906,
+          "min_self_collision_m": 0.041037636743457326,
+          "min_joint_margin": 0.8837727980225525,
+          "max_ref_fk_error_mm": 1.7758720388454086e-06
+        }
+      ]
+    },
+    "trunk": {
+      "points": [
+        [
+          5,
+          3
+        ],
+        [
+          5,
+          2
+        ],
+        [
+          5,
+          4
+        ],
+        [
+          5,
+          7
+        ],
+        [
+          5,
+          8
+        ],
+        [
+          6,
+          3
+        ],
+        [
+          6,
+          2
+        ],
+        [
+          6,
+          4
+        ],
+        [
+          6,
+          7
+        ],
+        [
+          6,
+          8
+        ]
+      ],
+      "targets": [
+        [
+          5,
+          0
+        ],
+        [
+          6,
+          0
+        ]
+      ],
+      "paths": [
+        {
+          "start": [
+            5,
+            3
+          ],
+          "goal": [
+            5,
+            3
+          ],
+          "duration": 0.85,
+          "stroke_mm": 0.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 0.0,
+          "max_reference_speed_fraction": 0.059784477864015154,
+          "min_self_collision_m": 0.04106228290825846,
+          "min_joint_margin": 0.7126869867820909,
+          "max_ref_fk_error_mm": 1.5428446004502455e-07
+        },
+        {
+          "start": [
+            5,
+            3
+          ],
+          "goal": [
+            5,
+            2
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 8.081361843684926,
+          "max_reference_speed_fraction": 0.10673971099353638,
+          "min_self_collision_m": 0.04104061766910587,
+          "min_joint_margin": 0.6673912317703634,
+          "max_ref_fk_error_mm": 0.00029111976130895886
+        },
+        {
+          "start": [
+            5,
+            3
+          ],
+          "goal": [
+            5,
+            4
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 7.805611923832506,
+          "max_reference_speed_fraction": 0.10299912742579971,
+          "min_self_collision_m": 0.04106228290825846,
+          "min_joint_margin": 0.7126869867820909,
+          "max_ref_fk_error_mm": 0.0002829280974870965
+        },
+        {
+          "start": [
+            5,
+            3
+          ],
+          "goal": [
+            5,
+            7
+          ],
+          "duration": 0.85,
+          "stroke_mm": 0.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 0.0,
+          "max_reference_speed_fraction": 0.38041699256646905,
+          "min_self_collision_m": 0.04043785925066644,
+          "min_joint_margin": 0.49780538417754383,
+          "max_ref_fk_error_mm": 5.645214917212344e-06
+        },
+        {
+          "start": [
+            5,
+            3
+          ],
+          "goal": [
+            5,
+            8
+          ],
+          "duration": 0.85,
+          "stroke_mm": 0.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 0.0,
+          "max_reference_speed_fraction": 0.2575465751372531,
+          "min_self_collision_m": 0.041007128501707624,
+          "min_joint_margin": 0.7126869867820909,
+          "max_ref_fk_error_mm": 8.071865227139942e-07
+        },
+        {
+          "start": [
+            5,
+            3
+          ],
+          "goal": [
+            6,
+            3
+          ],
+          "duration": 0.85,
+          "stroke_mm": 0.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 14.435541107197752,
+          "max_reference_speed_fraction": 0.2477045930103685,
+          "min_self_collision_m": 0.04082136882295675,
+          "min_joint_margin": 0.7126869867820909,
+          "max_ref_fk_error_mm": 0.003995427004188424
+        },
+        {
+          "start": [
+            5,
+            3
+          ],
+          "goal": [
+            6,
+            2
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 16.93776643385098,
+          "max_reference_speed_fraction": 0.21786767190322648,
+          "min_self_collision_m": 0.040821617969789135,
+          "min_joint_margin": 0.7126869867820909,
+          "max_ref_fk_error_mm": 0.00297076822277271
+        },
+        {
+          "start": [
+            5,
+            3
+          ],
+          "goal": [
+            6,
+            4
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 15.866975683849157,
+          "max_reference_speed_fraction": 0.2802709534699806,
+          "min_self_collision_m": 0.04082139322253789,
+          "min_joint_margin": 0.7126869867820909,
+          "max_ref_fk_error_mm": 0.003996402103628568
+        },
+        {
+          "start": [
+            5,
+            3
+          ],
+          "goal": [
+            6,
+            7
+          ],
+          "duration": 0.85,
+          "stroke_mm": 0.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 14.435541107197752,
+          "max_reference_speed_fraction": 0.20042380517322042,
+          "min_self_collision_m": 0.04084687896539525,
+          "min_joint_margin": 0.549913324516969,
+          "max_ref_fk_error_mm": 1.5428446004502455e-07
+        },
+        {
+          "start": [
+            5,
+            3
+          ],
+          "goal": [
+            6,
+            8
+          ],
+          "duration": 0.85,
+          "stroke_mm": 0.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 14.435541107197752,
+          "max_reference_speed_fraction": 0.37726235480278747,
+          "min_self_collision_m": 0.040821285716182105,
+          "min_joint_margin": 0.7126869867820909,
+          "max_ref_fk_error_mm": 5.946591209097295e-06
+        },
+        {
+          "start": [
+            5,
+            2
+          ],
+          "goal": [
+            5,
+            3
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 8.081361843684926,
+          "max_reference_speed_fraction": 0.10670307536070532,
+          "min_self_collision_m": 0.041040617648370636,
+          "min_joint_margin": 0.6673912317703634,
+          "max_ref_fk_error_mm": 0.00029930942821901086
+        },
+        {
+          "start": [
+            5,
+            2
+          ],
+          "goal": [
+            5,
+            2
+          ],
+          "duration": 0.85,
+          "stroke_mm": 0.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 0.0,
+          "max_reference_speed_fraction": 0.062298800898328836,
+          "min_self_collision_m": 0.04104227024243384,
+          "min_joint_margin": 0.6673912317703634,
+          "max_ref_fk_error_mm": 0.00029111976130895886
+        },
+        {
+          "start": [
+            5,
+            2
+          ],
+          "goal": [
+            5,
+            4
+          ],
+          "duration": 0.85,
+          "stroke_mm": 16.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 15.885617219199917,
+          "max_reference_speed_fraction": 0.15052478274512876,
+          "min_self_collision_m": 0.041040616265511184,
+          "min_joint_margin": 0.6673912317703634,
+          "max_ref_fk_error_mm": 0.0011903417159493692
+        },
+        {
+          "start": [
+            5,
+            2
+          ],
+          "goal": [
+            5,
+            7
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 8.081361843684926,
+          "max_reference_speed_fraction": 0.3577918650516565,
+          "min_self_collision_m": 0.04043669940481249,
+          "min_joint_margin": 0.4978053859992304,
+          "max_ref_fk_error_mm": 0.00029111976130895886
+        },
+        {
+          "start": [
+            5,
+            2
+          ],
+          "goal": [
+            5,
+            8
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 8.081361843684926,
+          "max_reference_speed_fraction": 0.2945457536145544,
+          "min_self_collision_m": 0.04100692547385179,
+          "min_joint_margin": 0.6673912317703634,
+          "max_ref_fk_error_mm": 0.00029111976130895886
+        },
+        {
+          "start": [
+            5,
+            2
+          ],
+          "goal": [
+            6,
+            3
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 16.652157000850586,
+          "max_reference_speed_fraction": 0.2918562263775698,
+          "min_self_collision_m": 0.04082130770520013,
+          "min_joint_margin": 0.6673912317703634,
+          "max_ref_fk_error_mm": 0.00029111976130895886
+        },
+        {
+          "start": [
+            5,
+            2
+          ],
+          "goal": [
+            6,
+            2
+          ],
+          "duration": 0.85,
+          "stroke_mm": 0.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 15.020512805867565,
+          "max_reference_speed_fraction": 0.2593402018248028,
+          "min_self_collision_m": 0.04082161023808581,
+          "min_joint_margin": 0.6673912317703634,
+          "max_ref_fk_error_mm": 0.003990330442103584
+        },
+        {
+          "start": [
+            5,
+            2
+          ],
+          "goal": [
+            6,
+            4
+          ],
+          "duration": 0.85,
+          "stroke_mm": 16.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 21.094619164426668,
+          "max_reference_speed_fraction": 0.3263151709985675,
+          "min_self_collision_m": 0.04082128493281976,
+          "min_joint_margin": 0.6673912317703634,
+          "max_ref_fk_error_mm": 0.00029111976130895886
+        },
+        {
+          "start": [
+            5,
+            2
+          ],
+          "goal": [
+            6,
+            7
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 16.652157000850586,
+          "max_reference_speed_fraction": 0.2364980781031226,
+          "min_self_collision_m": 0.04084672813242571,
+          "min_joint_margin": 0.5499133256988995,
+          "max_ref_fk_error_mm": 0.003999038414036032
+        },
+        {
+          "start": [
+            5,
+            2
+          ],
+          "goal": [
+            6,
+            8
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 16.652157000850586,
+          "max_reference_speed_fraction": 0.405425160782168,
+          "min_self_collision_m": 0.04082128120567015,
+          "min_joint_margin": 0.6673912317703634,
+          "max_ref_fk_error_mm": 0.00029111976130895886
+        },
+        {
+          "start": [
+            5,
+            4
+          ],
+          "goal": [
+            5,
+            3
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 7.8056119238325055,
+          "max_reference_speed_fraction": 0.1030211695035218,
+          "min_self_collision_m": 0.041062286812740566,
+          "min_joint_margin": 0.7126864736533676,
+          "max_ref_fk_error_mm": 0.0002829280974870965
+        },
+        {
+          "start": [
+            5,
+            4
+          ],
+          "goal": [
+            5,
+            2
+          ],
+          "duration": 0.85,
+          "stroke_mm": 16.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 15.885646287199593,
+          "max_reference_speed_fraction": 0.15035200298875598,
+          "min_self_collision_m": 0.041040616136719776,
+          "min_joint_margin": 0.6673896923644738,
+          "max_ref_fk_error_mm": 0.0011740596059631294
+        },
+        {
+          "start": [
+            5,
+            4
+          ],
+          "goal": [
+            5,
+            4
+          ],
+          "duration": 0.85,
+          "stroke_mm": 0.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 0.0,
+          "max_reference_speed_fraction": 0.05753014532797681,
+          "min_self_collision_m": 0.04112505170809186,
+          "min_joint_margin": 0.7570124218216332,
+          "max_ref_fk_error_mm": 0.0002829280974870965
+        },
+        {
+          "start": [
+            5,
+            4
+          ],
+          "goal": [
+            5,
+            7
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 7.8056119238325055,
+          "max_reference_speed_fraction": 0.4000005456409485,
+          "min_self_collision_m": 0.040438938926913956,
+          "min_joint_margin": 0.4978053823210329,
+          "max_ref_fk_error_mm": 0.0002829280974870965
+        },
+        {
+          "start": [
+            5,
+            4
+          ],
+          "goal": [
+            5,
+            8
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 7.8056119238325055,
+          "max_reference_speed_fraction": 0.2318471935108446,
+          "min_self_collision_m": 0.041007405408197736,
+          "min_joint_margin": 0.7570124218216332,
+          "max_ref_fk_error_mm": 0.0002829280974870965
+        },
+        {
+          "start": [
+            5,
+            4
+          ],
+          "goal": [
+            6,
+            3
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 16.395616467554916,
+          "max_reference_speed_fraction": 0.20776587081581294,
+          "min_self_collision_m": 0.040821305516861396,
+          "min_joint_margin": 0.7570124218216332,
+          "max_ref_fk_error_mm": 0.002812994082723851
+        },
+        {
+          "start": [
+            5,
+            4
+          ],
+          "goal": [
+            6,
+            2
+          ],
+          "duration": 0.85,
+          "stroke_mm": 16.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 21.75097936491395,
+          "max_reference_speed_fraction": 0.18235832493377796,
+          "min_self_collision_m": 0.04082162302682983,
+          "min_joint_margin": 0.7299692031079543,
+          "max_ref_fk_error_mm": 0.0019981938710565595
+        },
+        {
+          "start": [
+            5,
+            4
+          ],
+          "goal": [
+            6,
+            4
+          ],
+          "duration": 0.85,
+          "stroke_mm": 0.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 13.855478134978279,
+          "max_reference_speed_fraction": 0.23743413798212404,
+          "min_self_collision_m": 0.04082128181548946,
+          "min_joint_margin": 0.7570124218216332,
+          "max_ref_fk_error_mm": 0.0038936759340360114
+        },
+        {
+          "start": [
+            5,
+            4
+          ],
+          "goal": [
+            6,
+            7
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 16.395616467554916,
+          "max_reference_speed_fraction": 0.20630417467541726,
+          "min_self_collision_m": 0.040846979775052354,
+          "min_joint_margin": 0.5499133235518636,
+          "max_ref_fk_error_mm": 0.0002829280974870965
+        },
+        {
+          "start": [
+            5,
+            4
+          ],
+          "goal": [
+            6,
+            8
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 16.395616467554916,
+          "max_reference_speed_fraction": 0.3518231070032737,
+          "min_self_collision_m": 0.04082129681676693,
+          "min_joint_margin": 0.7570124218216332,
+          "max_ref_fk_error_mm": 0.0002829280974870965
+        },
+        {
+          "start": [
+            5,
+            7
+          ],
+          "goal": [
+            5,
+            3
+          ],
+          "duration": 0.85,
+          "stroke_mm": 0.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 0.0,
+          "max_reference_speed_fraction": 0.38394815992494213,
+          "min_self_collision_m": 0.04043785925066644,
+          "min_joint_margin": 0.49780538417754383,
+          "max_ref_fk_error_mm": 5.814592653465584e-06
+        },
+        {
+          "start": [
+            5,
+            7
+          ],
+          "goal": [
+            5,
+            2
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 8.081361843684926,
+          "max_reference_speed_fraction": 0.3598828591333438,
+          "min_self_collision_m": 0.04043785925066644,
+          "min_joint_margin": 0.49780538417754383,
+          "max_ref_fk_error_mm": 5.645214917212344e-06
+        },
+        {
+          "start": [
+            5,
+            7
+          ],
+          "goal": [
+            5,
+            4
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 7.805611923832506,
+          "max_reference_speed_fraction": 0.40379188921382697,
+          "min_self_collision_m": 0.04043785925066644,
+          "min_joint_margin": 0.49780538417754383,
+          "max_ref_fk_error_mm": 8.980792622008318e-06
+        },
+        {
+          "start": [
+            5,
+            7
+          ],
+          "goal": [
+            5,
+            7
+          ],
+          "duration": 0.85,
+          "stroke_mm": 0.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 0.0,
+          "max_reference_speed_fraction": 0.07405237266256631,
+          "min_self_collision_m": 0.04043785925066644,
+          "min_joint_margin": 0.49780538417754383,
+          "max_ref_fk_error_mm": 5.645214917212344e-06
+        },
+        {
+          "start": [
+            5,
+            7
+          ],
+          "goal": [
+            5,
+            8
+          ],
+          "duration": 0.85,
+          "stroke_mm": 0.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 0.0,
+          "max_reference_speed_fraction": 0.5830368367560095,
+          "min_self_collision_m": 0.04043785925066644,
+          "min_joint_margin": 0.49780538417754383,
+          "max_ref_fk_error_mm": 8.765782248161232e-05
+        },
+        {
+          "start": [
+            5,
+            7
+          ],
+          "goal": [
+            6,
+            3
+          ],
+          "duration": 0.85,
+          "stroke_mm": 0.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 14.435541107197752,
+          "max_reference_speed_fraction": 0.5139383874067067,
+          "min_self_collision_m": 0.04043785925066644,
+          "min_joint_margin": 0.49780538417754383,
+          "max_ref_fk_error_mm": 3.5887540933919765e-05
+        },
+        {
+          "start": [
+            5,
+            7
+          ],
+          "goal": [
+            6,
+            2
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 16.93776643385098,
+          "max_reference_speed_fraction": 0.4973523866245686,
+          "min_self_collision_m": 0.04043785925066644,
+          "min_joint_margin": 0.49780538417754383,
+          "max_ref_fk_error_mm": 2.5990549135402003e-05
+        },
+        {
+          "start": [
+            5,
+            7
+          ],
+          "goal": [
+            6,
+            4
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 15.866975683849157,
+          "max_reference_speed_fraction": 0.5337415826342038,
+          "min_self_collision_m": 0.04043785925066644,
+          "min_joint_margin": 0.49780538417754383,
+          "max_ref_fk_error_mm": 4.727527642144586e-05
+        },
+        {
+          "start": [
+            5,
+            7
+          ],
+          "goal": [
+            6,
+            7
+          ],
+          "duration": 0.85,
+          "stroke_mm": 0.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 14.435541107197752,
+          "max_reference_speed_fraction": 0.40213609087532926,
+          "min_self_collision_m": 0.04043785925066644,
+          "min_joint_margin": 0.49780538417754383,
+          "max_ref_fk_error_mm": 5.645214917212344e-06
+        },
+        {
+          "start": [
+            5,
+            7
+          ],
+          "goal": [
+            6,
+            8
+          ],
+          "duration": 0.85,
+          "stroke_mm": 0.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 14.435541107197752,
+          "max_reference_speed_fraction": 0.6746209284109935,
+          "min_self_collision_m": 0.04043785925066644,
+          "min_joint_margin": 0.49780538417754383,
+          "max_ref_fk_error_mm": 0.00024783807412412075
+        },
+        {
+          "start": [
+            5,
+            8
+          ],
+          "goal": [
+            5,
+            3
+          ],
+          "duration": 0.85,
+          "stroke_mm": 0.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 0.0,
+          "max_reference_speed_fraction": 0.25816937916289645,
+          "min_self_collision_m": 0.041007128501707624,
+          "min_joint_margin": 0.712686987120833,
+          "max_ref_fk_error_mm": 7.86652576843177e-07
+        },
+        {
+          "start": [
+            5,
+            8
+          ],
+          "goal": [
+            5,
+            2
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 8.081361843684926,
+          "max_reference_speed_fraction": 0.2947739276689098,
+          "min_self_collision_m": 0.041007128501707624,
+          "min_joint_margin": 0.6673917250417032,
+          "max_ref_fk_error_mm": 1.5660504080342983e-06
+        },
+        {
+          "start": [
+            5,
+            8
+          ],
+          "goal": [
+            5,
+            4
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 7.805611923832506,
+          "max_reference_speed_fraction": 0.23242996492519763,
+          "min_self_collision_m": 0.041007128501707624,
+          "min_joint_margin": 0.7570130192076197,
+          "max_ref_fk_error_mm": 3.841186100857478e-07
+        },
+        {
+          "start": [
+            5,
+            8
+          ],
+          "goal": [
+            5,
+            7
+          ],
+          "duration": 0.85,
+          "stroke_mm": 0.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 0.0,
+          "max_reference_speed_fraction": 0.5777563182941949,
+          "min_self_collision_m": 0.04043509698570337,
+          "min_joint_margin": 0.4978053600483274,
+          "max_ref_fk_error_mm": 8.264571683777927e-05
+        },
+        {
+          "start": [
+            5,
+            8
+          ],
+          "goal": [
+            5,
+            8
+          ],
+          "duration": 0.85,
+          "stroke_mm": 0.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 0.0,
+          "max_reference_speed_fraction": 0.04979480929272506,
+          "min_self_collision_m": 0.041007128501707624,
+          "min_joint_margin": 0.9104779164613603,
+          "max_ref_fk_error_mm": 2.6907853590729294e-07
+        },
+        {
+          "start": [
+            5,
+            8
+          ],
+          "goal": [
+            6,
+            3
+          ],
+          "duration": 0.85,
+          "stroke_mm": 0.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 14.435541107197752,
+          "max_reference_speed_fraction": 0.1808487410247278,
+          "min_self_collision_m": 0.04082129434011302,
+          "min_joint_margin": 0.7783478666288235,
+          "max_ref_fk_error_mm": 0.003998048547500971
+        },
+        {
+          "start": [
+            5,
+            8
+          ],
+          "goal": [
+            6,
+            2
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 16.93776643385098,
+          "max_reference_speed_fraction": 0.2255220883724435,
+          "min_self_collision_m": 0.04082176215191455,
+          "min_joint_margin": 0.7299726190394629,
+          "max_ref_fk_error_mm": 2.6907853590729294e-07
+        },
+        {
+          "start": [
+            5,
+            8
+          ],
+          "goal": [
+            6,
+            4
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 15.866975683849157,
+          "max_reference_speed_fraction": 0.20206426085543033,
+          "min_self_collision_m": 0.04082127110823106,
+          "min_joint_margin": 0.8250942300365778,
+          "max_ref_fk_error_mm": 0.0029349650456753588
+        },
+        {
+          "start": [
+            5,
+            8
+          ],
+          "goal": [
+            6,
+            7
+          ],
+          "duration": 0.85,
+          "stroke_mm": 0.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 14.435541107197752,
+          "max_reference_speed_fraction": 0.39582933654089847,
+          "min_self_collision_m": 0.040848299151549264,
+          "min_joint_margin": 0.5499133116070092,
+          "max_ref_fk_error_mm": 3.2063783089970027e-06
+        },
+        {
+          "start": [
+            5,
+            8
+          ],
+          "goal": [
+            6,
+            8
+          ],
+          "duration": 0.85,
+          "stroke_mm": 0.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 14.435541107197752,
+          "max_reference_speed_fraction": 0.18759316854819238,
+          "min_self_collision_m": 0.04082128109220958,
+          "min_joint_margin": 0.9104779164613603,
+          "max_ref_fk_error_mm": 0.0027669581007750306
+        },
+        {
+          "start": [
+            6,
+            3
+          ],
+          "goal": [
+            5,
+            3
+          ],
+          "duration": 0.85,
+          "stroke_mm": 0.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 14.43554110719775,
+          "max_reference_speed_fraction": 0.24734675797341196,
+          "min_self_collision_m": 0.04082136947553583,
+          "min_joint_margin": 0.7126807088204974,
+          "max_ref_fk_error_mm": 0.003999375536033974
+        },
+        {
+          "start": [
+            6,
+            3
+          ],
+          "goal": [
+            5,
+            2
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 16.652157000850586,
+          "max_reference_speed_fraction": 0.29139822864863885,
+          "min_self_collision_m": 0.040821309493375375,
+          "min_joint_margin": 0.6673917249930028,
+          "max_ref_fk_error_mm": 0.003541705973686072
+        },
+        {
+          "start": [
+            6,
+            3
+          ],
+          "goal": [
+            5,
+            4
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 16.395616467554913,
+          "max_reference_speed_fraction": 0.207665050492779,
+          "min_self_collision_m": 0.04082130700872281,
+          "min_joint_margin": 0.7570088134499,
+          "max_ref_fk_error_mm": 0.003541705973686072
+        },
+        {
+          "start": [
+            6,
+            3
+          ],
+          "goal": [
+            5,
+            7
+          ],
+          "duration": 0.85,
+          "stroke_mm": 0.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 14.43554110719775,
+          "max_reference_speed_fraction": 0.5061884561490254,
+          "min_self_collision_m": 0.04044662090224173,
+          "min_joint_margin": 0.49780536785089957,
+          "max_ref_fk_error_mm": 0.003541705973686072
+        },
+        {
+          "start": [
+            6,
+            3
+          ],
+          "goal": [
+            5,
+            8
+          ],
+          "duration": 0.85,
+          "stroke_mm": 0.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 14.43554110719775,
+          "max_reference_speed_fraction": 0.1809744330946664,
+          "min_self_collision_m": 0.04082127486143815,
+          "min_joint_margin": 0.7783420778994641,
+          "max_ref_fk_error_mm": 0.003999899062138818
+        },
+        {
+          "start": [
+            6,
+            3
+          ],
+          "goal": [
+            6,
+            3
+          ],
+          "duration": 0.85,
+          "stroke_mm": 0.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 0.0,
+          "max_reference_speed_fraction": 0.05791185923657134,
+          "min_self_collision_m": 0.040825496226358525,
+          "min_joint_margin": 0.7783420778994641,
+          "max_ref_fk_error_mm": 0.003541705973686072
+        },
+        {
+          "start": [
+            6,
+            3
+          ],
+          "goal": [
+            6,
+            2
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 8.074106772977874,
+          "max_reference_speed_fraction": 0.0972772518947664,
+          "min_self_collision_m": 0.040821271617955325,
+          "min_joint_margin": 0.7299720855157521,
+          "max_ref_fk_error_mm": 0.003541705973686072
+        },
+        {
+          "start": [
+            6,
+            3
+          ],
+          "goal": [
+            6,
+            4
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 7.720372947369144,
+          "max_reference_speed_fraction": 0.09449519922530976,
+          "min_self_collision_m": 0.04082127153949827,
+          "min_joint_margin": 0.7783420778994641,
+          "max_ref_fk_error_mm": 0.003541705973686072
+        },
+        {
+          "start": [
+            6,
+            3
+          ],
+          "goal": [
+            6,
+            7
+          ],
+          "duration": 0.85,
+          "stroke_mm": 0.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 0.0,
+          "max_reference_speed_fraction": 0.2801693944338968,
+          "min_self_collision_m": 0.040821273512937635,
+          "min_joint_margin": 0.5499133161105421,
+          "max_ref_fk_error_mm": 0.003541705973686072
+        },
+        {
+          "start": [
+            6,
+            3
+          ],
+          "goal": [
+            6,
+            8
+          ],
+          "duration": 0.85,
+          "stroke_mm": 0.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 0.0,
+          "max_reference_speed_fraction": 0.27097992866594256,
+          "min_self_collision_m": 0.04082127249347791,
+          "min_joint_margin": 0.7783420778994641,
+          "max_ref_fk_error_mm": 0.003541705973686072
+        },
+        {
+          "start": [
+            6,
+            2
+          ],
+          "goal": [
+            5,
+            3
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 16.937766433850985,
+          "max_reference_speed_fraction": 0.2177242975916701,
+          "min_self_collision_m": 0.040821617969789135,
+          "min_joint_margin": 0.7126825984420355,
+          "max_ref_fk_error_mm": 0.002950871039738956
+        },
+        {
+          "start": [
+            6,
+            2
+          ],
+          "goal": [
+            5,
+            2
+          ],
+          "duration": 0.85,
+          "stroke_mm": 0.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 15.020512805867565,
+          "max_reference_speed_fraction": 0.2589026726172855,
+          "min_self_collision_m": 0.040821617969789135,
+          "min_joint_margin": 0.6673852726088341,
+          "max_ref_fk_error_mm": 0.003998902029829692
+        },
+        {
+          "start": [
+            6,
+            2
+          ],
+          "goal": [
+            5,
+            4
+          ],
+          "duration": 0.85,
+          "stroke_mm": 16.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 21.750966924573735,
+          "max_reference_speed_fraction": 0.18242957848484934,
+          "min_self_collision_m": 0.040821617969789135,
+          "min_joint_margin": 0.7299685220347931,
+          "max_ref_fk_error_mm": 0.0026885537923284574
+        },
+        {
+          "start": [
+            6,
+            2
+          ],
+          "goal": [
+            5,
+            7
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 16.937766433850985,
+          "max_reference_speed_fraction": 0.4906050698319739,
+          "min_self_collision_m": 0.04044618597659168,
+          "min_joint_margin": 0.49780537063957153,
+          "max_ref_fk_error_mm": 0.0026885537923284574
+        },
+        {
+          "start": [
+            6,
+            2
+          ],
+          "goal": [
+            5,
+            8
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 16.937766433850985,
+          "max_reference_speed_fraction": 0.22563760434010602,
+          "min_self_collision_m": 0.040821617969789135,
+          "min_joint_margin": 0.7299685220347931,
+          "max_ref_fk_error_mm": 0.0026885537923284574
+        },
+        {
+          "start": [
+            6,
+            2
+          ],
+          "goal": [
+            6,
+            3
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 8.074106772977876,
+          "max_reference_speed_fraction": 0.09725267476952108,
+          "min_self_collision_m": 0.04082127165405773,
+          "min_joint_margin": 0.7299685220347931,
+          "max_ref_fk_error_mm": 0.0026885537923284574
+        },
+        {
+          "start": [
+            6,
+            2
+          ],
+          "goal": [
+            6,
+            2
+          ],
+          "duration": 0.85,
+          "stroke_mm": 0.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 0.0,
+          "max_reference_speed_fraction": 0.06005893592851867,
+          "min_self_collision_m": 0.040821617969789135,
+          "min_joint_margin": 0.7299685220347931,
+          "max_ref_fk_error_mm": 0.0026885537923284574
+        },
+        {
+          "start": [
+            6,
+            2
+          ],
+          "goal": [
+            6,
+            4
+          ],
+          "duration": 0.85,
+          "stroke_mm": 16.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 15.793195225163078,
+          "max_reference_speed_fraction": 0.1343993273481484,
+          "min_self_collision_m": 0.04082127255441016,
+          "min_joint_margin": 0.7299685220347931,
+          "max_ref_fk_error_mm": 0.0026885537923284574
+        },
+        {
+          "start": [
+            6,
+            2
+          ],
+          "goal": [
+            6,
+            7
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 8.074106772977876,
+          "max_reference_speed_fraction": 0.26635428154914714,
+          "min_self_collision_m": 0.040821617969789135,
+          "min_joint_margin": 0.5499133170352124,
+          "max_ref_fk_error_mm": 0.0026885537923284574
+        },
+        {
+          "start": [
+            6,
+            2
+          ],
+          "goal": [
+            6,
+            8
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 8.074106772977876,
+          "max_reference_speed_fraction": 0.3177580865974822,
+          "min_self_collision_m": 0.04082127097871917,
+          "min_joint_margin": 0.7299685220347931,
+          "max_ref_fk_error_mm": 0.0026885537923284574
+        },
+        {
+          "start": [
+            6,
+            4
+          ],
+          "goal": [
+            5,
+            3
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 15.866975683849157,
+          "max_reference_speed_fraction": 0.2797514110970008,
+          "min_self_collision_m": 0.04082139465159856,
+          "min_joint_margin": 0.7126869874546142,
+          "max_ref_fk_error_mm": 0.00399476720692839
+        },
+        {
+          "start": [
+            6,
+            4
+          ],
+          "goal": [
+            5,
+            2
+          ],
+          "duration": 0.85,
+          "stroke_mm": 16.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 21.094638186172528,
+          "max_reference_speed_fraction": 0.32592349650015584,
+          "min_self_collision_m": 0.040821283513609426,
+          "min_joint_margin": 0.6673917249968953,
+          "max_ref_fk_error_mm": 0.003854406364852785
+        },
+        {
+          "start": [
+            6,
+            4
+          ],
+          "goal": [
+            5,
+            4
+          ],
+          "duration": 0.85,
+          "stroke_mm": 0.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 13.855478134978277,
+          "max_reference_speed_fraction": 0.2371407832408536,
+          "min_self_collision_m": 0.04082128075640685,
+          "min_joint_margin": 0.7570069104850465,
+          "max_ref_fk_error_mm": 0.0038628648602193755
+        },
+        {
+          "start": [
+            6,
+            4
+          ],
+          "goal": [
+            5,
+            7
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 15.866975683849157,
+          "max_reference_speed_fraction": 0.5271673863544076,
+          "min_self_collision_m": 0.040447053167832404,
+          "min_joint_margin": 0.4978053648255871,
+          "max_ref_fk_error_mm": 0.003854406364852785
+        },
+        {
+          "start": [
+            6,
+            4
+          ],
+          "goal": [
+            5,
+            8
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 15.866975683849157,
+          "max_reference_speed_fraction": 0.20175222711393237,
+          "min_self_collision_m": 0.040821277602407606,
+          "min_joint_margin": 0.8250928707414502,
+          "max_ref_fk_error_mm": 0.003854406364852785
+        },
+        {
+          "start": [
+            6,
+            4
+          ],
+          "goal": [
+            6,
+            3
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 7.720372947369144,
+          "max_reference_speed_fraction": 0.0945063381461886,
+          "min_self_collision_m": 0.040821271545326845,
+          "min_joint_margin": 0.7783473169186563,
+          "max_ref_fk_error_mm": 0.003854406364852785
+        },
+        {
+          "start": [
+            6,
+            4
+          ],
+          "goal": [
+            6,
+            2
+          ],
+          "duration": 0.85,
+          "stroke_mm": 16.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 15.793230627260845,
+          "max_reference_speed_fraction": 0.13426745651206332,
+          "min_self_collision_m": 0.040821272429716206,
+          "min_joint_margin": 0.7299704076543874,
+          "max_ref_fk_error_mm": 0.003854406364852785
+        },
+        {
+          "start": [
+            6,
+            4
+          ],
+          "goal": [
+            6,
+            4
+          ],
+          "duration": 0.85,
+          "stroke_mm": 0.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 0.0,
+          "max_reference_speed_fraction": 0.05597496120403115,
+          "min_self_collision_m": 0.04082570348394349,
+          "min_joint_margin": 0.8250928707414502,
+          "max_ref_fk_error_mm": 0.003854406364852785
+        },
+        {
+          "start": [
+            6,
+            4
+          ],
+          "goal": [
+            6,
+            7
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 7.720372947369144,
+          "max_reference_speed_fraction": 0.2945077524078544,
+          "min_self_collision_m": 0.040821271723393615,
+          "min_joint_margin": 0.5499133152096176,
+          "max_ref_fk_error_mm": 0.003854406364852785
+        },
+        {
+          "start": [
+            6,
+            4
+          ],
+          "goal": [
+            6,
+            8
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 7.720372947369144,
+          "max_reference_speed_fraction": 0.22494217768322633,
+          "min_self_collision_m": 0.0408236660455503,
+          "min_joint_margin": 0.8250928707414502,
+          "max_ref_fk_error_mm": 0.003854406364852785
+        },
+        {
+          "start": [
+            6,
+            7
+          ],
+          "goal": [
+            5,
+            3
+          ],
+          "duration": 0.85,
+          "stroke_mm": 0.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 14.43554110719775,
+          "max_reference_speed_fraction": 0.20026076672652704,
+          "min_self_collision_m": 0.04084687896539525,
+          "min_joint_margin": 0.549913324516969,
+          "max_ref_fk_error_mm": 1.4330294445676874e-07
+        },
+        {
+          "start": [
+            6,
+            7
+          ],
+          "goal": [
+            5,
+            2
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 16.652157000850586,
+          "max_reference_speed_fraction": 0.2366117568357741,
+          "min_self_collision_m": 0.04084687896539525,
+          "min_joint_margin": 0.549913324516969,
+          "max_ref_fk_error_mm": 0.00399419010314692
+        },
+        {
+          "start": [
+            6,
+            7
+          ],
+          "goal": [
+            5,
+            4
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 16.395616467554913,
+          "max_reference_speed_fraction": 0.20628725205790951,
+          "min_self_collision_m": 0.04084687896539525,
+          "min_joint_margin": 0.549913324516969,
+          "max_ref_fk_error_mm": 1.5515083712796249e-07
+        },
+        {
+          "start": [
+            6,
+            7
+          ],
+          "goal": [
+            5,
+            7
+          ],
+          "duration": 0.85,
+          "stroke_mm": 0.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 14.43554110719775,
+          "max_reference_speed_fraction": 0.3986313519185889,
+          "min_self_collision_m": 0.04045337070830768,
+          "min_joint_margin": 0.497805369752782,
+          "max_ref_fk_error_mm": 7.440606937296175e-07
+        },
+        {
+          "start": [
+            6,
+            7
+          ],
+          "goal": [
+            5,
+            8
+          ],
+          "duration": 0.85,
+          "stroke_mm": 0.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 14.43554110719775,
+          "max_reference_speed_fraction": 0.39526482766231574,
+          "min_self_collision_m": 0.04084687896539525,
+          "min_joint_margin": 0.549913324516969,
+          "max_ref_fk_error_mm": 3.4191470750337083e-06
+        },
+        {
+          "start": [
+            6,
+            7
+          ],
+          "goal": [
+            6,
+            3
+          ],
+          "duration": 0.85,
+          "stroke_mm": 0.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 0.0,
+          "max_reference_speed_fraction": 0.28134913541367895,
+          "min_self_collision_m": 0.04082127097983415,
+          "min_joint_margin": 0.549913324516969,
+          "max_ref_fk_error_mm": 1.3213570748411417e-06
+        },
+        {
+          "start": [
+            6,
+            7
+          ],
+          "goal": [
+            6,
+            2
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 8.074106772977874,
+          "max_reference_speed_fraction": 0.2672408711253061,
+          "min_self_collision_m": 0.04082140489790278,
+          "min_joint_margin": 0.549913324516969,
+          "max_ref_fk_error_mm": 7.282948912430861e-07
+        },
+        {
+          "start": [
+            6,
+            7
+          ],
+          "goal": [
+            6,
+            4
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 7.720372947369144,
+          "max_reference_speed_fraction": 0.29425833863452583,
+          "min_self_collision_m": 0.04082128565837954,
+          "min_joint_margin": 0.549913324516969,
+          "max_ref_fk_error_mm": 2.1194559450736863e-06
+        },
+        {
+          "start": [
+            6,
+            7
+          ],
+          "goal": [
+            6,
+            7
+          ],
+          "duration": 0.85,
+          "stroke_mm": 0.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 0.0,
+          "max_reference_speed_fraction": 0.07380928647155868,
+          "min_self_collision_m": 0.04084687896539525,
+          "min_joint_margin": 0.549913324516969,
+          "max_ref_fk_error_mm": 1.4226537415237203e-07
+        },
+        {
+          "start": [
+            6,
+            7
+          ],
+          "goal": [
+            6,
+            8
+          ],
+          "duration": 0.85,
+          "stroke_mm": 0.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 0.0,
+          "max_reference_speed_fraction": 0.4922904294470162,
+          "min_self_collision_m": 0.040821271008713404,
+          "min_joint_margin": 0.549913324516969,
+          "max_ref_fk_error_mm": 1.9217119968796367e-05
+        },
+        {
+          "start": [
+            6,
+            8
+          ],
+          "goal": [
+            5,
+            3
+          ],
+          "duration": 0.85,
+          "stroke_mm": 0.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 14.43554110719775,
+          "max_reference_speed_fraction": 0.3781111338229591,
+          "min_self_collision_m": 0.040821286335453524,
+          "min_joint_margin": 0.7126869827289963,
+          "max_ref_fk_error_mm": 5.720690798130727e-06
+        },
+        {
+          "start": [
+            6,
+            8
+          ],
+          "goal": [
+            5,
+            2
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 16.652157000850586,
+          "max_reference_speed_fraction": 0.40634606036304627,
+          "min_self_collision_m": 0.040821283855885716,
+          "min_joint_margin": 0.6673917183382476,
+          "max_ref_fk_error_mm": 9.28604317035893e-06
+        },
+        {
+          "start": [
+            6,
+            8
+          ],
+          "goal": [
+            5,
+            4
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 16.395616467554913,
+          "max_reference_speed_fraction": 0.35264120288642575,
+          "min_self_collision_m": 0.04082130680391034,
+          "min_joint_margin": 0.7570130165163025,
+          "max_ref_fk_error_mm": 3.5203925054693e-06
+        },
+        {
+          "start": [
+            6,
+            8
+          ],
+          "goal": [
+            5,
+            7
+          ],
+          "duration": 0.85,
+          "stroke_mm": 0.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 14.43554110719775,
+          "max_reference_speed_fraction": 0.6659335790685658,
+          "min_self_collision_m": 0.040440813377396655,
+          "min_joint_margin": 0.49780531077936563,
+          "max_ref_fk_error_mm": 0.0002254231335427932
+        },
+        {
+          "start": [
+            6,
+            8
+          ],
+          "goal": [
+            5,
+            8
+          ],
+          "duration": 0.85,
+          "stroke_mm": 0.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 14.43554110719775,
+          "max_reference_speed_fraction": 0.1873831061868001,
+          "min_self_collision_m": 0.04082129962785497,
+          "min_joint_margin": 0.9098189661781655,
+          "max_ref_fk_error_mm": 0.002746372097404108
+        },
+        {
+          "start": [
+            6,
+            8
+          ],
+          "goal": [
+            6,
+            3
+          ],
+          "duration": 0.85,
+          "stroke_mm": 0.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 0.0,
+          "max_reference_speed_fraction": 0.27119877360780476,
+          "min_self_collision_m": 0.04082127140249648,
+          "min_joint_margin": 0.7783478679095599,
+          "max_ref_fk_error_mm": 1.2153022097517304e-06
+        },
+        {
+          "start": [
+            6,
+            8
+          ],
+          "goal": [
+            6,
+            2
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 8.074106772977874,
+          "max_reference_speed_fraction": 0.3181531055970546,
+          "min_self_collision_m": 0.04082127756459602,
+          "min_joint_margin": 0.7299726197444849,
+          "max_ref_fk_error_mm": 1.2153022097517304e-06
+        },
+        {
+          "start": [
+            6,
+            8
+          ],
+          "goal": [
+            6,
+            4
+          ],
+          "duration": 0.85,
+          "stroke_mm": 8.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 7.720372947369144,
+          "max_reference_speed_fraction": 0.22503435951978026,
+          "min_self_collision_m": 0.0408235291431567,
+          "min_joint_margin": 0.8251017531523261,
+          "max_ref_fk_error_mm": 1.2153022097517304e-06
+        },
+        {
+          "start": [
+            6,
+            8
+          ],
+          "goal": [
+            6,
+            7
+          ],
+          "duration": 0.85,
+          "stroke_mm": 0.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 0.0,
+          "max_reference_speed_fraction": 0.4928015257906523,
+          "min_self_collision_m": 0.0408212799301402,
+          "min_joint_margin": 0.5499132903906663,
+          "max_ref_fk_error_mm": 1.7304551573188926e-05
+        },
+        {
+          "start": [
+            6,
+            8
+          ],
+          "goal": [
+            6,
+            8
+          ],
+          "duration": 0.85,
+          "stroke_mm": 0.0,
+          "legal": true,
+          "reason": "passed",
+          "cost_mm": 0.0,
+          "max_reference_speed_fraction": 0.049239769002297984,
+          "min_self_collision_m": 0.0408235291431567,
+          "min_joint_margin": 0.9269778021775115,
+          "max_ref_fk_error_mm": 1.2153022097517304e-06
+        }
+      ]
+    }
+  }
+}

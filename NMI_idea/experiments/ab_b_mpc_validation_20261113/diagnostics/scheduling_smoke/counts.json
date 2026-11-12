@@ -1,0 +1,34 @@
+{
+  "daughter/wide/nominal/MPC": {
+    "correct": 3,
+    "n": 4
+  },
+  "daughter/wide/nominal/MPC_rec1": {
+    "correct": 3,
+    "n": 4
+  },
+  "daughter/wide/nominal/B_status": {
+    "correct": 3,
+    "n": 4
+  },
+  "daughter/wide/nominal/B_bound": {
+    "correct": 3,
+    "n": 4
+  },
+  "trunk/wide/nominal/MPC": {
+    "correct": 4,
+    "n": 4
+  },
+  "trunk/wide/nominal/MPC_rec1": {
+    "correct": 4,
+    "n": 4
+  },
+  "trunk/wide/nominal/B_status": {
+    "correct": 4,
+    "n": 4
+  },
+  "trunk/wide/nominal/B_bound": {
+    "correct": 4,
+    "n": 4
+  }
+}

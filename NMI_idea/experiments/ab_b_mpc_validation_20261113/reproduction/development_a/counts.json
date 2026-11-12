@@ -1,0 +1,130 @@
+{
+  "daughter/narrow/nominal/MPC": {
+    "correct": 14,
+    "n": 24
+  },
+  "daughter/narrow/nominal/MPC_rec1": {
+    "correct": 14,
+    "n": 24
+  },
+  "daughter/narrow/nominal/B_status": {
+    "correct": 14,
+    "n": 24
+  },
+  "daughter/narrow/nominal/B_bound": {
+    "correct": 14,
+    "n": 24
+  },
+  "daughter/narrow/block/MPC": {
+    "correct": 11,
+    "n": 24
+  },
+  "daughter/narrow/block/MPC_rec1": {
+    "correct": 12,
+    "n": 24
+  },
+  "daughter/narrow/block/B_status": {
+    "correct": 11,
+    "n": 24
+  },
+  "daughter/narrow/block/B_bound": {
+    "correct": 11,
+    "n": 24
+  },
+  "daughter/wide/nominal/MPC": {
+    "correct": 14,
+    "n": 24
+  },
+  "daughter/wide/nominal/MPC_rec1": {
+    "correct": 15,
+    "n": 24
+  },
+  "daughter/wide/nominal/B_status": {
+    "correct": 14,
+    "n": 24
+  },
+  "daughter/wide/nominal/B_bound": {
+    "correct": 14,
+    "n": 24
+  },
+  "daughter/wide/block/MPC": {
+    "correct": 13,
+    "n": 24
+  },
+  "daughter/wide/block/MPC_rec1": {
+    "correct": 14,
+    "n": 24
+  },
+  "daughter/wide/block/B_status": {
+    "correct": 12,
+    "n": 24
+  },
+  "daughter/wide/block/B_bound": {
+    "correct": 12,
+    "n": 24
+  },
+  "trunk/narrow/nominal/MPC": {
+    "correct": 24,
+    "n": 24
+  },
+  "trunk/narrow/nominal/MPC_rec1": {
+    "correct": 23,
+    "n": 24
+  },
+  "trunk/narrow/nominal/B_status": {
+    "correct": 22,
+    "n": 24
+  },
+  "trunk/narrow/nominal/B_bound": {
+    "correct": 22,
+    "n": 24
+  },
+  "trunk/narrow/block/MPC": {
+    "correct": 24,
+    "n": 24
+  },
+  "trunk/narrow/block/MPC_rec1": {
+    "correct": 23,
+    "n": 24
+  },
+  "trunk/narrow/block/B_status": {
+    "correct": 22,
+    "n": 24
+  },
+  "trunk/narrow/block/B_bound": {
+    "correct": 22,
+    "n": 24
+  },
+  "trunk/wide/nominal/MPC": {
+    "correct": 24,
+    "n": 24
+  },
+  "trunk/wide/nominal/MPC_rec1": {
+    "correct": 23,
+    "n": 24
+  },
+  "trunk/wide/nominal/B_status": {
+    "correct": 22,
+    "n": 24
+  },
+  "trunk/wide/nominal/B_bound": {
+    "correct": 22,
+    "n": 24
+  },
+  "trunk/wide/block/MPC": {
+    "correct": 24,
+    "n": 24
+  },
+  "trunk/wide/block/MPC_rec1": {
+    "correct": 23,
+    "n": 24
+  },
+  "trunk/wide/block/B_status": {
+    "correct": 22,
+    "n": 24
+  },
+  "trunk/wide/block/B_bound": {
+    "correct": 22,
+    "n": 24
+  }
+}
