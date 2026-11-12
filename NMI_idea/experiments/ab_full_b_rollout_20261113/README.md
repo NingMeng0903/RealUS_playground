@@ -1,5 +1,7 @@
 # Full-episode B versus replanning MPC
 
+[Continuation-specific value prediction and 512-case follow-up](../ab_continuation_b_20261113/README.md)
+
 This study implements the full comparison requested after the [earlier B experiments](../ab_b_mpc_validation_20261113/README.md). It compares direct execution of the shared MPC with a two- or three-acquisition public-history option followed by that **same MPC to task termination**. It uses fresh synthetic ultrasound centroids and actual sampled kinematic costs from a checked robot graph. The original moving-Y data remain a separate historical experiment.
 
 **Result.** The frozen B admission rule never switched from MPC in the independent cohort. Forcing the selected options exercised actual observation branches, early handoffs and recovery, without a reliable improvement at equivalent motion. A separate active cost diagnostic met the all-case sampled-motion margins and found one additional correct daughter completion alongside one additional wrong confirmation. Single-trunk outcomes tied.

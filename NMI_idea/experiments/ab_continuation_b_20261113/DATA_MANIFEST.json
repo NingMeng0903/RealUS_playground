@@ -1,0 +1,68 @@
+{
+  "files": {
+    "README.md": "7cc1ccdd357220dd9edaa5c2457a41256a7c7b0cff3e5363c001bfe761395f07",
+    "PROTOCOL.md": "6b85676135a2f7e5a8277acbf095e513a1e0368751dccfaee9428cc3625e495c",
+    "INDEPENDENT_REVIEW.md": "b8a85f75c07686e29ebbb5b951f1e5c0cf6547dd976e4175be2bc62acf069f1f",
+    "FREEZE.json": "a463587e33ca83e049eb0c231708181923921d8ef18a84d0b50ac198899cefd5",
+    "continuations.py": "ab2f4086c52999aad25ed543760460d41e7efb3d6f8d16581c4bf048cc32eac0",
+    "opportunity.py": "8684a4f8c9019ea9411a07ca2f14676a406fd5c3b3bdb102d6da293afb122eca",
+    "paired_metrics.py": "b7184eb70985a208af58422c25be0cfedfedc92f69c4d9c960584753101ad30b",
+    "predictor.py": "a9f84bc1fb32ce9621136685a8c2ae611ef5475de2d4ee9592e2c9c4c5ff6ba9",
+    "validate.py": "2b93eb89d21f778855c5c3faa5c2accbd44d8844426278504e3539828b9d02aa",
+    "model/predictor.json": "eb482dc81c67a75b16b95ec4ca69efeb505415b4400d65e605aa2b317b9935e2",
+    "model/forecast_audit.json": "63d3a076969148bf47130867b5ce92d063a6659ab3a388a7cdd00d45f993c204",
+    "independent/audit_replay.py": "d1d496d892a603a45b60546ee53052eaf49ac0b8ab125d90c5f7112c15742644",
+    "independent/audit_summary.py": "d39dab76fbdff23599113f64dabb464e66d1aa03aecbfea5357087e9acfd9fdc",
+    "independent/confirmation_replay.json": "0d7e679c9f17d48db26fbc54486297771f4a615182321162b9a84d45b9c42c8d",
+    "independent/confirmation_summary.log": "de4344c93bb26c2881548027ab4409d868bd777079f2d09ade71831fbabe8dc2",
+    "independent/AUDIT_RESULTS.md": "abc037c8b0f5f684463ae65d0fc4dadb94ac4839bb67fb4778da9fd07954b515",
+    "data/pilot/settings.json": "2ec594669655fb7141977fd25ce85a3aa1973d163608d6d216d993b1847136e4",
+    "data/pilot/cases.jsonl.xz": "447804f4d5ea1ef787a6102e349aebb9d9497eaa12386db99136522ae375a118",
+    "data/oracle/opportunity.json": "2daaf050078306c761e6bead5bca05a0d997d38be280daac3ec0bf0a21911d3e",
+    "data/oracle/settings.json": "d9dab92f77940cf46b0ea4fcd91d42c08d9fbe0bbb57c6577625048bf764496c",
+    "data/oracle/cases.jsonl.xz": "5b0f8dae1a091c8cdc2a7e9c895487380dd75681032ea48782fc4ee7433c9508",
+    "data/extended_oracle/opportunity.json": "2da322257390c37a1358f67e8de1ab35385b79950af7b313c55ca60c2f888283",
+    "data/extended_oracle/settings.json": "96b10c9f7d839452fb0c13628a704f1c828cd26fbe698cf2687cc6a335b5899e",
+    "data/extended_oracle/cases.jsonl.xz": "0fc26e3b8d0286f8536a5ce26a6c765d5468dff6c1f9b93338a82233368d50ae",
+    "data/train/settings.json": "f6cee1d31e60135ea93d9a6376499fd17c9817e07dd863b9d07d7500dc0a53db",
+    "data/train/cases.jsonl.xz": "73ed2a09e19390b39a8a823c9d1adeaa424bfcffef8c6e451157166c92d819e9",
+    "data/development/settings.json": "3fafa27a95a9923219637e9c68cdce59b331eaaf98b15e486365df138a0928f1",
+    "data/development/cases.jsonl.xz": "d31bdb37ba5af1bba4684e715d799eee7ce793c8d790a43fcf8d382481c90011",
+    "data/policy_pilot/paired.json": "2424990828744cc7a01b69debc823faae513141a1f0fba6a52fe94d7acc30b10",
+    "data/policy_pilot/settings.json": "724a70d2129ead1e506e74c13df72d65943bfc3e6f9e61e49f9a2e68572404db",
+    "data/policy_pilot/cases.jsonl.xz": "6327c36dde7ffcde55278acfd92b5661a444389d3ac1af584140d380fa262220",
+    "data/confirmation/paired.json": "3f0eeb18a6daf9b1bd30976f4502e6e7b3a396515de3b45e35ad4c6cdb8b68fe",
+    "data/confirmation/settings.json": "065957ea426c10f691d1b91057e18d504e410818db2872b67b8eb9d60cca8a53",
+    "data/confirmation/cases.jsonl.xz": "fbabae7e88617805acfa85bda35852e559675d717d7913f23fcd831dfe0ca7a6"
+  },
+  "decompressed": {
+    "data/pilot/cases.jsonl": {
+      "bytes": 106734,
+      "sha256": "cb90b0b02a1bb41e9072bd2d3ecc8f4ddf02d35dd6c3dbe1cb72ea17e272d764"
+    },
+    "data/oracle/cases.jsonl": {
+      "bytes": 5537114,
+      "sha256": "96149d83d3f8e8f2e85e5eac6cd62b4bdcdda1cbb060f677699b2ba345b4df95"
+    },
+    "data/extended_oracle/cases.jsonl": {
+      "bytes": 29098097,
+      "sha256": "4c705c0b9c8f915753c9c58d12643e8f8c448ebef8dfb9f715d39da68210db49"
+    },
+    "data/train/cases.jsonl": {
+      "bytes": 35146390,
+      "sha256": "2d7f6eac5e56aad92fc8270a69f30fc24e366a6bca76b0a8a2166c460dbfcc2d"
+    },
+    "data/development/cases.jsonl": {
+      "bytes": 13835662,
+      "sha256": "bcc93478f2a41016142cc76a1b892c05b462d6d1b21801737621e0d3a6b7f9ad"
+    },
+    "data/policy_pilot/cases.jsonl": {
+      "bytes": 383616,
+      "sha256": "827562630b93bb6c36d9d3adc09294c40fdd8ff4fb3af7603e9e4937cff17972"
+    },
+    "data/confirmation/cases.jsonl": {
+      "bytes": 49012089,
+      "sha256": "6fc3a94db40628a2db5ec34f0f40e8b58df0635faeadd7a854f96043afb2b129"
+    }
+  }
+}

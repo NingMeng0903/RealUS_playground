@@ -1,0 +1,41 @@
+{
+  "frozen_local_time": "2026-11-13T04:44:32+08:00",
+  "prior_commit": "9eb12307d77fdd503006c42e640bce3fcc985126",
+  "shared_bank_sha256": "a29cad4b5fe37760093e312c5be7a140d7905252c51fe42905908b9fad339e47",
+  "confirmation_namespace": 717004,
+  "confirmation": {
+    "n": 512,
+    "tasks": [
+      "daughter",
+      "trunk"
+    ],
+    "depths": [
+      0,
+      2
+    ],
+    "library": "pairs",
+    "model_size": 256
+  },
+  "primary_arm": "B_cohort",
+  "diagnostic_arms": [
+    "B_local",
+    "fixed",
+    "B_hard_cap"
+  ],
+  "input_cohort_decompressed_sha256": {
+    "oracle": "96149d83d3f8e8f2e85e5eac6cd62b4bdcdda1cbb060f677699b2ba345b4df95",
+    "extended_oracle": "4c705c0b9c8f915753c9c58d12643e8f8c448ebef8dfb9f715d39da68210db49",
+    "train": "2d7f6eac5e56aad92fc8270a69f30fc24e366a6bca76b0a8a2166c460dbfcc2d",
+    "development": "bcc93478f2a41016142cc76a1b892c05b462d6d1b21801737621e0d3a6b7f9ad"
+  },
+  "files": {
+    "PROTOCOL.md": "6b85676135a2f7e5a8277acbf095e513a1e0368751dccfaee9428cc3625e495c",
+    "continuations.py": "ab2f4086c52999aad25ed543760460d41e7efb3d6f8d16581c4bf048cc32eac0",
+    "opportunity.py": "8684a4f8c9019ea9411a07ca2f14676a406fd5c3b3bdb102d6da293afb122eca",
+    "paired_metrics.py": "b7184eb70985a208af58422c25be0cfedfedc92f69c4d9c960584753101ad30b",
+    "predictor.py": "a9f84bc1fb32ce9621136685a8c2ae611ef5475de2d4ee9592e2c9c4c5ff6ba9",
+    "validate.py": "2b93eb89d21f778855c5c3faa5c2accbd44d8844426278504e3539828b9d02aa",
+    "model/predictor.json": "eb482dc81c67a75b16b95ec4ca69efeb505415b4400d65e605aa2b317b9935e2",
+    "model/forecast_audit.json": "63d3a076969148bf47130867b5ce92d063a6659ab3a388a7cdd00d45f993c204"
+  }
+}

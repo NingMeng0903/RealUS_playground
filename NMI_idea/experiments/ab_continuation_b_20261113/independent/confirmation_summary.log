@@ -1,0 +1,12 @@
+daughter/0 {'MPC': {'correct': 131, 'wrong': 68}, 'B_cohort': {'correct': 132, 'wrong': 72}, 'B_local': {'correct': 132, 'wrong': 67}, 'fixed': {'correct': 136, 'wrong': 68}, 'B_hard_cap': {'correct': 120, 'wrong': 75}}
+daughter/2 {'MPC': {'correct': 131, 'wrong': 68}, 'B_cohort': {'correct': 141, 'wrong': 67}, 'B_local': {'correct': 130, 'wrong': 69}, 'fixed': {'correct': 142, 'wrong': 69}, 'B_hard_cap': {'correct': 137, 'wrong': 65}}
+trunk/0 {'MPC': {'correct': 425, 'wrong': 33}, 'B_cohort': {'correct': 431, 'wrong': 38}, 'B_local': {'correct': 428, 'wrong': 35}, 'fixed': {'correct': 425, 'wrong': 33}, 'B_hard_cap': {'correct': 431, 'wrong': 42}}
+trunk/2 {'MPC': {'correct': 425, 'wrong': 33}, 'B_cohort': {'correct': 427, 'wrong': 32}, 'B_local': {'correct': 426, 'wrong': 33}, 'fixed': {'correct': 425, 'wrong': 33}, 'B_hard_cap': {'correct': 427, 'wrong': 32}}
+{
+  "freeze_sha256": "a463587e33ca83e049eb0c231708181923921d8ef18a84d0b50ac198899cefd5",
+  "independent_cases": 512,
+  "public_states": 2048,
+  "all_arm_paths_verified": 10240,
+  "logged_edges_verified": 49817,
+  "paired_contrasts_recomputed": 20
+}
