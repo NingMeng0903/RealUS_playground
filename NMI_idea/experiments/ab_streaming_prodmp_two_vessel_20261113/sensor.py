@@ -278,7 +278,7 @@ class Sensor:
         clear = self._clear[None, :, :] & visible[:, None, :]
         missing = 1.0 - clear * present[:, None, :]
         if n == 0:
-            return missing.prod(axis=-1), np.empty((self.n_hypotheses, 4, 0))
+            return missing.prod(axis=-1), np.empty((len(means), len(STATE_INDEX), 0))
         error = (packet - means[:, :, None, :]) / self._noise_sd
         density = (np.exp(-0.5 * error**2) / self._sigma).prod(axis=-1)
         p = clear[..., None] * density[:, None, :, :]
@@ -301,32 +301,51 @@ class Sensor:
         means = np.asarray(means_mm, dtype=float)
         if means.shape != (self.n_hypotheses, 2, 2):
             raise ValueError("means_mm must have shape (hypotheses, roles, 2)")
-        likelihood, association = self._emission_means(self._validate_packet(packet), means)
+        likelihood, association = self.projected_likelihood(packet, means)
         return self._condition(belief, likelihood, association)
+
+    def projected_likelihood(self, packet, means_mm):
+        """Anonymous packet and identity likelihood for any geometry support."""
+        return self._emission_means(self._validate_packet(packet), means_mm)
 
     def _condition(self, belief, likelihood, association):
         belief = self._normalize_belief(belief, (self.n_hypotheses, len(STATE_INDEX)))
         predicted = belief @ self._state_transition
+        return self.condition(predicted, likelihood, association)
+
+    @staticmethod
+    def condition(predicted, likelihood, association):
+        """Apply likelihoods to a joint prior and marginalize identity."""
         joint = predicted * likelihood
         mass = float(joint.sum())
         if not np.isfinite(mass) or mass <= 0.0:
             raise UnsupportedObservation("packet has zero probability under the supplied belief")
         new_belief = joint / mass
-        arterial_probs = np.sum(predicted[:, :, None] * association, axis=(0, 1)) / mass
+        arterial_probs = np.sum(predicted[..., None] * association,
+                                axis=tuple(range(predicted.ndim))) / mass
         return new_belief, arterial_probs
+
+    def predict(self, belief, frames):
+        return belief @ np.linalg.matrix_power(self._state_transition, frames)
 
     def predicted_hit(self, belief, means_mm, frames):
         """Probability of a target packet near centre at a future exposure."""
+        return self.hit_probability(self.predict(belief, frames), means_mm)
+
+    def hit_probability(self, predicted, means_mm):
         means = np.asarray(means_mm, dtype=float)
         lo, hi = FOV_MIN_MM.copy(), FOV_MAX_MM.copy()
         lo[0], hi[0] = -CENTER_TOL_MM, CENTER_TOL_MM
         delta = (ndtr((hi - means) / self._noise_sd) -
                  ndtr((lo - means) / self._noise_sd)).prod(axis=-1)
-        predicted = belief @ np.linalg.matrix_power(self._state_transition, frames)
         clear_artery = predicted[:, self._clear[:, ARTERY]].sum(axis=1)
         return float(clear_artery @ np.where(np.isfinite(delta[:, ARTERY]), delta[:, ARTERY], 0.0))
 
-    def offset_mean(self, belief) -> np.ndarray:
+    def offset_distribution(self, belief, frames=0):
+        """Weights of total effective displacement at the selected horizon."""
+        return belief.sum(axis=1)
+
+    def offset_mean(self, belief, frames=0) -> np.ndarray:
         """Return the posterior mean effective offset in millimetres."""
 
         belief = self._normalize_belief(belief, (self.n_hypotheses, len(STATE_INDEX)))

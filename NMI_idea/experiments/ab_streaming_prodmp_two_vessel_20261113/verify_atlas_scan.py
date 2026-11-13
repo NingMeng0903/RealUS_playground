@@ -7,9 +7,10 @@ from pathlib import Path
 import numpy as np
 from scipy.spatial.transform import Rotation
 
-from atlas_scan import ScanTemplate, project, score, sha
+from atlas_scan import FRAME_COUNT, FRAME_DT_S, RESIDUAL_ARMS, ScanTemplate, project, score, sha
 from atlas_geometry import frame
 from primitive import FRAME_STRIDE, SAMPLE_DT_S, Plan, admissible
+from residual import ResidualFilter, motion_tape, offset_stats
 from sensor import CENTER_TOL_MM, IDENTITY_MIN, Scene, Sensor
 
 
@@ -26,6 +27,11 @@ def verify(template, capability, run):
     shape = template.instantiate((0., 0.), metadata["knee_deg"], beta=metadata["beta"])
     assert metadata == shape.metadata
     sensor = Sensor()
+    motion = report.get("motion")
+    models = {arm: ResidualFilter(sensor, FRAME_DT_S, name, motion["filter_grid_mm"])
+              for arm, name in RESIDUAL_ARMS.items()} if motion else {}
+    scene_rng = np.random.default_rng(report["seed"])
+    motion_rng = np.random.default_rng(motion["seed"]) if motion else None
     assert len(report["cases"]) == report["case_count"]
 
     max_label_error = np.zeros(3)
@@ -34,6 +40,8 @@ def verify(template, capability, run):
     min_clearance = float("inf")
     row_count, sample_count, frame_count = 0, 0, 0
     with np.load(trace_path, allow_pickle=False) as traces:
+        if motion:
+            np.testing.assert_array_equal(traces["offset_axes"], shape.offset_axes)
         np.testing.assert_allclose(traces["nominal_vessels_m"], shape.vessels_m, atol=1.e-12, rtol=0.)
         np.testing.assert_array_equal(traces["vessel_material_xi"], template.vessel_xi)
         max_label_error = coordinate_error(shape.xyz_to_xi(shape.vessels_m), template.vessel_xi)
@@ -72,6 +80,12 @@ def verify(template, capability, run):
             index = case["case"]
             scene = Scene(np.asarray(case["hidden_static_offset_mm"]), np.asarray(case["hidden_calibration_bias_mm"]),
                           traces[f"{index}_clear"], traces[f"{index}_noise_mm"])
+            generated = sensor.scene(scene_rng, FRAME_COUNT)
+            for field in ("offset", "bias", "clear", "noise"):
+                np.testing.assert_array_equal(getattr(scene, field), getattr(generated, field))
+            z_mm = traces[f"{index}_z_mm"] if motion else np.zeros(FRAME_COUNT)
+            if motion:
+                np.testing.assert_array_equal(z_mm, motion_tape(motion_rng, FRAME_COUNT, FRAME_DT_S, motion["kind"]))
             first_q = first_packet = None
             for arm, row in case["arms"].items():
                 key = f"{index}_{arm}"
@@ -95,16 +109,24 @@ def verify(template, capability, run):
                     rate = np.abs(np.diff(q, axis=0)) / (SAMPLE_DT_S * capability.kin.v_max)
                     max_rate = max(max_rate, float(rate.max()))
                     assert rate.max() <= 1. + 1.e-10
-                belief = sensor.prior()
+                model = models.get(arm, sensor)
+                belief = model.prior()
                 frames = []
                 for f, saved in enumerate(row["frames"]):
                     step = f * FRAME_STRIDE
                     pose = realized[step]
-                    measured = project(shape, pose, scene.offset)[0]
-                    physical = project(shape, pose, scene.offset - scene.bias)[0]
+                    effective = scene.offset + [z_mm[f], 0.]
+                    measured = project(shape, pose, effective)[0]
+                    physical = project(shape, pose, effective - scene.bias)[0]
                     packet, role, true_u = sensor.observe_means(scene, f, measured, physical)
-                    means = project(shape, pose, sensor.offsets_mm)
-                    belief, assoc = sensor.update_projected(belief, packet, means)
+                    means = project(shape, pose, model.offsets_mm)
+                    belief, assoc = model.update_projected(belief, packet, means)
+                    if motion:
+                        mean, interval = offset_stats(model, belief)
+                        residual = model.residual_mean(belief) if arm in models else 0.
+                        np.testing.assert_allclose(saved["offset_mean_mm"], mean, rtol=0., atol=1.e-10)
+                        np.testing.assert_array_equal(saved["offset_interval90_mm"], interval)
+                        np.testing.assert_allclose(saved["dynamic_lateral_mean_mm"], residual, rtol=0., atol=1.e-10)
                     if f == 0:
                         if first_packet is None:
                             first_packet = packet
@@ -163,7 +185,7 @@ def main():
         reference_poses = traces["sample_material_probe_poses"].copy()
         reference_vessels = traces["nominal_vessels_m"].copy()
         reference_tapes = {name: traces[name].copy() for name in traces.files
-                           if name.endswith("_clear") or name.endswith("_noise_mm")}
+                           if name.endswith(("_clear", "_noise_mm", "_z_mm"))}
     for run, row in zip(args.runs, records, strict=True):
         cohort = json.loads((run / "SUMMARY.json").read_text())
         with np.load(run / "TRACES.npz", allow_pickle=False) as traces:
@@ -174,13 +196,17 @@ def main():
             row["max_material_probe_rotation_change_vs_first_deg"] = float(np.rad2deg(relative.magnitude()).max())
             row["max_material_vessel_point_change_vs_first_mm"] = float(
                 1000. * np.linalg.norm(traces["nominal_vessels_m"] - reference_vessels, axis=-1).max())
-            for i, case in enumerate(cohort["cases"]):
+            common_cases = min(len(cohort["cases"]), len(ref_report["cases"]))
+            for i, case in enumerate(cohort["cases"][:common_cases]):
                 for k in ("hidden_static_offset_mm", "hidden_calibration_bias_mm"):
                     np.testing.assert_array_equal(case[k], ref_report["cases"][i][k])
                 for suffix in ("clear", "noise_mm"):
                     key = f"{i}_{suffix}"
                     np.testing.assert_array_equal(traces[key], reference_tapes[key])
-            row["matching_disturbance_tapes_vs_first"] = len(cohort["cases"])
+                if cohort.get("motion") == ref_report.get("motion") and cohort.get("motion"):
+                    key = f"{i}_z_mm"
+                    np.testing.assert_array_equal(traces[key], reference_tapes[key])
+            row["matching_disturbance_tapes_vs_first"] = common_cases
     args.out.write_text(json.dumps({"runs": records}, indent=2, allow_nan=False) + "\n")
 
 

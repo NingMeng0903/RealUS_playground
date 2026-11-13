@@ -30,15 +30,28 @@ from primitive import (  # noqa: E402
     Plan,
     admissible,
 )
+from residual import (  # noqa: E402
+    GRID_MM,
+    MOTION_MODES,
+    STATIONARY_SD_MM,
+    TAU_S,
+    ResidualFilter,
+    motion_tape,
+    offset_stats,
+)
 from sensor import CENTER_TOL_MM, IDENTITY_MIN, Sensor, UnsupportedObservation  # noqa: E402
 
 
 SEED = 2026111390
+DYNAMIC_SEED = 2026111403
 VIEWS_MM = (-2., 0., 2.)
 CENTRAL = VIEWS_MM.index(0.)
 FRAMES_PER_BLOCK = BLOCK_STEPS // FRAME_STRIDE
 FRAME_COUNT = TOTAL_STEPS // FRAME_STRIDE + 1
-ARMS = ("mpc_stream", "fixed_first_stream", "mpc_boundary")
+FRAME_DT_S = FRAME_STRIDE * SAMPLE_DT_S
+RESIDUAL_ARMS = {"mpc_iid": "iid", "mpc_ou": "ou"}
+PAIRED_ARMS = ("mpc_stream", *RESIDUAL_ARMS)
+ARMS = (*PAIRED_ARMS, "fixed_first_stream", "mpc_boundary")
 
 
 class KinematicRejection(RuntimeError):
@@ -95,6 +108,8 @@ class Scan:
         self.path = np.linspace(.10 * length, .90 * length, TOTAL_STEPS + 1)
         self.nominal_x, self.nominal_v = self.nominal_path()
         self.sensor = Sensor()
+        self.models = {arm: ResidualFilter(self.sensor, FRAME_DT_S, model)
+                       for arm, model in RESIDUAL_ARMS.items()}
         self.initial_x = float(self.nominal_x[0])
         initial_pose = shape.pose(self.path[0], self.initial_x)
         q = ik(capability, initial_pose, witness, witness[0])
@@ -150,12 +165,12 @@ class Scan:
             poses.append(self.capability.fk(current))
         return Trajectory(plan, np.asarray(joints), np.asarray(poses))
 
-    def acquisition_score(self, trajectory, belief, future_frames):
+    def acquisition_score(self, trajectory, model, belief, future_frames):
         # Expected useful acquisitions at three representative exposures.
         # Score in-segment evidence where the continuation can use it.
         probes = np.unique(np.round(np.linspace(1, FRAMES_PER_BLOCK, 3)).astype(int))
-        value = sum(self.sensor.predicted_hit(
-            belief, self.project(trajectory.poses[frame * FRAME_STRIDE], self.sensor.offsets_mm),
+        value = sum(model.predicted_hit(
+            belief, self.project(trajectory.poses[frame * FRAME_STRIDE], model.offsets_mm),
             future_frames + frame) for frame in probes)
         return value / len(probes)
 
@@ -175,7 +190,7 @@ class Scan:
                     trajectories[goal] = self.candidate(step, end, x, v, goal, q)
         return goals, [trajectories[goal] for goal in goals]
 
-    def select(self, step, x, v, q, belief, fixed_first):
+    def select(self, step, x, v, q, model, belief, fixed_first):
         """Compare fixed two-segment nominal plans, then execute only segment one."""
         end = step + BLOCK_STEPS
         goals, choices = self.choices(step, x, v, q)
@@ -184,14 +199,14 @@ class Scan:
         for i, first in enumerate(choices):
             if first is None:
                 continue
-            immediate[i] = self.acquisition_score(first, belief, 0) - .008 * travel(first.poses)
+            immediate[i] = self.acquisition_score(first, model, belief, 0) - .008 * travel(first.poses)
             if end == TOTAL_STEPS:
                 values[i] = immediate[i]
                 continue
             _, continuation = self.choices(end, first.plan.x[-1], first.plan.v[-1], first.joints[-1])
             for second in continuation:
                 if second is not None:
-                    tail = self.acquisition_score(second, belief, FRAMES_PER_BLOCK) - .008 * travel(second.poses)
+                    tail = self.acquisition_score(second, model, belief, FRAMES_PER_BLOCK) - .008 * travel(second.poses)
                     values[i] = max(values[i], immediate[i] + .65 * tail)
         if not np.any(np.isfinite(immediate)):
             raise KinematicRejection("no feasible first segment from the realized joint state")
@@ -207,18 +222,19 @@ class Scan:
                   "fixed_first_center_available": choices[CENTRAL] is not None}
         return choices[chosen], report
 
-    def revise(self, old, step, end, x, v, q, belief, pose, packet, slot):
+    def revise(self, old, step, end, x, v, q, model, belief, pose, packet, slot):
         # Convert image error in physical mm to the template lateral unit,
         # using the end-of-segment image Jacobian for the current shape.
-        offset = self.sensor.offset_mean(belief)
+        current_offset = model.offset_mean(belief)
+        end_offset = model.offset_mean(belief, (end - step) // FRAME_STRIDE)
         nominal = self.nominal_x[end]
         lateral = np.clip([nominal - .05, nominal + .05], *LATERAL_BOUNDS_MM)
         end_poses = self.shape.pose(self.path[end], [lateral[0], nominal, lateral[1]])
-        left, center, right = [self.project(p, offset)[0, 0, 0] for p in end_poses]
+        left, center, right = [self.project(p, end_offset)[0, 0, 0] for p in end_poses]
         derivative = (left - right) / (lateral[1] - lateral[0])
         if not np.isfinite(derivative) or derivative <= .10 or not np.isfinite(center):
             return old
-        prediction = self.project(pose, offset)[0, 0, 0]
+        prediction = self.project(pose, current_offset)[0, 0, 0]
         innovation = packet[slot, 0] - prediction if np.isfinite(prediction) else 0.
         goal = nominal + np.clip((center + .28 * innovation) / derivative, -7., 7.)
         if abs(goal - old.plan.goal) < .08:
@@ -230,10 +246,18 @@ class Scan:
                 return updated
         return old
 
-    def execute(self, scene, arm):
+    def observation(self, scene, frame, pose, z_mm):
+        """Generate an observation at the actual FK pose in the shared world."""
+        effective = scene.offset + [z_mm, 0.] if z_mm else scene.offset
+        measured = self.project(pose, effective)[0]
+        physical = self.project(pose, effective - scene.bias)[0]
+        return self.sensor.observe_means(scene, frame, measured, physical)
+
+    def execute(self, scene, arm, motion_mm=None):
         x, v = self.initial_x, 0.
         q, pose = self.initial_q, self.initial_pose
-        belief = self.sensor.prior()
+        model = self.models.get(arm, self.sensor)
+        belief = model.prior()
         joints, poses, lateral = [q], [pose], [[x, v]]
         frames, decisions = [], []
         trajectory, failure = None, None
@@ -241,12 +265,10 @@ class Scan:
         max_handoff_x, max_handoff_v = 0., 0.
         for frame in range(FRAME_COUNT):
             step = frame * FRAME_STRIDE
-            predicted = self.project(pose, self.sensor.offsets_mm)
-            observed = self.project(pose, scene.offset)[0]
-            physical = self.project(pose, scene.offset - scene.bias)[0]
-            packet, roles, true_u = self.sensor.observe_means(scene, frame, observed, physical)
+            means = self.project(pose, model.offsets_mm)
+            packet, roles, true_u = self.observation(scene, frame, pose, 0. if motion_mm is None else motion_mm[frame])
             try:
-                belief, association = self.sensor.update_projected(belief, packet, predicted)
+                belief, association = model.update_projected(belief, packet, means)
             except UnsupportedObservation as error:
                 failure = str(error)
                 break
@@ -260,18 +282,23 @@ class Scan:
                            "artery_probability": association.tolist(), "selected_slot": slot,
                            "accepted": bool(accepted), "correct": bool(correct), "wrong": bool(wrong),
                            "physical_lateral_mm": float(true_u[0]) if np.isfinite(true_u[0]) else None})
+            if motion_mm is not None:
+                mean, interval = offset_stats(model, belief)
+                frames[-1].update(offset_mean_mm=mean.tolist(), offset_interval90_mm=interval.tolist(),
+                                  dynamic_lateral_mean_mm=model.residual_mean(belief) if arm in self.models else 0.)
             if step == TOTAL_STEPS:
                 break
             end = (step // BLOCK_STEPS + 1) * BLOCK_STEPS
             if step % BLOCK_STEPS == 0:
                 try:
-                    trajectory, report = self.select(step, x, v, q, belief, frame == 0 and arm == "fixed_first_stream")
+                    trajectory, report = self.select(step, x, v, q, model, belief,
+                                                     frame == 0 and arm == "fixed_first_stream")
                 except KinematicRejection as error:
                     failure = str(error)
                     break
                 decisions.append(report)
             elif arm != "mpc_boundary" and slot >= 0:
-                updated = self.revise(trajectory, step, end, x, v, q, belief, pose, packet, slot)
+                updated = self.revise(trajectory, step, end, x, v, q, model, belief, pose, packet, slot)
                 if updated is not trajectory:
                     next_old = trajectory.poses[step - trajectory.plan.step + FRAME_STRIDE, :3, 3]
                     next_new = updated.poses[FRAME_STRIDE, :3, 3]
@@ -326,6 +353,8 @@ def main(argv=None):
     parser.add_argument("--knee-deg", type=float, default=15.)
     parser.add_argument("--cases", type=int, default=16)
     parser.add_argument("--arm", action="append", choices=ARMS)
+    parser.add_argument("--motion", choices=MOTION_MODES, default="static",
+                        help="OU and transient worlds default to a paired static-map, IID and OU test")
     args = parser.parse_args(argv)
     if args.cases < 1:
         parser.error("--cases must be positive")
@@ -339,22 +368,29 @@ def main(argv=None):
     witness_id, witness = load_witness(bank)
     with np.load(demonstration, allow_pickle=False) as frozen:
         scan = Scan(shape, capability, witness, frozen["shape_regression"])
-    arms = args.arm or ("mpc_stream",)
+    arms = args.arm or (("mpc_stream",) if args.motion == "static" else PAIRED_ARMS)
+    log_motion = args.motion != "static" or any(arm in RESIDUAL_ARMS for arm in arms)
     rng = np.random.default_rng(SEED)
+    motion_rng = np.random.default_rng(DYNAMIC_SEED)
     cases = []
     ref_stations = shape.s_mm[::8]
     traces = {"witness_q": witness, "nominal_vessels_m": shape.vessels_m,
               "vessel_material_xi": template.vessel_xi,
               "sample_stations_ref_mm": ref_stations,
               "sample_material_probe_poses": shape.pose(ref_stations, np.zeros_like(ref_stations))}
+    if log_motion:
+        traces["offset_axes"] = shape.offset_axes
     for i in range(args.cases):
         scene = scan.sensor.scene(rng, FRAME_COUNT)
+        z_mm = motion_tape(motion_rng, FRAME_COUNT, FRAME_DT_S, args.motion) if log_motion else None
+        if log_motion:
+            traces[f"{i}_z_mm"] = z_mm
         traces[f"{i}_clear"] = scene.clear
         traces[f"{i}_noise_mm"] = scene.noise
         row = {"case": i, "hidden_static_offset_mm": scene.offset.tolist(),
                "hidden_calibration_bias_mm": scene.bias.tolist(), "arms": {}}
         for arm in arms:
-            result, (q, poses, lateral) = scan.execute(scene, arm)
+            result, (q, poses, lateral) = scan.execute(scene, arm, z_mm)
             row["arms"][arm] = result
             key = f"{i}_{arm}"
             traces[f"{key}_q"] = q
@@ -385,6 +421,11 @@ def main(argv=None):
         "means": means,
         "cases": cases,
     }
+    if log_motion:
+        report["scope"] = ("Known static SMPL-X beta and knee pose; two synthetic centreline returns; "
+                           "shared lateral vessel motion relative to the chart; sampled RM75 kinematics")
+        report["motion"] = {"kind": args.motion, "seed": DYNAMIC_SEED, "tau_s": TAU_S,
+                            "stationary_sd_mm": STATIONARY_SD_MM, "filter_grid_mm": GRID_MM}
     args.out.mkdir(parents=True, exist_ok=True)
     (args.out / "SUMMARY.json").write_text(json.dumps(report, indent=2, allow_nan=False) + "\n")
     np.savez_compressed(args.out / "TRACES.npz", station_ref_mm=scan.path, **traces)

@@ -2,6 +2,8 @@
 
 The `run.py atlas` entry evaluates the fixed material chart and its attached probe orientation on a supplied SMPL-X shape before streaming. The cross-shape study provides the transport equations, commands, and paired logs. [Cross-shape scan](CROSS_BETA.md)
 
+Use `run.py atlas --motion ou` for the paired local vessel-motion benchmark. For one execution with the online dynamic map, add `--arm mpc_ou`. The dynamic study includes a short video from the saved closed-loop trace. [Dynamic residual and results](DYNAMIC_RESIDUAL.md)
+
 This mechanism experiment uses the previous static 15° Among_US artery and vein and fixes longitudinal progression and probe orientation. It tests whether ultrasound can change the lateral motion before a segment ends, and whether learning from those corrections improves the result. The previous endpoint experiment captures after motion and dwell. Its ProDMP fits analytical curves generated without image observations. [Previous execution and result](../ab_prodmp_two_vessel_b_20261113/README.md)
 
 ## Demonstrations and execution
