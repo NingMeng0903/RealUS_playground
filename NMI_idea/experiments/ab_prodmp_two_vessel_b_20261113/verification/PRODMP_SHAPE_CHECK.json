@@ -1,0 +1,2125 @@
+{
+  "scope": "matched-endpoint sampled motion only",
+  "learned_accepted": 63,
+  "endpoint_only_accepted": 63,
+  "attempted": 63,
+  "endpoint_only_costs": [
+    [
+      [
+        0.0,
+        0.0,
+        0.0,
+        1.5
+      ],
+      [
+        0.014668199022494272,
+        11.999972595910052,
+        0.0,
+        1.5
+      ],
+      [
+        0.01093870331909315,
+        11.999977562157941,
+        0.0,
+        1.5
+      ],
+      [
+        15.520198744915398,
+        5.327313620731159,
+        124.78630174048865,
+        1.5
+      ],
+      [
+        15.52023763544182,
+        12.814130637887162,
+        124.78630174048865,
+        1.5
+      ],
+      [
+        15.520116755424933,
+        13.429493954629567,
+        124.78630174048865,
+        1.5
+      ],
+      null,
+      null,
+      null
+    ],
+    [
+      [
+        0.014553923474145239,
+        11.999969310987806,
+        0.0,
+        1.5
+      ],
+      [
+        0.0,
+        0.0,
+        0.0,
+        1.5
+      ],
+      [
+        0.015577963908506751,
+        23.999940903506783,
+        0.0,
+        1.5
+      ],
+      [
+        15.520148036092568,
+        13.429489537495643,
+        124.78630174048865,
+        1.5
+      ],
+      [
+        15.520343033336857,
+        5.327360175860294,
+        124.78630174048865,
+        1.5
+      ],
+      [
+        15.520881600943678,
+        24.902154118299862,
+        124.78630174048865,
+        1.5
+      ],
+      null,
+      null,
+      null
+    ],
+    [
+      [
+        0.011690992564255601,
+        11.999986742089625,
+        0.0,
+        1.5
+      ],
+      [
+        0.013915601285815298,
+        23.99994279476317,
+        0.0,
+        1.5
+      ],
+      [
+        0.0,
+        0.0,
+        0.0,
+        1.5
+      ],
+      [
+        15.52004518028531,
+        12.814047739529494,
+        124.78630174048865,
+        1.5
+      ],
+      [
+        15.520131285411194,
+        24.244627527899766,
+        124.78630174048865,
+        1.5
+      ],
+      [
+        15.520087566776963,
+        5.327264529068852,
+        124.78630174048865,
+        1.5
+      ],
+      null,
+      null,
+      null
+    ],
+    [
+      [
+        15.519493709177576,
+        5.32722893514547,
+        124.78630174048865,
+        1.5
+      ],
+      [
+        15.519758798822812,
+        13.429776662962038,
+        124.78630174048865,
+        1.5
+      ],
+      [
+        15.519198864232957,
+        12.813783588841918,
+        124.78630174048865,
+        1.5
+      ],
+      [
+        0.0,
+        0.0,
+        0.0,
+        1.5
+      ],
+      [
+        0.01270483882413386,
+        11.999988547355372,
+        0.0,
+        1.5
+      ],
+      [
+        0.013483443948785527,
+        11.999994228701972,
+        0.0,
+        1.5
+      ],
+      [
+        12.357147668545528,
+        1.1599946137906063,
+        0.0,
+        1.5
+      ],
+      [
+        12.357523768510255,
+        11.252684658654058,
+        0.0,
+        1.5
+      ],
+      [
+        12.357499740789615,
+        12.80867673194056,
+        0.0,
+        1.5
+      ]
+    ],
+    [
+      [
+        15.51944723069178,
+        12.813787649069322,
+        124.78630174048865,
+        1.5
+      ],
+      [
+        15.519681595133397,
+        5.3272636383430285,
+        124.78630174048865,
+        1.5
+      ],
+      [
+        15.519129688254605,
+        24.24460633444244,
+        124.78630174048865,
+        1.5
+      ],
+      [
+        0.012501410478401328,
+        11.999972880546995,
+        0.0,
+        1.5
+      ],
+      [
+        0.0,
+        0.0,
+        0.0,
+        1.5
+      ],
+      [
+        0.008421915678695461,
+        23.999946125878733,
+        0.0,
+        1.5
+      ],
+      [
+        12.35752445146151,
+        12.80864976126309,
+        0.0,
+        1.5
+      ],
+      [
+        12.35716692657774,
+        1.1600063147232438,
+        0.0,
+        1.5
+      ],
+      [
+        12.357725218899565,
+        24.794579512348605,
+        0.0,
+        1.5
+      ]
+    ],
+    [
+      [
+        15.519674473972408,
+        13.429752901386854,
+        124.78630174048865,
+        1.5
+      ],
+      [
+        15.519987163220824,
+        24.902174643299716,
+        124.78630174048865,
+        1.5
+      ],
+      [
+        15.519397270600896,
+        5.327167534800644,
+        124.78630174048865,
+        1.5
+      ],
+      [
+        0.01365933791245949,
+        12.000017300127908,
+        0.0,
+        1.5
+      ],
+      [
+        0.009386553654599696,
+        23.999955009685017,
+        0.0,
+        1.5
+      ],
+      [
+        0.0,
+        0.0,
+        0.0,
+        1.5
+      ],
+      [
+        12.357528946704946,
+        11.252714901541442,
+        0.0,
+        1.5
+      ],
+      [
+        12.358271813999202,
+        23.235606792465205,
+        0.0,
+        1.5
+      ],
+      [
+        12.357133531083246,
+        1.159986425420259,
+        0.0,
+        1.5
+      ]
+    ],
+    [
+      null,
+      null,
+      null,
+      [
+        12.357162474583268,
+        1.1602606149787875,
+        0.0,
+        1.5
+      ],
+      [
+        12.35743880118919,
+        12.808665327873817,
+        0.0,
+        1.5
+      ],
+      [
+        12.357646447610852,
+        11.252697676289811,
+        0.0,
+        1.5
+      ],
+      [
+        0.0,
+        0.0,
+        0.0,
+        1.5
+      ],
+      [
+        0.012604033656022607,
+        11.999987642546834,
+        0.0,
+        1.5
+      ],
+      [
+        0.013011419507763824,
+        11.999998155372186,
+        0.0,
+        1.5
+      ]
+    ],
+    [
+      null,
+      null,
+      null,
+      [
+        12.35757889229704,
+        11.252671373144569,
+        0.0,
+        1.5
+      ],
+      [
+        12.357192249263619,
+        1.1603213451491496,
+        0.0,
+        1.5
+      ],
+      [
+        12.357915543184056,
+        23.235597618553676,
+        0.0,
+        1.5
+      ],
+      [
+        0.012389194614581132,
+        11.999971270828812,
+        0.0,
+        1.5
+      ],
+      [
+        0.0,
+        0.0,
+        0.0,
+        1.5
+      ],
+      [
+        0.008282148929221363,
+        23.999948730686068,
+        0.0,
+        1.5
+      ]
+    ],
+    [
+      null,
+      null,
+      null,
+      [
+        12.357502204171574,
+        12.808692849797447,
+        0.0,
+        1.5
+      ],
+      [
+        12.357785502536416,
+        24.794588413242124,
+        0.0,
+        1.5
+      ],
+      [
+        12.357143093790073,
+        1.1602187007814386,
+        0.0,
+        1.5
+      ],
+      [
+        0.013154494650424854,
+        12.000021258431566,
+        0.0,
+        1.5
+      ],
+      [
+        0.00918009609042568,
+        23.99995799462468,
+        0.0,
+        1.5
+      ],
+      [
+        0.0,
+        0.0,
+        0.0,
+        1.5
+      ]
+    ]
+  ],
+  "edges": [
+    {
+      "edge": [
+        0,
+        0
+      ],
+      "learned_legal": true,
+      "endpoint_only_legal": true,
+      "learned_reason": "passed",
+      "endpoint_only_reason": "passed",
+      "max_same_time_tcp_difference_mm": 0.0,
+      "max_same_time_reference_difference_mm": 0.0,
+      "midpoint_cross_track_tcp_difference_mm": null,
+      "learned_cost": [
+        0.0,
+        0.0,
+        0.0,
+        1.5
+      ],
+      "endpoint_only_cost": [
+        0.0,
+        0.0,
+        0.0,
+        1.5
+      ],
+      "learned_peak_rate_fraction": 0.0,
+      "endpoint_only_peak_rate_fraction": 0.0
+    },
+    {
+      "edge": [
+        0,
+        1
+      ],
+      "learned_legal": true,
+      "endpoint_only_legal": true,
+      "learned_reason": "passed",
+      "endpoint_only_reason": "passed",
+      "max_same_time_tcp_difference_mm": 0.0038886005625981246,
+      "max_same_time_reference_difference_mm": 0.0003737331796304169,
+      "midpoint_cross_track_tcp_difference_mm": null,
+      "learned_cost": [
+        0.01602566346324702,
+        11.99997199539968,
+        0.0,
+        1.5
+      ],
+      "endpoint_only_cost": [
+        0.014668199022494272,
+        11.999972595910052,
+        0.0,
+        1.5
+      ],
+      "learned_peak_rate_fraction": 0.11262502486382243,
+      "endpoint_only_peak_rate_fraction": 0.13440970056600457
+    },
+    {
+      "edge": [
+        0,
+        2
+      ],
+      "learned_legal": true,
+      "endpoint_only_legal": true,
+      "learned_reason": "passed",
+      "endpoint_only_reason": "passed",
+      "max_same_time_tcp_difference_mm": 0.0036624612853767974,
+      "max_same_time_reference_difference_mm": 0.0003737331796304169,
+      "midpoint_cross_track_tcp_difference_mm": null,
+      "learned_cost": [
+        0.016356425749852757,
+        11.999979773792965,
+        0.0,
+        1.5
+      ],
+      "endpoint_only_cost": [
+        0.01093870331909315,
+        11.999977562157941,
+        0.0,
+        1.5
+      ],
+      "learned_peak_rate_fraction": 0.10507597152263878,
+      "endpoint_only_peak_rate_fraction": 0.1259948803745509
+    },
+    {
+      "edge": [
+        0,
+        3
+      ],
+      "learned_legal": true,
+      "endpoint_only_legal": true,
+      "learned_reason": "passed",
+      "endpoint_only_reason": "passed",
+      "max_same_time_tcp_difference_mm": 6.104498840889399,
+      "max_same_time_reference_difference_mm": 6.104443438311091,
+      "midpoint_cross_track_tcp_difference_mm": 1.1218871196804279,
+      "learned_cost": [
+        15.80181281504395,
+        5.327124035110908,
+        124.78630174048865,
+        1.5
+      ],
+      "endpoint_only_cost": [
+        15.520198744915398,
+        5.327313620731159,
+        124.78630174048865,
+        1.5
+      ],
+      "learned_peak_rate_fraction": 0.5791549715623691,
+      "endpoint_only_peak_rate_fraction": 0.7223089298767433
+    },
+    {
+      "edge": [
+        0,
+        4
+      ],
+      "learned_legal": true,
+      "endpoint_only_legal": true,
+      "learned_reason": "passed",
+      "endpoint_only_reason": "passed",
+      "max_same_time_tcp_difference_mm": 6.104451097470808,
+      "max_same_time_reference_difference_mm": 6.104443438311091,
+      "midpoint_cross_track_tcp_difference_mm": 1.122042167180871,
+      "learned_cost": [
+        15.80190558735262,
+        12.813796180145111,
+        124.78630174048865,
+        1.5
+      ],
+      "endpoint_only_cost": [
+        15.52023763544182,
+        12.814130637887162,
+        124.78630174048865,
+        1.5
+      ],
+      "learned_peak_rate_fraction": 0.5791549715623691,
+      "endpoint_only_peak_rate_fraction": 0.7223089298767433
+    },
+    {
+      "edge": [
+        0,
+        5
+      ],
+      "learned_legal": true,
+      "endpoint_only_legal": true,
+      "learned_reason": "passed",
+      "endpoint_only_reason": "passed",
+      "max_same_time_tcp_difference_mm": 6.104744538833094,
+      "max_same_time_reference_difference_mm": 6.104443438311091,
+      "midpoint_cross_track_tcp_difference_mm": 1.1212921155560196,
+      "learned_cost": [
+        15.801417169393595,
+        13.429475595422716,
+        124.78630174048865,
+        1.5
+      ],
+      "endpoint_only_cost": [
+        15.520116755424933,
+        13.429493954629567,
+        124.78630174048865,
+        1.5
+      ],
+      "learned_peak_rate_fraction": 0.5791549715623691,
+      "endpoint_only_peak_rate_fraction": 0.7223089298767433
+    },
+    {
+      "edge": [
+        1,
+        0
+      ],
+      "learned_legal": true,
+      "endpoint_only_legal": true,
+      "learned_reason": "passed",
+      "endpoint_only_reason": "passed",
+      "max_same_time_tcp_difference_mm": 0.003663258414452473,
+      "max_same_time_reference_difference_mm": 0.0003871964672874374,
+      "midpoint_cross_track_tcp_difference_mm": null,
+      "learned_cost": [
+        0.015937373283455517,
+        11.999968635255549,
+        0.0,
+        1.5
+      ],
+      "endpoint_only_cost": [
+        0.014553923474145239,
+        11.999969310987806,
+        0.0,
+        1.5
+      ],
+      "learned_peak_rate_fraction": 0.11389379817316626,
+      "endpoint_only_peak_rate_fraction": 0.1436751395866309
+    },
+    {
+      "edge": [
+        1,
+        1
+      ],
+      "learned_legal": true,
+      "endpoint_only_legal": true,
+      "learned_reason": "passed",
+      "endpoint_only_reason": "passed",
+      "max_same_time_tcp_difference_mm": 0.0,
+      "max_same_time_reference_difference_mm": 0.0,
+      "midpoint_cross_track_tcp_difference_mm": null,
+      "learned_cost": [
+        0.0,
+        0.0,
+        0.0,
+        1.5
+      ],
+      "endpoint_only_cost": [
+        0.0,
+        0.0,
+        0.0,
+        1.5
+      ],
+      "learned_peak_rate_fraction": 0.0,
+      "endpoint_only_peak_rate_fraction": 0.0
+    },
+    {
+      "edge": [
+        1,
+        2
+      ],
+      "learned_legal": true,
+      "endpoint_only_legal": true,
+      "learned_reason": "passed",
+      "endpoint_only_reason": "passed",
+      "max_same_time_tcp_difference_mm": 0.0035797495190927463,
+      "max_same_time_reference_difference_mm": 0.0003871964672874374,
+      "midpoint_cross_track_tcp_difference_mm": null,
+      "learned_cost": [
+        0.01250248493637433,
+        23.999940764705315,
+        0.0,
+        1.5
+      ],
+      "endpoint_only_cost": [
+        0.015577963908506751,
+        23.999940903506783,
+        0.0,
+        1.5
+      ],
+      "learned_peak_rate_fraction": 0.22068128925372127,
+      "endpoint_only_peak_rate_fraction": 0.28154267030924235
+    },
+    {
+      "edge": [
+        1,
+        3
+      ],
+      "learned_legal": true,
+      "endpoint_only_legal": true,
+      "learned_reason": "passed",
+      "endpoint_only_reason": "passed",
+      "max_same_time_tcp_difference_mm": 6.104689679673687,
+      "max_same_time_reference_difference_mm": 6.10440926675403,
+      "midpoint_cross_track_tcp_difference_mm": 1.1210722049577617,
+      "learned_cost": [
+        15.801366748810684,
+        13.429462873606,
+        124.78630174048865,
+        1.5
+      ],
+      "endpoint_only_cost": [
+        15.520148036092568,
+        13.429489537495643,
+        124.78630174048865,
+        1.5
+      ],
+      "learned_peak_rate_fraction": 0.5791549715623691,
+      "endpoint_only_peak_rate_fraction": 0.7223089298767433
+    },
+    {
+      "edge": [
+        1,
+        4
+      ],
+      "learned_legal": true,
+      "endpoint_only_legal": true,
+      "learned_reason": "passed",
+      "endpoint_only_reason": "passed",
+      "max_same_time_tcp_difference_mm": 6.104507945400985,
+      "max_same_time_reference_difference_mm": 6.10440926675403,
+      "midpoint_cross_track_tcp_difference_mm": 1.1216338922756712,
+      "learned_cost": [
+        15.801395407712862,
+        5.327114138834272,
+        124.78630174048865,
+        1.5
+      ],
+      "endpoint_only_cost": [
+        15.520343033336857,
+        5.327360175860294,
+        124.78630174048865,
+        1.5
+      ],
+      "learned_peak_rate_fraction": 0.5791549715623691,
+      "endpoint_only_peak_rate_fraction": 0.7223089298767433
+    },
+    {
+      "edge": [
+        1,
+        5
+      ],
+      "learned_legal": true,
+      "endpoint_only_legal": true,
+      "learned_reason": "passed",
+      "endpoint_only_reason": "passed",
+      "max_same_time_tcp_difference_mm": 6.1053777916283485,
+      "max_same_time_reference_difference_mm": 6.10440926675403,
+      "midpoint_cross_track_tcp_difference_mm": 1.1195180334783699,
+      "learned_cost": [
+        15.801805084966244,
+        24.902131200564284,
+        124.78630174048865,
+        1.5
+      ],
+      "endpoint_only_cost": [
+        15.520881600943678,
+        24.902154118299862,
+        124.78630174048865,
+        1.5
+      ],
+      "learned_peak_rate_fraction": 0.5791549715623691,
+      "endpoint_only_peak_rate_fraction": 0.7223089298767433
+    },
+    {
+      "edge": [
+        2,
+        0
+      ],
+      "learned_legal": true,
+      "endpoint_only_legal": true,
+      "learned_reason": "passed",
+      "endpoint_only_reason": "passed",
+      "max_same_time_tcp_difference_mm": 0.003950740604069156,
+      "max_same_time_reference_difference_mm": 0.0003721571610543279,
+      "midpoint_cross_track_tcp_difference_mm": null,
+      "learned_cost": [
+        0.01412932488903867,
+        11.99998711786032,
+        0.0,
+        1.5
+      ],
+      "endpoint_only_cost": [
+        0.011690992564255601,
+        11.999986742089625,
+        0.0,
+        1.5
+      ],
+      "learned_peak_rate_fraction": 0.10626698558738694,
+      "endpoint_only_peak_rate_fraction": 0.1340727738422745
+    },
+    {
+      "edge": [
+        2,
+        1
+      ],
+      "learned_legal": true,
+      "endpoint_only_legal": true,
+      "learned_reason": "passed",
+      "endpoint_only_reason": "passed",
+      "max_same_time_tcp_difference_mm": 0.0034617459216259583,
+      "max_same_time_reference_difference_mm": 0.0003721571610543279,
+      "midpoint_cross_track_tcp_difference_mm": null,
+      "learned_cost": [
+        0.01615926694507715,
+        23.999938357076296,
+        0.0,
+        1.5
+      ],
+      "endpoint_only_cost": [
+        0.013915601285815298,
+        23.99994279476317,
+        0.0,
+        1.5
+      ],
+      "learned_peak_rate_fraction": 0.21632886976336022,
+      "endpoint_only_peak_rate_fraction": 0.2578382636290752
+    },
+    {
+      "edge": [
+        2,
+        2
+      ],
+      "learned_legal": true,
+      "endpoint_only_legal": true,
+      "learned_reason": "passed",
+      "endpoint_only_reason": "passed",
+      "max_same_time_tcp_difference_mm": 0.0,
+      "max_same_time_reference_difference_mm": 0.0,
+      "midpoint_cross_track_tcp_difference_mm": null,
+      "learned_cost": [
+        0.0,
+        0.0,
+        0.0,
+        1.5
+      ],
+      "endpoint_only_cost": [
+        0.0,
+        0.0,
+        0.0,
+        1.5
+      ],
+      "learned_peak_rate_fraction": 0.0,
+      "endpoint_only_peak_rate_fraction": 0.0
+    },
+    {
+      "edge": [
+        2,
+        3
+      ],
+      "learned_legal": true,
+      "endpoint_only_legal": true,
+      "learned_reason": "passed",
+      "endpoint_only_reason": "passed",
+      "max_same_time_tcp_difference_mm": 6.104460413822684,
+      "max_same_time_reference_difference_mm": 6.1044559955941065,
+      "midpoint_cross_track_tcp_difference_mm": 1.1220842910397024,
+      "learned_cost": [
+        15.801537873460669,
+        12.813792388956902,
+        124.78630174048865,
+        1.5
+      ],
+      "endpoint_only_cost": [
+        15.52004518028531,
+        12.814047739529494,
+        124.78630174048865,
+        1.5
+      ],
+      "learned_peak_rate_fraction": 0.5791549715623691,
+      "endpoint_only_peak_rate_fraction": 0.7223089298767433
+    },
+    {
+      "edge": [
+        2,
+        4
+      ],
+      "learned_legal": true,
+      "endpoint_only_legal": true,
+      "learned_reason": "passed",
+      "endpoint_only_reason": "passed",
+      "max_same_time_tcp_difference_mm": 6.104455961354626,
+      "max_same_time_reference_difference_mm": 6.1044559955941065,
+      "midpoint_cross_track_tcp_difference_mm": 1.122097638308279,
+      "learned_cost": [
+        15.801289180883378,
+        24.24460909475146,
+        124.78630174048865,
+        1.5
+      ],
+      "endpoint_only_cost": [
+        15.520131285411194,
+        24.244627527899766,
+        124.78630174048865,
+        1.5
+      ],
+      "learned_peak_rate_fraction": 0.5791549715623691,
+      "endpoint_only_peak_rate_fraction": 0.7223089298767433
+    },
+    {
+      "edge": [
+        2,
+        5
+      ],
+      "learned_legal": true,
+      "endpoint_only_legal": true,
+      "learned_reason": "passed",
+      "endpoint_only_reason": "passed",
+      "max_same_time_tcp_difference_mm": 6.104528437763648,
+      "max_same_time_reference_difference_mm": 6.1044559955941065,
+      "midpoint_cross_track_tcp_difference_mm": 1.1219519039818684,
+      "learned_cost": [
+        15.801570408519677,
+        5.327074267650756,
+        124.78630174048865,
+        1.5
+      ],
+      "endpoint_only_cost": [
+        15.520087566776963,
+        5.327264529068852,
+        124.78630174048865,
+        1.5
+      ],
+      "learned_peak_rate_fraction": 0.5791549715623691,
+      "endpoint_only_peak_rate_fraction": 0.7223089298767433
+    },
+    {
+      "edge": [
+        3,
+        0
+      ],
+      "learned_legal": true,
+      "endpoint_only_legal": true,
+      "learned_reason": "passed",
+      "endpoint_only_reason": "passed",
+      "max_same_time_tcp_difference_mm": 6.127261974677567,
+      "max_same_time_reference_difference_mm": 6.127321319354609,
+      "midpoint_cross_track_tcp_difference_mm": 1.1413528300284779,
+      "learned_cost": [
+        15.816511725241615,
+        5.327085246938512,
+        124.78630174048865,
+        1.5
+      ],
+      "endpoint_only_cost": [
+        15.519493709177576,
+        5.32722893514547,
+        124.78630174048865,
+        1.5
+      ],
+      "learned_peak_rate_fraction": 0.5791549715623691,
+      "endpoint_only_peak_rate_fraction": 0.7223089298767433
+    },
+    {
+      "edge": [
+        3,
+        1
+      ],
+      "learned_legal": true,
+      "endpoint_only_legal": true,
+      "learned_reason": "passed",
+      "endpoint_only_reason": "passed",
+      "max_same_time_tcp_difference_mm": 6.1271986339827995,
+      "max_same_time_reference_difference_mm": 6.127321319354609,
+      "midpoint_cross_track_tcp_difference_mm": 1.142015100936553,
+      "learned_cost": [
+        15.81707579360174,
+        13.42948351252208,
+        124.78630174048865,
+        1.5
+      ],
+      "endpoint_only_cost": [
+        15.519758798822812,
+        13.429776662962038,
+        124.78630174048865,
+        1.5
+      ],
+      "learned_peak_rate_fraction": 0.5791549715623691,
+      "endpoint_only_peak_rate_fraction": 0.7223089298767433
+    },
+    {
+      "edge": [
+        3,
+        2
+      ],
+      "learned_legal": true,
+      "endpoint_only_legal": true,
+      "learned_reason": "passed",
+      "endpoint_only_reason": "passed",
+      "max_same_time_tcp_difference_mm": 6.127315073198369,
+      "max_same_time_reference_difference_mm": 6.127321319354609,
+      "midpoint_cross_track_tcp_difference_mm": 1.1411859450707458,
+      "learned_cost": [
+        15.816257817031827,
+        12.813779734912245,
+        124.78630174048865,
+        1.5
+      ],
+      "endpoint_only_cost": [
+        15.519198864232957,
+        12.813783588841918,
+        124.78630174048865,
+        1.5
+      ],
+      "learned_peak_rate_fraction": 0.5791549715623691,
+      "endpoint_only_peak_rate_fraction": 0.7223089298767433
+    },
+    {
+      "edge": [
+        3,
+        3
+      ],
+      "learned_legal": true,
+      "endpoint_only_legal": true,
+      "learned_reason": "passed",
+      "endpoint_only_reason": "passed",
+      "max_same_time_tcp_difference_mm": 0.0,
+      "max_same_time_reference_difference_mm": 0.0,
+      "midpoint_cross_track_tcp_difference_mm": null,
+      "learned_cost": [
+        0.0,
+        0.0,
+        0.0,
+        1.5
+      ],
+      "endpoint_only_cost": [
+        0.0,
+        0.0,
+        0.0,
+        1.5
+      ],
+      "learned_peak_rate_fraction": 0.0,
+      "endpoint_only_peak_rate_fraction": 0.0
+    },
+    {
+      "edge": [
+        3,
+        4
+      ],
+      "learned_legal": true,
+      "endpoint_only_legal": true,
+      "learned_reason": "passed",
+      "endpoint_only_reason": "passed",
+      "max_same_time_tcp_difference_mm": 0.004018758571062302,
+      "max_same_time_reference_difference_mm": 0.0004210923063391423,
+      "midpoint_cross_track_tcp_difference_mm": null,
+      "learned_cost": [
+        0.016901930724179164,
+        11.999995397355526,
+        0.0,
+        1.5
+      ],
+      "endpoint_only_cost": [
+        0.01270483882413386,
+        11.999988547355372,
+        0.0,
+        1.5
+      ],
+      "learned_peak_rate_fraction": 0.10433910284074685,
+      "endpoint_only_peak_rate_fraction": 0.1271326000274048
+    },
+    {
+      "edge": [
+        3,
+        5
+      ],
+      "learned_legal": true,
+      "endpoint_only_legal": true,
+      "learned_reason": "passed",
+      "endpoint_only_reason": "passed",
+      "max_same_time_tcp_difference_mm": 0.0035096543102337697,
+      "max_same_time_reference_difference_mm": 0.0004210923063391423,
+      "midpoint_cross_track_tcp_difference_mm": null,
+      "learned_cost": [
+        0.014115736451483271,
+        11.999997216071954,
+        0.0,
+        1.5
+      ],
+      "endpoint_only_cost": [
+        0.013483443948785527,
+        11.999994228701972,
+        0.0,
+        1.5
+      ],
+      "learned_peak_rate_fraction": 0.09819471921597389,
+      "endpoint_only_peak_rate_fraction": 0.12350413130596016
+    },
+    {
+      "edge": [
+        3,
+        6
+      ],
+      "learned_legal": true,
+      "endpoint_only_legal": true,
+      "learned_reason": "passed",
+      "endpoint_only_reason": "passed",
+      "max_same_time_tcp_difference_mm": 4.909900674990771,
+      "max_same_time_reference_difference_mm": 4.90994965642774,
+      "midpoint_cross_track_tcp_difference_mm": 0.891003954659862,
+      "learned_cost": [
+        12.587087633702154,
+        1.1599943446059346,
+        0.0,
+        1.5
+      ],
+      "endpoint_only_cost": [
+        12.357147668545528,
+        1.1599946137906063,
+        0.0,
+        1.5
+      ],
+      "learned_peak_rate_fraction": 0.012512849909963713,
+      "endpoint_only_peak_rate_fraction": 0.015463844089505071
+    },
+    {
+      "edge": [
+        3,
+        7
+      ],
+      "learned_legal": true,
+      "endpoint_only_legal": true,
+      "learned_reason": "passed",
+      "endpoint_only_reason": "passed",
+      "max_same_time_tcp_difference_mm": 4.9099529081738025,
+      "max_same_time_reference_difference_mm": 4.90994965642774,
+      "midpoint_cross_track_tcp_difference_mm": 0.8912790748433594,
+      "learned_cost": [
+        12.587582992195426,
+        11.252687518129068,
+        0.0,
+        1.5
+      ],
+      "endpoint_only_cost": [
+        12.357523768510255,
+        11.252684658654058,
+        0.0,
+        1.5
+      ],
+      "learned_peak_rate_fraction": 0.09572829696824091,
+      "endpoint_only_peak_rate_fraction": 0.12024185252049208
+    },
+    {
+      "edge": [
+        3,
+        8
+      ],
+      "learned_legal": true,
+      "endpoint_only_legal": true,
+      "learned_reason": "passed",
+      "endpoint_only_reason": "passed",
+      "max_same_time_tcp_difference_mm": 4.909954699874102,
+      "max_same_time_reference_difference_mm": 4.90994965642774,
+      "midpoint_cross_track_tcp_difference_mm": 0.8912820140467597,
+      "learned_cost": [
+        12.587589574377022,
+        12.808667316947435,
+        0.0,
+        1.5
+      ],
+      "endpoint_only_cost": [
+        12.357499740789615,
+        12.80867673194056,
+        0.0,
+        1.5
+      ],
+      "learned_peak_rate_fraction": 0.10799562163762369,
+      "endpoint_only_peak_rate_fraction": 0.13565127515596306
+    },
+    {
+      "edge": [
+        4,
+        0
+      ],
+      "learned_legal": true,
+      "endpoint_only_legal": true,
+      "learned_reason": "passed",
+      "endpoint_only_reason": "passed",
+      "max_same_time_tcp_difference_mm": 6.127335404959462,
+      "max_same_time_reference_difference_mm": 6.1273495097593385,
+      "midpoint_cross_track_tcp_difference_mm": 1.141223404683353,
+      "learned_cost": [
+        15.816252698141014,
+        12.813780370736552,
+        124.78630174048865,
+        1.5
+      ],
+      "endpoint_only_cost": [
+        15.51944723069178,
+        12.813787649069322,
+        124.78630174048865,
+        1.5
+      ],
+      "learned_peak_rate_fraction": 0.5791549715623691,
+      "endpoint_only_peak_rate_fraction": 0.7223089298767433
+    },
+    {
+      "edge": [
+        4,
+        1
+      ],
+      "learned_legal": true,
+      "endpoint_only_legal": true,
+      "learned_reason": "passed",
+      "endpoint_only_reason": "passed",
+      "max_same_time_tcp_difference_mm": 6.127303615516099,
+      "max_same_time_reference_difference_mm": 6.1273495097593385,
+      "midpoint_cross_track_tcp_difference_mm": 1.1415840637513608,
+      "learned_cost": [
+        15.816484839019765,
+        5.327133567221706,
+        124.78630174048865,
+        1.5
+      ],
+      "endpoint_only_cost": [
+        15.519681595133397,
+        5.3272636383430285,
+        124.78630174048865,
+        1.5
+      ],
+      "learned_peak_rate_fraction": 0.5791549715623691,
+      "endpoint_only_peak_rate_fraction": 0.7223089298767433
+    },
+    {
+      "edge": [
+        4,
+        2
+      ],
+      "learned_legal": true,
+      "endpoint_only_legal": true,
+      "learned_reason": "passed",
+      "endpoint_only_reason": "passed",
+      "max_same_time_tcp_difference_mm": 6.127349291044607,
+      "max_same_time_reference_difference_mm": 6.1273495097593385,
+      "midpoint_cross_track_tcp_difference_mm": 1.1411740207586185,
+      "learned_cost": [
+        15.816294602192277,
+        24.244607618506663,
+        124.78630174048865,
+        1.5
+      ],
+      "endpoint_only_cost": [
+        15.519129688254605,
+        24.24460633444244,
+        124.78630174048865,
+        1.5
+      ],
+      "learned_peak_rate_fraction": 0.5791549715623691,
+      "endpoint_only_peak_rate_fraction": 0.7223089298767433
+    },
+    {
+      "edge": [
+        4,
+        3
+      ],
+      "learned_legal": true,
+      "endpoint_only_legal": true,
+      "learned_reason": "passed",
+      "endpoint_only_reason": "passed",
+      "max_same_time_tcp_difference_mm": 0.0033326420885139867,
+      "max_same_time_reference_difference_mm": 0.000464305468434436,
+      "midpoint_cross_track_tcp_difference_mm": null,
+      "learned_cost": [
+        0.0139888631832922,
+        11.999970008895264,
+        0.0,
+        1.5
+      ],
+      "endpoint_only_cost": [
+        0.012501410478401328,
+        11.999972880546995,
+        0.0,
+        1.5
+      ],
+      "learned_peak_rate_fraction": 0.10506976361317265,
+      "endpoint_only_peak_rate_fraction": 0.13203159170433248
+    },
+    {
+      "edge": [
+        4,
+        4
+      ],
+      "learned_legal": true,
+      "endpoint_only_legal": true,
+      "learned_reason": "passed",
+      "endpoint_only_reason": "passed",
+      "max_same_time_tcp_difference_mm": 0.0,
+      "max_same_time_reference_difference_mm": 0.0,
+      "midpoint_cross_track_tcp_difference_mm": null,
+      "learned_cost": [
+        0.0,
+        0.0,
+        0.0,
+        1.5
+      ],
+      "endpoint_only_cost": [
+        0.0,
+        0.0,
+        0.0,
+        1.5
+      ],
+      "learned_peak_rate_fraction": 0.0,
+      "endpoint_only_peak_rate_fraction": 0.0
+    },
+    {
+      "edge": [
+        4,
+        5
+      ],
+      "learned_legal": true,
+      "endpoint_only_legal": true,
+      "learned_reason": "passed",
+      "endpoint_only_reason": "passed",
+      "max_same_time_tcp_difference_mm": 0.003201392272795188,
+      "max_same_time_reference_difference_mm": 0.000464305468434436,
+      "midpoint_cross_track_tcp_difference_mm": null,
+      "learned_cost": [
+        0.01408093566732125,
+        23.99995474919812,
+        0.0,
+        1.5
+      ],
+      "endpoint_only_cost": [
+        0.008421915678695461,
+        23.999946125878733,
+        0.0,
+        1.5
+      ],
+      "learned_peak_rate_fraction": 0.20680421318620282,
+      "endpoint_only_peak_rate_fraction": 0.2612858776957209
+    },
+    {
+      "edge": [
+        4,
+        6
+      ],
+      "learned_legal": true,
+      "endpoint_only_legal": true,
+      "learned_reason": "passed",
+      "endpoint_only_reason": "passed",
+      "max_same_time_tcp_difference_mm": 4.909927114153387,
+      "max_same_time_reference_difference_mm": 4.9099248762092795,
+      "midpoint_cross_track_tcp_difference_mm": 0.8912829080588176,
+      "learned_cost": [
+        12.587726412887614,
+        12.808646097937688,
+        0.0,
+        1.5
+      ],
+      "endpoint_only_cost": [
+        12.35752445146151,
+        12.80864976126309,
+        0.0,
+        1.5
+      ],
+      "learned_peak_rate_fraction": 0.11829548500849106,
+      "endpoint_only_peak_rate_fraction": 0.14832500713402003
+    },
+    {
+      "edge": [
+        4,
+        7
+      ],
+      "learned_legal": true,
+      "endpoint_only_legal": true,
+      "learned_reason": "passed",
+      "endpoint_only_reason": "passed",
+      "max_same_time_tcp_difference_mm": 4.909862619538554,
+      "max_same_time_reference_difference_mm": 4.9099248762092795,
+      "midpoint_cross_track_tcp_difference_mm": 0.8910329626101118,
+      "learned_cost": [
+        12.58716514348514,
+        1.1600060315593224,
+        0.0,
+        1.5
+      ],
+      "endpoint_only_cost": [
+        12.35716692657774,
+        1.1600063147232438,
+        0.0,
+        1.5
+      ],
+      "learned_peak_rate_fraction": 0.015711565050383923,
+      "endpoint_only_peak_rate_fraction": 0.018994585674979827
+    },
+    {
+      "edge": [
+        4,
+        8
+      ],
+      "learned_legal": true,
+      "endpoint_only_legal": true,
+      "learned_reason": "passed",
+      "endpoint_only_reason": "passed",
+      "max_same_time_tcp_difference_mm": 4.909995996878111,
+      "max_same_time_reference_difference_mm": 4.9099248762092795,
+      "midpoint_cross_track_tcp_difference_mm": 0.8911503490648606,
+      "learned_cost": [
+        12.587909918896969,
+        24.794569880155656,
+        0.0,
+        1.5
+      ],
+      "endpoint_only_cost": [
+        12.357725218899565,
+        24.794579512348605,
+        0.0,
+        1.5
+      ],
+      "learned_peak_rate_fraction": 0.2173860508028054,
+      "endpoint_only_peak_rate_fraction": 0.27477852682750015
+    },
+    {
+      "edge": [
+        5,
+        0
+      ],
+      "learned_legal": true,
+      "endpoint_only_legal": true,
+      "learned_reason": "passed",
+      "endpoint_only_reason": "passed",
+      "max_same_time_tcp_difference_mm": 6.127026861578894,
+      "max_same_time_reference_difference_mm": 6.127310146019708,
+      "midpoint_cross_track_tcp_difference_mm": 1.1417895961468838,
+      "learned_cost": [
+        15.817034087371733,
+        13.429502267188887,
+        124.78630174048865,
+        1.5
+      ],
+      "endpoint_only_cost": [
+        15.519674473972408,
+        13.429752901386854,
+        124.78630174048865,
+        1.5
+      ],
+      "learned_peak_rate_fraction": 0.5791549715623691,
+      "endpoint_only_peak_rate_fraction": 0.7223089298767433
+    },
+    {
+      "edge": [
+        5,
+        1
+      ],
+      "learned_legal": true,
+      "endpoint_only_legal": true,
+      "learned_reason": "passed",
+      "endpoint_only_reason": "passed",
+      "max_same_time_tcp_difference_mm": 6.126854363938582,
+      "max_same_time_reference_difference_mm": 6.127310146019708,
+      "midpoint_cross_track_tcp_difference_mm": 1.1430565713225498,
+      "learned_cost": [
+        15.817493540487455,
+        24.902110908237656,
+        124.78630174048865,
+        1.5
+      ],
+      "endpoint_only_cost": [
+        15.519987163220824,
+        24.902174643299716,
+        124.78630174048865,
+        1.5
+      ],
+      "learned_peak_rate_fraction": 0.5791549715623691,
+      "endpoint_only_peak_rate_fraction": 0.7223089298767433
+    },
+    {
+      "edge": [
+        5,
+        2
+      ],
+      "learned_legal": true,
+      "endpoint_only_legal": true,
+      "learned_reason": "passed",
+      "endpoint_only_reason": "passed",
+      "max_same_time_tcp_difference_mm": 6.127244154785349,
+      "max_same_time_reference_difference_mm": 6.127310146019708,
+      "midpoint_cross_track_tcp_difference_mm": 1.1412963143676038,
+      "learned_cost": [
+        15.816522545875904,
+        5.327032920880265,
+        124.78630174048865,
+        1.5
+      ],
+      "endpoint_only_cost": [
+        15.519397270600896,
+        5.327167534800644,
+        124.78630174048865,
+        1.5
+      ],
+      "learned_peak_rate_fraction": 0.5791549715623691,
+      "endpoint_only_peak_rate_fraction": 0.7223089298767433
+    },
+    {
+      "edge": [
+        5,
+        3
+      ],
+      "learned_legal": true,
+      "endpoint_only_legal": true,
+      "learned_reason": "passed",
+      "endpoint_only_reason": "passed",
+      "max_same_time_tcp_difference_mm": 0.003685022815052669,
+      "max_same_time_reference_difference_mm": 0.0003809526107519413,
+      "midpoint_cross_track_tcp_difference_mm": null,
+      "learned_cost": [
+        0.014007875356882901,
+        12.000019950304724,
+        0.0,
+        1.5
+      ],
+      "endpoint_only_cost": [
+        0.01365933791245949,
+        12.000017300127908,
+        0.0,
+        1.5
+      ],
+      "learned_peak_rate_fraction": 0.0974113717601642,
+      "endpoint_only_peak_rate_fraction": 0.11865770289569165
+    },
+    {
+      "edge": [
+        5,
+        4
+      ],
+      "learned_legal": true,
+      "endpoint_only_legal": true,
+      "learned_reason": "passed",
+      "endpoint_only_reason": "passed",
+      "max_same_time_tcp_difference_mm": 0.003671600823736033,
+      "max_same_time_reference_difference_mm": 0.0003809526107519413,
+      "midpoint_cross_track_tcp_difference_mm": null,
+      "learned_cost": [
+        0.014206017146440087,
+        23.99993869157077,
+        0.0,
+        1.5
+      ],
+      "endpoint_only_cost": [
+        0.009386553654599696,
+        23.999955009685017,
+        0.0,
+        1.5
+      ],
+      "learned_peak_rate_fraction": 0.20428148265596877,
+      "endpoint_only_peak_rate_fraction": 0.24111453530006197
+    },
+    {
+      "edge": [
+        5,
+        5
+      ],
+      "learned_legal": true,
+      "endpoint_only_legal": true,
+      "learned_reason": "passed",
+      "endpoint_only_reason": "passed",
+      "max_same_time_tcp_difference_mm": 0.0,
+      "max_same_time_reference_difference_mm": 0.0,
+      "midpoint_cross_track_tcp_difference_mm": null,
+      "learned_cost": [
+        0.0,
+        0.0,
+        0.0,
+        1.5
+      ],
+      "endpoint_only_cost": [
+        0.0,
+        0.0,
+        0.0,
+        1.5
+      ],
+      "learned_peak_rate_fraction": 0.0,
+      "endpoint_only_peak_rate_fraction": 0.0
+    },
+    {
+      "edge": [
+        5,
+        6
+      ],
+      "learned_legal": true,
+      "endpoint_only_legal": true,
+      "learned_reason": "passed",
+      "endpoint_only_reason": "passed",
+      "max_same_time_tcp_difference_mm": 4.909969578029699,
+      "max_same_time_reference_difference_mm": 4.909960651504777,
+      "midpoint_cross_track_tcp_difference_mm": 0.8912780756562636,
+      "learned_cost": [
+        12.587438081991547,
+        11.25272284272371,
+        0.0,
+        1.5
+      ],
+      "endpoint_only_cost": [
+        12.357528946704946,
+        11.252714901541442,
+        0.0,
+        1.5
+      ],
+      "learned_peak_rate_fraction": 0.10372585815190086,
+      "endpoint_only_peak_rate_fraction": 0.13020413772270578
+    },
+    {
+      "edge": [
+        5,
+        7
+      ],
+      "learned_legal": true,
+      "endpoint_only_legal": true,
+      "learned_reason": "passed",
+      "endpoint_only_reason": "passed",
+      "max_same_time_tcp_difference_mm": 4.910035007274482,
+      "max_same_time_reference_difference_mm": 4.909960651504777,
+      "midpoint_cross_track_tcp_difference_mm": 0.8911573717536626,
+      "learned_cost": [
+        12.588141024596423,
+        23.235583686694838,
+        0.0,
+        1.5
+      ],
+      "endpoint_only_cost": [
+        12.358271813999202,
+        23.235606792465205,
+        0.0,
+        1.5
+      ],
+      "learned_peak_rate_fraction": 0.19076199897647805,
+      "endpoint_only_peak_rate_fraction": 0.2426729071717908
+    },
+    {
+      "edge": [
+        5,
+        8
+      ],
+      "learned_legal": true,
+      "endpoint_only_legal": true,
+      "learned_reason": "passed",
+      "endpoint_only_reason": "passed",
+      "max_same_time_tcp_difference_mm": 4.909915965099264,
+      "max_same_time_reference_difference_mm": 4.909960651504777,
+      "midpoint_cross_track_tcp_difference_mm": 0.8909422918008367,
+      "learned_cost": [
+        12.586976181480095,
+        1.1599861816109294,
+        0.0,
+        1.5
+      ],
+      "endpoint_only_cost": [
+        12.357133531083246,
+        1.159986425420259,
+        0.0,
+        1.5
+      ],
+      "learned_peak_rate_fraction": 0.013588445993764544,
+      "endpoint_only_peak_rate_fraction": 0.016599328586631153
+    },
+    {
+      "edge": [
+        6,
+        3
+      ],
+      "learned_legal": true,
+      "endpoint_only_legal": true,
+      "learned_reason": "passed",
+      "endpoint_only_reason": "passed",
+      "max_same_time_tcp_difference_mm": 4.901548907210413,
+      "max_same_time_reference_difference_mm": 4.90149371008098,
+      "midpoint_cross_track_tcp_difference_mm": 0.9195415426851473,
+      "learned_cost": [
+        12.598629055228406,
+        1.1600806999180073,
+        0.0,
+        1.5
+      ],
+      "endpoint_only_cost": [
+        12.357162474583268,
+        1.1602606149787875,
+        0.0,
+        1.5
+      ],
+      "learned_peak_rate_fraction": 0.012806503712208879,
+      "endpoint_only_peak_rate_fraction": 0.015590462270055352
+    },
+    {
+      "edge": [
+        6,
+        4
+      ],
+      "learned_legal": true,
+      "endpoint_only_legal": true,
+      "learned_reason": "passed",
+      "endpoint_only_reason": "passed",
+      "max_same_time_tcp_difference_mm": 4.90149183371973,
+      "max_same_time_reference_difference_mm": 4.90149371008098,
+      "midpoint_cross_track_tcp_difference_mm": 0.919281406756132,
+      "learned_cost": [
+        12.598620848743366,
+        12.808668356422288,
+        0.0,
+        1.5
+      ],
+      "endpoint_only_cost": [
+        12.35743880118919,
+        12.808665327873817,
+        0.0,
+        1.5
+      ],
+      "learned_peak_rate_fraction": 0.11630588020398502,
+      "endpoint_only_peak_rate_fraction": 0.14105457969645113
+    },
+    {
+      "edge": [
+        6,
+        5
+      ],
+      "learned_legal": true,
+      "endpoint_only_legal": true,
+      "learned_reason": "passed",
+      "endpoint_only_reason": "passed",
+      "max_same_time_tcp_difference_mm": 4.901485225026879,
+      "max_same_time_reference_difference_mm": 4.90149371008098,
+      "midpoint_cross_track_tcp_difference_mm": 0.9192894430960196,
+      "learned_cost": [
+        12.598805536914313,
+        11.252694600060416,
+        0.0,
+        1.5
+      ],
+      "endpoint_only_cost": [
+        12.357646447610852,
+        11.252697676289811,
+        0.0,
+        1.5
+      ],
+      "learned_peak_rate_fraction": 0.10508388045717489,
+      "endpoint_only_peak_rate_fraction": 0.12617621995805942
+    },
+    {
+      "edge": [
+        6,
+        6
+      ],
+      "learned_legal": true,
+      "endpoint_only_legal": true,
+      "learned_reason": "passed",
+      "endpoint_only_reason": "passed",
+      "max_same_time_tcp_difference_mm": 0.0,
+      "max_same_time_reference_difference_mm": 0.0,
+      "midpoint_cross_track_tcp_difference_mm": null,
+      "learned_cost": [
+        0.0,
+        0.0,
+        0.0,
+        1.5
+      ],
+      "endpoint_only_cost": [
+        0.0,
+        0.0,
+        0.0,
+        1.5
+      ],
+      "learned_peak_rate_fraction": 0.0,
+      "endpoint_only_peak_rate_fraction": 0.0
+    },
+    {
+      "edge": [
+        6,
+        7
+      ],
+      "learned_legal": true,
+      "endpoint_only_legal": true,
+      "learned_reason": "passed",
+      "endpoint_only_reason": "passed",
+      "max_same_time_tcp_difference_mm": 0.003954032058562608,
+      "max_same_time_reference_difference_mm": 0.00043533138377067145,
+      "midpoint_cross_track_tcp_difference_mm": null,
+      "learned_cost": [
+        0.016713548066848636,
+        11.999994620093736,
+        0.0,
+        1.5
+      ],
+      "endpoint_only_cost": [
+        0.012604033656022607,
+        11.999987642546834,
+        0.0,
+        1.5
+      ],
+      "learned_peak_rate_fraction": 0.10098156979361823,
+      "endpoint_only_peak_rate_fraction": 0.12302318545954685
+    },
+    {
+      "edge": [
+        6,
+        8
+      ],
+      "learned_legal": true,
+      "endpoint_only_legal": true,
+      "learned_reason": "passed",
+      "endpoint_only_reason": "passed",
+      "max_same_time_tcp_difference_mm": 0.003339381434630103,
+      "max_same_time_reference_difference_mm": 0.00043533138377067145,
+      "midpoint_cross_track_tcp_difference_mm": null,
+      "learned_cost": [
+        0.013582851791487282,
+        12.00000107023817,
+        0.0,
+        1.5
+      ],
+      "endpoint_only_cost": [
+        0.013011419507763824,
+        11.999998155372186,
+        0.0,
+        1.5
+      ],
+      "learned_peak_rate_fraction": 0.09491940470242446,
+      "endpoint_only_peak_rate_fraction": 0.1193644232006636
+    },
+    {
+      "edge": [
+        7,
+        3
+      ],
+      "learned_legal": true,
+      "endpoint_only_legal": true,
+      "learned_reason": "passed",
+      "endpoint_only_reason": "passed",
+      "max_same_time_tcp_difference_mm": 4.901514834558668,
+      "max_same_time_reference_difference_mm": 4.901519287861011,
+      "midpoint_cross_track_tcp_difference_mm": 0.9192877427695864,
+      "learned_cost": [
+        12.59864242567996,
+        11.252669078098027,
+        0.0,
+        1.5
+      ],
+      "endpoint_only_cost": [
+        12.35757889229704,
+        11.252671373144569,
+        0.0,
+        1.5
+      ],
+      "learned_peak_rate_fraction": 0.09701812773420115,
+      "endpoint_only_peak_rate_fraction": 0.11659141939531777
+    },
+    {
+      "edge": [
+        7,
+        4
+      ],
+      "learned_legal": true,
+      "endpoint_only_legal": true,
+      "learned_reason": "passed",
+      "endpoint_only_reason": "passed",
+      "max_same_time_tcp_difference_mm": 4.901593697238887,
+      "max_same_time_reference_difference_mm": 4.901519287861011,
+      "midpoint_cross_track_tcp_difference_mm": 0.9194970120641739,
+      "learned_cost": [
+        12.598572130702298,
+        1.1601153617786788,
+        0.0,
+        1.5
+      ],
+      "endpoint_only_cost": [
+        12.357192249263619,
+        1.1603213451491496,
+        0.0,
+        1.5
+      ],
+      "learned_peak_rate_fraction": 0.01622197957673702,
+      "endpoint_only_peak_rate_fraction": 0.019284543752741513
+    },
+    {
+      "edge": [
+        7,
+        5
+      ],
+      "learned_legal": true,
+      "endpoint_only_legal": true,
+      "learned_reason": "passed",
+      "endpoint_only_reason": "passed",
+      "max_same_time_tcp_difference_mm": 4.901422839621125,
+      "max_same_time_reference_difference_mm": 4.901519287861011,
+      "midpoint_cross_track_tcp_difference_mm": 0.9194653509230075,
+      "learned_cost": [
+        12.598933085792217,
+        23.23558654895195,
+        0.0,
+        1.5
+      ],
+      "endpoint_only_cost": [
+        12.357915543184056,
+        23.235597618553676,
+        0.0,
+        1.5
+      ],
+      "learned_peak_rate_fraction": 0.19216579692269478,
+      "endpoint_only_peak_rate_fraction": 0.23890279724851696
+    },
+    {
+      "edge": [
+        7,
+        6
+      ],
+      "learned_legal": true,
+      "endpoint_only_legal": true,
+      "learned_reason": "passed",
+      "endpoint_only_reason": "passed",
+      "max_same_time_tcp_difference_mm": 0.003268685846610805,
+      "max_same_time_reference_difference_mm": 0.00047781797225342383,
+      "midpoint_cross_track_tcp_difference_mm": null,
+      "learned_cost": [
+        0.013859051565200757,
+        11.999968494818233,
+        0.0,
+        1.5
+      ],
+      "endpoint_only_cost": [
+        0.012389194614581132,
+        11.999971270828812,
+        0.0,
+        1.5
+      ],
+      "learned_peak_rate_fraction": 0.10170075476133138,
+      "endpoint_only_peak_rate_fraction": 0.12781567514277706
+    },
+    {
+      "edge": [
+        7,
+        7
+      ],
+      "learned_legal": true,
+      "endpoint_only_legal": true,
+      "learned_reason": "passed",
+      "endpoint_only_reason": "passed",
+      "max_same_time_tcp_difference_mm": 0.0,
+      "max_same_time_reference_difference_mm": 0.0,
+      "midpoint_cross_track_tcp_difference_mm": null,
+      "learned_cost": [
+        0.0,
+        0.0,
+        0.0,
+        1.5
+      ],
+      "endpoint_only_cost": [
+        0.0,
+        0.0,
+        0.0,
+        1.5
+      ],
+      "learned_peak_rate_fraction": 0.0,
+      "endpoint_only_peak_rate_fraction": 0.0
+    },
+    {
+      "edge": [
+        7,
+        8
+      ],
+      "learned_legal": true,
+      "endpoint_only_legal": true,
+      "learned_reason": "passed",
+      "endpoint_only_reason": "passed",
+      "max_same_time_tcp_difference_mm": 0.0031132625938691963,
+      "max_same_time_reference_difference_mm": 0.00047781797225342383,
+      "midpoint_cross_track_tcp_difference_mm": null,
+      "learned_cost": [
+        0.013745357917233914,
+        23.999957556831298,
+        0.0,
+        1.5
+      ],
+      "endpoint_only_cost": [
+        0.008282148929221363,
+        23.999948730686068,
+        0.0,
+        1.5
+      ],
+      "learned_peak_rate_fraction": 0.19987154300155469,
+      "endpoint_only_peak_rate_fraction": 0.25255664900408814
+    },
+    {
+      "edge": [
+        8,
+        3
+      ],
+      "learned_legal": true,
+      "endpoint_only_legal": true,
+      "learned_reason": "passed",
+      "endpoint_only_reason": "passed",
+      "max_same_time_tcp_difference_mm": 4.901477427722169,
+      "max_same_time_reference_difference_mm": 4.90148246031548,
+      "midpoint_cross_track_tcp_difference_mm": 0.9192822065162708,
+      "learned_cost": [
+        12.598782683639927,
+        12.808694218925556,
+        0.0,
+        1.5
+      ],
+      "endpoint_only_cost": [
+        12.357502204171574,
+        12.808692849797447,
+        0.0,
+        1.5
+      ],
+      "learned_peak_rate_fraction": 0.10626089650784051,
+      "endpoint_only_peak_rate_fraction": 0.128241126580255
+    },
+    {
+      "edge": [
+        8,
+        4
+      ],
+      "learned_legal": true,
+      "endpoint_only_legal": true,
+      "learned_reason": "passed",
+      "endpoint_only_reason": "passed",
+      "max_same_time_tcp_difference_mm": 4.9014281712975505,
+      "max_same_time_reference_difference_mm": 4.90148246031548,
+      "midpoint_cross_track_tcp_difference_mm": 0.9193801158784407,
+      "learned_cost": [
+        12.5989214292628,
+        24.794568076162122,
+        0.0,
+        1.5
+      ],
+      "endpoint_only_cost": [
+        12.357785502536416,
+        24.794588413242124,
+        0.0,
+        1.5
+      ],
+      "learned_peak_rate_fraction": 0.2134927528176648,
+      "endpoint_only_peak_rate_fraction": 0.25030389960996635
+    },
+    {
+      "edge": [
+        8,
+        5
+      ],
+      "learned_legal": true,
+      "endpoint_only_legal": true,
+      "learned_reason": "passed",
+      "endpoint_only_reason": "passed",
+      "max_same_time_tcp_difference_mm": 4.901529221669841,
+      "max_same_time_reference_difference_mm": 4.90148246031548,
+      "midpoint_cross_track_tcp_difference_mm": 0.9196140439555502,
+      "learned_cost": [
+        12.598718323204366,
+        1.1600569012393154,
+        0.0,
+        1.5
+      ],
+      "endpoint_only_cost": [
+        12.357143093790073,
+        1.1602187007814386,
+        0.0,
+        1.5
+      ],
+      "learned_peak_rate_fraction": 0.013771018612058603,
+      "endpoint_only_peak_rate_fraction": 0.016667281167764555
+    },
+    {
+      "edge": [
+        8,
+        6
+      ],
+      "learned_legal": true,
+      "endpoint_only_legal": true,
+      "learned_reason": "passed",
+      "endpoint_only_reason": "passed",
+      "max_same_time_tcp_difference_mm": 0.003491620877937068,
+      "max_same_time_reference_difference_mm": 0.0003928234570425619,
+      "midpoint_cross_track_tcp_difference_mm": null,
+      "learned_cost": [
+        0.013490741580537284,
+        12.000023854548257,
+        0.0,
+        1.5
+      ],
+      "endpoint_only_cost": [
+        0.013154494650424854,
+        12.000021258431566,
+        0.0,
+        1.5
+      ],
+      "learned_peak_rate_fraction": 0.09418169840852819,
+      "endpoint_only_peak_rate_fraction": 0.11763092040916515
+    },
+    {
+      "edge": [
+        8,
+        7
+      ],
+      "learned_legal": true,
+      "endpoint_only_legal": true,
+      "learned_reason": "passed",
+      "endpoint_only_reason": "passed",
+      "max_same_time_tcp_difference_mm": 0.0035519066457971025,
+      "max_same_time_reference_difference_mm": 0.0003928234570425619,
+      "midpoint_cross_track_tcp_difference_mm": null,
+      "learned_cost": [
+        0.013862178571040192,
+        23.99994123852797,
+        0.0,
+        1.5
+      ],
+      "endpoint_only_cost": [
+        0.00918009609042568,
+        23.99995799462468,
+        0.0,
+        1.5
+      ],
+      "learned_peak_rate_fraction": 0.19742956207314383,
+      "endpoint_only_peak_rate_fraction": 0.23329534816224579
+    },
+    {
+      "edge": [
+        8,
+        8
+      ],
+      "learned_legal": true,
+      "endpoint_only_legal": true,
+      "learned_reason": "passed",
+      "endpoint_only_reason": "passed",
+      "max_same_time_tcp_difference_mm": 0.0,
+      "max_same_time_reference_difference_mm": 0.0,
+      "midpoint_cross_track_tcp_difference_mm": null,
+      "learned_cost": [
+        0.0,
+        0.0,
+        0.0,
+        1.5
+      ],
+      "endpoint_only_cost": [
+        0.0,
+        0.0,
+        0.0,
+        1.5
+      ],
+      "learned_peak_rate_fraction": 0.0,
+      "endpoint_only_peak_rate_fraction": 0.0
+    }
+  ]
+}

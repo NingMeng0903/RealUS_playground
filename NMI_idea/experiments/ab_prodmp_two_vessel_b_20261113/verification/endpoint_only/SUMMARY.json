@@ -1,0 +1,243 @@
+{
+  "b_mpc_success_interaction": 0.0,
+  "changed_component": "learned 2-D mean weights replaced by the old endpoint-only weights",
+  "endpoint_only_exact": {
+    "adaptive_over_mpc": 0.06272410788238447,
+    "adaptive_public_ceiling": 0.8184842168555494,
+    "best_fixed": "fixed_center",
+    "mass_of_gain_above": {
+      "0.001": 0.6045847335310278,
+      "0.01": 0.6008385006321217,
+      "0.05": 0.5462404428315012,
+      "1e-10": 0.70366476941095
+    },
+    "mpc_executed": 0.7557601089731649,
+    "mpc_forecast": 0.7055955727847366,
+    "omitted_prescan_probability": 2.608954214652854e-11,
+    "paired_expectation_differences_b": {
+      "fixed_center": {
+        "frames": -8.028829917616775e-05,
+        "motion_s": -0.00012043244876913661,
+        "rail_mm": 0.0,
+        "success": 2.52963531439665e-05,
+        "tcp_mm": -0.0014069196018446917,
+        "turn_deg": -1.4993436688646753,
+        "within_modeled_cost_bands": true,
+        "wrong": -6.6669179517668165e-06
+      },
+      "mpc": {
+        "frames": -0.3921817885463801,
+        "motion_s": -0.5882726828195648,
+        "rail_mm": 0.0,
+        "success": 0.06272410788238725,
+        "tcp_mm": 0.9139519879748015,
+        "turn_deg": -6.364061643237793,
+        "within_modeled_cost_bands": false,
+        "wrong": -7.286406836225383e-07
+      },
+      "two_images": {
+        "frames": 0.2928117729408455,
+        "motion_s": 0.4392176594112689,
+        "rail_mm": 0.0,
+        "success": 0.11289070537840185,
+        "tcp_mm": 1.6410974283962538,
+        "turn_deg": 1.3118569148201544,
+        "within_modeled_cost_bands": false,
+        "wrong": -4.3998301994047375e-06
+      }
+    },
+    "prescan_exit_probabilities": {
+      "0": 0.5082962657454801,
+      "1": 0.3079621512686885,
+      "2": 0.18374158298583135
+    },
+    "prescan_first": 4,
+    "prescan_mean_resources": {
+      "frames": 1.9999999999999996,
+      "motion_s": 3.000000000000002,
+      "rail_mm": 124.78630174048874,
+      "tcp_mm": 15.532165899143461,
+      "turn_deg": 24.60852687663123
+    },
+    "prescan_registration_map_accuracy": 0.4480973656305934,
+    "prescan_states": 1166,
+    "root_disagreement_mass": 0.70366476941095,
+    "second_diagnostic_or_far_switch_mass": 0.999999999973911,
+    "suffix": {
+      "b": {
+        "frames": 2.1345996404194207,
+        "motion_s": 3.20189946062913,
+        "rail_mm": 124.78630173723317,
+        "success": 0.8184842168555488,
+        "tcp_mm": 27.563570173249477,
+        "turn_deg": 19.93917660376441,
+        "wrong": 5.059586047600299e-06
+      },
+      "fixed_center": {
+        "frames": 2.134679928718597,
+        "motion_s": 3.202019893077899,
+        "rail_mm": 124.78630173723317,
+        "success": 0.8184589205024049,
+        "tcp_mm": 27.564977092851322,
+        "turn_deg": 21.438520272629084,
+        "wrong": 1.1726503999367115e-05
+      },
+      "fixed_minus12": {
+        "frames": 2.4484725020954308,
+        "motion_s": 3.6727087531431426,
+        "rail_mm": 124.78630173723317,
+        "success": 0.76828600175964,
+        "tcp_mm": 26.840258969803656,
+        "turn_deg": 36.70496917081829,
+        "wrong": 2.3555797781542302e-05
+      },
+      "fixed_plus12": {
+        "frames": 2.1347899573014235,
+        "motion_s": 3.2021849359521344,
+        "rail_mm": 124.78630173723317,
+        "success": 0.818445137196492,
+        "tcp_mm": 27.563653063957055,
+        "turn_deg": 18.386588850480305,
+        "wrong": 1.2204058990804817e-05
+      },
+      "mpc": {
+        "frames": 2.526781428965801,
+        "motion_s": 3.790172143448695,
+        "rail_mm": 124.78630173723317,
+        "success": 0.7557601089731616,
+        "tcp_mm": 26.649618185274676,
+        "turn_deg": 26.303238247002202,
+        "wrong": 5.788226731222837e-06
+      },
+      "two_images": {
+        "frames": 1.8417878674785753,
+        "motion_s": 2.762681801217861,
+        "rail_mm": 124.78630173723317,
+        "success": 0.705593511477147,
+        "tcp_mm": 25.922472744853224,
+        "turn_deg": 18.627319688944254,
+        "wrong": 9.459416247005036e-06
+      }
+    },
+    "tie_safe_adaptive_over_mpc": 0.03848183407363131,
+    "total": {
+      "b": {
+        "frames": 4.13459964041942,
+        "motion_s": 6.201899460629132,
+        "rail_mm": 249.5726034777219,
+        "success": 0.8184842168555488,
+        "tcp_mm": 43.09573607239294,
+        "turn_deg": 44.54770348039564,
+        "wrong": 5.059586047600299e-06
+      },
+      "fixed_center": {
+        "frames": 4.1346799287185965,
+        "motion_s": 6.202019893077901,
+        "rail_mm": 249.5726034777219,
+        "success": 0.8184589205024049,
+        "tcp_mm": 43.09714299199479,
+        "turn_deg": 46.047047149260315,
+        "wrong": 1.1726503999367115e-05
+      },
+      "fixed_minus12": {
+        "frames": 4.448472502095431,
+        "motion_s": 6.672708753143144,
+        "rail_mm": 249.5726034777219,
+        "success": 0.76828600175964,
+        "tcp_mm": 42.37242486894712,
+        "turn_deg": 61.31349604744952,
+        "wrong": 2.3555797781542302e-05
+      },
+      "fixed_plus12": {
+        "frames": 4.1347899573014235,
+        "motion_s": 6.202184935952136,
+        "rail_mm": 249.5726034777219,
+        "success": 0.818445137196492,
+        "tcp_mm": 43.09581896310051,
+        "turn_deg": 42.99511572711154,
+        "wrong": 1.2204058990804817e-05
+      },
+      "mpc": {
+        "frames": 4.5267814289658,
+        "motion_s": 6.790172143448697,
+        "rail_mm": 249.5726034777219,
+        "success": 0.7557601089731616,
+        "tcp_mm": 42.18178408441814,
+        "turn_deg": 50.91176512363343,
+        "wrong": 5.788226731222837e-06
+      },
+      "two_images": {
+        "frames": 3.841787867478575,
+        "motion_s": 5.762681801217863,
+        "rail_mm": 249.5726034777219,
+        "success": 0.705593511477147,
+        "tcp_mm": 41.45463864399669,
+        "turn_deg": 43.235846565575486,
+        "wrong": 9.459416247005036e-06
+      }
+    }
+  },
+  "input_sha256": {
+    "GEOMETRY.json": "95243522c5de0fbbb3631520ec757f88e93c736ee5e4edabbdf56a6660d599fb",
+    "PRODMP_SHAPE_CHECK.json": "6fcbfbc82cfc6b68c60bda622a1a2643c00a46940a006ba4d61acb637a3e825d",
+    "SUMMARY.json": "6cfac66bdf9e5a9c720a54990aabd5a217d147c510477945168de04a259633e6"
+  },
+  "learned_minus_endpoint_only": {
+    "b": {
+      "frames": 0.0,
+      "motion_s": 0.0,
+      "rail_mm": 0.0,
+      "success": 0.0,
+      "tcp_mm": 0.8064499436597501,
+      "turn_deg": -0.00012260961491961098,
+      "wrong": 0.0
+    },
+    "fixed_center": {
+      "frames": 0.0,
+      "motion_s": 0.0,
+      "rail_mm": 0.0,
+      "success": 0.0,
+      "tcp_mm": 0.8068161451623155,
+      "turn_deg": -0.00019606468131883048,
+      "wrong": 0.0
+    },
+    "fixed_minus12": {
+      "frames": 0.0,
+      "motion_s": 0.0,
+      "rail_mm": 0.0,
+      "success": 0.0,
+      "tcp_mm": 0.7955603012926318,
+      "turn_deg": -0.0002880735813022284,
+      "wrong": 0.0
+    },
+    "fixed_plus12": {
+      "frames": 0.0,
+      "motion_s": 0.0,
+      "rail_mm": 0.0,
+      "success": 0.0,
+      "tcp_mm": 0.8063130210857423,
+      "turn_deg": -8.829379488872746e-05,
+      "wrong": 0.0
+    },
+    "mpc": {
+      "frames": 0.0,
+      "motion_s": 0.0,
+      "rail_mm": 0.0,
+      "success": 0.0,
+      "tcp_mm": 0.790323464979565,
+      "turn_deg": -0.00011962004572296792,
+      "wrong": 0.0
+    },
+    "two_images": {
+      "frames": 0.0,
+      "motion_s": 0.0,
+      "rail_mm": 0.0,
+      "success": 0.0,
+      "tcp_mm": 0.775953052781233,
+      "turn_deg": -0.00013232314829281222,
+      "wrong": 0.0
+    }
+  },
+  "same_path_feasibility_count": 63,
+  "scope": "secondary exact finite calculation using the checked endpoint-only ProDMP costs"
+}
