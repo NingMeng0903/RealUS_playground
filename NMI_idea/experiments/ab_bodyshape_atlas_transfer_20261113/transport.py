@@ -153,9 +153,11 @@ class ShapeTransport:
         c, s = np.cos(np.deg2rad(knee_deg)), np.sin(np.deg2rad(knee_deg))
         return np.array(((1., 0., 0.), (0., c, -s), (0., s, c)))
 
-    def _native(self, side: str, delta: np.ndarray, knee_deg: float) -> dict[str, np.ndarray]:
-        beta = np.array(self.beta, copy=True)
-        beta[:2] += delta
+    def _native(self, side: str, delta: np.ndarray, knee_deg: float, *,
+                beta: np.ndarray | None = None) -> dict[str, np.ndarray]:
+        if beta is None:
+            beta = self.beta.copy()
+            beta[:2] += delta
         rest = self._template + np.einsum("vij,j->vi", self._shapedirs, beta)
         joints = self._regressor @ rest
         rot = self._rotation(knee_deg)
@@ -178,23 +180,29 @@ class ShapeTransport:
         b = np.einsum("nj,jab->nab", weights, transforms)
         return np.einsum("nab,nb->na", b[:, :3, :3], points) + b[:, :3, 3]
 
-    def deform(self, side: str, delta_beta: Any, knee_deg: Any):
-        """Return chart vertices, owned native skin, owned faces, and 55 joints."""
+    def deform(self, side: str, delta_beta: Any, knee_deg: Any, *, beta: Any = None):
+        """Evaluate the fixed material chart at a pose and a full or relative body shape."""
         if side not in self.sides:
             raise ValueError(f"side must be 'left' or 'right', got {side!r}")
         delta = np.asarray(delta_beta, float)
         if delta.shape != (2,) or not np.all(np.isfinite(delta)):
             raise ValueError("delta_beta must be two finite values for beta0/beta1")
+        if beta is not None:
+            beta = np.asarray(beta, float)
+            if beta.shape != self.beta.shape or not np.all(np.isfinite(beta)):
+                raise ValueError(f"beta must be {len(self.beta)} finite shape coefficients")
+            if np.any(delta):
+                raise ValueError("provide either a full beta vector or nonzero relative offsets")
         knee = float(knee_deg)
         if not np.isfinite(knee) or not 0 <= knee <= 90:
             raise ValueError("knee_deg must lie in [0, 90]")
         asset = self.sides[side]
-        state = self._native(side, delta, knee)
+        state = self._native(side, delta, knee, beta=beta)
         surface = asset.stencil @ state["native"][asset.stencil_source_ids]
         owned = surface[asset.source_original_skin_vertex_indices]
         outer = np.einsum("ni,nij->nj", asset.source_surface_barycentric,
                           owned[asset.owned_skin_faces[asset.source_surface_face_indices]])
-        rest_state = self._native(side, delta, 0.0)
+        rest_state = self._native(side, delta, 0.0, beta=beta)
         rest_surface = asset.stencil @ rest_state["native"][asset.stencil_source_ids]
         rest_owned = rest_surface[asset.source_original_skin_vertex_indices]
         rest_outer = np.einsum("ni,nij->nj", asset.source_surface_barycentric,

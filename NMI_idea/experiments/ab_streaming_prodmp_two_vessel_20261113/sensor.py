@@ -36,6 +36,8 @@ BIAS_SD_MM = np.array([0.55, 0.30], dtype=float)
 NOISE_SD_MM = np.array([1.0, 0.68], dtype=float)
 FOV_MIN_MM = np.array([-25.0, 3.0], dtype=float)
 FOV_MAX_MM = np.array([25.0, 52.0], dtype=float)
+CENTER_TOL_MM = 3.0
+IDENTITY_MIN = 0.95
 
 # Roles are always in physical/public order, independent of packet order.
 ARTERY = 0
@@ -53,6 +55,10 @@ class Scene:
     bias: np.ndarray
     clear: np.ndarray
     noise: np.ndarray
+
+
+class UnsupportedObservation(ValueError):
+    """The observed packet has no support under the predictive belief."""
 
 
 def _freeze(array: np.ndarray) -> np.ndarray:
@@ -89,21 +95,22 @@ def _as_scalar(value: Any, name: str) -> float:
 class Sensor:
     """Exact static-world packet simulator and streaming Bayesian filter."""
 
-    def __init__(self, sections: dict):
-        if not isinstance(sections, dict):
-            raise TypeError("sections must be the decoded SECTIONS.json dictionary")
-        try:
-            s_mm = np.asarray(sections["s_mm"], dtype=float)
-            centers_mm = np.asarray(sections["centers_mm"], dtype=float)
-        except KeyError as exc:
-            raise ValueError(f"sections is missing {exc.args[0]!r}") from exc
-        if s_mm.ndim != 1 or len(s_mm) < 2 or np.any(~np.isfinite(s_mm)) or np.any(np.diff(s_mm) <= 0.0):
-            raise ValueError("sections s_mm must be finite and strictly increasing")
-        if centers_mm.shape != (len(s_mm), 2, 2) or np.any(~np.isfinite(centers_mm)):
-            raise ValueError("sections centers_mm must have shape (len(s_mm), 2, 2)")
-
-        self._s_mm = np.array(s_mm, dtype=float, copy=True)
-        self._centers_mm = np.array(centers_mm, dtype=float, copy=True)
+    def __init__(self, sections: dict | None = None):
+        self._s_mm = self._centers_mm = None
+        if sections is not None:
+            if not isinstance(sections, dict):
+                raise TypeError("sections must be the decoded SECTIONS.json dictionary")
+            try:
+                s_mm = np.asarray(sections["s_mm"], dtype=float)
+                centers_mm = np.asarray(sections["centers_mm"], dtype=float)
+            except KeyError as exc:
+                raise ValueError(f"sections is missing {exc.args[0]!r}") from exc
+            if s_mm.ndim != 1 or len(s_mm) < 2 or np.any(~np.isfinite(s_mm)) or np.any(np.diff(s_mm) <= 0.0):
+                raise ValueError("sections s_mm must be finite and strictly increasing")
+            if centers_mm.shape != (len(s_mm), 2, 2) or np.any(~np.isfinite(centers_mm)):
+                raise ValueError("sections centers_mm must have shape (len(s_mm), 2, 2)")
+            self._s_mm = s_mm.copy()
+            self._centers_mm = centers_mm.copy()
         self._offsets_mm = np.asarray(
             [(lateral, depth) for lateral in OFFSET_LATERAL_MM for depth in OFFSET_DEPTH_MM],
             dtype=float,
@@ -124,6 +131,8 @@ class Sensor:
             dtype=float,
         )
         self._noise_sd = np.array(NOISE_SD_MM, dtype=float, copy=True)
+        self._sigma = np.sqrt(2.0 * pi) * self._noise_sd
+        self._clear = np.asarray(STATE_INDEX, dtype=bool)
         self._stationary_state = np.asarray(
             [STATIONARY_ROLE[a0] * STATIONARY_ROLE[a1] for a0, a1 in STATE_INDEX],
             dtype=float,
@@ -146,6 +155,8 @@ class Sensor:
     def nominal(self, s_mm) -> np.ndarray:
         """Linearly interpolate public nominal centers at path coordinate(s)."""
 
+        if self._s_mm is None:
+            raise ValueError("section-based queries require a nominal section table")
         query = np.asarray(s_mm, dtype=float)
         if np.any(~np.isfinite(query)) or np.any(query < self._s_mm[0]) or np.any(query > self._s_mm[-1]):
             raise ValueError(f"s_mm must lie in [{self._s_mm[0]}, {self._s_mm[-1]}]")
@@ -182,25 +193,32 @@ class Sensor:
         return Scene(_freeze(offset), _freeze(bias), _freeze(clear), _freeze(noise))
 
     def observe(self, scene: Scene, k: int, s_mm, x_mm) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-        """Return an anonymous FOV-clipped packet, evaluator roles, and physical lateral truth."""
+        """Return anonymous observations for the legacy section-table geometry."""
+        lateral = np.array([_as_scalar(x_mm, "x_mm"), 0.0])
+        center = self.nominal(s_mm)
+        if center.shape != (2, 2):
+            raise ValueError("observe requires one scalar s_mm")
+        self._validate_scene_frame(scene, k)
+        return self._packet(scene, k, center + scene.offset - lateral,
+                            center + (scene.offset - scene.bias) - lateral)
 
+    @staticmethod
+    def _validate_scene_frame(scene, k):
         if not isinstance(scene, Scene):
             raise TypeError("scene must be a Scene returned by Sensor.scene")
         if not isinstance(k, (int, np.integer)) or not 0 <= int(k) < len(scene.clear):
             raise IndexError("frame k is outside the scene tape")
-        k = int(k)
-        x_mm = _as_scalar(x_mm, "x_mm")
         if scene.offset.shape != (2,) or scene.bias.shape != (2,) or scene.noise.shape != (len(scene.clear), 2, 2):
             raise ValueError("scene has incompatible array shapes")
 
-        center = self.nominal(s_mm)
-        if center.shape != (2, 2):
-            raise ValueError("observe requires one scalar s_mm")
-        physical_shift = scene.offset - scene.bias
-        true_u = center[:, 0] + physical_shift[0] - x_mm
-        # The calibration bias cancels in the observed mean: anatomy moves by
-        # effective-bias, while the sensor's case bias adds back bias.
-        observed_mean = center + scene.offset - np.array([x_mm, 0.0])
+    def observe_means(self, scene, k, observed_mean, physical_mean):
+        """Add calibrated noise and persistent dropouts to projected means."""
+        self._validate_scene_frame(scene, k)
+        return self._packet(scene, k, observed_mean, physical_mean)
+
+    @staticmethod
+    def _packet(scene, k, observed_mean, physical_mean):
+        true_u = physical_mean[:, 0]
         measured = observed_mean + scene.noise[k]
         visible = scene.clear[k] & np.all(measured >= FOV_MIN_MM, axis=1) & np.all(measured <= FOV_MAX_MM, axis=1)
         roles = np.flatnonzero(visible).astype(int)
@@ -217,17 +235,6 @@ class Sensor:
         """Return the normalized joint prior over offset and clear-state rows."""
 
         return self._offset_prior[:, None] * self._stationary_state[None, :]
-
-    @staticmethod
-    def _normal_pdf(point: np.ndarray, mean: np.ndarray) -> float:
-        delta = (np.asarray(point, dtype=float) - mean) / NOISE_SD_MM
-        return float(np.exp(-0.5 * np.dot(delta, delta)) / (2.0 * pi * np.prod(NOISE_SD_MM)))
-
-    @staticmethod
-    def _rectangle_mass(mean: np.ndarray) -> float:
-        mean = np.asarray(mean, dtype=float)
-        masses = ndtr((FOV_MAX_MM - mean) / NOISE_SD_MM) - ndtr((FOV_MIN_MM - mean) / NOISE_SD_MM)
-        return float(np.prod(masses))
 
     @staticmethod
     def _validate_packet(packet) -> np.ndarray:
@@ -259,51 +266,65 @@ class Sensor:
         if center.shape != (2, 2):
             raise ValueError("update requires one scalar s_mm")
         means = center + self._offsets_mm[:, None, :] - np.array([x_mm, 0.0])
-        n = len(packet)
-        likelihood = np.zeros((self.n_hypotheses, 4), dtype=float)
-        association = np.zeros((self.n_hypotheses, 4, n), dtype=float)
+        return self._emission_means(packet, means)
 
-        for h in range(self.n_hypotheses):
-            present_prob = np.array([self._rectangle_mass(means[h, role]) for role in range(2)])
-            present_density = np.empty((2, n), dtype=float)
-            for role in range(2):
-                for slot in range(n):
-                    present_density[role, slot] = self._normal_pdf(packet[slot], means[h, role])
-            for state, (artery_clear, vein_clear) in enumerate(STATE_INDEX):
-                clear = (bool(artery_clear), bool(vein_clear))
-                missing = np.array(
-                    [1.0 if not clear[role] else 1.0 - present_prob[role] for role in range(2)],
-                    dtype=float,
-                )
-                if n == 0:
-                    likelihood[h, state] = missing[0] * missing[1]
-                elif n == 1:
-                    artery_assignment = present_density[ARTERY, 0] * missing[VEIN] if clear[ARTERY] else 0.0
-                    vein_assignment = missing[ARTERY] * present_density[VEIN, 0] if clear[VEIN] else 0.0
-                    likelihood[h, state] = artery_assignment + vein_assignment
-                    association[h, state, 0] = artery_assignment
-                else:  # n == 2: exact sum over the two role-to-slot permutations.
-                    if clear[ARTERY] and clear[VEIN]:
-                        artery_first = present_density[ARTERY, 0] * present_density[VEIN, 1]
-                        artery_second = present_density[ARTERY, 1] * present_density[VEIN, 0]
-                        likelihood[h, state] = artery_first + artery_second
-                        association[h, state, 0] = artery_first
-                        association[h, state, 1] = artery_second
-        return likelihood, association
+    def _emission_means(self, packet, means):
+        """Marginalize anonymous slot assignments at projected hypothesis means."""
+        n = len(packet)
+        visible = np.isfinite(means).all(axis=-1)
+        means = np.where(visible[..., None], means, 0.0)
+        present = (ndtr((FOV_MAX_MM - means) / self._noise_sd) -
+                   ndtr((FOV_MIN_MM - means) / self._noise_sd)).prod(axis=-1)
+        clear = self._clear[None, :, :] & visible[:, None, :]
+        missing = 1.0 - clear * present[:, None, :]
+        if n == 0:
+            return missing.prod(axis=-1), np.empty((self.n_hypotheses, 4, 0))
+        error = (packet - means[:, :, None, :]) / self._noise_sd
+        density = (np.exp(-0.5 * error**2) / self._sigma).prod(axis=-1)
+        p = clear[..., None] * density[:, None, :, :]
+        if n == 1:
+            artery = p[..., ARTERY, 0] * missing[..., VEIN]
+            vein = p[..., VEIN, 0] * missing[..., ARTERY]
+            return artery + vein, artery[..., None]
+        a0 = p[..., ARTERY, 0] * p[..., VEIN, 1]
+        a1 = p[..., ARTERY, 1] * p[..., VEIN, 0]
+        return a0 + a1, np.stack((a0, a1), axis=-1)
 
     def update(self, belief, packet, s_mm, x_mm) -> tuple[np.ndarray, np.ndarray]:
         """Apply one clear-state transition and the exact packet association update."""
 
+        likelihood, association = self._emission(packet, s_mm, x_mm)
+        return self._condition(belief, likelihood, association)
+
+    def update_projected(self, belief, packet, means_mm):
+        """Update at the current measured probe pose, with one centre per hypothesis."""
+        means = np.asarray(means_mm, dtype=float)
+        if means.shape != (self.n_hypotheses, 2, 2):
+            raise ValueError("means_mm must have shape (hypotheses, roles, 2)")
+        likelihood, association = self._emission_means(self._validate_packet(packet), means)
+        return self._condition(belief, likelihood, association)
+
+    def _condition(self, belief, likelihood, association):
         belief = self._normalize_belief(belief, (self.n_hypotheses, len(STATE_INDEX)))
         predicted = belief @ self._state_transition
-        likelihood, association = self._emission(packet, s_mm, x_mm)
         joint = predicted * likelihood
         mass = float(joint.sum())
         if not np.isfinite(mass) or mass <= 0.0:
-            raise ValueError("packet has zero probability under the supplied belief")
+            raise UnsupportedObservation("packet has zero probability under the supplied belief")
         new_belief = joint / mass
         arterial_probs = np.sum(predicted[:, :, None] * association, axis=(0, 1)) / mass
         return new_belief, arterial_probs
+
+    def predicted_hit(self, belief, means_mm, frames):
+        """Probability of a target packet near centre at a future exposure."""
+        means = np.asarray(means_mm, dtype=float)
+        lo, hi = FOV_MIN_MM.copy(), FOV_MAX_MM.copy()
+        lo[0], hi[0] = -CENTER_TOL_MM, CENTER_TOL_MM
+        delta = (ndtr((hi - means) / self._noise_sd) -
+                 ndtr((lo - means) / self._noise_sd)).prod(axis=-1)
+        predicted = belief @ np.linalg.matrix_power(self._state_transition, frames)
+        clear_artery = predicted[:, self._clear[:, ARTERY]].sum(axis=1)
+        return float(clear_artery @ np.where(np.isfinite(delta[:, ARTERY]), delta[:, ARTERY], 0.0))
 
     def offset_mean(self, belief) -> np.ndarray:
         """Return the posterior mean effective offset in millimetres."""

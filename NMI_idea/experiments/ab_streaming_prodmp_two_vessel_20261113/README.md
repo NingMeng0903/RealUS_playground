@@ -1,5 +1,7 @@
 # Streaming ultrasound feedback with learned ProDMP
 
+The `run.py atlas` entry evaluates the fixed material chart and its attached probe orientation on a supplied SMPL-X shape before streaming. The cross-shape study provides the transport equations, commands, and paired logs. [Cross-shape scan](CROSS_BETA.md)
+
 This mechanism experiment uses the previous static 15° Among_US artery and vein and fixes longitudinal progression and probe orientation. It tests whether ultrasound can change the lateral motion before a segment ends, and whether learning from those corrections improves the result. The previous endpoint experiment captures after motion and dwell. Its ProDMP fits analytical curves generated without image observations. [Previous execution and result](../ab_prodmp_two_vessel_b_20261113/README.md)
 
 ## Demonstrations and execution

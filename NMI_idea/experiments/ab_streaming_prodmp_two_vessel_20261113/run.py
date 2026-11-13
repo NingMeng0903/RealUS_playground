@@ -21,7 +21,7 @@ from primitive import (  # noqa: E402
     LateralPrimitive,
     revise,
 )
-from sensor import Sensor  # noqa: E402
+from sensor import CENTER_TOL_MM, IDENTITY_MIN, Sensor  # noqa: E402
 
 
 TRAIN_SEED = 2026111320
@@ -32,8 +32,6 @@ FRAME_STEPS = np.arange(0, TOTAL_STEPS + 1, FRAME_STRIDE)
 FRAME_DT = FRAME_STRIDE * SAMPLE_DT_S
 TICKS = np.arange(TOTAL_STEPS + 1) * SAMPLE_DT_S
 N_COVERAGE_BINS = 6
-CENTER_TOL_MM = 3.0
-IDENTITY_MIN = 0.95
 ARMS = ("learned_boundary_feedback", "endpoint_stream_feedback", "learned_stream_feedback")
 
 
@@ -194,6 +192,10 @@ def compare(left, right, bootstrap):
 
 
 def main():
+    if sys.argv[1:2] == ["atlas"]:
+        from atlas_scan import main as atlas_main
+        return atlas_main(sys.argv[2:])
+
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--smoke", action="store_true")
