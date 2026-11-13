@@ -1,0 +1,52 @@
+{
+  "edge_count": 264,
+  "inputs": {
+    "ab_full_b_rollout_20261113/motion/BANK_MAIN.json.xz": {
+      "edges": 168,
+      "file_sha256": "f834013839500edcb686a08b045bb4c909d35164620f4056e45cf93d1b78d32f"
+    },
+    "ab_inverse_acquisition_b_20261113/motion/BANK.json.xz": {
+      "edges": 264,
+      "file_sha256": "470d1732dab2f7a89ae67f73fec2f2874c1aeda287a351f133aec78bda4fbb3b"
+    }
+  },
+  "kinematic_replay_samples": 20064,
+  "max_abs_error": {
+    "fk_rate": 3.3306690738754696e-16,
+    "fk_tcp_mm": 0.0,
+    "fk_turn_deg": 6.394884621840902e-14,
+    "joint_endpoint": 0.0,
+    "rail_mm": 0.0,
+    "sample_endpoint": 0.0,
+    "tcp_mm": 0.0
+  },
+  "node_count": 30,
+  "prescan_fixed_order_route_bounds": {
+    "count": 324,
+    "fields": [
+      "tcp_mm",
+      "turn_deg",
+      "rail_mm",
+      "movement_s"
+    ],
+    "maximum": [
+      141.02670521590636,
+      113.31020977596513,
+      400.2678132007562,
+      7.5
+    ],
+    "minimum": [
+      60.6635516015386,
+      14.01129444111823,
+      330.2678132007561,
+      7.5
+    ]
+  },
+  "sites": [
+    3,
+    4,
+    5,
+    6,
+    7
+  ]
+}

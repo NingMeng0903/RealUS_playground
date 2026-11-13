@@ -1,0 +1,42 @@
+{
+  "feedforward": {
+    "29": {
+      "correct": 64,
+      "interactions": 48000,
+      "n": 128,
+      "updates": 95
+    },
+    "61": {
+      "correct": 64,
+      "interactions": 48000,
+      "n": 128,
+      "updates": 95
+    },
+    "7": {
+      "correct": 64,
+      "interactions": 48000,
+      "n": 128,
+      "updates": 95
+    }
+  },
+  "recurrent": {
+    "29": {
+      "correct": 128,
+      "interactions": 48000,
+      "n": 128,
+      "updates": 95
+    },
+    "61": {
+      "correct": 128,
+      "interactions": 48000,
+      "n": 128,
+      "updates": 95
+    },
+    "7": {
+      "correct": 128,
+      "interactions": 48000,
+      "n": 128,
+      "updates": 95
+    }
+  }
+}

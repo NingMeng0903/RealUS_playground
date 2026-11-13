@@ -1,0 +1,107 @@
+{
+  "metrics": {
+    "witness": {
+      "abstained": 24,
+      "affirmative_error": 7,
+      "by_family": {
+        "0": {
+          "affirmative_error": 7,
+          "n": 48,
+          "success": 15
+        },
+        "1": {
+          "affirmative_error": 0,
+          "n": 16,
+          "success": 14
+        },
+        "2": {
+          "affirmative_error": 0,
+          "n": 16,
+          "success": 15
+        },
+        "3": {
+          "affirmative_error": 0,
+          "n": 16,
+          "success": 16
+        }
+      },
+      "correct_declaration": 64,
+      "correct_images": 20,
+      "mean": {
+        "captures": 9.010416666666666,
+        "rail_mm": 448.55482839226096,
+        "seconds": 14.416666666666666,
+        "tcp_mm": 100.95608907873275,
+        "turn_deg": 68.47279759593724
+      },
+      "n": 96,
+      "negative_false_daughter": 0,
+      "negative_n": 48,
+      "negative_success": 45,
+      "positive_n": 48,
+      "positive_success": 15,
+      "positive_wrong_absence": 5,
+      "success": 60,
+      "wrong": 12
+    }
+  },
+  "runtime": {
+    "witness": {
+      "all_wall_s": 5.664227404995472,
+      "measured_wall_s": 4.196101876994362,
+      "wall_scope": "batched solver calls"
+    }
+  },
+  "settings": {
+    "arms": [
+      "witness"
+    ],
+    "cases": 96,
+    "checkpoint_dir": null,
+    "checkpoint_sha256": {},
+    "cohort": [
+      723112,
+      723212,
+      "development"
+    ],
+    "dev_cases": 64,
+    "fork_tolerance_mm": 5.0,
+    "grid": 5,
+    "interactions": 32000,
+    "prefix": 5,
+    "prescan_caps": [
+      142.0,
+      114.0,
+      401.0
+    ],
+    "prior_seed": 723101,
+    "prior_size": 256,
+    "seconds_per_acquisition": 1.6,
+    "seed": 7,
+    "source_sha256": {
+      "association": "f38a8ff62a5bdb96e3774112cb34b1dd150af80d46fa54145c2f2074351e6103",
+      "atlas": "e61ff1a05ca957674d3b146dc225b96cce61286094f0e1da052b5874c8219180",
+      "base_bank": "f834013839500edcb686a08b045bb4c909d35164620f4056e45cf93d1b78d32f",
+      "core.py": "0877c54ad0e2d6fe9c1cf3de414d41e7402c20358f6af4c0295f5a9a1457e6ea",
+      "diagonal_bank": "470d1732dab2f7a89ae67f73fec2f2874c1aeda287a351f133aec78bda4fbb3b",
+      "fit_topology.py": "8a4ea49d41807d9f282685942c872a16618fb8e2e6ce9c79c49141b7781eb43d",
+      "imitation.py": "276f69ec3b35a2ec5558c85b8e9681269988157d26354373f2e38ef4860e9586",
+      "learner.py": "5b188163ba69d70b0be5a5d4ae384a43832cc8eca4d5fc98de27f5e9aa7d3b02",
+      "plan.py": "4e80988a0f1b8b674a9c57d0990cc9ea92cf9f0cc69b200be6d2bd1ce6ca6b4a",
+      "prescan.py": "de8ef0e8b1fa541edaa08f4322d8c2032cbfc45b36b67a9ae3bfff8b1d651711",
+      "run_topology.py": "f9cbf9d763969f9e0ae7f63b7990f9f57a645e9400f19a88980ae98a5f10276f",
+      "suffix.py": "f5aea6c1d64e199ebdd5a2bf0f07dc0c5a0b8b3db85b7ef5fcd2f6aba5bb6645",
+      "train.py": "e4ad3608765797a24559e961a4333de3f3d0645b5cccb09d18ece3d37a38bb93",
+      "witness.py": "c9f5ad2a6c5c7a29e46ce4d702ced2efec055a20f5a8254d004a67f2b62b4d31",
+      "world.py": "c7f95ce9edabc3d4184a6957e4041d07093c954286bb8ebbe38414a998aebf88"
+    },
+    "split": "dev",
+    "suffix": 8,
+    "suffix_caps": [
+      65.0,
+      90.0,
+      250.0
+    ],
+    "train_cases": 512
+  }
+}

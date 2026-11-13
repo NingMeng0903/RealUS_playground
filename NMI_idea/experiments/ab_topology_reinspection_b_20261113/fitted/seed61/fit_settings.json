@@ -1,0 +1,29 @@
+{
+  "arms": [
+    "bc",
+    "bc_mlp",
+    "ppo",
+    "mlp",
+    "cql"
+  ],
+  "dev": 96,
+  "device": "cpu",
+  "grid": 5,
+  "interactions": 240000,
+  "n": 1536,
+  "prior": 256,
+  "seed": 61,
+  "source_sha256": {
+    "core.py": "492e6b87777f29c2c95a7342887fcf207dfd20e854a327c9f88de043d1533c14",
+    "fit_topology.py": "8a4ea49d41807d9f282685942c872a16618fb8e2e6ce9c79c49141b7781eb43d",
+    "imitation.py": "276f69ec3b35a2ec5558c85b8e9681269988157d26354373f2e38ef4860e9586",
+    "learner.py": "5b188163ba69d70b0be5a5d4ae384a43832cc8eca4d5fc98de27f5e9aa7d3b02",
+    "plan.py": "4e80988a0f1b8b674a9c57d0990cc9ea92cf9f0cc69b200be6d2bd1ce6ca6b4a",
+    "prescan.py": "de8ef0e8b1fa541edaa08f4322d8c2032cbfc45b36b67a9ae3bfff8b1d651711",
+    "run_topology.py": "f9cbf9d763969f9e0ae7f63b7990f9f57a645e9400f19a88980ae98a5f10276f",
+    "suffix.py": "f5aea6c1d64e199ebdd5a2bf0f07dc0c5a0b8b3db85b7ef5fcd2f6aba5bb6645",
+    "train.py": "e4ad3608765797a24559e961a4333de3f3d0645b5cccb09d18ece3d37a38bb93",
+    "world.py": "c7f95ce9edabc3d4184a6957e4041d07093c954286bb8ebbe38414a998aebf88"
+  },
+  "teacher": "mpc"
+}

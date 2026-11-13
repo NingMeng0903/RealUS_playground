@@ -1,0 +1,533 @@
+{
+  "seed29": {
+    "checks": {
+      "bc": {
+        "checkpoint_sha256": "245de1444318716c1e54d7f06c4a5332874a500fbda6f0b6244c2e512fe3cc58",
+        "demonstrator_tapes_per_case": 1,
+        "development_actions": 501,
+        "supervised_epochs": 32,
+        "teacher_agreement_on_development_actions": 0.5069860219955444,
+        "training_actions": 7780,
+        "training_episodes": 1536
+      },
+      "bc_mlp": {
+        "checkpoint_sha256": "8d13dc29c1d80cc44caa62f4b676c91395785a33dd9f9e46a68c23b5f9cdd169",
+        "demonstrator_tapes_per_case": 1,
+        "development_actions": 501,
+        "supervised_epochs": 32,
+        "teacher_agreement_on_development_actions": 0.4810379147529602,
+        "training_actions": 7780,
+        "training_episodes": 1536
+      },
+      "cql": {
+        "checkpoint_sha256": "cd57cb187cfe7d31c194ed83d6c5345ebad93d980b53a9a1be35ff34cf83ab7c",
+        "development": {
+          "captures": 12.1875,
+          "n": 96.0,
+          "negative_n": 48,
+          "negative_success": 42,
+          "objective": 0.03283224439423235,
+          "positive_n": 48,
+          "positive_success": 0,
+          "rail_mm": 397.86039331018736,
+          "seconds": 19.500000000000004,
+          "success": 0.4375,
+          "tcp_mm": 83.52855092882906,
+          "turn_deg": 51.45633069183976,
+          "wrong": 0.07291666666666667
+        },
+        "replay_size": 240000,
+        "updates": 2400
+      },
+      "mlp": {
+        "actual_interactions": 240000,
+        "checkpoint_sha256": "9c709b4f5eac8621e4da61ed01c2d768fb76fa1c862eb298c84c9a91a08834d9",
+        "initial_development": {
+          "captures": 9.583333333333334,
+          "n": 96.0,
+          "negative_n": 48,
+          "negative_success": 44,
+          "objective": 0.04758591549649634,
+          "positive_n": 48,
+          "positive_success": 1,
+          "rail_mm": 400.46010792978086,
+          "seconds": 15.333333333333334,
+          "success": 0.46875,
+          "tcp_mm": 84.45677934113216,
+          "turn_deg": 50.822588738786806,
+          "update": 1,
+          "wrong": 0.10416666666666667
+        },
+        "last_development": {
+          "captures": 6.375,
+          "n": 96.0,
+          "negative_n": 48,
+          "negative_success": 40,
+          "objective": 0.1191393373167647,
+          "positive_n": 48,
+          "positive_success": 0,
+          "rail_mm": 330.26781320075605,
+          "seconds": 10.200000000000001,
+          "success": 0.4166666666666667,
+          "tcp_mm": 70.48451563288074,
+          "turn_deg": 47.53206479389123,
+          "update": 425,
+          "wrong": 0.0625
+        },
+        "selected_development": {
+          "captures": 6.177083333333333,
+          "n": 96.0,
+          "negative_n": 48,
+          "negative_success": 42,
+          "objective": 0.17904643952259147,
+          "positive_n": 48,
+          "positive_success": 0,
+          "rail_mm": 369.2635324946588,
+          "seconds": 9.883333333333335,
+          "success": 0.4375,
+          "tcp_mm": 76.24747416664191,
+          "turn_deg": 48.55946612260152,
+          "update": 30,
+          "wrong": 0.03125
+        },
+        "updates": 425
+      },
+      "ppo": {
+        "actual_interactions": 240000,
+        "checkpoint_sha256": "a7e1e9af6a3fdba7f83479c73e841d8a7f90ae0817ceb082c785654d232f4e88",
+        "initial_development": {
+          "captures": 9.885416666666666,
+          "n": 96.0,
+          "negative_n": 48,
+          "negative_success": 44,
+          "objective": 0.08638540631038756,
+          "positive_n": 48,
+          "positive_success": 1,
+          "rail_mm": 410.8589664081549,
+          "seconds": 15.816666666666668,
+          "success": 0.46875,
+          "tcp_mm": 87.67607861042889,
+          "turn_deg": 51.205236876736045,
+          "update": 1,
+          "wrong": 0.07291666666666667
+        },
+        "last_development": {
+          "captures": 6.083333333333333,
+          "n": 96.0,
+          "negative_n": 48,
+          "negative_success": 36,
+          "objective": 0.12785037261845555,
+          "positive_n": 48,
+          "positive_success": 0,
+          "rail_mm": 330.26781320075605,
+          "seconds": 9.733333333333333,
+          "success": 0.375,
+          "tcp_mm": 70.42025910319433,
+          "turn_deg": 47.655173916548996,
+          "update": 431,
+          "wrong": 0.03125
+        },
+        "selected_development": {
+          "captures": 6.46875,
+          "n": 96.0,
+          "negative_n": 48,
+          "negative_success": 42,
+          "objective": 0.18713380284313957,
+          "positive_n": 48,
+          "positive_success": 0,
+          "rail_mm": 382.26210559262626,
+          "seconds": 10.35,
+          "success": 0.4375,
+          "tcp_mm": 78.32442359343398,
+          "turn_deg": 49.88112600832776,
+          "update": 60,
+          "wrong": 0.020833333333333332
+        },
+        "updates": 431
+      }
+    },
+    "configuration": {
+      "arms": [
+        "bc",
+        "bc_mlp",
+        "ppo",
+        "mlp",
+        "cql"
+      ],
+      "dev": 96,
+      "device": "cpu",
+      "grid": 5,
+      "interactions": 240000,
+      "n": 1536,
+      "prior": 256,
+      "seed": 29,
+      "source_sha256": {
+        "core.py": "492e6b87777f29c2c95a7342887fcf207dfd20e854a327c9f88de043d1533c14",
+        "fit_topology.py": "8a4ea49d41807d9f282685942c872a16618fb8e2e6ce9c79c49141b7781eb43d",
+        "imitation.py": "276f69ec3b35a2ec5558c85b8e9681269988157d26354373f2e38ef4860e9586",
+        "learner.py": "5b188163ba69d70b0be5a5d4ae384a43832cc8eca4d5fc98de27f5e9aa7d3b02",
+        "plan.py": "4e80988a0f1b8b674a9c57d0990cc9ea92cf9f0cc69b200be6d2bd1ce6ca6b4a",
+        "prescan.py": "de8ef0e8b1fa541edaa08f4322d8c2032cbfc45b36b67a9ae3bfff8b1d651711",
+        "run_topology.py": "f9cbf9d763969f9e0ae7f63b7990f9f57a645e9400f19a88980ae98a5f10276f",
+        "suffix.py": "f5aea6c1d64e199ebdd5a2bf0f07dc0c5a0b8b3db85b7ef5fcd2f6aba5bb6645",
+        "train.py": "e4ad3608765797a24559e961a4333de3f3d0645b5cccb09d18ece3d37a38bb93",
+        "world.py": "c7f95ce9edabc3d4184a6957e4041d07093c954286bb8ebbe38414a998aebf88"
+      },
+      "teacher": "mpc"
+    }
+  },
+  "seed61": {
+    "checks": {
+      "bc": {
+        "checkpoint_sha256": "4cdea2014e4118db1ceda5fa9cbe60171b2e8bdaa05049ffaee2b87a39cc1c23",
+        "demonstrator_tapes_per_case": 1,
+        "development_actions": 501,
+        "supervised_epochs": 32,
+        "teacher_agreement_on_development_actions": 0.5029940009117126,
+        "training_actions": 7780,
+        "training_episodes": 1536
+      },
+      "bc_mlp": {
+        "checkpoint_sha256": "43670a0acc6510ac8cc570949ee4f962f755670e1d1a9564e69f54a27aec158f",
+        "demonstrator_tapes_per_case": 1,
+        "development_actions": 501,
+        "supervised_epochs": 32,
+        "teacher_agreement_on_development_actions": 0.5009980201721191,
+        "training_actions": 7780,
+        "training_episodes": 1536
+      },
+      "cql": {
+        "checkpoint_sha256": "9288fc708872b412744c5d47f859649e9a7036868489b65d14ab203952e8a621",
+        "development": {
+          "captures": 12.416666666666666,
+          "n": 96.0,
+          "negative_n": 48,
+          "negative_success": 44,
+          "objective": 0.048968242762670006,
+          "positive_n": 48,
+          "positive_success": 0,
+          "rail_mm": 401.75996523957764,
+          "seconds": 19.86666666666667,
+          "success": 0.4583333333333333,
+          "tcp_mm": 84.61210915425244,
+          "turn_deg": 52.40396978490623,
+          "wrong": 0.07291666666666667
+        },
+        "replay_size": 240000,
+        "updates": 2400
+      },
+      "mlp": {
+        "actual_interactions": 240000,
+        "checkpoint_sha256": "c081a8277ec5cff1959fc5e216efef1ea0fb811176f212f833af4bc0fa63fbd8",
+        "initial_development": {
+          "captures": 9.78125,
+          "n": 96.0,
+          "negative_n": 48,
+          "negative_success": 45,
+          "objective": 0.09068500907187632,
+          "positive_n": 48,
+          "positive_success": 0,
+          "rail_mm": 405.6595371689679,
+          "seconds": 15.65,
+          "success": 0.46875,
+          "tcp_mm": 85.27025453517841,
+          "turn_deg": 50.95756535209696,
+          "update": 1,
+          "wrong": 0.07291666666666667
+        },
+        "last_development": {
+          "captures": 6.145833333333333,
+          "n": 96.0,
+          "negative_n": 48,
+          "negative_success": 40,
+          "objective": 0.1380001887115193,
+          "positive_n": 48,
+          "positive_success": 0,
+          "rail_mm": 330.26781320075605,
+          "seconds": 9.833333333333334,
+          "success": 0.4166666666666667,
+          "tcp_mm": 70.18786000106509,
+          "turn_deg": 47.15367326801336,
+          "update": 445,
+          "wrong": 0.052083333333333336
+        },
+        "selected_development": {
+          "captures": 6.8125,
+          "n": 96.0,
+          "negative_n": 48,
+          "negative_success": 44,
+          "objective": 0.17259475088794685,
+          "positive_n": 48,
+          "positive_success": 0,
+          "rail_mm": 380.9622482828295,
+          "seconds": 10.9,
+          "success": 0.4583333333333333,
+          "tcp_mm": 78.68525053287698,
+          "turn_deg": 49.41421416845315,
+          "update": 30,
+          "wrong": 0.041666666666666664
+        },
+        "updates": 445
+      },
+      "ppo": {
+        "actual_interactions": 240000,
+        "checkpoint_sha256": "fcc3f31a5b8590ae66b24130369bcc467785d541f173591faf4cd0129b6d5b05",
+        "initial_development": {
+          "captures": 9.885416666666666,
+          "n": 96.0,
+          "negative_n": 48,
+          "negative_success": 45,
+          "objective": 0.12758993077867148,
+          "positive_n": 48,
+          "positive_success": 1,
+          "rail_mm": 412.1588237179517,
+          "seconds": 15.816666666666668,
+          "success": 0.4791666666666667,
+          "tcp_mm": 87.93898569750199,
+          "turn_deg": 51.34373563739615,
+          "update": 1,
+          "wrong": 0.052083333333333336
+        },
+        "last_development": {
+          "captures": 5.833333333333333,
+          "n": 96.0,
+          "negative_n": 48,
+          "negative_success": 38,
+          "objective": 0.18004089359205644,
+          "positive_n": 48,
+          "positive_success": 0,
+          "rail_mm": 339.36681436933327,
+          "seconds": 9.333333333333334,
+          "success": 0.3958333333333333,
+          "tcp_mm": 72.33972095673415,
+          "turn_deg": 47.782074695218625,
+          "update": 418,
+          "wrong": 0.010416666666666666
+        },
+        "selected_development": {
+          "captures": 5.947916666666667,
+          "n": 96.0,
+          "negative_n": 48,
+          "negative_success": 40,
+          "objective": 0.21474429147890195,
+          "positive_n": 48,
+          "positive_success": 0,
+          "rail_mm": 340.66667167913005,
+          "seconds": 9.516666666666666,
+          "success": 0.4166666666666667,
+          "tcp_mm": 72.5868498840944,
+          "turn_deg": 47.78771627151451,
+          "update": 380,
+          "wrong": 0.0
+        },
+        "updates": 418
+      }
+    },
+    "configuration": {
+      "arms": [
+        "bc",
+        "bc_mlp",
+        "ppo",
+        "mlp",
+        "cql"
+      ],
+      "dev": 96,
+      "device": "cpu",
+      "grid": 5,
+      "interactions": 240000,
+      "n": 1536,
+      "prior": 256,
+      "seed": 61,
+      "source_sha256": {
+        "core.py": "492e6b87777f29c2c95a7342887fcf207dfd20e854a327c9f88de043d1533c14",
+        "fit_topology.py": "8a4ea49d41807d9f282685942c872a16618fb8e2e6ce9c79c49141b7781eb43d",
+        "imitation.py": "276f69ec3b35a2ec5558c85b8e9681269988157d26354373f2e38ef4860e9586",
+        "learner.py": "5b188163ba69d70b0be5a5d4ae384a43832cc8eca4d5fc98de27f5e9aa7d3b02",
+        "plan.py": "4e80988a0f1b8b674a9c57d0990cc9ea92cf9f0cc69b200be6d2bd1ce6ca6b4a",
+        "prescan.py": "de8ef0e8b1fa541edaa08f4322d8c2032cbfc45b36b67a9ae3bfff8b1d651711",
+        "run_topology.py": "f9cbf9d763969f9e0ae7f63b7990f9f57a645e9400f19a88980ae98a5f10276f",
+        "suffix.py": "f5aea6c1d64e199ebdd5a2bf0f07dc0c5a0b8b3db85b7ef5fcd2f6aba5bb6645",
+        "train.py": "e4ad3608765797a24559e961a4333de3f3d0645b5cccb09d18ece3d37a38bb93",
+        "world.py": "c7f95ce9edabc3d4184a6957e4041d07093c954286bb8ebbe38414a998aebf88"
+      },
+      "teacher": "mpc"
+    }
+  },
+  "seed7": {
+    "checks": {
+      "bc": {
+        "checkpoint_sha256": "a24491afaf8e96b18c96651e0b0aa599991493ebd1148d9a10048ef94a882d5d",
+        "demonstrator_tapes_per_case": 1,
+        "development_actions": 501,
+        "supervised_epochs": 32,
+        "teacher_agreement_on_development_actions": 0.514970064163208,
+        "training_actions": 7780,
+        "training_episodes": 1536
+      },
+      "bc_mlp": {
+        "checkpoint_sha256": "9770c391223f54bc380d69b811c575b50a53dc1a6e01281d0c91f58d4b2532a9",
+        "demonstrator_tapes_per_case": 1,
+        "development_actions": 501,
+        "supervised_epochs": 32,
+        "teacher_agreement_on_development_actions": 0.49500998854637146,
+        "training_actions": 7780,
+        "training_episodes": 1536
+      },
+      "cql": {
+        "checkpoint_sha256": "623239fa2b6dcad744f3638ce397c67cefb882b90c42efb5311271c541d8b90b",
+        "development": {
+          "captures": 12.114583333333334,
+          "n": 96.0,
+          "negative_n": 48,
+          "negative_success": 43,
+          "objective": 0.05845464281702459,
+          "positive_n": 48,
+          "positive_success": 0,
+          "rail_mm": 400.46010792978086,
+          "seconds": 19.383333333333336,
+          "success": 0.4479166666666667,
+          "tcp_mm": 84.22530107818135,
+          "turn_deg": 52.13142395696534,
+          "wrong": 0.0625
+        },
+        "replay_size": 240000,
+        "updates": 2400
+      },
+      "mlp": {
+        "actual_interactions": 240000,
+        "checkpoint_sha256": "645ccb87bdbd4224442fd1b809f5c263bdc19f936e3e38c648e466ae87f9487e",
+        "initial_development": {
+          "captures": 9.677083333333334,
+          "n": 96.0,
+          "negative_n": 48,
+          "negative_success": 44,
+          "objective": 0.06119199254875324,
+          "positive_n": 48,
+          "positive_success": 1,
+          "rail_mm": 404.35967985917114,
+          "seconds": 15.483333333333334,
+          "success": 0.46875,
+          "tcp_mm": 84.87711875806863,
+          "turn_deg": 50.98984141452201,
+          "update": 1,
+          "wrong": 0.09375
+        },
+        "last_development": {
+          "captures": 6.635416666666667,
+          "n": 96.0,
+          "negative_n": 48,
+          "negative_success": 38,
+          "objective": 0.11142944834030225,
+          "positive_n": 48,
+          "positive_success": 0,
+          "rail_mm": 330.26781320075605,
+          "seconds": 10.616666666666667,
+          "success": 0.3958333333333333,
+          "tcp_mm": 70.11295597748712,
+          "turn_deg": 47.028295390936684,
+          "update": 399,
+          "wrong": 0.052083333333333336
+        },
+        "selected_development": {
+          "captures": 5.71875,
+          "n": 96.0,
+          "negative_n": 48,
+          "negative_success": 40,
+          "objective": 0.18695040266624724,
+          "positive_n": 48,
+          "positive_success": 0,
+          "rail_mm": 341.9665289889269,
+          "seconds": 9.15,
+          "success": 0.4166666666666667,
+          "tcp_mm": 72.0831747960412,
+          "turn_deg": 47.12287261097109,
+          "update": 80,
+          "wrong": 0.020833333333333332
+        },
+        "updates": 399
+      },
+      "ppo": {
+        "actual_interactions": 240000,
+        "checkpoint_sha256": "3b263e3cf0ec007ce2bd5448711215979fbe354d41913fd4c9869548e7889374",
+        "initial_development": {
+          "captures": 9.989583333333334,
+          "n": 96.0,
+          "negative_n": 48,
+          "negative_success": 44,
+          "objective": 0.09991224735181126,
+          "positive_n": 48,
+          "positive_success": 1,
+          "rail_mm": 408.2592517885614,
+          "seconds": 15.983333333333334,
+          "success": 0.46875,
+          "tcp_mm": 88.66059314694394,
+          "turn_deg": 51.45246864477722,
+          "update": 1,
+          "wrong": 0.0625
+        },
+        "last_development": {
+          "captures": 5.666666666666667,
+          "n": 96.0,
+          "negative_n": 48,
+          "negative_success": 35,
+          "objective": 0.15417296650746484,
+          "positive_n": 48,
+          "positive_success": 0,
+          "rail_mm": 330.26781320075605,
+          "seconds": 9.066666666666666,
+          "success": 0.3645833333333333,
+          "tcp_mm": 70.18174936541213,
+          "turn_deg": 47.15367228076144,
+          "update": 470,
+          "wrong": 0.010416666666666666
+        },
+        "selected_development": {
+          "captures": 6.239583333333333,
+          "n": 96.0,
+          "negative_n": 48,
+          "negative_success": 40,
+          "objective": 0.1832731504144012,
+          "positive_n": 48,
+          "positive_success": 0,
+          "rail_mm": 330.26781320075605,
+          "seconds": 9.983333333333334,
+          "success": 0.4166666666666667,
+          "tcp_mm": 70.41414846754135,
+          "turn_deg": 47.655172929297095,
+          "update": 270,
+          "wrong": 0.020833333333333332
+        },
+        "updates": 470
+      }
+    },
+    "configuration": {
+      "arms": [
+        "bc",
+        "bc_mlp",
+        "ppo",
+        "mlp",
+        "cql"
+      ],
+      "dev": 96,
+      "device": "cpu",
+      "grid": 5,
+      "interactions": 240000,
+      "n": 1536,
+      "prior": 256,
+      "seed": 7,
+      "source_sha256": {
+        "core.py": "492e6b87777f29c2c95a7342887fcf207dfd20e854a327c9f88de043d1533c14",
+        "fit_topology.py": "8a4ea49d41807d9f282685942c872a16618fb8e2e6ce9c79c49141b7781eb43d",
+        "imitation.py": "276f69ec3b35a2ec5558c85b8e9681269988157d26354373f2e38ef4860e9586",
+        "learner.py": "5b188163ba69d70b0be5a5d4ae384a43832cc8eca4d5fc98de27f5e9aa7d3b02",
+        "plan.py": "4e80988a0f1b8b674a9c57d0990cc9ea92cf9f0cc69b200be6d2bd1ce6ca6b4a",
+        "prescan.py": "de8ef0e8b1fa541edaa08f4322d8c2032cbfc45b36b67a9ae3bfff8b1d651711",
+        "run_topology.py": "f9cbf9d763969f9e0ae7f63b7990f9f57a645e9400f19a88980ae98a5f10276f",
+        "suffix.py": "f5aea6c1d64e199ebdd5a2bf0f07dc0c5a0b8b3db85b7ef5fcd2f6aba5bb6645",
+        "train.py": "e4ad3608765797a24559e961a4333de3f3d0645b5cccb09d18ece3d37a38bb93",
+        "world.py": "c7f95ce9edabc3d4184a6957e4041d07093c954286bb8ebbe38414a998aebf88"
+      },
+      "teacher": "mpc"
+    }
+  }
+}

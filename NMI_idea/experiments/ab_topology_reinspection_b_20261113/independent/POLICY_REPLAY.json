@@ -1,0 +1,190 @@
+{
+  "confirm_seed29": {
+    "bc": {
+      "cases": 32,
+      "commands_including_declaration": 151
+    },
+    "bc_mlp": {
+      "cases": 32,
+      "commands_including_declaration": 150
+    },
+    "cql": {
+      "cases": 32,
+      "commands_including_declaration": 238
+    },
+    "mlp": {
+      "cases": 32,
+      "commands_including_declaration": 65
+    },
+    "ppo": {
+      "cases": 32,
+      "commands_including_declaration": 64
+    }
+  },
+  "confirm_seed61": {
+    "bc": {
+      "cases": 32,
+      "commands_including_declaration": 148
+    },
+    "bc_mlp": {
+      "cases": 32,
+      "commands_including_declaration": 149
+    },
+    "cql": {
+      "cases": 32,
+      "commands_including_declaration": 261
+    },
+    "mlp": {
+      "cases": 32,
+      "commands_including_declaration": 77
+    },
+    "ppo": {
+      "cases": 32,
+      "commands_including_declaration": 57
+    }
+  },
+  "confirm_seed7": {
+    "bc": {
+      "cases": 32,
+      "commands_including_declaration": 151
+    },
+    "bc_mlp": {
+      "cases": 32,
+      "commands_including_declaration": 152
+    },
+    "cql": {
+      "cases": 32,
+      "commands_including_declaration": 245
+    },
+    "fisher": {
+      "cases": 32,
+      "commands_including_declaration": 147
+    },
+    "greedy": {
+      "cases": 32,
+      "commands_including_declaration": 147
+    },
+    "mlp": {
+      "cases": 32,
+      "commands_including_declaration": 47
+    },
+    "mpc": {
+      "cases": 32,
+      "commands_including_declaration": 147
+    },
+    "nearest": {
+      "cases": 32,
+      "commands_including_declaration": 151
+    },
+    "ppo": {
+      "cases": 32,
+      "commands_including_declaration": 70
+    },
+    "prescan_only": {
+      "cases": 32,
+      "commands_including_declaration": 32
+    },
+    "rollout": {
+      "cases": 32,
+      "commands_including_declaration": 121
+    },
+    "witness": {
+      "cases": 32,
+      "commands_including_declaration": 148
+    }
+  },
+  "shape_seed29": {
+    "bc": {
+      "cases": 32,
+      "commands_including_declaration": 200
+    },
+    "bc_mlp": {
+      "cases": 32,
+      "commands_including_declaration": 201
+    },
+    "cql": {
+      "cases": 32,
+      "commands_including_declaration": 260
+    },
+    "mlp": {
+      "cases": 32,
+      "commands_including_declaration": 104
+    },
+    "ppo": {
+      "cases": 32,
+      "commands_including_declaration": 82
+    }
+  },
+  "shape_seed61": {
+    "bc": {
+      "cases": 32,
+      "commands_including_declaration": 197
+    },
+    "bc_mlp": {
+      "cases": 32,
+      "commands_including_declaration": 203
+    },
+    "cql": {
+      "cases": 32,
+      "commands_including_declaration": 264
+    },
+    "mlp": {
+      "cases": 32,
+      "commands_including_declaration": 115
+    },
+    "ppo": {
+      "cases": 32,
+      "commands_including_declaration": 54
+    }
+  },
+  "shape_seed7": {
+    "bc": {
+      "cases": 32,
+      "commands_including_declaration": 204
+    },
+    "bc_mlp": {
+      "cases": 32,
+      "commands_including_declaration": 203
+    },
+    "cql": {
+      "cases": 32,
+      "commands_including_declaration": 257
+    },
+    "fisher": {
+      "cases": 32,
+      "commands_including_declaration": 184
+    },
+    "greedy": {
+      "cases": 32,
+      "commands_including_declaration": 184
+    },
+    "mlp": {
+      "cases": 32,
+      "commands_including_declaration": 59
+    },
+    "mpc": {
+      "cases": 32,
+      "commands_including_declaration": 184
+    },
+    "nearest": {
+      "cases": 32,
+      "commands_including_declaration": 198
+    },
+    "ppo": {
+      "cases": 32,
+      "commands_including_declaration": 60
+    },
+    "prescan_only": {
+      "cases": 32,
+      "commands_including_declaration": 32
+    },
+    "rollout": {
+      "cases": 32,
+      "commands_including_declaration": 154
+    },
+    "witness": {
+      "cases": 32,
+      "commands_including_declaration": 174
+    }
+  }
+}

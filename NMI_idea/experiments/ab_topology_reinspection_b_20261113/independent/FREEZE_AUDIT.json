@@ -1,0 +1,38 @@
+{
+  "FREEZE_confirm_seed29.json": {
+    "checkpoints": 5,
+    "runtime_settings_present": true,
+    "sha256": "d7668c0728d2b949151d7b5d45c6e625eb05161f5b28220bacab1112614a6106",
+    "source_inputs": 15
+  },
+  "FREEZE_confirm_seed61.json": {
+    "checkpoints": 5,
+    "runtime_settings_present": true,
+    "sha256": "d6153066cd9fa23422ff683e3c2a0e48cc9cd6d417b8d703ab784b15883de9ef",
+    "source_inputs": 15
+  },
+  "FREEZE_confirm_seed7.json": {
+    "checkpoints": 5,
+    "runtime_settings_present": true,
+    "sha256": "6a5e503795e9d2b724b0700a7c3d97a4282bf3dd7692ea6d909deef8ff6ea57f",
+    "source_inputs": 15
+  },
+  "FREEZE_shape_seed29.json": {
+    "checkpoints": 5,
+    "runtime_settings_present": true,
+    "sha256": "dcf0b6a2f142d6e4d2b09bc987dfa2f299ab71eadaab88c783a8df44daf4f0da",
+    "source_inputs": 15
+  },
+  "FREEZE_shape_seed61.json": {
+    "checkpoints": 5,
+    "runtime_settings_present": true,
+    "sha256": "6ac36aec7dd3f45b13ab202c3b86f3136e8f48e9bae5499cf335e36620a8e0d5",
+    "source_inputs": 15
+  },
+  "FREEZE_shape_seed7.json": {
+    "checkpoints": 5,
+    "runtime_settings_present": true,
+    "sha256": "51589f15705074a2c8ec84f73aafbcc2c73e90178a5f54a3757e0644c701f593",
+    "source_inputs": 15
+  }
+}

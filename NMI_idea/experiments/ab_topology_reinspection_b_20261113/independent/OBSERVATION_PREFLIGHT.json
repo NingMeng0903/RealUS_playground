@@ -1,0 +1,733 @@
+{
+  "3": {
+    "development": {
+      "single_frame_information": [
+        {
+          "has_daughter_bits": 0.07006792373758841,
+          "site": 3,
+          "target_label_bits": 0.3322356943940848,
+          "topology_bits": 0.24555398777853615,
+          "view": 3
+        },
+        {
+          "has_daughter_bits": 0.10329648737406469,
+          "site": 3,
+          "target_label_bits": 0.3603553350150347,
+          "topology_bits": 0.2796927664988822,
+          "view": 7
+        },
+        {
+          "has_daughter_bits": 0.08982827816292285,
+          "site": 3,
+          "target_label_bits": 0.37054560810836357,
+          "topology_bits": 0.27141109692545584,
+          "view": 8
+        },
+        {
+          "has_daughter_bits": 0.08345642510514442,
+          "site": 4,
+          "target_label_bits": 0.316292423710899,
+          "topology_bits": 0.24970411497782224,
+          "view": 3
+        },
+        {
+          "has_daughter_bits": 0.10709700970392108,
+          "site": 4,
+          "target_label_bits": 0.34180626513460516,
+          "topology_bits": 0.2790330436732051,
+          "view": 7
+        },
+        {
+          "has_daughter_bits": 0.09410052219015677,
+          "site": 4,
+          "target_label_bits": 0.3494892616939984,
+          "topology_bits": 0.26796510441407984,
+          "view": 8
+        },
+        {
+          "has_daughter_bits": 0.11844887958925156,
+          "site": 5,
+          "target_label_bits": 0.31209827103198984,
+          "topology_bits": 0.28056170941011666,
+          "view": 3
+        },
+        {
+          "has_daughter_bits": 0.1277876788357116,
+          "site": 5,
+          "target_label_bits": 0.3236500849448234,
+          "topology_bits": 0.2949669262021422,
+          "view": 7
+        },
+        {
+          "has_daughter_bits": 0.1226530071415911,
+          "site": 5,
+          "target_label_bits": 0.3364888972251653,
+          "topology_bits": 0.29966294428698503,
+          "view": 8
+        },
+        {
+          "has_daughter_bits": 0.087900317278628,
+          "site": 6,
+          "target_label_bits": 0.2592541749264526,
+          "topology_bits": 0.25887924956043956,
+          "view": 3
+        },
+        {
+          "has_daughter_bits": 0.09251726942079576,
+          "site": 6,
+          "target_label_bits": 0.26725267727435553,
+          "topology_bits": 0.2724999395636461,
+          "view": 7
+        },
+        {
+          "has_daughter_bits": 0.09201616974156504,
+          "site": 6,
+          "target_label_bits": 0.2689496528850607,
+          "topology_bits": 0.28130116514629866,
+          "view": 8
+        },
+        {
+          "has_daughter_bits": 0.15805471100815127,
+          "site": 7,
+          "target_label_bits": 0.19513977766780838,
+          "topology_bits": 0.3224894156352495,
+          "view": 3
+        },
+        {
+          "has_daughter_bits": 0.15602112891584474,
+          "site": 7,
+          "target_label_bits": 0.19086100775294035,
+          "topology_bits": 0.32600836956539125,
+          "view": 7
+        },
+        {
+          "has_daughter_bits": 0.16066040141383647,
+          "site": 7,
+          "target_label_bits": 0.18940627254162112,
+          "topology_bits": 0.3396267708878761,
+          "view": 8
+        }
+      ],
+      "truth_conditioned_target_slot_correct_acceptance": {
+        "far": {
+          "0.65": 0.6647253613879203,
+          "0.75": 0.6456348075425746,
+          "0.87": 0.6222713883295914
+        },
+        "near": {
+          "0.65": 0.6316926177606151,
+          "0.75": 0.6122043389732204,
+          "0.87": 0.5833577001898261
+        }
+      }
+    },
+    "shape_holdout": {
+      "single_frame_information": [
+        {
+          "has_daughter_bits": 0.0921482752021316,
+          "site": 3,
+          "target_label_bits": 0.31944407198942487,
+          "topology_bits": 0.2588100505133497,
+          "view": 3
+        },
+        {
+          "has_daughter_bits": 0.12070827218453087,
+          "site": 3,
+          "target_label_bits": 0.3530431275019268,
+          "topology_bits": 0.2887664264109797,
+          "view": 7
+        },
+        {
+          "has_daughter_bits": 0.0810766258393309,
+          "site": 3,
+          "target_label_bits": 0.3124736745047556,
+          "topology_bits": 0.25173771001040224,
+          "view": 8
+        },
+        {
+          "has_daughter_bits": 0.1045581833468327,
+          "site": 4,
+          "target_label_bits": 0.3275550942752566,
+          "topology_bits": 0.2707520744476166,
+          "view": 3
+        },
+        {
+          "has_daughter_bits": 0.12220738433574409,
+          "site": 4,
+          "target_label_bits": 0.35249597657698056,
+          "topology_bits": 0.28331594747446137,
+          "view": 7
+        },
+        {
+          "has_daughter_bits": 0.09484255277847678,
+          "site": 4,
+          "target_label_bits": 0.31503473206318144,
+          "topology_bits": 0.2624554875419204,
+          "view": 8
+        },
+        {
+          "has_daughter_bits": 0.14004827863044095,
+          "site": 5,
+          "target_label_bits": 0.3172397474608748,
+          "topology_bits": 0.295919113785942,
+          "view": 3
+        },
+        {
+          "has_daughter_bits": 0.14950933288796964,
+          "site": 5,
+          "target_label_bits": 0.3432705435646348,
+          "topology_bits": 0.32640618805376176,
+          "view": 7
+        },
+        {
+          "has_daughter_bits": 0.13440837125671423,
+          "site": 5,
+          "target_label_bits": 0.31571602416274325,
+          "topology_bits": 0.2901142470933336,
+          "view": 8
+        },
+        {
+          "has_daughter_bits": 0.08533048333042564,
+          "site": 6,
+          "target_label_bits": 0.278149698943403,
+          "topology_bits": 0.26168297802311574,
+          "view": 3
+        },
+        {
+          "has_daughter_bits": 0.10365494882661222,
+          "site": 6,
+          "target_label_bits": 0.3088469678262876,
+          "topology_bits": 0.30072665517031777,
+          "view": 7
+        },
+        {
+          "has_daughter_bits": 0.08411633151472361,
+          "site": 6,
+          "target_label_bits": 0.28842276189290117,
+          "topology_bits": 0.26850944478335376,
+          "view": 8
+        },
+        {
+          "has_daughter_bits": 0.13451705344433107,
+          "site": 7,
+          "target_label_bits": 0.17368621832047126,
+          "topology_bits": 0.29742653105141853,
+          "view": 3
+        },
+        {
+          "has_daughter_bits": 0.14118435756053302,
+          "site": 7,
+          "target_label_bits": 0.1788755845583999,
+          "topology_bits": 0.3050091930374231,
+          "view": 7
+        },
+        {
+          "has_daughter_bits": 0.14592945698243387,
+          "site": 7,
+          "target_label_bits": 0.17724399767692392,
+          "topology_bits": 0.32075786672109874,
+          "view": 8
+        }
+      ],
+      "truth_conditioned_target_slot_correct_acceptance": {
+        "far": {
+          "0.65": 0.5950115319814179,
+          "0.75": 0.5758404956642089,
+          "0.87": 0.5296608163196692
+        },
+        "near": {
+          "0.65": 0.5703545744617952,
+          "0.75": 0.5482727383846471,
+          "0.87": 0.5006102675366311
+        }
+      }
+    },
+    "stress": {
+      "single_frame_information": [
+        {
+          "has_daughter_bits": 0.0894856020182682,
+          "site": 3,
+          "target_label_bits": 0.316030600665979,
+          "topology_bits": 0.2581728613952627,
+          "view": 3
+        },
+        {
+          "has_daughter_bits": 0.09080708344138787,
+          "site": 3,
+          "target_label_bits": 0.32655683610561126,
+          "topology_bits": 0.2673400786048675,
+          "view": 7
+        },
+        {
+          "has_daughter_bits": 0.10260835783895444,
+          "site": 3,
+          "target_label_bits": 0.33698724402596547,
+          "topology_bits": 0.27625321333038405,
+          "view": 8
+        },
+        {
+          "has_daughter_bits": 0.10380157047575453,
+          "site": 4,
+          "target_label_bits": 0.32128903985295076,
+          "topology_bits": 0.27075405670316016,
+          "view": 3
+        },
+        {
+          "has_daughter_bits": 0.10575612949090707,
+          "site": 4,
+          "target_label_bits": 0.3393879105222274,
+          "topology_bits": 0.2749393775807759,
+          "view": 7
+        },
+        {
+          "has_daughter_bits": 0.11435575263711348,
+          "site": 4,
+          "target_label_bits": 0.3410823245137327,
+          "topology_bits": 0.2843169025394695,
+          "view": 8
+        },
+        {
+          "has_daughter_bits": 0.14518053684747143,
+          "site": 5,
+          "target_label_bits": 0.31219979962483146,
+          "topology_bits": 0.3149365178506802,
+          "view": 3
+        },
+        {
+          "has_daughter_bits": 0.14596168665639153,
+          "site": 5,
+          "target_label_bits": 0.3353750019040651,
+          "topology_bits": 0.3162500789005117,
+          "view": 7
+        },
+        {
+          "has_daughter_bits": 0.14651270801452096,
+          "site": 5,
+          "target_label_bits": 0.3282563102599477,
+          "topology_bits": 0.3285528911572584,
+          "view": 8
+        },
+        {
+          "has_daughter_bits": 0.1195847132758447,
+          "site": 6,
+          "target_label_bits": 0.2900656286382561,
+          "topology_bits": 0.30826107232147354,
+          "view": 3
+        },
+        {
+          "has_daughter_bits": 0.11659435290350588,
+          "site": 6,
+          "target_label_bits": 0.29235071007216284,
+          "topology_bits": 0.3004154182267915,
+          "view": 7
+        },
+        {
+          "has_daughter_bits": 0.12408815771935437,
+          "site": 6,
+          "target_label_bits": 0.3030244183482792,
+          "topology_bits": 0.3270697078929232,
+          "view": 8
+        },
+        {
+          "has_daughter_bits": 0.16439736186507287,
+          "site": 7,
+          "target_label_bits": 0.20194566931670532,
+          "topology_bits": 0.3419608278746701,
+          "view": 3
+        },
+        {
+          "has_daughter_bits": 0.1631287140239883,
+          "site": 7,
+          "target_label_bits": 0.19407220936279698,
+          "topology_bits": 0.3414623182868811,
+          "view": 7
+        },
+        {
+          "has_daughter_bits": 0.17313910606257377,
+          "site": 7,
+          "target_label_bits": 0.19912183868586766,
+          "topology_bits": 0.36447494985263934,
+          "view": 8
+        }
+      ],
+      "truth_conditioned_target_slot_correct_acceptance": {
+        "far": {
+          "0.65": 0.6144938821125973,
+          "0.75": 0.5974989666684335,
+          "0.87": 0.5629176874081827
+        },
+        "near": {
+          "0.65": 0.5936611259344562,
+          "0.75": 0.5742270593860406,
+          "0.87": 0.5414778675687253
+        }
+      }
+    }
+  },
+  "5": {
+    "development": {
+      "single_frame_information": [
+        {
+          "has_daughter_bits": 0.11259929632737954,
+          "site": 3,
+          "target_label_bits": 0.46593759354969455,
+          "topology_bits": 0.3348475949082226,
+          "view": 3
+        },
+        {
+          "has_daughter_bits": 0.15632443055873213,
+          "site": 3,
+          "target_label_bits": 0.5006873338768569,
+          "topology_bits": 0.3716295975018844,
+          "view": 7
+        },
+        {
+          "has_daughter_bits": 0.1365135752409862,
+          "site": 3,
+          "target_label_bits": 0.494599682174761,
+          "topology_bits": 0.3560182886196829,
+          "view": 8
+        },
+        {
+          "has_daughter_bits": 0.12933220190041603,
+          "site": 4,
+          "target_label_bits": 0.4555885745224813,
+          "topology_bits": 0.333382048606345,
+          "view": 3
+        },
+        {
+          "has_daughter_bits": 0.15345608502831282,
+          "site": 4,
+          "target_label_bits": 0.4828278460987673,
+          "topology_bits": 0.3582144177138509,
+          "view": 7
+        },
+        {
+          "has_daughter_bits": 0.13609711436162464,
+          "site": 4,
+          "target_label_bits": 0.4720108131677616,
+          "topology_bits": 0.34160816529491367,
+          "view": 8
+        },
+        {
+          "has_daughter_bits": 0.1653366252173788,
+          "site": 5,
+          "target_label_bits": 0.46432654433700704,
+          "topology_bits": 0.3656030570117959,
+          "view": 3
+        },
+        {
+          "has_daughter_bits": 0.1738310626847152,
+          "site": 5,
+          "target_label_bits": 0.474368482808608,
+          "topology_bits": 0.3809442161561507,
+          "view": 7
+        },
+        {
+          "has_daughter_bits": 0.17012906917111964,
+          "site": 5,
+          "target_label_bits": 0.4709224173769618,
+          "topology_bits": 0.37550533007131304,
+          "view": 8
+        },
+        {
+          "has_daughter_bits": 0.14340957955697697,
+          "site": 6,
+          "target_label_bits": 0.3317568843605079,
+          "topology_bits": 0.3720601013886663,
+          "view": 3
+        },
+        {
+          "has_daughter_bits": 0.14890427448361565,
+          "site": 6,
+          "target_label_bits": 0.3384831986234341,
+          "topology_bits": 0.3823207296306872,
+          "view": 7
+        },
+        {
+          "has_daughter_bits": 0.14563639557421237,
+          "site": 6,
+          "target_label_bits": 0.3358268980653828,
+          "topology_bits": 0.3873534241961515,
+          "view": 8
+        },
+        {
+          "has_daughter_bits": 0.19717759445354352,
+          "site": 7,
+          "target_label_bits": 0.2448875169126527,
+          "topology_bits": 0.40210648545100725,
+          "view": 3
+        },
+        {
+          "has_daughter_bits": 0.19246528149303468,
+          "site": 7,
+          "target_label_bits": 0.23575133420573852,
+          "topology_bits": 0.4006591944484795,
+          "view": 7
+        },
+        {
+          "has_daughter_bits": 0.19384528609881194,
+          "site": 7,
+          "target_label_bits": 0.23071787837116514,
+          "topology_bits": 0.41030546575991,
+          "view": 8
+        }
+      ],
+      "truth_conditioned_target_slot_correct_acceptance": {
+        "far": {
+          "0.65": 0.7349105409354411,
+          "0.75": 0.7293883740947726,
+          "0.87": 0.7167208875601188
+        },
+        "near": {
+          "0.65": 0.7097250833130702,
+          "0.75": 0.7021193641389205,
+          "0.87": 0.6833646632215953
+        }
+      }
+    },
+    "shape_holdout": {
+      "single_frame_information": [
+        {
+          "has_daughter_bits": 0.1315498754355703,
+          "site": 3,
+          "target_label_bits": 0.4442395030285835,
+          "topology_bits": 0.3616905839582116,
+          "view": 3
+        },
+        {
+          "has_daughter_bits": 0.1719927535351784,
+          "site": 3,
+          "target_label_bits": 0.460467679040208,
+          "topology_bits": 0.39827064062303247,
+          "view": 7
+        },
+        {
+          "has_daughter_bits": 0.11653375008468812,
+          "site": 3,
+          "target_label_bits": 0.4234132026488109,
+          "topology_bits": 0.3372030509884988,
+          "view": 8
+        },
+        {
+          "has_daughter_bits": 0.14265291498903043,
+          "site": 4,
+          "target_label_bits": 0.43180075238289406,
+          "topology_bits": 0.36205380145427857,
+          "view": 3
+        },
+        {
+          "has_daughter_bits": 0.17650674577085274,
+          "site": 4,
+          "target_label_bits": 0.4603254763111002,
+          "topology_bits": 0.393970452257472,
+          "view": 7
+        },
+        {
+          "has_daughter_bits": 0.13587233723428602,
+          "site": 4,
+          "target_label_bits": 0.420012738209488,
+          "topology_bits": 0.34431513203338626,
+          "view": 8
+        },
+        {
+          "has_daughter_bits": 0.18413988609088544,
+          "site": 5,
+          "target_label_bits": 0.4351742298735747,
+          "topology_bits": 0.39861622006273256,
+          "view": 3
+        },
+        {
+          "has_daughter_bits": 0.20420678143576398,
+          "site": 5,
+          "target_label_bits": 0.4610475797512924,
+          "topology_bits": 0.4414468340451987,
+          "view": 7
+        },
+        {
+          "has_daughter_bits": 0.1827489830661127,
+          "site": 5,
+          "target_label_bits": 0.4351776241027179,
+          "topology_bits": 0.3841808294920356,
+          "view": 8
+        },
+        {
+          "has_daughter_bits": 0.11553400131433325,
+          "site": 6,
+          "target_label_bits": 0.3312923169197245,
+          "topology_bits": 0.3905428242268792,
+          "view": 3
+        },
+        {
+          "has_daughter_bits": 0.15032660551801724,
+          "site": 6,
+          "target_label_bits": 0.370960586654269,
+          "topology_bits": 0.42971825730093516,
+          "view": 7
+        },
+        {
+          "has_daughter_bits": 0.11497663857188284,
+          "site": 6,
+          "target_label_bits": 0.3403956150476188,
+          "topology_bits": 0.3766659981682908,
+          "view": 8
+        },
+        {
+          "has_daughter_bits": 0.16188411110431902,
+          "site": 7,
+          "target_label_bits": 0.2141137419319078,
+          "topology_bits": 0.390254037748002,
+          "view": 3
+        },
+        {
+          "has_daughter_bits": 0.1715323333303222,
+          "site": 7,
+          "target_label_bits": 0.22086253647468979,
+          "topology_bits": 0.3978288447072119,
+          "view": 7
+        },
+        {
+          "has_daughter_bits": 0.17170153311175196,
+          "site": 7,
+          "target_label_bits": 0.21143280462309044,
+          "topology_bits": 0.4016972924742644,
+          "view": 8
+        }
+      ],
+      "truth_conditioned_target_slot_correct_acceptance": {
+        "far": {
+          "0.65": 0.6806266085600525,
+          "0.75": 0.6697898600220606,
+          "0.87": 0.6313957868885209
+        },
+        "near": {
+          "0.65": 0.6728331455453852,
+          "0.75": 0.6637349943222279,
+          "0.87": 0.639935812856524
+        }
+      }
+    },
+    "stress": {
+      "single_frame_information": [
+        {
+          "has_daughter_bits": 0.13059793698941385,
+          "site": 3,
+          "target_label_bits": 0.45459951623581296,
+          "topology_bits": 0.35425346723804996,
+          "view": 3
+        },
+        {
+          "has_daughter_bits": 0.1459950585865026,
+          "site": 3,
+          "target_label_bits": 0.4596557112571219,
+          "topology_bits": 0.3755169442165332,
+          "view": 7
+        },
+        {
+          "has_daughter_bits": 0.14375366868266498,
+          "site": 3,
+          "target_label_bits": 0.45654924754390097,
+          "topology_bits": 0.36958089986510917,
+          "view": 8
+        },
+        {
+          "has_daughter_bits": 0.14803500657806867,
+          "site": 4,
+          "target_label_bits": 0.4424402168134912,
+          "topology_bits": 0.35761495612585537,
+          "view": 3
+        },
+        {
+          "has_daughter_bits": 0.16190252457529009,
+          "site": 4,
+          "target_label_bits": 0.4623414060470942,
+          "topology_bits": 0.3716372947722958,
+          "view": 7
+        },
+        {
+          "has_daughter_bits": 0.16175824794047394,
+          "site": 4,
+          "target_label_bits": 0.45882861720014484,
+          "topology_bits": 0.3767248764176562,
+          "view": 8
+        },
+        {
+          "has_daughter_bits": 0.1932965006767997,
+          "site": 5,
+          "target_label_bits": 0.47027259595287224,
+          "topology_bits": 0.4099186578094598,
+          "view": 3
+        },
+        {
+          "has_daughter_bits": 0.20417643591136625,
+          "site": 5,
+          "target_label_bits": 0.48763457212609684,
+          "topology_bits": 0.4179140029498523,
+          "view": 7
+        },
+        {
+          "has_daughter_bits": 0.19305140022012873,
+          "site": 5,
+          "target_label_bits": 0.4784385080060757,
+          "topology_bits": 0.4196435717088224,
+          "view": 8
+        },
+        {
+          "has_daughter_bits": 0.15536544113074569,
+          "site": 6,
+          "target_label_bits": 0.3456522295123071,
+          "topology_bits": 0.41123639171483667,
+          "view": 3
+        },
+        {
+          "has_daughter_bits": 0.16048849116548716,
+          "site": 6,
+          "target_label_bits": 0.3526549868213039,
+          "topology_bits": 0.4049377674279778,
+          "view": 7
+        },
+        {
+          "has_daughter_bits": 0.16412914492870267,
+          "site": 6,
+          "target_label_bits": 0.35782703303130875,
+          "topology_bits": 0.42989858275046655,
+          "view": 8
+        },
+        {
+          "has_daughter_bits": 0.1824417500808372,
+          "site": 7,
+          "target_label_bits": 0.2356067037390424,
+          "topology_bits": 0.42104704092122447,
+          "view": 3
+        },
+        {
+          "has_daughter_bits": 0.18569819732730958,
+          "site": 7,
+          "target_label_bits": 0.22920721859618268,
+          "topology_bits": 0.4165103510018443,
+          "view": 7
+        },
+        {
+          "has_daughter_bits": 0.1903728364014602,
+          "site": 7,
+          "target_label_bits": 0.22538017411174827,
+          "topology_bits": 0.43389563365359496,
+          "view": 8
+        }
+      ],
+      "truth_conditioned_target_slot_correct_acceptance": {
+        "far": {
+          "0.65": 0.7011942923635943,
+          "0.75": 0.6924209627464021,
+          "0.87": 0.6683545953041312
+        },
+        "near": {
+          "0.65": 0.6954228726326381,
+          "0.75": 0.6848827982887318,
+          "0.87": 0.6622837823806604
+        }
+      }
+    }
+  },
+  "world_sha256": "c7f95ce9edabc3d4184a6957e4041d07093c954286bb8ebbe38414a998aebf88"
+}
