@@ -1,0 +1,28 @@
+{
+  "canonical_skeleton": {
+    "filename": "smpl_canonical_skeleton.json",
+    "sha256": "3615500c473c9aa0a034e419714b9a2cf47dce6304e51ba1354b7ec3ed5ec69f"
+  },
+  "canonical_weights": {
+    "filename": "smpl_canonical_weights.npz",
+    "sha256": "492eda4d279dac9ee5833fb46a20ee7841f58e124556cb61757984e9bd27fc0d"
+  },
+  "face_count": 56384,
+  "local_registered_export": {
+    "filename": "vessels_registered.npz",
+    "sha256": "94d5585464e0c86af9c6b66ec78f797d217c35aa454d8d0e2327f041e3fdb35a"
+  },
+  "mapping": {
+    "filename": "anatomy_retarget.yaml",
+    "sha256": "016326685b5799fb21701f484606bf8383e7064a1e8137a69b6b75bfec52e0c1"
+  },
+  "retarget_code": {
+    "filename": "blender_retarget_script.py",
+    "sha256": "ae803daf0369839a3bb042fad0e281aaeea77e502c6f4a0b91afcb8a76e8af50"
+  },
+  "rigged_source_blend": {
+    "filename": "Skeleton_Anatomy_Nervous_Rigged_2-81.blend",
+    "sha256": "34945b610c9efbbd40b07bacd2933e0586264f06d8413e1f6ffd8e2b98a7b67c"
+  },
+  "vertex_count": 28360
+}
