@@ -1,0 +1,2170 @@
+{
+  "scope": "Sampled native SMPL-X male shape and knee pose, fixed shaft ROI addresses, model-defined interior extension",
+  "grid": "stress",
+  "reference_beta": [
+    0.7497693083949906,
+    0.050389516900993706,
+    -0.03001714143996312,
+    0.08189267944603904,
+    -0.0021207984097881723,
+    0.016629353580370956,
+    -0.009940500563490932,
+    -0.0010628271762014151,
+    -0.01275786197769593,
+    0.004657044145225384
+  ],
+  "beta_deltas": [
+    [
+      -2.0,
+      -2.0
+    ],
+    [
+      -2.0,
+      0.0
+    ],
+    [
+      -2.0,
+      2.0
+    ],
+    [
+      0.0,
+      -2.0
+    ],
+    [
+      0.0,
+      0.0
+    ],
+    [
+      0.0,
+      2.0
+    ],
+    [
+      2.0,
+      -2.0
+    ],
+    [
+      2.0,
+      0.0
+    ],
+    [
+      2.0,
+      2.0
+    ]
+  ],
+  "poses_deg": [
+    0,
+    45,
+    90
+  ],
+  "material_sample_seed": 113820,
+  "label_tolerance_rad_h_d": [
+    1e-06,
+    1e-07,
+    1e-07
+  ],
+  "roundtrip_tolerance_m": 1e-06,
+  "input_sha256": {
+    "smplx_male": "3613a4c7733be35a9bebf6d72c75f3cd3d2252419782ab7cb32fd2c51a446e72",
+    "recovered_betas": "de34dd7e094683b3db8046a1590022755937e0b48dcc6c2dc2f692ef1c8605c2",
+    "atlas_left": "8d4deac6ab8f364ae08b359ec2878027144fb1c4aa44fba777f5126e99853191",
+    "attachments_left": "d70d2350240fa2e8a9195a173dbb2e92094503a9458fa3b350dbb55fd658b4d5",
+    "owned_skin_left": "263a9b2c761a41b2046b13f87046cc86e87b51c2891d158a235ce4982962acdb",
+    "surface_stencil_left": "f8f2cf1e50a16cf8d4fa50974fce91e5c228ba5cdec7a6eef7a65dff35c9384a",
+    "atlas_right": "f1a42becc403ebf7687025d4ab8b7d3480e52d4713df8c6357449b23d4ebba1c",
+    "attachments_right": "bfc7c76b083be69604ec18c963d4110870d2437afdb19aba8d95c5e6fb4f1b3f",
+    "owned_skin_right": "9d044b374ef7e2f1fefef816a9e0b5f4755eded419655ad605fa1df412ec58f7",
+    "surface_stencil_right": "9503a9db4094bd172dd32baa0f8a7c8fe4afa374308f821a81d6c521d7829663"
+  },
+  "overlap_kernel_sha256": "e292e1e1ad0730e19cc055140c07876019644439650e41f6a8657540a974cc7b",
+  "graph_laplacian_source_sha256": "bd90c87ef7fb479196a0cd9a57132eea73cc3aac24d571ebde3807b6a2126f0d",
+  "sides": {
+    "left": {
+      "h_circumference_samples": [
+        0.34281688928604126,
+        0.5456337928771973,
+        0.7484506964683533
+      ],
+      "reference_lineage": {
+        "side": "left",
+        "tolerance_m": 2e-06,
+        "neutral_source_face_barycentric_max_m": 1.7203503525490396e-07,
+        "neutral_retained_vertex_max_m": 1.4972958703937244e-07,
+        "fresh_ray_intersection": false
+      },
+      "similarity_controls": [
+        {
+          "uniform_scale": 1.0,
+          "transported_laplacian_relative_residual": 3.055992122182195e-06,
+          "resolved_laplacian_relative_residual": 4.1755543467719346e-14,
+          "depth_change_p95": 2.5778137530130246e-08,
+          "depth_change_max": 2.9801800804918344e-08,
+          "resolved_radial_monotonicity": true,
+          "half_depth_shift_p95_mm": 1.196294385528921e-06,
+          "half_depth_shift_max_mm": 2.371982922993939e-06
+        },
+        {
+          "uniform_scale": 1.2,
+          "transported_laplacian_relative_residual": 3.0559921230409197e-06,
+          "resolved_laplacian_relative_residual": 4.294578155876109e-14,
+          "depth_change_p95": 2.5778137918708304e-08,
+          "depth_change_max": 2.9801798140383085e-08,
+          "resolved_radial_monotonicity": true,
+          "half_depth_shift_p95_mm": 1.4355534040349564e-06,
+          "half_depth_shift_max_mm": 2.846379330044978e-06
+        }
+      ],
+      "cases": [
+        {
+          "side": "left",
+          "beta_delta": [
+            -2.0,
+            -2.0
+          ],
+          "knee_deg": 0,
+          "tetrahedra": 322056,
+          "nonpositive_tets": 0,
+          "min_det_ratio": 0.9260363185779409,
+          "positive_overlap_pairs": 0,
+          "volume_boundary_intersection_pairs": 0,
+          "native_skin_intersection_pairs": 0,
+          "ring_perimeters_mm": [
+            421.2833557128906,
+            326.6665344238281,
+            307.20318603515625
+          ],
+          "segment_lengths_mm": [
+            440.6567317204794,
+            456.7271505374152
+          ],
+          "geometry_pass": true,
+          "material_points": 256,
+          "max_label_drift_rad_h_d": [
+            0.0,
+            0.0,
+            4.2930972900011636e-16
+          ],
+          "max_material_roundtrip_m": 2.8521784602539686e-08,
+          "material_check_pass": true,
+          "outer_loft_distance_to_native_skin_mm": {
+            "samples": 256,
+            "p95": 0.06160600575767619,
+            "max": 0.14122216434847948
+          },
+          "depth": {
+            "transported_laplacian_relative_residual": 0.0021308859382998062,
+            "resolved_laplacian_relative_residual": 4.2055787869379383e-14,
+            "depth_change_p95": 0.005712476343781774,
+            "depth_change_max": 0.014268177630763268,
+            "resolved_radial_monotonicity": true,
+            "half_depth_shift_p95_mm": 0.505357817158694,
+            "half_depth_shift_max_mm": 1.122274073472952
+          }
+        },
+        {
+          "side": "left",
+          "beta_delta": [
+            -2.0,
+            -2.0
+          ],
+          "knee_deg": 45,
+          "tetrahedra": 322056,
+          "nonpositive_tets": 0,
+          "min_det_ratio": 0.7100434205807985,
+          "positive_overlap_pairs": 0,
+          "volume_boundary_intersection_pairs": 0,
+          "native_skin_intersection_pairs": 0,
+          "ring_perimeters_mm": [
+            426.4432373046875,
+            322.8314208984375,
+            312.6701965332031
+          ],
+          "segment_lengths_mm": [
+            440.6567317204794,
+            456.7271505374151
+          ],
+          "geometry_pass": true,
+          "material_points": 256,
+          "max_label_drift_rad_h_d": [
+            0.0,
+            0.0,
+            1.5971069859484666e-15
+          ],
+          "max_material_roundtrip_m": 2.8555156339150794e-08,
+          "material_check_pass": true,
+          "outer_loft_distance_to_native_skin_mm": {
+            "samples": 256,
+            "p95": 0.06930807559702847,
+            "max": 0.1918545860320841
+          }
+        },
+        {
+          "side": "left",
+          "beta_delta": [
+            -2.0,
+            -2.0
+          ],
+          "knee_deg": 90,
+          "tetrahedra": 322056,
+          "nonpositive_tets": 0,
+          "min_det_ratio": 0.17717507923535628,
+          "positive_overlap_pairs": 0,
+          "volume_boundary_intersection_pairs": 0,
+          "native_skin_intersection_pairs": 0,
+          "ring_perimeters_mm": [
+            420.52789306640625,
+            305.2229309082031,
+            317.9684753417969
+          ],
+          "segment_lengths_mm": [
+            440.6567317204794,
+            456.7271505374152
+          ],
+          "geometry_pass": true,
+          "material_points": 256,
+          "max_label_drift_rad_h_d": [
+            0.0,
+            0.0,
+            1.3903670487704588e-15
+          ],
+          "max_material_roundtrip_m": 2.8597854931961188e-08,
+          "material_check_pass": true,
+          "outer_loft_distance_to_native_skin_mm": {
+            "samples": 256,
+            "p95": 0.08142614655121051,
+            "max": 0.2255420260193296
+          }
+        },
+        {
+          "side": "left",
+          "beta_delta": [
+            -2.0,
+            0.0
+          ],
+          "knee_deg": 0,
+          "tetrahedra": 322056,
+          "nonpositive_tets": 0,
+          "min_det_ratio": 1.1967976225673227,
+          "positive_overlap_pairs": 0,
+          "volume_boundary_intersection_pairs": 0,
+          "native_skin_intersection_pairs": 0,
+          "ring_perimeters_mm": [
+            468.04278564453125,
+            357.7576599121094,
+            337.4266662597656
+          ],
+          "segment_lengths_mm": [
+            425.24458291815125,
+            453.5154447907665
+          ],
+          "geometry_pass": true,
+          "material_points": 256,
+          "max_label_drift_rad_h_d": [
+            0.0,
+            0.0,
+            4.778838656818187e-16
+          ],
+          "max_material_roundtrip_m": 2.8424656982465228e-08,
+          "material_check_pass": true,
+          "outer_loft_distance_to_native_skin_mm": {
+            "samples": 256,
+            "p95": 0.06380686220252638,
+            "max": 0.11283674954542555
+          },
+          "depth": {
+            "transported_laplacian_relative_residual": 0.0008050800132545317,
+            "resolved_laplacian_relative_residual": 4.245984742803537e-14,
+            "depth_change_p95": 0.0017878470805096156,
+            "depth_change_max": 0.003922497759642152,
+            "resolved_radial_monotonicity": true,
+            "half_depth_shift_p95_mm": 0.14232511529934702,
+            "half_depth_shift_max_mm": 0.23828669515089745
+          }
+        },
+        {
+          "side": "left",
+          "beta_delta": [
+            -2.0,
+            0.0
+          ],
+          "knee_deg": 45,
+          "tetrahedra": 322056,
+          "nonpositive_tets": 0,
+          "min_det_ratio": 0.8068520884787047,
+          "positive_overlap_pairs": 0,
+          "volume_boundary_intersection_pairs": 0,
+          "native_skin_intersection_pairs": 0,
+          "ring_perimeters_mm": [
+            472.0437316894531,
+            353.34588623046875,
+            342.7895202636719
+          ],
+          "segment_lengths_mm": [
+            425.24458291815125,
+            453.5154447907665
+          ],
+          "geometry_pass": true,
+          "material_points": 256,
+          "max_label_drift_rad_h_d": [
+            0.0,
+            0.0,
+            1.7707927329092962e-15
+          ],
+          "max_material_roundtrip_m": 2.8040244484667716e-08,
+          "material_check_pass": true,
+          "outer_loft_distance_to_native_skin_mm": {
+            "samples": 256,
+            "p95": 0.06911367633256171,
+            "max": 0.1755230727937136
+          }
+        },
+        {
+          "side": "left",
+          "beta_delta": [
+            -2.0,
+            0.0
+          ],
+          "knee_deg": 90,
+          "tetrahedra": 322056,
+          "nonpositive_tets": 0,
+          "min_det_ratio": 0.155026576204779,
+          "positive_overlap_pairs": 0,
+          "volume_boundary_intersection_pairs": 0,
+          "native_skin_intersection_pairs": 0,
+          "ring_perimeters_mm": [
+            463.8068542480469,
+            334.0642395019531,
+            347.78326416015625
+          ],
+          "segment_lengths_mm": [
+            425.24458291815125,
+            453.5154447907665
+          ],
+          "geometry_pass": true,
+          "material_points": 256,
+          "max_label_drift_rad_h_d": [
+            0.0,
+            0.0,
+            1.2973280631064298e-15
+          ],
+          "max_material_roundtrip_m": 2.842399487096057e-08,
+          "material_check_pass": true,
+          "outer_loft_distance_to_native_skin_mm": {
+            "samples": 256,
+            "p95": 0.08674696725561455,
+            "max": 0.21153793266282564
+          }
+        },
+        {
+          "side": "left",
+          "beta_delta": [
+            -2.0,
+            2.0
+          ],
+          "knee_deg": 0,
+          "tetrahedra": 322056,
+          "nonpositive_tets": 0,
+          "min_det_ratio": 1.2979757335972255,
+          "positive_overlap_pairs": 0,
+          "volume_boundary_intersection_pairs": 0,
+          "native_skin_intersection_pairs": 1,
+          "ring_perimeters_mm": [
+            515.4904174804688,
+            389.3207092285156,
+            367.88250732421875
+          ],
+          "segment_lengths_mm": [
+            409.87065866958267,
+            450.3338959464162
+          ],
+          "geometry_pass": false
+        },
+        {
+          "side": "left",
+          "beta_delta": [
+            -2.0,
+            2.0
+          ],
+          "knee_deg": 45,
+          "tetrahedra": 322056,
+          "nonpositive_tets": 0,
+          "min_det_ratio": 0.892053918539436,
+          "positive_overlap_pairs": 0,
+          "volume_boundary_intersection_pairs": 0,
+          "native_skin_intersection_pairs": 1,
+          "ring_perimeters_mm": [
+            518.3388671875,
+            384.3030090332031,
+            373.13134765625
+          ],
+          "segment_lengths_mm": [
+            409.87065866958267,
+            450.3338959464162
+          ],
+          "geometry_pass": false
+        },
+        {
+          "side": "left",
+          "beta_delta": [
+            -2.0,
+            2.0
+          ],
+          "knee_deg": 90,
+          "tetrahedra": 322056,
+          "nonpositive_tets": 0,
+          "min_det_ratio": 0.11165919183992631,
+          "positive_overlap_pairs": 0,
+          "volume_boundary_intersection_pairs": 0,
+          "native_skin_intersection_pairs": 0,
+          "ring_perimeters_mm": [
+            507.7810363769531,
+            363.28955078125,
+            377.81182861328125
+          ],
+          "segment_lengths_mm": [
+            409.87065866958267,
+            450.3338959464162
+          ],
+          "geometry_pass": true,
+          "material_points": 256,
+          "max_label_drift_rad_h_d": [
+            0.0,
+            0.0,
+            3.0402600692006293e-15
+          ],
+          "max_material_roundtrip_m": 2.8250760478823644e-08,
+          "material_check_pass": true,
+          "outer_loft_distance_to_native_skin_mm": {
+            "samples": 256,
+            "p95": 0.08922488810625503,
+            "max": 0.19703023017342178
+          }
+        },
+        {
+          "side": "left",
+          "beta_delta": [
+            0.0,
+            -2.0
+          ],
+          "knee_deg": 0,
+          "tetrahedra": 322056,
+          "nonpositive_tets": 0,
+          "min_det_ratio": 0.7271684228763351,
+          "positive_overlap_pairs": 0,
+          "volume_boundary_intersection_pairs": 0,
+          "native_skin_intersection_pairs": 0,
+          "ring_perimeters_mm": [
+            394.17572021484375,
+            302.9994201660156,
+            289.1422424316406
+          ],
+          "segment_lengths_mm": [
+            403.8223014256642,
+            412.20756866595195
+          ],
+          "geometry_pass": true,
+          "material_points": 256,
+          "max_label_drift_rad_h_d": [
+            0.0,
+            0.0,
+            4.2930972900011636e-16
+          ],
+          "max_material_roundtrip_m": 2.5560492563572193e-08,
+          "material_check_pass": true,
+          "outer_loft_distance_to_native_skin_mm": {
+            "samples": 256,
+            "p95": 0.05943954645478563,
+            "max": 0.13122093264855061
+          },
+          "depth": {
+            "transported_laplacian_relative_residual": 0.0020955563393006632,
+            "resolved_laplacian_relative_residual": 4.283435275578686e-14,
+            "depth_change_p95": 0.0052130707879347185,
+            "depth_change_max": 0.013671358578389525,
+            "resolved_radial_monotonicity": true,
+            "half_depth_shift_p95_mm": 0.4347575296998309,
+            "half_depth_shift_max_mm": 0.9958947828896307
+          }
+        },
+        {
+          "side": "left",
+          "beta_delta": [
+            0.0,
+            -2.0
+          ],
+          "knee_deg": 45,
+          "tetrahedra": 322056,
+          "nonpositive_tets": 0,
+          "min_det_ratio": 0.5397100807384906,
+          "positive_overlap_pairs": 0,
+          "volume_boundary_intersection_pairs": 0,
+          "native_skin_intersection_pairs": 0,
+          "ring_perimeters_mm": [
+            399.3694152832031,
+            300.0933532714844,
+            294.5738525390625
+          ],
+          "segment_lengths_mm": [
+            403.8223014256642,
+            412.2075686659519
+          ],
+          "geometry_pass": true,
+          "material_points": 256,
+          "max_label_drift_rad_h_d": [
+            0.0,
+            0.0,
+            5.501872068643766e-16
+          ],
+          "max_material_roundtrip_m": 2.569120719389116e-08,
+          "material_check_pass": true,
+          "outer_loft_distance_to_native_skin_mm": {
+            "samples": 256,
+            "p95": 0.0659818736289968,
+            "max": 0.18013504988677534
+          }
+        },
+        {
+          "side": "left",
+          "beta_delta": [
+            0.0,
+            -2.0
+          ],
+          "knee_deg": 90,
+          "tetrahedra": 322056,
+          "nonpositive_tets": 0,
+          "min_det_ratio": 0.12075001318556543,
+          "positive_overlap_pairs": 0,
+          "volume_boundary_intersection_pairs": 0,
+          "native_skin_intersection_pairs": 0,
+          "ring_perimeters_mm": [
+            394.3381652832031,
+            284.17767333984375,
+            299.8843078613281
+          ],
+          "segment_lengths_mm": [
+            403.8223014256642,
+            412.20756866595195
+          ],
+          "geometry_pass": true,
+          "material_points": 256,
+          "max_label_drift_rad_h_d": [
+            0.0,
+            0.0,
+            1.4611030878330206e-15
+          ],
+          "max_material_roundtrip_m": 2.582636578415059e-08,
+          "material_check_pass": true,
+          "outer_loft_distance_to_native_skin_mm": {
+            "samples": 256,
+            "p95": 0.07849440527670856,
+            "max": 0.21235593692950455
+          }
+        },
+        {
+          "side": "left",
+          "beta_delta": [
+            0.0,
+            0.0
+          ],
+          "knee_deg": 0,
+          "tetrahedra": 322056,
+          "nonpositive_tets": 0,
+          "min_det_ratio": 0.9994094416984496,
+          "positive_overlap_pairs": 0,
+          "volume_boundary_intersection_pairs": 0,
+          "native_skin_intersection_pairs": 0,
+          "ring_perimeters_mm": [
+            440.77642822265625,
+            333.98992919921875,
+            319.4498596191406
+          ],
+          "segment_lengths_mm": [
+            388.4439796076898,
+            409.0058428444811
+          ],
+          "geometry_pass": true,
+          "material_points": 256,
+          "max_label_drift_rad_h_d": [
+            0.0,
+            0.0,
+            2.426489460647882e-16
+          ],
+          "max_material_roundtrip_m": 2.5463512668944825e-08,
+          "material_check_pass": true,
+          "outer_loft_distance_to_native_skin_mm": {
+            "samples": 256,
+            "p95": 0.06136392056821007,
+            "max": 0.10432593155908942
+          },
+          "depth": {
+            "transported_laplacian_relative_residual": 4.581083249198339e-06,
+            "resolved_laplacian_relative_residual": 3.993646891625478e-14,
+            "depth_change_p95": 2.1993271255571473e-07,
+            "depth_change_max": 9.930340753028233e-07,
+            "resolved_radial_monotonicity": true,
+            "half_depth_shift_p95_mm": 1.0996679304576138e-05,
+            "half_depth_shift_max_mm": 2.6219006484093323e-05
+          }
+        },
+        {
+          "side": "left",
+          "beta_delta": [
+            0.0,
+            0.0
+          ],
+          "knee_deg": 45,
+          "tetrahedra": 322056,
+          "nonpositive_tets": 0,
+          "min_det_ratio": 0.6174342386048457,
+          "positive_overlap_pairs": 0,
+          "volume_boundary_intersection_pairs": 0,
+          "native_skin_intersection_pairs": 0,
+          "ring_perimeters_mm": [
+            444.81341552734375,
+            330.5009765625,
+            324.77703857421875
+          ],
+          "segment_lengths_mm": [
+            388.4439796076898,
+            409.0058428444811
+          ],
+          "geometry_pass": true,
+          "material_points": 256,
+          "max_label_drift_rad_h_d": [
+            0.0,
+            0.0,
+            1.674468357905774e-15
+          ],
+          "max_material_roundtrip_m": 2.5176566025847397e-08,
+          "material_check_pass": true,
+          "outer_loft_distance_to_native_skin_mm": {
+            "samples": 256,
+            "p95": 0.06764219155879776,
+            "max": 0.16373723853531924
+          }
+        },
+        {
+          "side": "left",
+          "beta_delta": [
+            0.0,
+            0.0
+          ],
+          "knee_deg": 90,
+          "tetrahedra": 322056,
+          "nonpositive_tets": 0,
+          "min_det_ratio": 0.09616522858137484,
+          "positive_overlap_pairs": 0,
+          "volume_boundary_intersection_pairs": 0,
+          "native_skin_intersection_pairs": 0,
+          "ring_perimeters_mm": [
+            437.4761047363281,
+            312.9222412109375,
+            329.78955078125
+          ],
+          "segment_lengths_mm": [
+            388.4439796076898,
+            409.0058428444811
+          ],
+          "geometry_pass": true,
+          "material_points": 256,
+          "max_label_drift_rad_h_d": [
+            0.0,
+            0.0,
+            4.2930972900011636e-16
+          ],
+          "max_material_roundtrip_m": 2.5417523983196706e-08,
+          "material_check_pass": true,
+          "outer_loft_distance_to_native_skin_mm": {
+            "samples": 256,
+            "p95": 0.08342828649255606,
+            "max": 0.19826519940996348
+          }
+        },
+        {
+          "side": "left",
+          "beta_delta": [
+            0.0,
+            2.0
+          ],
+          "knee_deg": 0,
+          "tetrahedra": 322056,
+          "nonpositive_tets": 0,
+          "min_det_ratio": 1.0231465586496495,
+          "positive_overlap_pairs": 0,
+          "volume_boundary_intersection_pairs": 0,
+          "native_skin_intersection_pairs": 1,
+          "ring_perimeters_mm": [
+            488.12908935546875,
+            365.501953125,
+            349.986572265625
+          ],
+          "segment_lengths_mm": [
+            373.1104406265603,
+            405.8377383205318
+          ],
+          "geometry_pass": false
+        },
+        {
+          "side": "left",
+          "beta_delta": [
+            0.0,
+            2.0
+          ],
+          "knee_deg": 45,
+          "tetrahedra": 322056,
+          "nonpositive_tets": 0,
+          "min_det_ratio": 0.6834300820507339,
+          "positive_overlap_pairs": 0,
+          "volume_boundary_intersection_pairs": 0,
+          "native_skin_intersection_pairs": 1,
+          "ring_perimeters_mm": [
+            491.0143737792969,
+            361.39862060546875,
+            355.198974609375
+          ],
+          "segment_lengths_mm": [
+            373.1104406265603,
+            405.8377383205318
+          ],
+          "geometry_pass": false
+        },
+        {
+          "side": "left",
+          "beta_delta": [
+            0.0,
+            2.0
+          ],
+          "knee_deg": 90,
+          "tetrahedra": 322056,
+          "nonpositive_tets": 0,
+          "min_det_ratio": 0.051207524675759626,
+          "positive_overlap_pairs": 0,
+          "volume_boundary_intersection_pairs": 0,
+          "native_skin_intersection_pairs": 0,
+          "ring_perimeters_mm": [
+            481.3674621582031,
+            342.0914611816406,
+            359.9034423828125
+          ],
+          "segment_lengths_mm": [
+            373.1104406265603,
+            405.8377383205318
+          ],
+          "geometry_pass": true,
+          "material_points": 256,
+          "max_label_drift_rad_h_d": [
+            0.0,
+            0.0,
+            4.2930972900011636e-16
+          ],
+          "max_material_roundtrip_m": 2.5244653957672537e-08,
+          "material_check_pass": true,
+          "outer_loft_distance_to_native_skin_mm": {
+            "samples": 256,
+            "p95": 0.08651334274432519,
+            "max": 0.18364548952198562
+          }
+        },
+        {
+          "side": "left",
+          "beta_delta": [
+            2.0,
+            -2.0
+          ],
+          "knee_deg": 0,
+          "tetrahedra": 322056,
+          "nonpositive_tets": 0,
+          "min_det_ratio": 0.5333059012518566,
+          "positive_overlap_pairs": 0,
+          "volume_boundary_intersection_pairs": 0,
+          "native_skin_intersection_pairs": 0,
+          "ring_perimeters_mm": [
+            367.18939208984375,
+            279.5046691894531,
+            271.6532287597656
+          ],
+          "segment_lengths_mm": [
+            367.01880326431206,
+            367.6989021758531
+          ],
+          "geometry_pass": true,
+          "material_points": 256,
+          "max_label_drift_rad_h_d": [
+            0.0,
+            0.0,
+            5.196789065190692e-16
+          ],
+          "max_material_roundtrip_m": 2.260445445455084e-08,
+          "material_check_pass": true,
+          "outer_loft_distance_to_native_skin_mm": {
+            "samples": 256,
+            "p95": 0.057739508874732184,
+            "max": 0.12107464742796932
+          },
+          "depth": {
+            "transported_laplacian_relative_residual": 0.0024183200245337716,
+            "resolved_laplacian_relative_residual": 4.125930630105269e-14,
+            "depth_change_p95": 0.005051650048432853,
+            "depth_change_max": 0.013877872156470072,
+            "resolved_radial_monotonicity": true,
+            "half_depth_shift_p95_mm": 0.393104620037919,
+            "half_depth_shift_max_mm": 0.9084620233149788
+          }
+        },
+        {
+          "side": "left",
+          "beta_delta": [
+            2.0,
+            -2.0
+          ],
+          "knee_deg": 45,
+          "tetrahedra": 322056,
+          "nonpositive_tets": 0,
+          "min_det_ratio": 0.3979620527158914,
+          "positive_overlap_pairs": 0,
+          "volume_boundary_intersection_pairs": 0,
+          "native_skin_intersection_pairs": 0,
+          "ring_perimeters_mm": [
+            372.4205627441406,
+            277.5106506347656,
+            277.03656005859375
+          ],
+          "segment_lengths_mm": [
+            367.01880326431206,
+            367.698902175853
+          ],
+          "geometry_pass": true,
+          "material_points": 256,
+          "max_label_drift_rad_h_d": [
+            0.0,
+            0.0,
+            8.90871044795218e-16
+          ],
+          "max_material_roundtrip_m": 2.282879627405507e-08,
+          "material_check_pass": true,
+          "outer_loft_distance_to_native_skin_mm": {
+            "samples": 256,
+            "p95": 0.06352287544265985,
+            "max": 0.16837114270447323
+          }
+        },
+        {
+          "side": "left",
+          "beta_delta": [
+            2.0,
+            -2.0
+          ],
+          "knee_deg": 90,
+          "tetrahedra": 322056,
+          "nonpositive_tets": 0,
+          "min_det_ratio": 0.07547811940039437,
+          "positive_overlap_pairs": 0,
+          "volume_boundary_intersection_pairs": 0,
+          "native_skin_intersection_pairs": 0,
+          "ring_perimeters_mm": [
+            368.2734680175781,
+            263.2608947753906,
+            282.3475341796875
+          ],
+          "segment_lengths_mm": [
+            367.01880326431206,
+            367.69890217585305
+          ],
+          "geometry_pass": true,
+          "material_points": 256,
+          "max_label_drift_rad_h_d": [
+            0.0,
+            0.0,
+            6.07382620245523e-16
+          ],
+          "max_material_roundtrip_m": 2.3063388302942476e-08,
+          "material_check_pass": true,
+          "outer_loft_distance_to_native_skin_mm": {
+            "samples": 256,
+            "p95": 0.07683885566142559,
+            "max": 0.19914333158608574
+          }
+        },
+        {
+          "side": "left",
+          "beta_delta": [
+            2.0,
+            0.0
+          ],
+          "knee_deg": 0,
+          "tetrahedra": 322056,
+          "nonpositive_tets": 0,
+          "min_det_ratio": 0.7269281581191037,
+          "positive_overlap_pairs": 0,
+          "volume_boundary_intersection_pairs": 0,
+          "native_skin_intersection_pairs": 0,
+          "ring_perimeters_mm": [
+            413.6007385253906,
+            310.35784912109375,
+            301.9978942871094
+          ],
+          "segment_lengths_mm": [
+            351.68274081676066,
+            364.50968939994715
+          ],
+          "geometry_pass": true,
+          "material_points": 256,
+          "max_label_drift_rad_h_d": [
+            0.0,
+            0.0,
+            4.2930972900011636e-16
+          ],
+          "max_material_roundtrip_m": 2.2507604871847123e-08,
+          "material_check_pass": true,
+          "outer_loft_distance_to_native_skin_mm": {
+            "samples": 256,
+            "p95": 0.05986060825940536,
+            "max": 0.09695856978216137
+          },
+          "depth": {
+            "transported_laplacian_relative_residual": 0.0009553443767922534,
+            "resolved_laplacian_relative_residual": 4.0815017730482495e-14,
+            "depth_change_p95": 0.0021504935168543213,
+            "depth_change_max": 0.004829207887454334,
+            "resolved_radial_monotonicity": true,
+            "half_depth_shift_p95_mm": 0.15144310505143455,
+            "half_depth_shift_max_mm": 0.2514583422530005
+          }
+        },
+        {
+          "side": "left",
+          "beta_delta": [
+            2.0,
+            0.0
+          ],
+          "knee_deg": 45,
+          "tetrahedra": 322056,
+          "nonpositive_tets": 0,
+          "min_det_ratio": 0.4573647376540641,
+          "positive_overlap_pairs": 0,
+          "volume_boundary_intersection_pairs": 0,
+          "native_skin_intersection_pairs": 0,
+          "ring_perimeters_mm": [
+            417.677734375,
+            307.7768859863281,
+            307.2785949707031
+          ],
+          "segment_lengths_mm": [
+            351.68274081676066,
+            364.5096893999472
+          ],
+          "geometry_pass": true,
+          "material_points": 256,
+          "max_label_drift_rad_h_d": [
+            0.0,
+            0.0,
+            1.04751190805378e-15
+          ],
+          "max_material_roundtrip_m": 2.231453205006831e-08,
+          "material_check_pass": true,
+          "outer_loft_distance_to_native_skin_mm": {
+            "samples": 256,
+            "p95": 0.06579616792388998,
+            "max": 0.1518663532465837
+          }
+        },
+        {
+          "side": "left",
+          "beta_delta": [
+            2.0,
+            0.0
+          ],
+          "knee_deg": 90,
+          "tetrahedra": 322056,
+          "nonpositive_tets": 0,
+          "min_det_ratio": 0.04898633588168293,
+          "positive_overlap_pairs": 0,
+          "volume_boundary_intersection_pairs": 0,
+          "native_skin_intersection_pairs": 0,
+          "ring_perimeters_mm": [
+            411.2424621582031,
+            291.87945556640625,
+            312.3012390136719
+          ],
+          "segment_lengths_mm": [
+            351.68274081676066,
+            364.50968939994715
+          ],
+          "geometry_pass": true,
+          "material_points": 256,
+          "max_label_drift_rad_h_d": [
+            0.0,
+            0.0,
+            3.0300732274604755e-15
+          ],
+          "max_material_roundtrip_m": 2.2553551344434917e-08,
+          "material_check_pass": true,
+          "outer_loft_distance_to_native_skin_mm": {
+            "samples": 256,
+            "p95": 0.07988824778498926,
+            "max": 0.18496831534104127
+          }
+        },
+        {
+          "side": "left",
+          "beta_delta": [
+            2.0,
+            2.0
+          ],
+          "knee_deg": 0,
+          "tetrahedra": 322056,
+          "nonpositive_tets": 0,
+          "min_det_ratio": 0.788449762210192,
+          "positive_overlap_pairs": 0,
+          "volume_boundary_intersection_pairs": 0,
+          "native_skin_intersection_pairs": 60,
+          "ring_perimeters_mm": [
+            460.8401184082031,
+            341.7967529296875,
+            332.5762939453125
+          ],
+          "segment_lengths_mm": [
+            336.40020789761286,
+            361.3584580722234
+          ],
+          "geometry_pass": false
+        },
+        {
+          "side": "left",
+          "beta_delta": [
+            2.0,
+            2.0
+          ],
+          "knee_deg": 45,
+          "tetrahedra": 322056,
+          "nonpositive_tets": 0,
+          "min_det_ratio": 0.5064537484494516,
+          "positive_overlap_pairs": 0,
+          "volume_boundary_intersection_pairs": 0,
+          "native_skin_intersection_pairs": 1,
+          "ring_perimeters_mm": [
+            463.7662048339844,
+            338.5940246582031,
+            337.7428283691406
+          ],
+          "segment_lengths_mm": [
+            336.40020789761286,
+            361.3584580722234
+          ],
+          "geometry_pass": false
+        },
+        {
+          "side": "left",
+          "beta_delta": [
+            2.0,
+            2.0
+          ],
+          "knee_deg": 90,
+          "tetrahedra": 322056,
+          "nonpositive_tets": 0,
+          "min_det_ratio": 0.0029501031805774136,
+          "positive_overlap_pairs": 0,
+          "volume_boundary_intersection_pairs": 0,
+          "native_skin_intersection_pairs": 0,
+          "ring_perimeters_mm": [
+            455.03411865234375,
+            320.9747009277344,
+            342.4648742675781
+          ],
+          "segment_lengths_mm": [
+            336.40020789761286,
+            361.3584580722234
+          ],
+          "geometry_pass": true,
+          "material_points": 256,
+          "max_label_drift_rad_h_d": [
+            0.0,
+            0.0,
+            9.571688826770736e-16
+          ],
+          "max_material_roundtrip_m": 2.2243748298386963e-08,
+          "material_check_pass": true,
+          "outer_loft_distance_to_native_skin_mm": {
+            "samples": 256,
+            "p95": 0.08199150730159376,
+            "max": 0.17016729420891805
+          }
+        }
+      ]
+    },
+    "right": {
+      "h_circumference_samples": [
+        0.34281688928604126,
+        0.5456337928771973,
+        0.7484506964683533
+      ],
+      "reference_lineage": {
+        "side": "right",
+        "tolerance_m": 2e-06,
+        "neutral_source_face_barycentric_max_m": 1.6388882385064995e-07,
+        "neutral_retained_vertex_max_m": 1.4897134576367752e-07,
+        "fresh_ray_intersection": false
+      },
+      "similarity_controls": [
+        {
+          "uniform_scale": 1.0,
+          "transported_laplacian_relative_residual": 3.0512127612632508e-06,
+          "resolved_laplacian_relative_residual": 4.2462824519282773e-14,
+          "depth_change_p95": 2.5890346710966127e-08,
+          "depth_change_max": 2.9800830692039426e-08,
+          "resolved_radial_monotonicity": true,
+          "half_depth_shift_p95_mm": 1.1559230319348237e-06,
+          "half_depth_shift_max_mm": 2.518276350939899e-06
+        },
+        {
+          "uniform_scale": 1.2,
+          "transported_laplacian_relative_residual": 3.0512127613074773e-06,
+          "resolved_laplacian_relative_residual": 4.146958706572556e-14,
+          "depth_change_p95": 2.589034396316414e-08,
+          "depth_change_max": 2.9800832357373963e-08,
+          "resolved_radial_monotonicity": true,
+          "half_depth_shift_p95_mm": 1.3871076422982064e-06,
+          "half_depth_shift_max_mm": 3.0219318369008467e-06
+        }
+      ],
+      "cases": [
+        {
+          "side": "right",
+          "beta_delta": [
+            -2.0,
+            -2.0
+          ],
+          "knee_deg": 0,
+          "tetrahedra": 322056,
+          "nonpositive_tets": 0,
+          "min_det_ratio": 0.9282488854614471,
+          "positive_overlap_pairs": 0,
+          "volume_boundary_intersection_pairs": 0,
+          "native_skin_intersection_pairs": 0,
+          "ring_perimeters_mm": [
+            413.7707824707031,
+            324.7674255371094,
+            299.6586608886719
+          ],
+          "segment_lengths_mm": [
+            420.6758064159925,
+            470.0540344513721
+          ],
+          "geometry_pass": true,
+          "material_points": 256,
+          "max_label_drift_rad_h_d": [
+            0.0,
+            0.0,
+            4.850550290065986e-16
+          ],
+          "max_material_roundtrip_m": 2.800628224516069e-08,
+          "material_check_pass": true,
+          "outer_loft_distance_to_native_skin_mm": {
+            "samples": 256,
+            "p95": 0.07107170968891159,
+            "max": 0.1364589492171134
+          },
+          "depth": {
+            "transported_laplacian_relative_residual": 0.0019867098658082312,
+            "resolved_laplacian_relative_residual": 4.377575463481088e-14,
+            "depth_change_p95": 0.005860898941684625,
+            "depth_change_max": 0.012333900424634114,
+            "resolved_radial_monotonicity": true,
+            "half_depth_shift_p95_mm": 0.5466629939761819,
+            "half_depth_shift_max_mm": 0.9500646995125498
+          }
+        },
+        {
+          "side": "right",
+          "beta_delta": [
+            -2.0,
+            -2.0
+          ],
+          "knee_deg": 45,
+          "tetrahedra": 322056,
+          "nonpositive_tets": 0,
+          "min_det_ratio": 0.705859796161392,
+          "positive_overlap_pairs": 0,
+          "volume_boundary_intersection_pairs": 0,
+          "native_skin_intersection_pairs": 0,
+          "ring_perimeters_mm": [
+            422.50164794921875,
+            322.619140625,
+            306.3166809082031
+          ],
+          "segment_lengths_mm": [
+            420.6758064159925,
+            470.05403445137205
+          ],
+          "geometry_pass": true,
+          "material_points": 256,
+          "max_label_drift_rad_h_d": [
+            0.0,
+            0.0,
+            2.136685502195177e-15
+          ],
+          "max_material_roundtrip_m": 3.124277615873669e-08,
+          "material_check_pass": true,
+          "outer_loft_distance_to_native_skin_mm": {
+            "samples": 256,
+            "p95": 0.07720118935572318,
+            "max": 0.22836616980570767
+          }
+        },
+        {
+          "side": "right",
+          "beta_delta": [
+            -2.0,
+            -2.0
+          ],
+          "knee_deg": 90,
+          "tetrahedra": 322056,
+          "nonpositive_tets": 0,
+          "min_det_ratio": 0.1686017692242423,
+          "positive_overlap_pairs": 0,
+          "volume_boundary_intersection_pairs": 0,
+          "native_skin_intersection_pairs": 0,
+          "ring_perimeters_mm": [
+            420.53057861328125,
+            313.4677429199219,
+            315.2628479003906
+          ],
+          "segment_lengths_mm": [
+            420.6758064159925,
+            470.0540344513721
+          ],
+          "geometry_pass": true,
+          "material_points": 256,
+          "max_label_drift_rad_h_d": [
+            0.0,
+            0.0,
+            2.6005944624478227e-15
+          ],
+          "max_material_roundtrip_m": 3.243669707264796e-08,
+          "material_check_pass": true,
+          "outer_loft_distance_to_native_skin_mm": {
+            "samples": 256,
+            "p95": 0.08960343633591039,
+            "max": 0.2744933279411951
+          }
+        },
+        {
+          "side": "right",
+          "beta_delta": [
+            -2.0,
+            0.0
+          ],
+          "knee_deg": 0,
+          "tetrahedra": 322056,
+          "nonpositive_tets": 0,
+          "min_det_ratio": 1.1956223536697232,
+          "positive_overlap_pairs": 0,
+          "volume_boundary_intersection_pairs": 0,
+          "native_skin_intersection_pairs": 0,
+          "ring_perimeters_mm": [
+            459.8409729003906,
+            357.59912109375,
+            329.0185546875
+          ],
+          "segment_lengths_mm": [
+            405.1976258315231,
+            465.83371433914505
+          ],
+          "geometry_pass": true,
+          "material_points": 256,
+          "max_label_drift_rad_h_d": [
+            0.0,
+            0.0,
+            3.2070739966790624e-16
+          ],
+          "max_material_roundtrip_m": 2.7840879717637374e-08,
+          "material_check_pass": true,
+          "outer_loft_distance_to_native_skin_mm": {
+            "samples": 256,
+            "p95": 0.0698790651264824,
+            "max": 0.11718974843807824
+          },
+          "depth": {
+            "transported_laplacian_relative_residual": 0.0009025781333954979,
+            "resolved_laplacian_relative_residual": 4.35253130842458e-14,
+            "depth_change_p95": 0.001687239694094782,
+            "depth_change_max": 0.0038746936611663285,
+            "resolved_radial_monotonicity": true,
+            "half_depth_shift_p95_mm": 0.14648611494332558,
+            "half_depth_shift_max_mm": 0.27630579640440894
+          }
+        },
+        {
+          "side": "right",
+          "beta_delta": [
+            -2.0,
+            0.0
+          ],
+          "knee_deg": 45,
+          "tetrahedra": 322056,
+          "nonpositive_tets": 0,
+          "min_det_ratio": 0.8025008604381966,
+          "positive_overlap_pairs": 0,
+          "volume_boundary_intersection_pairs": 0,
+          "native_skin_intersection_pairs": 0,
+          "ring_perimeters_mm": [
+            467.4593811035156,
+            355.1934509277344,
+            335.63031005859375
+          ],
+          "segment_lengths_mm": [
+            405.1976258315231,
+            465.8337143391451
+          ],
+          "geometry_pass": true,
+          "material_points": 256,
+          "max_label_drift_rad_h_d": [
+            0.0,
+            0.0,
+            2.286907007148964e-15
+          ],
+          "max_material_roundtrip_m": 3.021702230186049e-08,
+          "material_check_pass": true,
+          "outer_loft_distance_to_native_skin_mm": {
+            "samples": 256,
+            "p95": 0.08024223626792285,
+            "max": 0.1942379670400595
+          }
+        },
+        {
+          "side": "right",
+          "beta_delta": [
+            -2.0,
+            0.0
+          ],
+          "knee_deg": 90,
+          "tetrahedra": 322056,
+          "nonpositive_tets": 0,
+          "min_det_ratio": 0.14506442771355915,
+          "positive_overlap_pairs": 0,
+          "volume_boundary_intersection_pairs": 0,
+          "native_skin_intersection_pairs": 0,
+          "ring_perimeters_mm": [
+            463.1830139160156,
+            344.66082763671875,
+            344.3616943359375
+          ],
+          "segment_lengths_mm": [
+            405.1976258315231,
+            465.83371433914505
+          ],
+          "geometry_pass": true,
+          "material_points": 256,
+          "max_label_drift_rad_h_d": [
+            0.0,
+            0.0,
+            3.471772269152064e-15
+          ],
+          "max_material_roundtrip_m": 3.172257022293345e-08,
+          "material_check_pass": true,
+          "outer_loft_distance_to_native_skin_mm": {
+            "samples": 256,
+            "p95": 0.09637858937982267,
+            "max": 0.2449560321646239
+          }
+        },
+        {
+          "side": "right",
+          "beta_delta": [
+            -2.0,
+            2.0
+          ],
+          "knee_deg": 0,
+          "tetrahedra": 322056,
+          "nonpositive_tets": 0,
+          "min_det_ratio": 1.2962692734333763,
+          "positive_overlap_pairs": 0,
+          "volume_boundary_intersection_pairs": 0,
+          "native_skin_intersection_pairs": 0,
+          "ring_perimeters_mm": [
+            506.6103210449219,
+            390.92584228515625,
+            358.5980224609375
+          ],
+          "segment_lengths_mm": [
+            389.7282785070586,
+            461.62056154121717
+          ],
+          "geometry_pass": true,
+          "material_points": 256,
+          "max_label_drift_rad_h_d": [
+            0.0,
+            0.0,
+            3.6116915481148716e-16
+          ],
+          "max_material_roundtrip_m": 2.7685082673533447e-08,
+          "material_check_pass": true,
+          "outer_loft_distance_to_native_skin_mm": {
+            "samples": 256,
+            "p95": 0.07129546679707921,
+            "max": 0.11229523411996929
+          },
+          "depth": {
+            "transported_laplacian_relative_residual": 0.0018507728955937238,
+            "resolved_laplacian_relative_residual": 4.141071471772926e-14,
+            "depth_change_p95": 0.00445834447514588,
+            "depth_change_max": 0.011174179194127387,
+            "resolved_radial_monotonicity": true,
+            "half_depth_shift_p95_mm": 0.533813797591605,
+            "half_depth_shift_max_mm": 1.0749153742055937
+          }
+        },
+        {
+          "side": "right",
+          "beta_delta": [
+            -2.0,
+            2.0
+          ],
+          "knee_deg": 45,
+          "tetrahedra": 322056,
+          "nonpositive_tets": 0,
+          "min_det_ratio": 0.8909436348761667,
+          "positive_overlap_pairs": 0,
+          "volume_boundary_intersection_pairs": 0,
+          "native_skin_intersection_pairs": 0,
+          "ring_perimeters_mm": [
+            513.1093139648438,
+            388.2082824707031,
+            365.1484069824219
+          ],
+          "segment_lengths_mm": [
+            389.7282785070586,
+            461.62056154121706
+          ],
+          "geometry_pass": true,
+          "material_points": 256,
+          "max_label_drift_rad_h_d": [
+            0.0,
+            0.0,
+            2.3922056962286456e-15
+          ],
+          "max_material_roundtrip_m": 2.9261006029703687e-08,
+          "material_check_pass": true,
+          "outer_loft_distance_to_native_skin_mm": {
+            "samples": 256,
+            "p95": 0.07981831491571015,
+            "max": 0.16624937342863236
+          }
+        },
+        {
+          "side": "right",
+          "beta_delta": [
+            -2.0,
+            2.0
+          ],
+          "knee_deg": 90,
+          "tetrahedra": 322056,
+          "nonpositive_tets": 0,
+          "min_det_ratio": 0.10117472964063011,
+          "positive_overlap_pairs": 0,
+          "volume_boundary_intersection_pairs": 0,
+          "native_skin_intersection_pairs": 0,
+          "ring_perimeters_mm": [
+            506.487060546875,
+            376.24249267578125,
+            373.656005859375
+          ],
+          "segment_lengths_mm": [
+            389.7282785070586,
+            461.62056154121717
+          ],
+          "geometry_pass": true,
+          "material_points": 256,
+          "max_label_drift_rad_h_d": [
+            0.0,
+            0.0,
+            2.289261361695637e-15
+          ],
+          "max_material_roundtrip_m": 3.108704259385325e-08,
+          "material_check_pass": true,
+          "outer_loft_distance_to_native_skin_mm": {
+            "samples": 256,
+            "p95": 0.09903432828019428,
+            "max": 0.2218024456186536
+          }
+        },
+        {
+          "side": "right",
+          "beta_delta": [
+            0.0,
+            -2.0
+          ],
+          "knee_deg": 0,
+          "tetrahedra": 322056,
+          "nonpositive_tets": 0,
+          "min_det_ratio": 0.726476846158823,
+          "positive_overlap_pairs": 0,
+          "volume_boundary_intersection_pairs": 0,
+          "native_skin_intersection_pairs": 0,
+          "ring_perimeters_mm": [
+            386.8800354003906,
+            301.337158203125,
+            281.96856689453125
+          ],
+          "segment_lengths_mm": [
+            385.3672878759296,
+            423.9517035849617
+          ],
+          "geometry_pass": true,
+          "material_points": 256,
+          "max_label_drift_rad_h_d": [
+            0.0,
+            0.0,
+            4.386123742224551e-16
+          ],
+          "max_material_roundtrip_m": 2.5689541265773217e-08,
+          "material_check_pass": true,
+          "outer_loft_distance_to_native_skin_mm": {
+            "samples": 256,
+            "p95": 0.06807668825476211,
+            "max": 0.12542669658054786
+          },
+          "depth": {
+            "transported_laplacian_relative_residual": 0.0019325502845849204,
+            "resolved_laplacian_relative_residual": 4.3788190544265254e-14,
+            "depth_change_p95": 0.005570944134285947,
+            "depth_change_max": 0.013280240087242823,
+            "resolved_radial_monotonicity": true,
+            "half_depth_shift_p95_mm": 0.5019973494693433,
+            "half_depth_shift_max_mm": 0.9553355286192963
+          }
+        },
+        {
+          "side": "right",
+          "beta_delta": [
+            0.0,
+            -2.0
+          ],
+          "knee_deg": 45,
+          "tetrahedra": 322056,
+          "nonpositive_tets": 0,
+          "min_det_ratio": 0.5352610294211061,
+          "positive_overlap_pairs": 0,
+          "volume_boundary_intersection_pairs": 0,
+          "native_skin_intersection_pairs": 0,
+          "ring_perimeters_mm": [
+            395.84332275390625,
+            300.2512512207031,
+            288.4997253417969
+          ],
+          "segment_lengths_mm": [
+            385.3672878759296,
+            423.95170358496165
+          ],
+          "geometry_pass": true,
+          "material_points": 256,
+          "max_label_drift_rad_h_d": [
+            0.0,
+            0.0,
+            1.550797894777061e-15
+          ],
+          "max_material_roundtrip_m": 2.8648304878044316e-08,
+          "material_check_pass": true,
+          "outer_loft_distance_to_native_skin_mm": {
+            "samples": 256,
+            "p95": 0.07272969846692051,
+            "max": 0.20957847216352096
+          }
+        },
+        {
+          "side": "right",
+          "beta_delta": [
+            0.0,
+            -2.0
+          ],
+          "knee_deg": 90,
+          "tetrahedra": 322056,
+          "nonpositive_tets": 0,
+          "min_det_ratio": 0.11132978348434057,
+          "positive_overlap_pairs": 0,
+          "volume_boundary_intersection_pairs": 0,
+          "native_skin_intersection_pairs": 0,
+          "ring_perimeters_mm": [
+            394.9674987792969,
+            292.5281982421875,
+            297.3297119140625
+          ],
+          "segment_lengths_mm": [
+            385.3672878759296,
+            423.9517035849617
+          ],
+          "geometry_pass": true,
+          "material_points": 256,
+          "max_label_drift_rad_h_d": [
+            0.0,
+            0.0,
+            2.694243033901189e-15
+          ],
+          "max_material_roundtrip_m": 2.9810472756004174e-08,
+          "material_check_pass": true,
+          "outer_loft_distance_to_native_skin_mm": {
+            "samples": 256,
+            "p95": 0.08556605221654208,
+            "max": 0.2510158414923202
+          }
+        },
+        {
+          "side": "right",
+          "beta_delta": [
+            0.0,
+            0.0
+          ],
+          "knee_deg": 0,
+          "tetrahedra": 322056,
+          "nonpositive_tets": 0,
+          "min_det_ratio": 0.9994446209094059,
+          "positive_overlap_pairs": 0,
+          "volume_boundary_intersection_pairs": 0,
+          "native_skin_intersection_pairs": 0,
+          "ring_perimeters_mm": [
+            432.8006286621094,
+            334.05963134765625,
+            311.41864013671875
+          ],
+          "segment_lengths_mm": [
+            369.9049976678084,
+            419.7303967308651
+          ],
+          "geometry_pass": true,
+          "material_points": 256,
+          "max_label_drift_rad_h_d": [
+            0.0,
+            0.0,
+            1.4818264371018667e-16
+          ],
+          "max_material_roundtrip_m": 2.5529696218654405e-08,
+          "material_check_pass": true,
+          "outer_loft_distance_to_native_skin_mm": {
+            "samples": 256,
+            "p95": 0.06798575302889835,
+            "max": 0.10225896944237474
+          },
+          "depth": {
+            "transported_laplacian_relative_residual": 4.124605086979173e-06,
+            "resolved_laplacian_relative_residual": 4.160362712378196e-14,
+            "depth_change_p95": 2.519898792824323e-07,
+            "depth_change_max": 9.425858311651325e-07,
+            "resolved_radial_monotonicity": true,
+            "half_depth_shift_p95_mm": 1.1691953631010764e-05,
+            "half_depth_shift_max_mm": 2.39945171995835e-05
+          }
+        },
+        {
+          "side": "right",
+          "beta_delta": [
+            0.0,
+            0.0
+          ],
+          "knee_deg": 45,
+          "tetrahedra": 322056,
+          "nonpositive_tets": 0,
+          "min_det_ratio": 0.6113179936200978,
+          "positive_overlap_pairs": 0,
+          "volume_boundary_intersection_pairs": 0,
+          "native_skin_intersection_pairs": 0,
+          "ring_perimeters_mm": [
+            440.6475830078125,
+            332.7320556640625,
+            317.9007873535156
+          ],
+          "segment_lengths_mm": [
+            369.9049976678084,
+            419.7303967308651
+          ],
+          "geometry_pass": true,
+          "material_points": 256,
+          "max_label_drift_rad_h_d": [
+            0.0,
+            0.0,
+            7.52587238388229e-16
+          ],
+          "max_material_roundtrip_m": 2.7617795072290206e-08,
+          "material_check_pass": true,
+          "outer_loft_distance_to_native_skin_mm": {
+            "samples": 256,
+            "p95": 0.07672145476502278,
+            "max": 0.17530785638379567
+          }
+        },
+        {
+          "side": "right",
+          "beta_delta": [
+            0.0,
+            0.0
+          ],
+          "knee_deg": 90,
+          "tetrahedra": 322056,
+          "nonpositive_tets": 0,
+          "min_det_ratio": 0.08486073704852376,
+          "positive_overlap_pairs": 0,
+          "volume_boundary_intersection_pairs": 0,
+          "native_skin_intersection_pairs": 0,
+          "ring_perimeters_mm": [
+            437.4745788574219,
+            323.6557312011719,
+            326.5225830078125
+          ],
+          "segment_lengths_mm": [
+            369.9049976678084,
+            419.7303967308651
+          ],
+          "geometry_pass": true,
+          "material_points": 256,
+          "max_label_drift_rad_h_d": [
+            0.0,
+            0.0,
+            2.2702780827982472e-15
+          ],
+          "max_material_roundtrip_m": 2.91026488281723e-08,
+          "material_check_pass": true,
+          "outer_loft_distance_to_native_skin_mm": {
+            "samples": 256,
+            "p95": 0.08962630548202288,
+            "max": 0.22140969154236922
+          }
+        },
+        {
+          "side": "right",
+          "beta_delta": [
+            0.0,
+            2.0
+          ],
+          "knee_deg": 0,
+          "tetrahedra": 322056,
+          "nonpositive_tets": 0,
+          "min_det_ratio": 1.0241284516007731,
+          "positive_overlap_pairs": 0,
+          "volume_boundary_intersection_pairs": 0,
+          "native_skin_intersection_pairs": 0,
+          "ring_perimeters_mm": [
+            479.4843444824219,
+            367.3303527832031,
+            341.08319091796875
+          ],
+          "segment_lengths_mm": [
+            354.45380693005427,
+            415.5170324050984
+          ],
+          "geometry_pass": true,
+          "material_points": 256,
+          "max_label_drift_rad_h_d": [
+            0.0,
+            0.0,
+            1.7184768546528776e-16
+          ],
+          "max_material_roundtrip_m": 2.5380690414229616e-08,
+          "material_check_pass": true,
+          "outer_loft_distance_to_native_skin_mm": {
+            "samples": 256,
+            "p95": 0.06821574761997219,
+            "max": 0.09729325527935567
+          },
+          "depth": {
+            "transported_laplacian_relative_residual": 0.0019750085492632906,
+            "resolved_laplacian_relative_residual": 4.19405800237672e-14,
+            "depth_change_p95": 0.005257416052328363,
+            "depth_change_max": 0.011554364532421868,
+            "resolved_radial_monotonicity": true,
+            "half_depth_shift_p95_mm": 0.5778687378964105,
+            "half_depth_shift_max_mm": 1.0901748013068537
+          }
+        },
+        {
+          "side": "right",
+          "beta_delta": [
+            0.0,
+            2.0
+          ],
+          "knee_deg": 45,
+          "tetrahedra": 322056,
+          "nonpositive_tets": 0,
+          "min_det_ratio": 0.6787495034928963,
+          "positive_overlap_pairs": 0,
+          "volume_boundary_intersection_pairs": 0,
+          "native_skin_intersection_pairs": 0,
+          "ring_perimeters_mm": [
+            486.2063903808594,
+            365.697998046875,
+            347.50128173828125
+          ],
+          "segment_lengths_mm": [
+            354.45380693005427,
+            415.51703240509835
+          ],
+          "geometry_pass": true,
+          "material_points": 256,
+          "max_label_drift_rad_h_d": [
+            0.0,
+            0.0,
+            2.1259517153991134e-15
+          ],
+          "max_material_roundtrip_m": 2.666332185788512e-08,
+          "material_check_pass": true,
+          "outer_loft_distance_to_native_skin_mm": {
+            "samples": 256,
+            "p95": 0.07472422507133626,
+            "max": 0.144044954295452
+          }
+        },
+        {
+          "side": "right",
+          "beta_delta": [
+            0.0,
+            2.0
+          ],
+          "knee_deg": 90,
+          "tetrahedra": 322056,
+          "nonpositive_tets": 0,
+          "min_det_ratio": 0.038732914854889285,
+          "positive_overlap_pairs": 0,
+          "volume_boundary_intersection_pairs": 0,
+          "native_skin_intersection_pairs": 0,
+          "ring_perimeters_mm": [
+            480.690185546875,
+            355.2065734863281,
+            355.90460205078125
+          ],
+          "segment_lengths_mm": [
+            354.45380693005427,
+            415.5170324050984
+          ],
+          "geometry_pass": true,
+          "material_points": 256,
+          "max_label_drift_rad_h_d": [
+            0.0,
+            0.0,
+            1.6108667185392575e-15
+          ],
+          "max_material_roundtrip_m": 2.8480951896118536e-08,
+          "material_check_pass": true,
+          "outer_loft_distance_to_native_skin_mm": {
+            "samples": 256,
+            "p95": 0.09018894409113767,
+            "max": 0.19439134536769728
+          }
+        },
+        {
+          "side": "right",
+          "beta_delta": [
+            2.0,
+            -2.0
+          ],
+          "knee_deg": 0,
+          "tetrahedra": 322056,
+          "nonpositive_tets": 0,
+          "min_det_ratio": 0.5332914932753725,
+          "positive_overlap_pairs": 0,
+          "volume_boundary_intersection_pairs": 0,
+          "native_skin_intersection_pairs": 0,
+          "ring_perimeters_mm": [
+            360.1015319824219,
+            278.0894775390625,
+            264.869384765625
+          ],
+          "segment_lengths_mm": [
+            350.0877641504838,
+            377.8524113302536
+          ],
+          "geometry_pass": true,
+          "material_points": 256,
+          "max_label_drift_rad_h_d": [
+            0.0,
+            0.0,
+            4.454382686372427e-16
+          ],
+          "max_material_roundtrip_m": 2.337709957865905e-08,
+          "material_check_pass": true,
+          "outer_loft_distance_to_native_skin_mm": {
+            "samples": 256,
+            "p95": 0.06685665473047668,
+            "max": 0.12039921740595352
+          },
+          "depth": {
+            "transported_laplacian_relative_residual": 0.0023767667263540826,
+            "resolved_laplacian_relative_residual": 4.1945288500897875e-14,
+            "depth_change_p95": 0.005713568215523772,
+            "depth_change_max": 0.015707720053642904,
+            "resolved_radial_monotonicity": true,
+            "half_depth_shift_p95_mm": 0.4784522892374717,
+            "half_depth_shift_max_mm": 0.9628029043538588
+          }
+        },
+        {
+          "side": "right",
+          "beta_delta": [
+            2.0,
+            -2.0
+          ],
+          "knee_deg": 45,
+          "tetrahedra": 322056,
+          "nonpositive_tets": 0,
+          "min_det_ratio": 0.39327699369982266,
+          "positive_overlap_pairs": 0,
+          "volume_boundary_intersection_pairs": 0,
+          "native_skin_intersection_pairs": 0,
+          "ring_perimeters_mm": [
+            369.2965087890625,
+            278.0472717285156,
+            271.258056640625
+          ],
+          "segment_lengths_mm": [
+            350.0877641504838,
+            377.85241133025363
+          ],
+          "geometry_pass": true,
+          "material_points": 256,
+          "max_label_drift_rad_h_d": [
+            0.0,
+            0.0,
+            1.5275457815837465e-15
+          ],
+          "max_material_roundtrip_m": 2.6054949657277074e-08,
+          "material_check_pass": true,
+          "outer_loft_distance_to_native_skin_mm": {
+            "samples": 256,
+            "p95": 0.06997069773304336,
+            "max": 0.19074875468930047
+          }
+        },
+        {
+          "side": "right",
+          "beta_delta": [
+            2.0,
+            -2.0
+          ],
+          "knee_deg": 90,
+          "tetrahedra": 322056,
+          "nonpositive_tets": 0,
+          "min_det_ratio": 0.06571662984508139,
+          "positive_overlap_pairs": 0,
+          "volume_boundary_intersection_pairs": 0,
+          "native_skin_intersection_pairs": 0,
+          "ring_perimeters_mm": [
+            369.5101623535156,
+            271.72161865234375,
+            279.9556884765625
+          ],
+          "segment_lengths_mm": [
+            350.0877641504838,
+            377.8524113302536
+          ],
+          "geometry_pass": true,
+          "material_points": 256,
+          "max_label_drift_rad_h_d": [
+            0.0,
+            0.0,
+            1.9226603934565127e-15
+          ],
+          "max_material_roundtrip_m": 2.7184775890436966e-08,
+          "material_check_pass": true,
+          "outer_loft_distance_to_native_skin_mm": {
+            "samples": 256,
+            "p95": 0.08861235477426706,
+            "max": 0.22749512300118255
+          }
+        },
+        {
+          "side": "right",
+          "beta_delta": [
+            2.0,
+            0.0
+          ],
+          "knee_deg": 0,
+          "tetrahedra": 322056,
+          "nonpositive_tets": 0,
+          "min_det_ratio": 0.723040165009996,
+          "positive_overlap_pairs": 0,
+          "volume_boundary_intersection_pairs": 0,
+          "native_skin_intersection_pairs": 0,
+          "ring_perimeters_mm": [
+            405.8426513671875,
+            310.6623229980469,
+            294.3615417480469
+          ],
+          "segment_lengths_mm": [
+            334.64605511147306,
+            373.6299085614145
+          ],
+          "geometry_pass": true,
+          "material_points": 256,
+          "max_label_drift_rad_h_d": [
+            0.0,
+            0.0,
+            7.361543227554627e-16
+          ],
+          "max_material_roundtrip_m": 2.322453886757156e-08,
+          "material_check_pass": true,
+          "outer_loft_distance_to_native_skin_mm": {
+            "samples": 256,
+            "p95": 0.06661826160977295,
+            "max": 0.10838434101242209
+          },
+          "depth": {
+            "transported_laplacian_relative_residual": 0.0010703103234599857,
+            "resolved_laplacian_relative_residual": 4.077379563866757e-14,
+            "depth_change_p95": 0.002043204423568081,
+            "depth_change_max": 0.004551286553787781,
+            "resolved_radial_monotonicity": true,
+            "half_depth_shift_p95_mm": 0.157340273586855,
+            "half_depth_shift_max_mm": 0.2936479314265748
+          }
+        },
+        {
+          "side": "right",
+          "beta_delta": [
+            2.0,
+            0.0
+          ],
+          "knee_deg": 45,
+          "tetrahedra": 322056,
+          "nonpositive_tets": 0,
+          "min_det_ratio": 0.45073839209525096,
+          "positive_overlap_pairs": 0,
+          "volume_boundary_intersection_pairs": 0,
+          "native_skin_intersection_pairs": 0,
+          "ring_perimeters_mm": [
+            413.9181823730469,
+            310.400146484375,
+            300.7007751464844
+          ],
+          "segment_lengths_mm": [
+            334.64605511147306,
+            373.6299085614145
+          ],
+          "geometry_pass": true,
+          "material_points": 256,
+          "max_label_drift_rad_h_d": [
+            0.0,
+            0.0,
+            1.2435109910045704e-15
+          ],
+          "max_material_roundtrip_m": 2.50186774899521e-08,
+          "material_check_pass": true,
+          "outer_loft_distance_to_native_skin_mm": {
+            "samples": 256,
+            "p95": 0.07280660853350453,
+            "max": 0.15629586476284554
+          }
+        },
+        {
+          "side": "right",
+          "beta_delta": [
+            2.0,
+            0.0
+          ],
+          "knee_deg": 90,
+          "tetrahedra": 322056,
+          "nonpositive_tets": 0,
+          "min_det_ratio": 0.03694928670545273,
+          "positive_overlap_pairs": 0,
+          "volume_boundary_intersection_pairs": 0,
+          "native_skin_intersection_pairs": 0,
+          "ring_perimeters_mm": [
+            411.8455810546875,
+            302.7579040527344,
+            309.2007141113281
+          ],
+          "segment_lengths_mm": [
+            334.64605511147306,
+            373.6299085614145
+          ],
+          "geometry_pass": true,
+          "material_points": 256,
+          "max_label_drift_rad_h_d": [
+            0.0,
+            0.0,
+            1.9240416924352476e-15
+          ],
+          "max_material_roundtrip_m": 2.6484515839070926e-08,
+          "material_check_pass": true,
+          "outer_loft_distance_to_native_skin_mm": {
+            "samples": 256,
+            "p95": 0.08388350986584861,
+            "max": 0.1978133090769698
+          }
+        },
+        {
+          "side": "right",
+          "beta_delta": [
+            2.0,
+            2.0
+          ],
+          "knee_deg": 0,
+          "tetrahedra": 322056,
+          "nonpositive_tets": 0,
+          "min_det_ratio": 0.7880491171230353,
+          "positive_overlap_pairs": 0,
+          "volume_boundary_intersection_pairs": 0,
+          "native_skin_intersection_pairs": 60,
+          "ring_perimeters_mm": [
+            452.4237976074219,
+            343.8528747558594,
+            324.0710144042969
+          ],
+          "segment_lengths_mm": [
+            319.21866331446245,
+            369.4163121828372
+          ],
+          "geometry_pass": false
+        },
+        {
+          "side": "right",
+          "beta_delta": [
+            2.0,
+            2.0
+          ],
+          "knee_deg": 45,
+          "tetrahedra": 322056,
+          "nonpositive_tets": 0,
+          "min_det_ratio": 0.4991509624291477,
+          "positive_overlap_pairs": 0,
+          "volume_boundary_intersection_pairs": 0,
+          "native_skin_intersection_pairs": 14,
+          "ring_perimeters_mm": [
+            459.36895751953125,
+            343.2961120605469,
+            330.3449401855469
+          ],
+          "segment_lengths_mm": [
+            319.21866331446245,
+            369.4163121828371
+          ],
+          "geometry_pass": false
+        },
+        {
+          "side": "right",
+          "beta_delta": [
+            2.0,
+            2.0
+          ],
+          "knee_deg": 90,
+          "tetrahedra": 322056,
+          "nonpositive_tets": 37,
+          "min_det_ratio": -0.01083645443422494,
+          "positive_overlap_pairs": 658,
+          "volume_boundary_intersection_pairs": 0,
+          "native_skin_intersection_pairs": 0,
+          "ring_perimeters_mm": [
+            454.95697021484375,
+            334.2621154785156,
+            338.6348571777344
+          ],
+          "segment_lengths_mm": [
+            319.21866331446245,
+            369.4163121828372
+          ],
+          "geometry_pass": false
+        }
+      ]
+    }
+  },
+  "counts": {
+    "configurations": 54,
+    "geometry_pass": 45,
+    "address_pass": 45
+  }
+}
