@@ -69,6 +69,12 @@ class ResidualFilter:
     def prior(self):
         return self.sensor.prior()[:, None, :] * self.z_prior[None, :, None]
 
+    def start_scan(self, belief):
+        """Keep the persistent offset when the next visit has independent motion and visibility."""
+        persistent = belief.sum(axis=(1, 2))
+        visibility = self.sensor.prior().sum(axis=0)
+        return persistent[:, None, None] * self.z_prior[None, :, None] * visibility[None, None, :]
+
     @lru_cache(maxsize=128)
     def _transition_power(self, frames):
         return np.linalg.matrix_power(self.transition, frames)

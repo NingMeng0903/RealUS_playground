@@ -73,7 +73,7 @@ def sha(path):
     return digest.hexdigest()
 
 
-def project(shape, pose, shifts_mm):
+def project(shape, pose, shifts_mm, *, response_mm=None, envelope=None):
     """Intersect the two transported centrelines with a physical image plane.
 
     The fixed offset axes live in robot space. Each hypothesis shifts the same
@@ -83,6 +83,14 @@ def project(shape, pose, shifts_mm):
     axes = pose[:3, :3]
     curves = (shape.vessels_m - pose[:3, 3]) @ axes
     curves = curves[None] + (shifts @ axes)[:, None, None, :]
+    if response_mm is not None:
+        # Apply relative motion to the vessel vertices in material order. A
+        # curve is the same physical object for every probe view in this frame.
+        response = np.broadcast_to(response_mm, (len(shifts),))
+        if np.any(response):
+            direction = shape.offset_axes[:, 0] @ axes * .001
+            curves += response[:, None, None, None] * (
+                np.asarray(envelope)[None, :, None, None] * direction[None, None, None, :])
     left, right = curves[:, :-1], curves[:, 1:]
     cross = ((left[..., 0] <= 0.) & (right[..., 0] > 0.)) | (
         (left[..., 0] >= 0.) & (right[..., 0] < 0.))
@@ -112,7 +120,7 @@ class Scan:
         self.models = {arm: ResidualFilter(self.sensor, FRAME_DT_S, model)
                        for arm, model in RESIDUAL_ARMS.items()}
         self.initial_x = float(self.nominal_x[0]) if entry is None else entry[0]
-        initial_pose = shape.pose(self.path[0], self.initial_x)
+        initial_pose = self.poses_at(0, self.initial_x)
         q = ik(capability, initial_pose, witness, witness[0]) if entry is None else entry[1]
         if not capability.check_q(q, initial_pose)["valid"]:
             raise KinematicRejection("no valid start configuration at the material anchor")
@@ -121,17 +129,18 @@ class Scan:
 
     def nominal_path(self):
         """Centre the public template artery in the transported probe plane."""
+        steps = range(0, TOTAL_STEPS + 1, BLOCK_STEPS // 2)
         stations = self.path[::BLOCK_STEPS // 2]
         views = np.linspace(*LATERAL_BOUNDS_MM, 61)
         nominal = []
-        for station in stations:
+        for step in steps:
             def lateral(view):
-                pose = self.shape.pose(station, view)
-                return self.project(pose, [0., 0.])[0, 0, 0]
+                pose = self.poses_at(step, view)
+                return self.project_at(step, pose, [0., 0.])[0, 0, 0]
 
             errors = np.array([lateral(view) for view in views])
             if not np.isfinite(errors).any():
-                raise KinematicRejection(f"nominal artery has no plane crossing at station {station:.3f}")
+                raise KinematicRejection(f"nominal artery has no plane crossing at station {self.path[step]:.3f}")
             crossings = np.flatnonzero(np.isfinite(errors[:-1]) & np.isfinite(errors[1:])
                                        & (errors[:-1] * errors[1:] < 0.))
             nearest = int(np.nanargmin(np.abs(errors)))
@@ -147,13 +156,25 @@ class Scan:
     def project(self, pose, offsets):
         return project(self.shape, pose, offsets)
 
+    def poses_at(self, steps, offsets):
+        return self.shape.pose(self.path[steps], offsets)
+
+    def project_at(self, step, pose, offsets):
+        return self.project(pose, offsets)
+
+    def project_hypotheses(self, step, pose, model):
+        return self.project_at(step, pose, model.offsets_mm)
+
+    def project_estimate(self, step, pose, model, belief, frames=0):
+        return self.project_at(step, pose, model.offset_mean(belief, frames))
+
     def candidate(self, step, end, x, v, goal, q):
         goal = float(np.clip(goal, *LATERAL_BOUNDS_MM))
         weights = np.array([1., goal - x, v]) @ self.regression
         plan = self.primitive.condition(step, end - step, x, v, goal, self.nominal_v[end], weights)
         if not admissible(plan):
             return None
-        targets = self.shape.pose(self.path[step:end + 1], plan.x)
+        targets = self.poses_at(slice(step, end + 1), plan.x)
         joints, poses = [q], [self.capability.fk(q)]
         for target in targets[1:]:
             previous = joints[-1]
@@ -171,7 +192,8 @@ class Scan:
         # Score in-segment evidence where the continuation can use it.
         probes = np.unique(np.round(np.linspace(1, FRAMES_PER_BLOCK, 3)).astype(int))
         value = sum(model.predicted_hit(
-            belief, self.project(trajectory.poses[frame * FRAME_STRIDE], model.offsets_mm),
+            belief, self.project_hypotheses(trajectory.plan.step + frame * FRAME_STRIDE,
+                                           trajectory.poses[frame * FRAME_STRIDE], model),
             future_frames + frame) for frame in probes)
         return value / len(probes)
 
@@ -226,16 +248,16 @@ class Scan:
     def revise(self, old, step, end, x, v, q, model, belief, pose, packet, slot):
         # Convert image error in physical mm to the template lateral unit,
         # using the end-of-segment image Jacobian for the current shape.
-        current_offset = model.offset_mean(belief)
-        end_offset = model.offset_mean(belief, (end - step) // FRAME_STRIDE)
         nominal = self.nominal_x[end]
         lateral = np.clip([nominal - .05, nominal + .05], *LATERAL_BOUNDS_MM)
-        end_poses = self.shape.pose(self.path[end], [lateral[0], nominal, lateral[1]])
-        left, center, right = [self.project(p, end_offset)[0, 0, 0] for p in end_poses]
+        end_poses = self.poses_at(end, [lateral[0], nominal, lateral[1]])
+        future_frames = (end - step) // FRAME_STRIDE
+        left, center, right = [self.project_estimate(end, p, model, belief, future_frames)[0, 0, 0]
+                               for p in end_poses]
         derivative = (left - right) / (lateral[1] - lateral[0])
         if not np.isfinite(derivative) or derivative <= .10 or not np.isfinite(center):
             return old
-        prediction = self.project(pose, current_offset)[0, 0, 0]
+        prediction = self.project_estimate(step, pose, model, belief)[0, 0, 0]
         innovation = packet[slot, 0] - prediction if np.isfinite(prediction) else 0.
         goal = nominal + np.clip((center + .28 * innovation) / derivative, -7., 7.)
         if abs(goal - old.plan.goal) < .08:
@@ -254,11 +276,16 @@ class Scan:
         physical = project(self.world, pose, effective - scene.bias)[0]
         return self.sensor.observe_means(scene, frame, measured, physical)
 
-    def execute(self, scene, arm, motion_mm=None):
+    def frame_estimate(self, step, model, belief, arm):
+        mean, interval = offset_stats(model, belief)
+        return dict(offset_mean_mm=mean.tolist(), offset_interval90_mm=interval.tolist(),
+                    dynamic_lateral_mean_mm=model.residual_mean(belief) if arm in self.models else 0.)
+
+    def execute(self, scene, arm, motion_mm=None, *, initial_belief=None):
         x, v = self.initial_x, 0.
         q, pose = self.initial_q, self.initial_pose
         model = self.models.get(arm, self.sensor)
-        belief = model.prior()
+        belief = model.prior() if initial_belief is None else initial_belief
         joints, poses, lateral = [q], [pose], [[x, v]]
         frames, decisions = [], []
         trajectory, failure = None, None
@@ -266,7 +293,7 @@ class Scan:
         max_handoff_x, max_handoff_v = 0., 0.
         for frame in range(FRAME_COUNT):
             step = frame * FRAME_STRIDE
-            means = self.project(pose, model.offsets_mm)
+            means = self.project_hypotheses(step, pose, model)
             packet, roles, true_u = self.observation(scene, frame, pose, 0. if motion_mm is None else motion_mm[frame])
             try:
                 belief, association = model.update_projected(belief, packet, means)
@@ -284,9 +311,7 @@ class Scan:
                            "accepted": bool(accepted), "correct": bool(correct), "wrong": bool(wrong),
                            "physical_lateral_mm": float(true_u[0]) if np.isfinite(true_u[0]) else None})
             if motion_mm is not None:
-                mean, interval = offset_stats(model, belief)
-                frames[-1].update(offset_mean_mm=mean.tolist(), offset_interval90_mm=interval.tolist(),
-                                  dynamic_lateral_mean_mm=model.residual_mean(belief) if arm in self.models else 0.)
+                frames[-1].update(self.frame_estimate(step, model, belief, arm))
             if step == TOTAL_STEPS:
                 break
             end = (step // BLOCK_STEPS + 1) * BLOCK_STEPS

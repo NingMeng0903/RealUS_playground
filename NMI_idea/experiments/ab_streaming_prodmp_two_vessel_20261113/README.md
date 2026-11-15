@@ -4,6 +4,8 @@ The `run.py atlas` entry evaluates the fixed material chart and its attached pro
 
 Use `run.py atlas --motion ou` for the paired local vessel-motion benchmark. For one execution with the online dynamic map, add `--arm mpc_ou`. The dynamic study includes a short video from the saved closed-loop trace. [Dynamic residual and results](DYNAMIC_RESIDUAL.md)
 
+Use `run.py knee-response` to compare joint slope learning with the original residual filter on programmed knee motion. [Knee-response protocol and results](KNEE_RESPONSE.md)
+
 This mechanism experiment uses the previous static 15° Among_US artery and vein and fixes longitudinal progression and probe orientation. It tests whether ultrasound can change the lateral motion before a segment ends, and whether learning from those corrections improves the result. The previous endpoint experiment captures after motion and dwell. Its ProDMP fits analytical curves generated without image observations. [Previous execution and result](../ab_prodmp_two_vessel_b_20261113/README.md)
 
 ## Demonstrations and execution

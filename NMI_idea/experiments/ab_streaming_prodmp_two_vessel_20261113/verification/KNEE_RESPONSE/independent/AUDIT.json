@@ -1,0 +1,77 @@
+{
+  "scope": "Independent filter calculation, one legacy comparison, one causal pilot and one frozen case per cohort",
+  "filter": {
+    "largest_prediction_weight_error": 4.336808689942018e-19,
+    "largest_hit_probability_error": 1.3877787807814457e-17,
+    "largest_posterior_weight_error": 4.163336342344337e-17,
+    "largest_association_error": 1.2924697071141057e-26,
+    "tested_packet_sizes": [0, 1, 2],
+    "tested_forecast_frames": [0, 1, 5, 10, 20],
+    "independent_visit_preserved_joint_static_offset_and_slope": true,
+    "singleton_zero_slope_matches_ou": true,
+    "unexcited_full_slope_grid_matches_ou": true,
+    "reference_angle_sequence_length": 27
+  },
+  "legacy": {
+    "original_revision": "ce4cf9967155740fb1f42fb2dc6d9495ab82476a",
+    "exposures": 41,
+    "robot_samples": 201,
+    "identical_case_report": true,
+    "identical_joint_fk_and_chart_states": true
+  },
+  "cases": [
+    {
+      "source": "pilot",
+      "cohort": "response",
+      "case": 9000,
+      "paths": 11,
+      "robot_samples": 2211,
+      "exposures": 451,
+      "physical_misses": 10,
+      "effective_revisions": 206,
+      "max_association_replay_error": 1.1102230246251565e-15,
+      "max_fk_position_error_mm": 0.0038766407359479057,
+      "max_fk_rotation_error_deg": 0.0011569889552541345,
+      "min_configured_robot_self_clearance_mm": 39.839513559849166,
+      "max_joint_rate_fraction": 0.10980610593126443,
+      "causal_rerun": {
+        "checked_candidate_scores": 21,
+        "checked_feedback_attempts": 28,
+        "executed_validated_replacements": 18,
+        "protected_exposure_prefix_length": 14,
+        "evaluator_label_and_position_changes_leave_controls_identical": true,
+        "future_hidden_tape_changes_leave_earlier_controls_identical": true
+      }
+    },
+    {
+      "source": "frozen",
+      "cohort": "response",
+      "case": 0,
+      "paths": 11,
+      "robot_samples": 2211,
+      "exposures": 451,
+      "physical_misses": 9,
+      "effective_revisions": 231,
+      "max_association_replay_error": 1.3322676295501878e-15,
+      "max_fk_position_error_mm": 0.003944075370777311,
+      "max_fk_rotation_error_deg": 0.0011526806328540642,
+      "min_configured_robot_self_clearance_mm": 39.8332109522331,
+      "max_joint_rate_fraction": 0.10609729040338778
+    },
+    {
+      "source": "frozen",
+      "cohort": "null",
+      "case": 3,
+      "paths": 11,
+      "robot_samples": 2211,
+      "exposures": 451,
+      "physical_misses": 9,
+      "effective_revisions": 179,
+      "max_association_replay_error": 2.1094237467877974e-15,
+      "max_fk_position_error_mm": 0.0036718400564785736,
+      "max_fk_rotation_error_deg": 0.0010313658601363055,
+      "min_configured_robot_self_clearance_mm": 39.84095098439783,
+      "max_joint_rate_fraction": 0.10788734748400906
+    }
+  ]
+}

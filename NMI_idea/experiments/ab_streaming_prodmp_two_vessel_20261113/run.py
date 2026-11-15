@@ -195,6 +195,9 @@ def main():
     if sys.argv[1:2] == ["atlas"]:
         from atlas_scan import main as atlas_main
         return atlas_main(sys.argv[2:])
+    if sys.argv[1:2] == ["knee-response"]:
+        from knee_response_benchmark import main as knee_response_main
+        return knee_response_main(sys.argv[2:])
 
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", type=Path, required=True)
