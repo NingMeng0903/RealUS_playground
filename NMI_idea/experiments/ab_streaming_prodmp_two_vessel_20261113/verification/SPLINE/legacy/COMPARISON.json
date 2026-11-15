@@ -1,0 +1,3714 @@
+{
+  "comparison": "spline minus tet; identical physical world, robot entry and disturbance tapes",
+  "noninferiority_margin": 0.05,
+  "cost_margins": {
+    "tcp_mm": 2.0,
+    "turn_deg": 2.0,
+    "duration_s": 0.1
+  },
+  "cohort_case_counts": {
+    "reference": 32,
+    "minus-plus": 32,
+    "plus-minus": 32,
+    "beta2": 16,
+    "pose25": 16,
+    "transient": 32,
+    "static-world": 12
+  },
+  "hashes": {
+    "reference": {
+      "tet": {
+        "SUMMARY.json.xz": "833754cca78fde4829be66f39f19dc6ab77f2f17f0ad2ff3f7f58b97241b2715",
+        "TRACES.npz": "85427632dad213dc1462f4679c6cedbeb39aac9f6d84874c760cdd258f4e219f"
+      },
+      "spline": {
+        "SUMMARY.json": "ca0048e567c5b3ed71b9cc081c3a4bb7473e545a0b5c697ceb53704c3c07a142",
+        "TRACES.npz": "cbd65f6d0f21c9d186ca0e07bd3e7ad39c361cc11d48869649b9e85cabb7a6ba"
+      }
+    },
+    "minus-plus": {
+      "tet": {
+        "SUMMARY.json.xz": "412c4fc701ddab86e16bbc4f6516b9904e2e1ba6448b4eacabd7049b3a81f1ca",
+        "TRACES.npz": "325f4ba902caa51a42d193e813dbb57539f7e5520f48602b3b6b5eff5d1a1ef7"
+      },
+      "spline": {
+        "SUMMARY.json": "4379ac052aa5873239814fc4c3e9fb978162fb7e250538866a887f78201348fc",
+        "TRACES.npz": "0206897c3006a609a274d79cbd48aad3df3a5ac488e79abcbc2105a9d02e2c60"
+      }
+    },
+    "plus-minus": {
+      "tet": {
+        "SUMMARY.json.xz": "42ecbc7f3134c2b99044598bba82e2403c45211cf3e3772e74134d899078acfe",
+        "TRACES.npz": "ecd3d1af0d1fb0cc88b745ce4ee20be4c39c28443da6109df323c83347695d44"
+      },
+      "spline": {
+        "SUMMARY.json": "ca0cb316ec7041f5c9f2ea4ddff08a58f3c0c30744683963a5eae87b04322342",
+        "TRACES.npz": "1a35f3f61be0bb7c32b7097a030b9bf81032f3c596369daa38fb03715b74a20d"
+      }
+    },
+    "beta2": {
+      "tet": {
+        "SUMMARY.json.xz": "8bd0df6e3dff65550c10d379b777cbbda899f16761d6c3bc103e647c0be16549",
+        "TRACES.npz": "3946499a0f02810a869c1e3d4c64a20d4087a093e12757998e6b711a2630df16"
+      },
+      "spline": {
+        "SUMMARY.json": "69ad9a6ea641df443e627845ccbd5130e7fb6ada45f573ca2a9dff7a5d2f7c9e",
+        "TRACES.npz": "7f51711d36716a372c41020c3e0390ee613cdeb8501c8e811b8d7daf855166ab"
+      }
+    },
+    "pose25": {
+      "tet": {
+        "SUMMARY.json.xz": "9ff23995e14cd3a13ff7078a4e49aa7738a385a331255e5a1e9845f56a0a15ad",
+        "TRACES.npz": "63bede36b6268b1226d124d2cb3b92126b69fe88d731a853c5ba293f0d714b97"
+      },
+      "spline": {
+        "SUMMARY.json": "6aaa522bed2564e410d3d2a69c456baaddeffb87de0a520e7c4e723d9982bdb1",
+        "TRACES.npz": "b5653b8acb06808e2023e27d6c7a24afc9ff287dec9fda823bdbeb22e8bf92b2"
+      }
+    },
+    "transient": {
+      "tet": {
+        "SUMMARY.json.xz": "64743a9d98121e947b9035f7079b3cf78a36f570ad40f61a98141e03e67c2d15",
+        "TRACES.npz": "72c4b280d53f883734a4699226a704f0f3c98e03896d9b417ded84bf9be1047c"
+      },
+      "spline": {
+        "SUMMARY.json": "ddd8473a6e941a9e33ef7f5989bea738092de321cff42292528fb204268cff95",
+        "TRACES.npz": "65ef99c4556510fe4ab671951fad302dcc6b31e1c22a105463c67b3a2c9e7cd3"
+      }
+    },
+    "static-world": {
+      "tet": {
+        "SUMMARY.json.xz": "b566b84e71c584fb921c10380146b61645db7e9535cb0a5d8fcb47989237dd24",
+        "TRACES.npz": "2d73414f01c1649f99e1294bb0150e5da7f440e7a0452a6eed77771d8f07dacf"
+      },
+      "spline": {
+        "SUMMARY.json": "0596ea9153fb6f10a569e081cca4c2d85b2632028b047ff1a565f61ac36967a7",
+        "TRACES.npz": "a8285449326f9a961e5acbcd190f7f51f48f4239138af3abe88c185412284cdc"
+      }
+    }
+  },
+  "acceptance": {
+    "primary_ou_point_estimate_not_lower": true,
+    "primary_ou_paired_lower_bound_above_minus_5pp": true,
+    "primary_ou_cost_equivalence": true,
+    "no_new_wrong_identity_in_full_suite": true,
+    "full_suite_success_not_lower_in_any_arm": false,
+    "pass": false
+  },
+  "primary_ou_loss_cluster_sensitivity": {
+    "tapes": 32,
+    "tapes_with_any_tet_only_success": 0,
+    "one_sided_95pct_upper_loss_tape_probability": 0.08936819898626476
+  },
+  "primary": {
+    "mpc_stream": {
+      "success": {
+        "tet_mean": 0.8125,
+        "spline_mean": 0.78125,
+        "difference": -0.03125,
+        "paired_ci95": [
+          -0.09375,
+          0.0
+        ],
+        "n_pairs": 96,
+        "tet_count": 78,
+        "spline_count": 75,
+        "spline_only": 0,
+        "tet_only": 3
+      },
+      "wrong": {
+        "tet_mean": 0.0,
+        "spline_mean": 0.0,
+        "difference": 0.0,
+        "paired_ci95": [
+          0.0,
+          0.0
+        ],
+        "n_pairs": 96,
+        "tet_count": 0,
+        "spline_count": 0,
+        "spline_only": 0,
+        "tet_only": 0
+      },
+      "false_complete": {
+        "tet_mean": 0.052083333333333336,
+        "spline_mean": 0.08333333333333333,
+        "difference": 0.03125,
+        "paired_ci95": [
+          0.0,
+          0.09375
+        ],
+        "n_pairs": 96,
+        "tet_count": 5,
+        "spline_count": 8,
+        "spline_only": 3,
+        "tet_only": 0
+      },
+      "tcp_mm": {
+        "tet_mean": 23.758401207253012,
+        "spline_mean": 23.78109699785728,
+        "difference": 0.022695790604271515,
+        "paired_ci95": [
+          -0.014585500336159626,
+          0.06356873374099692
+        ],
+        "n_pairs": 96
+      },
+      "turn_deg": {
+        "tet_mean": 5.352515798334738,
+        "spline_mean": 5.361279663357327,
+        "difference": 0.00876386502258992,
+        "paired_ci95": [
+          0.007745171831304999,
+          0.009703262238912897
+        ],
+        "n_pairs": 96
+      },
+      "duration_s": {
+        "tet_mean": 4.0,
+        "spline_mean": 4.0,
+        "difference": 0.0,
+        "paired_ci95": [
+          0.0,
+          0.0
+        ],
+        "n_pairs": 96
+      },
+      "run_failure": {
+        "tet_mean": 0.0,
+        "spline_mean": 0.0,
+        "difference": 0.0,
+        "paired_ci95": [
+          0.0,
+          0.0
+        ],
+        "n_pairs": 96,
+        "tet_count": 0,
+        "spline_count": 0,
+        "spline_only": 0,
+        "tet_only": 0
+      },
+      "acquisitions": {
+        "tet_mean": 41.0,
+        "spline_mean": 41.0,
+        "difference": 0.0,
+        "paired_ci95": [
+          0.0,
+          0.0
+        ],
+        "n_pairs": 96
+      },
+      "correct_frames": {
+        "tet_mean": 28.864583333333332,
+        "spline_mean": 28.90625,
+        "difference": 0.041666666666666664,
+        "paired_ci95": [
+          -0.13541666666666666,
+          0.19791666666666666
+        ],
+        "n_pairs": 96
+      },
+      "mean_abs_lateral_mm": {
+        "tet_mean": 1.470203397438275,
+        "spline_mean": 1.4689383216734908,
+        "difference": -0.0012650757647845977,
+        "paired_ci95": [
+          -0.011030003051527251,
+          0.010175739636022765
+        ],
+        "n_pairs": 96
+      },
+      "loss_recovery": {
+        "tet_mean": 0.9111111111111111,
+        "spline_mean": 0.9111111111111111,
+        "difference": 0.0,
+        "paired_ci95": [
+          0.0,
+          0.0
+        ],
+        "n_pairs": 45,
+        "tet_count": 41,
+        "spline_count": 41,
+        "spline_only": 0,
+        "tet_only": 0
+      },
+      "cost_equivalent": true
+    },
+    "mpc_iid": {
+      "success": {
+        "tet_mean": 0.7604166666666666,
+        "spline_mean": 0.7604166666666666,
+        "difference": 0.0,
+        "paired_ci95": [
+          -0.03125,
+          0.03125
+        ],
+        "n_pairs": 96,
+        "tet_count": 73,
+        "spline_count": 73,
+        "spline_only": 1,
+        "tet_only": 1
+      },
+      "wrong": {
+        "tet_mean": 0.0,
+        "spline_mean": 0.0,
+        "difference": 0.0,
+        "paired_ci95": [
+          0.0,
+          0.0
+        ],
+        "n_pairs": 96,
+        "tet_count": 0,
+        "spline_count": 0,
+        "spline_only": 0,
+        "tet_only": 0
+      },
+      "false_complete": {
+        "tet_mean": 0.09375,
+        "spline_mean": 0.09375,
+        "difference": 0.0,
+        "paired_ci95": [
+          0.0,
+          0.0
+        ],
+        "n_pairs": 96,
+        "tet_count": 9,
+        "spline_count": 9,
+        "spline_only": 0,
+        "tet_only": 0
+      },
+      "tcp_mm": {
+        "tet_mean": 23.545339276103046,
+        "spline_mean": 23.57877178783873,
+        "difference": 0.033432511735683956,
+        "paired_ci95": [
+          0.01245152795196092,
+          0.05639342184963272
+        ],
+        "n_pairs": 96
+      },
+      "turn_deg": {
+        "tet_mean": 5.350180278781362,
+        "spline_mean": 5.358915238257524,
+        "difference": 0.008734959476160839,
+        "paired_ci95": [
+          0.007702296172089979,
+          0.00972083524339326
+        ],
+        "n_pairs": 96
+      },
+      "duration_s": {
+        "tet_mean": 4.0,
+        "spline_mean": 4.0,
+        "difference": 0.0,
+        "paired_ci95": [
+          0.0,
+          0.0
+        ],
+        "n_pairs": 96
+      },
+      "run_failure": {
+        "tet_mean": 0.0,
+        "spline_mean": 0.0,
+        "difference": 0.0,
+        "paired_ci95": [
+          0.0,
+          0.0
+        ],
+        "n_pairs": 96,
+        "tet_count": 0,
+        "spline_count": 0,
+        "spline_only": 0,
+        "tet_only": 0
+      },
+      "acquisitions": {
+        "tet_mean": 41.0,
+        "spline_mean": 41.0,
+        "difference": 0.0,
+        "paired_ci95": [
+          0.0,
+          0.0
+        ],
+        "n_pairs": 96
+      },
+      "correct_frames": {
+        "tet_mean": 28.166666666666668,
+        "spline_mean": 28.208333333333332,
+        "difference": 0.041666666666666664,
+        "paired_ci95": [
+          -0.11458333333333333,
+          0.20833333333333334
+        ],
+        "n_pairs": 96
+      },
+      "mean_abs_lateral_mm": {
+        "tet_mean": 1.5643198230356206,
+        "spline_mean": 1.5540959827039085,
+        "difference": -0.010223840331712412,
+        "paired_ci95": [
+          -0.024107191711749108,
+          0.0008363445279876078
+        ],
+        "n_pairs": 96
+      },
+      "loss_recovery": {
+        "tet_mean": 0.9111111111111111,
+        "spline_mean": 0.9111111111111111,
+        "difference": 0.0,
+        "paired_ci95": [
+          0.0,
+          0.0
+        ],
+        "n_pairs": 45,
+        "tet_count": 41,
+        "spline_count": 41,
+        "spline_only": 0,
+        "tet_only": 0
+      },
+      "cost_equivalent": true
+    },
+    "mpc_ou": {
+      "success": {
+        "tet_mean": 0.8333333333333334,
+        "spline_mean": 0.8333333333333334,
+        "difference": 0.0,
+        "paired_ci95": [
+          0.0,
+          0.0
+        ],
+        "n_pairs": 96,
+        "tet_count": 80,
+        "spline_count": 80,
+        "spline_only": 0,
+        "tet_only": 0
+      },
+      "wrong": {
+        "tet_mean": 0.0,
+        "spline_mean": 0.0,
+        "difference": 0.0,
+        "paired_ci95": [
+          0.0,
+          0.0
+        ],
+        "n_pairs": 96,
+        "tet_count": 0,
+        "spline_count": 0,
+        "spline_only": 0,
+        "tet_only": 0
+      },
+      "false_complete": {
+        "tet_mean": 0.020833333333333332,
+        "spline_mean": 0.020833333333333332,
+        "difference": 0.0,
+        "paired_ci95": [
+          0.0,
+          0.0
+        ],
+        "n_pairs": 96,
+        "tet_count": 2,
+        "spline_count": 2,
+        "spline_only": 0,
+        "tet_only": 0
+      },
+      "tcp_mm": {
+        "tet_mean": 24.09884309150552,
+        "spline_mean": 24.117819115154173,
+        "difference": 0.018976023648655693,
+        "paired_ci95": [
+          -0.014301658696967876,
+          0.048012548952671784
+        ],
+        "n_pairs": 96
+      },
+      "turn_deg": {
+        "tet_mean": 5.353163223921027,
+        "spline_mean": 5.3624968691775114,
+        "difference": 0.00933364525648342,
+        "paired_ci95": [
+          0.008346012986008294,
+          0.010241956974031829
+        ],
+        "n_pairs": 96
+      },
+      "duration_s": {
+        "tet_mean": 4.0,
+        "spline_mean": 4.0,
+        "difference": 0.0,
+        "paired_ci95": [
+          0.0,
+          0.0
+        ],
+        "n_pairs": 96
+      },
+      "run_failure": {
+        "tet_mean": 0.0,
+        "spline_mean": 0.0,
+        "difference": 0.0,
+        "paired_ci95": [
+          0.0,
+          0.0
+        ],
+        "n_pairs": 96,
+        "tet_count": 0,
+        "spline_count": 0,
+        "spline_only": 0,
+        "tet_only": 0
+      },
+      "acquisitions": {
+        "tet_mean": 41.0,
+        "spline_mean": 41.0,
+        "difference": 0.0,
+        "paired_ci95": [
+          0.0,
+          0.0
+        ],
+        "n_pairs": 96
+      },
+      "correct_frames": {
+        "tet_mean": 29.166666666666668,
+        "spline_mean": 29.1875,
+        "difference": 0.020833333333333332,
+        "paired_ci95": [
+          -0.125,
+          0.15625
+        ],
+        "n_pairs": 96
+      },
+      "mean_abs_lateral_mm": {
+        "tet_mean": 1.407791687177072,
+        "spline_mean": 1.4045759270329325,
+        "difference": -0.003215760144139231,
+        "paired_ci95": [
+          -0.01083796162961746,
+          0.003665233728507099
+        ],
+        "n_pairs": 96
+      },
+      "loss_recovery": {
+        "tet_mean": 0.9777777777777777,
+        "spline_mean": 0.9777777777777777,
+        "difference": 0.0,
+        "paired_ci95": [
+          0.0,
+          0.0
+        ],
+        "n_pairs": 45,
+        "tet_count": 44,
+        "spline_count": 44,
+        "spline_only": 0,
+        "tet_only": 0
+      },
+      "cost_equivalent": true
+    }
+  },
+  "full_suite_descriptive": {
+    "mpc_stream": {
+      "success": {
+        "tet_mean": 0.877906976744186,
+        "spline_mean": 0.8546511627906976,
+        "difference": -0.023255813953488372,
+        "paired_ci95": [
+          -0.07228915662650602,
+          0.0
+        ],
+        "n_pairs": 172,
+        "tet_count": 151,
+        "spline_count": 147,
+        "spline_only": 0,
+        "tet_only": 4
+      },
+      "wrong": {
+        "tet_mean": 0.0,
+        "spline_mean": 0.0,
+        "difference": 0.0,
+        "paired_ci95": [
+          0.0,
+          0.0
+        ],
+        "n_pairs": 172,
+        "tet_count": 0,
+        "spline_count": 0,
+        "spline_only": 0,
+        "tet_only": 0
+      },
+      "false_complete": {
+        "tet_mean": 0.03488372093023256,
+        "spline_mean": 0.05813953488372093,
+        "difference": 0.023255813953488372,
+        "paired_ci95": [
+          0.0,
+          0.07228915662650602
+        ],
+        "n_pairs": 172,
+        "tet_count": 6,
+        "spline_count": 10,
+        "spline_only": 4,
+        "tet_only": 0
+      },
+      "tcp_mm": {
+        "tet_mean": 23.57690867098792,
+        "spline_mean": 23.598512547196005,
+        "difference": 0.021603876208084346,
+        "paired_ci95": [
+          -0.015192889569011906,
+          0.06173258153229381
+        ],
+        "n_pairs": 172
+      },
+      "turn_deg": {
+        "tet_mean": 5.375835083528368,
+        "spline_mean": 5.383669001012055,
+        "difference": 0.00783391748368706,
+        "paired_ci95": [
+          0.0071483068109952615,
+          0.008481042155486508
+        ],
+        "n_pairs": 172
+      },
+      "duration_s": {
+        "tet_mean": 4.0,
+        "spline_mean": 4.0,
+        "difference": 0.0,
+        "paired_ci95": [
+          0.0,
+          0.0
+        ],
+        "n_pairs": 172
+      },
+      "run_failure": {
+        "tet_mean": 0.0,
+        "spline_mean": 0.0,
+        "difference": 0.0,
+        "paired_ci95": [
+          0.0,
+          0.0
+        ],
+        "n_pairs": 172,
+        "tet_count": 0,
+        "spline_count": 0,
+        "spline_only": 0,
+        "tet_only": 0
+      },
+      "acquisitions": {
+        "tet_mean": 41.0,
+        "spline_mean": 41.0,
+        "difference": 0.0,
+        "paired_ci95": [
+          0.0,
+          0.0
+        ],
+        "n_pairs": 172
+      },
+      "correct_frames": {
+        "tet_mean": 29.709302325581394,
+        "spline_mean": 29.732558139534884,
+        "difference": 0.023255813953488372,
+        "paired_ci95": [
+          -0.10753332045586246,
+          0.14857142857142858
+        ],
+        "n_pairs": 172
+      },
+      "mean_abs_lateral_mm": {
+        "tet_mean": 1.3109976734970474,
+        "spline_mean": 1.3140107969110244,
+        "difference": 0.0030131234139768623,
+        "paired_ci95": [
+          -0.005923765555742569,
+          0.012412486876803196
+        ],
+        "n_pairs": 172
+      },
+      "loss_recovery": {
+        "tet_mean": 0.9390243902439024,
+        "spline_mean": 0.9390243902439024,
+        "difference": 0.0,
+        "paired_ci95": [
+          0.0,
+          0.0
+        ],
+        "n_pairs": 82,
+        "tet_count": 77,
+        "spline_count": 77,
+        "spline_only": 0,
+        "tet_only": 0
+      },
+      "cost_equivalent": true
+    },
+    "mpc_iid": {
+      "success": {
+        "tet_mean": 0.8372093023255814,
+        "spline_mean": 0.8372093023255814,
+        "difference": 0.0,
+        "paired_ci95": [
+          -0.01775147928994083,
+          0.01675977653631285
+        ],
+        "n_pairs": 172,
+        "tet_count": 144,
+        "spline_count": 144,
+        "spline_only": 1,
+        "tet_only": 1
+      },
+      "wrong": {
+        "tet_mean": 0.0,
+        "spline_mean": 0.0,
+        "difference": 0.0,
+        "paired_ci95": [
+          0.0,
+          0.0
+        ],
+        "n_pairs": 172,
+        "tet_count": 0,
+        "spline_count": 0,
+        "spline_only": 0,
+        "tet_only": 0
+      },
+      "false_complete": {
+        "tet_mean": 0.06976744186046512,
+        "spline_mean": 0.06976744186046512,
+        "difference": 0.0,
+        "paired_ci95": [
+          0.0,
+          0.0
+        ],
+        "n_pairs": 172,
+        "tet_count": 12,
+        "spline_count": 12,
+        "spline_only": 0,
+        "tet_only": 0
+      },
+      "tcp_mm": {
+        "tet_mean": 23.343445526564032,
+        "spline_mean": 23.36603397962929,
+        "difference": 0.022588453065255157,
+        "paired_ci95": [
+          -0.0017889998517660803,
+          0.04625362072712612
+        ],
+        "n_pairs": 172
+      },
+      "turn_deg": {
+        "tet_mean": 5.374383898906203,
+        "spline_mean": 5.382166718014344,
+        "difference": 0.007782819108141534,
+        "paired_ci95": [
+          0.007061022762872076,
+          0.008439889360018353
+        ],
+        "n_pairs": 172
+      },
+      "duration_s": {
+        "tet_mean": 4.0,
+        "spline_mean": 4.0,
+        "difference": 0.0,
+        "paired_ci95": [
+          0.0,
+          0.0
+        ],
+        "n_pairs": 172
+      },
+      "run_failure": {
+        "tet_mean": 0.0,
+        "spline_mean": 0.0,
+        "difference": 0.0,
+        "paired_ci95": [
+          0.0,
+          0.0
+        ],
+        "n_pairs": 172,
+        "tet_count": 0,
+        "spline_count": 0,
+        "spline_only": 0,
+        "tet_only": 0
+      },
+      "acquisitions": {
+        "tet_mean": 41.0,
+        "spline_mean": 41.0,
+        "difference": 0.0,
+        "paired_ci95": [
+          0.0,
+          0.0
+        ],
+        "n_pairs": 172
+      },
+      "correct_frames": {
+        "tet_mean": 29.011627906976745,
+        "spline_mean": 29.08139534883721,
+        "difference": 0.06976744186046512,
+        "paired_ci95": [
+          -0.04375,
+          0.1839080459770115
+        ],
+        "n_pairs": 172
+      },
+      "mean_abs_lateral_mm": {
+        "tet_mean": 1.3993173961437482,
+        "spline_mean": 1.39618929455539,
+        "difference": -0.0031281015883584014,
+        "paired_ci95": [
+          -0.011638299675605045,
+          0.004960879526882774
+        ],
+        "n_pairs": 172
+      },
+      "loss_recovery": {
+        "tet_mean": 0.926829268292683,
+        "spline_mean": 0.926829268292683,
+        "difference": 0.0,
+        "paired_ci95": [
+          0.0,
+          0.0
+        ],
+        "n_pairs": 82,
+        "tet_count": 76,
+        "spline_count": 76,
+        "spline_only": 0,
+        "tet_only": 0
+      },
+      "cost_equivalent": true
+    },
+    "mpc_ou": {
+      "success": {
+        "tet_mean": 0.8895348837209303,
+        "spline_mean": 0.8895348837209303,
+        "difference": 0.0,
+        "paired_ci95": [
+          0.0,
+          0.0
+        ],
+        "n_pairs": 172,
+        "tet_count": 153,
+        "spline_count": 153,
+        "spline_only": 0,
+        "tet_only": 0
+      },
+      "wrong": {
+        "tet_mean": 0.0,
+        "spline_mean": 0.0,
+        "difference": 0.0,
+        "paired_ci95": [
+          0.0,
+          0.0
+        ],
+        "n_pairs": 172,
+        "tet_count": 0,
+        "spline_count": 0,
+        "spline_only": 0,
+        "tet_only": 0
+      },
+      "false_complete": {
+        "tet_mean": 0.01744186046511628,
+        "spline_mean": 0.01744186046511628,
+        "difference": 0.0,
+        "paired_ci95": [
+          0.0,
+          0.0
+        ],
+        "n_pairs": 172,
+        "tet_count": 3,
+        "spline_count": 3,
+        "spline_only": 0,
+        "tet_only": 0
+      },
+      "tcp_mm": {
+        "tet_mean": 23.852807694030922,
+        "spline_mean": 23.866314396746834,
+        "difference": 0.013506702715912403,
+        "paired_ci95": [
+          -0.015414993296623178,
+          0.03720923813510248
+        ],
+        "n_pairs": 172
+      },
+      "turn_deg": {
+        "tet_mean": 5.376403033945562,
+        "spline_mean": 5.384533657040765,
+        "difference": 0.008130623095205097,
+        "paired_ci95": [
+          0.007351380144725,
+          0.008806428455573076
+        ],
+        "n_pairs": 172
+      },
+      "duration_s": {
+        "tet_mean": 4.0,
+        "spline_mean": 4.0,
+        "difference": 0.0,
+        "paired_ci95": [
+          0.0,
+          0.0
+        ],
+        "n_pairs": 172
+      },
+      "run_failure": {
+        "tet_mean": 0.0,
+        "spline_mean": 0.0,
+        "difference": 0.0,
+        "paired_ci95": [
+          0.0,
+          0.0
+        ],
+        "n_pairs": 172,
+        "tet_count": 0,
+        "spline_count": 0,
+        "spline_only": 0,
+        "tet_only": 0
+      },
+      "acquisitions": {
+        "tet_mean": 41.0,
+        "spline_mean": 41.0,
+        "difference": 0.0,
+        "paired_ci95": [
+          0.0,
+          0.0
+        ],
+        "n_pairs": 172
+      },
+      "correct_frames": {
+        "tet_mean": 29.901162790697676,
+        "spline_mean": 29.936046511627907,
+        "difference": 0.03488372093023256,
+        "paired_ci95": [
+          -0.06976744186046512,
+          0.13559322033898305
+        ],
+        "n_pairs": 172
+      },
+      "mean_abs_lateral_mm": {
+        "tet_mean": 1.2608971780350262,
+        "spline_mean": 1.2576858736046297,
+        "difference": -0.003211304430396184,
+        "paired_ci95": [
+          -0.009668274344110741,
+          0.0027451659869217955
+        ],
+        "n_pairs": 172
+      },
+      "loss_recovery": {
+        "tet_mean": 0.975609756097561,
+        "spline_mean": 0.975609756097561,
+        "difference": 0.0,
+        "paired_ci95": [
+          0.0,
+          0.0
+        ],
+        "n_pairs": 82,
+        "tet_count": 80,
+        "spline_count": 80,
+        "spline_only": 0,
+        "tet_only": 0
+      },
+      "cost_equivalent": true
+    }
+  },
+  "cohorts": {
+    "reference": {
+      "mpc_stream": {
+        "success": {
+          "tet_mean": 0.8125,
+          "spline_mean": 0.78125,
+          "difference": -0.03125,
+          "paired_ci95": [
+            -0.09375,
+            0.0
+          ],
+          "n_pairs": 32,
+          "tet_count": 26,
+          "spline_count": 25,
+          "spline_only": 0,
+          "tet_only": 1
+        },
+        "wrong": {
+          "tet_mean": 0.0,
+          "spline_mean": 0.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 32,
+          "tet_count": 0,
+          "spline_count": 0,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "false_complete": {
+          "tet_mean": 0.0625,
+          "spline_mean": 0.09375,
+          "difference": 0.03125,
+          "paired_ci95": [
+            0.0,
+            0.09375
+          ],
+          "n_pairs": 32,
+          "tet_count": 2,
+          "spline_count": 3,
+          "spline_only": 1,
+          "tet_only": 0
+        },
+        "tcp_mm": {
+          "tet_mean": 23.665036833203775,
+          "spline_mean": 23.71218411114393,
+          "difference": 0.04714727794015472,
+          "paired_ci95": [
+            -0.007612373244703252,
+            0.11118468031586866
+          ],
+          "n_pairs": 32
+        },
+        "turn_deg": {
+          "tet_mean": 5.265768103803184,
+          "spline_mean": 5.26576817870282,
+          "difference": 7.489963615991968e-08,
+          "paired_ci95": [
+            -1.858442991872766e-07,
+            2.329473268655735e-07
+          ],
+          "n_pairs": 32
+        },
+        "duration_s": {
+          "tet_mean": 4.0,
+          "spline_mean": 4.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 32
+        },
+        "run_failure": {
+          "tet_mean": 0.0,
+          "spline_mean": 0.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 32,
+          "tet_count": 0,
+          "spline_count": 0,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "acquisitions": {
+          "tet_mean": 41.0,
+          "spline_mean": 41.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 32
+        },
+        "correct_frames": {
+          "tet_mean": 29.8125,
+          "spline_mean": 29.90625,
+          "difference": 0.09375,
+          "paired_ci95": [
+            -0.21875,
+            0.46875
+          ],
+          "n_pairs": 32
+        },
+        "mean_abs_lateral_mm": {
+          "tet_mean": 1.3208519016946103,
+          "spline_mean": 1.3165741871799848,
+          "difference": -0.004277714514625469,
+          "paired_ci95": [
+            -0.01835971786818732,
+            0.010799664212715826
+          ],
+          "n_pairs": 32
+        },
+        "loss_recovery": {
+          "tet_mean": 0.9333333333333333,
+          "spline_mean": 0.9333333333333333,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 15,
+          "tet_count": 14,
+          "spline_count": 14,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "cost_equivalent": true
+      },
+      "mpc_iid": {
+        "success": {
+          "tet_mean": 0.8125,
+          "spline_mean": 0.78125,
+          "difference": -0.03125,
+          "paired_ci95": [
+            -0.09375,
+            0.0
+          ],
+          "n_pairs": 32,
+          "tet_count": 26,
+          "spline_count": 25,
+          "spline_only": 0,
+          "tet_only": 1
+        },
+        "wrong": {
+          "tet_mean": 0.0,
+          "spline_mean": 0.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 32,
+          "tet_count": 0,
+          "spline_count": 0,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "false_complete": {
+          "tet_mean": 0.09375,
+          "spline_mean": 0.09375,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 32,
+          "tet_count": 3,
+          "spline_count": 3,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "tcp_mm": {
+          "tet_mean": 23.556883839017146,
+          "spline_mean": 23.570715990252896,
+          "difference": 0.013832151235753432,
+          "paired_ci95": [
+            -0.010935529570531182,
+            0.0397022308896656
+          ],
+          "n_pairs": 32
+        },
+        "turn_deg": {
+          "tet_mean": 5.265767696593415,
+          "spline_mean": 5.265767855961069,
+          "difference": 1.5936765448976153e-07,
+          "paired_ci95": [
+            1.0999741953468534e-07,
+            2.0861563023583105e-07
+          ],
+          "n_pairs": 32
+        },
+        "duration_s": {
+          "tet_mean": 4.0,
+          "spline_mean": 4.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 32
+        },
+        "run_failure": {
+          "tet_mean": 0.0,
+          "spline_mean": 0.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 32,
+          "tet_count": 0,
+          "spline_count": 0,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "acquisitions": {
+          "tet_mean": 41.0,
+          "spline_mean": 41.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 32
+        },
+        "correct_frames": {
+          "tet_mean": 29.34375,
+          "spline_mean": 29.28125,
+          "difference": -0.0625,
+          "paired_ci95": [
+            -0.28125,
+            0.125
+          ],
+          "n_pairs": 32
+        },
+        "mean_abs_lateral_mm": {
+          "tet_mean": 1.3920747516371745,
+          "spline_mean": 1.3913671793832014,
+          "difference": -0.0007075722539730996,
+          "paired_ci95": [
+            -0.010448255103436593,
+            0.009430134030674784
+          ],
+          "n_pairs": 32
+        },
+        "loss_recovery": {
+          "tet_mean": 0.9333333333333333,
+          "spline_mean": 0.9333333333333333,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 15,
+          "tet_count": 14,
+          "spline_count": 14,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "cost_equivalent": true
+      },
+      "mpc_ou": {
+        "success": {
+          "tet_mean": 0.84375,
+          "spline_mean": 0.84375,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 32,
+          "tet_count": 27,
+          "spline_count": 27,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "wrong": {
+          "tet_mean": 0.0,
+          "spline_mean": 0.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 32,
+          "tet_count": 0,
+          "spline_count": 0,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "false_complete": {
+          "tet_mean": 0.03125,
+          "spline_mean": 0.03125,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 32,
+          "tet_count": 1,
+          "spline_count": 1,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "tcp_mm": {
+          "tet_mean": 24.091479406846872,
+          "spline_mean": 24.080494310192478,
+          "difference": -0.010985096654397508,
+          "paired_ci95": [
+            -0.0817013494395807,
+            0.032201005958148086
+          ],
+          "n_pairs": 32
+        },
+        "turn_deg": {
+          "tet_mean": 5.265768505244356,
+          "spline_mean": 5.265768628244349,
+          "difference": 1.2299999310738663e-07,
+          "paired_ci95": [
+            -3.834293624965789e-09,
+            1.9631993097776744e-07
+          ],
+          "n_pairs": 32
+        },
+        "duration_s": {
+          "tet_mean": 4.0,
+          "spline_mean": 4.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 32
+        },
+        "run_failure": {
+          "tet_mean": 0.0,
+          "spline_mean": 0.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 32,
+          "tet_count": 0,
+          "spline_count": 0,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "acquisitions": {
+          "tet_mean": 41.0,
+          "spline_mean": 41.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 32
+        },
+        "correct_frames": {
+          "tet_mean": 30.15625,
+          "spline_mean": 30.21875,
+          "difference": 0.0625,
+          "paired_ci95": [
+            -0.15625,
+            0.28125
+          ],
+          "n_pairs": 32
+        },
+        "mean_abs_lateral_mm": {
+          "tet_mean": 1.244950778165849,
+          "spline_mean": 1.242459959762213,
+          "difference": -0.0024908184036359603,
+          "paired_ci95": [
+            -0.01398636059498887,
+            0.006017059240191386
+          ],
+          "n_pairs": 32
+        },
+        "loss_recovery": {
+          "tet_mean": 1.0,
+          "spline_mean": 1.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 15,
+          "tet_count": 15,
+          "spline_count": 15,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "cost_equivalent": true
+      }
+    },
+    "minus-plus": {
+      "mpc_stream": {
+        "success": {
+          "tet_mean": 0.875,
+          "spline_mean": 0.84375,
+          "difference": -0.03125,
+          "paired_ci95": [
+            -0.09375,
+            0.0
+          ],
+          "n_pairs": 32,
+          "tet_count": 28,
+          "spline_count": 27,
+          "spline_only": 0,
+          "tet_only": 1
+        },
+        "wrong": {
+          "tet_mean": 0.0,
+          "spline_mean": 0.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 32,
+          "tet_count": 0,
+          "spline_count": 0,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "false_complete": {
+          "tet_mean": 0.0625,
+          "spline_mean": 0.09375,
+          "difference": 0.03125,
+          "paired_ci95": [
+            0.0,
+            0.09375
+          ],
+          "n_pairs": 32,
+          "tet_count": 2,
+          "spline_count": 3,
+          "spline_only": 1,
+          "tet_only": 0
+        },
+        "tcp_mm": {
+          "tet_mean": 25.02263001658288,
+          "spline_mean": 25.04393372732292,
+          "difference": 0.021303710740034787,
+          "paired_ci95": [
+            -0.022891798596932293,
+            0.05806441163062057
+          ],
+          "n_pairs": 32
+        },
+        "turn_deg": {
+          "tet_mean": 5.292764688783251,
+          "spline_mean": 5.315988104946173,
+          "difference": 0.023223416162921867,
+          "paired_ci95": [
+            0.021384119582489876,
+            0.024935661901979746
+          ],
+          "n_pairs": 32
+        },
+        "duration_s": {
+          "tet_mean": 4.0,
+          "spline_mean": 4.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 32
+        },
+        "run_failure": {
+          "tet_mean": 0.0,
+          "spline_mean": 0.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 32,
+          "tet_count": 0,
+          "spline_count": 0,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "acquisitions": {
+          "tet_mean": 41.0,
+          "spline_mean": 41.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 32
+        },
+        "correct_frames": {
+          "tet_mean": 30.28125,
+          "spline_mean": 30.34375,
+          "difference": 0.0625,
+          "paired_ci95": [
+            -0.09375,
+            0.21875
+          ],
+          "n_pairs": 32
+        },
+        "mean_abs_lateral_mm": {
+          "tet_mean": 1.3064443813300861,
+          "spline_mean": 1.3111784443897485,
+          "difference": 0.00473406305966222,
+          "paired_ci95": [
+            -0.006533522671880612,
+            0.016805393586779564
+          ],
+          "n_pairs": 32
+        },
+        "loss_recovery": {
+          "tet_mean": 0.9333333333333333,
+          "spline_mean": 0.9333333333333333,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 15,
+          "tet_count": 14,
+          "spline_count": 14,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "cost_equivalent": true
+      },
+      "mpc_iid": {
+        "success": {
+          "tet_mean": 0.84375,
+          "spline_mean": 0.84375,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 32,
+          "tet_count": 27,
+          "spline_count": 27,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "wrong": {
+          "tet_mean": 0.0,
+          "spline_mean": 0.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 32,
+          "tet_count": 0,
+          "spline_count": 0,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "false_complete": {
+          "tet_mean": 0.09375,
+          "spline_mean": 0.09375,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 32,
+          "tet_count": 3,
+          "spline_count": 3,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "tcp_mm": {
+          "tet_mean": 24.694736590002943,
+          "spline_mean": 24.740065808124076,
+          "difference": 0.04532921812113078,
+          "paired_ci95": [
+            0.01944891431704452,
+            0.0731297759610566
+          ],
+          "n_pairs": 32
+        },
+        "turn_deg": {
+          "tet_mean": 5.289335408303462,
+          "spline_mean": 5.3131757141563005,
+          "difference": 0.023840305852839333,
+          "paired_ci95": [
+            0.022154090926227426,
+            0.02551823386940618
+          ],
+          "n_pairs": 32
+        },
+        "duration_s": {
+          "tet_mean": 4.0,
+          "spline_mean": 4.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 32
+        },
+        "run_failure": {
+          "tet_mean": 0.0,
+          "spline_mean": 0.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 32,
+          "tet_count": 0,
+          "spline_count": 0,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "acquisitions": {
+          "tet_mean": 41.0,
+          "spline_mean": 41.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 32
+        },
+        "correct_frames": {
+          "tet_mean": 29.53125,
+          "spline_mean": 29.5625,
+          "difference": 0.03125,
+          "paired_ci95": [
+            -0.09375,
+            0.15625
+          ],
+          "n_pairs": 32
+        },
+        "mean_abs_lateral_mm": {
+          "tet_mean": 1.3951184371528231,
+          "spline_mean": 1.3888964952435012,
+          "difference": -0.0062219419093220325,
+          "paired_ci95": [
+            -0.017831675635709334,
+            0.0045414280214253686
+          ],
+          "n_pairs": 32
+        },
+        "loss_recovery": {
+          "tet_mean": 0.9333333333333333,
+          "spline_mean": 0.9333333333333333,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 15,
+          "tet_count": 14,
+          "spline_count": 14,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "cost_equivalent": true
+      },
+      "mpc_ou": {
+        "success": {
+          "tet_mean": 0.90625,
+          "spline_mean": 0.90625,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 32,
+          "tet_count": 29,
+          "spline_count": 29,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "wrong": {
+          "tet_mean": 0.0,
+          "spline_mean": 0.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 32,
+          "tet_count": 0,
+          "spline_count": 0,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "false_complete": {
+          "tet_mean": 0.03125,
+          "spline_mean": 0.03125,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 32,
+          "tet_count": 1,
+          "spline_count": 1,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "tcp_mm": {
+          "tet_mean": 25.33661531014742,
+          "spline_mean": 25.365494453870795,
+          "difference": 0.028879143723377187,
+          "paired_ci95": [
+            -0.03475779563771395,
+            0.07609072988317582
+          ],
+          "n_pairs": 32
+        },
+        "turn_deg": {
+          "tet_mean": 5.293531074475842,
+          "spline_mean": 5.317074987228314,
+          "difference": 0.023543912752471613,
+          "paired_ci95": [
+            0.02152799792566534,
+            0.025495394831838963
+          ],
+          "n_pairs": 32
+        },
+        "duration_s": {
+          "tet_mean": 4.0,
+          "spline_mean": 4.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 32
+        },
+        "run_failure": {
+          "tet_mean": 0.0,
+          "spline_mean": 0.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 32,
+          "tet_count": 0,
+          "spline_count": 0,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "acquisitions": {
+          "tet_mean": 41.0,
+          "spline_mean": 41.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 32
+        },
+        "correct_frames": {
+          "tet_mean": 30.53125,
+          "spline_mean": 30.5625,
+          "difference": 0.03125,
+          "paired_ci95": [
+            -0.21875,
+            0.3125
+          ],
+          "n_pairs": 32
+        },
+        "mean_abs_lateral_mm": {
+          "tet_mean": 1.2331658605524731,
+          "spline_mean": 1.2316868893681605,
+          "difference": -0.0014789711843126233,
+          "paired_ci95": [
+            -0.011507782122303389,
+            0.007477511358752517
+          ],
+          "n_pairs": 32
+        },
+        "loss_recovery": {
+          "tet_mean": 1.0,
+          "spline_mean": 1.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 15,
+          "tet_count": 15,
+          "spline_count": 15,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "cost_equivalent": true
+      }
+    },
+    "plus-minus": {
+      "mpc_stream": {
+        "success": {
+          "tet_mean": 0.75,
+          "spline_mean": 0.71875,
+          "difference": -0.03125,
+          "paired_ci95": [
+            -0.09375,
+            0.0
+          ],
+          "n_pairs": 32,
+          "tet_count": 24,
+          "spline_count": 23,
+          "spline_only": 0,
+          "tet_only": 1
+        },
+        "wrong": {
+          "tet_mean": 0.0,
+          "spline_mean": 0.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 32,
+          "tet_count": 0,
+          "spline_count": 0,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "false_complete": {
+          "tet_mean": 0.03125,
+          "spline_mean": 0.0625,
+          "difference": 0.03125,
+          "paired_ci95": [
+            0.0,
+            0.09375
+          ],
+          "n_pairs": 32,
+          "tet_count": 1,
+          "spline_count": 2,
+          "spline_only": 1,
+          "tet_only": 0
+        },
+        "tcp_mm": {
+          "tet_mean": 22.587536771972374,
+          "spline_mean": 22.587173155105,
+          "difference": -0.0003636168673749607,
+          "paired_ci95": [
+            -0.07859161177227825,
+            0.0719969378737687
+          ],
+          "n_pairs": 32
+        },
+        "turn_deg": {
+          "tet_mean": 5.499014602417777,
+          "spline_mean": 5.502082706422989,
+          "difference": 0.003068104005211736,
+          "paired_ci95": [
+            -6.812177115672884e-05,
+            0.006096798998004804
+          ],
+          "n_pairs": 32
+        },
+        "duration_s": {
+          "tet_mean": 4.0,
+          "spline_mean": 4.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 32
+        },
+        "run_failure": {
+          "tet_mean": 0.0,
+          "spline_mean": 0.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 32,
+          "tet_count": 0,
+          "spline_count": 0,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "acquisitions": {
+          "tet_mean": 41.0,
+          "spline_mean": 41.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 32
+        },
+        "correct_frames": {
+          "tet_mean": 26.5,
+          "spline_mean": 26.46875,
+          "difference": -0.03125,
+          "paired_ci95": [
+            -0.25,
+            0.1875
+          ],
+          "n_pairs": 32
+        },
+        "mean_abs_lateral_mm": {
+          "tet_mean": 1.7833139092901296,
+          "spline_mean": 1.7790623334507392,
+          "difference": -0.004251575839390544,
+          "paired_ci95": [
+            -0.017107577414570085,
+            0.009760685240249641
+          ],
+          "n_pairs": 32
+        },
+        "loss_recovery": {
+          "tet_mean": 0.8666666666666667,
+          "spline_mean": 0.8666666666666667,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 15,
+          "tet_count": 13,
+          "spline_count": 13,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "cost_equivalent": true
+      },
+      "mpc_iid": {
+        "success": {
+          "tet_mean": 0.625,
+          "spline_mean": 0.65625,
+          "difference": 0.03125,
+          "paired_ci95": [
+            0.0,
+            0.09375
+          ],
+          "n_pairs": 32,
+          "tet_count": 20,
+          "spline_count": 21,
+          "spline_only": 1,
+          "tet_only": 0
+        },
+        "wrong": {
+          "tet_mean": 0.0,
+          "spline_mean": 0.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 32,
+          "tet_count": 0,
+          "spline_count": 0,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "false_complete": {
+          "tet_mean": 0.09375,
+          "spline_mean": 0.09375,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 32,
+          "tet_count": 3,
+          "spline_count": 3,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "tcp_mm": {
+          "tet_mean": 22.384397399289043,
+          "spline_mean": 22.42553356513921,
+          "difference": 0.04113616585016766,
+          "paired_ci95": [
+            0.006597034083874917,
+            0.08882568345979357
+          ],
+          "n_pairs": 32
+        },
+        "turn_deg": {
+          "tet_mean": 5.495437731447209,
+          "spline_mean": 5.497802144655198,
+          "difference": 0.0023644132079886915,
+          "paired_ci95": [
+            -0.0006835986081606723,
+            0.00548650840725274
+          ],
+          "n_pairs": 32
+        },
+        "duration_s": {
+          "tet_mean": 4.0,
+          "spline_mean": 4.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 32
+        },
+        "run_failure": {
+          "tet_mean": 0.0,
+          "spline_mean": 0.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 32,
+          "tet_count": 0,
+          "spline_count": 0,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "acquisitions": {
+          "tet_mean": 41.0,
+          "spline_mean": 41.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 32
+        },
+        "correct_frames": {
+          "tet_mean": 25.625,
+          "spline_mean": 25.78125,
+          "difference": 0.15625,
+          "paired_ci95": [
+            -0.125,
+            0.53125
+          ],
+          "n_pairs": 32
+        },
+        "mean_abs_lateral_mm": {
+          "tet_mean": 1.9057662803168636,
+          "spline_mean": 1.8820242734850217,
+          "difference": -0.023742006831842105,
+          "paired_ci95": [
+            -0.06362546566685852,
+            3.310939636597057e-05
+          ],
+          "n_pairs": 32
+        },
+        "loss_recovery": {
+          "tet_mean": 0.8666666666666667,
+          "spline_mean": 0.8666666666666667,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 15,
+          "tet_count": 13,
+          "spline_count": 13,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "cost_equivalent": true
+      },
+      "mpc_ou": {
+        "success": {
+          "tet_mean": 0.75,
+          "spline_mean": 0.75,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 32,
+          "tet_count": 24,
+          "spline_count": 24,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "wrong": {
+          "tet_mean": 0.0,
+          "spline_mean": 0.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 32,
+          "tet_count": 0,
+          "spline_count": 0,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "false_complete": {
+          "tet_mean": 0.0,
+          "spline_mean": 0.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 32,
+          "tet_count": 0,
+          "spline_count": 0,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "tcp_mm": {
+          "tet_mean": 22.868434557522264,
+          "spline_mean": 22.90746858139925,
+          "difference": 0.0390340238769874,
+          "paired_ci95": [
+            0.0059099983987381,
+            0.08626484486454994
+          ],
+          "n_pairs": 32
+        },
+        "turn_deg": {
+          "tet_mean": 5.5001900920428834,
+          "spline_mean": 5.504646992059869,
+          "difference": 0.004456900016985538,
+          "paired_ci95": [
+            0.0017042074632932004,
+            0.007167974340424843
+          ],
+          "n_pairs": 32
+        },
+        "duration_s": {
+          "tet_mean": 4.0,
+          "spline_mean": 4.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 32
+        },
+        "run_failure": {
+          "tet_mean": 0.0,
+          "spline_mean": 0.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 32,
+          "tet_count": 0,
+          "spline_count": 0,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "acquisitions": {
+          "tet_mean": 41.0,
+          "spline_mean": 41.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 32
+        },
+        "correct_frames": {
+          "tet_mean": 26.8125,
+          "spline_mean": 26.78125,
+          "difference": -0.03125,
+          "paired_ci95": [
+            -0.15625,
+            0.09375
+          ],
+          "n_pairs": 32
+        },
+        "mean_abs_lateral_mm": {
+          "tet_mean": 1.7452584228128931,
+          "spline_mean": 1.7395809319684241,
+          "difference": -0.0056774908444691095,
+          "paired_ci95": [
+            -0.012611776768602267,
+            0.0009130460458640534
+          ],
+          "n_pairs": 32
+        },
+        "loss_recovery": {
+          "tet_mean": 0.9333333333333333,
+          "spline_mean": 0.9333333333333333,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 15,
+          "tet_count": 14,
+          "spline_count": 14,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "cost_equivalent": true
+      }
+    },
+    "beta2": {
+      "mpc_stream": {
+        "success": {
+          "tet_mean": 1.0,
+          "spline_mean": 0.9375,
+          "difference": -0.0625,
+          "paired_ci95": [
+            -0.1875,
+            0.0
+          ],
+          "n_pairs": 16,
+          "tet_count": 16,
+          "spline_count": 15,
+          "spline_only": 0,
+          "tet_only": 1
+        },
+        "wrong": {
+          "tet_mean": 0.0,
+          "spline_mean": 0.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 16,
+          "tet_count": 0,
+          "spline_count": 0,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "false_complete": {
+          "tet_mean": 0.0,
+          "spline_mean": 0.0625,
+          "difference": 0.0625,
+          "paired_ci95": [
+            0.0,
+            0.1875
+          ],
+          "n_pairs": 16,
+          "tet_count": 0,
+          "spline_count": 1,
+          "spline_only": 1,
+          "tet_only": 0
+        },
+        "tcp_mm": {
+          "tet_mean": 23.537877368516703,
+          "spline_mean": 23.60436373076417,
+          "difference": 0.0664863622474654,
+          "paired_ci95": [
+            -0.0034063600969540466,
+            0.16454279594929602
+          ],
+          "n_pairs": 16
+        },
+        "turn_deg": {
+          "tet_mean": 5.363461927674374,
+          "spline_mean": 5.369810696322798,
+          "difference": 0.006348768648424041,
+          "paired_ci95": [
+            0.005711272503050717,
+            0.00695582181277348
+          ],
+          "n_pairs": 16
+        },
+        "duration_s": {
+          "tet_mean": 4.0,
+          "spline_mean": 4.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 16
+        },
+        "run_failure": {
+          "tet_mean": 0.0,
+          "spline_mean": 0.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 16,
+          "tet_count": 0,
+          "spline_count": 0,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "acquisitions": {
+          "tet_mean": 41.0,
+          "spline_mean": 41.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 16
+        },
+        "correct_frames": {
+          "tet_mean": 30.5625,
+          "spline_mean": 30.5,
+          "difference": -0.0625,
+          "paired_ci95": [
+            -0.3125,
+            0.1875
+          ],
+          "n_pairs": 16
+        },
+        "mean_abs_lateral_mm": {
+          "tet_mean": 1.3207328430604162,
+          "spline_mean": 1.335301045338454,
+          "difference": 0.014568202278037713,
+          "paired_ci95": [
+            0.0035823668142907095,
+            0.02632101458894159
+          ],
+          "n_pairs": 16
+        },
+        "loss_recovery": {
+          "tet_mean": 1.0,
+          "spline_mean": 1.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 8,
+          "tet_count": 8,
+          "spline_count": 8,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "cost_equivalent": true
+      },
+      "mpc_iid": {
+        "success": {
+          "tet_mean": 0.9375,
+          "spline_mean": 0.9375,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 16,
+          "tet_count": 15,
+          "spline_count": 15,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "wrong": {
+          "tet_mean": 0.0,
+          "spline_mean": 0.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 16,
+          "tet_count": 0,
+          "spline_count": 0,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "false_complete": {
+          "tet_mean": 0.0625,
+          "spline_mean": 0.0625,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 16,
+          "tet_count": 1,
+          "spline_count": 1,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "tcp_mm": {
+          "tet_mean": 23.289992008244603,
+          "spline_mean": 23.327640834847237,
+          "difference": 0.03764882660263469,
+          "paired_ci95": [
+            0.003186499356750811,
+            0.07597783755074262
+          ],
+          "n_pairs": 16
+        },
+        "turn_deg": {
+          "tet_mean": 5.363397433012208,
+          "spline_mean": 5.369885707522625,
+          "difference": 0.006488274510417558,
+          "paired_ci95": [
+            0.005938147748242849,
+            0.007043204180304133
+          ],
+          "n_pairs": 16
+        },
+        "duration_s": {
+          "tet_mean": 4.0,
+          "spline_mean": 4.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 16
+        },
+        "run_failure": {
+          "tet_mean": 0.0,
+          "spline_mean": 0.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 16,
+          "tet_count": 0,
+          "spline_count": 0,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "acquisitions": {
+          "tet_mean": 41.0,
+          "spline_mean": 41.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 16
+        },
+        "correct_frames": {
+          "tet_mean": 29.5,
+          "spline_mean": 29.625,
+          "difference": 0.125,
+          "paired_ci95": [
+            0.0,
+            0.3125
+          ],
+          "n_pairs": 16
+        },
+        "mean_abs_lateral_mm": {
+          "tet_mean": 1.4274728573675952,
+          "spline_mean": 1.4309041904343578,
+          "difference": 0.00343133306676259,
+          "paired_ci95": [
+            -0.012334727870794794,
+            0.017878139705582267
+          ],
+          "n_pairs": 16
+        },
+        "loss_recovery": {
+          "tet_mean": 1.0,
+          "spline_mean": 1.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 8,
+          "tet_count": 8,
+          "spline_count": 8,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "cost_equivalent": true
+      },
+      "mpc_ou": {
+        "success": {
+          "tet_mean": 1.0,
+          "spline_mean": 1.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 16,
+          "tet_count": 16,
+          "spline_count": 16,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "wrong": {
+          "tet_mean": 0.0,
+          "spline_mean": 0.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 16,
+          "tet_count": 0,
+          "spline_count": 0,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "false_complete": {
+          "tet_mean": 0.0,
+          "spline_mean": 0.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 16,
+          "tet_count": 0,
+          "spline_count": 0,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "tcp_mm": {
+          "tet_mean": 23.79382083247804,
+          "spline_mean": 23.815528351360825,
+          "difference": 0.021707518882786436,
+          "paired_ci95": [
+            -0.022520546098045737,
+            0.05745326772847254
+          ],
+          "n_pairs": 16
+        },
+        "turn_deg": {
+          "tet_mean": 5.363534506881308,
+          "spline_mean": 5.369735286361211,
+          "difference": 0.006200779479902108,
+          "paired_ci95": [
+            0.005573840651066066,
+            0.0067984393659604805
+          ],
+          "n_pairs": 16
+        },
+        "duration_s": {
+          "tet_mean": 4.0,
+          "spline_mean": 4.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 16
+        },
+        "run_failure": {
+          "tet_mean": 0.0,
+          "spline_mean": 0.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 16,
+          "tet_count": 0,
+          "spline_count": 0,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "acquisitions": {
+          "tet_mean": 41.0,
+          "spline_mean": 41.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 16
+        },
+        "correct_frames": {
+          "tet_mean": 30.625,
+          "spline_mean": 30.6875,
+          "difference": 0.0625,
+          "paired_ci95": [
+            -0.125,
+            0.25
+          ],
+          "n_pairs": 16
+        },
+        "mean_abs_lateral_mm": {
+          "tet_mean": 1.2844176380218695,
+          "spline_mean": 1.28379557455496,
+          "difference": -0.0006220634669093714,
+          "paired_ci95": [
+            -0.011157574383192726,
+            0.008377729648176192
+          ],
+          "n_pairs": 16
+        },
+        "loss_recovery": {
+          "tet_mean": 1.0,
+          "spline_mean": 1.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 8,
+          "tet_count": 8,
+          "spline_count": 8,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "cost_equivalent": true
+      }
+    },
+    "pose25": {
+      "mpc_stream": {
+        "success": {
+          "tet_mean": 1.0,
+          "spline_mean": 1.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 16,
+          "tet_count": 16,
+          "spline_count": 16,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "wrong": {
+          "tet_mean": 0.0,
+          "spline_mean": 0.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 16,
+          "tet_count": 0,
+          "spline_count": 0,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "false_complete": {
+          "tet_mean": 0.0,
+          "spline_mean": 0.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 16,
+          "tet_count": 0,
+          "spline_count": 0,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "tcp_mm": {
+          "tet_mean": 22.85259283467228,
+          "spline_mean": 22.887365655831815,
+          "difference": 0.03477282115953795,
+          "paired_ci95": [
+            -0.0381923257819923,
+            0.13594777710363648
+          ],
+          "n_pairs": 16
+        },
+        "turn_deg": {
+          "tet_mean": 5.830809109129564,
+          "spline_mean": 5.8560912591193786,
+          "difference": 0.02528214998981504,
+          "paired_ci95": [
+            0.02424468354964473,
+            0.026292212835916564
+          ],
+          "n_pairs": 16
+        },
+        "duration_s": {
+          "tet_mean": 4.0,
+          "spline_mean": 4.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 16
+        },
+        "run_failure": {
+          "tet_mean": 0.0,
+          "spline_mean": 0.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 16,
+          "tet_count": 0,
+          "spline_count": 0,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "acquisitions": {
+          "tet_mean": 41.0,
+          "spline_mean": 41.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 16
+        },
+        "correct_frames": {
+          "tet_mean": 30.5625,
+          "spline_mean": 30.4375,
+          "difference": -0.125,
+          "paired_ci95": [
+            -0.375,
+            0.125
+          ],
+          "n_pairs": 16
+        },
+        "mean_abs_lateral_mm": {
+          "tet_mean": 1.335489529426313,
+          "spline_mean": 1.3490526573714898,
+          "difference": 0.01356312794517684,
+          "paired_ci95": [
+            -0.00028469400890299157,
+            0.029473302126222407
+          ],
+          "n_pairs": 16
+        },
+        "loss_recovery": {
+          "tet_mean": 1.0,
+          "spline_mean": 1.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 8,
+          "tet_count": 8,
+          "spline_count": 8,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "cost_equivalent": true
+      },
+      "mpc_iid": {
+        "success": {
+          "tet_mean": 0.9375,
+          "spline_mean": 0.9375,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 16,
+          "tet_count": 15,
+          "spline_count": 15,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "wrong": {
+          "tet_mean": 0.0,
+          "spline_mean": 0.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 16,
+          "tet_count": 0,
+          "spline_count": 0,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "false_complete": {
+          "tet_mean": 0.0625,
+          "spline_mean": 0.0625,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 16,
+          "tet_count": 1,
+          "spline_count": 1,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "tcp_mm": {
+          "tet_mean": 22.565405420732183,
+          "spline_mean": 22.561045666038723,
+          "difference": -0.0043597546934595055,
+          "paired_ci95": [
+            -0.03417106128397469,
+            0.036162114059487965
+          ],
+          "n_pairs": 16
+        },
+        "turn_deg": {
+          "tet_mean": 5.82928664202449,
+          "spline_mean": 5.85405347086353,
+          "difference": 0.024766828839040078,
+          "paired_ci95": [
+            0.023501522236393926,
+            0.025998364372143097
+          ],
+          "n_pairs": 16
+        },
+        "duration_s": {
+          "tet_mean": 4.0,
+          "spline_mean": 4.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 16
+        },
+        "run_failure": {
+          "tet_mean": 0.0,
+          "spline_mean": 0.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 16,
+          "tet_count": 0,
+          "spline_count": 0,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "acquisitions": {
+          "tet_mean": 41.0,
+          "spline_mean": 41.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 16
+        },
+        "correct_frames": {
+          "tet_mean": 29.5,
+          "spline_mean": 29.625,
+          "difference": 0.125,
+          "paired_ci95": [
+            -0.125,
+            0.375
+          ],
+          "n_pairs": 16
+        },
+        "mean_abs_lateral_mm": {
+          "tet_mean": 1.4263317975855718,
+          "spline_mean": 1.4283066097408654,
+          "difference": 0.0019748121552933748,
+          "paired_ci95": [
+            -0.012469599940576958,
+            0.015456344479011017
+          ],
+          "n_pairs": 16
+        },
+        "loss_recovery": {
+          "tet_mean": 1.0,
+          "spline_mean": 1.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 8,
+          "tet_count": 8,
+          "spline_count": 8,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "cost_equivalent": true
+      },
+      "mpc_ou": {
+        "success": {
+          "tet_mean": 1.0,
+          "spline_mean": 1.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 16,
+          "tet_count": 16,
+          "spline_count": 16,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "wrong": {
+          "tet_mean": 0.0,
+          "spline_mean": 0.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 16,
+          "tet_count": 0,
+          "spline_count": 0,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "false_complete": {
+          "tet_mean": 0.0,
+          "spline_mean": 0.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 16,
+          "tet_count": 0,
+          "spline_count": 0,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "tcp_mm": {
+          "tet_mean": 23.10411914987432,
+          "spline_mean": 23.09093763662034,
+          "difference": -0.013181513253984978,
+          "paired_ci95": [
+            -0.04669565524869882,
+            0.01006729336374646
+          ],
+          "n_pairs": 16
+        },
+        "turn_deg": {
+          "tet_mean": 5.832956760450373,
+          "spline_mean": 5.858158049186963,
+          "difference": 0.025201288736590832,
+          "paired_ci95": [
+            0.024090699936484033,
+            0.02623367210426032
+          ],
+          "n_pairs": 16
+        },
+        "duration_s": {
+          "tet_mean": 4.0,
+          "spline_mean": 4.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 16
+        },
+        "run_failure": {
+          "tet_mean": 0.0,
+          "spline_mean": 0.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 16,
+          "tet_count": 0,
+          "spline_count": 0,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "acquisitions": {
+          "tet_mean": 41.0,
+          "spline_mean": 41.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 16
+        },
+        "correct_frames": {
+          "tet_mean": 30.6875,
+          "spline_mean": 30.6875,
+          "difference": 0.0,
+          "paired_ci95": [
+            -0.1875,
+            0.1875
+          ],
+          "n_pairs": 16
+        },
+        "mean_abs_lateral_mm": {
+          "tet_mean": 1.2812148199667324,
+          "spline_mean": 1.2817364447491695,
+          "difference": 0.0005216247824370648,
+          "paired_ci95": [
+            -0.00977756519526482,
+            0.009406641045816847
+          ],
+          "n_pairs": 16
+        },
+        "loss_recovery": {
+          "tet_mean": 1.0,
+          "spline_mean": 1.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 8,
+          "tet_count": 8,
+          "spline_count": 8,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "cost_equivalent": true
+      }
+    },
+    "transient": {
+      "mpc_stream": {
+        "success": {
+          "tet_mean": 0.90625,
+          "spline_mean": 0.90625,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 32,
+          "tet_count": 29,
+          "spline_count": 29,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "wrong": {
+          "tet_mean": 0.0,
+          "spline_mean": 0.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 32,
+          "tet_count": 0,
+          "spline_count": 0,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "false_complete": {
+          "tet_mean": 0.03125,
+          "spline_mean": 0.03125,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 32,
+          "tet_count": 1,
+          "spline_count": 1,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "tcp_mm": {
+          "tet_mean": 23.633422153255907,
+          "spline_mean": 23.623427262971763,
+          "difference": -0.00999489028414502,
+          "paired_ci95": [
+            -0.10190407521167395,
+            0.06413110105734096
+          ],
+          "n_pairs": 32
+        },
+        "turn_deg": {
+          "tet_mean": 5.265767820233435,
+          "spline_mean": 5.265768006534783,
+          "difference": 1.8630134807073873e-07,
+          "paired_ci95": [
+            4.2338907500771854e-08,
+            3.1705095410172746e-07
+          ],
+          "n_pairs": 32
+        },
+        "duration_s": {
+          "tet_mean": 4.0,
+          "spline_mean": 4.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 32
+        },
+        "run_failure": {
+          "tet_mean": 0.0,
+          "spline_mean": 0.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 32,
+          "tet_count": 0,
+          "spline_count": 0,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "acquisitions": {
+          "tet_mean": 41.0,
+          "spline_mean": 41.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 32
+        },
+        "correct_frames": {
+          "tet_mean": 30.25,
+          "spline_mean": 30.34375,
+          "difference": 0.09375,
+          "paired_ci95": [
+            -0.0625,
+            0.28125
+          ],
+          "n_pairs": 32
+        },
+        "mean_abs_lateral_mm": {
+          "tet_mean": 1.0864352802800252,
+          "spline_mean": 1.0845161989446614,
+          "difference": -0.0019190813353640035,
+          "paired_ci95": [
+            -0.017186413193260048,
+            0.012375871327696516
+          ],
+          "n_pairs": 32
+        },
+        "loss_recovery": {
+          "tet_mean": 0.9333333333333333,
+          "spline_mean": 0.9333333333333333,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 15,
+          "tet_count": 14,
+          "spline_count": 14,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "cost_equivalent": true
+      },
+      "mpc_iid": {
+        "success": {
+          "tet_mean": 0.90625,
+          "spline_mean": 0.90625,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 32,
+          "tet_count": 29,
+          "spline_count": 29,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "wrong": {
+          "tet_mean": 0.0,
+          "spline_mean": 0.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 32,
+          "tet_count": 0,
+          "spline_count": 0,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "false_complete": {
+          "tet_mean": 0.03125,
+          "spline_mean": 0.03125,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 32,
+          "tet_count": 1,
+          "spline_count": 1,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "tcp_mm": {
+          "tet_mean": 23.34163376301851,
+          "spline_mean": 23.347246061982645,
+          "difference": 0.005612298964132512,
+          "paired_ci95": [
+            -0.07172889176017269,
+            0.06188975190382405
+          ],
+          "n_pairs": 32
+        },
+        "turn_deg": {
+          "tet_mean": 5.26576780528208,
+          "spline_mean": 5.265767987843888,
+          "difference": 1.8256180758791096e-07,
+          "paired_ci95": [
+            9.943144302915207e-08,
+            2.5782150168962565e-07
+          ],
+          "n_pairs": 32
+        },
+        "duration_s": {
+          "tet_mean": 4.0,
+          "spline_mean": 4.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 32
+        },
+        "run_failure": {
+          "tet_mean": 0.0,
+          "spline_mean": 0.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 32,
+          "tet_count": 0,
+          "spline_count": 0,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "acquisitions": {
+          "tet_mean": 41.0,
+          "spline_mean": 41.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 32
+        },
+        "correct_frames": {
+          "tet_mean": 29.6875,
+          "spline_mean": 29.8125,
+          "difference": 0.125,
+          "paired_ci95": [
+            0.0,
+            0.28125
+          ],
+          "n_pairs": 32
+        },
+        "mean_abs_lateral_mm": {
+          "tet_mean": 1.1793380048477524,
+          "spline_mean": 1.1801514576613756,
+          "difference": 0.0008134528136232028,
+          "paired_ci95": [
+            -0.009618326657746283,
+            0.010224228508625305
+          ],
+          "n_pairs": 32
+        },
+        "loss_recovery": {
+          "tet_mean": 0.8666666666666667,
+          "spline_mean": 0.8666666666666667,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 15,
+          "tet_count": 13,
+          "spline_count": 13,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "cost_equivalent": true
+      },
+      "mpc_ou": {
+        "success": {
+          "tet_mean": 0.90625,
+          "spline_mean": 0.90625,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 32,
+          "tet_count": 29,
+          "spline_count": 29,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "wrong": {
+          "tet_mean": 0.0,
+          "spline_mean": 0.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 32,
+          "tet_count": 0,
+          "spline_count": 0,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "false_complete": {
+          "tet_mean": 0.03125,
+          "spline_mean": 0.03125,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 32,
+          "tet_count": 1,
+          "spline_count": 1,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "tcp_mm": {
+          "tet_mean": 23.812494407486646,
+          "spline_mean": 23.816842914426346,
+          "difference": 0.004348506939698793,
+          "paired_ci95": [
+            -0.0627123818908056,
+            0.06575845584137999
+          ],
+          "n_pairs": 32
+        },
+        "turn_deg": {
+          "tet_mean": 5.265768152518994,
+          "spline_mean": 5.265768217335106,
+          "difference": 6.481611164455003e-08,
+          "paired_ci95": [
+            -3.10835715740948e-07,
+            3.054384005128641e-07
+          ],
+          "n_pairs": 32
+        },
+        "duration_s": {
+          "tet_mean": 4.0,
+          "spline_mean": 4.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 32
+        },
+        "run_failure": {
+          "tet_mean": 0.0,
+          "spline_mean": 0.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 32,
+          "tet_count": 0,
+          "spline_count": 0,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "acquisitions": {
+          "tet_mean": 41.0,
+          "spline_mean": 41.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 32
+        },
+        "correct_frames": {
+          "tet_mean": 30.3125,
+          "spline_mean": 30.40625,
+          "difference": 0.09375,
+          "paired_ci95": [
+            -0.0625,
+            0.25
+          ],
+          "n_pairs": 32
+        },
+        "mean_abs_lateral_mm": {
+          "tet_mean": 1.044709583129003,
+          "spline_mean": 1.032612863307412,
+          "difference": -0.012096719821590617,
+          "paired_ci95": [
+            -0.03274187724633217,
+            0.002109309163250276
+          ],
+          "n_pairs": 32
+        },
+        "loss_recovery": {
+          "tet_mean": 0.9333333333333333,
+          "spline_mean": 0.9333333333333333,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 15,
+          "tet_count": 14,
+          "spline_count": 14,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "cost_equivalent": true
+      }
+    },
+    "static-world": {
+      "mpc_stream": {
+        "success": {
+          "tet_mean": 1.0,
+          "spline_mean": 1.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 12,
+          "tet_count": 12,
+          "spline_count": 12,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "wrong": {
+          "tet_mean": 0.0,
+          "spline_mean": 0.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 12,
+          "tet_count": 0,
+          "spline_count": 0,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "false_complete": {
+          "tet_mean": 0.0,
+          "spline_mean": 0.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 12,
+          "tet_count": 0,
+          "spline_count": 0,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "tcp_mm": {
+          "tet_mean": 22.992061946535028,
+          "spline_mean": 23.01179197689845,
+          "difference": 0.019730030363419065,
+          "paired_ci95": [
+            -0.014795601870802732,
+            0.05455470193788336
+          ],
+          "n_pairs": 12
+        },
+        "turn_deg": {
+          "tet_mean": 5.26576757420096,
+          "spline_mean": 5.265767749631841,
+          "difference": 1.7543088152531064e-07,
+          "paired_ci95": [
+            1.578247880273942e-07,
+            1.9454886222569636e-07
+          ],
+          "n_pairs": 12
+        },
+        "duration_s": {
+          "tet_mean": 4.0,
+          "spline_mean": 4.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 12
+        },
+        "run_failure": {
+          "tet_mean": 0.0,
+          "spline_mean": 0.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 12,
+          "tet_count": 0,
+          "spline_count": 0,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "acquisitions": {
+          "tet_mean": 41.0,
+          "spline_mean": 41.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 12
+        },
+        "correct_frames": {
+          "tet_mean": 32.75,
+          "spline_mean": 32.75,
+          "difference": 0.0,
+          "paired_ci95": [
+            -0.25,
+            0.25
+          ],
+          "n_pairs": 12
+        },
+        "mean_abs_lateral_mm": {
+          "tet_mean": 0.5905488965557699,
+          "spline_mean": 0.6114667148710664,
+          "difference": 0.020917818315296408,
+          "paired_ci95": [
+            0.0067229113189648795,
+            0.033299927364812264
+          ],
+          "n_pairs": 12
+        },
+        "loss_recovery": {
+          "tet_mean": 1.0,
+          "spline_mean": 1.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 6,
+          "tet_count": 6,
+          "spline_count": 6,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "cost_equivalent": true
+      },
+      "mpc_iid": {
+        "success": {
+          "tet_mean": 1.0,
+          "spline_mean": 1.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 12,
+          "tet_count": 12,
+          "spline_count": 12,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "wrong": {
+          "tet_mean": 0.0,
+          "spline_mean": 0.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 12,
+          "tet_count": 0,
+          "spline_count": 0,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "false_complete": {
+          "tet_mean": 0.0,
+          "spline_mean": 0.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 12,
+          "tet_count": 0,
+          "spline_count": 0,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "tcp_mm": {
+          "tet_mean": 22.841785065241748,
+          "spline_mean": 22.83874123884168,
+          "difference": -0.0030438264000679873,
+          "paired_ci95": [
+            -0.02699092198790767,
+            0.022835363530330086
+          ],
+          "n_pairs": 12
+        },
+        "turn_deg": {
+          "tet_mean": 5.265767406603529,
+          "spline_mean": 5.265767513380173,
+          "difference": 1.067766448592522e-07,
+          "paired_ci95": [
+            2.042141430587859e-08,
+            1.5881780862092577e-07
+          ],
+          "n_pairs": 12
+        },
+        "duration_s": {
+          "tet_mean": 4.0,
+          "spline_mean": 4.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 12
+        },
+        "run_failure": {
+          "tet_mean": 0.0,
+          "spline_mean": 0.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 12,
+          "tet_count": 0,
+          "spline_count": 0,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "acquisitions": {
+          "tet_mean": 41.0,
+          "spline_mean": 41.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 12
+        },
+        "correct_frames": {
+          "tet_mean": 32.666666666666664,
+          "spline_mean": 32.666666666666664,
+          "difference": 0.0,
+          "paired_ci95": [
+            -0.25,
+            0.25
+          ],
+          "n_pairs": 12
+        },
+        "mean_abs_lateral_mm": {
+          "tet_mean": 0.592349874243866,
+          "spline_mean": 0.6199270729986917,
+          "difference": 0.027577198754825723,
+          "paired_ci95": [
+            0.010362243932214193,
+            0.041647005299397216
+          ],
+          "n_pairs": 12
+        },
+        "loss_recovery": {
+          "tet_mean": 1.0,
+          "spline_mean": 1.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 6,
+          "tet_count": 6,
+          "spline_count": 6,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "cost_equivalent": true
+      },
+      "mpc_ou": {
+        "success": {
+          "tet_mean": 1.0,
+          "spline_mean": 1.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 12,
+          "tet_count": 12,
+          "spline_count": 12,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "wrong": {
+          "tet_mean": 0.0,
+          "spline_mean": 0.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 12,
+          "tet_count": 0,
+          "spline_count": 0,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "false_complete": {
+          "tet_mean": 0.0,
+          "spline_mean": 0.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 12,
+          "tet_count": 0,
+          "spline_count": 0,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "tcp_mm": {
+          "tet_mean": 23.06892715263157,
+          "spline_mean": 23.087751009692806,
+          "difference": 0.0188238570612335,
+          "paired_ci95": [
+            -0.016554128872461292,
+            0.054746379998271685
+          ],
+          "n_pairs": 12
+        },
+        "turn_deg": {
+          "tet_mean": 5.2657675986919275,
+          "spline_mean": 5.2657677705397115,
+          "difference": 1.7184778407693577e-07,
+          "paired_ci95": [
+            1.4250725473378505e-07,
+            2.0192361666615532e-07
+          ],
+          "n_pairs": 12
+        },
+        "duration_s": {
+          "tet_mean": 4.0,
+          "spline_mean": 4.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 12
+        },
+        "run_failure": {
+          "tet_mean": 0.0,
+          "spline_mean": 0.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 12,
+          "tet_count": 0,
+          "spline_count": 0,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "acquisitions": {
+          "tet_mean": 41.0,
+          "spline_mean": 41.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 12
+        },
+        "correct_frames": {
+          "tet_mean": 32.666666666666664,
+          "spline_mean": 32.666666666666664,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 12
+        },
+        "mean_abs_lateral_mm": {
+          "tet_mean": 0.6037905554233224,
+          "spline_mean": 0.6158797775109622,
+          "difference": 0.012089222087639927,
+          "paired_ci95": [
+            0.0009550993531206545,
+            0.02395912598367416
+          ],
+          "n_pairs": 12
+        },
+        "loss_recovery": {
+          "tet_mean": 1.0,
+          "spline_mean": 1.0,
+          "difference": 0.0,
+          "paired_ci95": [
+            0.0,
+            0.0
+          ],
+          "n_pairs": 6,
+          "tet_count": 6,
+          "spline_count": 6,
+          "spline_only": 0,
+          "tet_only": 0
+        },
+        "cost_equivalent": true
+      }
+    }
+  }
+}

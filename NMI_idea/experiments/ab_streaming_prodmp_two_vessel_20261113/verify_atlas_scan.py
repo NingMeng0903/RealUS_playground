@@ -24,7 +24,9 @@ def verify(template, capability, run):
     report_path, trace_path = run / "SUMMARY.json", run / "TRACES.npz"
     report = json.loads(report_path.read_text())
     metadata = report["geometry"]
-    shape = template.instantiate((0., 0.), metadata["knee_deg"], beta=metadata["beta"])
+    world = template.instantiate((0., 0.), metadata["knee_deg"], beta=metadata["beta"])
+    spline = metadata.get("chart") == "spline"
+    shape = template.with_spline(world, metadata.get("spline_vessel_binding", "legacy")) if spline else world
     assert metadata == shape.metadata
     sensor = Sensor()
     motion = report.get("motion")
@@ -33,6 +35,12 @@ def verify(template, capability, run):
     scene_rng = np.random.default_rng(report["seed"])
     motion_rng = np.random.default_rng(motion["seed"]) if motion else None
     assert len(report["cases"]) == report["case_count"]
+    first_case = report["cases"][0]["case"]
+    assert [row["case"] for row in report["cases"]] == list(range(first_case, first_case + report["case_count"]))
+    for _ in range(first_case):
+        sensor.scene(scene_rng, FRAME_COUNT)
+        if motion:
+            motion_tape(motion_rng, FRAME_COUNT, FRAME_DT_S, motion["kind"])
 
     max_label_error = np.zeros(3)
     max_roundtrip_m, max_fk_mm, max_fk_deg, max_rate = 0., 0., 0., 0.
@@ -40,12 +48,18 @@ def verify(template, capability, run):
     min_clearance = float("inf")
     row_count, sample_count, frame_count = 0, 0, 0
     with np.load(trace_path, allow_pickle=False) as traces:
+        if spline:
+            assert report["observation_world"] == report["physical_start"] == "tet"
+            np.testing.assert_array_equal(traces["world_vessels_m"], world.vessels_m)
+            np.testing.assert_array_equal(traces["world_offset_axes"], world.offset_axes)
         if motion:
             np.testing.assert_array_equal(traces["offset_axes"], shape.offset_axes)
         np.testing.assert_allclose(traces["nominal_vessels_m"], shape.vessels_m, atol=1.e-12, rtol=0.)
-        np.testing.assert_array_equal(traces["vessel_material_xi"], template.vessel_xi)
-        max_label_error = coordinate_error(shape.xyz_to_xi(shape.vessels_m), template.vessel_xi)
-        max_roundtrip_m = float(np.linalg.norm(shape.xi_to_xyz(template.vessel_xi) - shape.vessels_m,
+        if metadata.get("spline_vessel_binding") == "registered":
+            np.testing.assert_array_equal(traces["vessel_legacy_xi"], template.vessel_xi)
+        np.testing.assert_array_equal(traces["vessel_material_xi"], shape.vessel_material_xi)
+        max_label_error = coordinate_error(shape.xyz_to_xi(shape.vessels_m), shape.vessel_material_xi)
+        max_roundtrip_m = float(np.linalg.norm(shape.xi_to_xyz(shape.vessel_material_xi) - shape.vessels_m,
                                                 axis=-1).max())
 
         station = traces["sample_stations_ref_mm"]
@@ -54,19 +68,25 @@ def verify(template, capability, run):
         for lateral in (-20., -10., 0.):
             rotation = shape.pose(station, lateral)[:, :3, :3]
             for s, physical in zip(station, rotation, strict=True):
-                nodes, weights = template.surface_address(s, lateral)
-                source_frame = frame(weights @ template.tangent[nodes], weights @ template.inward[nodes])
-                target_frame = frame(weights @ shape.skin_tangent[nodes], weights @ shape.skin_inward[nodes])
+                if spline:
+                    _, target_frame, source_frame = shape.attached_frames(s, lateral)
+                else:
+                    nodes, weights = template.surface_address(s, lateral)
+                    source_frame = frame(weights @ template.tangent[nodes], weights @ template.inward[nodes])
+                    target_frame = frame(weights @ shape.skin_tangent[nodes], weights @ shape.skin_inward[nodes])
                 relative = (template.robot_from_atlas[:3, :3] @ target_frame).T @ physical
                 expected_relative = source_frame.T @ template.reference_probe_frame(s).as_matrix()
                 max_relative_rotation_error = max(max_relative_rotation_error,
                                                   float(np.max(np.abs(relative - expected_relative))))
         assert max_relative_rotation_error <= 1.e-12
-        expected_h, expected_theta = [], []
-        for value in station:
-            nodes, weights = shape.surface_address(value, 0.)
-            expected_h.append(weights @ template.chart.h.ravel()[nodes])
-            expected_theta.append(np.angle(weights @ np.exp(1j * template.chart.theta.ravel()[nodes])))
+        if spline:
+            expected_h, expected_theta = shape.material_surface(station, 0.)
+        else:
+            expected_h, expected_theta = [], []
+            for value in station:
+                nodes, weights = shape.surface_address(value, 0.)
+                expected_h.append(weights @ template.chart.h.ravel()[nodes])
+                expected_theta.append(np.angle(weights @ np.exp(1j * template.chart.theta.ravel()[nodes])))
         expected = np.column_stack((expected_theta, expected_h, np.zeros_like(station)))
         sample_labels = shape.xyz_to_xi(sample_pose[:, :3, 3])
         max_label_error = np.maximum(max_label_error, coordinate_error(sample_labels, expected))
@@ -116,8 +136,8 @@ def verify(template, capability, run):
                     step = f * FRAME_STRIDE
                     pose = realized[step]
                     effective = scene.offset + [z_mm[f], 0.]
-                    measured = project(shape, pose, effective)[0]
-                    physical = project(shape, pose, effective - scene.bias)[0]
+                    measured = project(world, pose, effective)[0]
+                    physical = project(world, pose, effective - scene.bias)[0]
                     packet, role, true_u = sensor.observe_means(scene, f, measured, physical)
                     means = project(shape, pose, model.offsets_mm)
                     belief, assoc = model.update_projected(belief, packet, means)
@@ -181,25 +201,32 @@ def main():
 
     reference = args.runs[0]
     ref_report = json.loads((reference / "SUMMARY.json").read_text())
+    reference_cases = {row["case"]: row for row in ref_report["cases"]}
     with np.load(reference / "TRACES.npz", allow_pickle=False) as traces:
         reference_poses = traces["sample_material_probe_poses"].copy()
         reference_vessels = traces["nominal_vessels_m"].copy()
+        reference_vessel_labels = traces["vessel_material_xi"].copy()
         reference_tapes = {name: traces[name].copy() for name in traces.files
                            if name.endswith(("_clear", "_noise_mm", "_z_mm"))}
     for run, row in zip(args.runs, records, strict=True):
         cohort = json.loads((run / "SUMMARY.json").read_text())
         with np.load(run / "TRACES.npz", allow_pickle=False) as traces:
             poses = traces["sample_material_probe_poses"]
+            np.testing.assert_array_equal(traces["vessel_material_xi"], reference_vessel_labels)
             relative = Rotation.from_matrix(reference_poses[:, :3, :3]).inv() * Rotation.from_matrix(poses[:, :3, :3])
             row["max_material_probe_origin_change_vs_first_mm"] = float(
                 1000. * np.linalg.norm(poses[:, :3, 3] - reference_poses[:, :3, 3], axis=-1).max())
             row["max_material_probe_rotation_change_vs_first_deg"] = float(np.rad2deg(relative.magnitude()).max())
             row["max_material_vessel_point_change_vs_first_mm"] = float(
                 1000. * np.linalg.norm(traces["nominal_vessels_m"] - reference_vessels, axis=-1).max())
-            common_cases = min(len(cohort["cases"]), len(ref_report["cases"]))
-            for i, case in enumerate(cohort["cases"][:common_cases]):
+            common_cases = 0
+            for case in cohort["cases"]:
+                i = case["case"]
+                if i not in reference_cases:
+                    continue
+                common_cases += 1
                 for k in ("hidden_static_offset_mm", "hidden_calibration_bias_mm"):
-                    np.testing.assert_array_equal(case[k], ref_report["cases"][i][k])
+                    np.testing.assert_array_equal(case[k], reference_cases[i][k])
                 for suffix in ("clear", "noise_mm"):
                     key = f"{i}_{suffix}"
                     np.testing.assert_array_equal(traces[key], reference_tapes[key])

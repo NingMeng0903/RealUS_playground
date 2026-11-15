@@ -98,8 +98,9 @@ def project(shape, pose, shifts_mm):
 
 
 class Scan:
-    def __init__(self, shape, capability, witness, regression):
+    def __init__(self, shape, capability, witness, regression, *, world=None, entry=None):
         self.shape = shape
+        self.world = shape if world is None else world
         self.capability = capability
         self.witness = witness
         self.regression = regression
@@ -110,9 +111,9 @@ class Scan:
         self.sensor = Sensor()
         self.models = {arm: ResidualFilter(self.sensor, FRAME_DT_S, model)
                        for arm, model in RESIDUAL_ARMS.items()}
-        self.initial_x = float(self.nominal_x[0])
+        self.initial_x = float(self.nominal_x[0]) if entry is None else entry[0]
         initial_pose = shape.pose(self.path[0], self.initial_x)
-        q = ik(capability, initial_pose, witness, witness[0])
+        q = ik(capability, initial_pose, witness, witness[0]) if entry is None else entry[1]
         if not capability.check_q(q, initial_pose)["valid"]:
             raise KinematicRejection("no valid start configuration at the material anchor")
         self.initial_q = q
@@ -249,8 +250,8 @@ class Scan:
     def observation(self, scene, frame, pose, z_mm):
         """Generate an observation at the actual FK pose in the shared world."""
         effective = scene.offset + [z_mm, 0.] if z_mm else scene.offset
-        measured = self.project(pose, effective)[0]
-        physical = self.project(pose, effective - scene.bias)[0]
+        measured = project(self.world, pose, effective)[0]
+        physical = project(self.world, pose, effective - scene.bias)[0]
         return self.sensor.observe_means(scene, frame, measured, physical)
 
     def execute(self, scene, arm, motion_mm=None):
@@ -352,22 +353,36 @@ def main(argv=None):
     shape_arg.add_argument("--beta", nargs=10, type=float)
     parser.add_argument("--knee-deg", type=float, default=15.)
     parser.add_argument("--cases", type=int, default=16)
+    parser.add_argument("--first-case", type=int, default=0,
+                        help="first disturbance ID for a contiguous repeatable slice")
+    parser.add_argument("--chart", choices=("tet", "spline"), default="tet",
+                        help="spline changes planning geometry; both use the tetrahedral observation world")
+    parser.add_argument("--spline-binding", choices=("legacy", "registered"),
+                        help="when using the spline, bind the registered physical vessels at reference (default) or reuse old labels")
     parser.add_argument("--arm", action="append", choices=ARMS)
     parser.add_argument("--motion", choices=MOTION_MODES, default="static",
                         help="OU and transient worlds default to a paired static-map, IID and OU test")
     args = parser.parse_args(argv)
-    if args.cases < 1:
-        parser.error("--cases must be positive")
+    if args.cases < 1 or args.first_case < 0:
+        parser.error("require --cases > 0 and --first-case >= 0")
+    if args.chart == "tet" and args.spline_binding == "registered":
+        parser.error("--spline-binding registered requires --chart spline")
     from NMI_idea.experiments.ab_module_ladder_20261110.capability.capability import CapabilityEvaluator
 
     template = ScanTemplate(args.among_us, args.repair)
-    shape = template.instantiate(args.delta_beta or (0., 0.), args.knee_deg, beta=args.beta)
+    world = template.instantiate(args.delta_beta or (0., 0.), args.knee_deg, beta=args.beta)
+    binding = args.spline_binding or "registered"
+    shape = template.with_spline(world, binding) if args.chart == "spline" else world
     bank = HERE.parent / "ab_full_b_rollout_20261113/motion/BANK_MAIN.json.xz"
     demonstration = HERE / "verification/DEMONSTRATIONS.npz"
     capability = CapabilityEvaluator(device="cpu")
     witness_id, witness = load_witness(bank)
     with np.load(demonstration, allow_pickle=False) as frozen:
-        scan = Scan(shape, capability, witness, frozen["shape_regression"])
+        baseline = Scan(world, capability, witness, frozen["shape_regression"])
+        scan = baseline if shape is world else Scan(
+            shape, capability, witness, frozen["shape_regression"], world=world,
+            entry=(baseline.initial_x, baseline.initial_q),
+        )
     arms = args.arm or (("mpc_stream",) if args.motion == "static" else PAIRED_ARMS)
     log_motion = args.motion != "static" or any(arm in RESIDUAL_ARMS for arm in arms)
     rng = np.random.default_rng(SEED)
@@ -375,12 +390,20 @@ def main(argv=None):
     cases = []
     ref_stations = shape.s_mm[::8]
     traces = {"witness_q": witness, "nominal_vessels_m": shape.vessels_m,
-              "vessel_material_xi": template.vessel_xi,
+              "vessel_material_xi": shape.vessel_material_xi,
               "sample_stations_ref_mm": ref_stations,
               "sample_material_probe_poses": shape.pose(ref_stations, np.zeros_like(ref_stations))}
+    if shape is not world:
+        traces.update(world_vessels_m=world.vessels_m, world_offset_axes=world.offset_axes)
+        if binding == "registered":
+            traces["vessel_legacy_xi"] = world.vessel_material_xi
     if log_motion:
         traces["offset_axes"] = shape.offset_axes
-    for i in range(args.cases):
+    for _ in range(args.first_case):
+        scan.sensor.scene(rng, FRAME_COUNT)
+        if log_motion:
+            motion_tape(motion_rng, FRAME_COUNT, FRAME_DT_S, args.motion)
+    for i in range(args.first_case, args.first_case + args.cases):
         scene = scan.sensor.scene(rng, FRAME_COUNT)
         z_mm = motion_tape(motion_rng, FRAME_COUNT, FRAME_DT_S, args.motion) if log_motion else None
         if log_motion:
@@ -397,7 +420,7 @@ def main(argv=None):
             traces[f"{key}_fk_m"] = poses
             traces[f"{key}_x_v"] = lateral
         cases.append(row)
-        print(f"case {i + 1}/{args.cases}", flush=True)
+        print(f"case {i + 1}/{args.first_case + args.cases}", flush=True)
     means = {}
     for arm in arms:
         rows = [case["arms"][arm] for case in cases]
@@ -421,6 +444,9 @@ def main(argv=None):
         "means": means,
         "cases": cases,
     }
+    if shape is not world:
+        report["observation_world"] = "tet"
+        report["physical_start"] = "tet"
     if log_motion:
         report["scope"] = ("Known static SMPL-X beta and knee pose; two synthetic centreline returns; "
                            "shared lateral vessel motion relative to the chart; sampled RM75 kinematics")

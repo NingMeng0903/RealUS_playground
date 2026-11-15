@@ -121,6 +121,10 @@ class ShapeGeometry:
     def s_mm(self):
         return self.template.s_mm
 
+    @property
+    def vessel_material_xi(self):
+        return self.template.vessel_xi
+
     def _robot_points(self, points):
         transform = self.template.robot_from_atlas
         return points @ transform[:3, :3].T + transform[:3, 3]
@@ -165,6 +169,51 @@ class ShapeGeometry:
             relative_rotation = template_frame.T @ reference[i]
             matrix[:3, :3] = transform[:3, :3] @ current_frame @ relative_rotation
             matrix[:3, 3] = self._robot_points(bary @ self.skin_xyz[ids])
+        return result
+
+
+@dataclass(frozen=True)
+class SplineShapeGeometry(ShapeGeometry):
+    """The same material chart with an independently admitted curved volume."""
+
+    reference_tube: object
+    bound_vessel_xi: np.ndarray
+
+    @property
+    def vessel_material_xi(self):
+        return self.bound_vessel_xi
+
+    def material_surface(self, s_mm, x_ref_mm):
+        s, x = np.broadcast_arrays(np.asarray(s_mm, float), np.asarray(x_ref_mm, float))
+        if (not np.isfinite(s + x).all()
+                or np.any((s < self.s_mm[0]) | (s > self.s_mm[-1]))):
+            raise ValueError("finite station and lateral offset required within the registered scan")
+        return self.template._station(s), self.template._angle(s) + .001 * x / self.template._lateral_per_radian(s)
+
+    @staticmethod
+    def surface_frames(tube, h, theta):
+        position, dh, dtheta = tube.skin.evaluate(h, theta, derivative=True)
+        inward = np.cross(dh, dtheta)
+        direction = tube.core(h) - position
+        inward = unit(inward * np.sign(np.sum(inward * direction, axis=-1, keepdims=True)))
+        tangent = unit(dh)
+        return position, np.stack((tangent, np.cross(inward, tangent), inward), axis=-1)
+
+    def attached_frames(self, s_mm, x_ref_mm):
+        h, theta = self.material_surface(s_mm, x_ref_mm)
+        position, current = self.surface_frames(self.volume_refiner.tube, h, theta)
+        _, reference = self.surface_frames(self.reference_tube, h, theta)
+        return position, current, reference
+
+    def pose(self, s_mm, x_ref_mm):
+        s, x = np.broadcast_arrays(np.asarray(s_mm, float), np.asarray(x_ref_mm, float))
+        result = np.broadcast_to(np.eye(4), s.shape + (4, 4)).copy()
+        if s.size:
+            position, current, reference = self.attached_frames(s, x)
+            rotation = self.template.reference_probe_frame(s.ravel()).as_matrix().reshape(s.shape + (3, 3))
+            transform = self.template.robot_from_atlas[:3, :3]
+            result[..., :3, :3] = transform @ current @ np.swapaxes(reference, -1, -2) @ rotation
+            result[..., :3, 3] = self._robot_points(position)
         return result
 
 
@@ -329,3 +378,73 @@ class ScanTemplate:
         return ShapeGeometry(self, readonly(vessels @ r.T + p), self.make_refiner(volume),
                              readonly(outer.reshape(-1, 3)), readonly(self._sign_t * tangent),
                              readonly(self._sign_n * inward), readonly(offset_axes), metadata)
+
+    def with_spline(self, baseline, vessel_binding="registered"):
+        """Keep the same template anchors and admit the spline separately."""
+        from spline_atlas import RadialDepth, SplineRefiner, SplineTube
+        from spline_certificate import certify_tube
+
+        if baseline.template is not self or isinstance(baseline, SplineShapeGeometry):
+            raise ValueError("spline requires a tetrahedral geometry from this template")
+        if vessel_binding not in ("legacy", "registered"):
+            raise ValueError("unsupported spline vessel binding")
+
+        def certify(tube):
+            report = certify_tube(tube.skin.coeff, tube.core_coeff, tube.h, tube.skin.theta)
+            if not report["certificate_pass"]:
+                raise ValueError(f"spline chart is not certified: {report['reason']}")
+            return {key: value for key, value in report.items() if key != "elapsed_s"}
+
+        h, theta, radii = self.chart.levels, self.chart.bearings, self.asset.radial_fractions
+        if not hasattr(self, "_spline_reference"):
+            reference_tube = SplineTube(h, theta, radii, self._reference_volume)
+            self._spline_reference_gate = certify(reference_tube)
+            self._spline_depth = RadialDepth(h, theta, radii, self.asset.depth.reshape(self.asset.grid_shape))
+            self._spline_reference = reference_tube
+        metadata = baseline.metadata.copy()
+        at_reference = (np.array_equal(metadata["beta"], self.reference_beta)
+                        and metadata["knee_deg"] == REFERENCE_KNEE_DEG)
+        if at_reference:
+            tube = self._spline_reference
+            certificate = self._spline_reference_gate
+        else:
+            volume, _, _, _ = self._transport.deform("right", (0., 0.), metadata["knee_deg"],
+                                                      beta=metadata["beta"])
+            tube = SplineTube(h, theta, radii, volume.astype(np.float32))
+            certificate = certify(tube)
+        refiner = SplineRefiner(tube, self._spline_depth)
+        bound = self.vessel_xi
+        if vessel_binding == "registered":
+            if not hasattr(self, "_registered_vessel_xi"):
+                # Re-express the original physical registration once, in
+                # the reference spline. No shape or observation retuning.
+                points = np.einsum("ni,nij->nj", self.vessel_bary,
+                                   self._reference_volume[self.asset.tets[self.vessel_tets]])
+                reference_refiner = SplineRefiner(self._spline_reference, self._spline_depth)
+                labels = reference_refiner.p_to_xi(points)
+                error = float(np.linalg.norm(reference_refiner.xi_to_p(labels) - points, axis=-1).max())
+                if error > 3.e-9:
+                    raise ValueError("reference vessel rebind did not reconstruct the physical registration")
+                self._spline_migration = {
+                    "method": "reference_xyz_inverse_spline_v1",
+                    "sha256": array_digest(points, self.vessel_xi, labels),
+                    "reference_reconstruction_max_m": error,
+                }
+                self._registered_vessel_xi = readonly(labels.reshape(self.vessel_xi.shape))
+            bound = self._registered_vessel_xi
+            metadata["spline_vessel_binding"] = vessel_binding
+            metadata["spline_vessel_address_sha256"] = array_digest(bound)
+            metadata["spline_vessel_migration"] = self._spline_migration.copy()
+        vessels = refiner.xi_to_p(bound)
+        transform = self.robot_from_atlas
+        mid = float(self.s_mm[len(self.s_mm) // 2])
+        hi, angle = self._station(mid), self._angle(mid)
+        _, current = SplineShapeGeometry.surface_frames(tube, hi, angle)
+        _, reference = SplineShapeGeometry.surface_frames(self._spline_reference, hi, angle)
+        offset_axes = (transform[:3, :3] @ current @ reference.T @ self.reference_probe_frame(mid).as_matrix())[:, 1:]
+        return SplineShapeGeometry(
+            self, readonly(vessels @ transform[:3, :3].T + transform[:3, 3]), refiner,
+            baseline.skin_xyz, baseline.skin_tangent, baseline.skin_inward, readonly(offset_axes),
+            {**metadata, "chart": "spline", "spline_gate": certificate,
+             "radial_lattice_error_m": tube.radial_binding_error_m}, self._spline_reference, bound,
+        )
