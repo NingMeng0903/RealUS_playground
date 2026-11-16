@@ -1,5 +1,7 @@
 # Stage-A search data: corrected experiment and interim review
 
+Subsequent experiment: [public-history teacher, revisable evidence, and fresh paired results](ADAPTIVE_RESULTS.md).
+
 Date: 2026-11-17. Status: **development diagnostic, not a learned-B result**.
 
 ## Why the earlier pilot was stopped
