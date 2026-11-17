@@ -12,7 +12,7 @@ from time import process_time
 import joblib
 import numpy as np
 
-from adaptive_controller import BINS, END, IDENTITY_ACCEPT, station_bin
+from adaptive_controller import AdaptiveController, BINS, END, IDENTITY_ACCEPT, station_bin
 from adaptive_teacher import cem_discover, evaluate, fixed_worlds, posterior_worlds
 from audit_prodmp_weights import legacy_reference
 from diagnose_b_selection import run_parallel, save_archive
@@ -30,8 +30,10 @@ NS = {"discovery": 24_210_000, "development": 25_210_000, "holdout": 26_210_000,
       "library_test": 28_210_000}
 FIXED = ("advance", "wait", "short", "side_left", "side_right", "revisit")
 SHADOW_SCALE = 2.
+EVIDENCE_TAPE = 1562
 SELECTION_TAPE = 4167
 B_MODELS = None
+STOCK_CONTROLLERS = {}
 
 
 def bands(rows, names, fields=FIELDS):
@@ -160,7 +162,7 @@ def evidence_case(row):
     action = controller.options_shared(root)[row["selected"]["mpc"]]
     outputs = []
     for prior in row["verification"]:
-        future = tape_for(scene.latent, seed, prior["replica"], 1562)
+        future = tape_for(scene.latent, seed, prior["replica"], EVIDENCE_TAPE)
         metrics, record = real_trial(controller, root, prefix, future, [action])
         assert metrics["corrected_complete"] == prior["outcomes"]["mpc"]["corrected_complete"]
         results = {name: replay_evidence(controller.world, record, retain_candidates=retain)
@@ -254,6 +256,71 @@ def run_evidence(args, out):
                                      "correction_simulated_s_median": float(np.median(timing)) if timing else None}
     save_archive(out / "evidence_cases.jsonl.gz", rows)
     write_json(out / "evidence_summary.json", result | {"motion_source_sha256": fingerprint(args.source / "test.jsonl.gz")})
+
+
+def stock_controller(world, sections, coefficients, _cem_fit, _requests, *, evidence_mode, material_surface):
+    return AdaptiveController(world, sections, coefficients, evidence_mode=evidence_mode)
+
+
+def evidence_without_cem_case(job):
+    row, tape_namespace = job
+    family, seed = row["family"], row["seed"]
+    augmented, scene, root, prefix = case_start(family, seed)
+    stock = STOCK_CONTROLLERS[family]
+    stock_root, stock_prefix = shared_prefix(stock, scene)
+    if stock_prefix.packets != prefix.packets or stock_prefix.motion != prefix.motion:
+        raise ValueError("paired motion arms have different initial scans")
+    stock_action = stock.choose_mpc(stock_root, expanded=True, open_decision=True)
+    archived_action = augmented.options_shared(root)[row["selected"]["mpc"]]
+    outputs = []
+    for index, saved in enumerate(row["verification"]):
+        future = tape_for(scene.latent, seed, index, tape_namespace)
+        trials = {}
+        for label, controller, state, history, action in (
+            ("stock", stock, stock_root, stock_prefix, stock_action),
+            ("cem", augmented, root, prefix, archived_action),
+        ):
+            run, record = real_trial(controller, state, history, future, [action])
+            if label == "cem":
+                expected = saved["outcomes"]["mpc"] if "outcomes" in saved else saved["mpc"]
+                if any(run[k] != expected[k] for k in TARGETS):
+                    raise ValueError("augmented MPC replay differs from its archived outcomes")
+            elif any(step["action"].startswith("cem_") for step in record.decisions):
+                raise ValueError("stock controller used a CEM request")
+            for rule, retain in (("capture", False), ("retain", True)):
+                result = replay_evidence(controller.world, record, retain_candidates=retain)
+                if retain and any(run[k] != result[k] for k in ("corrected_complete", "final_wrong")):
+                    raise ValueError("retention replay differs from the closed-loop ledger")
+                metrics = {k: run[k] for k in ("tcp_mm", "turn_degs", "seconds", "frames")}
+                metrics.update({k: result[k] for k in ("corrected_complete", "final_wrong",
+                                                        "ever_wrong", "verified_intervals")})
+                trials[f"{label}_{rule}"] = metrics
+        outputs.append(trials)
+    return {"family": family, "seed": seed, "verification": outputs}
+
+
+def run_evidence_without_cem(args, out):
+    settings = (
+        ("reference", args.source, args.source / "test.jsonl.gz", EVIDENCE_TAPE),
+        ("wider_shadows", out / "shadow_library", out / "selection_holdout.jsonl.gz", SELECTION_TAPE),
+    )
+    reports = {}
+    fields = ("corrected_complete", "final_wrong", "ever_wrong", "verified_intervals",
+              "tcp_mm", "turn_degs", "seconds", "frames")
+    for name, library, archive, tape in settings:
+        configure(library, controller_type=stock_controller)
+        STOCK_CONTROLLERS.update(CONTROLLERS)
+        configure(library)
+        jobs = [(row, tape) for row in read_rows(archive)]
+        rows = run_parallel(evidence_without_cem_case, jobs, args.jobs, f"{name} retention without CEM")
+        save_archive(out / f"evidence_without_cem_{name}.jsonl.gz", rows)
+        reports[name] = {
+            "archive_sha256": fingerprint(archive),
+            "stock_retention_effect": bands(rows, ("stock_capture", "stock_retain"), fields),
+            "augmented_retention_effect": bands(rows, ("cem_capture", "cem_retain"), fields),
+            "stock_vs_augmented_with_retention": bands(rows, ("cem_retain", "stock_retain"), fields),
+        }
+    write_json(out / "evidence_without_cem_summary.json", reports)
 
 
 def within_caps(candidate, baseline, caps=CAPS):
@@ -582,8 +649,8 @@ def audit_recorded_input(directory, out):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("phase", choices=("evidence", "selection", "discovery", "render", "ceiling", "relaxed",
-                                         "recordings"))
+    parser.add_argument("phase", choices=("evidence", "evidence_without_cem", "selection", "discovery", "render",
+                                         "ceiling", "relaxed", "recordings"))
     parser.add_argument("--source", type=Path, default=Path("results/visible_atlas_v1"))
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--cases", type=int, default=64, help="held-out scenes per family")
@@ -598,6 +665,9 @@ def main():
         if args.recordings is None:
             parser.error("--recordings is required")
         audit_recorded_input(args.recordings, args.out)
+        return
+    if args.phase == "evidence_without_cem":
+        run_evidence_without_cem(args, args.out)
         return
     source = args.source
     if args.phase != "evidence":

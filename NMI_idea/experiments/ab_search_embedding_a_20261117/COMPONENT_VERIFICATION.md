@@ -22,6 +22,21 @@ Replay all 768 archived strong-MPC trajectories for 192 scenes with four disturb
 
 Final wrong identity was zero in both arms. Both arms registered interim wrong confirmation in four tapes from the same shared initial scan. The retained-candidate update took 0.293 ms median and 0.754 ms at the 95th percentile per synthetic packet during CPU replay. This comparison measures the use of previously acquired observations under the archived motion, where acquisition can continue while identity is pending. [Summary](results/component_verification_v1/evidence_summary.json) · [Scenario records](results/component_verification_v1/evidence_cases.jsonl.gz)
 
+## Candidate retention without CEM
+
+Run both motion configurations on the original reference and wider-shadow scenes. The stock controller uses the original ProDMP weights and the existing analytic candidates. Remove all six CEM requests and the CEM-trained nominal fit together, including in the MPC continuation. Both arms use the same initial scan, observation model, paired disturbance tapes, and task budgets. Check the augmented controller against the archived MPC outcomes, including time, motion costs, and identity metrics.
+
+Both controllers produce their closed-loop trajectories with retention enabled. Within each resulting observation stream, replay the identical Bayesian filter under the two retention rules. The within-row difference measures use of previously acquired evidence on the same path. The two retention-enabled outcomes also match the corresponding live simulated ledger. Across motion configurations, different paths can acquire different observations.
+
+| Simulated cohort | Motion configuration | Confirmed at capture only | Retain candidates and confirm later | Unbranched, capture only → retain |
+| --- | --- | ---: | ---: | ---: |
+| Reference | Stock | 381/768 | 765/768 | 0/384 → 384/384 |
+| Reference | CEM requests and fitted primitive | 384/768 | 768/768 | 0/384 → 384/384 |
+| Wider shadows | Stock | 216/512 | 472/512 | 0/256 → 256/256 |
+| Wider shadows | CEM requests and fitted primitive | 216/512 | 472/512 | 0/256 → 256/256 |
+
+With candidate retention enabled, the three reference completions gained by the CEM motion bundle come from three disturbance tapes of one connection scenario. The pooled difference from stock to augmented is +0.39 percentage points with a scene-paired 95% interval of [0.00, 1.17]. The wider-shadow completion outcomes agree on every paired tape. All arms have zero final wrong identities. The retention gain appears in both motion configurations. The small reference motion difference measures the combined option and renderer change. [Summary](results/component_verification_v1/evidence_without_cem_summary.json) · [Reference records](results/component_verification_v1/evidence_without_cem_reference.jsonl.gz) · [Wider-shadow records](results/component_verification_v1/evidence_without_cem_wider_shadows.jsonl.gz)
+
 ## CEM proposal discovery
 
 Use 48 development scenes, three shared initial proposal distributions, six draws per round, and two rounds. CEM refits the sampling distribution between rounds. The random comparison keeps the initial distribution. Both propose 1,728 paths across the development set. Feasible, distinct paths get three paired search tapes with privileged knowledge of scene geometry. The winning executable request is then checked on eight independent disturbance tapes. A verified proposal must add at least two correct completions over the stock MPC opening, satisfy the relative execution caps on those tapes, and maintain or reduce both error outcomes.
@@ -99,6 +114,7 @@ python verify_recovery_components.py discovery --out "$out" --cases 64 --samples
 python verify_recovery_components.py render --out "$out" --cases 48 --jobs 6
 python verify_recovery_components.py ceiling --out "$out" --jobs 12
 python verify_recovery_components.py relaxed --out "$out" --jobs 12
+python verify_recovery_components.py evidence_without_cem --out "$out" --jobs 14
 ```
 
 The metadata audit can be repeated with an aligned ultrasound/TCP directory and an environment with `h5py` and `Pillow`.
