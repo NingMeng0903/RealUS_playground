@@ -68,7 +68,9 @@ Audit the available aligned recordings by reading metadata and decoding one midp
 
 ## Reproduction
 
-Run from this directory with the archived `results/visible_atlas_v1` inputs. The resulting case files contain paired outcomes. The scenario seeds and tape namespaces are specified in the validation runner.
+Run from this directory with the archived `results/visible_atlas_v1` inputs. The runs used Python 3.10.12, NumPy 2.2.6, SciPy 1.15.3, scikit-learn 1.7.2, and joblib 1.5.2. The ProDMP integral basis loads the tracked copy of the observation-stress implementation, which is byte-for-byte identical to the module used for the original runs. The scenario seeds and tape namespaces are specified in the validation runner.
+
+A scratch copy with the repository inputs reproduced both evidence arms on one scene per task and all three renderers on two scenes per task, including their four disturbance tapes. The seven existing evidence regression tests also passed.
 
 ```sh
 export OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1
