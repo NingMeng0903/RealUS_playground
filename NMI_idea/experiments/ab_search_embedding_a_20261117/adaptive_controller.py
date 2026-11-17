@@ -91,9 +91,10 @@ class AdaptiveController(Controller):
         self.learned = learned
         self.evidence_mode = evidence_mode
 
-    def initial_scan(self, scene, *, detailed=False):
-        x = float(np.clip(self.world.nominal(START)[0], -30., 0.))
-        state = ScanState(self.world.prior.copy(), START, x, angle=REFERENCE_KNEE_DEG)
+    def initial_scan(self, scene, *, detailed=False, start_s=START, start_x=None):
+        center = self.world.nominal(start_s)[0] if start_x is None else start_x
+        x = float(np.clip(center, -30., 0.))
+        state = ScanState(self.world.prior.copy(), start_s, x, angle=REFERENCE_KNEE_DEG)
         if self.evidence_mode == VISIBLE_EVIDENCE:
             state.image_candidates = (((), np.empty((0, len(state.belief)))),) * BINS
             state.capture_support = (np.zeros_like(state.belief),) * BINS

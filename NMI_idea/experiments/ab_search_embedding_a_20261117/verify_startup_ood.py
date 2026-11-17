@@ -112,8 +112,8 @@ def startup_controller(world, sections, coefficients, _fit, _requests, *, eviden
                              evidence_mode=evidence_mode)
 
 
-def scout(controller, scene):
-    root, prefix = controller.initial_scan(scene, detailed=True)
+def scout(controller, scene, *, start_s=START, start_x=None):
+    root, prefix = controller.initial_scan(scene, detailed=True, start_s=start_s, start_x=start_x)
     hold = controller.candidate(root, "wait", root.s, 0., root.x, False)
     if hold is None:
         raise ValueError("common scout hold is infeasible")

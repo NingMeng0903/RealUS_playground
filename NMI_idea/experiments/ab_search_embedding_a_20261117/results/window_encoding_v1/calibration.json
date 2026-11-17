@@ -1,0 +1,27 @@
+{
+  "parameters": {
+    "mean_mm": [
+      0.1867271558342933,
+      0.011801975233899116
+    ],
+    "sd_mm": [
+      1.6139548060258049,
+      0.9025626084082538
+    ],
+    "width": 1.6
+  },
+  "registration_cases": 96,
+  "visibility_cases": 64,
+  "brier_by_width": {
+    "1.0": 0.17736562069953418,
+    "1.2": 0.14110083100063542,
+    "1.4": 0.12322259632618449,
+    "1.6": 0.11726006320018037
+  },
+  "frozen_inputs": {
+    "calibration_starts": "157c138ecb5b19f3a2784d040051d0a65252ed430f1de0aaa6e17312efaf0aee",
+    "train_starts": "2fd516b86bef0a5a9d994442e0e5386312707394fac4af28c33ac0b3b2aa3ae1",
+    "dev_starts": "6786b81a4031fb29f9665509647f632dcd69e89e005d391ff9fe312f847c03d7",
+    "test_starts": "0911a7740c190974f0a183d8872604d90d81276d62eee2e33328f043b244e975"
+  }
+}

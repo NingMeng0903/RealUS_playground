@@ -1,0 +1,30 @@
+{
+  "features": {
+    "current": 414,
+    "margin": 444,
+    "calibrated": 456
+  },
+  "fixed_dev": {
+    "connection": "back_right",
+    "parallel": "cem_2"
+  },
+  "development_completions": {
+    "mpc": 418.0,
+    "fixed_cem4": 443.0,
+    "fixed_dev": 473.0,
+    "best_per_case": 494.0,
+    "current": 468.0,
+    "margin": 463.0,
+    "calibrated": 467.0
+  },
+  "development_runs_per_policy": 512,
+  "frozen_sha256": {
+    "models.joblib": "6000f78a757cb96f46389e60320f2e2a174fb3937e28537cedb3f5ee21271328",
+    "labels.json": "0088b6fb46865ad25f9dd25922465393f6dab424b7e6de514ba65bc00ac13a6a",
+    "calibration.json": "e157ae3dd4fdab69ec89dd7eca75a795418f1fafccd50ac467a6d05fe45e2b25"
+  },
+  "source_sha256": {
+    "library.json": "311d64449d58a7bb0a21c02a2f7ed253ebabc60c4dd55f317a6d6186d2caab20",
+    "prodmp_fit.npy": "2c0d6d4e7decdfc6f9fd98428f3e529a48f143342473527f60be08de9f9f5571"
+  }
+}
