@@ -150,8 +150,7 @@ def prepare(out, jobs):
                "frozen_inputs": {f"{s}_starts": fingerprint(out / f"{s}_starts.jsonl.gz") for s in SPLITS}})
 
 
-def input_row(row):
-    controller, scene, root, prefix = start_case(row)
+def decision_inputs(controller, root, prefix, row, calibration):
     begin = process_time()
     menu = controller.options_shared(root, renderer="fit")
     incumbent = controller.mpc(root, menu, False, active=True, informative=True).name
@@ -164,12 +163,18 @@ def input_row(row):
     margins = np.asarray([signed_margins(controller.world, root, views) for views in paths])
     feature_seconds["margin"] = feature_seconds["current"] + process_time() - begin
     begin = process_time()
-    probabilities = [target_detection_probabilities(controller.world, root, views, CALIBRATION) for views in paths]
+    probabilities = [target_detection_probabilities(controller.world, root, views, calibration) for views in paths]
     calibrated = np.asarray([detection_features(p, views, root.query_bin())
                              for p, views in zip(probabilities, paths, strict=True)])
     feature_seconds["calibrated"] = feature_seconds["margin"] + process_time() - begin
     inputs = row | menu_metadata(menu) | {"incumbent": incumbent, "features": base, "margins": margins,
                                          "calibrated_detection": calibrated}
+    return menu, inputs, common, feature_seconds
+
+
+def input_row(row):
+    controller, scene, root, prefix = start_case(row)
+    menu, inputs, common, feature_seconds = decision_inputs(controller, root, prefix, row, CALIBRATION)
     return controller, scene, root, prefix, menu, inputs, common, feature_seconds
 
 
@@ -214,7 +219,10 @@ def model_inputs(row, variant):
 
 
 def action_choice(row, variant, models):
-    predictions = predict_deltas(models, model_inputs(row, variant))
+    return choice_from_predictions(row, predict_deltas(models, model_inputs(row, variant)))
+
+
+def choice_from_predictions(row, predictions):
     incumbent = row["names"].index(row["incumbent"])
     predictions[incumbent] = 0.
     utility = predictions @ OBJECTIVE

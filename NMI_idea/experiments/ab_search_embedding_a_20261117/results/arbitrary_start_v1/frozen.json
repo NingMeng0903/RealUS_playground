@@ -1,0 +1,16 @@
+{
+  "source_sha256": {
+    "library.json": "311d64449d58a7bb0a21c02a2f7ed253ebabc60c4dd55f317a6d6186d2caab20",
+    "prodmp_fit.npy": "2c0d6d4e7decdfc6f9fd98428f3e529a48f143342473527f60be08de9f9f5571",
+    "models.joblib": "6000f78a757cb96f46389e60320f2e2a174fb3937e28537cedb3f5ee21271328",
+    "labels.json": "0088b6fb46865ad25f9dd25922465393f6dab424b7e6de514ba65bc00ac13a6a",
+    "calibration.json": "e157ae3dd4fdab69ec89dd7eca75a795418f1fafccd50ac467a6d05fe45e2b25"
+  },
+  "training_sha256": "fbd0ca72c48322e6c5b99e649b8a07492bcff1415d62ed68a181ff34c27a2aaf",
+  "models_sha256": "ba354000675a4df4aadd4e05643fea206e9fd58a9fd5142e9c25d2b4ded67d88",
+  "initial_scenes": 144,
+  "task_states": 224,
+  "candidates": 4655,
+  "label_rollouts": 27930,
+  "test_starts_sha256": "d436688e49b918621456228334b7a8f6a8af65a3aa2769f9c4e8c7697f6c3f95"
+}

@@ -14,9 +14,10 @@ class PublicPackets:
         self.mass = np.ones(2)
         self.responsibility = np.array([1., .4])
         self.centers = np.array([[-6., 8.], [-6., 8.]])
+        self.role = 0
 
     def observe(self, scene, frame, s, x):
-        return np.array([[0., 8.]]), np.array([0]), self.centers[0]
+        return np.array([[0., 8.]]), np.array([self.role]), self.centers[0]
 
     def likelihood(self, packet, s, x, q):
         return self.mass, self.responsibility[:, None]
@@ -135,6 +136,20 @@ class QualifiedEvidenceTests(unittest.TestCase):
         self.assertEqual(metrics["corrected_complete"], 1.)
         self.assertEqual(metrics["centered_complete"], 0.)
         self.assertEqual(metrics["abs_center_error_sum_mm"], 6. * BINS)
+
+    def test_finishing_a_suffix_only_requires_the_requested_intervals(self):
+        self.enable_visible([.99, .01])
+        self.state.first_required_bin = BINS - 1
+        self.controller.world.role = 1
+        self.observe()
+        self.assertEqual(self.state.uncovered(), [BINS - 1])
+        self.state.s = END
+        self.controller.world.role = 0
+        self.observe()
+        metrics = final_metrics(self.state, self.record, root_frame=-1, query_bin=BINS - 1)
+        self.assertEqual(metrics["corrected_complete"], 1.)
+        self.assertEqual(metrics["final_wrong"], 0.)
+        self.assertEqual(metrics["new_identity_mistake"], 1.)
 
 
 if __name__ == "__main__":

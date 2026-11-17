@@ -37,6 +37,10 @@ class ScanState(State):
     legacy_covered: int = 0
     image_candidates: tuple | None = None
     capture_support: tuple | None = None
+    first_required_bin: int = 0
+
+    def uncovered(self):
+        return [j for j in range(self.first_required_bin, BINS) if not self.covered & (1 << j)]
 
     def query_bin(self):
         if self.capture_support is not None:
@@ -91,10 +95,13 @@ class AdaptiveController(Controller):
         self.learned = learned
         self.evidence_mode = evidence_mode
 
-    def initial_scan(self, scene, *, detailed=False, start_s=START, start_x=None):
+    def initial_scan(self, scene, *, detailed=False, start_s=START, start_x=None, first_required_bin=0):
+        if not 0 <= first_required_bin < BINS:
+            raise ValueError("first required interval is outside the atlas scan")
         center = self.world.nominal(start_s)[0] if start_x is None else start_x
         x = float(np.clip(center, -30., 0.))
-        state = ScanState(self.world.prior.copy(), start_s, x, angle=REFERENCE_KNEE_DEG)
+        state = ScanState(self.world.prior.copy(), start_s, x, angle=REFERENCE_KNEE_DEG,
+                          first_required_bin=first_required_bin)
         if self.evidence_mode == VISIBLE_EVIDENCE:
             state.image_candidates = (((), np.empty((0, len(state.belief)))),) * BINS
             state.capture_support = (np.zeros_like(state.belief),) * BINS
@@ -400,7 +407,7 @@ def final_metrics(state, record, *, sampled_latent=None, root_frame=0, query_bin
     centered_bins, correct_bins = 0, 0
     signed_errors = []
     for j, witness in enumerate(state.ledger):
-        if witness is None:
+        if j < state.first_required_bin or witness is None:
             continue
         event = events.get((witness.frame, j, witness.slot))
         if sampled_latent is not None and (event is None or "identity_ok" not in event):
