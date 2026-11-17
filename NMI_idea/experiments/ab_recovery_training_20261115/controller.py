@@ -198,18 +198,19 @@ class Controller:
                         return Candidate(name, s, vs, plan, travel, turn, float(goal - center))
         return None
 
-    def forecast(self, state, candidate, alias):
+    def forecast(self, state, candidate, alias, *, earlier_evidence=None):
         q = state.query_bin()
         remaining = state.uncovered()
         values = {j: np.zeros_like(state.belief) for j in remaining}
         near = np.zeros_like(state.belief)
         for i in LOOK_SAMPLES:
             means, vis = self.world.predict(candidate.s[i], candidate.lateral.x[i], state.angle, alias=alias)
-            center = np.exp(-.5 * (means[:, 0, 0] / 2.1)**2)
-            probability = vis[:, 0] * center
+            probability = (vis[:, 0] * np.exp(-.5 * (means[:, 0, 0] / 2.1)**2)
+                           if earlier_evidence is None else vis[:, 0])
             j = station_bin(candidate.s[i])
             if j in values:
-                values[j] = np.maximum(values[j], probability)
+                gain = probability if earlier_evidence is None else probability * (1. - earlier_evidence[j])
+                values[j] = np.maximum(values[j], gain)
             near = np.maximum(near, probability)
         seen_q = float(state.belief @ values.get(q, np.zeros_like(near)))
         total = sum(float(state.belief @ value) for value in values.values())
@@ -253,14 +254,16 @@ class Controller:
                 head[name] = c
         return head
 
-    def adv_score(self, state, candidate, alias):
+    def adv_score(self, state, candidate, alias, *, earlier_evidence=None):
         f = self.forecast(state, candidate, alias)
         end_s, end_x = candidate.s[-1], candidate.lateral.goal
         tail_s = min(end_s + PROGRESS_SPEED, END)
         tail_target = self.mean(state, tail_s, alias)[0]
         tail_x = end_x + np.clip(tail_target - end_x, -8.5, 8.5)
         means, vis = self.world.predict(tail_s, tail_x, state.angle, alias=alias)
-        tail = state.belief @ (vis[:, 0] * np.exp(-.5 * (means[:, 0, 0] / 2.1)**2))
+        hit = (vis[:, 0] * np.exp(-.5 * (means[:, 0, 0] / 2.1)**2)
+               if earlier_evidence is None else vis[:, 0])
+        tail = state.belief @ hit
         return float(.65 * f[1] + .65 * f[2] + .45 * tail - .018 * f[4])
 
     def info(self, state, candidate, alias):

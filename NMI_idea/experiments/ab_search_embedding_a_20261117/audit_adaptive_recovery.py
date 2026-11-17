@@ -13,6 +13,72 @@ from run_adaptive_recovery import WORKERS, init_worker
 from recovery_world import Scene
 
 
+def audit_visible_evidence(controller, prefix, suffix, packets, truth, metrics, arrived):
+    evidence = [[] for _ in range(BINS)]
+    belief = controller.world.prior.copy()
+    previously_retained = [None] * BINS
+    confirmed = []
+    revoked = []
+    mistakes = set()
+    root_frame = prefix["public"]["packets"][-1]["frame"]
+    for frame, packet in sorted(packets.items()):
+        mass, associations = controller.world.likelihood(
+            np.asarray(packet["y"], dtype=float).reshape(-1, 2), packet["s"], packet["x"], packet["q"])
+        belief *= mass
+        belief /= belief.sum()
+        np.testing.assert_allclose(belief, packet["belief"], atol=1e-12, rtol=0.)
+        association = belief @ associations
+        np.testing.assert_allclose(association, packet["association"], atol=1e-12, rtol=0.)
+        selected = packet["accepted_slot"]
+        assert selected == (int(np.argmax(association)) if association.max(initial=0.) >= IDENTITY_ACCEPT else -1)
+        if frame > root_frame and selected >= 0 and truth[frame][0][selected] != 0:
+            mistakes.add((frame, selected))
+        j = station_bin(packet["s"])
+        if j >= 0:
+            evidence[j].extend((frame, slot, weight) for slot, weight in enumerate(associations.T))
+        retained = []
+        for j, candidates in enumerate(evidence):
+            scores = np.asarray([w @ belief for _, _, w in candidates])
+            match = None
+            if len(scores) and scores.max() >= IDENTITY_ACCEPT:
+                index = int(np.flatnonzero(scores >= max(IDENTITY_ACCEPT, scores.max() - 1e-9))[0])
+                match = list(candidates[index][:2])
+            old = previously_retained[j]
+            if match != old:
+                if old is not None:
+                    revoked.append((frame, j, *old))
+                if match is not None:
+                    acquired, slot = match
+                    roles, target = truth[acquired]
+                    correct = roles[slot] == 0
+                    centered = abs(target[0] - packets[acquired]["x"]) <= CENTER_MM
+                    confirmed.append((frame, j, acquired, slot, correct, centered))
+                    if frame > root_frame and not correct:
+                        mistakes.add((acquired, slot))
+            retained.append(match)
+        assert retained == packet["visible_ledger"]
+        previously_retained = retained
+    observed = prefix["evaluator"]["certificates"] + suffix["evaluator"]["certificates"]
+    retractions = prefix["public"]["retractions"] + suffix["public"]["retractions"]
+    assert confirmed == [(a["accepted_at"], a["bin"], a["frame"], a["slot"], a["identity_ok"], a["center_ok"])
+                         for a in observed]
+    assert revoked == [(a["frame"], a["bin"], a["witness"], a["slot"]) for a in retractions]
+    assert len(revoked) == metrics["retractions"]
+    assert metrics["new_identity_mistake"] == bool(mistakes)
+    assert metrics["wrong_certificates"] == sum(not row[4] for row in confirmed)
+    final = [pair for pair in retained if pair is not None]
+    good_errors = [abs(truth[f][1][0] - packets[f]["x"]) for f, slot in final if truth[f][0][slot] == 0]
+    centered = sum(error <= CENTER_MM for error in good_errors)
+    assert metrics["final_wrong"] == (len(good_errors) < len(final))
+    assert metrics["corrected_complete"] == (arrived and len(good_errors) == BINS)
+    assert metrics["centered_complete"] == (arrived and centered == BINS)
+    assert metrics["correct_visible_bins"] == len(good_errors)
+    assert metrics["centered_correct_bins"] == centered
+    assert metrics["covered_mask"] == sum(1 << j for j, pair in enumerate(retained) if pair is not None)
+    assert np.isclose(metrics["abs_center_error_sum_mm"], sum(good_errors))
+    return len(retractions), len(mistakes)
+
+
 def audit_trial(controller, prefix, suffix, metrics):
     left, right = prefix["public"], suffix["public"]
     motion = np.asarray(left["executed_motion"] + right["executed_motion"][1:])
@@ -30,6 +96,8 @@ def audit_trial(controller, prefix, suffix, metrics):
     assert np.isclose(distance, metrics["tcp_mm"]) and np.isclose(turn, metrics["turn_degs"])
     assert np.isclose(motion[-1, 0], metrics["seconds"])
     assert metrics["max_handoff_error"] < 1e-7
+    if "visible_ledger" in packets[max(packets)]:
+        return audit_visible_evidence(controller, prefix, suffix, packets, truth, metrics, motion[-1, 1] >= END - .28)
 
     certificates = prefix["evaluator"]["certificates"] + suffix["evaluator"]["certificates"]
     certificate_by_frame = {(a["frame"], a["bin"]): a for a in certificates}
@@ -149,7 +217,9 @@ def audit(path):
             for name, log, metrics in trials:
                 prefix = row.get("prefix_by_arm", {}).get(name, row["prefix"])
                 revocations, mistakes = audit_trial(controller, prefix, log, metrics)
-                counts.update(trajectories=1, retractions=revocations, centered_mistakes=mistakes)
+                counts.update(trajectories=1, retractions=revocations)
+                key = "identity_mistakes" if "new_identity_mistake" in metrics else "centered_mistakes"
+                counts[key] += mistakes
     return dict(counts)
 
 

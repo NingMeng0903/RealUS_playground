@@ -18,3 +18,8 @@ path, and current plus path plus posterior modes. A controller should be able
 to run with the same action and observation interfaces when this feature is
 removed.
 
+The [visible-target recovery benchmark](VISIBLE_ATLAS_RECOVERY.md) supplies the
+registered harmonic-atlas surface labels and the probe's lateral and depth
+limits to the same embedding. Its candidate visibility and vessel posterior
+come from the shared observation model and filter.
+

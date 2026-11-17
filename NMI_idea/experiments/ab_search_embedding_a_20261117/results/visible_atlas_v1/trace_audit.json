@@ -1,0 +1,17 @@
+{
+  "alias_packet_checks": 81,
+  "archives": {
+    "results/visible_atlas_v1/test.jsonl.gz": {
+      "worlds": 192,
+      "trajectories": 384,
+      "retractions": 2280,
+      "identity_mistakes": 0
+    }
+  },
+  "repeat_replay": {
+    "distinct_trajectories": 908,
+    "paired_policy_outcomes": 1536,
+    "disjoint_seed_sets": true,
+    "verified_model_and_input_digests": true
+  }
+}

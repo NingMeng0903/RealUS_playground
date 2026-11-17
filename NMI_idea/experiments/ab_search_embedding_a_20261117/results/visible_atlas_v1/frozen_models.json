@@ -1,0 +1,66 @@
+{
+  "variants": {
+    "learned_b": {
+      "selected": "posterior",
+      "development": {
+        "posterior": {
+          "delta": {
+            "corrected_complete": 0.0,
+            "final_wrong": 0.0,
+            "new_identity_mistake": 0.0,
+            "tcp_mm": 0.0579879807221641,
+            "turn_degs": 0.0,
+            "seconds": 0.0
+          },
+          "normalized_cap_violation": 0.0,
+          "families": {
+            "connection": 32,
+            "parallel": 32
+          },
+          "selected": {
+            "cem_5": 22,
+            "advance": 42
+          },
+          "candidate_training_rows": 3936
+        },
+        "mixed": {
+          "delta": {
+            "corrected_complete": 0.0,
+            "final_wrong": 0.0,
+            "new_identity_mistake": 0.0,
+            "tcp_mm": 0.045765492525722984,
+            "turn_degs": -8.326672684688674e-17,
+            "seconds": 0.0
+          },
+          "normalized_cap_violation": 0.0,
+          "families": {
+            "connection": 32,
+            "parallel": 32
+          },
+          "selected": {
+            "cem_5": 24,
+            "advance": 40
+          },
+          "candidate_training_rows": 3936
+        }
+      }
+    }
+  },
+  "model_sha256": "2076933b3b57d066d535d9cacf819ebc7a28a5c1e7581474baac5585f50de796",
+  "evidence_mode": "visible",
+  "targets": [
+    "corrected_complete",
+    "final_wrong",
+    "new_identity_mistake",
+    "tcp_mm",
+    "turn_degs",
+    "seconds"
+  ],
+  "library_sha256": "fc8c84d969f9dba512de3fdbb1e81829d65790f9719fde45c32874ca2931fd3b",
+  "prodmp_sha256": "a96a71304fa8e04af9bfae18fe03ac6bc502b5a496e6bf7d15d9ec49f4c54d0e",
+  "train_sha256": "cf804d855039418341c25a00d1c5967d17960edb3dae96c51378d73fb2b63b47",
+  "dev_sha256": "890961660bc371468b82c6f5258265db4ddae8de28d21f7e6df0a1d88a6f9673",
+  "training_worlds": 192,
+  "development_worlds": 64,
+  "development_selection": "lowest cap violation, then highest mean correct completion"
+}

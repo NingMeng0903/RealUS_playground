@@ -71,7 +71,8 @@ def root_report(root, prefix):
 
 
 def trace(record, *, after_frame=-1):
-    public_keys = ("frame", "s", "x", "q", "y", "association", "accepted_slot", "belief", "qualified_coverage")
+    public_keys = ("frame", "s", "x", "q", "y", "association", "accepted_slot", "belief",
+                   "qualified_coverage", "visible_ledger")
     packets = [p for p in record.packets if p["frame"] > after_frame]
     return {"public": {"packets": [{k: p[k] for k in public_keys if k in p} for p in packets],
                        "executed_motion": [p for p in record.motion if p[0] > .1 * after_frame - 1e-7],
@@ -79,12 +80,13 @@ def trace(record, *, after_frame=-1):
                        "references": [r for r in record.references if r["frame"] >= after_frame],
                        "retractions": [r for r in record.retractions if r["frame"] > after_frame]},
             "evaluator": {"packet_roles": [[p["frame"], p["roles_truth"], p["target_truth"]] for p in packets],
-                          "certificates": [a for a in record.certificates if a["frame"] > after_frame],
+                          "certificates": [a for a in record.certificates
+                                           if a.get("accepted_at", a["frame"]) > after_frame],
                           "legacy_accepts": [a for a in record.accepts if a["frame"] > after_frame]}}
 
 
 def public_root(root):
-    return {k: v for k, v in vars(root).items() if k != "ledger"} | {
+    return {k: v for k, v in vars(root).items() if k not in {"ledger", "image_candidates", "capture_support"}} | {
         "ledger": [None if witness is None else vars(witness) for witness in root.ledger]}
 
 

@@ -9,14 +9,20 @@ from adaptive_controller import (BINS, CENTER_MM, EDGES, QUALIFIED_EVIDENCE, Ada
 from adaptive_teacher import replace_shape
 from budgeted_recovery import CAPS
 from embedding import position_embedding
+from recovery_world import FOV_MAX, FOV_MIN
 
 
 TARGETS = ("corrected_complete", "final_wrong", "new_centered_mistake", "tcp_mm", "turn_degs", "seconds")
+VISIBLE_TARGETS = (*TARGETS[:2], "new_identity_mistake", *TARGETS[3:])
 OBJECTIVE = np.array([1., -1.25, 0., -.002, 0., -.02])
 
 
-def outcome_vector(metrics):
-    return [float(metrics[field]) for field in TARGETS]
+def outcome_vector(metrics, targets=TARGETS):
+    return [float(metrics[field]) for field in targets]
+
+
+def resource_limits(targets):
+    return {targets[TARGETS.index(field)]: value for field, value in CAPS.items()}
 
 
 def cem_requests(discovery_rows, count):
@@ -37,9 +43,11 @@ def cem_requests(discovery_rows, count):
 
 
 class CEMMenuController(AdaptiveController):
-    def __init__(self, world, sections, coefficients, fitted, requests, *, evidence_mode=QUALIFIED_EVIDENCE):
+    def __init__(self, world, sections, coefficients, fitted, requests, *, evidence_mode=QUALIFIED_EVIDENCE,
+                 material_surface=None):
         super().__init__(world, sections, coefficients, fitted, evidence_mode=evidence_mode)
         self.requests = requests
+        self.material_surface = material_surface
 
     def options_shared(self, state, *, expanded=True, renderer="fit"):
         menu = super().options_shared(state, expanded=expanded, renderer="waypoint")
@@ -64,9 +72,12 @@ def _features(controller, state, candidate, responsibilities):
     indices = np.linspace(0, len(candidate.s) - 1, 6).round().astype(int)[1:]
     predictions = [controller.world.predict(candidate.s[i], candidate.lateral.x[i], state.angle) for i in indices]
     means, visibility = (np.stack(value) for value in zip(*predictions, strict=True))
-    centered = visibility[:, :, 0] * np.exp(-.5 * (means[:, :, 0, 0] / CENTER_MM)**2)
+    visible = state.capture_support is not None
+    imaging = visibility[:, :, 0] if visible else visibility[:, :, 0] * np.exp(-.5 * (means[:, :, 0, 0] / CENTER_MM)**2)
     bins = np.asarray([station_bin(candidate.s[i]) for i in indices])
-    coverage = np.stack([1. - np.prod(1. - centered[bins == j], axis=0) for j in range(BINS)])
+    coverage = np.stack([1. - np.prod(1. - imaging[bins == j], axis=0) for j in range(BINS)])
+    if visible:
+        coverage *= 1. - np.stack(state.capture_support)
     b = state.belief
     query = state.query_bin()
     embedding = position_embedding(
@@ -74,6 +85,8 @@ def _features(controller, state, candidate, responsibilities):
         query_interval=(EDGES[query], EDGES[query + 1]), last_trusted_s=state.last_trusted,
         belief=b, target_positions=means[-1, :, 0] + [candidate.lateral.goal, 0.],
         target_visibility=visibility[-1, :, 0], packet_responsibilities=responsibilities, angle_deg=state.angle,
+        material_surface=controller.material_surface if visible else None,
+        field_of_view=(FOV_MIN, FOV_MAX) if visible else None,
     )
     # Keep location and observable separability distinct. Seeing both tracks
     # with separated centroids is often informative even without a centered hit.
@@ -82,9 +95,9 @@ def _features(controller, state, candidate, responsibilities):
     witness_risk = [1. - b @ w.identity if w is not None else 1. for w in state.ledger]
     return np.r_[
         controller.policy_features(state, candidate, False), embedding, b,
-        state.travel / 67., state.vx / 18., state.residual / 3., witness_risk,
+        state.travel / 67., state.vx / 18., state.residual / (FOV_MAX[0] if visible else CENTER_MM), witness_risk,
         (coverage @ b), np.sqrt(np.maximum((coverage**2) @ b - (coverage @ b)**2, 0.)),
-        centered @ b, disambiguation @ b, (candidate.lateral.v[indices] / 18.),
+        imaging @ b, disambiguation @ b, (candidate.lateral.v[indices] / 18.),
         float(isinstance(candidate, FreeCandidate) and candidate.renderer == "fit"),
     ]
 
@@ -98,14 +111,14 @@ def features_for_menu(controller, state, menu, incumbent, responsibilities):
     return np.column_stack((features, features - reference))
 
 
-def choose_from_deltas(names, incumbent, deltas):
+def choose_from_deltas(names, incumbent, deltas, *, targets=TARGETS):
     """Apply the same objective and predicted resource limits as the online teacher."""
     deltas = np.asarray(deltas, dtype=float).copy()
     incumbent_index = names.index(incumbent)
     deltas[incumbent_index] = 0.
     allowed = np.ones(len(names), dtype=bool)
-    for metric, cap in CAPS.items():
-        allowed &= deltas[:, TARGETS.index(metric)] <= cap + 1e-8
+    for metric, cap in resource_limits(targets).items():
+        allowed &= deltas[:, targets.index(metric)] <= cap + 1e-8
     scores = deltas @ OBJECTIVE
     index = max(np.flatnonzero(allowed), key=lambda i: (scores[i], i == incumbent_index))
     return names[index], deltas, allowed

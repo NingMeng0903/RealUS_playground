@@ -7,10 +7,9 @@ location, a short list of posterior modes, predicted field-of-view
 probabilities, and anonymous packet responsibilities.  It never consumes a
 ``Scene`` object, truth labels, or evaluator-only fields.
 
-``s`` and ``x`` are the recovery benchmark's longitudinal/lateral chart
-coordinates.  They are a chart proxy for the material address, not a full
-three-dimensional harmonic coordinate.  A future 3-D implementation can
-replace these two coordinates while keeping the same causal interface.
+The older runs use the longitudinal/lateral chart proxy. When a frozen
+material surface is supplied, encode the harmonic-atlas surface address and
+the lateral/depth bounds of the probe window along the sampled path.
 """
 
 from __future__ import annotations
@@ -19,6 +18,7 @@ from dataclasses import dataclass
 from typing import Any, Mapping
 
 import numpy as np
+from scipy.interpolate import CubicSpline
 
 
 DEFAULT_S_RANGE = (2.0, 31.4)
@@ -45,6 +45,27 @@ class EmbeddingLayout:
         # contributes weight, validity, relative (s,x), predicted visibility:
         # 5 * top_k.  Packet responsibilities are padded with a validity mask.
         return 10 + 2 * self.path_samples + 5 * self.top_k + 2 * self.max_packets + 1
+
+
+class MaterialSurface:
+    """Fast evaluation of the archived ScanTemplate surface splines."""
+
+    def __init__(self, knots):
+        knots = np.asarray(knots, dtype=float)
+        self.spline = CubicSpline(knots[:, 0], knots[:, 1:], bc_type="natural", extrapolate=False)
+
+    def address(self, s, x):
+        h, theta, transverse = np.moveaxis(self.spline(s), -1, 0)
+        theta = theta + .001 * np.asarray(x) / transverse
+        return np.stack((h, np.sin(theta), np.cos(theta)), axis=-1)
+
+    def window_features(self, s, x, fov):
+        lower, upper = np.asarray(fov)
+        # The two skin addresses describe the nominal lateral span. Depth
+        # limits stay in the calibrated image coordinates.
+        return np.r_[self.address(s, x).ravel(),
+                     self.address(s, x + lower[0]).ravel(),
+                     self.address(s, x + upper[0]).ravel(), [lower[1] / 60., upper[1] / 60.]]
 
 
 EMBEDDING_DEFINITION: Mapping[str, Any] = {
@@ -150,6 +171,8 @@ def position_embedding(
     x_range: tuple[float, float] = DEFAULT_X_RANGE,
     angle_ref_deg: float = DEFAULT_ANGLE_REF_DEG,
     layout: EmbeddingLayout = EmbeddingLayout(),
+    material_surface: MaterialSurface | None = None,
+    field_of_view: tuple | None = None,
 ) -> np.ndarray:
     """Build a fixed-dimensional, public position/belief feature vector.
 
@@ -190,6 +213,13 @@ def position_embedding(
             float(np.clip(_scale(s_value - current_s, -20.0, 20.0), -2.0, 2.0)),
             float(np.clip(_scale(x_value - current_x, -30.0, 30.0), -2.0, 2.0)),
         ))
+    dimension = layout.dimension
+    if material_surface is not None:
+        if field_of_view is None:
+            raise ValueError("material addresses require the calibrated field of view")
+        chart = material_surface.window_features(np.r_[current_s, path_s], np.r_[current_x, path_x], field_of_view)
+        dimension += len(chart) - len(features)
+        features = chart.tolist()
     # The four path samples already include the endpoint displacement.  The
     # first four entries are current position plus endpoint displacement; the
     # explicit path contributes 2*path_samples entries below.
@@ -227,7 +257,7 @@ def position_embedding(
                              / np.log(max(len(np.asarray(belief)), 2)), 0.0, 1.0)))
 
     result = np.asarray(features, dtype=float)
-    if result.shape != (layout.dimension,) or np.any(~np.isfinite(result)):
+    if result.shape != (dimension,) or np.any(~np.isfinite(result)):
         raise RuntimeError(f"embedding shape/finite invariant failed: {result.shape}, {layout.dimension}")
     return result
 

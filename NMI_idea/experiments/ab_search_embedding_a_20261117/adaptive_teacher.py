@@ -23,7 +23,7 @@ def evaluate(controller, root, action, worlds, *, open_blocks=0, detailed=False)
         if action is not None:
             controller.execute(scene, state, record, action)
         controller.tail(scene, state, record, open_blocks=open_blocks)
-        outcome = final_metrics(state, record, sampled_latent=scene.latent)
+        outcome = final_metrics(state, record, sampled_latent=scene.latent, root_frame=root.frame)
         outcome["turn_degs"] = sum(step["executed_turn_deg"] for step in record.decisions)
         outcome["new_centered_mistake"] = any(
             row["accepted_slot"] >= 0 and row["roles_truth"][row["accepted_slot"]] != 0

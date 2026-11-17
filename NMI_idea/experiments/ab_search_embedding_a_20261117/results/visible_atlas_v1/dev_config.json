@@ -1,0 +1,13 @@
+{
+  "out": "results/visible_atlas_v1",
+  "phase": "collect",
+  "split": "dev",
+  "cases": 32,
+  "jobs": 24,
+  "samples": 8,
+  "replicas": 6,
+  "offset": 52000,
+  "elapsed_s": 41.408017224996,
+  "library_sha256": "fc8c84d969f9dba512de3fdbb1e81829d65790f9719fde45c32874ca2931fd3b",
+  "prodmp_sha256": "a96a71304fa8e04af9bfae18fe03ac6bc502b5a496e6bf7d15d9ec49f4c54d0e"
+}

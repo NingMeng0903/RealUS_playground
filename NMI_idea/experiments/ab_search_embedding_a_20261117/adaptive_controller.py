@@ -14,7 +14,8 @@ from primitive import BLOCK_STEPS, FRAME_STRIDE, SAMPLE_DT_S, Plan, admissible
 
 QUALIFIED_EVIDENCE = "qualified"
 LEGACY_EVIDENCE = "legacy"
-EVIDENCE_MODES = (QUALIFIED_EVIDENCE, LEGACY_EVIDENCE)
+VISIBLE_EVIDENCE = "visible"
+EVIDENCE_MODES = (QUALIFIED_EVIDENCE, LEGACY_EVIDENCE, VISIBLE_EVIDENCE)
 QUALITY_ACCEPT = IDENTITY_ACCEPT
 
 
@@ -34,6 +35,15 @@ class Witness:
 class ScanState(State):
     ledger: tuple = (None,) * BINS
     legacy_covered: int = 0
+    image_candidates: tuple | None = None
+    capture_support: tuple | None = None
+
+    def query_bin(self):
+        if self.capture_support is not None:
+            for j in self.uncovered():
+                if self.belief @ self.capture_support[j] < IDENTITY_ACCEPT:
+                    return j
+        return super().query_bin()
 
 
 @dataclass
@@ -84,6 +94,9 @@ class AdaptiveController(Controller):
     def initial_scan(self, scene, *, detailed=False):
         x = float(np.clip(self.world.nominal(START)[0], -30., 0.))
         state = ScanState(self.world.prior.copy(), START, x, angle=REFERENCE_KNEE_DEG)
+        if self.evidence_mode == VISIBLE_EVIDENCE:
+            state.image_candidates = (((), np.empty((0, len(state.belief)))),) * BINS
+            state.capture_support = (np.zeros_like(state.belief),) * BINS
         record = self.virtual_record(state, detailed=detailed)
         self.observe(scene, state, record, False)
         return state, record
@@ -105,7 +118,68 @@ class AdaptiveController(Controller):
         state.missed = 0 if slot >= 0 else state.missed + 1
         state.ambiguous = state.ambiguous + 1 if slot < 0 and len(packet) else 0
 
+        row = {"frame": state.frame, "s": state.s, "x": state.x, "q": state.angle,
+               "y": packet.tolist(), "association": association.tolist(), "accepted_slot": slot,
+               "roles_truth": roles.tolist(), "target_truth": truth.tolist()}
+        record.packets.append(row)
+        if state.image_candidates is not None:
+            self.retain_visible(state, record, conditional)
+        else:
+            self.retain_centered(state, record, conditional, roles, truth)
+        query = state.query_bin()
+        point = float(np.mean(EDGES[query:query + 2]))
+        state.query_identity = self.world.identity_prob(state.belief, point, state.angle)
+        if record.detailed:
+            row["belief"] = state.belief.tolist()
+            if state.image_candidates is not None:
+                row["visible_ledger"] = [None if w is None else [w.frame, w.slot] for w in state.ledger]
+            elif self.evidence_mode == QUALIFIED_EVIDENCE:
+                row["qualified_coverage"] = state.covered
+
+    def retain_visible(self, state, record, conditional):
+        bins = list(state.image_candidates)
+        j = station_bin(state.s)
+        if j >= 0 and conditional.shape[1]:
+            existing, weights = bins[j]
+            centered = abs(self.world.target_grid(state.s, state.angle)[:, 0] - state.x) <= CENTER_MM
+            new = tuple(Witness(state.frame, slot, state.s, identity, centered)
+                        for slot, identity in enumerate(conditional.T))
+            bins[j] = existing + new, np.vstack((weights, conditional.T))
+        state.image_candidates = tuple(bins)
+        active = []
+        support = []
+        for j, (options, weights) in enumerate(bins):
+            support.append(weights.max(axis=0, initial=0.))
+            scores = weights @ state.belief
+            winner = None
+            if len(scores) and scores.max() >= IDENTITY_ACCEPT:
+                best = int(np.flatnonzero(scores >= max(IDENTITY_ACCEPT, scores.max() - 1e-9))[0])
+                winner = options[best]
+            old = state.ledger[j]
+            if winner is not old:
+                if old is not None:
+                    record.retractions.append({"frame": state.frame, "bin": j, "witness": old.frame,
+                                               "slot": old.slot, "posterior": float(state.belief @ old.identity)})
+                if winner is not None:
+                    event = {"frame": winner.frame, "bin": j, "slot": winner.slot, "accepted_at": state.frame}
+                    offset = winner.frame - record.packets[0]["frame"]
+                    if offset >= 0:
+                        source = record.packets[offset]
+                        event["identity_ok"] = source["roles_truth"][winner.slot] == 0
+                        event["center_ok"] = abs(source["target_truth"][0] - source["x"]) <= CENTER_MM
+                    else:
+                        event["predicted_identity"] = winner.identity
+                    record.certificates.append(event)
+            active.append(winner)
+        state.capture_support = tuple(support)
+        state.ledger = tuple(active)
+        state.covered = sum(1 << j for j, w in enumerate(active) if w is not None)
+        recent = max((w for w in active if w is not None), key=lambda w: w.frame, default=None)
+        state.last_trusted = None if recent is None else recent.station
+
+    def retain_centered(self, state, record, conditional, roles, truth):
         qualified = self.evidence_mode == QUALIFIED_EVIDENCE
+        slot = state.slot
         active = list(state.ledger)
         retracted = False
         for j, witness in enumerate(active):
@@ -151,17 +225,12 @@ class AdaptiveController(Controller):
         if qualified:
             recent = max(covered.values(), key=lambda w: w.frame, default=None)
             state.last_trusted = None if recent is None else recent.station
-        query = state.query_bin()
-        point = float(np.mean(EDGES[query:query + 2]))
-        state.query_identity = self.world.identity_prob(state.belief, point, state.angle)
-        row = {"frame": state.frame, "s": state.s, "x": state.x, "q": state.angle,
-               "y": packet.tolist(), "association": association.tolist(), "accepted_slot": slot,
-               "roles_truth": roles.tolist(), "target_truth": truth.tolist()}
-        if record.detailed:
-            row["belief"] = state.belief.tolist()
-            if qualified:
-                row["qualified_coverage"] = state.covered
-        record.packets.append(row)
+
+    def forecast(self, state, candidate, alias):
+        return super().forecast(state, candidate, alias, earlier_evidence=state.capture_support)
+
+    def adv_score(self, state, candidate, alias):
+        return super().adv_score(state, candidate, alias, earlier_evidence=state.capture_support)
 
     def free_candidate(self, state, name, ds, dx, bow=0., longitudinal_bow=0., *, renderer="waypoint"):
         goal_s = float(np.clip(state.s + ds, START, END))
@@ -302,45 +371,78 @@ class AdaptiveController(Controller):
         return state, record
 
 
+def identity_mistake(record, after_frame, sampled_latent=None):
+    confirmed = {(p["frame"], p["accepted_slot"]): float(p["roles_truth"][p["accepted_slot"]] == 0)
+                 for p in record.packets if p["frame"] > after_frame and p["accepted_slot"] >= 0}
+    for event in record.certificates:
+        if event.get("accepted_at", event["frame"]) <= after_frame:
+            continue
+        if "identity_ok" in event:
+            valid = float(event["identity_ok"])
+        else:
+            valid = event["predicted_identity"][sampled_latent]
+        confirmed[event["frame"], event["slot"]] = valid
+    if len(confirmed) > len({f for f, _ in confirmed}):
+        return 1.
+    return 1. - float(np.prod(list(confirmed.values())))
+
+
 def final_metrics(state, record, *, sampled_latent=None, root_frame=0, query_bin=None):
     """Score real witnesses, or integrate the identities of unseen past witnesses in model rollouts."""
-    events = {(event["frame"], event["bin"]): event for event in record.certificates}
-    p_correct, p_no_wrong = 1., 1.
-    good_bins = 0
+    events = {(event["frame"], event["bin"], event["slot"]): event for event in record.certificates}
+    visible = state.image_candidates is not None
+    p_centered, p_no_wrong = 1., 1.
+    centered_bins, correct_bins = 0, 0
+    signed_errors = []
     for j, witness in enumerate(state.ledger):
         if witness is None:
             continue
-        event = events.get((witness.frame, j))
-        if sampled_latent is not None and event is None:
+        event = events.get((witness.frame, j, witness.slot))
+        if sampled_latent is not None and (event is None or "identity_ok" not in event):
             correct = float(witness.identity[sampled_latent])
             centered = bool(witness.centered[sampled_latent])
         else:
             correct = float(event["identity_ok"])
             centered = event["center_ok"]
-        p_correct *= correct * centered
+            if visible and sampled_latent is None and correct:
+                source = record.packets[witness.frame - record.packets[0]["frame"]]
+                signed_errors.append(source["target_truth"][0] - source["x"])
+        p_centered *= correct * centered
         p_no_wrong *= correct
-        good_bins += int(correct == 1. and centered)
+        centered_bins += int(correct == 1. and centered)
+        correct_bins += int(correct == 1.)
     ready = state.s >= END - .28 and not state.uncovered()
-    score = {"corrected_complete": float(ready) * p_correct, "final_wrong": 1. - p_no_wrong,
+    score = {"corrected_complete": float(ready) * (p_no_wrong if visible else p_centered),
+             "final_wrong": 1. - p_no_wrong,
              "tcp_mm": state.travel, "seconds": state.frame * .1, "frames": state.frame + 1,
-             "good_bins": good_bins, "covered_mask": state.covered}
+             "good_bins": centered_bins, "covered_mask": state.covered}
+    if visible:
+        score |= {"new_identity_mistake": identity_mistake(record, root_frame, sampled_latent),
+                  "centered_complete": float(ready) * p_centered, "correct_visible_bins": correct_bins,
+                  "centered_correct_bins": centered_bins,
+                  "abs_center_error_sum_mm": float(np.abs(signed_errors).sum())}
     if sampled_latent is not None:
         return score
     old = record.details(state)
     wrong_certificates = [e for e in record.certificates if not e["identity_ok"]]
     revoked = {(r["witness"], r["bin"]): r["frame"] for r in record.retractions}
-    wrong_at_root = [e["bin"] for e in wrong_certificates if e["frame"] <= root_frame
+    wrong_at_root = [e["bin"] for e in wrong_certificates if e.get("accepted_at", e["frame"]) <= root_frame
                      < revoked.get((e["frame"], e["bin"]), FRAME_COUNT)]
     repaired = [j for j in wrong_at_root if state.ledger[j] is not None and state.ledger[j].frame > root_frame
-                and events[(state.ledger[j].frame, j)]["identity_ok"]
-                and events[(state.ledger[j].frame, j)]["center_ok"]]
+                and events[(state.ledger[j].frame, j, state.ledger[j].slot)]["identity_ok"]
+                and (visible or events[(state.ledger[j].frame, j, state.ledger[j].slot)]["center_ok"])]
     query = [r for r in record.packets if r["frame"] > root_frame and station_bin(r["s"]) == query_bin]
-    fresh = any(r["accepted_slot"] >= 0 and r["roles_truth"][r["accepted_slot"]] == 0
-                and abs(r["y"][r["accepted_slot"]][0]) <= CENTER_MM
-                and abs(r["target_truth"][0] - r["x"]) <= CENTER_MM for r in query)
+    if visible:
+        fresh = any(e["bin"] == query_bin and e["frame"] > root_frame and e["identity_ok"]
+                    for e in record.certificates)
+    else:
+        fresh = any(r["accepted_slot"] >= 0 and r["roles_truth"][r["accepted_slot"]] == 0
+                    and abs(r["y"][r["accepted_slot"]][0]) <= CENTER_MM
+                    and abs(r["target_truth"][0] - r["x"]) <= CENTER_MM for r in query)
     wrong_time = sum(max(0, revoked.get((e["frame"], e["bin"]), state.frame) - e["frame"])
                      for e in wrong_certificates) * .1
-    return dict(score, old_strict_complete=old["complete"], ever_wrong=old["wrong"] or old["wrong_certification"],
+    return dict(score, old_strict_complete=old["complete"],
+                ever_wrong=bool(identity_mistake(record, -1)) if visible else old["wrong"] or old["wrong_certification"],
                 wrong_confident_frames=old["wrong_confident_frames"], wrong_card_seconds=wrong_time,
                 wrong_certificates=len(wrong_certificates), at_root_wrong_bins=wrong_at_root,
                 repaired_root_bins=repaired, retractions=len(record.retractions),

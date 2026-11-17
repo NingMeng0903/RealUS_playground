@@ -13,11 +13,11 @@ import joblib
 import numpy as np
 from scipy.stats import beta
 
-from adaptive_controller import EVIDENCE_MODES, LEGACY_EVIDENCE, QUALIFIED_EVIDENCE, FreeCandidate
+from adaptive_controller import EVIDENCE_MODES, LEGACY_EVIDENCE, QUALIFIED_EVIDENCE, VISIBLE_EVIDENCE, FreeCandidate
 from adaptive_teacher import evaluate, posterior_worlds
-from budgeted_recovery import CAPS
-from learned_recovery import (TARGETS, CEMMenuController, cem_requests, choose_from_deltas, features_for_menu,
-                              fit_targets, outcome_vector, predict_deltas)
+from embedding import MaterialSurface
+from learned_recovery import (TARGETS, VISIBLE_TARGETS, CEMMenuController, cem_requests, choose_from_deltas,
+                              features_for_menu, fit_targets, outcome_vector, predict_deltas, resource_limits)
 from recovery_world import RECOVERY, RecoveryWorld
 from run_adaptive_recovery import (MARGINS, OUTCOMES, SECTIONS, jsonable, paired_statistics, public_root,
                                    real_trial, root_report, shared_prefix, tape_for, trace)
@@ -29,6 +29,7 @@ ARMS = ("mpc", "learned_b", "learned_b_without_cem_labels", "online_b")
 MODEL_MIXES = {"posterior": 0., "mixed": .35}
 CONTROLLERS = {}
 MODELS = {}
+MATERIAL_SURFACE = Path(__file__).resolve().with_name("MATERIAL_SURFACE.json")
 
 
 def write_json(path, value):
@@ -58,6 +59,8 @@ def prepare(out, discovery, *, evidence_mode=QUALIFIED_EVIDENCE, targeted=None):
         "verified_demonstrations": sum(row["example"] is not None for row in paths),
         "evidence_mode": evidence_mode,
     }
+    if evidence_mode == VISIBLE_EVIDENCE:
+        library["material_surface_sha256"] = fingerprint(MATERIAL_SURFACE)
     if targeted is not None:
         result = json.loads(targeted.read_text())
         base = json.dumps(library, default=jsonable, allow_nan=False, indent=2) + "\n"
@@ -76,10 +79,19 @@ def configure(out, *, controller_type=CEMMenuController):
     fitted = np.load(out / "prodmp_fit.npy", allow_pickle=False)
     with np.load(RECOVERY / "results" / "prodmp_weights.npz", allow_pickle=False) as weights:
         coefficients = dict(weights)
+    mode = library.get("evidence_mode", LEGACY_EVIDENCE)
+    material = None
+    if mode == VISIBLE_EVIDENCE:
+        if library["material_surface_sha256"] != fingerprint(MATERIAL_SURFACE):
+            raise ValueError("material surface labels changed after motion library preparation")
+        binding = json.loads(MATERIAL_SURFACE.read_text())
+        if binding["sections_sha256"] != fingerprint(SECTIONS):
+            raise ValueError("material labels and section geometry refer to different charts")
+        material = MaterialSurface(binding["knots"])
     for family in FAMILIES:
         CONTROLLERS[family] = controller_type(
             RecoveryWorld(family), sections, coefficients, fitted, library["requests"],
-            evidence_mode=library.get("evidence_mode", LEGACY_EVIDENCE))
+            evidence_mode=mode, material_surface=material)
 
 
 def candidate_set(controller, root, prefix):
@@ -92,10 +104,11 @@ def candidate_set(controller, root, prefix):
 
 
 def rollout_values(controller, root, menu, worlds):
+    targets = VISIBLE_TARGETS if controller.evidence_mode == VISIBLE_EVIDENCE else TARGETS
     matrix = []
     for action in menu.values():
         outcomes, _ = evaluate(controller, root, action, worlds, open_blocks=1)
-        matrix.append([outcome_vector(result) for result in outcomes])
+        matrix.append([outcome_vector(result, targets) for result in outcomes])
     return np.asarray(matrix)
 
 
@@ -105,6 +118,7 @@ def collect_case(job):
     scene = controller.world.draw(seed)
     root, prefix = shared_prefix(controller, scene)
     menu, incumbent, features = candidate_set(controller, root, prefix)
+    targets = VISIBLE_TARGETS if controller.evidence_mode == VISIBLE_EVIDENCE else TARGETS
     bank = posterior_worlds(root, samples, seed + 371)
     actual = [tape_for(scene.latent, seed, k, 1523) for k in range(replicas)]
     observed = []
@@ -112,7 +126,7 @@ def collect_case(job):
         rows = []
         for disturbance in actual:
             outcome, _ = real_trial(controller, root, prefix, disturbance, [action])
-            rows.append(outcome_vector(outcome))
+            rows.append(outcome_vector(outcome, targets))
         observed.append(rows)
     return {
         "family": family, "seed": seed, "evidence_mode": controller.evidence_mode,
@@ -153,7 +167,7 @@ def train_matrix(rows, actual_weight, *, use_cem):
     return np.concatenate(x), np.concatenate(y)
 
 
-def development(models, rows):
+def development(models, rows, *, targets=TARGETS):
     deltas = []
     families = Counter()
     selections = Counter()
@@ -162,13 +176,13 @@ def development(models, rows):
         if not names:
             continue
         prediction = predict_deltas(models, row["features"])
-        selected, _, _ = choose_from_deltas(names, incumbent, prediction)
+        selected, _, _ = choose_from_deltas(names, incumbent, prediction, targets=targets)
         values = np.mean(row["actual_rollouts"], axis=1)
         deltas.append(values[names.index(selected)] - values[names.index(incumbent)])
         families[row["family"]] += 1
         selections[selected] += 1
-    means = dict(zip(TARGETS, np.mean(deltas, axis=0), strict=True))
-    violation = sum(max(0., means[field] - cap) / cap for field, cap in CAPS.items())
+    means = dict(zip(targets, np.mean(deltas, axis=0), strict=True))
+    violation = sum(max(0., means[field] - cap) / cap for field, cap in resource_limits(targets).items())
     return {"delta": means, "normalized_cap_violation": violation, "families": families, "selected": selections}
 
 
@@ -177,10 +191,11 @@ def train(args):
     dev = read_rows(args.out / "dev.jsonl.gz")
     library = json.loads((args.out / "library.json").read_text())
     mode = library.get("evidence_mode", LEGACY_EVIDENCE)
+    targets = VISIBLE_TARGETS if mode == VISIBLE_EVIDENCE else TARGETS
     for split, rows in (("train", training), ("dev", dev)):
         if any(row.get("evidence_mode", LEGACY_EVIDENCE) != mode for row in rows):
             raise ValueError(f"{split} labels do not use {mode} coverage")
-        if mode == QUALIFIED_EVIDENCE:
+        if mode != LEGACY_EVIDENCE:
             archived = json.loads((args.out / f"{split}_config.json").read_text())
             for name, key in (("library.json", "library_sha256"), ("prodmp_fit.npy", "prodmp_sha256")):
                 if archived.get(key) != fingerprint(args.out / name):
@@ -188,12 +203,12 @@ def train(args):
     assert not ({row["seed"] for row in training} & {row["seed"] for row in dev})
     assert max(row["seed"] for row in dev) < SEED_BASE["test"]
     choices, report = {}, {}
-    for arm in ARMS[1:3]:
+    for arm in (ARMS[1:2] if mode == VISIBLE_EVIDENCE else ARMS[1:3]):
         trials = {}
         for name, actual_weight in MODEL_MIXES.items():
-            features, targets = train_matrix(training, actual_weight, use_cem=arm == "learned_b")
-            models = fit_targets(features, targets)
-            scores = development(models, dev)
+            features, labels = train_matrix(training, actual_weight, use_cem=arm == "learned_b")
+            models = fit_targets(features, labels)
+            scores = development(models, dev, targets=targets)
             trials[name] = models, scores | {"candidate_training_rows": len(features)}
             print(f"{arm} {name}: {scores['delta']}", flush=True)
         winner = min(trials, key=lambda name: (trials[name][1]["normalized_cap_violation"],
@@ -204,6 +219,7 @@ def train(args):
     write_json(args.out / "frozen_models.json", {
         "variants": report, "model_sha256": fingerprint(args.out / "models.joblib"),
         "evidence_mode": mode,
+        "targets": targets,
         "library_sha256": fingerprint(args.out / "library.json"),
         "prodmp_sha256": fingerprint(args.out / "prodmp_fit.npy"),
         "train_sha256": fingerprint(args.out / "train.jsonl.gz"),
@@ -216,6 +232,7 @@ def train(args):
 def test_case(job):
     family, seed, samples, replicas = job
     controller = CONTROLLERS[family]
+    targets = VISIBLE_TARGETS if controller.evidence_mode == VISIBLE_EVIDENCE else TARGETS
     scene = controller.world.draw(seed)
     root, prefix = shared_prefix(controller, scene)
     start = process_time()
@@ -228,10 +245,10 @@ def test_case(job):
         start = process_time()
         features = features_for_menu(controller, root, menu, incumbent, prefix.packets[-1]["association"])
         features_cpu = process_time() - start
-        for arm in ARMS[1:3]:
+        for arm, models in MODELS.items():
             start = process_time()
-            pred = predict_deltas(MODELS[arm], features)
-            selected[arm], values, allowed = choose_from_deltas(names, incumbent, pred)
+            pred = predict_deltas(models, features)
+            selected[arm], values, allowed = choose_from_deltas(names, incumbent, pred, targets=targets)
             timings[arm] = shared_cpu + features_cpu + process_time() - start
             predictions[arm] = {"delta": values, "eligible": allowed}
         if samples:
@@ -239,11 +256,14 @@ def test_case(job):
             bank = posterior_worlds(root, samples, 751_239)
             means = rollout_values(controller, root, menu, bank).mean(axis=1)
             selected["online_b"], values, allowed = choose_from_deltas(names, incumbent,
-                                                                        means - means[names.index(incumbent)])
+                                                                        means - means[names.index(incumbent)],
+                                                                        targets=targets)
             timings["online_b"] = shared_cpu + process_time() - start
             predictions["online_b"] = {"delta": values, "eligible": allowed}
     else:
-        selected.update(dict.fromkeys(ARMS[1:] if samples else ARMS[1:3]))
+        selected.update(dict.fromkeys(MODELS))
+        if samples:
+            selected["online_b"] = None
         timings.update(dict.fromkeys(selected, shared_cpu))
     trials = []
     for replica in range(replicas):
@@ -272,9 +292,12 @@ def test_case(job):
     }
 
 
-def summarize(rows, arms):
+def summarize(rows, arms, *, targets=TARGETS):
     out = {}
     fields = (*OUTCOMES, "first_decision_cpu_s", "seconds_plus_first_decision_cpu")
+    if targets == VISIBLE_TARGETS:
+        fields = (*targets, "frames", "ever_wrong", "first_decision_cpu_s", "seconds_plus_first_decision_cpu",
+                  "centered_complete", "correct_visible_bins", "centered_correct_bins", "abs_center_error_sum_mm")
     cohorts = {family: [row for row in rows if row["family"] == family] for family in FAMILIES}
     cohorts["pooled"] = rows
     for family, cases in cohorts.items():
@@ -287,9 +310,19 @@ def summarize(rows, arms):
             report["cem_labels_contrast"] = paired_statistics(cases, both_learned, TARGETS, trials)["vs_reference"]["learned_b"]
         report["counts"] = {
             arm: {key: round(sum(trial[arm][key] for row in cases for trial in trials(row)))
-                  for key in ("corrected_complete", "final_wrong", "new_centered_mistake")}
+                  for key in targets[:3]}
             for arm in arms
         }
+        if targets == VISIBLE_TARGETS:
+            report["centering"] = {
+                arm: {"complete_with_centering": round(values["centered_complete"] * len(cases) * len(trials(cases[0]))),
+                      "centered_fraction_of_correct_retained_images": (
+                          values["centered_correct_bins"] / values["correct_visible_bins"]
+                          if values["correct_visible_bins"] else None),
+                      "mean_abs_lateral_error_mm": (values["abs_center_error_sum_mm"] / values["correct_visible_bins"]
+                                                    if values["correct_visible_bins"] else None)}
+                for arm, values in report["means"].items()
+            }
         report["first_decisions"] = {
             arm: {"differs_from_mpc": sum(row["selected"][arm] != row["selected"]["mpc"] for row in cases),
                   "uses_cem_request": sum((row["selected"][arm] or "").startswith("cem_") for row in cases),
@@ -299,14 +332,14 @@ def summarize(rows, arms):
         report["gates"] = {}
         for arm, deltas in report["vs_reference"].items():
             risk_sensitivity = {}
-            for key in ("final_wrong", "new_centered_mistake"):
+            for key in targets[1:3]:
                 added_cases = sum(any(t[arm][key] > t["mpc"][key] for t in trials(row)) for row in cases)
                 upper = float(beta.ppf(.975, added_cases + 1, len(cases) - added_cases)) if added_cases < len(cases) else 1.
                 risk_sensitivity[key] = {"scenes_with_an_added_mistake": added_cases, "upper_97_5": upper}
             report["gates"][arm] = {
                 "completion": deltas["corrected_complete"]["delta"] >= .05
                 and deltas["corrected_complete"]["ci95"][0] > 0.,
-                "risk": {k: deltas[k]["ci95"][1] <= .02 for k in ("final_wrong", "new_centered_mistake")},
+                "risk": {k: deltas[k]["ci95"][1] <= .02 for k in targets[1:3]},
                 "no_more_cost_than_margin": {k: deltas[k]["ci95"][1] <= v for k, v in MARGINS.items()},
                 "equivalent_cost": {k: deltas[k]["ci95"][0] >= -v and deltas[k]["ci95"][1] <= v
                                     for k, v in MARGINS.items()},
@@ -323,10 +356,12 @@ def test(args):
                         ("prodmp_fit.npy", "prodmp_sha256")):
         if fingerprint(args.out / file) != frozen[entry]:
             raise ValueError(f"saved {file} differs from the development freeze")
+    MODELS.clear()
     MODELS.update(joblib.load(args.out / "models.joblib"))
     archive = args.out / "test.jsonl.gz"
     elapsed = run_cases(args, "test", test_case, archive)
-    report = summarize(read_rows(archive), ARMS if args.samples else ARMS[:3])
+    arms = ("mpc", *MODELS, *(("online_b",) if args.samples else ()))
+    report = summarize(read_rows(archive), arms, targets=tuple(frozen.get("targets", TARGETS)))
     write_json(args.out / "test_summary.json", report | {
         "config": config(args), "elapsed_s": elapsed, "execution_margins": MARGINS,
         "frozen_models_sha256": fingerprint(args.out / "frozen_models.json"),
