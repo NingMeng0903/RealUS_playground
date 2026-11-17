@@ -30,6 +30,8 @@ At the same queried station and pre-action angle, fixed-angle B reduced target-p
 
 The 66 independently resampled development checkpoints illustrate the action-selection limit. Selecting the best branch using a first tape yields +7.58 pp over live MPC on that tape. Repeating the selected action on a fresh suffix yields −1.52 pp [−9.09, 6.06] and takes 0.42 s longer on average. This diagnostic uses evaluator information in the first selection and does not enter the fitted policy, the fixed comparator or the held-out result.
 
+The [fixed-angle diagnosis](results/FIXED_B_DIAGNOSIS.md) repeats the original development choices over additional disturbances and examines completion-only reranking of the archived learned predictions.
+
 The recovery-shape ablation preserves the originally selected action and planned endpoints. Of 63 selected side, short-scan, or revisit openings, 60 allowed an endpoint-only ProDMP replacement under the same motion constraints. Replacing the fitted lateral shape yielded one additional completion among these 60 paired cases and unchanged wrong acceptance and fresh local evidence. Three endpoint-only replacements failed the sampled motion gate. [Same-endpoint mechanism ablation](results/same_endpoint_ablation.json)
 
 ## Scope and reproduction
