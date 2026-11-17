@@ -38,3 +38,5 @@ Both controls retain the entire CEM motion library. The candidate row counts are
 The ranking errors in connection and the eligibility errors in unbranched scans call for different training targets. Independent paired completion ordering within the reachable candidate set can supervise the first. The second needs a calibrated relative resource prediction for the shared scan after the intervention. Additional witness features alone yielded no clear improvement here.
 
 See the [protocol](B_SELECTION_DIAGNOSTIC_PROTOCOL.md), [crossed comparison](results/b_selection_diagnostic_v1/cross_summary.json), [per-case crossed records](results/b_selection_diagnostic_v1/cross_cases.jsonl.gz), [label and input checks](results/b_selection_diagnostic_v1/training_checks.json), and [trace audit](results/b_selection_diagnostic_v1/trace_audit.json). This release gives development evidence from closed-loop simulation and fresh-noise checks on archived training states.
+
+The [teacher completion audit](TEACHER_COMPLETION_AUDIT.md) separately checks the absolute success ceiling and the shared image-retention rule.

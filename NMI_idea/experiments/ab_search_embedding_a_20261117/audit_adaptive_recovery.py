@@ -32,6 +32,7 @@ def audit_trial(controller, prefix, suffix, metrics):
     assert metrics["max_handoff_error"] < 1e-7
 
     certificates = prefix["evaluator"]["certificates"] + suffix["evaluator"]["certificates"]
+    certificate_by_frame = {(a["frame"], a["bin"]): a for a in certificates}
     retractions = left["retractions"] + right["retractions"]
     revoked = {(r["witness"], r["bin"]): r for r in retractions}
     assert len(revoked) == len(retractions) == metrics["retractions"]
@@ -52,8 +53,22 @@ def audit_trial(controller, prefix, suffix, metrics):
             event, packet = revoked[key], packets[a["frame"]]
             assert event["frame"] > a["frame"]
             _, resp = controller.world.likelihood(np.asarray(packet["y"]), packet["s"], packet["x"], packet["q"])
-            p = np.asarray(packets[event["frame"]]["belief"]) @ resp[:, a["slot"]]
-            assert p < IDENTITY_ACCEPT and np.isclose(p, event["posterior"])
+            belief = np.asarray(packets[event["frame"]]["belief"])
+            if event.get("reason") == "higher_centered_probability":
+                new_packet = packets[event["frame"]]
+                replacement = certificate_by_frame[(event["frame"], a["bin"])]
+                _, new_resp = controller.world.likelihood(np.asarray(new_packet["y"]), new_packet["s"],
+                                                         new_packet["x"], new_packet["q"])
+                old_target = controller.world.target_grid(packet["s"], packet["q"])[:, 0]
+                new_target = controller.world.target_grid(new_packet["s"], new_packet["q"])[:, 0]
+                previous = float(belief @ (resp[:, a["slot"]] * (abs(old_target - packet["x"]) <= CENTER_MM)))
+                current = float(belief @ (new_resp[:, replacement["slot"]] *
+                                         (abs(new_target - new_packet["x"]) <= CENTER_MM)))
+                assert current > previous + 1e-9
+                assert np.isclose(previous, event["old_quality"]) and np.isclose(current, event["new_quality"])
+            else:
+                p = belief @ resp[:, a["slot"]]
+                assert p < IDENTITY_ACCEPT and np.isclose(p, event["posterior"])
     assert metrics["final_wrong"] == any(not a["identity_ok"] for a in final.values())
     assert metrics["wrong_certificates"] == sum(not a["identity_ok"] for a in certificates)
     arrived = motion[-1, 1] >= END - .28
@@ -100,12 +115,13 @@ def audit(path):
             controller = WORKERS[row["family"]]
             counts["worlds"] += 1
             if isinstance(row["verification"], dict):
-                trials = ((runs[0]["trace"], runs[0]["metrics"]) for runs in row["verification"].values())
+                trials = ((name, runs[0]["trace"], runs[0]["metrics"]) for name, runs in row["verification"].items())
             else:
                 first = row["verification"][0]
-                trials = ((logs, first["outcomes"][name]) for name, logs in first["traces"].items())
-            for log, metrics in trials:
-                revocations, mistakes = audit_trial(controller, row["prefix"], log, metrics)
+                trials = ((name, logs, first["outcomes"][name]) for name, logs in first["traces"].items())
+            for name, log, metrics in trials:
+                prefix = row.get("prefix_by_arm", {}).get(name, row["prefix"])
+                revocations, mistakes = audit_trial(controller, prefix, log, metrics)
                 counts.update(trajectories=1, retractions=revocations, centered_mistakes=mistakes)
     return dict(counts)
 

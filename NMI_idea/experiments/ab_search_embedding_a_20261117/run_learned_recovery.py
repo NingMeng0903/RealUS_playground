@@ -60,14 +60,14 @@ def prepare(out, discovery):
     })
 
 
-def configure(out):
+def configure(out, *, controller_type=CEMMenuController):
     library = json.loads((out / "library.json").read_text())
     sections = json.loads(SECTIONS.read_text())
     fitted = np.load(out / "prodmp_fit.npy", allow_pickle=False)
     with np.load(RECOVERY / "results" / "prodmp_weights.npz", allow_pickle=False) as weights:
         coefficients = dict(weights)
     for family in FAMILIES:
-        CONTROLLERS[family] = CEMMenuController(
+        CONTROLLERS[family] = controller_type(
             RecoveryWorld(family), sections, coefficients, fitted, library["requests"])
 
 
