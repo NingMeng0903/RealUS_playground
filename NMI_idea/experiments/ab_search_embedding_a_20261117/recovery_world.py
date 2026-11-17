@@ -138,7 +138,10 @@ class RecoveryWorld:
 
     def _packet(self, index, s, x, emit, error, uniform_clutter, outage):
         means, visibility = self.predict(s, x, REFERENCE_KNEE_DEG)
-        mu, p = means[index], visibility[index]
+        return self._emit_packet(means[index], visibility[index], x, emit, error, uniform_clutter, outage)
+
+    @staticmethod
+    def _emit_packet(mu, p, x, emit, error, uniform_clutter, outage):
         target = mu[0] + [x, 0.]
         if outage < PACKET_OUTAGE:
             return np.empty((0, 2)), np.empty(0, dtype=int), target

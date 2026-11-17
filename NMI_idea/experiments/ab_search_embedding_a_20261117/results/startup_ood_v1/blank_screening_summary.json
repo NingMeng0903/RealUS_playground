@@ -1,0 +1,14 @@
+{
+  "screened": {
+    "connection": 1024,
+    "parallel": 1024
+  },
+  "empty_scout": {
+    "connection": 26,
+    "parallel": 32
+  },
+  "selected": {
+    "connection": 16,
+    "parallel": 16
+  }
+}

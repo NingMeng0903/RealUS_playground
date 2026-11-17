@@ -1,0 +1,36 @@
+{
+  "development": {
+    "screened": {
+      "one": 170,
+      "zero": 143,
+      "two": 7
+    },
+    "selected": {
+      "connection": {
+        "zero": 12,
+        "one": 12
+      },
+      "parallel": {
+        "zero": 12,
+        "one": 12
+      }
+    }
+  },
+  "holdout": {
+    "screened": {
+      "zero": 206,
+      "one": 236,
+      "two": 6
+    },
+    "selected": {
+      "connection": {
+        "zero": 16,
+        "one": 16
+      },
+      "parallel": {
+        "zero": 16,
+        "one": 16
+      }
+    }
+  }
+}

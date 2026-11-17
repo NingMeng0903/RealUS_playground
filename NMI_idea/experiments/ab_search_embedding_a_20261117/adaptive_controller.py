@@ -136,15 +136,19 @@ class AdaptiveController(Controller):
             elif self.evidence_mode == QUALIFIED_EVIDENCE:
                 row["qualified_coverage"] = state.covered
 
-    def retain_visible(self, state, record, conditional):
+    def retain_visible(self, state, record, conditional, *, confirm_at_capture=False):
         bins = list(state.image_candidates)
         j = station_bin(state.s)
-        if j >= 0 and conditional.shape[1]:
+        slots = np.arange(conditional.shape[1])
+        if confirm_at_capture:
+            slots = slots[state.belief @ conditional >= IDENTITY_ACCEPT]
+        if j >= 0 and len(slots):
             existing, weights = bins[j]
             centered = abs(self.world.target_grid(state.s, state.angle)[:, 0] - state.x) <= CENTER_MM
-            new = tuple(Witness(state.frame, slot, state.s, identity, centered)
-                        for slot, identity in enumerate(conditional.T))
-            bins[j] = existing + new, np.vstack((weights, conditional.T))
+            retained = conditional[:, slots].T
+            new = tuple(Witness(state.frame, int(slot), state.s, identity, centered)
+                        for slot, identity in zip(slots, retained, strict=True))
+            bins[j] = existing + new, np.vstack((weights, retained))
         state.image_candidates = tuple(bins)
         active = []
         support = []
