@@ -45,6 +45,7 @@ class ScanRecord(Record):
 class FreeCandidate(Candidate):
     request: tuple
     bow: float
+    renderer: str = "waypoint"
 
 
 def smoothstep(t):
@@ -154,7 +155,7 @@ class AdaptiveController(Controller):
             return None
         center = self.mean(state, goal_s, False)[0]
         return FreeCandidate(name, s, vs, lateral, distance, turn,
-                             float(lateral.goal - center), (ds, dx, bow), bow)
+                             float(lateral.goal - center), (ds, dx, bow), bow, renderer)
 
     def options_shared(self, state, *, expanded=True, renderer="waypoint"):
         menu = self.options(state, False, full=True)
