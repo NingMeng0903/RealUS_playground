@@ -8,7 +8,7 @@ from pathlib import Path
 
 import numpy as np
 
-from adaptive_controller import BINS, CENTER_MM, END, IDENTITY_ACCEPT, MAX_TRAVEL
+from adaptive_controller import BINS, CENTER_MM, END, IDENTITY_ACCEPT, MAX_TRAVEL, QUALITY_ACCEPT, station_bin
 from run_adaptive_recovery import WORKERS, init_worker
 from recovery_world import Scene
 
@@ -37,6 +37,32 @@ def audit_trial(controller, prefix, suffix, metrics):
     revoked = {(r["witness"], r["bin"]): r for r in retractions}
     assert len(revoked) == len(retractions) == metrics["retractions"]
     final = {a["bin"]: a for a in certificates if (a["frame"], a["bin"]) not in revoked}
+    final_packet = packets[max(packets)]
+    coverage = (1 << BINS) - 1
+    if "qualified_coverage" in final_packet:
+        by_frame = {}
+        for certificate in certificates:
+            packet = packets[certificate["frame"]]
+            _, resp = controller.world.likelihood(np.asarray(packet["y"]), packet["s"], packet["x"], packet["q"])
+            target = controller.world.target_grid(packet["s"], packet["q"])[:, 0]
+            by_frame[certificate["frame"]] = (certificate["bin"],
+                                              resp[:, certificate["slot"]] * (abs(target - packet["x"]) <= CENTER_MM))
+            assert certificate["bin"] == station_bin(packet["s"])
+        retired = {}
+        for event in retractions:
+            retired.setdefault(event["frame"], []).append(event["bin"])
+        witnesses = {}
+        for frame, packet in sorted(packets.items()):
+            for index in retired.get(frame, []):
+                witnesses.pop(index)
+            if frame in by_frame:
+                index, weight = by_frame[frame]
+                assert index not in witnesses
+                witnesses[index] = weight
+            belief = np.asarray(packet["belief"])
+            coverage = sum(1 << index for index, weight in witnesses.items() if belief @ weight >= QUALITY_ACCEPT)
+            assert coverage == packet["qualified_coverage"]
+        assert coverage == metrics["covered_mask"]
 
     def validate(a):
         frame, slot = a["frame"], a["slot"]
@@ -73,7 +99,8 @@ def audit_trial(controller, prefix, suffix, metrics):
     assert metrics["wrong_certificates"] == sum(not a["identity_ok"] for a in certificates)
     arrived = motion[-1, 1] >= END - .28
     assert metrics["corrected_complete"] == (
-        arrived and len(final) == BINS and all(a["identity_ok"] and a["center_ok"] for a in final.values()))
+        arrived and coverage == (1 << BINS) - 1 and len(final) == BINS
+        and all(a["identity_ok"] and a["center_ok"] for a in final.values()))
 
     legacy = prefix["evaluator"]["legacy_accepts"] + suffix["evaluator"]["legacy_accepts"]
     for a in legacy:

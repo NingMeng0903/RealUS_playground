@@ -4,7 +4,8 @@ import numpy as np
 from sklearn.cluster import KMeans
 from sklearn.ensemble import HistGradientBoostingRegressor
 
-from adaptive_controller import BINS, CENTER_MM, EDGES, AdaptiveController, FreeCandidate, station_bin
+from adaptive_controller import (BINS, CENTER_MM, EDGES, QUALIFIED_EVIDENCE, AdaptiveController, FreeCandidate,
+                                 station_bin)
 from adaptive_teacher import replace_shape
 from budgeted_recovery import CAPS
 from embedding import position_embedding
@@ -36,8 +37,8 @@ def cem_requests(discovery_rows, count):
 
 
 class CEMMenuController(AdaptiveController):
-    def __init__(self, world, sections, coefficients, fitted, requests):
-        super().__init__(world, sections, coefficients, fitted)
+    def __init__(self, world, sections, coefficients, fitted, requests, *, evidence_mode=QUALIFIED_EVIDENCE):
+        super().__init__(world, sections, coefficients, fitted, evidence_mode=evidence_mode)
         self.requests = requests
 
     def options_shared(self, state, *, expanded=True, renderer="fit"):

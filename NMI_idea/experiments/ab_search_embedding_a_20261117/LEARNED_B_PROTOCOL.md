@@ -24,10 +24,10 @@ The discovery, training, development, and test namespaces are disjoint. The matc
 
 ```sh
 export OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1
-python -B run_adaptive_recovery.py discover --offset 30000 --cases 48 \
+python -B run_adaptive_recovery.py discover --evidence-mode legacy --offset 30000 --cases 48 \
   --families connection parallel --replicas 8 --population 6 --iterations 2 \
   --search-samples 4 --jobs 20 --out results/learned_b_cem_v1/discovery
-python -B run_learned_recovery.py --out results/learned_b_cem_v1 prepare \
+python -B run_learned_recovery.py --out results/learned_b_cem_v1 prepare --evidence-mode legacy \
   --discovery results/learned_b_cem_v1/discovery
 python -B run_learned_recovery.py --out results/learned_b_cem_v1 collect \
   --split train --cases 144 --samples 10 --replicas 4 --jobs 24

@@ -12,7 +12,8 @@ from time import perf_counter
 import numpy as np
 
 from recovery_world import FAMILIES, RECOVERY, RecoveryWorld, Scene, noise_tape
-from adaptive_controller import CENTER_MM, FRAMES_PER_BLOCK, AdaptiveController, FreeCandidate, final_metrics, station_bin
+from adaptive_controller import (CENTER_MM, EVIDENCE_MODES, FRAMES_PER_BLOCK, LEGACY_EVIDENCE, QUALIFIED_EVIDENCE,
+                                 AdaptiveController, FreeCandidate, final_metrics, station_bin)
 from adaptive_teacher import cem_discover, choose_public, fit_nominal_primitive, replace_shape
 
 
@@ -44,12 +45,13 @@ def shared_prefix(controller, scene):
     return state, record
 
 
-def init_worker(fitted):
+def init_worker(fitted, *, evidence_mode=LEGACY_EVIDENCE):
     sections = json.loads(SECTIONS.read_text())
     with np.load(RECOVERY / "results" / "prodmp_weights.npz") as weights:
         coefficients = dict(weights)
     for family in FAMILIES:
-        WORKERS[family] = AdaptiveController(RecoveryWorld(family), sections, coefficients, fitted)
+        WORKERS[family] = AdaptiveController(RecoveryWorld(family), sections, coefficients, fitted,
+                                              evidence_mode=evidence_mode)
 
 
 def root_report(root, prefix):
@@ -69,7 +71,7 @@ def root_report(root, prefix):
 
 
 def trace(record, *, after_frame=-1):
-    public_keys = ("frame", "s", "x", "q", "y", "association", "accepted_slot", "belief")
+    public_keys = ("frame", "s", "x", "q", "y", "association", "accepted_slot", "belief", "qualified_coverage")
     packets = [p for p in record.packets if p["frame"] > after_frame]
     return {"public": {"packets": [{k: p[k] for k in public_keys if k in p} for p in packets],
                        "executed_motion": [p for p in record.motion if p[0] > .1 * after_frame - 1e-7],
@@ -302,6 +304,7 @@ def main():
     parser.add_argument("--offset", type=int, default=0)
     parser.add_argument("--jobs", type=int, default=1)
     parser.add_argument("--fit", type=Path)
+    parser.add_argument("--evidence-mode", choices=EVIDENCE_MODES, default=QUALIFIED_EVIDENCE)
     config = parser.parse_args()
     if min(config.cases, config.replicas, config.population, config.iterations, config.search_samples,
            config.public_samples, config.jobs) <= 0 or config.offset < 0:
@@ -310,7 +313,7 @@ def main():
         parser.error("families must be distinct and each case namespace has 90,000 entries")
     config.out.mkdir(parents=True, exist_ok=True)
     fitted = np.load(config.fit) if config.fit else None
-    init_worker(fitted)
+    init_worker(fitted, evidence_mode=config.evidence_mode)
     jobs = [(family, SPLIT_SEEDS[config.phase] + 100_000 * FAMILIES.index(family) + config.offset + index, config)
             for family in config.families for index in range(config.cases)]
     runner = archive_discovery if config.phase == "discover" else paired_case

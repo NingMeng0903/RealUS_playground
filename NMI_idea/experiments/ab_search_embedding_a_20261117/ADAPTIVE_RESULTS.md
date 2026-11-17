@@ -69,9 +69,9 @@ The [discovery](results/adaptive_discovery_v2/summary.json), [primary](results/a
 
 ```sh
 export OPENBLAS_NUM_THREADS=1
-python -B run_adaptive_recovery.py discover --cases 12 --families connection parallel wrong_prior \
+python -B run_adaptive_recovery.py discover --evidence-mode legacy --cases 12 --families connection parallel wrong_prior \
   --replicas 6 --population 6 --iterations 2 --search-samples 3 --jobs 16 --out results/adaptive_discovery_v2
-python -B run_adaptive_recovery.py paired --cases 28 --replicas 3 --public-samples 6 --jobs 18 \
+python -B run_adaptive_recovery.py paired --evidence-mode legacy --cases 28 --replicas 3 --public-samples 6 --jobs 18 \
   --fit results/adaptive_discovery_v2/prodmp_nominal_fit.npy --out results/adaptive_paired_v2
 python -B same_menu_headroom.py results/adaptive_discovery_v2/cases.jsonl.gz \
   --jobs 12 --out results/adaptive_same_menu_screen_v2

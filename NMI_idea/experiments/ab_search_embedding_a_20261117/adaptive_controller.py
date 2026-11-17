@@ -12,6 +12,12 @@ from controller import (  # Loaded from the prior recovery experiment.
 from primitive import BLOCK_STEPS, FRAME_STRIDE, SAMPLE_DT_S, Plan, admissible
 
 
+QUALIFIED_EVIDENCE = "qualified"
+LEGACY_EVIDENCE = "legacy"
+EVIDENCE_MODES = (QUALIFIED_EVIDENCE, LEGACY_EVIDENCE)
+QUALITY_ACCEPT = IDENTITY_ACCEPT
+
+
 @dataclass(frozen=True)
 class Witness:
     frame: int
@@ -19,6 +25,9 @@ class Witness:
     station: float
     identity: np.ndarray  # P(slot was the target | static hypothesis, its own packet).
     centered: np.ndarray  # The geometry test under each of the same hypotheses.
+
+    def quality(self, belief):
+        return float(belief @ (self.identity * self.centered))
 
 
 @dataclass
@@ -65,9 +74,12 @@ def waypoint(start, velocity, goal, bow):
 
 
 class AdaptiveController(Controller):
-    def __init__(self, world, sections, coefficients, learned=None):
+    def __init__(self, world, sections, coefficients, learned=None, *, evidence_mode=QUALIFIED_EVIDENCE):
         super().__init__(world, sections, coefficients)
+        if evidence_mode not in EVIDENCE_MODES:
+            raise ValueError(f"unknown evidence mode: {evidence_mode}")
         self.learned = learned
+        self.evidence_mode = evidence_mode
 
     def initial_scan(self, scene, *, detailed=False):
         x = float(np.clip(self.world.nominal(START)[0], -30., 0.))
@@ -93,6 +105,7 @@ class AdaptiveController(Controller):
         state.missed = 0 if slot >= 0 else state.missed + 1
         state.ambiguous = state.ambiguous + 1 if slot < 0 and len(packet) else 0
 
+        qualified = self.evidence_mode == QUALIFIED_EVIDENCE
         active = list(state.ledger)
         retracted = False
         for j, witness in enumerate(active):
@@ -105,22 +118,39 @@ class AdaptiveController(Controller):
                     retracted = True
         j = station_bin(state.s)
         if slot >= 0 and abs(state.residual) <= CENTER_MM and j >= 0:
-            state.last_trusted = state.s
+            if not qualified:
+                state.last_trusted = state.s
             event = {"frame": state.frame, "bin": j, "slot": slot,
                      "identity_ok": bool(roles[slot] == 0), "center_ok": bool(abs(truth[0] - state.x) <= CENTER_MM)}
             if not state.legacy_covered & (1 << j):
                 state.legacy_covered |= 1 << j
                 record.accepts.append(event)
-            if active[j] is None:
+            if qualified or active[j] is None:
                 means = self.world.target_grid(state.s, state.angle)
-                active[j] = Witness(state.frame, slot, state.s, conditional[:, slot].copy(),
-                                    abs(means[:, 0] - state.x) <= CENTER_MM)
-                record.certificates.append(event)
-        elif retracted:
+                incoming = Witness(state.frame, slot, state.s, conditional[:, slot].copy(),
+                                   abs(means[:, 0] - state.x) <= CENTER_MM)
+                current = active[j]
+                if current is None:
+                    active[j] = incoming
+                    record.certificates.append(event)
+                else:
+                    old_quality, new_quality = current.quality(state.belief), incoming.quality(state.belief)
+                    if new_quality > old_quality + 1e-9:
+                        record.retractions.append({"frame": state.frame, "bin": j, "witness": current.frame,
+                                                   "reason": "higher_centered_probability",
+                                                   "old_quality": old_quality, "new_quality": new_quality})
+                        active[j] = incoming
+                        record.certificates.append(event)
+        elif retracted and not qualified:
             recent = max((w for w in active if w is not None), key=lambda w: w.frame, default=None)
             state.last_trusted = None if recent is None else recent.station
         state.ledger = tuple(active)
-        state.covered = sum(1 << j for j, witness in enumerate(active) if witness is not None)
+        covered = {j: witness for j, witness in enumerate(active)
+                   if witness is not None and (not qualified or witness.quality(state.belief) >= QUALITY_ACCEPT)}
+        state.covered = sum(1 << j for j in covered)
+        if qualified:
+            recent = max(covered.values(), key=lambda w: w.frame, default=None)
+            state.last_trusted = None if recent is None else recent.station
         query = state.query_bin()
         point = float(np.mean(EDGES[query:query + 2]))
         state.query_identity = self.world.identity_prob(state.belief, point, state.angle)
@@ -129,12 +159,18 @@ class AdaptiveController(Controller):
                "roles_truth": roles.tolist(), "target_truth": truth.tolist()}
         if record.detailed:
             row["belief"] = state.belief.tolist()
+            if qualified:
+                row["qualified_coverage"] = state.covered
         record.packets.append(row)
 
-    def free_candidate(self, state, name, ds, dx, bow=0., *, renderer="waypoint"):
+    def free_candidate(self, state, name, ds, dx, bow=0., longitudinal_bow=0., *, renderer="waypoint"):
         goal_s = float(np.clip(state.s + ds, START, END))
         goal_x = float(np.clip(state.x + dx, -30., 0.))
-        s, vs = longitudinal(state.s, state.vs, goal_s, 0.)
+        if longitudinal_bow:
+            progress = waypoint(state.s, state.vs, goal_s, longitudinal_bow)
+            s, vs = progress.x, progress.v
+        else:
+            s, vs = longitudinal(state.s, state.vs, goal_s, 0.)
         if s.min() < START - 1e-7 or s.max() > END + 1e-7 or np.max(abs(vs)) > 16.:
             return None
         if np.max(abs(np.diff(vs))) / SAMPLE_DT_S > 75.:
@@ -154,8 +190,8 @@ class AdaptiveController(Controller):
         if state.travel + distance > MAX_TRAVEL:
             return None
         center = self.mean(state, goal_s, False)[0]
-        return FreeCandidate(name, s, vs, lateral, distance, turn,
-                             float(lateral.goal - center), (ds, dx, bow), bow, renderer)
+        request = (ds, dx, bow, longitudinal_bow) if longitudinal_bow else (ds, dx, bow)
+        return FreeCandidate(name, s, vs, lateral, distance, turn, float(lateral.goal - center), request, bow, renderer)
 
     def options_shared(self, state, *, expanded=True, renderer="waypoint"):
         menu = self.options(state, False, full=True)
@@ -181,7 +217,10 @@ class AdaptiveController(Controller):
         return menu
 
     def choose_mpc(self, state, *, expanded, open_decision=False, renderer="waypoint"):
-        active = open_decision or state.trigger() or state.s >= END - .30
+        here = station_bin(state.s)
+        needs_centering = (self.evidence_mode == QUALIFIED_EVIDENCE and here >= 0
+                           and state.ledger[here] is not None and not state.covered & (1 << here))
+        active = open_decision or state.trigger() or needs_centering or state.s >= END - .30
         menu = self.options_shared(state, expanded=expanded and active, renderer=renderer) if active else (
             self.options(state, False, full=False))
         return self.mpc(state, menu, False, active=active, informative=True) if menu else None
@@ -284,7 +323,7 @@ def final_metrics(state, record, *, sampled_latent=None, root_frame=0, query_bin
     ready = state.s >= END - .28 and not state.uncovered()
     score = {"corrected_complete": float(ready) * p_correct, "final_wrong": 1. - p_no_wrong,
              "tcp_mm": state.travel, "seconds": state.frame * .1, "frames": state.frame + 1,
-             "good_bins": good_bins}
+             "good_bins": good_bins, "covered_mask": state.covered}
     if sampled_latent is not None:
         return score
     old = record.details(state)

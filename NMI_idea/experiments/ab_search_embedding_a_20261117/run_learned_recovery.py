@@ -13,7 +13,7 @@ import joblib
 import numpy as np
 from scipy.stats import beta
 
-from adaptive_controller import FreeCandidate
+from adaptive_controller import EVIDENCE_MODES, LEGACY_EVIDENCE, QUALIFIED_EVIDENCE, FreeCandidate
 from adaptive_teacher import evaluate, posterior_worlds
 from budgeted_recovery import CAPS
 from learned_recovery import (TARGETS, CEMMenuController, cem_requests, choose_from_deltas, features_for_menu,
@@ -48,16 +48,26 @@ def fingerprint(path):
     return digest.hexdigest()
 
 
-def prepare(out, discovery):
+def prepare(out, discovery, *, evidence_mode=QUALIFIED_EVIDENCE, targeted=None):
     source = discovery / "cases.jsonl.gz"
     paths = read_rows(source)
     requests = cem_requests(paths, count=6)
     fit = np.load(discovery / "prodmp_nominal_fit.npy", allow_pickle=False)
-    np.save(out / "prodmp_fit.npy", fit)
-    write_json(out / "library.json", {
+    library = {
         "requests": requests, "discovery_sha256": fingerprint(source), "discovery_worlds": len(paths),
         "verified_demonstrations": sum(row["example"] is not None for row in paths),
-    })
+        "evidence_mode": evidence_mode,
+    }
+    if targeted is not None:
+        result = json.loads(targeted.read_text())
+        base = json.dumps(library, default=jsonable, allow_nan=False, indent=2) + "\n"
+        if evidence_mode != QUALIFIED_EVIDENCE or hashlib.sha256(base.encode()).hexdigest() != result["library_sha256"]:
+            raise ValueError("targeted development search used a different motion library")
+        library["requests"] = requests.tolist() + result["shared_proposals"]
+        library["targeted_development_sha256"] = fingerprint(targeted)
+        library["additional_requests"] = len(result["shared_proposals"])
+    np.save(out / "prodmp_fit.npy", fit)
+    write_json(out / "library.json", library)
 
 
 def configure(out, *, controller_type=CEMMenuController):
@@ -68,7 +78,8 @@ def configure(out, *, controller_type=CEMMenuController):
         coefficients = dict(weights)
     for family in FAMILIES:
         CONTROLLERS[family] = controller_type(
-            RecoveryWorld(family), sections, coefficients, fitted, library["requests"])
+            RecoveryWorld(family), sections, coefficients, fitted, library["requests"],
+            evidence_mode=library.get("evidence_mode", LEGACY_EVIDENCE))
 
 
 def candidate_set(controller, root, prefix):
@@ -104,7 +115,8 @@ def collect_case(job):
             rows.append(outcome_vector(outcome))
         observed.append(rows)
     return {
-        "family": family, "seed": seed, "checkpoint": root_report(root, prefix),
+        "family": family, "seed": seed, "evidence_mode": controller.evidence_mode,
+        "checkpoint": root_report(root, prefix),
         "public_root": public_root(root), "incumbent": incumbent, "names": list(menu),
         "requests": [action.request if isinstance(action, FreeCandidate) else None for action in menu.values()],
         "renderers": [action.renderer if isinstance(action, FreeCandidate) else "legacy_prodmp"
@@ -118,7 +130,10 @@ def collect(args):
     configure(args.out)
     archive = args.out / f"{args.split}.jsonl.gz"
     elapsed = run_cases(args, args.split, collect_case, archive)
-    write_json(args.out / f"{args.split}_config.json", config(args) | {"elapsed_s": elapsed})
+    write_json(args.out / f"{args.split}_config.json", config(args) | {
+        "elapsed_s": elapsed, "library_sha256": fingerprint(args.out / "library.json"),
+        "prodmp_sha256": fingerprint(args.out / "prodmp_fit.npy"),
+    })
 
 
 def train_matrix(rows, actual_weight, *, use_cem):
@@ -160,6 +175,16 @@ def development(models, rows):
 def train(args):
     training = read_rows(args.out / "train.jsonl.gz")
     dev = read_rows(args.out / "dev.jsonl.gz")
+    library = json.loads((args.out / "library.json").read_text())
+    mode = library.get("evidence_mode", LEGACY_EVIDENCE)
+    for split, rows in (("train", training), ("dev", dev)):
+        if any(row.get("evidence_mode", LEGACY_EVIDENCE) != mode for row in rows):
+            raise ValueError(f"{split} labels do not use {mode} coverage")
+        if mode == QUALIFIED_EVIDENCE:
+            archived = json.loads((args.out / f"{split}_config.json").read_text())
+            for name, key in (("library.json", "library_sha256"), ("prodmp_fit.npy", "prodmp_sha256")):
+                if archived.get(key) != fingerprint(args.out / name):
+                    raise ValueError(f"{split} was collected with a different {name}")
     assert not ({row["seed"] for row in training} & {row["seed"] for row in dev})
     assert max(row["seed"] for row in dev) < SEED_BASE["test"]
     choices, report = {}, {}
@@ -178,6 +203,7 @@ def train(args):
     joblib.dump(choices, args.out / "models.joblib", compress=3)
     write_json(args.out / "frozen_models.json", {
         "variants": report, "model_sha256": fingerprint(args.out / "models.joblib"),
+        "evidence_mode": mode,
         "library_sha256": fingerprint(args.out / "library.json"),
         "prodmp_sha256": fingerprint(args.out / "prodmp_fit.npy"),
         "train_sha256": fingerprint(args.out / "train.jsonl.gz"),
@@ -237,7 +263,8 @@ def test_case(job):
                 traces[arm] = log
         trials.append({"replica": replica, "outcomes": outcomes, "traces": traces})
     return {
-        "family": family, "seed": seed, "checkpoint": root_report(root, prefix),
+        "family": family, "seed": seed, "evidence_mode": controller.evidence_mode,
+        "checkpoint": root_report(root, prefix),
         "public_root": public_root(root), "prefix": trace(prefix), "names": list(menu), "selected": selected,
         "renderers": {name: act.renderer if isinstance(act, FreeCandidate) else "legacy_prodmp"
                       for name, act in menu.items()},
@@ -333,6 +360,8 @@ def main():
     subcommands = parser.add_subparsers(dest="phase", required=True)
     prep = subcommands.add_parser("prepare")
     prep.add_argument("--discovery", type=Path, required=True)
+    prep.add_argument("--evidence-mode", choices=EVIDENCE_MODES, default=QUALIFIED_EVIDENCE)
+    prep.add_argument("--targeted", type=Path, help="summary of a separate targeted CEM development search")
     collect_parser = subcommands.add_parser("collect")
     collect_parser.add_argument("--split", choices=("train", "dev"), required=True)
     subcommands.add_parser("train")
@@ -350,7 +379,7 @@ def main():
                 or args.offset + args.cases > 90_000 or args.samples < (1 if args.phase == "collect" else 0)):
             parser.error("invalid case, replica, or posterior sample count")
     if args.phase == "prepare":
-        prepare(args.out, args.discovery)
+        prepare(args.out, args.discovery, evidence_mode=args.evidence_mode, targeted=args.targeted)
     else:
         {"collect": collect, "train": train, "test": test}[args.phase](args)
 
