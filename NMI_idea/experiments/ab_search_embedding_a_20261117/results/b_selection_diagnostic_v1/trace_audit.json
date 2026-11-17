@@ -1,0 +1,23 @@
+{
+  "alias_packet_checks": 81,
+  "archives": {
+    "results/b_selection_diagnostic_v1/cross_cases.jsonl.gz": {
+      "worlds": 64,
+      "trajectories": 320,
+      "retractions": 0,
+      "centered_mistakes": 0
+    },
+    "results/b_selection_diagnostic_v1/ablation_cases.jsonl.gz": {
+      "worlds": 64,
+      "trajectories": 704,
+      "retractions": 0,
+      "centered_mistakes": 0
+    },
+    "results/b_selection_diagnostic_v1/training_replays.jsonl.gz": {
+      "worlds": 64,
+      "trajectories": 192,
+      "retractions": 0,
+      "centered_mistakes": 0
+    }
+  }
+}

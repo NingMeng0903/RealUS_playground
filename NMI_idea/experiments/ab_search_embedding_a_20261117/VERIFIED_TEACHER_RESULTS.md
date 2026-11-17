@@ -42,3 +42,5 @@ The earlier label comparison tested a different effect. Both learned models coul
 ## Reproduction records
 
 See the [protocol](VERIFIED_TEACHER_PROTOCOL.md), [frozen manifest](results/verified_teacher_b_v1/freeze.json), [held-out statistics](results/verified_teacher_b_v1/test_summary.json), [raw paired cases](results/verified_teacher_b_v1/test.jsonl.gz) and [trace audit](results/verified_teacher_b_v1/trace_audit.json). The separate training and development archives preserve the paired outcomes used to select the model. Results use the fixed-pose, matched chart and synthetic packet benchmark.
+
+The [follow-up diagnostic](B_SELECTION_DIAGNOSTIC_RESULTS.md) crossed the teacher and student ranking and eligibility on new development cases and ran the matched-label and certificate input controls.
