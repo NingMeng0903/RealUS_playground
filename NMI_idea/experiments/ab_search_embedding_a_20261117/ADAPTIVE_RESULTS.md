@@ -23,6 +23,8 @@ Two development scenes began with active mistaken certificates. For seed 6410001
 
 Twenty-one nominal motions passed the trained-motion selection rule. The ProDMP fit uses only decision-time nominal lateral position and velocity, with endpoint displacement and signed midpoint bow as features. The learned part does not use the later servo corrections. On the primary cases, 48 of 50 requested waypoint substitutions passed the sampled constraints, giving 144 executed fit replays on the three tapes. On these replays the nominal and fitted paths each completed 57/144 scans. They agreed in aggregate for the full 150 substitution trials (63/150 each), including six replays where the original motion was retained. The maximum discrepancy of the nominal lateral curves among accepted substitutions was 0.053 mm. Agreement describes this small shape family, with feedback shared.
 
+An [equal-endpoint replay](WAYPOINT_SHAPE_AUDIT.md) subsequently tested whether the 21 admitted CEM examples depend on their interior lateral bow. On 252 new disturbances of the original development scenes, the full path and the zero-bow reference finished 219 and 218 scans respectively.
+
 ## Primary closed-loop comparison
 
 The controller scores a first segment from the public posterior by running it and the complete shared MPC on the same six hypothetical worlds as every alternative. It executes the selected segment on the actual scene. The adaptive variant scores all actions again using the **new** public packets after that segment. A first-only variant shares the first action and hands control back immediately. Each row below has 28 independent scenes and 84 paired suffix trials, with all confidence intervals resampled at the scene level.
