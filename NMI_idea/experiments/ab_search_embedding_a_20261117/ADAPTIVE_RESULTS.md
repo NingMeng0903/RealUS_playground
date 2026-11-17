@@ -25,6 +25,8 @@ Twenty-one nominal motions passed the trained-motion selection rule. The ProDMP 
 
 An [equal-endpoint replay](WAYPOINT_SHAPE_AUDIT.md) subsequently tested whether the 21 admitted CEM examples depend on their interior lateral bow. On 252 new disturbances of the original development scenes, the full path and the zero-bow reference finished 219 and 218 scans respectively.
 
+A [fixed-request replay of the old and CEM-fitted ProDMP](PRODMP_WEIGHT_SWAP.md) includes the old renderer's zero-residual option and a shared analytical waypoint fallback. The fit passes the motion checks for more of B's requests, with identical completion and identity outcomes under the common fallback.
+
 ## Primary closed-loop comparison
 
 The controller scores a first segment from the public posterior by running it and the complete shared MPC on the same six hypothetical worlds as every alternative. It executes the selected segment on the actual scene. The adaptive variant scores all actions again using the **new** public packets after that segment. A first-only variant shares the first action and hands control back immediately. Each row below has 28 independent scenes and 84 paired suffix trials, with all confidence intervals resampled at the scene level.
