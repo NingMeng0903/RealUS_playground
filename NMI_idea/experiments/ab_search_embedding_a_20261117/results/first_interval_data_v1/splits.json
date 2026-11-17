@@ -1,0 +1,10 @@
+{
+  "train": {
+    "scenes": 96,
+    "sha256": "857212bedc3595f83a5536c82a0d94175108bdc2588e323c0b6e8c7f57c3a3f2"
+  },
+  "test": {
+    "scenes": 256,
+    "sha256": "5c87a2551840033906da32dfeeddc491dfdff6a1702c6c6f7369eadd34887033"
+  }
+}
