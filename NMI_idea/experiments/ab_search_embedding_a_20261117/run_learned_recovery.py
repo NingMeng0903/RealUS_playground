@@ -308,9 +308,10 @@ def summarize(rows, arms, *, targets=TARGETS):
         both_learned = ("learned_b_without_cem_labels", "learned_b")
         if set(both_learned) <= set(arms):
             report["cem_labels_contrast"] = paired_statistics(cases, both_learned, TARGETS, trials)["vs_reference"]["learned_b"]
+        counted = (*targets[:3], "ever_wrong") if targets == VISIBLE_TARGETS else targets[:3]
         report["counts"] = {
             arm: {key: round(sum(trial[arm][key] for row in cases for trial in trials(row)))
-                  for key in targets[:3]}
+                  for key in counted}
             for arm in arms
         }
         if targets == VISIBLE_TARGETS:

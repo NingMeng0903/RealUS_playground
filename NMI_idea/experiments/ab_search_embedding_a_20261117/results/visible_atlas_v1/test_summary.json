@@ -142,12 +142,14 @@
       "mpc": {
         "corrected_complete": 384,
         "final_wrong": 0,
-        "new_identity_mistake": 0
+        "new_identity_mistake": 0,
+        "ever_wrong": 0
       },
       "learned_b": {
         "corrected_complete": 384,
         "final_wrong": 0,
-        "new_identity_mistake": 0
+        "new_identity_mistake": 0,
+        "ever_wrong": 0
       }
     },
     "centering": {
@@ -349,12 +351,14 @@
       "mpc": {
         "corrected_complete": 384,
         "final_wrong": 0,
-        "new_identity_mistake": 0
+        "new_identity_mistake": 0,
+        "ever_wrong": 4
       },
       "learned_b": {
         "corrected_complete": 384,
         "final_wrong": 0,
-        "new_identity_mistake": 0
+        "new_identity_mistake": 0,
+        "ever_wrong": 4
       }
     },
     "centering": {
@@ -556,12 +560,14 @@
       "mpc": {
         "corrected_complete": 768,
         "final_wrong": 0,
-        "new_identity_mistake": 0
+        "new_identity_mistake": 0,
+        "ever_wrong": 4
       },
       "learned_b": {
         "corrected_complete": 768,
         "final_wrong": 0,
-        "new_identity_mistake": 0
+        "new_identity_mistake": 0,
+        "ever_wrong": 4
       }
     },
     "centering": {

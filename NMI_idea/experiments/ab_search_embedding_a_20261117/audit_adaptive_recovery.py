@@ -20,6 +20,7 @@ def audit_visible_evidence(controller, prefix, suffix, packets, truth, metrics, 
     confirmed = []
     revoked = []
     mistakes = set()
+    all_mistakes = set()
     root_frame = prefix["public"]["packets"][-1]["frame"]
     for frame, packet in sorted(packets.items()):
         mass, associations = controller.world.likelihood(
@@ -31,8 +32,10 @@ def audit_visible_evidence(controller, prefix, suffix, packets, truth, metrics, 
         np.testing.assert_allclose(association, packet["association"], atol=1e-12, rtol=0.)
         selected = packet["accepted_slot"]
         assert selected == (int(np.argmax(association)) if association.max(initial=0.) >= IDENTITY_ACCEPT else -1)
-        if frame > root_frame and selected >= 0 and truth[frame][0][selected] != 0:
-            mistakes.add((frame, selected))
+        if selected >= 0 and truth[frame][0][selected] != 0:
+            all_mistakes.add((frame, selected))
+            if frame > root_frame:
+                mistakes.add((frame, selected))
         j = station_bin(packet["s"])
         if j >= 0:
             evidence[j].extend((frame, slot, weight) for slot, weight in enumerate(associations.T))
@@ -53,8 +56,10 @@ def audit_visible_evidence(controller, prefix, suffix, packets, truth, metrics, 
                     correct = roles[slot] == 0
                     centered = abs(target[0] - packets[acquired]["x"]) <= CENTER_MM
                     confirmed.append((frame, j, acquired, slot, correct, centered))
-                    if frame > root_frame and not correct:
-                        mistakes.add((acquired, slot))
+                    if not correct:
+                        all_mistakes.add((acquired, slot))
+                        if frame > root_frame:
+                            mistakes.add((acquired, slot))
             retained.append(match)
         assert retained == packet["visible_ledger"]
         previously_retained = retained
@@ -65,6 +70,7 @@ def audit_visible_evidence(controller, prefix, suffix, packets, truth, metrics, 
     assert revoked == [(a["frame"], a["bin"], a["witness"], a["slot"]) for a in retractions]
     assert len(revoked) == metrics["retractions"]
     assert metrics["new_identity_mistake"] == bool(mistakes)
+    assert metrics["ever_wrong"] == bool(all_mistakes)
     assert metrics["wrong_certificates"] == sum(not row[4] for row in confirmed)
     final = [pair for pair in retained if pair is not None]
     good_errors = [abs(truth[f][1][0] - packets[f]["x"]) for f, slot in final if truth[f][0][slot] == 0]
@@ -220,6 +226,8 @@ def audit(path):
                 counts.update(trajectories=1, retractions=revocations)
                 key = "identity_mistakes" if "new_identity_mistake" in metrics else "centered_mistakes"
                 counts[key] += mistakes
+                if "new_identity_mistake" in metrics:
+                    counts["scans_with_any_wrong_confirmation"] += int(metrics["ever_wrong"])
     return dict(counts)
 
 

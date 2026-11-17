@@ -26,13 +26,15 @@ Test 96 further cases per family with four paired future disturbance tapes per c
 
 ## Held-out results
 
-| Task | MPC correct completion | B correct completion | Final wrong, MPC / B | New wrong confirmation, MPC / B |
-| --- | ---: | ---: | ---: | ---: |
-| Connection ambiguity | 384/384 | 384/384 | 0 / 0 | 0 / 0 |
-| Unbranched | 384/384 | 384/384 | 0 / 0 | 0 / 0 |
-| Pooled | 768/768 | 768/768 | 0 / 0 | 0 / 0 |
+| Task | MPC correct completion | B correct completion | Any wrong confirmation, MPC / B | Final wrong, MPC / B | New wrong confirmation after the prefix, MPC / B |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Connection ambiguity | 384/384 | 384/384 | 0 / 0 | 0 / 0 | 0 / 0 |
+| Unbranched | 384/384 | 384/384 | 4 / 4 | 0 / 0 | 0 / 0 |
+| Pooled | 768/768 | 768/768 | 4 / 4 | 0 / 0 | 0 / 0 |
 
 The new completion criterion saturates on the tested distribution. Both policies reached the end and retained six correctly identified detections on every test tape. The learned B selected another first action in 35 of the 192 cases. Model selection chose the posterior-only labels. The classification endpoints are for synthetic detections under matched simulation and observation models.
+
+The four unbranched replays with a wrong confirmation share one initial scan in case 14362013. At frame 9 the common filter accepted the other vessel, including two earlier candidate images. Subsequent evidence corrected the retained identities before delivery on all four tapes. This event affects both policies equally.
 
 | Task | Travel, MPC / B | Turn, MPC / B | Simulated duration, MPC / B | Acquisitions, MPC / B |
 | --- | ---: | ---: | ---: | ---: |

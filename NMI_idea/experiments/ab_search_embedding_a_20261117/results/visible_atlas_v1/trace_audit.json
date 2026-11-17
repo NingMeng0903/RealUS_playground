@@ -5,7 +5,8 @@
       "worlds": 192,
       "trajectories": 384,
       "retractions": 2280,
-      "identity_mistakes": 0
+      "identity_mistakes": 0,
+      "scans_with_any_wrong_confirmation": 2
     }
   },
   "repeat_replay": {
