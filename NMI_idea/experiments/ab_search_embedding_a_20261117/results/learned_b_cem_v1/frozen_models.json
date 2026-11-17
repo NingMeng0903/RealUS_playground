@@ -1,0 +1,158 @@
+{
+  "variants": {
+    "learned_b": {
+      "selected": "mixed",
+      "development": {
+        "posterior": {
+          "delta": {
+            "corrected_complete": 0.018750000000000006,
+            "final_wrong": 0.0,
+            "new_centered_mistake": 0.0,
+            "tcp_mm": -0.6661916451252862,
+            "turn_degs": -0.0693265640958691,
+            "seconds": -0.17291666666666666
+          },
+          "normalized_cap_violation": 0.0,
+          "families": {
+            "connection": 40,
+            "parallel": 40
+          },
+          "selected": {
+            "advance": 18,
+            "forward_right": 6,
+            "cem_4": 3,
+            "back_right": 2,
+            "forward_left": 2,
+            "revisit": 8,
+            "cem_3": 6,
+            "side_right": 3,
+            "wait": 9,
+            "cem_1": 1,
+            "right": 2,
+            "cem_5": 7,
+            "short": 10,
+            "back_center": 1,
+            "left": 2
+          },
+          "candidate_training_rows": 5905
+        },
+        "mixed": {
+          "delta": {
+            "corrected_complete": 0.02708333333333333,
+            "final_wrong": 0.0,
+            "new_centered_mistake": 0.0,
+            "tcp_mm": -0.34068914349112883,
+            "turn_degs": -0.05079821853067532,
+            "seconds": -0.17291666666666666
+          },
+          "normalized_cap_violation": 0.0,
+          "families": {
+            "connection": 40,
+            "parallel": 40
+          },
+          "selected": {
+            "advance": 22,
+            "forward_right": 7,
+            "cem_4": 4,
+            "back_right": 2,
+            "cem_3": 5,
+            "revisit": 8,
+            "left": 2,
+            "cem_1": 1,
+            "cem_5": 9,
+            "forward_left": 2,
+            "short": 11,
+            "side_right": 3,
+            "back_center": 1,
+            "cem_0": 1,
+            "look_left": 1,
+            "side_left": 1
+          },
+          "candidate_training_rows": 5905
+        }
+      }
+    },
+    "learned_b_without_cem_labels": {
+      "selected": "posterior",
+      "development": {
+        "posterior": {
+          "delta": {
+            "corrected_complete": 0.02291666666666667,
+            "final_wrong": 0.0,
+            "new_centered_mistake": 0.0,
+            "tcp_mm": -0.5212239514756889,
+            "turn_degs": -0.03446800859724356,
+            "seconds": -0.17291666666666666
+          },
+          "normalized_cap_violation": 0.0,
+          "families": {
+            "connection": 40,
+            "parallel": 40
+          },
+          "selected": {
+            "left": 3,
+            "forward_right": 13,
+            "cem_4": 2,
+            "back_right": 5,
+            "cem_5": 8,
+            "revisit": 8,
+            "side_right": 4,
+            "advance": 16,
+            "back_center": 2,
+            "cem_1": 1,
+            "cem_0": 1,
+            "right": 5,
+            "forward_left": 2,
+            "cem_2": 2,
+            "wait": 2,
+            "side_left": 2,
+            "short": 4
+          },
+          "candidate_training_rows": 4263
+        },
+        "mixed": {
+          "delta": {
+            "corrected_complete": 0.02291666666666667,
+            "final_wrong": 0.0,
+            "new_centered_mistake": 0.0,
+            "tcp_mm": -0.4409591175979869,
+            "turn_degs": -0.06753142466416287,
+            "seconds": -0.15833333333333335
+          },
+          "normalized_cap_violation": 0.0,
+          "families": {
+            "connection": 40,
+            "parallel": 40
+          },
+          "selected": {
+            "advance": 21,
+            "forward_right": 7,
+            "cem_4": 2,
+            "back_right": 5,
+            "cem_5": 9,
+            "revisit": 8,
+            "cem_3": 1,
+            "side_right": 4,
+            "left": 2,
+            "look_left": 1,
+            "back_center": 2,
+            "forward_left": 3,
+            "cem_2": 1,
+            "cem_0": 1,
+            "short": 12,
+            "right": 1
+          },
+          "candidate_training_rows": 4263
+        }
+      }
+    }
+  },
+  "model_sha256": "6feb4e55800ae54eeba930305a5a25cd451479f5beb3d506484c201036cfae47",
+  "library_sha256": "f7b19cd6e4a7a9e0b84fd7381a33f59ac2f4288295e771412c6dcde8720b8444",
+  "prodmp_sha256": "a96a71304fa8e04af9bfae18fe03ac6bc502b5a496e6bf7d15d9ec49f4c54d0e",
+  "train_sha256": "95410799d7e9dfc93844302adfac2e9d7362a570bd889cbb95965efdbd28f06d",
+  "dev_sha256": "9cb4761d398dbbd124d2536c2a576024988ce837e842a088165e0278c43e3617",
+  "training_worlds": 288,
+  "development_worlds": 80,
+  "development_selection": "lowest cap violation, then highest mean correct completion"
+}

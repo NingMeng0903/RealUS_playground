@@ -1,0 +1,17 @@
+{
+  "alias_packet_checks": 81,
+  "archives": {
+    "results/learned_b_cem_v1/discovery/cases.jsonl.gz": {
+      "worlds": 96,
+      "trajectories": 355,
+      "retractions": 3,
+      "centered_mistakes": 3
+    },
+    "results/learned_b_cem_v1/test.jsonl.gz": {
+      "worlds": 192,
+      "trajectories": 768,
+      "retractions": 8,
+      "centered_mistakes": 27
+    }
+  }
+}

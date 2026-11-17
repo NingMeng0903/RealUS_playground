@@ -72,7 +72,7 @@ def configure(out):
 
 
 def candidate_set(controller, root, prefix):
-    menu = controller.options_shared(root)
+    menu = controller.options_shared(root, renderer="fit")
     if not menu:
         return menu, None, None
     selected = controller.mpc(root, menu, False, active=True, informative=True)
@@ -193,7 +193,7 @@ def test_case(job):
     scene = controller.world.draw(seed)
     root, prefix = shared_prefix(controller, scene)
     start = process_time()
-    menu = controller.options_shared(root)
+    menu = controller.options_shared(root, renderer="fit")
     incumbent = controller.mpc(root, menu, False, active=True, informative=True).name if menu else None
     shared_cpu = process_time() - start
     selected, timings, predictions = {"mpc": incumbent}, {"mpc": shared_cpu}, {}

@@ -82,3 +82,5 @@ python -B audit_adaptive_recovery.py results/adaptive_discovery_v2/cases.jsonl.g
 ```
 
 The later resource check also records predicted turns and new mistakes for every candidate; the original public score and choice rule are unchanged by logging these additional fields.
+
+The subsequent [trained end-to-end comparison](LEARNED_B_RESULTS.md) freezes a CEM-fitted motion generator and a learned recovery selector before running new paired cases against strong MPC.
