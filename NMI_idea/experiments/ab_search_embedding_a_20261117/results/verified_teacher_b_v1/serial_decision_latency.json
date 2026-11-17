@@ -1,0 +1,22 @@
+{
+  "cases": 48,
+  "rule": "every fourth held-out scene within each family, serial with rotating arm order",
+  "same_decisions_as_holdout": true,
+  "seconds": {
+    "mpc": {
+      "mean": 0.014457693521004936,
+      "median": 0.008723722499780706,
+      "p95": 0.04428551809851342
+    },
+    "trained_v1": {
+      "mean": 0.029999466250349844,
+      "median": 0.02442330300073081,
+      "p95": 0.059755258149198194
+    },
+    "distilled_b": {
+      "mean": 0.027452903271068863,
+      "median": 0.021853938002095674,
+      "p95": 0.057365205297901414
+    }
+  }
+}

@@ -36,3 +36,5 @@ The online and learned models chose the same action on 57 of 192 scenarios. With
 The [frozen-model manifest](results/learned_b_cem_v1/frozen_models.json) records the sample split and hashes. [Full metrics and paired intervals](results/learned_b_cem_v1/test_summary.json) and [individual replays](results/learned_b_cem_v1/test.jsonl.gz) preserve the observed evidence, selected actions, executed motion and evaluator labels. The [trace audit](results/learned_b_cem_v1/trace_audit.json) checks the recorded kinematics, costs, associations, and completion decisions for 768 held-out traces. Model and data archives are in the same directory. Reproduction used Python 3.10, NumPy 2.2.6, SciPy 1.15.3, scikit-learn 1.7.2 and joblib 1.5.2.
 
 The result is for fixed-knee chart simulation with synthetic centroid packets and a matched observation model. It measures complete closed-loop simulated scans under common feedback and motion checks.
+
+The [per-case teacher audit](TEACHER_CHOICE_AUDIT.md) and the [verified-teacher training comparison](VERIFIED_TEACHER_RESULTS.md) test which of these online gains can be transferred by direct supervision on independent paired outcomes.

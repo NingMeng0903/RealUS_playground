@@ -1,0 +1,35 @@
+{
+  "selected": "verified_choice",
+  "selection_order": {
+    "verified_choice": [
+      0.0,
+      -0.02734375
+    ],
+    "verified_value": [
+      3.7779069431286096,
+      -0.016927083333333315
+    ]
+  },
+  "teacher_training": {
+    "connection": {
+      "states": 144,
+      "actual_positive_teacher": 46,
+      "verified_teacher": 41,
+      "any_verified": 51,
+      "alternatives_checked": 360
+    },
+    "parallel": {
+      "states": 272,
+      "actual_positive_teacher": 22,
+      "verified_teacher": 6,
+      "any_verified": 14,
+      "alternatives_checked": 677
+    }
+  },
+  "train_sha256": "1aa8e09f96b0dad10e0693621f83df7c0d711253715e6c2972a2ffaff0871bed",
+  "dev_sha256": "b2439c87d83b0ec5b64e232ace53818cafa47291757f4c4613bd37c3899e9524",
+  "student_sha256": "76502f2cda4dd1e00fd33388c90028b7b5c781bfeb4dae8d1a17a6900f81a6b6",
+  "library_sha256": "f7b19cd6e4a7a9e0b84fd7381a33f59ac2f4288295e771412c6dcde8720b8444",
+  "prodmp_sha256": "a96a71304fa8e04af9bfae18fe03ac6bc502b5a496e6bf7d15d9ec49f4c54d0e",
+  "v1_sha256": "6feb4e55800ae54eeba930305a5a25cd451479f5beb3d506484c201036cfae47"
+}
