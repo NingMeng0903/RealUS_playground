@@ -1,0 +1,12 @@
+{
+  "discovery": {
+    "total_screened": 640,
+    "selected": 64,
+    "blank_scouts": 0
+  },
+  "holdout": {
+    "total_screened": 640,
+    "selected": 64,
+    "blank_scouts": 0
+  }
+}

@@ -9,6 +9,15 @@ from adaptive_controller import CENTER_MM, FreeCandidate, final_metrics
 from recovery_world import Scene, noise_tape
 
 
+SEARCH_LIMITS = np.array([[-6., -8.5, -3.7], [7.8, 8.5, 3.7]])
+SEARCH_ANCHORS = np.array([[-3.5, -3., -1.], [-3.5, 3., 1.], [4.5, 0., 0.]])
+SEARCH_SCALE = np.array([2.8, 3.1, 1.7])
+
+
+def refit_search_distribution(mean, scale, elite):
+    return .3 * mean + .7 * elite.mean(axis=0), .3 * scale + .7 * (elite.std(axis=0) + .25)
+
+
 def utility(outcome):
     return (outcome["corrected_complete"] - 1.25 * outcome["final_wrong"]
             - .002 * outcome["tcp_mm"] - .02 * outcome["seconds"])
@@ -87,17 +96,16 @@ def fixed_worlds(latent, count, seed, purpose):
 
 def cem_discover(controller, state, latent, seed, *, population, iterations, samples, refit=True):
     """Privileged search of a spline endpoint and its interior waypoint."""
-    limits = np.array([[-6., -8.5, -3.7], [7.8, 8.5, 3.7]])
     worlds = fixed_worlds(latent, samples, seed, 471)
     rng = np.random.default_rng([seed, 853])
     nominal = controller.choose_mpc(state, expanded=True, open_decision=True)
     base, _ = evaluate(controller, state, nominal, worlds, open_blocks=1)
     baseline = expected(base)
     rows, feasible = [], []
-    for anchor in ([-3.5, -3., -1.], [-3.5, 3., 1.], [4.5, 0., 0.]):
-        mean, scale = np.asarray(anchor), np.array([2.8, 3.1, 1.7])
+    for anchor in SEARCH_ANCHORS:
+        mean, scale = anchor, SEARCH_SCALE
         for iteration in range(iterations):
-            draws = np.clip(rng.normal(mean, scale, (population, 3)), limits[0], limits[1])
+            draws = np.clip(rng.normal(mean, scale, (population, 3)), *SEARCH_LIMITS)
             ranked = []
             for ds, dx, bow in draws:
                 action = controller.free_candidate(state, "cem", ds, dx, bow)
@@ -123,8 +131,7 @@ def cem_discover(controller, state, latent, seed, *, population, iterations, sam
                 ranked.append((row["utility"], requested))
             if refit and ranked:
                 elite = np.asarray([x[1] for x in sorted(ranked, reverse=True)[:max(2, population // 4)]])
-                mean = .3 * mean + .7 * elite.mean(axis=0)
-                scale = .3 * scale + .7 * (elite.std(axis=0) + .25)
+                mean, scale = refit_search_distribution(mean, scale, elite)
     ranked = sorted(feasible, key=lambda item: item[1]["utility"], reverse=True)
     return nominal, baseline, ranked, rows
 
