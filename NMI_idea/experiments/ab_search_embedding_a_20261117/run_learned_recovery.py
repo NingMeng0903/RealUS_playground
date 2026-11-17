@@ -256,7 +256,8 @@ def summarize(rows, arms):
         trials = lambda row: [trial["outcomes"] for trial in row["verification"]]
         report = paired_statistics(cases, arms, fields, trials)
         both_learned = ("learned_b_without_cem_labels", "learned_b")
-        report["cem_labels_contrast"] = paired_statistics(cases, both_learned, TARGETS, trials)["vs_reference"]["learned_b"]
+        if set(both_learned) <= set(arms):
+            report["cem_labels_contrast"] = paired_statistics(cases, both_learned, TARGETS, trials)["vs_reference"]["learned_b"]
         report["counts"] = {
             arm: {key: round(sum(trial[arm][key] for row in cases for trial in trials(row)))
                   for key in ("corrected_complete", "final_wrong", "new_centered_mistake")}
