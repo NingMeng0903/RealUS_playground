@@ -35,9 +35,10 @@ def evaluate(controller, root, action, worlds, *, open_blocks=0, detailed=False)
 
 
 def expected(outcomes):
-    return {field: float(np.mean([row[field] for row in outcomes]))
-            for field in ("corrected_complete", "final_wrong", "new_centered_mistake",
-                          "tcp_mm", "turn_degs", "seconds")}
+    fields = ("corrected_complete", "final_wrong", "new_centered_mistake", "tcp_mm", "turn_degs", "seconds")
+    if "new_identity_mistake" in outcomes[0]:
+        fields += ("new_identity_mistake",)
+    return {field: float(np.mean([row[field] for row in outcomes])) for field in fields}
 
 
 def posterior_worlds(state, count, seed):
@@ -84,7 +85,7 @@ def fixed_worlds(latent, count, seed, purpose):
     return [Scene(latent, noise_tape(np.random.default_rng([seed, purpose, i]))) for i in range(count)]
 
 
-def cem_discover(controller, state, latent, seed, *, population, iterations, samples):
+def cem_discover(controller, state, latent, seed, *, population, iterations, samples, refit=True):
     """Privileged search of a spline endpoint and its interior waypoint."""
     limits = np.array([[-6., -8.5, -3.7], [7.8, 8.5, 3.7]])
     worlds = fixed_worlds(latent, samples, seed, 471)
@@ -120,7 +121,7 @@ def cem_discover(controller, state, latent, seed, *, population, iterations, sam
                     rows.append(row)
                     feasible.append((action, row))
                 ranked.append((row["utility"], requested))
-            if ranked:
+            if refit and ranked:
                 elite = np.asarray([x[1] for x in sorted(ranked, reverse=True)[:max(2, population // 4)]])
                 mean = .3 * mean + .7 * elite.mean(axis=0)
                 scale = .3 * scale + .7 * (elite.std(axis=0) + .25)

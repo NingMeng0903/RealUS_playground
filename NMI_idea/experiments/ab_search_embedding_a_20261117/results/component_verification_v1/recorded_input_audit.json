@@ -1,0 +1,46 @@
+{
+  "nonempty_ultrasound_files": 204,
+  "image_samples": 123486,
+  "image_tcp_equal_length": 204,
+  "monotonic_timestamps": 204,
+  "files_with_decoded_jpeg_sample": 204,
+  "files_with_identity_label_or_mask_dataset": 0,
+  "aligned_hdf5_files": 204,
+  "matching_annotation_sidecar_files": 0,
+  "positive_frame_interval_ms_p50_p95": [
+    32.095288999999994,
+    36.053505699999995
+  ],
+  "tcp_match_absolute_error_ms_p50_p95": [
+    1.5730765,
+    4.49541825
+  ],
+  "ultrasound_metadata_field_names": [
+    "camera_name",
+    "capture_monotonic_ns",
+    "capture_wall_time_ns",
+    "clock_domain",
+    "clock_id",
+    "clock_mode",
+    "color",
+    "crop_box",
+    "encoding",
+    "frame_id",
+    "frame_index",
+    "header",
+    "height",
+    "hflip",
+    "publisher_instance_id",
+    "schema_version",
+    "session_id",
+    "sim_time_ns",
+    "source_id",
+    "source_time_ns",
+    "time_offset_ns",
+    "timestamp_ns",
+    "timestamp_source",
+    "wall_time_ns",
+    "width"
+  ],
+  "analysis": "readiness from an existing contact study; no patient images, identifiers, or poses exported"
+}

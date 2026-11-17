@@ -90,7 +90,8 @@ def configure(out, *, controller_type=CEMMenuController):
         material = MaterialSurface(binding["knots"])
     for family in FAMILIES:
         CONTROLLERS[family] = controller_type(
-            RecoveryWorld(family), sections, coefficients, fitted, library["requests"],
+            RecoveryWorld(family, shadow_scale=library.get("shadow_scale", 1.)), sections, coefficients,
+            fitted, library["requests"],
             evidence_mode=mode, material_surface=material)
 
 

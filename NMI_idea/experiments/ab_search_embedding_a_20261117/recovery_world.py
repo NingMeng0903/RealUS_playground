@@ -41,10 +41,13 @@ class Scene:
 class RecoveryWorld:
     """A static hypothesis keeps geometry, shadow and clutter linked across a rollout."""
 
-    def __init__(self, family, reference=None):
+    def __init__(self, family, reference=None, *, shadow_scale=1.):
         if family not in FAMILIES:
             raise ValueError(f"unknown experiment family {family}")
         self.family = family
+        if not np.isfinite(shadow_scale) or shadow_scale <= 0:
+            raise ValueError("shadow_scale must be finite and positive")
+        self.shadow_scale = shadow_scale
         self.reference = reference if reference is not None else World()
         self.station_bounds = self.reference.station_bounds
         self.angles_deg = np.full(FRAME_COUNT, REFERENCE_KNEE_DEG)
@@ -106,8 +109,8 @@ class RecoveryWorld:
         # A narrow coupling/shadow lane attenuates both structures. Lateral
         # movement changes it; the separate packet outage is action independent.
         lane_x = np.interp(s, self.reference.s_mm, self.reference.centers_mm[:, 0, 0]) + .45 * offset + 1.5 * side
-        core = np.exp(-.5 * ((float(s) - self.shadow_center) / 2.6)**4)
-        attenuation = 1. - .995 * core / (1. + ((x - lane_x) / 4.5)**6)
+        core = np.exp(-.5 * ((float(s) - self.shadow_center) / (2.6 * self.shadow_scale))**4)
+        attenuation = 1. - .995 * core / (1. + ((x - lane_x) / (4.5 * self.shadow_scale))**6)
         visibility = inside * np.column_stack((.94 * attenuation, .94 * attenuation,
                                                 np.full(len(offset), .24)))
         return means, visibility
