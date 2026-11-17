@@ -25,10 +25,12 @@ from run_learned_recovery import CONTROLLERS, FAMILIES, configure, fingerprint, 
 TARGETS = VISIBLE_TARGETS
 FIELDS = (*TARGETS, "frames", "ever_wrong", "feedback_revisions", "centered_complete")
 CAPS = resource_limits(TARGETS)
+CAPS_WITHOUT_RELATIVE_MOTION = {key: value for key, value in CAPS.items() if key not in ("tcp_mm", "turn_degs")}
 NS = {"discovery": 24_210_000, "development": 25_210_000, "holdout": 26_210_000, "render": 27_210_000,
       "library_test": 28_210_000}
 FIXED = ("advance", "wait", "short", "side_left", "side_right", "revisit")
 SHADOW_SCALE = 2.
+SELECTION_TAPE = 4167
 B_MODELS = None
 
 
@@ -193,7 +195,8 @@ def selection_case(job):
                     "learned_b_reference_fit": learned}
         times = {"mpc": mpc_time, "teacher": teacher_time, "learned_b_reference_fit": mpc_time + process_time() - start}
         oracle_log = learned_log
-    measured = complete_paths(c, scene, root, prefix, seed, {k: menu[v] for k, v in selected.items()}, replicas, 4167)
+    measured = complete_paths(c, scene, root, prefix, seed, {k: menu[v] for k, v in selected.items()}, replicas,
+                              SELECTION_TAPE)
     return {"family": family, "seed": seed, "names": list(menu), "selected": selected, "verification": measured,
             "decision_cpu_s": times, "teacher_prediction": teacher_log, "extra_prediction": oracle_log}
 
@@ -253,8 +256,8 @@ def run_evidence(args, out):
     write_json(out / "evidence_summary.json", result | {"motion_source_sha256": fingerprint(args.source / "test.jsonl.gz")})
 
 
-def within_caps(candidate, baseline):
-    return all(candidate[k] <= baseline[k] + bound + 1e-8 for k, bound in CAPS.items())
+def within_caps(candidate, baseline, caps=CAPS):
+    return all(candidate[k] <= baseline[k] + bound + 1e-8 for k, bound in caps.items())
 
 
 def mean_targets(trials, arm):
@@ -421,7 +424,7 @@ def diagnose_misses(row):
         baseline = saved["mpc"]
         if baseline["corrected_complete"]:
             continue
-        future = tape_for(scene.latent, seed, index, 4167)
+        future = tape_for(scene.latent, seed, index, SELECTION_TAPE)
         actual, record = real_trial(c, root, prefix, future, [menu[mpc]])
         for outcome in TARGETS:
             assert actual[outcome] == baseline[outcome]
@@ -462,6 +465,75 @@ def run_ceiling(args, out):
                                                             for v in records),
         }
     write_json(out / "misses_summary.json", output | {"selection_archive_sha256": fingerprint(source)})
+
+
+def replay_relaxed_choice(job):
+    row, fixed = job
+    family, seed = row["family"], row["seed"]
+    c, scene, root, prefix = case_start(family, seed)
+    menu = c.options_shared(root)
+    names = row["names"]
+    if names != list(menu):
+        raise ValueError("current candidate menu differs from the saved forecasts")
+    incumbent = row["selected"]["mpc"]
+    choices = {"fixed_probe": fixed if fixed in menu else incumbent}
+    for arm, prediction in (("teacher", "teacher_prediction"), ("learned_b_reference_fit", "extra_prediction")):
+        deltas = row[prediction]["delta"]
+        original, _, eligible = choose_from_deltas(names, incumbent, deltas, targets=TARGETS)
+        if original != row["selected"][arm] or eligible.tolist() != row[prediction]["eligible"]:
+            raise ValueError("saved forecasts do not reproduce the original selection")
+        choices[f"{arm}_relaxed"], _, _ = choose_from_deltas(
+            names, incumbent, deltas, targets=TARGETS, caps=CAPS_WITHOUT_RELATIVE_MOTION)
+    archived_actions = {action: arm for arm, action in row["selected"].items()}
+    new_actions = {arm: menu[action] for arm, action in choices.items() if action not in archived_actions}
+    replays = complete_paths(c, scene, root, prefix, seed, new_actions, len(row["verification"]), SELECTION_TAPE)
+    keep = ("mpc", "teacher", "learned_b_reference_fit")
+    verification = []
+    for saved, replayed in zip(row["verification"], replays, strict=True):
+        trial = {arm: saved[arm] for arm in keep}
+        for arm, action in choices.items():
+            trial[arm] = replayed[arm] if arm in replayed else saved[archived_actions[action]]
+        verification.append(trial)
+    return {"family": family, "seed": seed, "selected": {arm: row["selected"][arm] for arm in keep} | choices,
+            "verification": verification}
+
+
+def run_relaxed(args, out):
+    development = read_rows(out / "selection_dev.jsonl.gz")
+    source = out / "selection_holdout.jsonl.gz"
+    fixed = max(FIXED, key=lambda arm: sum(t[arm]["corrected_complete"]
+                                         for case in development for t in case["verification"]))
+    rows = run_parallel(replay_relaxed_choice, [(row, fixed) for row in read_rows(source)],
+                        args.jobs, "relaxed travel and turn caps")
+    save_archive(out / "relaxed_choice_cases.jsonl.gz", rows)
+    names = ("mpc", "teacher", "learned_b_reference_fit", "fixed_probe", "teacher_relaxed",
+             "learned_b_reference_fit_relaxed")
+    reports = bands(rows, names)
+    for family, report in reports.items():
+        cohort = [r for r in rows if family in ("pooled", r["family"])]
+        report["decisions_changed_from_mpc"] = {arm: sum(r["selected"][arm] != r["selected"]["mpc"]
+                                                        for r in cohort) for arm in names[1:]}
+        report["completion_wins_losses"] = {}
+        for arm in names[1:]:
+            differences = [t[arm]["corrected_complete"] - t["mpc"]["corrected_complete"]
+                           for r in cohort for t in r["verification"]]
+            report["completion_wins_losses"][arm] = [sum(d > 0 for d in differences), sum(d < 0 for d in differences)]
+    misses = [failure for row in read_rows(out / "misses_cases.jsonl.gz") for failure in row["mpc_failures"]]
+    zero_delta = dict.fromkeys(CAPS_WITHOUT_RELATIVE_MOTION, 0.)
+    surviving = [[metrics for metrics in failure["hard_budget_recovery_requests"].values()
+                  if within_caps(metrics, zero_delta, CAPS_WITHOUT_RELATIVE_MOTION)]
+                 for failure in misses]
+    min_travel = [min(m["tcp_mm"] for m in options) for options in surviving if options]
+    write_json(out / "relaxed_choice_summary.json", {
+        "evaluation": "retrospective on the previous holdout",
+        "remaining_forecast_caps": CAPS_WITHOUT_RELATIVE_MOTION,
+        "comparison_margins_from_original_protocol": MARGINS,
+        "fixed_probe_chosen_by_development_completion": fixed,
+        "selection_archive_sha256": fingerprint(source), "comparison": reports,
+        "failure_oracle": {"failed_tapes": len(misses), "tapes_with_eligible_alternative": sum(map(bool, surviving)),
+                           "eligible_alternatives": sum(map(len, surviving)),
+                           "median_least_additional_travel_mm": float(np.median(min_travel)) if min_travel else None},
+    })
 
 
 def audit_recorded_input(directory, out):
@@ -510,7 +582,8 @@ def audit_recorded_input(directory, out):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("phase", choices=("evidence", "selection", "discovery", "render", "ceiling", "recordings"))
+    parser.add_argument("phase", choices=("evidence", "selection", "discovery", "render", "ceiling", "relaxed",
+                                         "recordings"))
     parser.add_argument("--source", type=Path, default=Path("results/visible_atlas_v1"))
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--cases", type=int, default=64, help="held-out scenes per family")
@@ -535,7 +608,7 @@ def main():
         copyfile(args.source / "prodmp_fit.npy", source / "prodmp_fit.npy")
     configure(source)
     {"evidence": run_evidence, "selection": run_selection, "discovery": run_discovery,
-     "render": run_renderer, "ceiling": run_ceiling}[args.phase](args, args.out)
+     "render": run_renderer, "ceiling": run_ceiling, "relaxed": run_relaxed}[args.phase](args, args.out)
 
 
 if __name__ == "__main__":

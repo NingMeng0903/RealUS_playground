@@ -111,13 +111,14 @@ def features_for_menu(controller, state, menu, incumbent, responsibilities):
     return np.column_stack((features, features - reference))
 
 
-def choose_from_deltas(names, incumbent, deltas, *, targets=TARGETS):
-    """Apply the same objective and predicted resource limits as the online teacher."""
+def choose_from_deltas(names, incumbent, deltas, *, targets=TARGETS, caps=None):
+    """Apply the shared objective and predicted resource limits."""
     deltas = np.asarray(deltas, dtype=float).copy()
     incumbent_index = names.index(incumbent)
     deltas[incumbent_index] = 0.
     allowed = np.ones(len(names), dtype=bool)
-    for metric, cap in resource_limits(targets).items():
+    limits = resource_limits(targets) if caps is None else caps
+    for metric, cap in limits.items():
         allowed &= deltas[:, targets.index(metric)] <= cap + 1e-8
     scores = deltas @ OBJECTIVE
     index = max(np.flatnonzero(allowed), key=lambda i: (scores[i], i == incumbent_index))

@@ -62,6 +62,23 @@ The table uses 128 holdout scenes with four tapes each. The teacher and MPC comp
 
 Enumerate all legal first actions for each of the MPC's 40 failed held-out tapes while holding the continuation and disturbance fixed. All 40 reached the endpoint. Twenty had at least one interval with zero raw target detections. Every tape had a recovery under the absolute task budget. All 315 successful alternatives exceeded both the +2 mm travel and +2° rotation margins. This bounds the opportunity to improve completion with a different single opening in the tested menu and cost range. [Selection summary](results/component_verification_v1/selection_summary.json) · [Holdout outcomes](results/component_verification_v1/selection_holdout.jsonl.gz) · [Failure enumeration](results/component_verification_v1/misses_summary.json) · [Recovery costs](results/component_verification_v1/misses_cases.jsonl.gz)
 
+## Removing the relative travel and rotation caps
+
+On the same assessment scenes, replay the first-action selection with the relative +2 mm and +2° forecast caps removed for the teacher and frozen learner. Keep the original score weights, the +0.10 s and +2 percentage-point forecast caps, and the common absolute task and motion limits. Every saved forecast reproduces its original selection under the original caps. Changed choices are executed on the same disturbance tapes with the same MPC continuation. The fixed-action arm uses the probe with the most correct completions in development, which was revisit. It operates under the shared absolute budget. This is a retrospective comparison using the previous holdout.
+
+| First-action policy | Connection | Unbranched | Pooled | Gain / loss versus MPC | Mean TCP mm / turn ° / scan s | New interim wrong / final wrong |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Strong MPC | 216/256 | 256/256 | 472/512 | — | 34.98 / 6.128 / 4.738 | 1 / 0 |
+| Fixed revisit + MPC | 254/256 | 251/256 | 505/512 | 39 / 6 | 37.94 / 6.679 / 5.455 | 2 / 0 |
+| Public rollout teacher with relaxed motion caps | 240/256 | 256/256 | 496/512 | 24 / 0 | 35.24 / 6.305 / 4.516 | 2 / 0 |
+| Frozen learner with relaxed motion caps | 212/256 | 248/256 | 460/512 | 0 / 12 | 34.42 / 6.073 / 4.719 | 1 / 0 |
+
+The teacher's completion gain was 4.69 points with a scene-paired 95% interval of [1.56, 8.59]. Its 24 gains came from six connection scenarios. Twenty successful changed tapes used stock revisit or back-right requests and four used one of the existing CEM requests. On the gained tapes the teacher moved 19.09 mm farther and spent 1.29 s less on average. Across all tapes it moved 0.26 mm farther and executed 0.22 s faster on average. Those durations use the simulation clock. The underlying public forecasts required about 24 s of decision CPU on average in the previous run. Removing the caps left the frozen learner's choices unchanged on all 128 scenes.
+
+The realized hindsight check found an admissible recovery for all 40 MPC failures after the travel and turn differences were removed. Of 315 successful alternative executions, 311 also met the retained time and identity difference limits. The median smallest added travel among the admissible recoveries for each failed tape was 13.89 mm. This is a diagnostic of available actions. The public teacher and fixed revisit rows show the achieved results using only information available to the policy.
+
+The fixed revisit comparison establishes a stronger baseline for subsequent testing. In these scenes it uses about 0.72 s of extra simulated scan time and produces more correct completions than the public teacher. A fast selective policy should be compared with both this fixed probe and direct MPC by correct completion, errors, and elapsed time on new scenes. [Summary](results/component_verification_v1/relaxed_choice_summary.json) · [Paired records](results/component_verification_v1/relaxed_choice_cases.jsonl.gz)
+
 ## Recorded ultrasound
 
 Audit the available aligned recordings by reading metadata and decoding one midpoint JPEG per file. All 204 files had strictly increasing frame timestamps, paired ultrasound and TCP samples, and a decodable sample. Across 123,486 images, the median interval was 32.10 ms and the median absolute TCP alignment timestamp error was 1.57 ms. The inspected datasets and neighboring sidecar filenames contained zero independent vessel identity labels. Identity accuracy, correction delay on actual B-mode, and closed-loop hardware performance remain unmeasured. The stored audit contains aggregate quantities and schema field names. [Recorded-input audit](results/component_verification_v1/recorded_input_audit.json)
@@ -81,6 +98,7 @@ python verify_recovery_components.py selection --out "$out" --cases 64 --samples
 python verify_recovery_components.py discovery --out "$out" --cases 64 --samples 16 --jobs 14
 python verify_recovery_components.py render --out "$out" --cases 48 --jobs 6
 python verify_recovery_components.py ceiling --out "$out" --jobs 12
+python verify_recovery_components.py relaxed --out "$out" --jobs 12
 ```
 
 The metadata audit can be repeated with an aligned ultrasound/TCP directory and an environment with `h5py` and `Pillow`.
