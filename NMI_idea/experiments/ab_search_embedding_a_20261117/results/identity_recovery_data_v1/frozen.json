@@ -1,0 +1,14 @@
+{
+  "models_sha256": "0c89b44d2d2a9d9e0eb691de7ee9e868ead502c3a150bf63e38615aa9802fb45",
+  "shared_sha256": {
+    "library": "311d64449d58a7bb0a21c02a2f7ed253ebabc60c4dd55f317a6d6186d2caab20",
+    "prodmp": "2c0d6d4e7decdfc6f9fd98428f3e529a48f143342473527f60be08de9f9f5571",
+    "calibration": "e157ae3dd4fdab69ec89dd7eca75a795418f1fafccd50ac467a6d05fe45e2b25",
+    "original_training": "fbd0ca72c48322e6c5b99e649b8a07492bcff1415d62ed68a181ff34c27a2aaf",
+    "previous_model": "2e5e76d525a23d186cee55f6a869438cc6bfb4270b4d30290945907f9ab3f351",
+    "previous_extra_training": "29abf6f740b0c43f198cfd9ee72263b1f4129f28bec7a8425f60b146bb1869c1"
+  },
+  "splits_sha256": "7aebd3e39d2f7cfb43118b72b7c34989e1cc711286a9d0f30bffac00b387fe68",
+  "label_summary_sha256": "077e096c5cd08b21cba43e1ac1daa2dac9a641420ce05f11aed9111ff6d46010",
+  "retained_training_states": 320
+}
