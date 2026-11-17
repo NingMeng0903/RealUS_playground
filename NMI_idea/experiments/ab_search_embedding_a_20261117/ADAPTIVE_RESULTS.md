@@ -41,6 +41,8 @@ In the stress cohort with a deliberately overconfident prior, shared MPC, first-
 
 [Post-hoc opening replay](results/adaptive_opening_replay_v2/summary.json) held the tail constant and allowed the public decision to use only the old option types as its first action. It completed 98/168, against 67/168 for the shared-menu MPC and 106/168 for the first-only teacher with the wider menu. In the unbranched cohort all the teacher's selected first actions already belonged to the original menu. This locates most of the benefit in selecting a first inspection by its effect on the completed scan. Endpoint/shape flexibility contributes to some connection cases. A general claim for newly curved trajectories is untested.
 
+A subsequent [first-segment evidence replay](PROBE_EVIDENCE_REPLAY.md) clarifies when the selected motion contributes new identity evidence. It holds the already executed first path fixed and withholds its packets or fixes the structural belief weights until the shared handoff.
+
 ## Follow-up with predicted resource constraints
 
 In an independent set of 56 ordinary scenes (168 paired trials), the two public variants scored the same candidates on the same twelve posterior tapes. One required the predicted motion, turn, time and mistake rates to be within the protocol's upper margins of the MPC incumbent before ranking. All arms then executed one choice and the same full MPC continuation.

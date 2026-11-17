@@ -1,0 +1,458 @@
+{
+  "primary": {
+    "connection": {
+      "worlds": 28,
+      "replicas_per_world": 3,
+      "means": {
+        "mpc": {
+          "full": 0.48809523809523814,
+          "no_packets": 0.5714285714285714,
+          "lock_structure": 0.4880952380952381
+        },
+        "b": {
+          "full": 0.7142857142857143,
+          "no_packets": 0.7142857142857144,
+          "lock_structure": 0.6904761904761906
+        }
+      },
+      "vs_reference": {
+        "b": {
+          "full": {
+            "delta": 0.22619047619047616,
+            "ci95": [
+              0.07142857142857141,
+              0.380952380952381
+            ]
+          },
+          "no_packets": {
+            "delta": 0.14285714285714302,
+            "ci95": [
+              -7.93016446160826e-18,
+              0.29761904761904756
+            ]
+          },
+          "lock_structure": {
+            "delta": 0.2023809523809525,
+            "ci95": [
+              0.047619047619047616,
+              0.369047619047619
+            ]
+          }
+        }
+      },
+      "counts": {
+        "full": {
+          "mpc": 41.0,
+          "b": 60.0
+        },
+        "no_packets": {
+          "mpc": 48.0,
+          "b": 60.0
+        },
+        "lock_structure": {
+          "mpc": 41.0,
+          "b": 58.0
+        }
+      },
+      "trial_count": 84,
+      "checkpoint_counts": {
+        "target_invisible": 17,
+        "tracking": 11
+      },
+      "ambiguous_at_root": {
+        "worlds": 12,
+        "trials": 36,
+        "above_095_after_first": {
+          "mpc": 26,
+          "b": 23
+        }
+      },
+      "loss_of_B_gain_without_packets": {
+        "mean": 0.08333333333333333,
+        "ci95": [
+          -0.059523809523809534,
+          0.22619047619047622
+        ]
+      }
+    },
+    "parallel": {
+      "worlds": 28,
+      "replicas_per_world": 3,
+      "means": {
+        "mpc": {
+          "full": 0.3095238095238095,
+          "no_packets": 0.3095238095238096,
+          "lock_structure": 0.2857142857142857
+        },
+        "b": {
+          "full": 0.5476190476190476,
+          "no_packets": 0.5357142857142857,
+          "lock_structure": 0.5238095238095238
+        }
+      },
+      "vs_reference": {
+        "b": {
+          "full": {
+            "delta": 0.23809523809523808,
+            "ci95": [
+              0.10714285714285714,
+              0.3928571428571428
+            ]
+          },
+          "no_packets": {
+            "delta": 0.2261904761904761,
+            "ci95": [
+              0.08333333333333334,
+              0.380952380952381
+            ]
+          },
+          "lock_structure": {
+            "delta": 0.23809523809523814,
+            "ci95": [
+              0.10714285714285714,
+              0.3928571428571428
+            ]
+          }
+        }
+      },
+      "counts": {
+        "full": {
+          "mpc": 26.0,
+          "b": 46.0
+        },
+        "no_packets": {
+          "mpc": 26.0,
+          "b": 45.0
+        },
+        "lock_structure": {
+          "mpc": 24.0,
+          "b": 44.0
+        }
+      },
+      "trial_count": 84,
+      "checkpoint_counts": {
+        "target_invisible": 5,
+        "visible_unassociated": 1,
+        "tracking": 22
+      },
+      "ambiguous_at_root": {
+        "worlds": 1,
+        "trials": 3,
+        "above_095_after_first": {
+          "mpc": 2,
+          "b": 2
+        }
+      },
+      "loss_of_B_gain_without_packets": {
+        "mean": 0.011904761904761904,
+        "ci95": [
+          -0.023809523809523808,
+          0.05952380952380952
+        ]
+      }
+    },
+    "pooled": {
+      "worlds": 56,
+      "replicas_per_world": 3,
+      "means": {
+        "mpc": {
+          "full": 0.39880952380952384,
+          "no_packets": 0.4404761904761905,
+          "lock_structure": 0.38690476190476186
+        },
+        "b": {
+          "full": 0.630952380952381,
+          "no_packets": 0.625,
+          "lock_structure": 0.6071428571428571
+        }
+      },
+      "vs_reference": {
+        "b": {
+          "full": {
+            "delta": 0.2321428571428572,
+            "ci95": [
+              0.12499999999999999,
+              0.34523809523809523
+            ]
+          },
+          "no_packets": {
+            "delta": 0.18452380952380948,
+            "ci95": [
+              0.0773809523809524,
+              0.29761904761904756
+            ]
+          },
+          "lock_structure": {
+            "delta": 0.22023809523809523,
+            "ci95": [
+              0.11309523809523811,
+              0.3333333333333333
+            ]
+          }
+        }
+      },
+      "counts": {
+        "full": {
+          "mpc": 67.0,
+          "b": 106.0
+        },
+        "no_packets": {
+          "mpc": 74.0,
+          "b": 105.0
+        },
+        "lock_structure": {
+          "mpc": 65.0,
+          "b": 102.0
+        }
+      },
+      "trial_count": 168,
+      "checkpoint_counts": {
+        "target_invisible": 22,
+        "tracking": 33,
+        "visible_unassociated": 1
+      },
+      "ambiguous_at_root": {
+        "worlds": 13,
+        "trials": 39,
+        "above_095_after_first": {
+          "mpc": 28,
+          "b": 25
+        }
+      },
+      "loss_of_B_gain_without_packets": {
+        "mean": 0.047619047619047616,
+        "ci95": [
+          -0.02976190476190476,
+          0.125
+        ]
+      }
+    }
+  },
+  "limited": {
+    "connection": {
+      "worlds": 28,
+      "replicas_per_world": 3,
+      "means": {
+        "mpc": {
+          "full": 0.5476190476190476,
+          "no_packets": 0.5476190476190476,
+          "lock_structure": 0.4999999999999999
+        },
+        "b": {
+          "full": 0.6785714285714287,
+          "no_packets": 0.6071428571428571,
+          "lock_structure": 0.5238095238095237
+        }
+      },
+      "vs_reference": {
+        "b": {
+          "full": {
+            "delta": 0.13095238095238115,
+            "ci95": [
+              0.03571428571428571,
+              0.25
+            ]
+          },
+          "no_packets": {
+            "delta": 0.059523809523809534,
+            "ci95": [
+              -0.05952380952380953,
+              0.1904761904761905
+            ]
+          },
+          "lock_structure": {
+            "delta": 0.023809523809523836,
+            "ci95": [
+              -0.08333333333333333,
+              0.130952380952381
+            ]
+          }
+        }
+      },
+      "counts": {
+        "full": {
+          "mpc": 46.0,
+          "b": 57.0
+        },
+        "no_packets": {
+          "mpc": 46.0,
+          "b": 51.0
+        },
+        "lock_structure": {
+          "mpc": 42.0,
+          "b": 44.0
+        }
+      },
+      "trial_count": 84,
+      "checkpoint_counts": {
+        "tracking": 17,
+        "target_invisible": 11
+      },
+      "ambiguous_at_root": {
+        "worlds": 12,
+        "trials": 36,
+        "above_095_after_first": {
+          "mpc": 18,
+          "b": 31
+        }
+      },
+      "loss_of_B_gain_without_packets": {
+        "mean": 0.07142857142857142,
+        "ci95": [
+          0.011904761904761904,
+          0.15476190476190474
+        ]
+      }
+    },
+    "parallel": {
+      "worlds": 28,
+      "replicas_per_world": 3,
+      "means": {
+        "mpc": {
+          "full": 0.19047619047619047,
+          "no_packets": 0.20238095238095236,
+          "lock_structure": 0.19047619047619047
+        },
+        "b": {
+          "full": 0.21428571428571427,
+          "no_packets": 0.21428571428571427,
+          "lock_structure": 0.21428571428571427
+        }
+      },
+      "vs_reference": {
+        "b": {
+          "full": {
+            "delta": 0.023809523809523808,
+            "ci95": [
+              -0.02380952380952381,
+              0.08333333333333334
+            ]
+          },
+          "no_packets": {
+            "delta": 0.011904761904761918,
+            "ci95": [
+              -0.02380952380952381,
+              0.04761904761904762
+            ]
+          },
+          "lock_structure": {
+            "delta": 0.023809523809523808,
+            "ci95": [
+              -0.02380952380952381,
+              0.08333333333333334
+            ]
+          }
+        }
+      },
+      "counts": {
+        "full": {
+          "mpc": 16.0,
+          "b": 18.0
+        },
+        "no_packets": {
+          "mpc": 17.0,
+          "b": 18.0
+        },
+        "lock_structure": {
+          "mpc": 16.0,
+          "b": 18.0
+        }
+      },
+      "trial_count": 84,
+      "checkpoint_counts": {
+        "tracking": 23,
+        "target_invisible": 5
+      },
+      "ambiguous_at_root": {
+        "worlds": 0,
+        "trials": 0,
+        "above_095_after_first": {
+          "mpc": 0,
+          "b": 0
+        }
+      },
+      "loss_of_B_gain_without_packets": {
+        "mean": 0.011904761904761904,
+        "ci95": [
+          0.0,
+          0.03571428571428571
+        ]
+      }
+    },
+    "pooled": {
+      "worlds": 56,
+      "replicas_per_world": 3,
+      "means": {
+        "mpc": {
+          "full": 0.369047619047619,
+          "no_packets": 0.375,
+          "lock_structure": 0.3452380952380952
+        },
+        "b": {
+          "full": 0.4464285714285715,
+          "no_packets": 0.4107142857142857,
+          "lock_structure": 0.369047619047619
+        }
+      },
+      "vs_reference": {
+        "b": {
+          "full": {
+            "delta": 0.0773809523809525,
+            "ci95": [
+              0.017857142857142856,
+              0.14285714285714288
+            ]
+          },
+          "no_packets": {
+            "delta": 0.0357142857142857,
+            "ci95": [
+              -0.02380952380952381,
+              0.10714285714285714
+            ]
+          },
+          "lock_structure": {
+            "delta": 0.023809523809523836,
+            "ci95": [
+              -0.03571428571428571,
+              0.08928571428571429
+            ]
+          }
+        }
+      },
+      "counts": {
+        "full": {
+          "mpc": 62.0,
+          "b": 75.0
+        },
+        "no_packets": {
+          "mpc": 63.0,
+          "b": 69.0
+        },
+        "lock_structure": {
+          "mpc": 58.0,
+          "b": 62.0
+        }
+      },
+      "trial_count": 168,
+      "checkpoint_counts": {
+        "tracking": 40,
+        "target_invisible": 16
+      },
+      "ambiguous_at_root": {
+        "worlds": 12,
+        "trials": 36,
+        "above_095_after_first": {
+          "mpc": 18,
+          "b": 31
+        }
+      },
+      "loss_of_B_gain_without_packets": {
+        "mean": 0.041666666666666664,
+        "ci95": [
+          0.005952380952380952,
+          0.08928571428571429
+        ]
+      }
+    }
+  }
+}
