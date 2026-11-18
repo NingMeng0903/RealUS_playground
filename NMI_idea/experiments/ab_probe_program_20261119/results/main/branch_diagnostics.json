@@ -1,0 +1,244 @@
+{
+  "test": {
+    "tolerance": 1e-07,
+    "matched_roots": 37,
+    "roots_with_switch": 18,
+    "matched_tape_pairs": 626,
+    "pairs_with_switch": 122,
+    "examples": {
+      "connection/natural": {
+        "seed": 74700002,
+        "tapes": [
+          1,
+          2
+        ],
+        "first": "revisit",
+        "exit": [
+          12.919999999999987,
+          -9.467986854541236,
+          -1.1546319456101628e-14,
+          0.0,
+          40.17118983584329,
+          30
+        ],
+        "second": [
+          "grid_03",
+          "grid_04"
+        ],
+        "empty_frames": [
+          7,
+          3
+        ],
+        "posterior_tv": [
+          0.5278308904709568,
+          0.7785298878487226
+        ],
+        "completion": [
+          1,
+          1
+        ]
+      },
+      "connection/burst": {
+        "seed": 74710015,
+        "tapes": [
+          0,
+          4
+        ],
+        "first": "grid_04",
+        "exit": [
+          7.827999999999982,
+          -14.217105356049391,
+          0.0,
+          0.0,
+          46.846864811039055,
+          30
+        ],
+        "second": [
+          "grid_14",
+          "handoff"
+        ],
+        "empty_frames": [
+          7,
+          7
+        ],
+        "posterior_tv": [
+          9.168587157420785e-13,
+          9.169857300080997e-13
+        ],
+        "completion": [
+          0,
+          0
+        ]
+      },
+      "parallel/natural": {
+        "seed": 74720029,
+        "tapes": [
+          1,
+          3
+        ],
+        "first": "forward_left",
+        "exit": [
+          14.79999999999999,
+          -9.640387052995026,
+          0.0,
+          0.0,
+          47.84023752796483,
+          20
+        ],
+        "second": [
+          "grid_04",
+          "grid_02"
+        ],
+        "empty_frames": [
+          4,
+          7
+        ],
+        "posterior_tv": [
+          0.22046388274669107,
+          0.22045814855432036
+        ],
+        "completion": [
+          1,
+          1
+        ]
+      },
+      "parallel/burst": {
+        "seed": 74730000,
+        "tapes": [
+          1,
+          2
+        ],
+        "first": "grid_03",
+        "exit": [
+          5.79999999999999,
+          -0.04064550810542302,
+          0.0,
+          0.0,
+          50.98558761149184,
+          20
+        ],
+        "second": [
+          "handoff",
+          "grid_11"
+        ],
+        "empty_frames": [
+          2,
+          2
+        ],
+        "posterior_tv": [
+          0.6623092935765704,
+          0.6580946774502294
+        ],
+        "completion": [
+          1,
+          1
+        ]
+      }
+    }
+  },
+  "drift": {
+    "tolerance": 1e-07,
+    "matched_roots": 17,
+    "roots_with_switch": 8,
+    "matched_tape_pairs": 111,
+    "pairs_with_switch": 50,
+    "examples": {
+      "connection/natural": {
+        "seed": 74800002,
+        "tapes": [
+          0,
+          2
+        ],
+        "first": "cem_2",
+        "exit": [
+          11.647540464280475,
+          -13.237193728306506,
+          0.0,
+          0.0,
+          48.97146895823752,
+          20
+        ],
+        "second": [
+          "grid_04",
+          "grid_03"
+        ],
+        "empty_frames": [
+          4,
+          6
+        ],
+        "posterior_tv": [
+          0.9802194731806354,
+          0.4767659762604071
+        ],
+        "completion": [
+          0,
+          1
+        ]
+      },
+      "connection/burst": {
+        "seed": 74810000,
+        "tapes": [
+          1,
+          3
+        ],
+        "first": "back_right",
+        "exit": [
+          7.327999999999982,
+          -14.353417358719437,
+          0.0,
+          0.0,
+          47.38414405610747,
+          30
+        ],
+        "second": [
+          "grid_02",
+          "handoff"
+        ],
+        "empty_frames": [
+          7,
+          9
+        ],
+        "posterior_tv": [
+          0.9233824040574261,
+          0.38787431662760985
+        ],
+        "completion": [
+          1,
+          1
+        ]
+      },
+      "parallel/burst": {
+        "seed": 74830000,
+        "tapes": [
+          0,
+          7
+        ],
+        "first": "revisit",
+        "exit": [
+          11.599999999999994,
+          -6.938893903907228e-18,
+          -1.1546319456101628e-14,
+          4.163336342344337e-17,
+          35.89708359911091,
+          30
+        ],
+        "second": [
+          "grid_02",
+          "handoff"
+        ],
+        "empty_frames": [
+          5,
+          4
+        ],
+        "posterior_tv": [
+          0.01141473022998703,
+          0.05229992952657284
+        ],
+        "completion": [
+          0,
+          1
+        ]
+      }
+    }
+  }
+}

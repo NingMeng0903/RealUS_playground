@@ -1,0 +1,3996 @@
+{
+  "test": {
+    "all": {
+      "worlds": 128,
+      "replicas_per_world": 8,
+      "means": {
+        "archived_evidence": {
+          "new_image_and_complete": 0.890625,
+          "corrected_complete": 0.890625,
+          "final_wrong": 0.029296875,
+          "new_identity_mistake": 0.150390625,
+          "tcp_mm": 44.900230738725774,
+          "turn_degs": 8.810855511137472,
+          "seconds": 6.24609375,
+          "frames": 63.4609375,
+          "centered_complete": 0.0322265625,
+          "new_query_image_retained": 0.921875,
+          "feedback_revisions": 19.19921875
+        },
+        "mpc": {
+          "new_image_and_complete": 0.7744140625,
+          "corrected_complete": 0.7744140625,
+          "final_wrong": 0.0390625,
+          "new_identity_mistake": 0.1162109375,
+          "tcp_mm": 38.29094651417978,
+          "turn_degs": 7.013254318072727,
+          "seconds": 5.55859375,
+          "frames": 56.5859375,
+          "centered_complete": 0.02734375,
+          "new_query_image_retained": 0.7724609375,
+          "feedback_revisions": 14.962890625
+        },
+        "fixed": {
+          "new_image_and_complete": 0.8408203125,
+          "corrected_complete": 0.8408203125,
+          "final_wrong": 0.0380859375,
+          "new_identity_mistake": 0.150390625,
+          "tcp_mm": 45.86994845395697,
+          "turn_degs": 8.40963192508813,
+          "seconds": 6.5673828125,
+          "frames": 66.673828125,
+          "centered_complete": 0.0224609375,
+          "new_query_image_retained": 0.859375,
+          "feedback_revisions": 20.736328125
+        },
+        "old": {
+          "new_image_and_complete": 0.87890625,
+          "corrected_complete": 0.87890625,
+          "final_wrong": 0.046875,
+          "new_identity_mistake": 0.171875,
+          "tcp_mm": 45.391093505014034,
+          "turn_degs": 8.915731698073783,
+          "seconds": 6.2568359375,
+          "frames": 63.568359375,
+          "centered_complete": 0.0537109375,
+          "new_query_image_retained": 0.9228515625,
+          "feedback_revisions": 18.841796875
+        },
+        "random": {
+          "new_image_and_complete": 0.8681640625,
+          "corrected_complete": 0.8681640625,
+          "final_wrong": 0.0341796875,
+          "new_identity_mistake": 0.1572265625,
+          "tcp_mm": 45.457963697651834,
+          "turn_degs": 8.831950743293396,
+          "seconds": 6.31640625,
+          "frames": 64.1640625,
+          "centered_complete": 0.0400390625,
+          "new_query_image_retained": 0.9130859375,
+          "feedback_revisions": 18.9306640625
+        },
+        "evidence": {
+          "new_image_and_complete": 0.8759765625,
+          "corrected_complete": 0.8759765625,
+          "final_wrong": 0.0400390625,
+          "new_identity_mistake": 0.1611328125,
+          "tcp_mm": 45.86030264253136,
+          "turn_degs": 9.01599698630028,
+          "seconds": 6.326171875,
+          "frames": 64.26171875,
+          "centered_complete": 0.037109375,
+          "new_query_image_retained": 0.919921875,
+          "feedback_revisions": 18.91015625
+        },
+        "contrast": {
+          "new_image_and_complete": 0.9013671875,
+          "corrected_complete": 0.9013671875,
+          "final_wrong": 0.0380859375,
+          "new_identity_mistake": 0.1572265625,
+          "tcp_mm": 45.800910513236694,
+          "turn_degs": 8.958544902025622,
+          "seconds": 6.2109375,
+          "frames": 63.109375,
+          "centered_complete": 0.0361328125,
+          "new_query_image_retained": 0.9443359375,
+          "feedback_revisions": 18.857421875
+        },
+        "program": {
+          "new_image_and_complete": 0.88671875,
+          "corrected_complete": 0.88671875,
+          "final_wrong": 0.0380859375,
+          "new_identity_mistake": 0.1767578125,
+          "tcp_mm": 47.723895804558786,
+          "turn_degs": 9.377917884994124,
+          "seconds": 6.55859375,
+          "frames": 66.5859375,
+          "centered_complete": 0.03515625,
+          "new_query_image_retained": 0.943359375,
+          "feedback_revisions": 20.158203125
+        }
+      },
+      "vs_reference": {
+        "mpc": {
+          "new_image_and_complete": {
+            "delta": -0.1162109375,
+            "ci95": [
+              -0.1767578125,
+              -0.05859375
+            ]
+          },
+          "corrected_complete": {
+            "delta": -0.1162109375,
+            "ci95": [
+              -0.1767578125,
+              -0.05859375
+            ]
+          },
+          "final_wrong": {
+            "delta": 0.009765625,
+            "ci95": [
+              0.0,
+              0.0205078125
+            ]
+          },
+          "new_identity_mistake": {
+            "delta": -0.0341796875,
+            "ci95": [
+              -0.0615234375,
+              -0.009765625
+            ]
+          },
+          "tcp_mm": {
+            "delta": -6.609284224545995,
+            "ci95": [
+              -8.035873096997902,
+              -5.232564587234567
+            ]
+          },
+          "turn_degs": {
+            "delta": -1.7976011930647449,
+            "ci95": [
+              -2.1909433581118973,
+              -1.4178445447288717
+            ]
+          },
+          "seconds": {
+            "delta": -0.6875,
+            "ci95": [
+              -0.8720703125,
+              -0.4990234375
+            ]
+          },
+          "frames": {
+            "delta": -6.875,
+            "ci95": [
+              -8.720703125,
+              -4.990234375
+            ]
+          },
+          "centered_complete": {
+            "delta": -0.0048828125,
+            "ci95": [
+              -0.03322753906249998,
+              0.0234375
+            ]
+          },
+          "new_query_image_retained": {
+            "delta": -0.1494140625,
+            "ci95": [
+              -0.2197265625,
+              -0.0830078125
+            ]
+          },
+          "feedback_revisions": {
+            "delta": -4.236328125,
+            "ci95": [
+              -5.1884765625,
+              -3.3125
+            ]
+          }
+        },
+        "fixed": {
+          "new_image_and_complete": {
+            "delta": -0.0498046875,
+            "ci95": [
+              -0.1015625,
+              -0.0009765625
+            ]
+          },
+          "corrected_complete": {
+            "delta": -0.0498046875,
+            "ci95": [
+              -0.1015625,
+              -0.0009765625
+            ]
+          },
+          "final_wrong": {
+            "delta": 0.0087890625,
+            "ci95": [
+              -0.00390625,
+              0.0234375
+            ]
+          },
+          "new_identity_mistake": {
+            "delta": 0.0,
+            "ci95": [
+              -0.021484375,
+              0.021484375
+            ]
+          },
+          "tcp_mm": {
+            "delta": 0.969717715231198,
+            "ci95": [
+              -0.24443115084689163,
+              2.171508970234509
+            ]
+          },
+          "turn_degs": {
+            "delta": -0.4012235860493423,
+            "ci95": [
+              -0.7794584417551295,
+              -0.03352230026581267
+            ]
+          },
+          "seconds": {
+            "delta": 0.3212890625,
+            "ci95": [
+              0.15234375,
+              0.4873046875
+            ]
+          },
+          "frames": {
+            "delta": 3.212890625,
+            "ci95": [
+              1.5234375,
+              4.873046875
+            ]
+          },
+          "centered_complete": {
+            "delta": -0.009765625,
+            "ci95": [
+              -0.033203125,
+              0.01171875
+            ]
+          },
+          "new_query_image_retained": {
+            "delta": -0.0625,
+            "ci95": [
+              -0.119140625,
+              -0.0078125
+            ]
+          },
+          "feedback_revisions": {
+            "delta": 1.537109375,
+            "ci95": [
+              0.6357421875,
+              2.4443847656249993
+            ]
+          }
+        },
+        "old": {
+          "new_image_and_complete": {
+            "delta": -0.01171875,
+            "ci95": [
+              -0.0283203125,
+              0.00390625
+            ]
+          },
+          "corrected_complete": {
+            "delta": -0.01171875,
+            "ci95": [
+              -0.0283203125,
+              0.00390625
+            ]
+          },
+          "final_wrong": {
+            "delta": 0.017578125,
+            "ci95": [
+              0.0029296875,
+              0.0361328125
+            ]
+          },
+          "new_identity_mistake": {
+            "delta": 0.021484375,
+            "ci95": [
+              0.0048828125,
+              0.041015625
+            ]
+          },
+          "tcp_mm": {
+            "delta": 0.4908627662882594,
+            "ci95": [
+              -0.07028044861648079,
+              1.071074933413281
+            ]
+          },
+          "turn_degs": {
+            "delta": 0.10487618693631084,
+            "ci95": [
+              -0.08487836976631266,
+              0.29592716838529465
+            ]
+          },
+          "seconds": {
+            "delta": 0.0107421875,
+            "ci95": [
+              -0.0830078125,
+              0.10256347656249964
+            ]
+          },
+          "frames": {
+            "delta": 0.107421875,
+            "ci95": [
+              -0.830078125,
+              1.0256347656249964
+            ]
+          },
+          "centered_complete": {
+            "delta": 0.021484375,
+            "ci95": [
+              -0.0009765625,
+              0.048828125
+            ]
+          },
+          "new_query_image_retained": {
+            "delta": 0.0009765625,
+            "ci95": [
+              -0.015625,
+              0.021484375
+            ]
+          },
+          "feedback_revisions": {
+            "delta": -0.357421875,
+            "ci95": [
+              -0.8017578125,
+              0.1064453125
+            ]
+          }
+        },
+        "random": {
+          "new_image_and_complete": {
+            "delta": -0.0224609375,
+            "ci95": [
+              -0.0390625,
+              -0.0078125
+            ]
+          },
+          "corrected_complete": {
+            "delta": -0.0224609375,
+            "ci95": [
+              -0.0390625,
+              -0.0078125
+            ]
+          },
+          "final_wrong": {
+            "delta": 0.0048828125,
+            "ci95": [
+              -0.0048828125,
+              0.01953125
+            ]
+          },
+          "new_identity_mistake": {
+            "delta": 0.0068359375,
+            "ci95": [
+              -0.005859375,
+              0.021484375
+            ]
+          },
+          "tcp_mm": {
+            "delta": 0.55773295892606,
+            "ci95": [
+              -0.05604133581844236,
+              1.168265912965682
+            ]
+          },
+          "turn_degs": {
+            "delta": 0.021095232155923682,
+            "ci95": [
+              -0.16476469459436716,
+              0.2100682169300426
+            ]
+          },
+          "seconds": {
+            "delta": 0.0703125,
+            "ci95": [
+              -0.0205078125,
+              0.16015625
+            ]
+          },
+          "frames": {
+            "delta": 0.703125,
+            "ci95": [
+              -0.205078125,
+              1.6015625
+            ]
+          },
+          "centered_complete": {
+            "delta": 0.0078125,
+            "ci95": [
+              -0.00390625,
+              0.021484375
+            ]
+          },
+          "new_query_image_retained": {
+            "delta": -0.0087890625,
+            "ci95": [
+              -0.021484375,
+              0.001953125
+            ]
+          },
+          "feedback_revisions": {
+            "delta": -0.2685546875,
+            "ci95": [
+              -0.7851806640625,
+              0.2587890625
+            ]
+          }
+        },
+        "evidence": {
+          "new_image_and_complete": {
+            "delta": -0.0146484375,
+            "ci95": [
+              -0.033203125,
+              0.005859375
+            ]
+          },
+          "corrected_complete": {
+            "delta": -0.0146484375,
+            "ci95": [
+              -0.033203125,
+              0.005859375
+            ]
+          },
+          "final_wrong": {
+            "delta": 0.0107421875,
+            "ci95": [
+              -0.001953125,
+              0.0263671875
+            ]
+          },
+          "new_identity_mistake": {
+            "delta": 0.0107421875,
+            "ci95": [
+              -0.005859375,
+              0.0302734375
+            ]
+          },
+          "tcp_mm": {
+            "delta": 0.9600719038055843,
+            "ci95": [
+              0.28566430331269776,
+              1.6689329524331638
+            ]
+          },
+          "turn_degs": {
+            "delta": 0.205141475162808,
+            "ci95": [
+              0.013069054377701384,
+              0.4044923592470777
+            ]
+          },
+          "seconds": {
+            "delta": 0.080078125,
+            "ci95": [
+              -0.021484375,
+              0.1787109375
+            ]
+          },
+          "frames": {
+            "delta": 0.80078125,
+            "ci95": [
+              -0.21484375,
+              1.787109375
+            ]
+          },
+          "centered_complete": {
+            "delta": 0.0048828125,
+            "ci95": [
+              -0.01953125,
+              0.02734375
+            ]
+          },
+          "new_query_image_retained": {
+            "delta": -0.001953125,
+            "ci95": [
+              -0.017578125,
+              0.0185546875
+            ]
+          },
+          "feedback_revisions": {
+            "delta": -0.2890625,
+            "ci95": [
+              -0.8544921875,
+              0.25783691406249964
+            ]
+          }
+        },
+        "contrast": {
+          "new_image_and_complete": {
+            "delta": 0.0107421875,
+            "ci95": [
+              -0.0146484375,
+              0.040063476562499645
+            ]
+          },
+          "corrected_complete": {
+            "delta": 0.0107421875,
+            "ci95": [
+              -0.0146484375,
+              0.040063476562499645
+            ]
+          },
+          "final_wrong": {
+            "delta": 0.0087890625,
+            "ci95": [
+              -0.0029296875,
+              0.0234375
+            ]
+          },
+          "new_identity_mistake": {
+            "delta": 0.0068359375,
+            "ci95": [
+              -0.005859375,
+              0.0205078125
+            ]
+          },
+          "tcp_mm": {
+            "delta": 0.9006797745109196,
+            "ci95": [
+              0.30367639088438075,
+              1.5450041521545816
+            ]
+          },
+          "turn_degs": {
+            "delta": 0.14768939088815003,
+            "ci95": [
+              -0.05178732346728617,
+              0.3469774218091259
+            ]
+          },
+          "seconds": {
+            "delta": -0.03515625,
+            "ci95": [
+              -0.1142578125,
+              0.0419921875
+            ]
+          },
+          "frames": {
+            "delta": -0.3515625,
+            "ci95": [
+              -1.142578125,
+              0.419921875
+            ]
+          },
+          "centered_complete": {
+            "delta": 0.00390625,
+            "ci95": [
+              -0.017578125,
+              0.0244140625
+            ]
+          },
+          "new_query_image_retained": {
+            "delta": 0.0224609375,
+            "ci95": [
+              -0.00390625,
+              0.0546875
+            ]
+          },
+          "feedback_revisions": {
+            "delta": -0.341796875,
+            "ci95": [
+              -0.8486328125,
+              0.15334472656249964
+            ]
+          }
+        },
+        "program": {
+          "new_image_and_complete": {
+            "delta": -0.00390625,
+            "ci95": [
+              -0.0263671875,
+              0.017578125
+            ]
+          },
+          "corrected_complete": {
+            "delta": -0.00390625,
+            "ci95": [
+              -0.0263671875,
+              0.017578125
+            ]
+          },
+          "final_wrong": {
+            "delta": 0.0087890625,
+            "ci95": [
+              -0.0029296875,
+              0.0244140625
+            ]
+          },
+          "new_identity_mistake": {
+            "delta": 0.0263671875,
+            "ci95": [
+              0.0068359375,
+              0.0478515625
+            ]
+          },
+          "tcp_mm": {
+            "delta": 2.823665065833012,
+            "ci95": [
+              2.1043676154248505,
+              3.5618108497806773
+            ]
+          },
+          "turn_degs": {
+            "delta": 0.5670623738566523,
+            "ci95": [
+              0.35617257037885014,
+              0.7894298001975569
+            ]
+          },
+          "seconds": {
+            "delta": 0.3125,
+            "ci95": [
+              0.20310058593750002,
+              0.4228515625
+            ]
+          },
+          "frames": {
+            "delta": 3.125,
+            "ci95": [
+              2.031005859375,
+              4.228515625
+            ]
+          },
+          "centered_complete": {
+            "delta": 0.0029296875,
+            "ci95": [
+              -0.017578125,
+              0.0205078125
+            ]
+          },
+          "new_query_image_retained": {
+            "delta": 0.021484375,
+            "ci95": [
+              0.00390625,
+              0.04296875
+            ]
+          },
+          "feedback_revisions": {
+            "delta": 0.958984375,
+            "ci95": [
+              0.3427490234375,
+              1.5732421875
+            ]
+          }
+        }
+      }
+    },
+    "connection": {
+      "worlds": 64,
+      "replicas_per_world": 8,
+      "means": {
+        "archived_evidence": {
+          "new_image_and_complete": 0.853515625,
+          "corrected_complete": 0.853515625,
+          "final_wrong": 0.01953125,
+          "new_identity_mistake": 0.09765625,
+          "tcp_mm": 45.64583981656642,
+          "turn_degs": 8.977090375872635,
+          "seconds": 6.5,
+          "frames": 66.0,
+          "centered_complete": 0.0390625,
+          "new_query_image_retained": 0.896484375,
+          "feedback_revisions": 21.451171875
+        },
+        "mpc": {
+          "new_image_and_complete": 0.787109375,
+          "corrected_complete": 0.787109375,
+          "final_wrong": 0.033203125,
+          "new_identity_mistake": 0.09375,
+          "tcp_mm": 40.89271913524517,
+          "turn_degs": 7.638400525720763,
+          "seconds": 5.873046875,
+          "frames": 59.73046875,
+          "centered_complete": 0.021484375,
+          "new_query_image_retained": 0.83203125,
+          "feedback_revisions": 17.048828125
+        },
+        "fixed": {
+          "new_image_and_complete": 0.8359375,
+          "corrected_complete": 0.8359375,
+          "final_wrong": 0.037109375,
+          "new_identity_mistake": 0.119140625,
+          "tcp_mm": 47.106730895676115,
+          "turn_degs": 8.897523449918516,
+          "seconds": 6.92578125,
+          "frames": 70.2578125,
+          "centered_complete": 0.03515625,
+          "new_query_image_retained": 0.89453125,
+          "feedback_revisions": 22.130859375
+        },
+        "old": {
+          "new_image_and_complete": 0.8359375,
+          "corrected_complete": 0.8359375,
+          "final_wrong": 0.056640625,
+          "new_identity_mistake": 0.12890625,
+          "tcp_mm": 46.65600054091184,
+          "turn_degs": 9.137247545085204,
+          "seconds": 6.5625,
+          "frames": 66.625,
+          "centered_complete": 0.037109375,
+          "new_query_image_retained": 0.904296875,
+          "feedback_revisions": 21.45703125
+        },
+        "random": {
+          "new_image_and_complete": 0.818359375,
+          "corrected_complete": 0.818359375,
+          "final_wrong": 0.033203125,
+          "new_identity_mistake": 0.111328125,
+          "tcp_mm": 46.1258693525189,
+          "turn_degs": 8.93334251445421,
+          "seconds": 6.580078125,
+          "frames": 66.80078125,
+          "centered_complete": 0.037109375,
+          "new_query_image_retained": 0.8828125,
+          "feedback_revisions": 20.91796875
+        },
+        "evidence": {
+          "new_image_and_complete": 0.83984375,
+          "corrected_complete": 0.83984375,
+          "final_wrong": 0.0390625,
+          "new_identity_mistake": 0.11328125,
+          "tcp_mm": 46.787601141624926,
+          "turn_degs": 9.182997189834907,
+          "seconds": 6.5859375,
+          "frames": 66.859375,
+          "centered_complete": 0.021484375,
+          "new_query_image_retained": 0.904296875,
+          "feedback_revisions": 21.34765625
+        },
+        "contrast": {
+          "new_image_and_complete": 0.876953125,
+          "corrected_complete": 0.876953125,
+          "final_wrong": 0.041015625,
+          "new_identity_mistake": 0.107421875,
+          "tcp_mm": 46.90943475724126,
+          "turn_degs": 9.144638398945165,
+          "seconds": 6.408203125,
+          "frames": 65.08203125,
+          "centered_complete": 0.037109375,
+          "new_query_image_retained": 0.943359375,
+          "feedback_revisions": 20.86328125
+        },
+        "program": {
+          "new_image_and_complete": 0.857421875,
+          "corrected_complete": 0.857421875,
+          "final_wrong": 0.041015625,
+          "new_identity_mistake": 0.130859375,
+          "tcp_mm": 49.79770841634328,
+          "turn_degs": 9.841607014096798,
+          "seconds": 6.833984375,
+          "frames": 69.33984375,
+          "centered_complete": 0.037109375,
+          "new_query_image_retained": 0.923828125,
+          "feedback_revisions": 23.142578125
+        }
+      },
+      "vs_reference": {
+        "mpc": {
+          "new_image_and_complete": {
+            "delta": -0.06640625,
+            "ci95": [
+              -0.1484375,
+              0.013671875
+            ]
+          },
+          "corrected_complete": {
+            "delta": -0.06640625,
+            "ci95": [
+              -0.1484375,
+              0.013671875
+            ]
+          },
+          "final_wrong": {
+            "delta": 0.013671875,
+            "ci95": [
+              -0.00390625,
+              0.033203125
+            ]
+          },
+          "new_identity_mistake": {
+            "delta": -0.00390625,
+            "ci95": [
+              -0.033203125,
+              0.025390625
+            ]
+          },
+          "tcp_mm": {
+            "delta": -4.753120681321249,
+            "ci95": [
+              -6.961721183903762,
+              -2.6428496661847944
+            ]
+          },
+          "turn_degs": {
+            "delta": -1.338689850151872,
+            "ci95": [
+              -1.9129006055375566,
+              -0.7880129930326545
+            ]
+          },
+          "seconds": {
+            "delta": -0.626953125,
+            "ci95": [
+              -0.87109375,
+              -0.380859375
+            ]
+          },
+          "frames": {
+            "delta": -6.26953125,
+            "ci95": [
+              -8.7109375,
+              -3.80859375
+            ]
+          },
+          "centered_complete": {
+            "delta": -0.017578125,
+            "ci95": [
+              -0.056640625,
+              0.01171875
+            ]
+          },
+          "new_query_image_retained": {
+            "delta": -0.064453125,
+            "ci95": [
+              -0.15625,
+              0.02734375
+            ]
+          },
+          "feedback_revisions": {
+            "delta": -4.40234375,
+            "ci95": [
+              -5.886767578125,
+              -2.9765625
+            ]
+          }
+        },
+        "fixed": {
+          "new_image_and_complete": {
+            "delta": -0.017578125,
+            "ci95": [
+              -0.09375,
+              0.05859375
+            ]
+          },
+          "corrected_complete": {
+            "delta": -0.017578125,
+            "ci95": [
+              -0.09375,
+              0.05859375
+            ]
+          },
+          "final_wrong": {
+            "delta": 0.017578125,
+            "ci95": [
+              -0.005859375,
+              0.046875
+            ]
+          },
+          "new_identity_mistake": {
+            "delta": 0.021484375,
+            "ci95": [
+              -0.00390625,
+              0.052734375
+            ]
+          },
+          "tcp_mm": {
+            "delta": 1.4608910791096932,
+            "ci95": [
+              -0.08571137096213442,
+              2.9124622712888617
+            ]
+          },
+          "turn_degs": {
+            "delta": -0.07956692595411852,
+            "ci95": [
+              -0.535997343361223,
+              0.3653533653215423
+            ]
+          },
+          "seconds": {
+            "delta": 0.42578125,
+            "ci95": [
+              0.248046875,
+              0.59765625
+            ]
+          },
+          "frames": {
+            "delta": 4.2578125,
+            "ci95": [
+              2.48046875,
+              5.9765625
+            ]
+          },
+          "centered_complete": {
+            "delta": -0.00390625,
+            "ci95": [
+              -0.044921875,
+              0.03515625
+            ]
+          },
+          "new_query_image_retained": {
+            "delta": -0.001953125,
+            "ci95": [
+              -0.078125,
+              0.07421875
+            ]
+          },
+          "feedback_revisions": {
+            "delta": 0.6796875,
+            "ci95": [
+              -0.400390625,
+              1.7070800781249993
+            ]
+          }
+        },
+        "old": {
+          "new_image_and_complete": {
+            "delta": -0.017578125,
+            "ci95": [
+              -0.044921875,
+              0.0078125
+            ]
+          },
+          "corrected_complete": {
+            "delta": -0.017578125,
+            "ci95": [
+              -0.044921875,
+              0.0078125
+            ]
+          },
+          "final_wrong": {
+            "delta": 0.037109375,
+            "ci95": [
+              0.009765625,
+              0.07421875
+            ]
+          },
+          "new_identity_mistake": {
+            "delta": 0.03125,
+            "ci95": [
+              0.005859375,
+              0.064453125
+            ]
+          },
+          "tcp_mm": {
+            "delta": 1.0101607243454183,
+            "ci95": [
+              0.3724692682821714,
+              1.6720296896484759
+            ]
+          },
+          "turn_degs": {
+            "delta": 0.16015716921256917,
+            "ci95": [
+              -0.03416093715318144,
+              0.3604556482661276
+            ]
+          },
+          "seconds": {
+            "delta": 0.0625,
+            "ci95": [
+              -0.02734375,
+              0.15234375
+            ]
+          },
+          "frames": {
+            "delta": 0.625,
+            "ci95": [
+              -0.2734375,
+              1.5234375
+            ]
+          },
+          "centered_complete": {
+            "delta": -0.001953125,
+            "ci95": [
+              -0.017578125,
+              0.01171875
+            ]
+          },
+          "new_query_image_retained": {
+            "delta": 0.0078125,
+            "ci95": [
+              -0.01953125,
+              0.044921875
+            ]
+          },
+          "feedback_revisions": {
+            "delta": 0.005859375,
+            "ci95": [
+              -0.570361328125,
+              0.572265625
+            ]
+          }
+        },
+        "random": {
+          "new_image_and_complete": {
+            "delta": -0.03515625,
+            "ci95": [
+              -0.060546875,
+              -0.01171875
+            ]
+          },
+          "corrected_complete": {
+            "delta": -0.03515625,
+            "ci95": [
+              -0.060546875,
+              -0.01171875
+            ]
+          },
+          "final_wrong": {
+            "delta": 0.013671875,
+            "ci95": [
+              -0.00390625,
+              0.04296875
+            ]
+          },
+          "new_identity_mistake": {
+            "delta": 0.013671875,
+            "ci95": [
+              -0.00390625,
+              0.0390625
+            ]
+          },
+          "tcp_mm": {
+            "delta": 0.48002953595247533,
+            "ci95": [
+              -0.27643968218081927,
+              1.1948545894058265
+            ]
+          },
+          "turn_degs": {
+            "delta": -0.04374786141842435,
+            "ci95": [
+              -0.24301067047454986,
+              0.15405078786457138
+            ]
+          },
+          "seconds": {
+            "delta": 0.080078125,
+            "ci95": [
+              -0.02734375,
+              0.181640625
+            ]
+          },
+          "frames": {
+            "delta": 0.80078125,
+            "ci95": [
+              -0.2734375,
+              1.81640625
+            ]
+          },
+          "centered_complete": {
+            "delta": -0.001953125,
+            "ci95": [
+              -0.017578125,
+              0.01171875
+            ]
+          },
+          "new_query_image_retained": {
+            "delta": -0.013671875,
+            "ci95": [
+              -0.029296875,
+              -0.001953125
+            ]
+          },
+          "feedback_revisions": {
+            "delta": -0.533203125,
+            "ci95": [
+              -1.283203125,
+              0.1582519531249993
+            ]
+          }
+        },
+        "evidence": {
+          "new_image_and_complete": {
+            "delta": -0.013671875,
+            "ci95": [
+              -0.044970703124999956,
+              0.0234375
+            ]
+          },
+          "corrected_complete": {
+            "delta": -0.013671875,
+            "ci95": [
+              -0.044970703124999956,
+              0.0234375
+            ]
+          },
+          "final_wrong": {
+            "delta": 0.01953125,
+            "ci95": [
+              -0.005859375,
+              0.052734375
+            ]
+          },
+          "new_identity_mistake": {
+            "delta": 0.015625,
+            "ci95": [
+              -0.0078125,
+              0.044921875
+            ]
+          },
+          "tcp_mm": {
+            "delta": 1.1417613250585035,
+            "ci95": [
+              0.3941082386908835,
+              1.9482950898969447
+            ]
+          },
+          "turn_degs": {
+            "delta": 0.2059068139622724,
+            "ci95": [
+              0.0029475634697153806,
+              0.412898724860399
+            ]
+          },
+          "seconds": {
+            "delta": 0.0859375,
+            "ci95": [
+              -0.025390625,
+              0.189453125
+            ]
+          },
+          "frames": {
+            "delta": 0.859375,
+            "ci95": [
+              -0.25390625,
+              1.89453125
+            ]
+          },
+          "centered_complete": {
+            "delta": -0.017578125,
+            "ci95": [
+              -0.0546875,
+              0.0078125
+            ]
+          },
+          "new_query_image_retained": {
+            "delta": 0.0078125,
+            "ci95": [
+              -0.015625,
+              0.044921875
+            ]
+          },
+          "feedback_revisions": {
+            "delta": -0.103515625,
+            "ci95": [
+              -0.7421875,
+              0.5
+            ]
+          }
+        },
+        "contrast": {
+          "new_image_and_complete": {
+            "delta": 0.0234375,
+            "ci95": [
+              -0.025390625,
+              0.078125
+            ]
+          },
+          "corrected_complete": {
+            "delta": 0.0234375,
+            "ci95": [
+              -0.025390625,
+              0.078125
+            ]
+          },
+          "final_wrong": {
+            "delta": 0.021484375,
+            "ci95": [
+              0.0,
+              0.048828125
+            ]
+          },
+          "new_identity_mistake": {
+            "delta": 0.009765625,
+            "ci95": [
+              -0.0078125,
+              0.03125
+            ]
+          },
+          "tcp_mm": {
+            "delta": 1.2635949406748352,
+            "ci95": [
+              0.394718319770522,
+              2.1758362655436994
+            ]
+          },
+          "turn_degs": {
+            "delta": 0.16754802307253058,
+            "ci95": [
+              -0.07645244800665899,
+              0.424335820826764
+            ]
+          },
+          "seconds": {
+            "delta": -0.091796875,
+            "ci95": [
+              -0.2109375,
+              0.021484375
+            ]
+          },
+          "frames": {
+            "delta": -0.91796875,
+            "ci95": [
+              -2.109375,
+              0.21484375
+            ]
+          },
+          "centered_complete": {
+            "delta": -0.001953125,
+            "ci95": [
+              -0.017578125,
+              0.01171875
+            ]
+          },
+          "new_query_image_retained": {
+            "delta": 0.046875,
+            "ci95": [
+              -0.001953125,
+              0.107421875
+            ]
+          },
+          "feedback_revisions": {
+            "delta": -0.587890625,
+            "ci95": [
+              -1.296923828125,
+              0.0234375
+            ]
+          }
+        },
+        "program": {
+          "new_image_and_complete": {
+            "delta": 0.00390625,
+            "ci95": [
+              -0.03515625,
+              0.04296875
+            ]
+          },
+          "corrected_complete": {
+            "delta": 0.00390625,
+            "ci95": [
+              -0.03515625,
+              0.04296875
+            ]
+          },
+          "final_wrong": {
+            "delta": 0.021484375,
+            "ci95": [
+              -4.882812499995559e-05,
+              0.052734375
+            ]
+          },
+          "new_identity_mistake": {
+            "delta": 0.033203125,
+            "ci95": [
+              0.001953125,
+              0.068359375
+            ]
+          },
+          "tcp_mm": {
+            "delta": 4.151868599776861,
+            "ci95": [
+              3.0297878409882504,
+              5.256278101410164
+            ]
+          },
+          "turn_degs": {
+            "delta": 0.8645166382241634,
+            "ci95": [
+              0.5560273440683361,
+              1.1751929979219704
+            ]
+          },
+          "seconds": {
+            "delta": 0.333984375,
+            "ci95": [
+              0.17578125,
+              0.494140625
+            ]
+          },
+          "frames": {
+            "delta": 3.33984375,
+            "ci95": [
+              1.7578125,
+              4.94140625
+            ]
+          },
+          "centered_complete": {
+            "delta": -0.001953125,
+            "ci95": [
+              -0.017578125,
+              0.01171875
+            ]
+          },
+          "new_query_image_retained": {
+            "delta": 0.02734375,
+            "ci95": [
+              -0.00390625,
+              0.06640625
+            ]
+          },
+          "feedback_revisions": {
+            "delta": 1.69140625,
+            "ci95": [
+              0.747998046875,
+              2.6016113281249993
+            ]
+          }
+        }
+      }
+    },
+    "parallel": {
+      "worlds": 64,
+      "replicas_per_world": 8,
+      "means": {
+        "archived_evidence": {
+          "new_image_and_complete": 0.927734375,
+          "corrected_complete": 0.927734375,
+          "final_wrong": 0.0390625,
+          "new_identity_mistake": 0.203125,
+          "tcp_mm": 44.15462166088509,
+          "turn_degs": 8.644620646402313,
+          "seconds": 5.9921875,
+          "frames": 60.921875,
+          "centered_complete": 0.025390625,
+          "new_query_image_retained": 0.947265625,
+          "feedback_revisions": 16.947265625
+        },
+        "mpc": {
+          "new_image_and_complete": 0.76171875,
+          "corrected_complete": 0.76171875,
+          "final_wrong": 0.044921875,
+          "new_identity_mistake": 0.138671875,
+          "tcp_mm": 35.689173893114415,
+          "turn_degs": 6.388108110424709,
+          "seconds": 5.244140625,
+          "frames": 53.44140625,
+          "centered_complete": 0.033203125,
+          "new_query_image_retained": 0.712890625,
+          "feedback_revisions": 12.876953125
+        },
+        "fixed": {
+          "new_image_and_complete": 0.845703125,
+          "corrected_complete": 0.845703125,
+          "final_wrong": 0.0390625,
+          "new_identity_mistake": 0.181640625,
+          "tcp_mm": 44.63316601223783,
+          "turn_degs": 7.921740400257737,
+          "seconds": 6.208984375,
+          "frames": 63.08984375,
+          "centered_complete": 0.009765625,
+          "new_query_image_retained": 0.82421875,
+          "feedback_revisions": 19.341796875
+        },
+        "old": {
+          "new_image_and_complete": 0.921875,
+          "corrected_complete": 0.921875,
+          "final_wrong": 0.037109375,
+          "new_identity_mistake": 0.21484375,
+          "tcp_mm": 44.12618646911622,
+          "turn_degs": 8.69421585106236,
+          "seconds": 5.951171875,
+          "frames": 60.51171875,
+          "centered_complete": 0.0703125,
+          "new_query_image_retained": 0.94140625,
+          "feedback_revisions": 16.2265625
+        },
+        "random": {
+          "new_image_and_complete": 0.91796875,
+          "corrected_complete": 0.91796875,
+          "final_wrong": 0.03515625,
+          "new_identity_mistake": 0.203125,
+          "tcp_mm": 44.790058042784736,
+          "turn_degs": 8.730558972132583,
+          "seconds": 6.052734375,
+          "frames": 61.52734375,
+          "centered_complete": 0.04296875,
+          "new_query_image_retained": 0.943359375,
+          "feedback_revisions": 16.943359375
+        },
+        "evidence": {
+          "new_image_and_complete": 0.912109375,
+          "corrected_complete": 0.912109375,
+          "final_wrong": 0.041015625,
+          "new_identity_mistake": 0.208984375,
+          "tcp_mm": 44.933004143437785,
+          "turn_degs": 8.848996782765653,
+          "seconds": 6.06640625,
+          "frames": 61.6640625,
+          "centered_complete": 0.052734375,
+          "new_query_image_retained": 0.935546875,
+          "feedback_revisions": 16.47265625
+        },
+        "contrast": {
+          "new_image_and_complete": 0.92578125,
+          "corrected_complete": 0.92578125,
+          "final_wrong": 0.03515625,
+          "new_identity_mistake": 0.20703125,
+          "tcp_mm": 44.69238626923211,
+          "turn_degs": 8.772451405106086,
+          "seconds": 6.013671875,
+          "frames": 61.13671875,
+          "centered_complete": 0.03515625,
+          "new_query_image_retained": 0.9453125,
+          "feedback_revisions": 16.8515625
+        },
+        "program": {
+          "new_image_and_complete": 0.916015625,
+          "corrected_complete": 0.916015625,
+          "final_wrong": 0.03515625,
+          "new_identity_mistake": 0.22265625,
+          "tcp_mm": 45.65008319277427,
+          "turn_degs": 8.914228755891454,
+          "seconds": 6.283203125,
+          "frames": 63.83203125,
+          "centered_complete": 0.033203125,
+          "new_query_image_retained": 0.962890625,
+          "feedback_revisions": 17.173828125
+        }
+      },
+      "vs_reference": {
+        "mpc": {
+          "new_image_and_complete": {
+            "delta": -0.166015625,
+            "ci95": [
+              -0.25390625,
+              -0.0859375
+            ]
+          },
+          "corrected_complete": {
+            "delta": -0.166015625,
+            "ci95": [
+              -0.25390625,
+              -0.0859375
+            ]
+          },
+          "final_wrong": {
+            "delta": 0.005859375,
+            "ci95": [
+              -0.00390625,
+              0.015625
+            ]
+          },
+          "new_identity_mistake": {
+            "delta": -0.064453125,
+            "ci95": [
+              -0.109375,
+              -0.025390625
+            ]
+          },
+          "tcp_mm": {
+            "delta": -8.465447767770677,
+            "ci95": [
+              -10.161600745397816,
+              -6.823492157410798
+            ]
+          },
+          "turn_degs": {
+            "delta": -2.2565125359776035,
+            "ci95": [
+              -2.7604193965486905,
+              -1.773493279702193
+            ]
+          },
+          "seconds": {
+            "delta": -0.748046875,
+            "ci95": [
+              -1.025390625,
+              -0.4628417968750007
+            ]
+          },
+          "frames": {
+            "delta": -7.48046875,
+            "ci95": [
+              -10.25390625,
+              -4.628417968750007
+            ]
+          },
+          "centered_complete": {
+            "delta": 0.0078125,
+            "ci95": [
+              -0.037109375,
+              0.056640625
+            ]
+          },
+          "new_query_image_retained": {
+            "delta": -0.234375,
+            "ci95": [
+              -0.337890625,
+              -0.140625
+            ]
+          },
+          "feedback_revisions": {
+            "delta": -4.0703125,
+            "ci95": [
+              -5.26953125,
+              -2.91015625
+            ]
+          }
+        },
+        "fixed": {
+          "new_image_and_complete": {
+            "delta": -0.08203125,
+            "ci95": [
+              -0.150390625,
+              -0.0234375
+            ]
+          },
+          "corrected_complete": {
+            "delta": -0.08203125,
+            "ci95": [
+              -0.150390625,
+              -0.0234375
+            ]
+          },
+          "final_wrong": {
+            "delta": 0.0,
+            "ci95": [
+              -0.009765625,
+              0.009765625
+            ]
+          },
+          "new_identity_mistake": {
+            "delta": -0.021484375,
+            "ci95": [
+              -0.0546875,
+              0.009765625
+            ]
+          },
+          "tcp_mm": {
+            "delta": 0.4785443513527383,
+            "ci95": [
+              -1.4440927239059023,
+              2.2653406913580922
+            ]
+          },
+          "turn_degs": {
+            "delta": -0.7228802461445758,
+            "ci95": [
+              -1.2998838035154354,
+              -0.16271155922636618
+            ]
+          },
+          "seconds": {
+            "delta": 0.216796875,
+            "ci95": [
+              -0.06645507812499996,
+              0.494140625
+            ]
+          },
+          "frames": {
+            "delta": 2.16796875,
+            "ci95": [
+              -0.6645507812499996,
+              4.94140625
+            ]
+          },
+          "centered_complete": {
+            "delta": -0.015625,
+            "ci95": [
+              -0.04296875,
+              0.001953125
+            ]
+          },
+          "new_query_image_retained": {
+            "delta": -0.123046875,
+            "ci95": [
+              -0.208984375,
+              -0.048828125
+            ]
+          },
+          "feedback_revisions": {
+            "delta": 2.39453125,
+            "ci95": [
+              0.935498046875,
+              3.857421875
+            ]
+          }
+        },
+        "old": {
+          "new_image_and_complete": {
+            "delta": -0.005859375,
+            "ci95": [
+              -0.02734375,
+              0.01171875
+            ]
+          },
+          "corrected_complete": {
+            "delta": -0.005859375,
+            "ci95": [
+              -0.02734375,
+              0.01171875
+            ]
+          },
+          "final_wrong": {
+            "delta": -0.001953125,
+            "ci95": [
+              -0.009765625,
+              0.00390625
+            ]
+          },
+          "new_identity_mistake": {
+            "delta": 0.01171875,
+            "ci95": [
+              -0.0078125,
+              0.03125
+            ]
+          },
+          "tcp_mm": {
+            "delta": -0.028435191768870993,
+            "ci95": [
+              -0.9480994382488697,
+              0.8874437607941189
+            ]
+          },
+          "turn_degs": {
+            "delta": 0.04959520466004719,
+            "ci95": [
+              -0.2735168394845073,
+              0.36668250367682176
+            ]
+          },
+          "seconds": {
+            "delta": -0.041015625,
+            "ci95": [
+              -0.20703125,
+              0.11328125
+            ]
+          },
+          "frames": {
+            "delta": -0.41015625,
+            "ci95": [
+              -2.0703125,
+              1.1328125
+            ]
+          },
+          "centered_complete": {
+            "delta": 0.044921875,
+            "ci95": [
+              0.001953125,
+              0.099609375
+            ]
+          },
+          "new_query_image_retained": {
+            "delta": -0.005859375,
+            "ci95": [
+              -0.025390625,
+              0.0078125
+            ]
+          },
+          "feedback_revisions": {
+            "delta": -0.720703125,
+            "ci95": [
+              -1.384765625,
+              -0.0078125
+            ]
+          }
+        },
+        "random": {
+          "new_image_and_complete": {
+            "delta": -0.009765625,
+            "ci95": [
+              -0.03125,
+              0.0078125
+            ]
+          },
+          "corrected_complete": {
+            "delta": -0.009765625,
+            "ci95": [
+              -0.03125,
+              0.0078125
+            ]
+          },
+          "final_wrong": {
+            "delta": -0.00390625,
+            "ci95": [
+              -0.009765625,
+              0.0
+            ]
+          },
+          "new_identity_mistake": {
+            "delta": 0.0,
+            "ci95": [
+              -0.015625,
+              0.013671875
+            ]
+          },
+          "tcp_mm": {
+            "delta": 0.6354363818996447,
+            "ci95": [
+              -0.3445337564128742,
+              1.658095802510355
+            ]
+          },
+          "turn_degs": {
+            "delta": 0.08593832573026994,
+            "ci95": [
+              -0.2433109411308067,
+              0.4089779007003877
+            ]
+          },
+          "seconds": {
+            "delta": 0.060546875,
+            "ci95": [
+              -0.087890625,
+              0.208984375
+            ]
+          },
+          "frames": {
+            "delta": 0.60546875,
+            "ci95": [
+              -0.87890625,
+              2.08984375
+            ]
+          },
+          "centered_complete": {
+            "delta": 0.017578125,
+            "ci95": [
+              0.0,
+              0.04296875
+            ]
+          },
+          "new_query_image_retained": {
+            "delta": -0.00390625,
+            "ci95": [
+              -0.0234375,
+              0.01171875
+            ]
+          },
+          "feedback_revisions": {
+            "delta": -0.00390625,
+            "ci95": [
+              -0.707080078125,
+              0.79296875
+            ]
+          }
+        },
+        "evidence": {
+          "new_image_and_complete": {
+            "delta": -0.015625,
+            "ci95": [
+              -0.03515625,
+              -0.001953125
+            ]
+          },
+          "corrected_complete": {
+            "delta": -0.015625,
+            "ci95": [
+              -0.03515625,
+              -0.001953125
+            ]
+          },
+          "final_wrong": {
+            "delta": 0.001953125,
+            "ci95": [
+              0.0,
+              0.005859375
+            ]
+          },
+          "new_identity_mistake": {
+            "delta": 0.005859375,
+            "ci95": [
+              -0.015625,
+              0.029296875
+            ]
+          },
+          "tcp_mm": {
+            "delta": 0.7783824825526935,
+            "ci95": [
+              -0.3574792377168471,
+              1.9681092013568628
+            ]
+          },
+          "turn_degs": {
+            "delta": 0.20437613636334007,
+            "ci95": [
+              -0.12796031774863784,
+              0.543673196876149
+            ]
+          },
+          "seconds": {
+            "delta": 0.07421875,
+            "ci95": [
+              -0.1015625,
+              0.248046875
+            ]
+          },
+          "frames": {
+            "delta": 0.7421875,
+            "ci95": [
+              -1.015625,
+              2.48046875
+            ]
+          },
+          "centered_complete": {
+            "delta": 0.02734375,
+            "ci95": [
+              0.0,
+              0.0625
+            ]
+          },
+          "new_query_image_retained": {
+            "delta": -0.01171875,
+            "ci95": [
+              -0.03125,
+              0.0
+            ]
+          },
+          "feedback_revisions": {
+            "delta": -0.474609375,
+            "ci95": [
+              -1.386767578125,
+              0.458984375
+            ]
+          }
+        },
+        "contrast": {
+          "new_image_and_complete": {
+            "delta": -0.001953125,
+            "ci95": [
+              -0.021484375,
+              0.01171875
+            ]
+          },
+          "corrected_complete": {
+            "delta": -0.001953125,
+            "ci95": [
+              -0.021484375,
+              0.01171875
+            ]
+          },
+          "final_wrong": {
+            "delta": -0.00390625,
+            "ci95": [
+              -0.009765625,
+              0.0
+            ]
+          },
+          "new_identity_mistake": {
+            "delta": 0.00390625,
+            "ci95": [
+              -0.015625,
+              0.0234375
+            ]
+          },
+          "tcp_mm": {
+            "delta": 0.5377646083470182,
+            "ci95": [
+              -0.2538277528790524,
+              1.4175498859503852
+            ]
+          },
+          "turn_degs": {
+            "delta": 0.12783075870377303,
+            "ci95": [
+              -0.17869642962174034,
+              0.4400903799445284
+            ]
+          },
+          "seconds": {
+            "delta": 0.021484375,
+            "ci95": [
+              -0.083984375,
+              0.130859375
+            ]
+          },
+          "frames": {
+            "delta": 0.21484375,
+            "ci95": [
+              -0.83984375,
+              1.30859375
+            ]
+          },
+          "centered_complete": {
+            "delta": 0.009765625,
+            "ci95": [
+              -0.029296875,
+              0.04887695312499929
+            ]
+          },
+          "new_query_image_retained": {
+            "delta": -0.001953125,
+            "ci95": [
+              -0.021484375,
+              0.013671875
+            ]
+          },
+          "feedback_revisions": {
+            "delta": -0.095703125,
+            "ci95": [
+              -0.833984375,
+              0.6524414062499986
+            ]
+          }
+        },
+        "program": {
+          "new_image_and_complete": {
+            "delta": -0.01171875,
+            "ci95": [
+              -0.033203125,
+              0.005859375
+            ]
+          },
+          "corrected_complete": {
+            "delta": -0.01171875,
+            "ci95": [
+              -0.033203125,
+              0.005859375
+            ]
+          },
+          "final_wrong": {
+            "delta": -0.00390625,
+            "ci95": [
+              -0.009765625,
+              0.0
+            ]
+          },
+          "new_identity_mistake": {
+            "delta": 0.01953125,
+            "ci95": [
+              -0.00390625,
+              0.044921875
+            ]
+          },
+          "tcp_mm": {
+            "delta": 1.4954615318891769,
+            "ci95": [
+              0.6336192242320142,
+              2.3807558729610165
+            ]
+          },
+          "turn_degs": {
+            "delta": 0.26960810948914116,
+            "ci95": [
+              -0.020151081580317212,
+              0.562192972646005
+            ]
+          },
+          "seconds": {
+            "delta": 0.291015625,
+            "ci95": [
+              0.142578125,
+              0.4453125
+            ]
+          },
+          "frames": {
+            "delta": 2.91015625,
+            "ci95": [
+              1.42578125,
+              4.453125
+            ]
+          },
+          "centered_complete": {
+            "delta": 0.0078125,
+            "ci95": [
+              -0.029296875,
+              0.041015625
+            ]
+          },
+          "new_query_image_retained": {
+            "delta": 0.015625,
+            "ci95": [
+              0.001953125,
+              0.033203125
+            ]
+          },
+          "feedback_revisions": {
+            "delta": 0.2265625,
+            "ci95": [
+              -0.539111328125,
+              1.01171875
+            ]
+          }
+        }
+      }
+    }
+  },
+  "drift": {
+    "all": {
+      "worlds": 48,
+      "replicas_per_world": 8,
+      "means": {
+        "archived_evidence": {
+          "new_image_and_complete": 0.8567708333333334,
+          "corrected_complete": 0.8567708333333334,
+          "final_wrong": 0.0390625,
+          "new_identity_mistake": 0.15885416666666666,
+          "tcp_mm": 45.94131355339814,
+          "turn_degs": 9.131520028257293,
+          "seconds": 6.390625,
+          "frames": 64.90625,
+          "centered_complete": 0.028645833333333332,
+          "new_query_image_retained": 0.8880208333333334,
+          "feedback_revisions": 19.604166666666668
+        },
+        "mpc": {
+          "new_image_and_complete": 0.7421875,
+          "corrected_complete": 0.7421875,
+          "final_wrong": 0.0546875,
+          "new_identity_mistake": 0.15104166666666666,
+          "tcp_mm": 38.03041188791327,
+          "turn_degs": 6.900478656392699,
+          "seconds": 5.703125,
+          "frames": 58.03125,
+          "centered_complete": 0.020833333333333332,
+          "new_query_image_retained": 0.6692708333333334,
+          "feedback_revisions": 15.442708333333334
+        },
+        "fixed": {
+          "new_image_and_complete": 0.7447916666666666,
+          "corrected_complete": 0.7447916666666666,
+          "final_wrong": 0.057291666666666664,
+          "new_identity_mistake": 0.13541666666666666,
+          "tcp_mm": 47.26306125478865,
+          "turn_degs": 8.422813465019667,
+          "seconds": 6.880208333333333,
+          "frames": 69.80208333333333,
+          "centered_complete": 0.0026041666666666665,
+          "new_query_image_retained": 0.703125,
+          "feedback_revisions": 22.0546875
+        },
+        "old": {
+          "new_image_and_complete": 0.8541666666666666,
+          "corrected_complete": 0.8541666666666666,
+          "final_wrong": 0.0390625,
+          "new_identity_mistake": 0.15625,
+          "tcp_mm": 46.57822560173821,
+          "turn_degs": 9.304145399034034,
+          "seconds": 6.471354166666667,
+          "frames": 65.71354166666667,
+          "centered_complete": 0.026041666666666668,
+          "new_query_image_retained": 0.8854166666666666,
+          "feedback_revisions": 19.427083333333332
+        },
+        "random": {
+          "new_image_and_complete": 0.8541666666666666,
+          "corrected_complete": 0.8541666666666666,
+          "final_wrong": 0.0546875,
+          "new_identity_mistake": 0.18229166666666666,
+          "tcp_mm": 46.121226294401275,
+          "turn_degs": 9.153232815588986,
+          "seconds": 6.40625,
+          "frames": 65.0625,
+          "centered_complete": 0.0390625,
+          "new_query_image_retained": 0.8828125,
+          "feedback_revisions": 19.747395833333332
+        },
+        "evidence": {
+          "new_image_and_complete": 0.859375,
+          "corrected_complete": 0.859375,
+          "final_wrong": 0.033854166666666664,
+          "new_identity_mistake": 0.15364583333333334,
+          "tcp_mm": 46.20909606413512,
+          "turn_degs": 9.15553684582701,
+          "seconds": 6.40625,
+          "frames": 65.0625,
+          "centered_complete": 0.028645833333333332,
+          "new_query_image_retained": 0.8880208333333334,
+          "feedback_revisions": 19.463541666666668
+        },
+        "contrast": {
+          "new_image_and_complete": 0.8984375,
+          "corrected_complete": 0.8984375,
+          "final_wrong": 0.028645833333333332,
+          "new_identity_mistake": 0.16666666666666666,
+          "tcp_mm": 46.26056273742204,
+          "turn_degs": 9.191436044448734,
+          "seconds": 6.328125,
+          "frames": 64.28125,
+          "centered_complete": 0.044270833333333336,
+          "new_query_image_retained": 0.9296875,
+          "feedback_revisions": 19.692708333333332
+        },
+        "program": {
+          "new_image_and_complete": 0.8359375,
+          "corrected_complete": 0.8359375,
+          "final_wrong": 0.044270833333333336,
+          "new_identity_mistake": 0.17708333333333334,
+          "tcp_mm": 48.26451613518794,
+          "turn_degs": 9.591982550288588,
+          "seconds": 6.625,
+          "frames": 67.25,
+          "centered_complete": 0.0234375,
+          "new_query_image_retained": 0.9166666666666666,
+          "feedback_revisions": 20.606770833333332
+        }
+      },
+      "vs_reference": {
+        "mpc": {
+          "new_image_and_complete": {
+            "delta": -0.11458333333333337,
+            "ci95": [
+              -0.22135416666666666,
+              -0.018229166666666668
+            ]
+          },
+          "corrected_complete": {
+            "delta": -0.11458333333333337,
+            "ci95": [
+              -0.22135416666666666,
+              -0.018229166666666668
+            ]
+          },
+          "final_wrong": {
+            "delta": 0.015625,
+            "ci95": [
+              -0.013020833333333334,
+              0.059895833333333336
+            ]
+          },
+          "new_identity_mistake": {
+            "delta": -0.0078125,
+            "ci95": [
+              -0.059895833333333336,
+              0.041666666666666664
+            ]
+          },
+          "tcp_mm": {
+            "delta": -7.910901665484872,
+            "ci95": [
+              -10.550385240155103,
+              -5.3386844701417875
+            ]
+          },
+          "turn_degs": {
+            "delta": -2.2310413718645945,
+            "ci95": [
+              -2.9794858388128747,
+              -1.4952271226320462
+            ]
+          },
+          "seconds": {
+            "delta": -0.6875,
+            "ci95": [
+              -0.9479166666666666,
+              -0.4192057291666676
+            ]
+          },
+          "frames": {
+            "delta": -6.875,
+            "ci95": [
+              -9.479166666666666,
+              -4.192057291666676
+            ]
+          },
+          "centered_complete": {
+            "delta": -0.0078125,
+            "ci95": [
+              -0.044270833333333336,
+              0.026041666666666668
+            ]
+          },
+          "new_query_image_retained": {
+            "delta": -0.21875,
+            "ci95": [
+              -0.3411458333333333,
+              -0.1015625
+            ]
+          },
+          "feedback_revisions": {
+            "delta": -4.161458333333334,
+            "ci95": [
+              -5.901041666666667,
+              -2.502539062500001
+            ]
+          }
+        },
+        "fixed": {
+          "new_image_and_complete": {
+            "delta": -0.11197916666666674,
+            "ci95": [
+              -0.203125,
+              -0.028645833333333332
+            ]
+          },
+          "corrected_complete": {
+            "delta": -0.11197916666666674,
+            "ci95": [
+              -0.203125,
+              -0.028645833333333332
+            ]
+          },
+          "final_wrong": {
+            "delta": 0.018229166666666664,
+            "ci95": [
+              -0.015625,
+              0.06510416666666667
+            ]
+          },
+          "new_identity_mistake": {
+            "delta": -0.0234375,
+            "ci95": [
+              -0.078125,
+              0.028645833333333332
+            ]
+          },
+          "tcp_mm": {
+            "delta": 1.321747701390514,
+            "ci95": [
+              -0.9252995494183966,
+              3.5084469465033328
+            ]
+          },
+          "turn_degs": {
+            "delta": -0.7087065632376266,
+            "ci95": [
+              -1.4070049512036253,
+              -0.03493953417550011
+            ]
+          },
+          "seconds": {
+            "delta": 0.48958333333333304,
+            "ci95": [
+              0.2864583333333333,
+              0.703125
+            ]
+          },
+          "frames": {
+            "delta": 4.895833333333329,
+            "ci95": [
+              2.8645833333333335,
+              7.03125
+            ]
+          },
+          "centered_complete": {
+            "delta": -0.026041666666666664,
+            "ci95": [
+              -0.057291666666666664,
+              -0.0026041666666666665
+            ]
+          },
+          "new_query_image_retained": {
+            "delta": -0.18489583333333337,
+            "ci95": [
+              -0.2994791666666667,
+              -0.07552083333333333
+            ]
+          },
+          "feedback_revisions": {
+            "delta": 2.450520833333332,
+            "ci95": [
+              0.9791015625,
+              3.8958333333333335
+            ]
+          }
+        },
+        "old": {
+          "new_image_and_complete": {
+            "delta": -0.0026041666666667407,
+            "ci95": [
+              -0.028645833333333332,
+              0.0234375
+            ]
+          },
+          "corrected_complete": {
+            "delta": -0.0026041666666667407,
+            "ci95": [
+              -0.028645833333333332,
+              0.0234375
+            ]
+          },
+          "final_wrong": {
+            "delta": 0.0,
+            "ci95": [
+              -0.0234375,
+              0.0234375
+            ]
+          },
+          "new_identity_mistake": {
+            "delta": -0.0026041666666666574,
+            "ci95": [
+              -0.03125,
+              0.028645833333333332
+            ]
+          },
+          "tcp_mm": {
+            "delta": 0.6369120483400721,
+            "ci95": [
+              -0.44972126421361314,
+              1.700636964948842
+            ]
+          },
+          "turn_degs": {
+            "delta": 0.1726253707767409,
+            "ci95": [
+              -0.14942027643794037,
+              0.5005999340194031
+            ]
+          },
+          "seconds": {
+            "delta": 0.08072916666666696,
+            "ci95": [
+              -0.09635416666666667,
+              0.25
+            ]
+          },
+          "frames": {
+            "delta": 0.8072916666666714,
+            "ci95": [
+              -0.9635416666666666,
+              2.5
+            ]
+          },
+          "centered_complete": {
+            "delta": -0.0026041666666666644,
+            "ci95": [
+              -0.010416666666666666,
+              0.005208333333333333
+            ]
+          },
+          "new_query_image_retained": {
+            "delta": -0.0026041666666667407,
+            "ci95": [
+              -0.026041666666666668,
+              0.020833333333333332
+            ]
+          },
+          "feedback_revisions": {
+            "delta": -0.1770833333333357,
+            "ci95": [
+              -1.1171875,
+              0.7292317708333323
+            ]
+          }
+        },
+        "random": {
+          "new_image_and_complete": {
+            "delta": -0.0026041666666667407,
+            "ci95": [
+              -0.06770833333333333,
+              0.0546875
+            ]
+          },
+          "corrected_complete": {
+            "delta": -0.0026041666666667407,
+            "ci95": [
+              -0.06770833333333333,
+              0.0546875
+            ]
+          },
+          "final_wrong": {
+            "delta": 0.015625,
+            "ci95": [
+              -0.018229166666666668,
+              0.046875
+            ]
+          },
+          "new_identity_mistake": {
+            "delta": 0.0234375,
+            "ci95": [
+              -0.005208333333333333,
+              0.057291666666666664
+            ]
+          },
+          "tcp_mm": {
+            "delta": 0.17991274100313603,
+            "ci95": [
+              -1.1069813215961677,
+              1.4765009953340482
+            ]
+          },
+          "turn_degs": {
+            "delta": 0.02171278733169224,
+            "ci95": [
+              -0.3539691252197256,
+              0.38731641259997696
+            ]
+          },
+          "seconds": {
+            "delta": 0.015625,
+            "ci95": [
+              -0.19798177083333326,
+              0.22916666666666666
+            ]
+          },
+          "frames": {
+            "delta": 0.15625,
+            "ci95": [
+              -1.9798177083333328,
+              2.2916666666666665
+            ]
+          },
+          "centered_complete": {
+            "delta": 0.010416666666666668,
+            "ci95": [
+              -0.0078125,
+              0.0390625
+            ]
+          },
+          "new_query_image_retained": {
+            "delta": -0.00520833333333337,
+            "ci95": [
+              -0.07291666666666667,
+              0.057291666666666664
+            ]
+          },
+          "feedback_revisions": {
+            "delta": 0.1432291666666643,
+            "ci95": [
+              -0.875,
+              1.1354817708333325
+            ]
+          }
+        },
+        "evidence": {
+          "new_image_and_complete": {
+            "delta": 0.0026041666666666297,
+            "ci95": [
+              -0.010416666666666666,
+              0.018229166666666668
+            ]
+          },
+          "corrected_complete": {
+            "delta": 0.0026041666666666297,
+            "ci95": [
+              -0.010416666666666666,
+              0.018229166666666668
+            ]
+          },
+          "final_wrong": {
+            "delta": -0.005208333333333336,
+            "ci95": [
+              -0.015625,
+              0.0
+            ]
+          },
+          "new_identity_mistake": {
+            "delta": -0.005208333333333315,
+            "ci95": [
+              -0.026041666666666668,
+              0.013020833333333334
+            ]
+          },
+          "tcp_mm": {
+            "delta": 0.26778251073697845,
+            "ci95": [
+              -0.9574966212915762,
+              1.5636649129340283
+            ]
+          },
+          "turn_degs": {
+            "delta": 0.02401681756971641,
+            "ci95": [
+              -0.28090150981124695,
+              0.334059835462412
+            ]
+          },
+          "seconds": {
+            "delta": 0.015625,
+            "ci95": [
+              -0.17708333333333334,
+              0.20052083333333334
+            ]
+          },
+          "frames": {
+            "delta": 0.15625,
+            "ci95": [
+              -1.7708333333333333,
+              2.0052083333333335
+            ]
+          },
+          "centered_complete": {
+            "delta": 0.0,
+            "ci95": [
+              -0.010416666666666666,
+              0.013020833333333334
+            ]
+          },
+          "new_query_image_retained": {
+            "delta": 0.0,
+            "ci95": [
+              -0.010416666666666666,
+              0.010416666666666666
+            ]
+          },
+          "feedback_revisions": {
+            "delta": -0.140625,
+            "ci95": [
+              -0.9713541666666666,
+              0.6198567708333323
+            ]
+          }
+        },
+        "contrast": {
+          "new_image_and_complete": {
+            "delta": 0.04166666666666663,
+            "ci95": [
+              -0.0026041666666666665,
+              0.09635416666666667
+            ]
+          },
+          "corrected_complete": {
+            "delta": 0.04166666666666663,
+            "ci95": [
+              -0.0026041666666666665,
+              0.09635416666666667
+            ]
+          },
+          "final_wrong": {
+            "delta": -0.010416666666666668,
+            "ci95": [
+              -0.059895833333333336,
+              0.020833333333333332
+            ]
+          },
+          "new_identity_mistake": {
+            "delta": 0.0078125,
+            "ci95": [
+              -0.013020833333333334,
+              0.028645833333333332
+            ]
+          },
+          "tcp_mm": {
+            "delta": 0.3192491840239029,
+            "ci95": [
+              -0.8007225241318706,
+              1.45615965903558
+            ]
+          },
+          "turn_degs": {
+            "delta": 0.05991601619144049,
+            "ci95": [
+              -0.27016833689246944,
+              0.3940345042040248
+            ]
+          },
+          "seconds": {
+            "delta": -0.0625,
+            "ci95": [
+              -0.2500651041666666,
+              0.11197916666666667
+            ]
+          },
+          "frames": {
+            "delta": -0.625,
+            "ci95": [
+              -2.500651041666666,
+              1.1197916666666667
+            ]
+          },
+          "centered_complete": {
+            "delta": 0.015625000000000003,
+            "ci95": [
+              -0.0026041666666666665,
+              0.041666666666666664
+            ]
+          },
+          "new_query_image_retained": {
+            "delta": 0.04166666666666663,
+            "ci95": [
+              -0.0026041666666666665,
+              0.1015625
+            ]
+          },
+          "feedback_revisions": {
+            "delta": 0.0885416666666643,
+            "ci95": [
+              -0.8802083333333334,
+              1.0286458333333333
+            ]
+          }
+        },
+        "program": {
+          "new_image_and_complete": {
+            "delta": -0.02083333333333337,
+            "ci95": [
+              -0.08072916666666667,
+              0.03125
+            ]
+          },
+          "corrected_complete": {
+            "delta": -0.02083333333333337,
+            "ci95": [
+              -0.08072916666666667,
+              0.03125
+            ]
+          },
+          "final_wrong": {
+            "delta": 0.005208333333333336,
+            "ci95": [
+              -0.005208333333333333,
+              0.015625
+            ]
+          },
+          "new_identity_mistake": {
+            "delta": 0.018229166666666685,
+            "ci95": [
+              -0.015625,
+              0.057291666666666664
+            ]
+          },
+          "tcp_mm": {
+            "delta": 2.3232025817898005,
+            "ci95": [
+              0.7180616464013909,
+              3.9362757823761156
+            ]
+          },
+          "turn_degs": {
+            "delta": 0.46046252203129434,
+            "ci95": [
+              0.022471582480460685,
+              0.8911844132628697
+            ]
+          },
+          "seconds": {
+            "delta": 0.234375,
+            "ci95": [
+              0.018229166666666668,
+              0.4479166666666667
+            ]
+          },
+          "frames": {
+            "delta": 2.34375,
+            "ci95": [
+              0.18229166666666666,
+              4.479166666666667
+            ]
+          },
+          "centered_complete": {
+            "delta": -0.005208333333333332,
+            "ci95": [
+              -0.018229166666666668,
+              0.005208333333333333
+            ]
+          },
+          "new_query_image_retained": {
+            "delta": 0.02864583333333326,
+            "ci95": [
+              -0.028645833333333332,
+              0.08854166666666667
+            ]
+          },
+          "feedback_revisions": {
+            "delta": 1.0026041666666643,
+            "ci95": [
+              -0.22135416666666666,
+              2.221484374999998
+            ]
+          }
+        }
+      }
+    },
+    "connection": {
+      "worlds": 24,
+      "replicas_per_world": 8,
+      "means": {
+        "archived_evidence": {
+          "new_image_and_complete": 0.765625,
+          "corrected_complete": 0.765625,
+          "final_wrong": 0.0625,
+          "new_identity_mistake": 0.109375,
+          "tcp_mm": 45.02621902199085,
+          "turn_degs": 8.768067592199285,
+          "seconds": 6.427083333333333,
+          "frames": 65.27083333333333,
+          "centered_complete": 0.010416666666666666,
+          "new_query_image_retained": 0.8333333333333334,
+          "feedback_revisions": 19.46875
+        },
+        "mpc": {
+          "new_image_and_complete": 0.7239583333333334,
+          "corrected_complete": 0.7239583333333334,
+          "final_wrong": 0.06770833333333333,
+          "new_identity_mistake": 0.15104166666666666,
+          "tcp_mm": 39.288189814755846,
+          "turn_degs": 7.169725750479567,
+          "seconds": 5.869791666666667,
+          "frames": 59.697916666666664,
+          "centered_complete": 0.03125,
+          "new_query_image_retained": 0.7135416666666666,
+          "feedback_revisions": 16.21875
+        },
+        "fixed": {
+          "new_image_and_complete": 0.6979166666666666,
+          "corrected_complete": 0.6979166666666666,
+          "final_wrong": 0.06770833333333333,
+          "new_identity_mistake": 0.15625,
+          "tcp_mm": 48.751343138530046,
+          "turn_degs": 8.749959475702294,
+          "seconds": 7.010416666666667,
+          "frames": 71.10416666666667,
+          "centered_complete": 0.0,
+          "new_query_image_retained": 0.7395833333333334,
+          "feedback_revisions": 21.375
+        },
+        "old": {
+          "new_image_and_complete": 0.7708333333333334,
+          "corrected_complete": 0.7708333333333334,
+          "final_wrong": 0.057291666666666664,
+          "new_identity_mistake": 0.11979166666666667,
+          "tcp_mm": 47.05281322345169,
+          "turn_degs": 9.354580406431202,
+          "seconds": 6.75,
+          "frames": 68.5,
+          "centered_complete": 0.015625,
+          "new_query_image_retained": 0.8385416666666666,
+          "feedback_revisions": 20.036458333333332
+        },
+        "random": {
+          "new_image_and_complete": 0.7708333333333334,
+          "corrected_complete": 0.7708333333333334,
+          "final_wrong": 0.08854166666666667,
+          "new_identity_mistake": 0.15625,
+          "tcp_mm": 46.10550144459881,
+          "turn_degs": 9.070475707012372,
+          "seconds": 6.619791666666667,
+          "frames": 67.19791666666667,
+          "centered_complete": 0.041666666666666664,
+          "new_query_image_retained": 0.8333333333333334,
+          "feedback_revisions": 20.4375
+        },
+        "evidence": {
+          "new_image_and_complete": 0.78125,
+          "corrected_complete": 0.78125,
+          "final_wrong": 0.052083333333333336,
+          "new_identity_mistake": 0.10416666666666667,
+          "tcp_mm": 46.76067426850866,
+          "turn_degs": 9.16596592356196,
+          "seconds": 6.645833333333333,
+          "frames": 67.45833333333333,
+          "centered_complete": 0.020833333333333332,
+          "new_query_image_retained": 0.84375,
+          "feedback_revisions": 20.046875
+        },
+        "contrast": {
+          "new_image_and_complete": 0.8489583333333334,
+          "corrected_complete": 0.8489583333333334,
+          "final_wrong": 0.041666666666666664,
+          "new_identity_mistake": 0.13020833333333334,
+          "tcp_mm": 46.96253256799588,
+          "turn_degs": 9.29120270651688,
+          "seconds": 6.552083333333333,
+          "frames": 66.52083333333333,
+          "centered_complete": 0.046875,
+          "new_query_image_retained": 0.921875,
+          "feedback_revisions": 20.395833333333332
+        },
+        "program": {
+          "new_image_and_complete": 0.7604166666666666,
+          "corrected_complete": 0.7604166666666666,
+          "final_wrong": 0.06770833333333333,
+          "new_identity_mistake": 0.125,
+          "tcp_mm": 48.89816602190771,
+          "turn_degs": 9.595358750970354,
+          "seconds": 6.880208333333333,
+          "frames": 69.80208333333333,
+          "centered_complete": 0.015625,
+          "new_query_image_retained": 0.8854166666666666,
+          "feedback_revisions": 21.802083333333332
+        }
+      },
+      "vs_reference": {
+        "mpc": {
+          "new_image_and_complete": {
+            "delta": -0.04166666666666663,
+            "ci95": [
+              -0.18229166666666666,
+              0.08333333333333333
+            ]
+          },
+          "corrected_complete": {
+            "delta": -0.04166666666666663,
+            "ci95": [
+              -0.18229166666666666,
+              0.08333333333333333
+            ]
+          },
+          "final_wrong": {
+            "delta": 0.005208333333333329,
+            "ci95": [
+              -0.020833333333333332,
+              0.036458333333333336
+            ]
+          },
+          "new_identity_mistake": {
+            "delta": 0.04166666666666666,
+            "ci95": [
+              -0.010416666666666666,
+              0.10416666666666667
+            ]
+          },
+          "tcp_mm": {
+            "delta": -5.738029207235002,
+            "ci95": [
+              -9.929500356059167,
+              -1.869802838137341
+            ]
+          },
+          "turn_degs": {
+            "delta": -1.5983418417197184,
+            "ci95": [
+              -2.762565099080597,
+              -0.5425355117093705
+            ]
+          },
+          "seconds": {
+            "delta": -0.5572916666666661,
+            "ci95": [
+              -0.921875,
+              -0.20299479166666856
+            ]
+          },
+          "frames": {
+            "delta": -5.572916666666664,
+            "ci95": [
+              -9.21875,
+              -2.0299479166666856
+            ]
+          },
+          "centered_complete": {
+            "delta": 0.020833333333333336,
+            "ci95": [
+              0.0,
+              0.0625
+            ]
+          },
+          "new_query_image_retained": {
+            "delta": -0.11979166666666674,
+            "ci95": [
+              -0.2708333333333333,
+              0.03125
+            ]
+          },
+          "feedback_revisions": {
+            "delta": -3.25,
+            "ci95": [
+              -5.71875,
+              -1.0729166666666667
+            ]
+          }
+        },
+        "fixed": {
+          "new_image_and_complete": {
+            "delta": -0.06770833333333337,
+            "ci95": [
+              -0.17708333333333334,
+              0.03125
+            ]
+          },
+          "corrected_complete": {
+            "delta": -0.06770833333333337,
+            "ci95": [
+              -0.17708333333333334,
+              0.03125
+            ]
+          },
+          "final_wrong": {
+            "delta": 0.005208333333333329,
+            "ci95": [
+              -0.03125,
+              0.041666666666666664
+            ]
+          },
+          "new_identity_mistake": {
+            "delta": 0.046875,
+            "ci95": [
+              -0.010416666666666666,
+              0.109375
+            ]
+          },
+          "tcp_mm": {
+            "delta": 3.725124116539199,
+            "ci95": [
+              0.9671630162047723,
+              6.568200856437552
+            ]
+          },
+          "turn_degs": {
+            "delta": -0.0181081164969914,
+            "ci95": [
+              -0.8118313972114628,
+              0.7870563707618474
+            ]
+          },
+          "seconds": {
+            "delta": 0.5833333333333339,
+            "ci95": [
+              0.3177083333333333,
+              0.828125
+            ]
+          },
+          "frames": {
+            "delta": 5.833333333333343,
+            "ci95": [
+              3.1770833333333335,
+              8.28125
+            ]
+          },
+          "centered_complete": {
+            "delta": -0.010416666666666666,
+            "ci95": [
+              -0.03125,
+              0.0
+            ]
+          },
+          "new_query_image_retained": {
+            "delta": -0.09375,
+            "ci95": [
+              -0.234375,
+              0.041666666666666664
+            ]
+          },
+          "feedback_revisions": {
+            "delta": 1.90625,
+            "ci95": [
+              0.08841145833333346,
+              3.5989583333333335
+            ]
+          }
+        },
+        "old": {
+          "new_image_and_complete": {
+            "delta": 0.00520833333333337,
+            "ci95": [
+              -0.041666666666666664,
+              0.052213541666664774
+            ]
+          },
+          "corrected_complete": {
+            "delta": 0.00520833333333337,
+            "ci95": [
+              -0.041666666666666664,
+              0.052213541666664774
+            ]
+          },
+          "final_wrong": {
+            "delta": -0.005208333333333336,
+            "ci95": [
+              -0.052083333333333336,
+              0.041666666666666664
+            ]
+          },
+          "new_identity_mistake": {
+            "delta": 0.010416666666666671,
+            "ci95": [
+              -0.020833333333333332,
+              0.057291666666666664
+            ]
+          },
+          "tcp_mm": {
+            "delta": 2.0265942014608456,
+            "ci95": [
+              0.8136220876910758,
+              3.396909448219146
+            ]
+          },
+          "turn_degs": {
+            "delta": 0.5865128142319165,
+            "ci95": [
+              0.20939102654571742,
+              1.0377458450262904
+            ]
+          },
+          "seconds": {
+            "delta": 0.32291666666666696,
+            "ci95": [
+              0.13541666666666666,
+              0.5520833333333334
+            ]
+          },
+          "frames": {
+            "delta": 3.2291666666666714,
+            "ci95": [
+              1.3541666666666667,
+              5.520833333333333
+            ]
+          },
+          "centered_complete": {
+            "delta": 0.005208333333333334,
+            "ci95": [
+              0.0,
+              0.015625
+            ]
+          },
+          "new_query_image_retained": {
+            "delta": 0.005208333333333259,
+            "ci95": [
+              -0.041666666666666664,
+              0.052083333333333336
+            ]
+          },
+          "feedback_revisions": {
+            "delta": 0.5677083333333321,
+            "ci95": [
+              -0.4739583333333333,
+              1.6614583333333333
+            ]
+          }
+        },
+        "random": {
+          "new_image_and_complete": {
+            "delta": 0.00520833333333337,
+            "ci95": [
+              -0.125,
+              0.11458333333333333
+            ]
+          },
+          "corrected_complete": {
+            "delta": 0.00520833333333337,
+            "ci95": [
+              -0.125,
+              0.11458333333333333
+            ]
+          },
+          "final_wrong": {
+            "delta": 0.02604166666666667,
+            "ci95": [
+              -0.041666666666666664,
+              0.08854166666666667
+            ]
+          },
+          "new_identity_mistake": {
+            "delta": 0.046875,
+            "ci95": [
+              0.0,
+              0.109375
+            ]
+          },
+          "tcp_mm": {
+            "delta": 1.0792824226079603,
+            "ci95": [
+              -0.6826200912460181,
+              2.9499790577172926
+            ]
+          },
+          "turn_degs": {
+            "delta": 0.3024081148130868,
+            "ci95": [
+              -0.19756887633260137,
+              0.8050603489593496
+            ]
+          },
+          "seconds": {
+            "delta": 0.19270833333333393,
+            "ci95": [
+              -0.10416666666666667,
+              0.5105468749999981
+            ]
+          },
+          "frames": {
+            "delta": 1.9270833333333428,
+            "ci95": [
+              -1.0416666666666667,
+              5.105468749999981
+            ]
+          },
+          "centered_complete": {
+            "delta": 0.03125,
+            "ci95": [
+              0.0,
+              0.08333333333333333
+            ]
+          },
+          "new_query_image_retained": {
+            "delta": 0.0,
+            "ci95": [
+              -0.13020833333333334,
+              0.125
+            ]
+          },
+          "feedback_revisions": {
+            "delta": 0.96875,
+            "ci95": [
+              -0.005208333333333333,
+              1.9897135416666647
+            ]
+          }
+        },
+        "evidence": {
+          "new_image_and_complete": {
+            "delta": 0.015625,
+            "ci95": [
+              0.0,
+              0.041666666666666664
+            ]
+          },
+          "corrected_complete": {
+            "delta": 0.015625,
+            "ci95": [
+              0.0,
+              0.041666666666666664
+            ]
+          },
+          "final_wrong": {
+            "delta": -0.010416666666666664,
+            "ci95": [
+              -0.03125,
+              0.0
+            ]
+          },
+          "new_identity_mistake": {
+            "delta": -0.005208333333333329,
+            "ci95": [
+              -0.020833333333333332,
+              0.010416666666666666
+            ]
+          },
+          "tcp_mm": {
+            "delta": 1.7344552465178111,
+            "ci95": [
+              0.24760700483432674,
+              3.57079513419936
+            ]
+          },
+          "turn_degs": {
+            "delta": 0.39789833136267383,
+            "ci95": [
+              0.09708346488769073,
+              0.7873648889106093
+            ]
+          },
+          "seconds": {
+            "delta": 0.21875,
+            "ci95": [
+              0.046875,
+              0.4322916666666667
+            ]
+          },
+          "frames": {
+            "delta": 2.1875,
+            "ci95": [
+              0.46875,
+              4.322916666666667
+            ]
+          },
+          "centered_complete": {
+            "delta": 0.010416666666666666,
+            "ci95": [
+              0.0,
+              0.03125
+            ]
+          },
+          "new_query_image_retained": {
+            "delta": 0.01041666666666663,
+            "ci95": [
+              0.0,
+              0.026041666666666668
+            ]
+          },
+          "feedback_revisions": {
+            "delta": 0.578125,
+            "ci95": [
+              0.020833333333333332,
+              1.2760416666666667
+            ]
+          }
+        },
+        "contrast": {
+          "new_image_and_complete": {
+            "delta": 0.08333333333333337,
+            "ci95": [
+              0.0,
+              0.1875
+            ]
+          },
+          "corrected_complete": {
+            "delta": 0.08333333333333337,
+            "ci95": [
+              0.0,
+              0.1875
+            ]
+          },
+          "final_wrong": {
+            "delta": -0.020833333333333336,
+            "ci95": [
+              -0.11979166666666667,
+              0.041666666666666664
+            ]
+          },
+          "new_identity_mistake": {
+            "delta": 0.020833333333333343,
+            "ci95": [
+              0.0,
+              0.057291666666666664
+            ]
+          },
+          "tcp_mm": {
+            "delta": 1.9363135460050316,
+            "ci95": [
+              0.6168804990979357,
+              3.5024907649450694
+            ]
+          },
+          "turn_degs": {
+            "delta": 0.5231351143175953,
+            "ci95": [
+              0.14871299763216844,
+              0.9651535063430605
+            ]
+          },
+          "seconds": {
+            "delta": 0.125,
+            "ci95": [
+              -0.11979166666666667,
+              0.3489583333333333
+            ]
+          },
+          "frames": {
+            "delta": 1.25,
+            "ci95": [
+              -1.1979166666666667,
+              3.4895833333333335
+            ]
+          },
+          "centered_complete": {
+            "delta": 0.036458333333333336,
+            "ci95": [
+              0.0,
+              0.08854166666666667
+            ]
+          },
+          "new_query_image_retained": {
+            "delta": 0.08854166666666663,
+            "ci95": [
+              0.0,
+              0.20833333333333334
+            ]
+          },
+          "feedback_revisions": {
+            "delta": 0.9270833333333321,
+            "ci95": [
+              -0.03125,
+              1.984375
+            ]
+          }
+        },
+        "program": {
+          "new_image_and_complete": {
+            "delta": -0.00520833333333337,
+            "ci95": [
+              -0.10416666666666667,
+              0.08854166666666667
+            ]
+          },
+          "corrected_complete": {
+            "delta": -0.00520833333333337,
+            "ci95": [
+              -0.10416666666666667,
+              0.08854166666666667
+            ]
+          },
+          "final_wrong": {
+            "delta": 0.005208333333333329,
+            "ci95": [
+              -0.010416666666666666,
+              0.020833333333333332
+            ]
+          },
+          "new_identity_mistake": {
+            "delta": 0.015625,
+            "ci95": [
+              -0.03125,
+              0.078125
+            ]
+          },
+          "tcp_mm": {
+            "delta": 3.871946999916865,
+            "ci95": [
+              1.9227498041103606,
+              5.852949180030622
+            ]
+          },
+          "turn_degs": {
+            "delta": 0.8272911587710681,
+            "ci95": [
+              0.26773184900854974,
+              1.3973711408535132
+            ]
+          },
+          "seconds": {
+            "delta": 0.453125,
+            "ci95": [
+              0.22395833333333334,
+              0.703125
+            ]
+          },
+          "frames": {
+            "delta": 4.53125,
+            "ci95": [
+              2.2395833333333335,
+              7.03125
+            ]
+          },
+          "centered_complete": {
+            "delta": 0.005208333333333334,
+            "ci95": [
+              0.0,
+              0.015625
+            ]
+          },
+          "new_query_image_retained": {
+            "delta": 0.05208333333333326,
+            "ci95": [
+              -0.057291666666666664,
+              0.171875
+            ]
+          },
+          "feedback_revisions": {
+            "delta": 2.333333333333332,
+            "ci95": [
+              0.90625,
+              3.7604166666666665
+            ]
+          }
+        }
+      }
+    },
+    "parallel": {
+      "worlds": 24,
+      "replicas_per_world": 8,
+      "means": {
+        "archived_evidence": {
+          "new_image_and_complete": 0.9479166666666666,
+          "corrected_complete": 0.9479166666666666,
+          "final_wrong": 0.015625,
+          "new_identity_mistake": 0.20833333333333334,
+          "tcp_mm": 46.85640808480542,
+          "turn_degs": 9.494972464315305,
+          "seconds": 6.354166666666667,
+          "frames": 64.54166666666667,
+          "centered_complete": 0.046875,
+          "new_query_image_retained": 0.9427083333333334,
+          "feedback_revisions": 19.739583333333332
+        },
+        "mpc": {
+          "new_image_and_complete": 0.7604166666666666,
+          "corrected_complete": 0.7604166666666666,
+          "final_wrong": 0.041666666666666664,
+          "new_identity_mistake": 0.15104166666666666,
+          "tcp_mm": 36.772633961070696,
+          "turn_degs": 6.631231562305836,
+          "seconds": 5.536458333333333,
+          "frames": 56.364583333333336,
+          "centered_complete": 0.010416666666666666,
+          "new_query_image_retained": 0.625,
+          "feedback_revisions": 14.666666666666666
+        },
+        "fixed": {
+          "new_image_and_complete": 0.7916666666666666,
+          "corrected_complete": 0.7916666666666666,
+          "final_wrong": 0.046875,
+          "new_identity_mistake": 0.11458333333333333,
+          "tcp_mm": 45.77477937104725,
+          "turn_degs": 8.095667454337049,
+          "seconds": 6.75,
+          "frames": 68.5,
+          "centered_complete": 0.005208333333333333,
+          "new_query_image_retained": 0.6666666666666666,
+          "feedback_revisions": 22.734375
+        },
+        "old": {
+          "new_image_and_complete": 0.9375,
+          "corrected_complete": 0.9375,
+          "final_wrong": 0.020833333333333332,
+          "new_identity_mistake": 0.19270833333333334,
+          "tcp_mm": 46.10363798002469,
+          "turn_degs": 9.253710391636867,
+          "seconds": 6.192708333333333,
+          "frames": 62.927083333333336,
+          "centered_complete": 0.036458333333333336,
+          "new_query_image_retained": 0.9322916666666666,
+          "feedback_revisions": 18.817708333333332
+        },
+        "random": {
+          "new_image_and_complete": 0.9375,
+          "corrected_complete": 0.9375,
+          "final_wrong": 0.020833333333333332,
+          "new_identity_mistake": 0.20833333333333334,
+          "tcp_mm": 46.13695114420373,
+          "turn_degs": 9.235989924165594,
+          "seconds": 6.192708333333333,
+          "frames": 62.927083333333336,
+          "centered_complete": 0.036458333333333336,
+          "new_query_image_retained": 0.9322916666666666,
+          "feedback_revisions": 19.057291666666668
+        },
+        "evidence": {
+          "new_image_and_complete": 0.9375,
+          "corrected_complete": 0.9375,
+          "final_wrong": 0.015625,
+          "new_identity_mistake": 0.203125,
+          "tcp_mm": 45.65751785976159,
+          "turn_degs": 9.14510776809206,
+          "seconds": 6.166666666666667,
+          "frames": 62.666666666666664,
+          "centered_complete": 0.036458333333333336,
+          "new_query_image_retained": 0.9322916666666666,
+          "feedback_revisions": 18.880208333333332
+        },
+        "contrast": {
+          "new_image_and_complete": 0.9479166666666666,
+          "corrected_complete": 0.9479166666666666,
+          "final_wrong": 0.015625,
+          "new_identity_mistake": 0.203125,
+          "tcp_mm": 45.55859290684821,
+          "turn_degs": 9.091669382380585,
+          "seconds": 6.104166666666667,
+          "frames": 62.041666666666664,
+          "centered_complete": 0.041666666666666664,
+          "new_query_image_retained": 0.9375,
+          "feedback_revisions": 18.989583333333332
+        },
+        "program": {
+          "new_image_and_complete": 0.9114583333333334,
+          "corrected_complete": 0.9114583333333334,
+          "final_wrong": 0.020833333333333332,
+          "new_identity_mistake": 0.22916666666666666,
+          "tcp_mm": 47.63086624846815,
+          "turn_degs": 9.588606349606822,
+          "seconds": 6.369791666666667,
+          "frames": 64.69791666666667,
+          "centered_complete": 0.03125,
+          "new_query_image_retained": 0.9479166666666666,
+          "feedback_revisions": 19.411458333333332
+        }
+      },
+      "vs_reference": {
+        "mpc": {
+          "new_image_and_complete": {
+            "delta": -0.1875,
+            "ci95": [
+              -0.3489583333333333,
+              -0.0519531250000019
+            ]
+          },
+          "corrected_complete": {
+            "delta": -0.1875,
+            "ci95": [
+              -0.3489583333333333,
+              -0.0519531250000019
+            ]
+          },
+          "final_wrong": {
+            "delta": 0.026041666666666664,
+            "ci95": [
+              -0.020833333333333332,
+              0.109375
+            ]
+          },
+          "new_identity_mistake": {
+            "delta": -0.057291666666666685,
+            "ci95": [
+              -0.14583333333333334,
+              0.015625
+            ]
+          },
+          "tcp_mm": {
+            "delta": -10.083774123734727,
+            "ci95": [
+              -13.272260885351933,
+              -7.060113799874692
+            ]
+          },
+          "turn_degs": {
+            "delta": -2.863740902009469,
+            "ci95": [
+              -3.845778425796707,
+              -1.9570516169855035
+            ]
+          },
+          "seconds": {
+            "delta": -0.8177083333333339,
+            "ci95": [
+              -1.2135416666666667,
+              -0.4114583333333333
+            ]
+          },
+          "frames": {
+            "delta": -8.177083333333336,
+            "ci95": [
+              -12.135416666666666,
+              -4.114583333333333
+            ]
+          },
+          "centered_complete": {
+            "delta": -0.036458333333333336,
+            "ci95": [
+              -0.09895833333333333,
+              0.0
+            ]
+          },
+          "new_query_image_retained": {
+            "delta": -0.31770833333333337,
+            "ci95": [
+              -0.5,
+              -0.15104166666666666
+            ]
+          },
+          "feedback_revisions": {
+            "delta": -5.072916666666666,
+            "ci95": [
+              -7.703125,
+              -2.734375
+            ]
+          }
+        },
+        "fixed": {
+          "new_image_and_complete": {
+            "delta": -0.15625,
+            "ci95": [
+              -0.3072916666666667,
+              -0.036458333333333336
+            ]
+          },
+          "corrected_complete": {
+            "delta": -0.15625,
+            "ci95": [
+              -0.3072916666666667,
+              -0.036458333333333336
+            ]
+          },
+          "final_wrong": {
+            "delta": 0.03125,
+            "ci95": [
+              -0.020833333333333332,
+              0.11458333333333333
+            ]
+          },
+          "new_identity_mistake": {
+            "delta": -0.09375000000000001,
+            "ci95": [
+              -0.18229166666666666,
+              -0.020833333333333332
+            ]
+          },
+          "tcp_mm": {
+            "delta": -1.081628713758171,
+            "ci95": [
+              -4.500829598893797,
+              1.9998558747568658
+            ]
+          },
+          "turn_degs": {
+            "delta": -1.3993050099782565,
+            "ci95": [
+              -2.514644741090073,
+              -0.4009781893954622
+            ]
+          },
+          "seconds": {
+            "delta": 0.39583333333333304,
+            "ci95": [
+              0.07291666666666667,
+              0.75
+            ]
+          },
+          "frames": {
+            "delta": 3.9583333333333286,
+            "ci95": [
+              0.7291666666666666,
+              7.5
+            ]
+          },
+          "centered_complete": {
+            "delta": -0.041666666666666664,
+            "ci95": [
+              -0.10416666666666667,
+              0.0
+            ]
+          },
+          "new_query_image_retained": {
+            "delta": -0.27604166666666674,
+            "ci95": [
+              -0.453125,
+              -0.11458333333333333
+            ]
+          },
+          "feedback_revisions": {
+            "delta": 2.994791666666668,
+            "ci95": [
+              0.7447916666666666,
+              5.3490885416666645
+            ]
+          }
+        },
+        "old": {
+          "new_image_and_complete": {
+            "delta": -0.01041666666666663,
+            "ci95": [
+              -0.03125,
+              0.0
+            ]
+          },
+          "corrected_complete": {
+            "delta": -0.01041666666666663,
+            "ci95": [
+              -0.03125,
+              0.0
+            ]
+          },
+          "final_wrong": {
+            "delta": 0.005208333333333332,
+            "ci95": [
+              0.0,
+              0.015625
+            ]
+          },
+          "new_identity_mistake": {
+            "delta": -0.015625,
+            "ci95": [
+              -0.057291666666666664,
+              0.020833333333333332
+            ]
+          },
+          "tcp_mm": {
+            "delta": -0.7527701047807298,
+            "ci95": [
+              -2.333238629496422,
+              0.6035377590494093
+            ]
+          },
+          "turn_degs": {
+            "delta": -0.24126207267843824,
+            "ci95": [
+              -0.7110715231426606,
+              0.13616524596171087
+            ]
+          },
+          "seconds": {
+            "delta": -0.16145833333333393,
+            "ci95": [
+              -0.4375,
+              0.057291666666666664
+            ]
+          },
+          "frames": {
+            "delta": -1.6145833333333357,
+            "ci95": [
+              -4.375,
+              0.5729166666666666
+            ]
+          },
+          "centered_complete": {
+            "delta": -0.010416666666666664,
+            "ci95": [
+              -0.026041666666666668,
+              0.0
+            ]
+          },
+          "new_query_image_retained": {
+            "delta": -0.01041666666666674,
+            "ci95": [
+              -0.026041666666666668,
+              0.0
+            ]
+          },
+          "feedback_revisions": {
+            "delta": -0.921875,
+            "ci95": [
+              -2.4427083333333335,
+              0.4324218749999981
+            ]
+          }
+        },
+        "random": {
+          "new_image_and_complete": {
+            "delta": -0.01041666666666663,
+            "ci95": [
+              -0.03125,
+              0.0
+            ]
+          },
+          "corrected_complete": {
+            "delta": -0.01041666666666663,
+            "ci95": [
+              -0.03125,
+              0.0
+            ]
+          },
+          "final_wrong": {
+            "delta": 0.005208333333333332,
+            "ci95": [
+              0.0,
+              0.015625
+            ]
+          },
+          "new_identity_mistake": {
+            "delta": 0.0,
+            "ci95": [
+              -0.03125,
+              0.026041666666666668
+            ]
+          },
+          "tcp_mm": {
+            "delta": -0.7194569406016953,
+            "ci95": [
+              -2.534554847998813,
+              0.9751792273087624
+            ]
+          },
+          "turn_degs": {
+            "delta": -0.2589825401497112,
+            "ci95": [
+              -0.7920881685635393,
+              0.23881154890267794
+            ]
+          },
+          "seconds": {
+            "delta": -0.16145833333333393,
+            "ci95": [
+              -0.4583333333333333,
+              0.11979166666666667
+            ]
+          },
+          "frames": {
+            "delta": -1.6145833333333357,
+            "ci95": [
+              -4.583333333333333,
+              1.1979166666666667
+            ]
+          },
+          "centered_complete": {
+            "delta": -0.010416666666666664,
+            "ci95": [
+              -0.026041666666666668,
+              0.0
+            ]
+          },
+          "new_query_image_retained": {
+            "delta": -0.01041666666666674,
+            "ci95": [
+              -0.026041666666666668,
+              0.0
+            ]
+          },
+          "feedback_revisions": {
+            "delta": -0.6822916666666643,
+            "ci95": [
+              -2.3854166666666665,
+              1.0052083333333333
+            ]
+          }
+        },
+        "evidence": {
+          "new_image_and_complete": {
+            "delta": -0.01041666666666663,
+            "ci95": [
+              -0.026041666666666668,
+              0.0
+            ]
+          },
+          "corrected_complete": {
+            "delta": -0.01041666666666663,
+            "ci95": [
+              -0.026041666666666668,
+              0.0
+            ]
+          },
+          "final_wrong": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "new_identity_mistake": {
+            "delta": -0.005208333333333343,
+            "ci95": [
+              -0.041666666666666664,
+              0.03125
+            ]
+          },
+          "tcp_mm": {
+            "delta": -1.198890225043833,
+            "ci95": [
+              -2.905747685976597,
+              0.42470594386660704
+            ]
+          },
+          "turn_degs": {
+            "delta": -0.34986469622324456,
+            "ci95": [
+              -0.8374198673253184,
+              0.0657301700325019
+            ]
+          },
+          "seconds": {
+            "delta": -0.1875,
+            "ci95": [
+              -0.5104166666666666,
+              0.10416666666666667
+            ]
+          },
+          "frames": {
+            "delta": -1.875000000000007,
+            "ci95": [
+              -5.104166666666667,
+              1.0416666666666667
+            ]
+          },
+          "centered_complete": {
+            "delta": -0.010416666666666664,
+            "ci95": [
+              -0.026041666666666668,
+              0.0
+            ]
+          },
+          "new_query_image_retained": {
+            "delta": -0.01041666666666674,
+            "ci95": [
+              -0.026041666666666668,
+              0.0
+            ]
+          },
+          "feedback_revisions": {
+            "delta": -0.859375,
+            "ci95": [
+              -2.390625,
+              0.4480468749999981
+            ]
+          }
+        },
+        "contrast": {
+          "new_image_and_complete": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "corrected_complete": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "final_wrong": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "new_identity_mistake": {
+            "delta": -0.005208333333333343,
+            "ci95": [
+              -0.03125,
+              0.020833333333333332
+            ]
+          },
+          "tcp_mm": {
+            "delta": -1.2978151779572116,
+            "ci95": [
+              -2.819714047288248,
+              0.03078493172900548
+            ]
+          },
+          "turn_degs": {
+            "delta": -0.40330308193471964,
+            "ci95": [
+              -0.8811604959093435,
+              -0.0009939665270675118
+            ]
+          },
+          "seconds": {
+            "delta": -0.25,
+            "ci95": [
+              -0.53125,
+              -0.010416666666666666
+            ]
+          },
+          "frames": {
+            "delta": -2.500000000000007,
+            "ci95": [
+              -5.3125,
+              -0.10416666666666667
+            ]
+          },
+          "centered_complete": {
+            "delta": -0.005208333333333336,
+            "ci95": [
+              -0.015625,
+              0.0
+            ]
+          },
+          "new_query_image_retained": {
+            "delta": -0.00520833333333337,
+            "ci95": [
+              -0.015625,
+              0.0
+            ]
+          },
+          "feedback_revisions": {
+            "delta": -0.75,
+            "ci95": [
+              -2.3072916666666665,
+              0.6822916666666666
+            ]
+          }
+        },
+        "program": {
+          "new_image_and_complete": {
+            "delta": -0.03645833333333326,
+            "ci95": [
+              -0.109375,
+              0.005208333333333333
+            ]
+          },
+          "corrected_complete": {
+            "delta": -0.03645833333333326,
+            "ci95": [
+              -0.109375,
+              0.005208333333333333
+            ]
+          },
+          "final_wrong": {
+            "delta": 0.005208333333333332,
+            "ci95": [
+              0.0,
+              0.015625
+            ]
+          },
+          "new_identity_mistake": {
+            "delta": 0.020833333333333315,
+            "ci95": [
+              -0.020833333333333332,
+              0.0625
+            ]
+          },
+          "tcp_mm": {
+            "delta": 0.7744581636627288,
+            "ci95": [
+              -1.5298993728020356,
+              3.275657649777739
+            ]
+          },
+          "turn_degs": {
+            "delta": 0.09363388529151706,
+            "ci95": [
+              -0.5427203014003739,
+              0.7102838851260815
+            ]
+          },
+          "seconds": {
+            "delta": 0.015625,
+            "ci95": [
+              -0.328125,
+              0.3489583333333333
+            ]
+          },
+          "frames": {
+            "delta": 0.15625,
+            "ci95": [
+              -3.28125,
+              3.4895833333333335
+            ]
+          },
+          "centered_complete": {
+            "delta": -0.015625,
+            "ci95": [
+              -0.041666666666666664,
+              0.0
+            ]
+          },
+          "new_query_image_retained": {
+            "delta": 0.005208333333333259,
+            "ci95": [
+              -0.010416666666666666,
+              0.020833333333333332
+            ]
+          },
+          "feedback_revisions": {
+            "delta": -0.328125,
+            "ci95": [
+              -2.125,
+              1.4947916666666667
+            ]
+          }
+        }
+      }
+    }
+  }
+}
