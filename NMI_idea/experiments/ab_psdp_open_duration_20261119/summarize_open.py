@@ -5,7 +5,7 @@ from collections import Counter
 
 import numpy as np
 
-from run_open import ARMS, HERE, PRIMARY, p, write_json
+from run_open import HERE, PRIMARY, p, write_json
 
 
 MODES = ("original", "extended", "open")
@@ -19,11 +19,12 @@ def scopes(rows):
 
 
 def summarize(rows):
+    names = tuple(rows[0]["outcomes"]["open"])
     def trials(mode, name):
         return [trial for row in rows for trial in row["outcomes"][mode][name]]
 
     data = {(mode, name): np.asarray([[[t[key] for key in MEASURES] for t in row["outcomes"][mode][name]]
-                                     for row in rows]) for mode in MODES for name in ARMS}
+                                     for row in rows]) for mode in MODES for name in names}
     rng = np.random.default_rng(24385)
     groups = {}
     for i, row in enumerate(rows):
@@ -40,7 +41,7 @@ def summarize(rows):
     record = {}
     for mode in MODES:
         arms = {}
-        for name in ARMS:
+        for name in names:
             x = data[mode, name]
             y = trials(mode, name)
             arms[name] = {
@@ -61,7 +62,9 @@ def summarize(rows):
             "arms": arms,
             "psdp_vs_random": stats(data[mode, "psdp"] - data[mode, "random_data"]),
             "psdp_vs_same_first_direct": stats(data[mode, "psdp"] - data[mode, "psdp_direct"]),
-            "relative_to_cap": {name: stats(data[mode, name] - data["original", name]) for name in ARMS},
+            "relative_to_cap": {name: stats(data[mode, name] - data["original", name]) for name in names},
+            "psdp_vs_peer": {name: stats(data[mode, "psdp"] - data[mode, name])
+                             for name in names if name != "psdp"},
         }
     originals = [(row["root_triggers_mpc_recovery"], row["outcomes"]["original"]["psdp"][0])
                  for row in rows]

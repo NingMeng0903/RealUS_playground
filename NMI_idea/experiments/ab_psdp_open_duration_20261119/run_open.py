@@ -140,23 +140,36 @@ def outcome(c, state, record, scene, root, gate, mode):
 
 
 def replay_seed(job):
-    row, fixed = job
+    row, fixed, prescribed, cached = job
     c, truth, root, prefix, menu, aliases, anchor, cpu = b.legacy_eval.checkpoint(row)
     gate = p.deadline(root)
     full, _ = b.make_plans(c, root, prefix, menu, aliases, anchor, fixed, cpu)
-    plans = {arm: full[arm] for arm in ARMS}
-    result = {mode: {arm: [] for arm in ARMS} for mode in ("original", "extended", "open")}
+    names = ARMS if cached is None else b.ARMS
+    previous = {} if cached is None else cached["outcomes"]
+    plans = {arm: full[arm] for arm in names if arm not in previous.get("open", {})}
+    leading = sorted({name for name, _ in plans.values()})
+    result = {mode: {arm: list(previous.get(mode, {}).get(arm, ())) for arm in names}
+              for mode in ("original", "extended", "open")}
     for index, scene in enumerate(p.base.scans.paired_futures(truth, row, b.TEST_TAPES, b.TEST_PURPOSE)):
         scene = replace(scene, tape=ExtendedTape(scene.tape, row["seed"], index))
-        reached = {name: p.run_motion(c, root, prefix, scene, menu.get(name)) for name, _ in plans.values()}
-        chosen, finished, eval_cache = {}, {}, {}
+        reached = {name: p.run_motion(c, root, prefix, scene, menu.get(name)) for name in leading}
+        chosen, finished = {}, {}
+        eval_cache = {}
+        for mode, arms in previous.items():
+            for trials in arms.values():
+                prior = trials[index]
+                eval_cache[mode, prior["first"], prior["second"]] = prior
         for arm, (first, adaptive) in plans.items():
             state, log = reached[first]
             next_stage = ("legacy_child" if arm == "legacy_program" else "child") if adaptive else None
-            key = first, next_stage
+            fixed_second = prescribed.get(arm)
+            key = first, next_stage, fixed_second
             if key not in chosen:
                 action = None
-                if adaptive:
+                if adaptive and fixed_second is not None:
+                    if c.can_continue(state):
+                        action = p.fixed_action(c, state, fixed_second)
+                elif adaptive:
                     _, action = p.choose_second(*p.second_inputs(c, state, log, gate), MODELS[next_stage])
                 chosen[key] = action
             second_action = chosen[key]
@@ -167,27 +180,39 @@ def replay_seed(job):
             for mode in result:
                 key = mode, first, second
                 if key not in eval_cache:
-                    eval_cache[key] = outcome(c, end, end_log, scene, root, gate, mode)
-                trial = eval_cache[key]
-                result[mode][arm].append(trial | {
+                    trial = outcome(c, end, end_log, scene, root, gate, mode)
+                    trial["servo_total_after_checkpoint"] -= prefix.revisions
+                    trial["servo_in_b_probes"] = end_log.revisions - prefix.revisions
+                    eval_cache[key] = trial
+                result[mode][arm].append(eval_cache[key] | {
                     "first": first, "second": second, "child_requested": adaptive,
                     "changed_from_mpc_first": first not in (p.HANDOFF, anchor),
                     "probes": int(first != p.HANDOFF) + int(second != p.HANDOFF),
-                    "servo_total_after_checkpoint": trial["servo_total_after_checkpoint"] - prefix.revisions,
-                    "servo_in_b_probes": end_log.revisions - prefix.revisions,
+                    "precommitted_second": fixed_second,
                 })
     return row | {"root_frame": root.frame, "root_triggers_mpc_recovery": root.trigger(),
                   "incumbent": anchor, "outcomes": result}
 
 
-def validate_reference(rows, split, base):
-    original = {r["seed"]: r["outcomes"] for r in p.base.read_rows(base / f"{split}.jsonl.gz")}
+def validate_reference(rows, original):
     for row in rows:
-        for arm in ARMS:
-            for actual, expected in zip(row["outcomes"]["original"][arm], original[row["seed"]][arm], strict=True):
+        for arm, trials in row["outcomes"]["original"].items():
+            for actual, expected in zip(trials, original[row["seed"]]["outcomes"][arm], strict=True):
                 for field in (*p.base.FIELDS, "first", "second", "probes"):
                     if actual[field] != expected[field]:
                         raise ValueError(f"Original replay differs: {row['seed']} {arm} {field}")
+
+
+def load_cached(split, frozen_path, capped_path):
+    folder = HERE / "results/main"
+    proof = study.read(folder / f"{split}_provenance.json")
+    path = folder / f"{split}.jsonl.gz"
+    files = {"archive_sha256": path, "frozen_model_manifest": frozen_path,
+             "source_score_archive": capped_path}
+    for name, asset in files.items():
+        if p.base.fingerprint(asset) != proof[name]:
+            raise ValueError(f"cached execution provenance changed: {asset}")
+    return {row["seed"]: row for row in p.base.read_rows(path)}, proof["archive_sha256"]
 
 
 def main():
@@ -195,8 +220,12 @@ def main():
     parser.add_argument("split", choices=("test", "drift"))
     parser.add_argument("--workers", type=int, default=26)
     parser.add_argument("--limit-scenes", type=int)
-    parser.add_argument("--out", type=Path, default=HERE / "results/main")
+    parser.add_argument("--complete-table", action="store_true",
+                        help="Update all frozen comparison rows using the verified open replay.")
+    parser.add_argument("--out", type=Path)
     args = parser.parse_args()
+    if args.out is None:
+        args.out = HERE / ("results/full_table" if args.complete_table else "results/main")
     base = study.HERE / "results/main"
     frozen = study.read(base / "frozen.json")
     for folder, key in ((study.BASE, "sources"), (study.HERE, "code"), (base, "files")):
@@ -207,9 +236,15 @@ def main():
     MODELS.update(joblib.load(base / "heads.joblib"))
     fixed = study.read(study.LEGACY_RUN / "fixed.json")
     rows = study.scenario_rows(*study.HOLDOUT[args.split], setting=args.split)[:args.limit_scenes]
-    cases = run_parallel(replay_seed, [(r, fixed[r["family"]]["single"][0]) for r in rows],
-                         args.workers, f"{args.split} replay")
-    validate_reference(cases, args.split, base)
+    capped_path = base / f"{args.split}.jsonl.gz"
+    original = {r["seed"]: r for r in p.base.read_rows(capped_path)}
+    cached, cached_digest = ({}, None)
+    if args.complete_table:
+        cached, cached_digest = load_cached(args.split, base / "frozen.json", capped_path)
+    jobs = [(row, fixed[row["family"]]["single"][0], original[row["seed"]]["precommitted"],
+             cached.get(row["seed"])) for row in rows]
+    cases = run_parallel(replay_seed, jobs, args.workers, f"{args.split} replay")
+    validate_reference(cases, original)
     args.out.mkdir(parents=True, exist_ok=True)
     save_archive(args.out / f"{args.split}.jsonl.gz", cases)
     write_json(args.out / f"{args.split}_provenance.json", {
@@ -217,7 +252,11 @@ def main():
         "source_score_archive": p.base.fingerprint(base / f"{args.split}.jsonl.gz"),
         "source_code": p.base.fingerprint(Path(__file__)),
         "archive_sha256": p.base.fingerprint(args.out / f"{args.split}.jsonl.gz"),
-        "archived_capped_trials_matched": len(cases) * b.TEST_TAPES * len(ARMS),
+        "archived_capped_trials_matched": len(cases) * b.TEST_TAPES
+        * len(cases[0]["outcomes"]["original"]),
+        "prior_open_archive_reused": cached_digest,
+        "precommitment": "Recorded root commands from the frozen benchmark",
+
     })
 
 

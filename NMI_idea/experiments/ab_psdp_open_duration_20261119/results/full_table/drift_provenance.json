@@ -1,0 +1,9 @@
+{
+  "frozen_model_manifest": "dce6ad9d7619ffbc672eeb3b96d035a8fd49df4a272ff1aa7274bde79c49a995",
+  "source_score_archive": "251ed470b7456c688c114dfc14eb83b14604f5b76e5ae6bcf5397161a864ce3d",
+  "source_code": "0f8408d09383553eccac48cd3cf6b62bc71c0831344dd697a3fb678b90255e48",
+  "archive_sha256": "94467dba1cd4b33e9d2c3a8cb7f3bca4fbc238c7f0b07a20a1ef586a7fbcb841",
+  "archived_capped_trials_matched": 6528,
+  "prior_open_archive_reused": "850624585864cc4fe4acc74f1b48d237739fdd3b3b6e7c1edba1213fe709bd9b",
+  "precommitment": "Recorded root commands from the frozen benchmark"
+}
