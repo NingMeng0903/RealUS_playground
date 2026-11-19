@@ -1,0 +1,32 @@
+{
+  "split": "smoke",
+  "namespace": 719900,
+  "n": 1,
+  "repeats": 2,
+  "model_size": 64,
+  "fields": [
+    "correct_completion",
+    "any_wrong",
+    "tcp_mm",
+    "turn_deg",
+    "motion_s",
+    "rail_mm",
+    "captures",
+    "combined_s"
+  ],
+  "bank_sha256": "a29cad4b5fe37760093e312c5be7a140d7905252c51fe42905908b9fad339e47",
+  "base_sha256": "a29cad4b5fe37760093e312c5be7a140d7905252c51fe42905908b9fad339e47",
+  "source_sha256": {
+    "bench.py": "e055a961ecc10e216280102ecca20e1dec0ff78563135d58882786db037c093a",
+    "world.py": "857f9d5883a0ab057bef91c5a983813e8e0719ab3e3784eec2c0836cc361d151",
+    "motion.py": "ddef90ac6b96bbe8ce9d40820552223f09867407a015e3072bed0d4742a913dd",
+    "legacy/control.py": "bfe70e6965d4272152f4c063781725f66058b50f3be463c9e8a406f42a7f5982",
+    "legacy/acoustics.py": "b36b5b49ab57460553c2061779f121e69ac4e10d831e10f13d7317a39502cc39",
+    "legacy/run.py": "cc70d16ac34d76a24756c9e8d468e0b9a7418c205851276ca82a55b6bf7b0954"
+  },
+  "checkpoint": "one common anchor; zero MPC commands",
+  "compute_advances_acoustic_clock": false,
+  "claim": "Fresh correct identities at both ordered target sites and sampled continuation, any wrong claim fails.",
+  "proposal": "at most two offgrid angles per required site; menu frozen from public anchor and shared with MPC",
+  "ghost_extension": "endpoint-preserving smooth interpolation; no new view-index random regimes"
+}

@@ -1,0 +1,3345 @@
+{
+  "schema": "ab_recovery_rm75_lift_v1",
+  "scope": "Secondary sampled RM75 kinematic replay of saved reference-pose chart paths. IK/FK, configured joint limits and configured robot/probe self-collision are checked at sampled targets; the first state is prepositioned from the legacy center witness. This is not real execution, not a contact/dynamics test, not an exhaustive IK proof, and FK is not fed back into observations or controller decisions.",
+  "case_indices": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+  ],
+  "case_count": 6,
+  "arms": [
+    "a_new",
+    "a_old",
+    "fixed",
+    "learned",
+    "mpc"
+  ],
+  "include_a_controls": true,
+  "sample_cap": 401,
+  "witness_node_id": 0,
+  "witness_q": [
+    0.27521369825951136,
+    -2.047576251944813,
+    -1.4139432561101344,
+    1.4273040918660151,
+    1.692345878607868,
+    1.809886928184432,
+    1.1789619646983198,
+    2.023478623794528
+  ],
+  "rail_m": 0.27521369825951136,
+  "position_tolerance_mm": 0.1,
+  "rotation_tolerance_deg": 0.057295779513082325,
+  "clearance_required_mm": 10.0,
+  "paths_checked": 30,
+  "paths_passed": 30,
+  "samples_checked": 7280,
+  "by_arm": {
+    "a_new": {
+      "paths": 6,
+      "passed": 6,
+      "mean_tcp_travel_mm": 30.70051168648389,
+      "mean_tcp_turn_deg": 5.87360540114999,
+      "max_tracking_position_error_mm": 0.003908330706485401,
+      "max_tracking_rotation_error_deg": 0.0003338553021567091,
+      "max_peak_joint_rate_fraction": 0.02859838948313997
+    },
+    "a_old": {
+      "paths": 6,
+      "passed": 6,
+      "mean_tcp_travel_mm": 30.602139345514203,
+      "mean_tcp_turn_deg": 5.873560683719827,
+      "max_tracking_position_error_mm": 0.003775502997196664,
+      "max_tracking_rotation_error_deg": 0.00033386117576525735,
+      "max_peak_joint_rate_fraction": 0.027274974007981456
+    },
+    "fixed": {
+      "paths": 6,
+      "passed": 6,
+      "mean_tcp_travel_mm": 35.12002976196572,
+      "mean_tcp_turn_deg": 6.282088404074678,
+      "max_tracking_position_error_mm": 0.003953777515936344,
+      "max_tracking_rotation_error_deg": 0.0003452658320244682,
+      "max_peak_joint_rate_fraction": 0.02859838948313997
+    },
+    "learned": {
+      "paths": 6,
+      "passed": 6,
+      "mean_tcp_travel_mm": 35.738224670437454,
+      "mean_tcp_turn_deg": 6.333118995017609,
+      "max_tracking_position_error_mm": 0.003953777515936344,
+      "max_tracking_rotation_error_deg": 0.00034526584201248945,
+      "max_peak_joint_rate_fraction": 0.02859838948313997
+    },
+    "mpc": {
+      "paths": 6,
+      "passed": 6,
+      "mean_tcp_travel_mm": 34.72916146828628,
+      "mean_tcp_turn_deg": 6.203098649371637,
+      "max_tracking_position_error_mm": 0.003988080718115442,
+      "max_tracking_rotation_error_deg": 0.00037653098747813634,
+      "max_peak_joint_rate_fraction": 0.02859838948313997
+    }
+  },
+  "source_sha256": {
+    "records": "9fada27e7043100a32990577d2c5249418c6f34b97b39a8f7ed8adb7ed1423a0",
+    "sections": "ff5c746f0b3aebde55c7e4ac4a2572beb78c95405fae4724da3fdd4dd5474d39",
+    "atlas": "e61ff1a05ca957674d3b146dc225b96cce61286094f0e1da052b5874c8219180",
+    "bank": "f834013839500edcb686a08b045bb4c909d35164620f4056e45cf93d1b78d32f"
+  },
+  "robot_source_sha256": {
+    "/home/camp/Documents/Codex/2026-11-13/ieee-t-ro-b-mpc-b/work/RealUS_playground/NMI_idea/experiments/ab_module_ladder_20261110/capability/capability.py": "8dd40a6af7b29ed0b4084e25acb5f403a91a35b364f978ac1233a793467841a4",
+    "/home/camp/Documents/Codex/2026-11-13/ieee-t-ro-b-mpc-b/work/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/dird/adapter.py": "e056959792d4529d7389d5e49facb04b5497ded88d579677680b019f10e22eac",
+    "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/kinematics/srs_ik.py": "7470286eb54d312c6f410c13040d0d50b453c7eb025f27021f6d705ee4697487",
+    "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/control/joint_admittance_8dof/model.py": "575647629fbc5fa78c7a0e756986f91459154095821384f132454af546fda2b3",
+    "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/control/joint_admittance_8dof/collision_model.py": "cd83783fd330644a626f47ad750567b1cd64f141b0ed10c10f05364fa5033cec",
+    "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/RM75-6F-8dof.urdf": "7578310c5ce7b03a301c171175fd4eca2bd8e4b15903a7a9a3ed9bfc366e4ec0",
+    "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/RM75-6F-8dof.collision.urdf": "ba6f49b4fd9cba74107af25ecd82afccac156a94b194a6acb06a2aadebf1d197",
+    "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/collision_pairs.yaml": "8d4b96e09ec8bdfd33a7835fb77fa4dcb720551e7d55d28c063994b99c392318"
+  },
+  "paths": [
+    {
+      "passes": true,
+      "sample_count": 251,
+      "duration_s": 5.0,
+      "invalid_kinematic_samples": [],
+      "joint_limit_violations": [],
+      "fk_violations": [],
+      "self_collision_violations": [],
+      "velocity_violation_intervals": [],
+      "minimum_self_clearance_mm": 41.04060970362358,
+      "minimum_joint_margin_rad_or_m": 0.27521369825951136,
+      "maximum_tracking_position_error_mm": 0.003610282219532255,
+      "maximum_tracking_rotation_error_deg": 0.0003399940213136064,
+      "peak_joint_rate_fraction": 0.02409979269299155,
+      "tcp_travel_mm": 31.095967870953075,
+      "tcp_turn_deg": 5.87362813926703,
+      "tcp_travel_including_preposition_mm": 45.45259819305096,
+      "tcp_turn_including_preposition_deg": 6.484246337335102,
+      "preposition_tcp_mm": 14.356630322097898,
+      "preposition_turn_deg": 0.6106181980680715,
+      "initial_q": [
+        0.27521369825951136,
+        -2.02851449642125,
+        -1.4182258375582557,
+        1.4375960171593507,
+        1.760353057174831,
+        1.8300865867577834,
+        1.1871184102165355,
+        1.9756877261299963
+      ],
+      "final_q": [
+        0.27521369825951136,
+        -2.0091727346566755,
+        -1.343696765200431,
+        1.4033029645175348,
+        1.745823445429833,
+        1.7144542699951908,
+        1.2768796806960583,
+        2.034704203706659
+      ],
+      "preposition_max_arm_change_rad": 0.06800717856696292,
+      "record_index": 0,
+      "seed": 1600000,
+      "family": "heldout",
+      "angle_mode": "fixed",
+      "arm": "mpc",
+      "trace_source": "shared_prefix_and_suffix",
+      "angle_deg": 15.0,
+      "chart_travel_mm": 31.101849679728808,
+      "chart_turn_deg": 5.873622375584916,
+      "maximum_logged_lateral_rate_mm_s": 12.517047569497954,
+      "benchmark_outcome": {
+        "wrong": false,
+        "wrong_certification": false,
+        "wrong_confident_frames": 0,
+        "coverage": 6,
+        "public_coverage": 6,
+        "arrived": true,
+        "frames": 51,
+        "seconds": 5.0,
+        "mpc_revisions": 25,
+        "max_handoff_error": 4.440892098500626e-16,
+        "success": true,
+        "false_complete": false,
+        "hit_rate": 0.6274509803921569,
+        "mean_abs_lateral_mm": 0.8583773446815858,
+        "tcp_mm": 31.101849679728762,
+        "turn_deg": 5.873622375584916,
+        "tcp_cost_error": 3.552713678800501e-15,
+        "longitudinal_mm": 29.400000000000002,
+        "max_x_speed": 12.517047569497954,
+        "max_s_speed": 14.625,
+        "query_bin": 3,
+        "query_station": 19.5,
+        "query_angle": 15.0,
+        "target_truth": [
+          -17.917305005561495,
+          37.16282288907236
+        ],
+        "identity_truth": false,
+        "pre": {
+          "mean": [
+            -18.304872873049373,
+            37.2424235554746
+          ],
+          "var": [
+            9.623704577406568e-07,
+            0.054746276235737676
+          ],
+          "cov": [
+            [
+              9.623704577406568e-07,
+              -4.8565064449471706e-08
+            ],
+            [
+              -4.856506444947168e-08,
+              0.054746276235737676
+            ]
+          ],
+          "side": 7.743413351704978e-199,
+          "interval90": [
+            [
+              -18.304874076014254,
+              -18.304874076014254
+            ],
+            [
+              37.08047878680283,
+              37.58047878680283
+            ]
+          ]
+        },
+        "post": {
+          "mean": [
+            -18.304874073906454,
+            37.14343910152443
+          ],
+          "var": [
+            1.6862382141994287e-09,
+            0.027516156130956683
+          ],
+          "cov": [
+            [
+              1.6862382141994287e-09,
+              -4.003500688871762e-11
+            ],
+            [
+              -4.003500688871762e-11,
+              0.027516156130956683
+            ]
+          ],
+          "side": 1.642772497082148e-206,
+          "interval90": [
+            [
+              -18.304874076014254,
+              -18.304874076014254
+            ],
+            [
+              37.08047878680283,
+              37.58047878680283
+            ]
+          ]
+        },
+        "identity_station": 28.0,
+        "identity_pre": 7.743413351704978e-199,
+        "identity_post": 1.642772497082148e-206,
+        "probe_local": true,
+        "identity_correct": true,
+        "identity_correct_before": true,
+        "identity_certified": true,
+        "ambiguous_before": false,
+        "ambiguity_correct": true,
+        "var_drop_mm2": 0.02723108078900052,
+        "sq_position_error": 0.15058551395748287,
+        "sq_error_before": 0.1565451180007823,
+        "interval_covered": 0.5,
+        "fresh_local": true,
+        "terminal_identity_correct": true
+      }
+    },
+    {
+      "passes": true,
+      "sample_count": 301,
+      "duration_s": 6.0,
+      "invalid_kinematic_samples": [],
+      "joint_limit_violations": [],
+      "fk_violations": [],
+      "self_collision_violations": [],
+      "velocity_violation_intervals": [],
+      "minimum_self_clearance_mm": 41.04060970362358,
+      "minimum_joint_margin_rad_or_m": 0.27521369825951136,
+      "maximum_tracking_position_error_mm": 0.0036318422813914467,
+      "maximum_tracking_rotation_error_deg": 0.0003452658320244682,
+      "peak_joint_rate_fraction": 0.02409979269299155,
+      "tcp_travel_mm": 37.638687769904315,
+      "tcp_turn_deg": 6.583893745744648,
+      "tcp_travel_including_preposition_mm": 51.99531809200221,
+      "tcp_turn_including_preposition_deg": 7.19451194381272,
+      "preposition_tcp_mm": 14.356630322097898,
+      "preposition_turn_deg": 0.6106181980680715,
+      "initial_q": [
+        0.27521369825951136,
+        -2.02851449642125,
+        -1.4182258375582557,
+        1.4375960171593507,
+        1.760353057174831,
+        1.8300865867577834,
+        1.1871184102165355,
+        1.9756877261299963
+      ],
+      "final_q": [
+        0.27521369825951136,
+        -2.008901467829857,
+        -1.3438053631777453,
+        1.4033827107704027,
+        1.7467169686578699,
+        1.7147295008022303,
+        1.2768380910611172,
+        2.0340542417451664
+      ],
+      "preposition_max_arm_change_rad": 0.06800717856696292,
+      "record_index": 0,
+      "seed": 1600000,
+      "family": "heldout",
+      "angle_mode": "fixed",
+      "arm": "fixed",
+      "trace_source": "shared_prefix_and_suffix",
+      "angle_deg": 15.0,
+      "chart_travel_mm": 37.64975433471296,
+      "chart_turn_deg": 6.58486687044766,
+      "maximum_logged_lateral_rate_mm_s": 12.517047569497954,
+      "benchmark_outcome": {
+        "wrong": false,
+        "wrong_certification": false,
+        "wrong_confident_frames": 0,
+        "coverage": 5,
+        "public_coverage": 6,
+        "arrived": true,
+        "frames": 61,
+        "seconds": 6.0,
+        "mpc_revisions": 25,
+        "max_handoff_error": 4.440892098500626e-16,
+        "success": false,
+        "false_complete": true,
+        "hit_rate": 0.5737704918032787,
+        "mean_abs_lateral_mm": 1.2756580838909952,
+        "tcp_mm": 37.64975433471312,
+        "turn_deg": 6.58486687044766,
+        "tcp_cost_error": 0.0,
+        "longitudinal_mm": 37.959981838080054,
+        "max_x_speed": 12.517047569497954,
+        "max_s_speed": 12.93750000000006,
+        "query_bin": 3,
+        "query_station": 19.5,
+        "query_angle": 15.0,
+        "target_truth": [
+          -17.917305005561495,
+          37.16282288907236
+        ],
+        "identity_truth": false,
+        "pre": {
+          "mean": [
+            -18.304872873049373,
+            37.2424235554746
+          ],
+          "var": [
+            9.623704577406568e-07,
+            0.054746276235737676
+          ],
+          "cov": [
+            [
+              9.623704577406568e-07,
+              -4.8565064449471706e-08
+            ],
+            [
+              -4.856506444947168e-08,
+              0.054746276235737676
+            ]
+          ],
+          "side": 7.743413351704978e-199,
+          "interval90": [
+            [
+              -18.304874076014254,
+              -18.304874076014254
+            ],
+            [
+              37.08047878680283,
+              37.58047878680283
+            ]
+          ]
+        },
+        "post": {
+          "mean": [
+            -18.30487407435212,
+            37.134354077279994
+          ],
+          "var": [
+            1.3297014536200452e-09,
+            0.02403509831458461
+          ],
+          "cov": [
+            [
+              1.3297014536200452e-09,
+              -2.7412458124088504e-11
+            ],
+            [
+              -2.7412458124088504e-11,
+              0.02403509831458461
+            ]
+          ],
+          "side": 1.4746763957797067e-212,
+          "interval90": [
+            [
+              -18.304874076014254,
+              -18.304874076014254
+            ],
+            [
+              37.08047878680283,
+              37.58047878680283
+            ]
+          ]
+        },
+        "identity_station": 28.0,
+        "identity_pre": 7.743413351704978e-199,
+        "identity_post": 1.4746763957797067e-212,
+        "probe_local": false,
+        "identity_correct": true,
+        "identity_correct_before": true,
+        "identity_certified": true,
+        "ambiguous_before": false,
+        "ambiguity_correct": true,
+        "var_drop_mm2": 0.030712138961909354,
+        "sq_position_error": 0.15102025632810184,
+        "sq_error_before": 0.1565451180007823,
+        "interval_covered": 0.5,
+        "fresh_local": true,
+        "terminal_identity_correct": true
+      }
+    },
+    {
+      "passes": true,
+      "sample_count": 301,
+      "duration_s": 6.0,
+      "invalid_kinematic_samples": [],
+      "joint_limit_violations": [],
+      "fk_violations": [],
+      "self_collision_violations": [],
+      "velocity_violation_intervals": [],
+      "minimum_self_clearance_mm": 41.04060970362358,
+      "minimum_joint_margin_rad_or_m": 0.27521369825951136,
+      "maximum_tracking_position_error_mm": 0.0036317945604212552,
+      "maximum_tracking_rotation_error_deg": 0.00034526584201248945,
+      "peak_joint_rate_fraction": 0.02409979269299155,
+      "tcp_travel_mm": 38.583683164617945,
+      "tcp_turn_deg": 6.584346383790955,
+      "tcp_travel_including_preposition_mm": 52.94031348671584,
+      "tcp_turn_including_preposition_deg": 7.194964581859026,
+      "preposition_tcp_mm": 14.356630322097898,
+      "preposition_turn_deg": 0.6106181980680715,
+      "initial_q": [
+        0.27521369825951136,
+        -2.02851449642125,
+        -1.4182258375582557,
+        1.4375960171593507,
+        1.760353057174831,
+        1.8300865867577834,
+        1.1871184102165355,
+        1.9756877261299963
+      ],
+      "final_q": [
+        0.27521369825951136,
+        -2.008900868198329,
+        -1.343803301352784,
+        1.4033849946060803,
+        1.7467177006836476,
+        1.7147280958938766,
+        1.2768354369015174,
+        2.0340533124784774
+      ],
+      "preposition_max_arm_change_rad": 0.06800717856696292,
+      "record_index": 0,
+      "seed": 1600000,
+      "family": "heldout",
+      "angle_mode": "fixed",
+      "arm": "learned",
+      "trace_source": "shared_prefix_and_suffix",
+      "angle_deg": 15.0,
+      "chart_travel_mm": 38.59637167179501,
+      "chart_turn_deg": 6.58486687044766,
+      "maximum_logged_lateral_rate_mm_s": 12.517047569497954,
+      "benchmark_outcome": {
+        "wrong": false,
+        "wrong_certification": false,
+        "wrong_confident_frames": 0,
+        "coverage": 6,
+        "public_coverage": 6,
+        "arrived": true,
+        "frames": 61,
+        "seconds": 6.0,
+        "mpc_revisions": 29,
+        "max_handoff_error": 4.440892098500626e-16,
+        "success": true,
+        "false_complete": false,
+        "hit_rate": 0.6885245901639344,
+        "mean_abs_lateral_mm": 0.9137550459263706,
+        "tcp_mm": 38.59637167179511,
+        "turn_deg": 6.58486687044766,
+        "tcp_cost_error": 0.0,
+        "longitudinal_mm": 37.959981838080054,
+        "max_x_speed": 12.517047569497954,
+        "max_s_speed": 12.93750000000006,
+        "query_bin": 3,
+        "query_station": 19.5,
+        "query_angle": 15.0,
+        "target_truth": [
+          -17.917305005561495,
+          37.16282288907236
+        ],
+        "identity_truth": false,
+        "pre": {
+          "mean": [
+            -18.304872873049373,
+            37.2424235554746
+          ],
+          "var": [
+            9.623704577406568e-07,
+            0.054746276235737676
+          ],
+          "cov": [
+            [
+              9.623704577406568e-07,
+              -4.8565064449471706e-08
+            ],
+            [
+              -4.856506444947168e-08,
+              0.054746276235737676
+            ]
+          ],
+          "side": 7.743413351704978e-199,
+          "interval90": [
+            [
+              -18.304874076014254,
+              -18.304874076014254
+            ],
+            [
+              37.08047878680283,
+              37.58047878680283
+            ]
+          ]
+        },
+        "post": {
+          "mean": [
+            -18.304874074205003,
+            37.13435391270479
+          ],
+          "var": [
+            1.4473995126377045e-09,
+            0.024035033760024978
+          ],
+          "cov": [
+            [
+              1.4473995126377045e-09,
+              -2.983913681486859e-11
+            ],
+            [
+              -2.9839136814868594e-11,
+              0.024035033760024978
+            ]
+          ],
+          "side": 1.8864509290426122e-212,
+          "interval90": [
+            [
+              -18.304874076014254,
+              -18.304874076014254
+            ],
+            [
+              37.08047878680283,
+              37.58047878680283
+            ]
+          ]
+        },
+        "identity_station": 28.0,
+        "identity_pre": 7.743413351704978e-199,
+        "identity_post": 1.8864509290426122e-212,
+        "probe_local": true,
+        "identity_correct": true,
+        "identity_correct_before": true,
+        "identity_certified": true,
+        "ambiguous_before": false,
+        "ambiguity_correct": true,
+        "var_drop_mm2": 0.030712203398770926,
+        "sq_position_error": 0.15102026558461334,
+        "sq_error_before": 0.1565451180007823,
+        "interval_covered": 0.5,
+        "fresh_local": true,
+        "terminal_identity_correct": true
+      }
+    },
+    {
+      "passes": true,
+      "sample_count": 201,
+      "duration_s": 4.0,
+      "invalid_kinematic_samples": [],
+      "joint_limit_violations": [],
+      "fk_violations": [],
+      "self_collision_violations": [],
+      "velocity_violation_intervals": [],
+      "minimum_self_clearance_mm": 41.04061538710217,
+      "minimum_joint_margin_rad_or_m": 0.27521369825951136,
+      "maximum_tracking_position_error_mm": 0.002099795599081576,
+      "maximum_tracking_rotation_error_deg": 0.00014573351272406014,
+      "peak_joint_rate_fraction": 0.025879422384268082,
+      "tcp_travel_mm": 30.704808156808667,
+      "tcp_turn_deg": 5.87349727460521,
+      "tcp_travel_including_preposition_mm": 45.06143847890656,
+      "tcp_turn_including_preposition_deg": 6.484115472673282,
+      "preposition_tcp_mm": 14.356630322097898,
+      "preposition_turn_deg": 0.6106181980680715,
+      "initial_q": [
+        0.27521369825951136,
+        -2.02851449642125,
+        -1.4182258375582557,
+        1.4375960171593507,
+        1.760353057174831,
+        1.8300865867577834,
+        1.1871184102165355,
+        1.9756877261299963
+      ],
+      "final_q": [
+        0.27521369825951136,
+        -2.0086427659934682,
+        -1.3438800128063084,
+        1.4034605585808102,
+        1.747528983028664,
+        1.7149558574766415,
+        1.2767921497092842,
+        2.0334622650424863
+      ],
+      "preposition_max_arm_change_rad": 0.06800717856696292,
+      "record_index": 0,
+      "seed": 1600000,
+      "family": "heldout",
+      "angle_mode": "fixed",
+      "arm": "a_old",
+      "trace_source": "a_old_trace",
+      "angle_deg": 15.0,
+      "chart_travel_mm": 30.706916736068553,
+      "chart_turn_deg": 5.873622375584916,
+      "maximum_logged_lateral_rate_mm_s": 7.935521598374968,
+      "benchmark_outcome": {
+        "wrong": false,
+        "wrong_certification": false,
+        "wrong_confident_frames": 0,
+        "coverage": 6,
+        "public_coverage": 6,
+        "arrived": true,
+        "frames": 41,
+        "seconds": 4.0,
+        "mpc_revisions": 19,
+        "max_handoff_error": 4.440892098500626e-16,
+        "success": true,
+        "false_complete": false,
+        "hit_rate": 0.6341463414634146,
+        "mean_abs_lateral_mm": 0.890888038053897,
+        "tcp_mm": 30.706916736068546,
+        "turn_deg": 5.873622375584916,
+        "tcp_cost_error": 0.0,
+        "longitudinal_mm": 29.39999999999999,
+        "max_x_speed": 7.935521598374968,
+        "max_s_speed": 11.793599999999985
+      }
+    },
+    {
+      "passes": true,
+      "sample_count": 201,
+      "duration_s": 4.0,
+      "invalid_kinematic_samples": [],
+      "joint_limit_violations": [],
+      "fk_violations": [],
+      "self_collision_violations": [],
+      "velocity_violation_intervals": [],
+      "minimum_self_clearance_mm": 41.04060970362358,
+      "minimum_joint_margin_rad_or_m": 0.27521369825951136,
+      "maximum_tracking_position_error_mm": 0.0036512636451507623,
+      "maximum_tracking_rotation_error_deg": 0.00033384920249245005,
+      "peak_joint_rate_fraction": 0.02409979269299155,
+      "tcp_travel_mm": 30.167133435561745,
+      "tcp_turn_deg": 5.873624300256619,
+      "tcp_travel_including_preposition_mm": 44.52376375765964,
+      "tcp_turn_including_preposition_deg": 6.484242498324691,
+      "preposition_tcp_mm": 14.356630322097898,
+      "preposition_turn_deg": 0.6106181980680715,
+      "initial_q": [
+        0.27521369825951136,
+        -2.02851449642125,
+        -1.4182258375582557,
+        1.4375960171593507,
+        1.760353057174831,
+        1.8300865867577834,
+        1.1871184102165355,
+        1.9756877261299963
+      ],
+      "final_q": [
+        0.27521369825951136,
+        -2.0086697514944536,
+        -1.3438762055352216,
+        1.4034413995808381,
+        1.7474390059705012,
+        1.7149323878311613,
+        1.276809023527378,
+        2.0335297039531346
+      ],
+      "preposition_max_arm_change_rad": 0.06800717856696292,
+      "record_index": 0,
+      "seed": 1600000,
+      "family": "heldout",
+      "angle_mode": "fixed",
+      "arm": "a_new",
+      "trace_source": "a_new_trace",
+      "angle_deg": 15.0,
+      "chart_travel_mm": 30.167361876739033,
+      "chart_turn_deg": 5.873622375584916,
+      "maximum_logged_lateral_rate_mm_s": 12.517047569497954,
+      "benchmark_outcome": {
+        "wrong": false,
+        "wrong_certification": false,
+        "wrong_confident_frames": 0,
+        "coverage": 6,
+        "public_coverage": 6,
+        "arrived": true,
+        "frames": 41,
+        "seconds": 4.0,
+        "mpc_revisions": 20,
+        "max_handoff_error": 4.440892098500626e-16,
+        "success": true,
+        "false_complete": false,
+        "hit_rate": 0.6341463414634146,
+        "mean_abs_lateral_mm": 1.0421041675246048,
+        "tcp_mm": 30.167361876739065,
+        "turn_deg": 5.873622375584916,
+        "tcp_cost_error": 3.552713678800501e-15,
+        "longitudinal_mm": 29.39999999999999,
+        "max_x_speed": 12.517047569497954,
+        "max_s_speed": 11.793599999999985
+      }
+    },
+    {
+      "passes": true,
+      "sample_count": 251,
+      "duration_s": 5.0,
+      "invalid_kinematic_samples": [],
+      "joint_limit_violations": [],
+      "fk_violations": [],
+      "self_collision_violations": [],
+      "velocity_violation_intervals": [],
+      "minimum_self_clearance_mm": 41.040612779750184,
+      "minimum_joint_margin_rad_or_m": 0.27521369825951136,
+      "maximum_tracking_position_error_mm": 0.003988080718115442,
+      "maximum_tracking_rotation_error_deg": 0.00037653098747813634,
+      "peak_joint_rate_fraction": 0.023992047411975168,
+      "tcp_travel_mm": 30.095474658013845,
+      "tcp_turn_deg": 5.8732642616366375,
+      "tcp_travel_including_preposition_mm": 44.45210498011175,
+      "tcp_turn_including_preposition_deg": 6.483882459704709,
+      "preposition_tcp_mm": 14.356630322097898,
+      "preposition_turn_deg": 0.6106181980680715,
+      "initial_q": [
+        0.27521369825951136,
+        -2.02851449642125,
+        -1.4182258375582557,
+        1.4375960171593507,
+        1.760353057174831,
+        1.8300865867577834,
+        1.1871184102165355,
+        1.9756877261299963
+      ],
+      "final_q": [
+        0.27521369825951136,
+        -2.0101512167932953,
+        -1.343362825443858,
+        1.4030413523204062,
+        1.7427127359554448,
+        1.713549434816331,
+        1.2770150564100706,
+        2.036963103791371
+      ],
+      "preposition_max_arm_change_rad": 0.06800717856696292,
+      "record_index": 1,
+      "seed": 1600001,
+      "family": "heldout",
+      "angle_mode": "fixed",
+      "arm": "mpc",
+      "trace_source": "shared_prefix_and_suffix",
+      "angle_deg": 15.0,
+      "chart_travel_mm": 30.10123159437654,
+      "chart_turn_deg": 5.873622375584916,
+      "maximum_logged_lateral_rate_mm_s": 11.61005323995144,
+      "benchmark_outcome": {
+        "wrong": false,
+        "wrong_certification": false,
+        "wrong_confident_frames": 0,
+        "coverage": 6,
+        "public_coverage": 6,
+        "arrived": true,
+        "frames": 51,
+        "seconds": 5.0,
+        "mpc_revisions": 16,
+        "max_handoff_error": 0.0,
+        "success": true,
+        "false_complete": false,
+        "hit_rate": 0.43137254901960786,
+        "mean_abs_lateral_mm": 0.75601237987414,
+        "tcp_mm": 30.101231594376607,
+        "turn_deg": 5.873622375584916,
+        "tcp_cost_error": 0.0,
+        "longitudinal_mm": 29.400000000000002,
+        "max_x_speed": 11.61005323995144,
+        "max_s_speed": 14.625,
+        "query_bin": 3,
+        "query_station": 19.5,
+        "query_angle": 15.0,
+        "target_truth": [
+          -17.152938152012627,
+          37.09396316853429
+        ],
+        "identity_truth": false,
+        "pre": {
+          "mean": [
+            -17.501132821563456,
+            37.14716350366328
+          ],
+          "var": [
+            0.0029790066246426533,
+            0.028895517586312865
+          ],
+          "cov": [
+            [
+              0.0029790066246426533,
+              -0.0002254726777980468
+            ],
+            [
+              -0.0002254726777980468,
+              0.028895517586312865
+            ]
+          ],
+          "side": 6.653309340218373e-199,
+          "interval90": [
+            [
+              -17.504874076014254,
+              -17.504874076014254
+            ],
+            [
+              37.08047878680283,
+              37.58047878680283
+            ]
+          ]
+        },
+        "post": {
+          "mean": [
+            -17.49147899128131,
+            37.12795677655243
+          ],
+          "var": [
+            0.01053663949147678,
+            0.02148483554328931
+          ],
+          "cov": [
+            [
+              0.01053663949147678,
+              -0.0005766054882856026
+            ],
+            [
+              -0.0005766054882856026,
+              0.02148483554328931
+            ]
+          ],
+          "side": 7.1170221770452e-199,
+          "interval90": [
+            [
+              -17.504874076014254,
+              -17.504874076014254
+            ],
+            [
+              37.08047878680283,
+              37.58047878680283
+            ]
+          ]
+        },
+        "identity_station": 28.0,
+        "identity_pre": 6.653309340218373e-199,
+        "identity_post": 7.1170221770452e-199,
+        "probe_local": true,
+        "identity_correct": true,
+        "identity_correct_before": true,
+        "identity_certified": true,
+        "ambiguous_before": false,
+        "ambiguity_correct": true,
+        "var_drop_mm2": -0.00014695082381056823,
+        "sq_position_error": 0.11576546523883427,
+        "sq_error_before": 0.12406980356144763,
+        "interval_covered": 0.5,
+        "fresh_local": true,
+        "terminal_identity_correct": true
+      }
+    },
+    {
+      "passes": true,
+      "sample_count": 301,
+      "duration_s": 6.0,
+      "invalid_kinematic_samples": [],
+      "joint_limit_violations": [],
+      "fk_violations": [],
+      "self_collision_violations": [],
+      "velocity_violation_intervals": [],
+      "minimum_self_clearance_mm": 41.040612779750184,
+      "minimum_joint_margin_rad_or_m": 0.27521369825951136,
+      "maximum_tracking_position_error_mm": 0.003953777515936344,
+      "maximum_tracking_rotation_error_deg": 0.0003304354134448476,
+      "peak_joint_rate_fraction": 0.023992047411975168,
+      "tcp_travel_mm": 29.576146253410048,
+      "tcp_turn_deg": 5.908096897329946,
+      "tcp_travel_including_preposition_mm": 43.93277657550794,
+      "tcp_turn_including_preposition_deg": 6.518715095398018,
+      "preposition_tcp_mm": 14.356630322097898,
+      "preposition_turn_deg": 0.6106181980680715,
+      "initial_q": [
+        0.27521369825951136,
+        -2.02851449642125,
+        -1.4182258375582557,
+        1.4375960171593507,
+        1.760353057174831,
+        1.8300865867577834,
+        1.1871184102165355,
+        1.9756877261299963
+      ],
+      "final_q": [
+        0.27521369825951136,
+        -2.0101480511817034,
+        -1.3433600921241822,
+        1.4030345138284654,
+        1.7427095391646001,
+        1.7135440509949593,
+        1.2770219941856473,
+        2.0369665119169564
+      ],
+      "preposition_max_arm_change_rad": 0.06800717856696292,
+      "record_index": 1,
+      "seed": 1600001,
+      "family": "heldout",
+      "angle_mode": "fixed",
+      "arm": "fixed",
+      "trace_source": "shared_prefix_and_suffix",
+      "angle_deg": 15.0,
+      "chart_travel_mm": 29.584126137229052,
+      "chart_turn_deg": 5.9087854929238395,
+      "maximum_logged_lateral_rate_mm_s": 11.61005323995144,
+      "benchmark_outcome": {
+        "wrong": false,
+        "wrong_certification": false,
+        "wrong_confident_frames": 0,
+        "coverage": 6,
+        "public_coverage": 6,
+        "arrived": true,
+        "frames": 61,
+        "seconds": 6.0,
+        "mpc_revisions": 16,
+        "max_handoff_error": 1.1102230246251565e-16,
+        "success": true,
+        "false_complete": false,
+        "hit_rate": 0.4918032786885246,
+        "mean_abs_lateral_mm": 1.0933953134417627,
+        "tcp_mm": 29.584126137229127,
+        "turn_deg": 5.9087854929238395,
+        "tcp_cost_error": 0.0,
+        "longitudinal_mm": 29.823195747686412,
+        "max_x_speed": 11.61005323995144,
+        "max_s_speed": 11.793600000000023,
+        "query_bin": 3,
+        "query_station": 19.5,
+        "query_angle": 15.0,
+        "target_truth": [
+          -17.152938152012627,
+          37.09396316853429
+        ],
+        "identity_truth": false,
+        "pre": {
+          "mean": [
+            -17.501132821563456,
+            37.14716350366328
+          ],
+          "var": [
+            0.0029790066246426533,
+            0.028895517586312865
+          ],
+          "cov": [
+            [
+              0.0029790066246426533,
+              -0.0002254726777980468
+            ],
+            [
+              -0.0002254726777980468,
+              0.028895517586312865
+            ]
+          ],
+          "side": 6.653309340218373e-199,
+          "interval90": [
+            [
+              -17.504874076014254,
+              -17.504874076014254
+            ],
+            [
+              37.08047878680283,
+              37.58047878680283
+            ]
+          ]
+        },
+        "post": {
+          "mean": [
+            -17.494051196327803,
+            37.12260416032817
+          ],
+          "var": [
+            0.008541169024577475,
+            0.019288139808346965
+          ],
+          "cov": [
+            [
+              0.008541169024577475,
+              -0.0004139555434437722
+            ],
+            [
+              -0.00041395554344377227,
+              0.019288139808346965
+            ]
+          ],
+          "side": 1.2135155287703864e-200,
+          "interval90": [
+            [
+              -17.504874076014254,
+              -17.504874076014254
+            ],
+            [
+              37.08047878680283,
+              37.58047878680283
+            ]
+          ]
+        },
+        "identity_station": 28.0,
+        "identity_pre": 6.653309340218373e-199,
+        "identity_post": 1.2135155287703864e-200,
+        "probe_local": true,
+        "identity_correct": true,
+        "identity_correct_before": true,
+        "identity_certified": true,
+        "ambiguous_before": false,
+        "ambiguity_correct": true,
+        "var_drop_mm2": 0.0040452153780310765,
+        "sq_position_error": 0.11717841541290432,
+        "sq_error_before": 0.12406980356144763,
+        "interval_covered": 0.5,
+        "fresh_local": true,
+        "terminal_identity_correct": true
+      }
+    },
+    {
+      "passes": true,
+      "sample_count": 301,
+      "duration_s": 6.0,
+      "invalid_kinematic_samples": [],
+      "joint_limit_violations": [],
+      "fk_violations": [],
+      "self_collision_violations": [],
+      "velocity_violation_intervals": [],
+      "minimum_self_clearance_mm": 41.040612779750184,
+      "minimum_joint_margin_rad_or_m": 0.27521369825951136,
+      "maximum_tracking_position_error_mm": 0.003953777515936344,
+      "maximum_tracking_rotation_error_deg": 0.0003304354134448476,
+      "peak_joint_rate_fraction": 0.023992047411975168,
+      "tcp_travel_mm": 29.576146253410048,
+      "tcp_turn_deg": 5.908096897329946,
+      "tcp_travel_including_preposition_mm": 43.93277657550794,
+      "tcp_turn_including_preposition_deg": 6.518715095398018,
+      "preposition_tcp_mm": 14.356630322097898,
+      "preposition_turn_deg": 0.6106181980680715,
+      "initial_q": [
+        0.27521369825951136,
+        -2.02851449642125,
+        -1.4182258375582557,
+        1.4375960171593507,
+        1.760353057174831,
+        1.8300865867577834,
+        1.1871184102165355,
+        1.9756877261299963
+      ],
+      "final_q": [
+        0.27521369825951136,
+        -2.0101480511817034,
+        -1.3433600921241822,
+        1.4030345138284654,
+        1.7427095391646001,
+        1.7135440509949593,
+        1.2770219941856473,
+        2.0369665119169564
+      ],
+      "preposition_max_arm_change_rad": 0.06800717856696292,
+      "record_index": 1,
+      "seed": 1600001,
+      "family": "heldout",
+      "angle_mode": "fixed",
+      "arm": "learned",
+      "trace_source": "shared_prefix_and_suffix",
+      "angle_deg": 15.0,
+      "chart_travel_mm": 29.584126137229052,
+      "chart_turn_deg": 5.9087854929238395,
+      "maximum_logged_lateral_rate_mm_s": 11.61005323995144,
+      "benchmark_outcome": {
+        "wrong": false,
+        "wrong_certification": false,
+        "wrong_confident_frames": 0,
+        "coverage": 6,
+        "public_coverage": 6,
+        "arrived": true,
+        "frames": 61,
+        "seconds": 6.0,
+        "mpc_revisions": 16,
+        "max_handoff_error": 1.1102230246251565e-16,
+        "success": true,
+        "false_complete": false,
+        "hit_rate": 0.4918032786885246,
+        "mean_abs_lateral_mm": 1.0933953134417627,
+        "tcp_mm": 29.584126137229127,
+        "turn_deg": 5.9087854929238395,
+        "tcp_cost_error": 0.0,
+        "longitudinal_mm": 29.823195747686412,
+        "max_x_speed": 11.61005323995144,
+        "max_s_speed": 11.793600000000023,
+        "query_bin": 3,
+        "query_station": 19.5,
+        "query_angle": 15.0,
+        "target_truth": [
+          -17.152938152012627,
+          37.09396316853429
+        ],
+        "identity_truth": false,
+        "pre": {
+          "mean": [
+            -17.501132821563456,
+            37.14716350366328
+          ],
+          "var": [
+            0.0029790066246426533,
+            0.028895517586312865
+          ],
+          "cov": [
+            [
+              0.0029790066246426533,
+              -0.0002254726777980468
+            ],
+            [
+              -0.0002254726777980468,
+              0.028895517586312865
+            ]
+          ],
+          "side": 6.653309340218373e-199,
+          "interval90": [
+            [
+              -17.504874076014254,
+              -17.504874076014254
+            ],
+            [
+              37.08047878680283,
+              37.58047878680283
+            ]
+          ]
+        },
+        "post": {
+          "mean": [
+            -17.494051196327803,
+            37.12260416032817
+          ],
+          "var": [
+            0.008541169024577475,
+            0.019288139808346965
+          ],
+          "cov": [
+            [
+              0.008541169024577475,
+              -0.0004139555434437722
+            ],
+            [
+              -0.00041395554344377227,
+              0.019288139808346965
+            ]
+          ],
+          "side": 1.2135155287703864e-200,
+          "interval90": [
+            [
+              -17.504874076014254,
+              -17.504874076014254
+            ],
+            [
+              37.08047878680283,
+              37.58047878680283
+            ]
+          ]
+        },
+        "identity_station": 28.0,
+        "identity_pre": 6.653309340218373e-199,
+        "identity_post": 1.2135155287703864e-200,
+        "probe_local": true,
+        "identity_correct": true,
+        "identity_correct_before": true,
+        "identity_certified": true,
+        "ambiguous_before": false,
+        "ambiguity_correct": true,
+        "var_drop_mm2": 0.0040452153780310765,
+        "sq_position_error": 0.11717841541290432,
+        "sq_error_before": 0.12406980356144763,
+        "interval_covered": 0.5,
+        "fresh_local": true,
+        "terminal_identity_correct": true
+      }
+    },
+    {
+      "passes": true,
+      "sample_count": 201,
+      "duration_s": 4.0,
+      "invalid_kinematic_samples": [],
+      "joint_limit_violations": [],
+      "fk_violations": [],
+      "self_collision_violations": [],
+      "velocity_violation_intervals": [],
+      "minimum_self_clearance_mm": 41.04060951692231,
+      "minimum_joint_margin_rad_or_m": 0.27521369825951136,
+      "maximum_tracking_position_error_mm": 0.003636637731693218,
+      "maximum_tracking_rotation_error_deg": 0.000145745157232897,
+      "peak_joint_rate_fraction": 0.02554898874011998,
+      "tcp_travel_mm": 30.27395785878802,
+      "tcp_turn_deg": 5.873497129576782,
+      "tcp_travel_including_preposition_mm": 44.630588180885916,
+      "tcp_turn_including_preposition_deg": 6.484115327644853,
+      "preposition_tcp_mm": 14.356630322097898,
+      "preposition_turn_deg": 0.6106181980680715,
+      "initial_q": [
+        0.27521369825951136,
+        -2.02851449642125,
+        -1.4182258375582557,
+        1.4375960171593507,
+        1.760353057174831,
+        1.8300865867577834,
+        1.1871184102165355,
+        1.9756877261299963
+      ],
+      "final_q": [
+        0.27521369825951136,
+        -2.010220082381405,
+        -1.3433256226947983,
+        1.4030232769191944,
+        1.7424742613813735,
+        1.7134684062248497,
+        1.2770222414117214,
+        2.0371357467403115
+      ],
+      "preposition_max_arm_change_rad": 0.06800717856696292,
+      "record_index": 1,
+      "seed": 1600001,
+      "family": "heldout",
+      "angle_mode": "fixed",
+      "arm": "a_old",
+      "trace_source": "a_old_trace",
+      "angle_deg": 15.0,
+      "chart_travel_mm": 30.27758301041912,
+      "chart_turn_deg": 5.873622375584916,
+      "maximum_logged_lateral_rate_mm_s": 9.247558845048781,
+      "benchmark_outcome": {
+        "wrong": false,
+        "wrong_certification": false,
+        "wrong_confident_frames": 0,
+        "coverage": 5,
+        "public_coverage": 5,
+        "arrived": true,
+        "frames": 41,
+        "seconds": 4.0,
+        "mpc_revisions": 16,
+        "max_handoff_error": 2.220446049250313e-16,
+        "success": false,
+        "false_complete": false,
+        "hit_rate": 0.5365853658536586,
+        "mean_abs_lateral_mm": 0.8392787916445261,
+        "tcp_mm": 30.27758301041914,
+        "turn_deg": 5.873622375584916,
+        "tcp_cost_error": 3.552713678800501e-15,
+        "longitudinal_mm": 29.39999999999999,
+        "max_x_speed": 9.247558845048781,
+        "max_s_speed": 11.793599999999985
+      }
+    },
+    {
+      "passes": true,
+      "sample_count": 201,
+      "duration_s": 4.0,
+      "invalid_kinematic_samples": [],
+      "joint_limit_violations": [],
+      "fk_violations": [],
+      "self_collision_violations": [],
+      "velocity_violation_intervals": [],
+      "minimum_self_clearance_mm": 41.040612779750184,
+      "minimum_joint_margin_rad_or_m": 0.27521369825951136,
+      "maximum_tracking_position_error_mm": 0.003908330706485401,
+      "maximum_tracking_rotation_error_deg": 0.0003338553021567091,
+      "peak_joint_rate_fraction": 0.023992047411975168,
+      "tcp_travel_mm": 29.292202846466235,
+      "tcp_turn_deg": 5.873622109844377,
+      "tcp_travel_including_preposition_mm": 43.64883316856413,
+      "tcp_turn_including_preposition_deg": 6.484240307912449,
+      "preposition_tcp_mm": 14.356630322097898,
+      "preposition_turn_deg": 0.6106181980680715,
+      "initial_q": [
+        0.27521369825951136,
+        -2.02851449642125,
+        -1.4182258375582557,
+        1.4375960171593507,
+        1.760353057174831,
+        1.8300865867577834,
+        1.1871184102165355,
+        1.9756877261299963
+      ],
+      "final_q": [
+        0.27521369825951136,
+        -2.010140587080826,
+        -1.3433587018894488,
+        1.403033946756598,
+        1.7427249456097118,
+        1.7135447441382692,
+        1.2770229848389807,
+        2.0369556188178217
+      ],
+      "preposition_max_arm_change_rad": 0.06800717856696292,
+      "record_index": 1,
+      "seed": 1600001,
+      "family": "heldout",
+      "angle_mode": "fixed",
+      "arm": "a_new",
+      "trace_source": "a_new_trace",
+      "angle_deg": 15.0,
+      "chart_travel_mm": 29.29245028521108,
+      "chart_turn_deg": 5.873622375584916,
+      "maximum_logged_lateral_rate_mm_s": 11.61005323995144,
+      "benchmark_outcome": {
+        "wrong": false,
+        "wrong_certification": false,
+        "wrong_confident_frames": 0,
+        "coverage": 5,
+        "public_coverage": 5,
+        "arrived": true,
+        "frames": 41,
+        "seconds": 4.0,
+        "mpc_revisions": 16,
+        "max_handoff_error": 6.938893903907228e-18,
+        "success": false,
+        "false_complete": false,
+        "hit_rate": 0.5365853658536586,
+        "mean_abs_lateral_mm": 0.9177840142151792,
+        "tcp_mm": 29.292450285211103,
+        "turn_deg": 5.873622375584916,
+        "tcp_cost_error": 0.0,
+        "longitudinal_mm": 29.39999999999999,
+        "max_x_speed": 11.61005323995144,
+        "max_s_speed": 11.793599999999985
+      }
+    },
+    {
+      "passes": true,
+      "sample_count": 201,
+      "duration_s": 4.0,
+      "invalid_kinematic_samples": [],
+      "joint_limit_violations": [],
+      "fk_violations": [],
+      "self_collision_violations": [],
+      "velocity_violation_intervals": [],
+      "minimum_self_clearance_mm": 41.040609461678365,
+      "minimum_joint_margin_rad_or_m": 0.27521369825951136,
+      "maximum_tracking_position_error_mm": 0.0036814293771177307,
+      "maximum_tracking_rotation_error_deg": 0.0003338484472222948,
+      "peak_joint_rate_fraction": 0.024502621342176404,
+      "tcp_travel_mm": 29.345582525282175,
+      "tcp_turn_deg": 5.8736242172119315,
+      "tcp_travel_including_preposition_mm": 43.702212847380075,
+      "tcp_turn_including_preposition_deg": 6.4842424152800024,
+      "preposition_tcp_mm": 14.356630322097898,
+      "preposition_turn_deg": 0.6106181980680715,
+      "initial_q": [
+        0.27521369825951136,
+        -2.02851449642125,
+        -1.4182258375582557,
+        1.4375960171593507,
+        1.760353057174831,
+        1.8300865867577834,
+        1.1871184102165355,
+        1.9756877261299963
+      ],
+      "final_q": [
+        0.27521369825951136,
+        -2.0092717097813226,
+        -1.3436643072181313,
+        1.4032734425612325,
+        1.7455075115133818,
+        1.7143629332748578,
+        1.2768965591997492,
+        2.0349342481544763
+      ],
+      "preposition_max_arm_change_rad": 0.06800717856696292,
+      "record_index": 2,
+      "seed": 1600002,
+      "family": "heldout",
+      "angle_mode": "fixed",
+      "arm": "mpc",
+      "trace_source": "common_a_new",
+      "angle_deg": 15.0,
+      "chart_travel_mm": 29.345825196336282,
+      "chart_turn_deg": 5.873622375584916,
+      "maximum_logged_lateral_rate_mm_s": 10.213063586053531,
+      "benchmark_outcome": {
+        "wrong": false,
+        "wrong_certification": false,
+        "wrong_confident_frames": 0,
+        "coverage": 6,
+        "public_coverage": 6,
+        "arrived": true,
+        "frames": 41,
+        "seconds": 4.0,
+        "mpc_revisions": 18,
+        "max_handoff_error": 8.881784197001252e-16,
+        "success": true,
+        "false_complete": false,
+        "hit_rate": 0.5365853658536586,
+        "mean_abs_lateral_mm": 0.6758674724612957,
+        "tcp_mm": 29.34582519633631,
+        "turn_deg": 5.873622375584916,
+        "tcp_cost_error": 0.0,
+        "longitudinal_mm": 29.39999999999999,
+        "max_x_speed": 10.213063586053531,
+        "max_s_speed": 11.793599999999985
+      }
+    },
+    {
+      "passes": true,
+      "sample_count": 201,
+      "duration_s": 4.0,
+      "invalid_kinematic_samples": [],
+      "joint_limit_violations": [],
+      "fk_violations": [],
+      "self_collision_violations": [],
+      "velocity_violation_intervals": [],
+      "minimum_self_clearance_mm": 41.040609461678365,
+      "minimum_joint_margin_rad_or_m": 0.27521369825951136,
+      "maximum_tracking_position_error_mm": 0.0036814293771177307,
+      "maximum_tracking_rotation_error_deg": 0.0003338484472222948,
+      "peak_joint_rate_fraction": 0.024502621342176404,
+      "tcp_travel_mm": 29.345582525282175,
+      "tcp_turn_deg": 5.8736242172119315,
+      "tcp_travel_including_preposition_mm": 43.702212847380075,
+      "tcp_turn_including_preposition_deg": 6.4842424152800024,
+      "preposition_tcp_mm": 14.356630322097898,
+      "preposition_turn_deg": 0.6106181980680715,
+      "initial_q": [
+        0.27521369825951136,
+        -2.02851449642125,
+        -1.4182258375582557,
+        1.4375960171593507,
+        1.760353057174831,
+        1.8300865867577834,
+        1.1871184102165355,
+        1.9756877261299963
+      ],
+      "final_q": [
+        0.27521369825951136,
+        -2.0092717097813226,
+        -1.3436643072181313,
+        1.4032734425612325,
+        1.7455075115133818,
+        1.7143629332748578,
+        1.2768965591997492,
+        2.0349342481544763
+      ],
+      "preposition_max_arm_change_rad": 0.06800717856696292,
+      "record_index": 2,
+      "seed": 1600002,
+      "family": "heldout",
+      "angle_mode": "fixed",
+      "arm": "fixed",
+      "trace_source": "common_a_new",
+      "angle_deg": 15.0,
+      "chart_travel_mm": 29.345825196336282,
+      "chart_turn_deg": 5.873622375584916,
+      "maximum_logged_lateral_rate_mm_s": 10.213063586053531,
+      "benchmark_outcome": {
+        "wrong": false,
+        "wrong_certification": false,
+        "wrong_confident_frames": 0,
+        "coverage": 6,
+        "public_coverage": 6,
+        "arrived": true,
+        "frames": 41,
+        "seconds": 4.0,
+        "mpc_revisions": 18,
+        "max_handoff_error": 8.881784197001252e-16,
+        "success": true,
+        "false_complete": false,
+        "hit_rate": 0.5365853658536586,
+        "mean_abs_lateral_mm": 0.6758674724612957,
+        "tcp_mm": 29.34582519633631,
+        "turn_deg": 5.873622375584916,
+        "tcp_cost_error": 0.0,
+        "longitudinal_mm": 29.39999999999999,
+        "max_x_speed": 10.213063586053531,
+        "max_s_speed": 11.793599999999985
+      }
+    },
+    {
+      "passes": true,
+      "sample_count": 201,
+      "duration_s": 4.0,
+      "invalid_kinematic_samples": [],
+      "joint_limit_violations": [],
+      "fk_violations": [],
+      "self_collision_violations": [],
+      "velocity_violation_intervals": [],
+      "minimum_self_clearance_mm": 41.040609461678365,
+      "minimum_joint_margin_rad_or_m": 0.27521369825951136,
+      "maximum_tracking_position_error_mm": 0.0036814293771177307,
+      "maximum_tracking_rotation_error_deg": 0.0003338484472222948,
+      "peak_joint_rate_fraction": 0.024502621342176404,
+      "tcp_travel_mm": 29.345582525282175,
+      "tcp_turn_deg": 5.8736242172119315,
+      "tcp_travel_including_preposition_mm": 43.702212847380075,
+      "tcp_turn_including_preposition_deg": 6.4842424152800024,
+      "preposition_tcp_mm": 14.356630322097898,
+      "preposition_turn_deg": 0.6106181980680715,
+      "initial_q": [
+        0.27521369825951136,
+        -2.02851449642125,
+        -1.4182258375582557,
+        1.4375960171593507,
+        1.760353057174831,
+        1.8300865867577834,
+        1.1871184102165355,
+        1.9756877261299963
+      ],
+      "final_q": [
+        0.27521369825951136,
+        -2.0092717097813226,
+        -1.3436643072181313,
+        1.4032734425612325,
+        1.7455075115133818,
+        1.7143629332748578,
+        1.2768965591997492,
+        2.0349342481544763
+      ],
+      "preposition_max_arm_change_rad": 0.06800717856696292,
+      "record_index": 2,
+      "seed": 1600002,
+      "family": "heldout",
+      "angle_mode": "fixed",
+      "arm": "learned",
+      "trace_source": "common_a_new",
+      "angle_deg": 15.0,
+      "chart_travel_mm": 29.345825196336282,
+      "chart_turn_deg": 5.873622375584916,
+      "maximum_logged_lateral_rate_mm_s": 10.213063586053531,
+      "benchmark_outcome": {
+        "wrong": false,
+        "wrong_certification": false,
+        "wrong_confident_frames": 0,
+        "coverage": 6,
+        "public_coverage": 6,
+        "arrived": true,
+        "frames": 41,
+        "seconds": 4.0,
+        "mpc_revisions": 18,
+        "max_handoff_error": 8.881784197001252e-16,
+        "success": true,
+        "false_complete": false,
+        "hit_rate": 0.5365853658536586,
+        "mean_abs_lateral_mm": 0.6758674724612957,
+        "tcp_mm": 29.34582519633631,
+        "turn_deg": 5.873622375584916,
+        "tcp_cost_error": 0.0,
+        "longitudinal_mm": 29.39999999999999,
+        "max_x_speed": 10.213063586053531,
+        "max_s_speed": 11.793599999999985
+      }
+    },
+    {
+      "passes": true,
+      "sample_count": 201,
+      "duration_s": 4.0,
+      "invalid_kinematic_samples": [],
+      "joint_limit_violations": [],
+      "fk_violations": [],
+      "self_collision_violations": [],
+      "velocity_violation_intervals": [],
+      "minimum_self_clearance_mm": 41.04061167039745,
+      "minimum_joint_margin_rad_or_m": 0.27521369825951136,
+      "maximum_tracking_position_error_mm": 0.003775502997196664,
+      "maximum_tracking_rotation_error_deg": 0.00033386117576525735,
+      "peak_joint_rate_fraction": 0.025654368083372188,
+      "tcp_travel_mm": 30.519950891577036,
+      "tcp_turn_deg": 5.873624274564265,
+      "tcp_travel_including_preposition_mm": 44.87658121367494,
+      "tcp_turn_including_preposition_deg": 6.484242472632337,
+      "preposition_tcp_mm": 14.356630322097898,
+      "preposition_turn_deg": 0.6106181980680715,
+      "initial_q": [
+        0.27521369825951136,
+        -2.02851449642125,
+        -1.4182258375582557,
+        1.4375960171593507,
+        1.760353057174831,
+        1.8300865867577834,
+        1.1871184102165355,
+        1.9756877261299963
+      ],
+      "final_q": [
+        0.27521369825951136,
+        -2.009347843206639,
+        -1.343629461184646,
+        1.4032598309640145,
+        1.7452592169898526,
+        1.714284061469381,
+        1.2768985347015682,
+        2.03511331568494
+      ],
+      "preposition_max_arm_change_rad": 0.06800717856696292,
+      "record_index": 2,
+      "seed": 1600002,
+      "family": "heldout",
+      "angle_mode": "fixed",
+      "arm": "a_old",
+      "trace_source": "a_old_trace",
+      "angle_deg": 15.0,
+      "chart_travel_mm": 30.520244324780872,
+      "chart_turn_deg": 5.873622375584916,
+      "maximum_logged_lateral_rate_mm_s": 8.79247975308882,
+      "benchmark_outcome": {
+        "wrong": false,
+        "wrong_certification": false,
+        "wrong_confident_frames": 0,
+        "coverage": 6,
+        "public_coverage": 6,
+        "arrived": true,
+        "frames": 41,
+        "seconds": 4.0,
+        "mpc_revisions": 18,
+        "max_handoff_error": 8.881784197001252e-16,
+        "success": true,
+        "false_complete": false,
+        "hit_rate": 0.5609756097560976,
+        "mean_abs_lateral_mm": 0.7209480569685515,
+        "tcp_mm": 30.520244324780833,
+        "turn_deg": 5.873622375584916,
+        "tcp_cost_error": 3.552713678800501e-15,
+        "longitudinal_mm": 29.39999999999999,
+        "max_x_speed": 8.79247975308882,
+        "max_s_speed": 11.793599999999985
+      }
+    },
+    {
+      "passes": true,
+      "sample_count": 201,
+      "duration_s": 4.0,
+      "invalid_kinematic_samples": [],
+      "joint_limit_violations": [],
+      "fk_violations": [],
+      "self_collision_violations": [],
+      "velocity_violation_intervals": [],
+      "minimum_self_clearance_mm": 41.040609461678365,
+      "minimum_joint_margin_rad_or_m": 0.27521369825951136,
+      "maximum_tracking_position_error_mm": 0.0036814293771177307,
+      "maximum_tracking_rotation_error_deg": 0.0003338484472222948,
+      "peak_joint_rate_fraction": 0.024502621342176404,
+      "tcp_travel_mm": 29.345582525282175,
+      "tcp_turn_deg": 5.8736242172119315,
+      "tcp_travel_including_preposition_mm": 43.702212847380075,
+      "tcp_turn_including_preposition_deg": 6.4842424152800024,
+      "preposition_tcp_mm": 14.356630322097898,
+      "preposition_turn_deg": 0.6106181980680715,
+      "initial_q": [
+        0.27521369825951136,
+        -2.02851449642125,
+        -1.4182258375582557,
+        1.4375960171593507,
+        1.760353057174831,
+        1.8300865867577834,
+        1.1871184102165355,
+        1.9756877261299963
+      ],
+      "final_q": [
+        0.27521369825951136,
+        -2.0092717097813226,
+        -1.3436643072181313,
+        1.4032734425612325,
+        1.7455075115133818,
+        1.7143629332748578,
+        1.2768965591997492,
+        2.0349342481544763
+      ],
+      "preposition_max_arm_change_rad": 0.06800717856696292,
+      "record_index": 2,
+      "seed": 1600002,
+      "family": "heldout",
+      "angle_mode": "fixed",
+      "arm": "a_new",
+      "trace_source": "a_new_trace",
+      "angle_deg": 15.0,
+      "chart_travel_mm": 29.345825196336282,
+      "chart_turn_deg": 5.873622375584916,
+      "maximum_logged_lateral_rate_mm_s": 10.213063586053531,
+      "benchmark_outcome": {
+        "wrong": false,
+        "wrong_certification": false,
+        "wrong_confident_frames": 0,
+        "coverage": 6,
+        "public_coverage": 6,
+        "arrived": true,
+        "frames": 41,
+        "seconds": 4.0,
+        "mpc_revisions": 18,
+        "max_handoff_error": 8.881784197001252e-16,
+        "success": true,
+        "false_complete": false,
+        "hit_rate": 0.5365853658536586,
+        "mean_abs_lateral_mm": 0.6758674724612957,
+        "tcp_mm": 29.34582519633631,
+        "turn_deg": 5.873622375584916,
+        "tcp_cost_error": 0.0,
+        "longitudinal_mm": 29.39999999999999,
+        "max_x_speed": 10.213063586053531,
+        "max_s_speed": 11.793599999999985
+      }
+    },
+    {
+      "passes": true,
+      "sample_count": 401,
+      "duration_s": 8.0,
+      "invalid_kinematic_samples": [],
+      "joint_limit_violations": [],
+      "fk_violations": [],
+      "self_collision_violations": [],
+      "velocity_violation_intervals": [],
+      "minimum_self_clearance_mm": 41.04061296326701,
+      "minimum_joint_margin_rad_or_m": 0.27521369825951136,
+      "maximum_tracking_position_error_mm": 0.0038357585370160144,
+      "maximum_tracking_rotation_error_deg": 0.00033385103208592975,
+      "peak_joint_rate_fraction": 0.02859838948313997,
+      "tcp_travel_mm": 58.88927229580399,
+      "tcp_turn_deg": 7.851050671307272,
+      "tcp_travel_including_preposition_mm": 73.24590261790189,
+      "tcp_turn_including_preposition_deg": 8.461668869375343,
+      "preposition_tcp_mm": 14.356630322097898,
+      "preposition_turn_deg": 0.6106181980680715,
+      "initial_q": [
+        0.27521369825951136,
+        -2.02851449642125,
+        -1.4182258375582557,
+        1.4375960171593507,
+        1.760353057174831,
+        1.8300865867577834,
+        1.1871184102165355,
+        1.9756877261299963
+      ],
+      "final_q": [
+        0.27521369825951136,
+        -2.0413271549230143,
+        -1.3332372739848517,
+        1.3957728933454163,
+        1.6468472037518476,
+        1.687367135704622,
+        1.2823469689019025,
+        2.105316832846122
+      ],
+      "preposition_max_arm_change_rad": 0.06800717856696292,
+      "record_index": 3,
+      "seed": 1600003,
+      "family": "heldout",
+      "angle_mode": "fixed",
+      "arm": "mpc",
+      "trace_source": "shared_prefix_and_suffix",
+      "angle_deg": 15.0,
+      "chart_travel_mm": 58.890827843232444,
+      "chart_turn_deg": 7.851152152859474,
+      "maximum_logged_lateral_rate_mm_s": 17.621365829395987,
+      "benchmark_outcome": {
+        "wrong": false,
+        "wrong_certification": false,
+        "wrong_confident_frames": 0,
+        "coverage": 5,
+        "public_coverage": 6,
+        "arrived": true,
+        "frames": 81,
+        "seconds": 8.0,
+        "mpc_revisions": 36,
+        "max_handoff_error": 8.881784197001252e-16,
+        "success": false,
+        "false_complete": true,
+        "hit_rate": 0.5185185185185185,
+        "mean_abs_lateral_mm": 2.162678571561697,
+        "tcp_mm": 58.8908278432324,
+        "turn_deg": 7.851152152859474,
+        "tcp_cost_error": 0.0,
+        "longitudinal_mm": 53.199999999999974,
+        "max_x_speed": 17.621365829395987,
+        "max_s_speed": 11.79359999999999,
+        "query_bin": 3,
+        "query_station": 19.5,
+        "query_angle": 15.0,
+        "target_truth": [
+          -2.3187332673624104,
+          27.347289346346862
+        ],
+        "identity_truth": true,
+        "pre": {
+          "mean": [
+            -2.0647722551870724,
+            28.033969019025538
+          ],
+          "var": [
+            9.925457542657322e-09,
+            0.061118204611192044
+          ],
+          "cov": [
+            [
+              9.925457542657322e-09,
+              -1.665972543702614e-09
+            ],
+            [
+              -1.6659725437026136e-09,
+              0.061118204611192044
+            ]
+          ],
+          "side": 0.9999999999999999,
+          "interval90": [
+            [
+              -2.064772267593895,
+              -2.064772267593895
+            ],
+            [
+              27.82114152753395,
+              28.32114152753395
+            ]
+          ]
+        },
+        "post": {
+          "mean": [
+            -2.0647722639334414,
+            27.821333499862998
+          ],
+          "var": [
+            2.9283635427067406e-09,
+            9.59493111457858e-05
+          ],
+          "cov": [
+            [
+              2.9283635427067406e-09,
+              -5.28115216351788e-13
+            ],
+            [
+              -5.28115216351788e-13,
+              9.59493111457858e-05
+            ]
+          ],
+          "side": 1.0,
+          "interval90": [
+            [
+              -2.064772267593895,
+              -2.064772267593895
+            ],
+            [
+              27.82114152753395,
+              27.82114152753395
+            ]
+          ]
+        },
+        "identity_station": 28.0,
+        "identity_pre": 0.9999999999999999,
+        "identity_post": 1.0,
+        "probe_local": false,
+        "identity_correct": true,
+        "identity_correct_before": true,
+        "identity_certified": true,
+        "ambiguous_before": false,
+        "ambiguity_correct": true,
+        "var_drop_mm2": 0.06102226229714026,
+        "sq_position_error": 0.2892140507454787,
+        "sq_error_before": 0.5360251685752148,
+        "interval_covered": 0.0,
+        "fresh_local": true,
+        "terminal_identity_correct": true
+      }
+    },
+    {
+      "passes": true,
+      "sample_count": 401,
+      "duration_s": 8.0,
+      "invalid_kinematic_samples": [],
+      "joint_limit_violations": [],
+      "fk_violations": [],
+      "self_collision_violations": [],
+      "velocity_violation_intervals": [],
+      "minimum_self_clearance_mm": 41.04061296326701,
+      "minimum_joint_margin_rad_or_m": 0.27521369825951136,
+      "maximum_tracking_position_error_mm": 0.0037834421640381396,
+      "maximum_tracking_rotation_error_deg": 0.0003304354671113425,
+      "peak_joint_rate_fraction": 0.02859838948313997,
+      "tcp_travel_mm": 56.12509823968719,
+      "tcp_turn_deg": 7.545319763695986,
+      "tcp_travel_including_preposition_mm": 70.48172856178509,
+      "tcp_turn_including_preposition_deg": 8.155937961764058,
+      "preposition_tcp_mm": 14.356630322097898,
+      "preposition_turn_deg": 0.6106181980680715,
+      "initial_q": [
+        0.27521369825951136,
+        -2.02851449642125,
+        -1.4182258375582557,
+        1.4375960171593507,
+        1.760353057174831,
+        1.8300865867577834,
+        1.1871184102165355,
+        1.9756877261299963
+      ],
+      "final_q": [
+        0.27521369825951136,
+        -2.0502111027147163,
+        -1.339019808477845,
+        1.4011810379431282,
+        1.6401410490918846,
+        1.693681286192555,
+        1.2762725892753914,
+        2.10922855240604
+      ],
+      "preposition_max_arm_change_rad": 0.06800717856696292,
+      "record_index": 3,
+      "seed": 1600003,
+      "family": "heldout",
+      "angle_mode": "fixed",
+      "arm": "fixed",
+      "trace_source": "shared_prefix_and_suffix",
+      "angle_deg": 15.0,
+      "chart_travel_mm": 56.12966916845213,
+      "chart_turn_deg": 7.545648375793948,
+      "maximum_logged_lateral_rate_mm_s": 17.621365829395987,
+      "benchmark_outcome": {
+        "wrong": false,
+        "wrong_certification": false,
+        "wrong_confident_frames": 0,
+        "coverage": 6,
+        "public_coverage": 6,
+        "arrived": false,
+        "frames": 81,
+        "seconds": 8.0,
+        "mpc_revisions": 29,
+        "max_handoff_error": 8.881784197001252e-16,
+        "success": false,
+        "false_complete": false,
+        "hit_rate": 0.4444444444444444,
+        "mean_abs_lateral_mm": 2.965612489106981,
+        "tcp_mm": 56.12966916845213,
+        "turn_deg": 7.545648375793948,
+        "tcp_cost_error": 7.105427357601002e-15,
+        "longitudinal_mm": 49.52319574768642,
+        "max_x_speed": 17.621365829395987,
+        "max_s_speed": 11.793599999999998,
+        "query_bin": 3,
+        "query_station": 19.5,
+        "query_angle": 15.0,
+        "target_truth": [
+          -2.3187332673624104,
+          27.347289346346862
+        ],
+        "identity_truth": true,
+        "pre": {
+          "mean": [
+            -2.0647722551870724,
+            28.033969019025538
+          ],
+          "var": [
+            9.925457542657322e-09,
+            0.061118204611192044
+          ],
+          "cov": [
+            [
+              9.925457542657322e-09,
+              -1.665972543702614e-09
+            ],
+            [
+              -1.6659725437026136e-09,
+              0.061118204611192044
+            ]
+          ],
+          "side": 0.9999999999999999,
+          "interval90": [
+            [
+              -2.064772267593895,
+              -2.064772267593895
+            ],
+            [
+              27.82114152753395,
+              28.32114152753395
+            ]
+          ]
+        },
+        "post": {
+          "mean": [
+            -2.0647722639334383,
+            27.821333499830697
+          ],
+          "var": [
+            2.9283654895838105e-09,
+            9.594929501168684e-05
+          ],
+          "cov": [
+            [
+              2.9283654895838105e-09,
+              -5.28115568613771e-13
+            ],
+            [
+              -5.28115568613771e-13,
+              9.594929501168684e-05
+            ]
+          ],
+          "side": 1.0,
+          "interval90": [
+            [
+              -2.064772267593895,
+              -2.064772267593895
+            ],
+            [
+              27.82114152753395,
+              27.82114152753395
+            ]
+          ]
+        },
+        "identity_station": 28.0,
+        "identity_pre": 0.9999999999999999,
+        "identity_post": 1.0,
+        "probe_local": false,
+        "identity_correct": true,
+        "identity_correct_before": true,
+        "identity_certified": true,
+        "ambiguous_before": false,
+        "ambiguity_correct": true,
+        "var_drop_mm2": 0.06102226231327241,
+        "sq_position_error": 0.2892140507148558,
+        "sq_error_before": 0.5360251685752148,
+        "interval_covered": 0.0,
+        "fresh_local": true,
+        "terminal_identity_correct": true
+      }
+    },
+    {
+      "passes": true,
+      "sample_count": 401,
+      "duration_s": 8.0,
+      "invalid_kinematic_samples": [],
+      "joint_limit_violations": [],
+      "fk_violations": [],
+      "self_collision_violations": [],
+      "velocity_violation_intervals": [],
+      "minimum_self_clearance_mm": 41.04061296326701,
+      "minimum_joint_margin_rad_or_m": 0.27521369825951136,
+      "maximum_tracking_position_error_mm": 0.0038357585370160144,
+      "maximum_tracking_rotation_error_deg": 0.00033385103208592975,
+      "peak_joint_rate_fraction": 0.02859838948313997,
+      "tcp_travel_mm": 58.88927229580399,
+      "tcp_turn_deg": 7.851050671307272,
+      "tcp_travel_including_preposition_mm": 73.24590261790189,
+      "tcp_turn_including_preposition_deg": 8.461668869375343,
+      "preposition_tcp_mm": 14.356630322097898,
+      "preposition_turn_deg": 0.6106181980680715,
+      "initial_q": [
+        0.27521369825951136,
+        -2.02851449642125,
+        -1.4182258375582557,
+        1.4375960171593507,
+        1.760353057174831,
+        1.8300865867577834,
+        1.1871184102165355,
+        1.9756877261299963
+      ],
+      "final_q": [
+        0.27521369825951136,
+        -2.0413271549230143,
+        -1.3332372739848517,
+        1.3957728933454163,
+        1.6468472037518476,
+        1.687367135704622,
+        1.2823469689019025,
+        2.105316832846122
+      ],
+      "preposition_max_arm_change_rad": 0.06800717856696292,
+      "record_index": 3,
+      "seed": 1600003,
+      "family": "heldout",
+      "angle_mode": "fixed",
+      "arm": "learned",
+      "trace_source": "shared_prefix_and_suffix",
+      "angle_deg": 15.0,
+      "chart_travel_mm": 58.890827843232444,
+      "chart_turn_deg": 7.851152152859474,
+      "maximum_logged_lateral_rate_mm_s": 17.621365829395987,
+      "benchmark_outcome": {
+        "wrong": false,
+        "wrong_certification": false,
+        "wrong_confident_frames": 0,
+        "coverage": 5,
+        "public_coverage": 6,
+        "arrived": true,
+        "frames": 81,
+        "seconds": 8.0,
+        "mpc_revisions": 36,
+        "max_handoff_error": 8.881784197001252e-16,
+        "success": false,
+        "false_complete": true,
+        "hit_rate": 0.5185185185185185,
+        "mean_abs_lateral_mm": 2.162678571561697,
+        "tcp_mm": 58.8908278432324,
+        "turn_deg": 7.851152152859474,
+        "tcp_cost_error": 0.0,
+        "longitudinal_mm": 53.199999999999974,
+        "max_x_speed": 17.621365829395987,
+        "max_s_speed": 11.79359999999999,
+        "query_bin": 3,
+        "query_station": 19.5,
+        "query_angle": 15.0,
+        "target_truth": [
+          -2.3187332673624104,
+          27.347289346346862
+        ],
+        "identity_truth": true,
+        "pre": {
+          "mean": [
+            -2.0647722551870724,
+            28.033969019025538
+          ],
+          "var": [
+            9.925457542657322e-09,
+            0.061118204611192044
+          ],
+          "cov": [
+            [
+              9.925457542657322e-09,
+              -1.665972543702614e-09
+            ],
+            [
+              -1.6659725437026136e-09,
+              0.061118204611192044
+            ]
+          ],
+          "side": 0.9999999999999999,
+          "interval90": [
+            [
+              -2.064772267593895,
+              -2.064772267593895
+            ],
+            [
+              27.82114152753395,
+              28.32114152753395
+            ]
+          ]
+        },
+        "post": {
+          "mean": [
+            -2.0647722639334414,
+            27.821333499862998
+          ],
+          "var": [
+            2.9283635427067406e-09,
+            9.59493111457858e-05
+          ],
+          "cov": [
+            [
+              2.9283635427067406e-09,
+              -5.28115216351788e-13
+            ],
+            [
+              -5.28115216351788e-13,
+              9.59493111457858e-05
+            ]
+          ],
+          "side": 1.0,
+          "interval90": [
+            [
+              -2.064772267593895,
+              -2.064772267593895
+            ],
+            [
+              27.82114152753395,
+              27.82114152753395
+            ]
+          ]
+        },
+        "identity_station": 28.0,
+        "identity_pre": 0.9999999999999999,
+        "identity_post": 1.0,
+        "probe_local": false,
+        "identity_correct": true,
+        "identity_correct_before": true,
+        "identity_certified": true,
+        "ambiguous_before": false,
+        "ambiguity_correct": true,
+        "var_drop_mm2": 0.06102226229714026,
+        "sq_position_error": 0.2892140507454787,
+        "sq_error_before": 0.5360251685752148,
+        "interval_covered": 0.0,
+        "fresh_local": true,
+        "terminal_identity_correct": true
+      }
+    },
+    {
+      "passes": true,
+      "sample_count": 201,
+      "duration_s": 4.0,
+      "invalid_kinematic_samples": [],
+      "joint_limit_violations": [],
+      "fk_violations": [],
+      "self_collision_violations": [],
+      "velocity_violation_intervals": [],
+      "minimum_self_clearance_mm": 41.04061346263199,
+      "minimum_joint_margin_rad_or_m": 0.27521369825951136,
+      "maximum_tracking_position_error_mm": 0.0012214180014946505,
+      "maximum_tracking_rotation_error_deg": 0.00010775007592870339,
+      "peak_joint_rate_fraction": 0.025901743805568218,
+      "tcp_travel_mm": 31.921098632008412,
+      "tcp_turn_deg": 5.873624157576686,
+      "tcp_travel_including_preposition_mm": 46.2777289541063,
+      "tcp_turn_including_preposition_deg": 6.484242355644758,
+      "preposition_tcp_mm": 14.356630322097898,
+      "preposition_turn_deg": 0.6106181980680715,
+      "initial_q": [
+        0.27521369825951136,
+        -2.02851449642125,
+        -1.4182258375582557,
+        1.4375960171593507,
+        1.760353057174831,
+        1.8300865867577834,
+        1.1871184102165355,
+        1.9756877261299963
+      ],
+      "final_q": [
+        0.27521369825951136,
+        -2.027915509523006,
+        -1.3373924197301226,
+        1.398617302540351,
+        1.6871969967158709,
+        1.69790733024145,
+        1.2798758463452142,
+        2.0768414876922567
+      ],
+      "preposition_max_arm_change_rad": 0.06800717856696292,
+      "record_index": 3,
+      "seed": 1600003,
+      "family": "heldout",
+      "angle_mode": "fixed",
+      "arm": "a_old",
+      "trace_source": "a_old_trace",
+      "angle_deg": 15.0,
+      "chart_travel_mm": 31.922320524799005,
+      "chart_turn_deg": 5.873622375584916,
+      "maximum_logged_lateral_rate_mm_s": 10.688132945186307,
+      "benchmark_outcome": {
+        "wrong": false,
+        "wrong_certification": false,
+        "wrong_confident_frames": 0,
+        "coverage": 3,
+        "public_coverage": 3,
+        "arrived": true,
+        "frames": 41,
+        "seconds": 4.0,
+        "mpc_revisions": 23,
+        "max_handoff_error": 8.881784197001252e-16,
+        "success": false,
+        "false_complete": false,
+        "hit_rate": 0.34146341463414637,
+        "mean_abs_lateral_mm": 6.086575466451024,
+        "tcp_mm": 31.92232052479902,
+        "turn_deg": 5.873622375584916,
+        "tcp_cost_error": 3.552713678800501e-15,
+        "longitudinal_mm": 29.39999999999999,
+        "max_x_speed": 10.688132945186307,
+        "max_s_speed": 11.793599999999985
+      }
+    },
+    {
+      "passes": true,
+      "sample_count": 201,
+      "duration_s": 4.0,
+      "invalid_kinematic_samples": [],
+      "joint_limit_violations": [],
+      "fk_violations": [],
+      "self_collision_violations": [],
+      "velocity_violation_intervals": [],
+      "minimum_self_clearance_mm": 41.04061296326701,
+      "minimum_joint_margin_rad_or_m": 0.27521369825951136,
+      "maximum_tracking_position_error_mm": 0.00370541609552246,
+      "maximum_tracking_rotation_error_deg": 0.00033385103208592975,
+      "peak_joint_rate_fraction": 0.02859838948313997,
+      "tcp_travel_mm": 37.528984841908034,
+      "tcp_turn_deg": 5.873622084134515,
+      "tcp_travel_including_preposition_mm": 51.88561516400593,
+      "tcp_turn_including_preposition_deg": 6.4842402822025855,
+      "preposition_tcp_mm": 14.356630322097898,
+      "preposition_turn_deg": 0.6106181980680715,
+      "initial_q": [
+        0.27521369825951136,
+        -2.02851449642125,
+        -1.4182258375582557,
+        1.4375960171593507,
+        1.760353057174831,
+        1.8300865867577834,
+        1.1871184102165355,
+        1.9756877261299963
+      ],
+      "final_q": [
+        0.27521369825951136,
+        -2.0415492810068683,
+        -1.3331713900273485,
+        1.395728634181189,
+        1.6461896709050203,
+        1.6872015892950913,
+        1.282390028577662,
+        2.1057775206995646
+      ],
+      "preposition_max_arm_change_rad": 0.06800717856696292,
+      "record_index": 3,
+      "seed": 1600003,
+      "family": "heldout",
+      "angle_mode": "fixed",
+      "arm": "a_new",
+      "trace_source": "a_new_trace",
+      "angle_deg": 15.0,
+      "chart_travel_mm": 37.52920786876699,
+      "chart_turn_deg": 5.873622375584916,
+      "maximum_logged_lateral_rate_mm_s": 17.621365829395987,
+      "benchmark_outcome": {
+        "wrong": false,
+        "wrong_certification": false,
+        "wrong_confident_frames": 0,
+        "coverage": 3,
+        "public_coverage": 4,
+        "arrived": true,
+        "frames": 41,
+        "seconds": 4.0,
+        "mpc_revisions": 21,
+        "max_handoff_error": 8.881784197001252e-16,
+        "success": false,
+        "false_complete": false,
+        "hit_rate": 0.4878048780487805,
+        "mean_abs_lateral_mm": 3.8556461344449073,
+        "tcp_mm": 37.52920786876696,
+        "turn_deg": 5.873622375584916,
+        "tcp_cost_error": 0.0,
+        "longitudinal_mm": 29.39999999999999,
+        "max_x_speed": 17.621365829395987,
+        "max_s_speed": 11.793599999999985
+      }
+    },
+    {
+      "passes": true,
+      "sample_count": 201,
+      "duration_s": 4.0,
+      "invalid_kinematic_samples": [],
+      "joint_limit_violations": [],
+      "fk_violations": [],
+      "self_collision_violations": [],
+      "velocity_violation_intervals": [],
+      "minimum_self_clearance_mm": 41.04060892858313,
+      "minimum_joint_margin_rad_or_m": 0.27521369825951136,
+      "maximum_tracking_position_error_mm": 0.002069293897408533,
+      "maximum_tracking_rotation_error_deg": 0.00014573478794631606,
+      "peak_joint_rate_fraction": 0.02589780009375675,
+      "tcp_travel_mm": 28.137918122604315,
+      "tcp_turn_deg": 5.873496860818642,
+      "tcp_travel_including_preposition_mm": 42.49454844470221,
+      "tcp_turn_including_preposition_deg": 6.484115058886714,
+      "preposition_tcp_mm": 14.356630322097898,
+      "preposition_turn_deg": 0.6106181980680715,
+      "initial_q": [
+        0.27521369825951136,
+        -2.02851449642125,
+        -1.4182258375582557,
+        1.4375960171593507,
+        1.760353057174831,
+        1.8300865867577834,
+        1.1871184102165355,
+        1.9756877261299963
+      ],
+      "final_q": [
+        0.27521369825951136,
+        -2.011492070497642,
+        -1.342888497530091,
+        1.4026702106035478,
+        1.73841795540068,
+        1.7122875588945055,
+        1.2772184337198067,
+        2.0400794593124556
+      ],
+      "preposition_max_arm_change_rad": 0.06800717856696292,
+      "record_index": 4,
+      "seed": 1600004,
+      "family": "heldout",
+      "angle_mode": "fixed",
+      "arm": "mpc",
+      "trace_source": "common_a_new",
+      "angle_deg": 15.0,
+      "chart_travel_mm": 28.139985367567995,
+      "chart_turn_deg": 5.873622375584916,
+      "maximum_logged_lateral_rate_mm_s": 7.326207406357141,
+      "benchmark_outcome": {
+        "wrong": true,
+        "wrong_certification": true,
+        "wrong_confident_frames": 15,
+        "coverage": 3,
+        "public_coverage": 6,
+        "arrived": true,
+        "frames": 41,
+        "seconds": 4.0,
+        "mpc_revisions": 19,
+        "max_handoff_error": 1.1102230246251565e-16,
+        "success": false,
+        "false_complete": true,
+        "hit_rate": 0.36585365853658536,
+        "mean_abs_lateral_mm": 8.445719692961559,
+        "tcp_mm": 28.139985367567984,
+        "turn_deg": 5.873622375584916,
+        "tcp_cost_error": 0.0,
+        "longitudinal_mm": 29.39999999999999,
+        "max_x_speed": 7.326207406357141,
+        "max_s_speed": 11.793599999999985
+      }
+    },
+    {
+      "passes": true,
+      "sample_count": 201,
+      "duration_s": 4.0,
+      "invalid_kinematic_samples": [],
+      "joint_limit_violations": [],
+      "fk_violations": [],
+      "self_collision_violations": [],
+      "velocity_violation_intervals": [],
+      "minimum_self_clearance_mm": 41.04060892858313,
+      "minimum_joint_margin_rad_or_m": 0.27521369825951136,
+      "maximum_tracking_position_error_mm": 0.002069293897408533,
+      "maximum_tracking_rotation_error_deg": 0.00014573478794631606,
+      "peak_joint_rate_fraction": 0.02589780009375675,
+      "tcp_travel_mm": 28.137918122604315,
+      "tcp_turn_deg": 5.873496860818642,
+      "tcp_travel_including_preposition_mm": 42.49454844470221,
+      "tcp_turn_including_preposition_deg": 6.484115058886714,
+      "preposition_tcp_mm": 14.356630322097898,
+      "preposition_turn_deg": 0.6106181980680715,
+      "initial_q": [
+        0.27521369825951136,
+        -2.02851449642125,
+        -1.4182258375582557,
+        1.4375960171593507,
+        1.760353057174831,
+        1.8300865867577834,
+        1.1871184102165355,
+        1.9756877261299963
+      ],
+      "final_q": [
+        0.27521369825951136,
+        -2.011492070497642,
+        -1.342888497530091,
+        1.4026702106035478,
+        1.73841795540068,
+        1.7122875588945055,
+        1.2772184337198067,
+        2.0400794593124556
+      ],
+      "preposition_max_arm_change_rad": 0.06800717856696292,
+      "record_index": 4,
+      "seed": 1600004,
+      "family": "heldout",
+      "angle_mode": "fixed",
+      "arm": "fixed",
+      "trace_source": "common_a_new",
+      "angle_deg": 15.0,
+      "chart_travel_mm": 28.139985367567995,
+      "chart_turn_deg": 5.873622375584916,
+      "maximum_logged_lateral_rate_mm_s": 7.326207406357141,
+      "benchmark_outcome": {
+        "wrong": true,
+        "wrong_certification": true,
+        "wrong_confident_frames": 15,
+        "coverage": 3,
+        "public_coverage": 6,
+        "arrived": true,
+        "frames": 41,
+        "seconds": 4.0,
+        "mpc_revisions": 19,
+        "max_handoff_error": 1.1102230246251565e-16,
+        "success": false,
+        "false_complete": true,
+        "hit_rate": 0.36585365853658536,
+        "mean_abs_lateral_mm": 8.445719692961559,
+        "tcp_mm": 28.139985367567984,
+        "turn_deg": 5.873622375584916,
+        "tcp_cost_error": 0.0,
+        "longitudinal_mm": 29.39999999999999,
+        "max_x_speed": 7.326207406357141,
+        "max_s_speed": 11.793599999999985
+      }
+    },
+    {
+      "passes": true,
+      "sample_count": 201,
+      "duration_s": 4.0,
+      "invalid_kinematic_samples": [],
+      "joint_limit_violations": [],
+      "fk_violations": [],
+      "self_collision_violations": [],
+      "velocity_violation_intervals": [],
+      "minimum_self_clearance_mm": 41.04060892858313,
+      "minimum_joint_margin_rad_or_m": 0.27521369825951136,
+      "maximum_tracking_position_error_mm": 0.002069293897408533,
+      "maximum_tracking_rotation_error_deg": 0.00014573478794631606,
+      "peak_joint_rate_fraction": 0.02589780009375675,
+      "tcp_travel_mm": 28.137918122604315,
+      "tcp_turn_deg": 5.873496860818642,
+      "tcp_travel_including_preposition_mm": 42.49454844470221,
+      "tcp_turn_including_preposition_deg": 6.484115058886714,
+      "preposition_tcp_mm": 14.356630322097898,
+      "preposition_turn_deg": 0.6106181980680715,
+      "initial_q": [
+        0.27521369825951136,
+        -2.02851449642125,
+        -1.4182258375582557,
+        1.4375960171593507,
+        1.760353057174831,
+        1.8300865867577834,
+        1.1871184102165355,
+        1.9756877261299963
+      ],
+      "final_q": [
+        0.27521369825951136,
+        -2.011492070497642,
+        -1.342888497530091,
+        1.4026702106035478,
+        1.73841795540068,
+        1.7122875588945055,
+        1.2772184337198067,
+        2.0400794593124556
+      ],
+      "preposition_max_arm_change_rad": 0.06800717856696292,
+      "record_index": 4,
+      "seed": 1600004,
+      "family": "heldout",
+      "angle_mode": "fixed",
+      "arm": "learned",
+      "trace_source": "common_a_new",
+      "angle_deg": 15.0,
+      "chart_travel_mm": 28.139985367567995,
+      "chart_turn_deg": 5.873622375584916,
+      "maximum_logged_lateral_rate_mm_s": 7.326207406357141,
+      "benchmark_outcome": {
+        "wrong": true,
+        "wrong_certification": true,
+        "wrong_confident_frames": 15,
+        "coverage": 3,
+        "public_coverage": 6,
+        "arrived": true,
+        "frames": 41,
+        "seconds": 4.0,
+        "mpc_revisions": 19,
+        "max_handoff_error": 1.1102230246251565e-16,
+        "success": false,
+        "false_complete": true,
+        "hit_rate": 0.36585365853658536,
+        "mean_abs_lateral_mm": 8.445719692961559,
+        "tcp_mm": 28.139985367567984,
+        "turn_deg": 5.873622375584916,
+        "tcp_cost_error": 0.0,
+        "longitudinal_mm": 29.39999999999999,
+        "max_x_speed": 7.326207406357141,
+        "max_s_speed": 11.793599999999985
+      }
+    },
+    {
+      "passes": true,
+      "sample_count": 201,
+      "duration_s": 4.0,
+      "invalid_kinematic_samples": [],
+      "joint_limit_violations": [],
+      "fk_violations": [],
+      "self_collision_violations": [],
+      "velocity_violation_intervals": [],
+      "minimum_self_clearance_mm": 41.04061066559349,
+      "minimum_joint_margin_rad_or_m": 0.27521369825951136,
+      "maximum_tracking_position_error_mm": 0.0035187053554771564,
+      "maximum_tracking_rotation_error_deg": 0.0003338478962703371,
+      "peak_joint_rate_fraction": 0.027274974007981456,
+      "tcp_travel_mm": 28.955202077129186,
+      "tcp_turn_deg": 5.873624023378966,
+      "tcp_travel_including_preposition_mm": 43.31183239922709,
+      "tcp_turn_including_preposition_deg": 6.484242221447037,
+      "preposition_tcp_mm": 14.356630322097898,
+      "preposition_turn_deg": 0.6106181980680715,
+      "initial_q": [
+        0.27521369825951136,
+        -2.02851449642125,
+        -1.4182258375582557,
+        1.4375960171593507,
+        1.760353057174831,
+        1.8300865867577834,
+        1.1871184102165355,
+        1.9756877261299963
+      ],
+      "final_q": [
+        0.27521369825951136,
+        -2.011495164695525,
+        -1.3428828054190585,
+        1.4026674552094756,
+        1.7383994337516844,
+        1.7122779134737955,
+        1.2772201957594245,
+        2.04009305321784
+      ],
+      "preposition_max_arm_change_rad": 0.06800717856696292,
+      "record_index": 4,
+      "seed": 1600004,
+      "family": "heldout",
+      "angle_mode": "fixed",
+      "arm": "a_old",
+      "trace_source": "a_old_trace",
+      "angle_deg": 15.0,
+      "chart_travel_mm": 28.956541989459954,
+      "chart_turn_deg": 5.873622375584916,
+      "maximum_logged_lateral_rate_mm_s": 6.144070337967936,
+      "benchmark_outcome": {
+        "wrong": true,
+        "wrong_certification": true,
+        "wrong_confident_frames": 15,
+        "coverage": 3,
+        "public_coverage": 6,
+        "arrived": true,
+        "frames": 41,
+        "seconds": 4.0,
+        "mpc_revisions": 22,
+        "max_handoff_error": 2.220446049250313e-16,
+        "success": false,
+        "false_complete": true,
+        "hit_rate": 0.36585365853658536,
+        "mean_abs_lateral_mm": 8.599309649924638,
+        "tcp_mm": 28.956541989459954,
+        "turn_deg": 5.873622375584916,
+        "tcp_cost_error": 0.0,
+        "longitudinal_mm": 29.39999999999999,
+        "max_x_speed": 6.144070337967936,
+        "max_s_speed": 11.793599999999985
+      }
+    },
+    {
+      "passes": true,
+      "sample_count": 201,
+      "duration_s": 4.0,
+      "invalid_kinematic_samples": [],
+      "joint_limit_violations": [],
+      "fk_violations": [],
+      "self_collision_violations": [],
+      "velocity_violation_intervals": [],
+      "minimum_self_clearance_mm": 41.04060892858313,
+      "minimum_joint_margin_rad_or_m": 0.27521369825951136,
+      "maximum_tracking_position_error_mm": 0.002069293897408533,
+      "maximum_tracking_rotation_error_deg": 0.00014573478794631606,
+      "peak_joint_rate_fraction": 0.02589780009375675,
+      "tcp_travel_mm": 28.137918122604315,
+      "tcp_turn_deg": 5.873496860818642,
+      "tcp_travel_including_preposition_mm": 42.49454844470221,
+      "tcp_turn_including_preposition_deg": 6.484115058886714,
+      "preposition_tcp_mm": 14.356630322097898,
+      "preposition_turn_deg": 0.6106181980680715,
+      "initial_q": [
+        0.27521369825951136,
+        -2.02851449642125,
+        -1.4182258375582557,
+        1.4375960171593507,
+        1.760353057174831,
+        1.8300865867577834,
+        1.1871184102165355,
+        1.9756877261299963
+      ],
+      "final_q": [
+        0.27521369825951136,
+        -2.011492070497642,
+        -1.342888497530091,
+        1.4026702106035478,
+        1.73841795540068,
+        1.7122875588945055,
+        1.2772184337198067,
+        2.0400794593124556
+      ],
+      "preposition_max_arm_change_rad": 0.06800717856696292,
+      "record_index": 4,
+      "seed": 1600004,
+      "family": "heldout",
+      "angle_mode": "fixed",
+      "arm": "a_new",
+      "trace_source": "a_new_trace",
+      "angle_deg": 15.0,
+      "chart_travel_mm": 28.139985367567995,
+      "chart_turn_deg": 5.873622375584916,
+      "maximum_logged_lateral_rate_mm_s": 7.326207406357141,
+      "benchmark_outcome": {
+        "wrong": true,
+        "wrong_certification": true,
+        "wrong_confident_frames": 15,
+        "coverage": 3,
+        "public_coverage": 6,
+        "arrived": true,
+        "frames": 41,
+        "seconds": 4.0,
+        "mpc_revisions": 19,
+        "max_handoff_error": 1.1102230246251565e-16,
+        "success": false,
+        "false_complete": true,
+        "hit_rate": 0.36585365853658536,
+        "mean_abs_lateral_mm": 8.445719692961559,
+        "tcp_mm": 28.139985367567984,
+        "turn_deg": 5.873622375584916,
+        "tcp_cost_error": 0.0,
+        "longitudinal_mm": 29.39999999999999,
+        "max_x_speed": 7.326207406357141,
+        "max_s_speed": 11.793599999999985
+      }
+    },
+    {
+      "passes": true,
+      "sample_count": 251,
+      "duration_s": 5.0,
+      "invalid_kinematic_samples": [],
+      "joint_limit_violations": [],
+      "fk_violations": [],
+      "self_collision_violations": [],
+      "velocity_violation_intervals": [],
+      "minimum_self_clearance_mm": 41.04060893226052,
+      "minimum_joint_margin_rad_or_m": 0.27521369825951136,
+      "maximum_tracking_position_error_mm": 0.0038575198750205146,
+      "maximum_tracking_rotation_error_deg": 0.00011509058450844235,
+      "peak_joint_rate_fraction": 0.02496304632532317,
+      "tcp_travel_mm": 30.810753337060298,
+      "tcp_turn_deg": 5.873527745988312,
+      "tcp_travel_including_preposition_mm": 45.1673836591582,
+      "tcp_turn_including_preposition_deg": 6.484145944056384,
+      "preposition_tcp_mm": 14.356630322097898,
+      "preposition_turn_deg": 0.6106181980680715,
+      "initial_q": [
+        0.27521369825951136,
+        -2.02851449642125,
+        -1.4182258375582557,
+        1.4375960171593507,
+        1.760353057174831,
+        1.8300865867577834,
+        1.1871184102165355,
+        1.9756877261299963
+      ],
+      "final_q": [
+        0.27521369825951136,
+        -2.0111570259425213,
+        -1.3430002078962313,
+        1.4027641601414365,
+        1.739481830574258,
+        1.7125940774288435,
+        1.2771645053839231,
+        2.039307539407151
+      ],
+      "preposition_max_arm_change_rad": 0.06800717856696292,
+      "record_index": 5,
+      "seed": 1600005,
+      "family": "heldout",
+      "angle_mode": "fixed",
+      "arm": "mpc",
+      "trace_source": "shared_prefix_and_suffix",
+      "angle_deg": 15.0,
+      "chart_travel_mm": 30.81465567044027,
+      "chart_turn_deg": 5.873622375584916,
+      "maximum_logged_lateral_rate_mm_s": 11.33224831171763,
+      "benchmark_outcome": {
+        "wrong": true,
+        "wrong_certification": true,
+        "wrong_confident_frames": 23,
+        "coverage": 3,
+        "public_coverage": 6,
+        "arrived": true,
+        "frames": 51,
+        "seconds": 5.0,
+        "mpc_revisions": 26,
+        "max_handoff_error": 5.551115123125783e-17,
+        "success": false,
+        "false_complete": true,
+        "hit_rate": 0.23529411764705882,
+        "mean_abs_lateral_mm": 10.258718217167468,
+        "tcp_mm": 30.81465567044026,
+        "turn_deg": 5.873622375584916,
+        "tcp_cost_error": 7.105427357601002e-15,
+        "longitudinal_mm": 29.400000000000002,
+        "max_x_speed": 11.33224831171763,
+        "max_s_speed": 14.625,
+        "query_bin": 3,
+        "query_station": 19.5,
+        "query_angle": 15.0,
+        "target_truth": [
+          -2.2970804231153235,
+          27.449863353566418
+        ],
+        "identity_truth": true,
+        "pre": {
+          "mean": [
+            -17.34451043818861,
+            38.08047878680283
+          ],
+          "var": [
+            0.10257441392852203,
+            6.79344647616305e-17
+          ],
+          "cov": [
+            [
+              0.10257441392852203,
+              -4.157148294771134e-19
+            ],
+            [
+              -4.1571482947711235e-19,
+              6.79344647616305e-17
+            ]
+          ],
+          "side": 8.295975236384235e-42,
+          "interval90": [
+            [
+              -17.504874076014254,
+              -16.704874076014253
+            ],
+            [
+              38.08047878680283,
+              38.08047878680283
+            ]
+          ]
+        },
+        "post": {
+          "mean": [
+            -16.705848126506933,
+            38.08047878680283
+          ],
+          "var": [
+            0.0007782916197778952,
+            3.3042916544673843e-22
+          ],
+          "cov": [
+            [
+              0.0007782916197778952,
+              -1.5331640978774273e-26
+            ],
+            [
+              -1.5331640978774305e-26,
+              3.3042916544673843e-22
+            ]
+          ],
+          "side": 3.2273181232210917e-37,
+          "interval90": [
+            [
+              -16.704874076014253,
+              -16.704874076014253
+            ],
+            [
+              38.08047878680283,
+              38.08047878680283
+            ]
+          ]
+        },
+        "identity_station": 28.0,
+        "identity_pre": 8.295975236384235e-42,
+        "identity_post": 3.2273181232210917e-37,
+        "probe_local": false,
+        "identity_correct": false,
+        "identity_correct_before": false,
+        "identity_certified": true,
+        "ambiguous_before": false,
+        "ambiguity_correct": false,
+        "var_drop_mm2": 0.1017961223087442,
+        "sq_position_error": 320.62257121966525,
+        "sq_error_before": 339.43513454789263,
+        "interval_covered": 0.0,
+        "fresh_local": false,
+        "terminal_identity_correct": false
+      }
+    },
+    {
+      "passes": true,
+      "sample_count": 251,
+      "duration_s": 5.0,
+      "invalid_kinematic_samples": [],
+      "joint_limit_violations": [],
+      "fk_violations": [],
+      "self_collision_violations": [],
+      "velocity_violation_intervals": [],
+      "minimum_self_clearance_mm": 41.04060893226052,
+      "minimum_joint_margin_rad_or_m": 0.27521369825951136,
+      "maximum_tracking_position_error_mm": 0.0036570228017248647,
+      "maximum_tracking_rotation_error_deg": 0.00033043541519663783,
+      "peak_joint_rate_fraction": 0.02496304632532317,
+      "tcp_travel_mm": 29.896745660906266,
+      "tcp_turn_deg": 5.908098939646916,
+      "tcp_travel_including_preposition_mm": 44.25337598300416,
+      "tcp_turn_including_preposition_deg": 6.518717137714986,
+      "preposition_tcp_mm": 14.356630322097898,
+      "preposition_turn_deg": 0.6106181980680715,
+      "initial_q": [
+        0.27521369825951136,
+        -2.02851449642125,
+        -1.4182258375582557,
+        1.4375960171593507,
+        1.760353057174831,
+        1.8300865867577834,
+        1.1871184102165355,
+        1.9756877261299963
+      ],
+      "final_q": [
+        0.27521369825951136,
+        -2.011263775765749,
+        -1.342966441542372,
+        1.4027335750838252,
+        1.739144843739341,
+        1.712498438039501,
+        1.2771825890994883,
+        2.039552229837381
+      ],
+      "preposition_max_arm_change_rad": 0.06800717856696292,
+      "record_index": 5,
+      "seed": 1600005,
+      "family": "heldout",
+      "angle_mode": "fixed",
+      "arm": "fixed",
+      "trace_source": "shared_prefix_and_suffix",
+      "angle_deg": 15.0,
+      "chart_travel_mm": 29.90307459419993,
+      "chart_turn_deg": 5.90878549292384,
+      "maximum_logged_lateral_rate_mm_s": 11.33224831171763,
+      "benchmark_outcome": {
+        "wrong": true,
+        "wrong_certification": true,
+        "wrong_confident_frames": 21,
+        "coverage": 3,
+        "public_coverage": 6,
+        "arrived": true,
+        "frames": 51,
+        "seconds": 5.0,
+        "mpc_revisions": 20,
+        "max_handoff_error": 4.440892098500626e-16,
+        "success": false,
+        "false_complete": true,
+        "hit_rate": 0.23529411764705882,
+        "mean_abs_lateral_mm": 10.636590535902556,
+        "tcp_mm": 29.903074594200014,
+        "turn_deg": 5.90878549292384,
+        "tcp_cost_error": 3.552713678800501e-15,
+        "longitudinal_mm": 29.823195747686412,
+        "max_x_speed": 11.33224831171763,
+        "max_s_speed": 11.793600000000023,
+        "query_bin": 3,
+        "query_station": 19.5,
+        "query_angle": 15.0,
+        "target_truth": [
+          -2.2970804231153235,
+          27.449863353566418
+        ],
+        "identity_truth": true,
+        "pre": {
+          "mean": [
+            -17.34451043818861,
+            38.08047878680283
+          ],
+          "var": [
+            0.10257441392852203,
+            6.79344647616305e-17
+          ],
+          "cov": [
+            [
+              0.10257441392852203,
+              -4.157148294771134e-19
+            ],
+            [
+              -4.1571482947711235e-19,
+              6.79344647616305e-17
+            ]
+          ],
+          "side": 8.295975236384235e-42,
+          "interval90": [
+            [
+              -17.504874076014254,
+              -16.704874076014253
+            ],
+            [
+              38.08047878680283,
+              38.08047878680283
+            ]
+          ]
+        },
+        "post": {
+          "mean": [
+            -16.704889503300862,
+            38.08047878680283
+          ],
+          "var": [
+            1.2341591283736062e-05,
+            5.409780808355608e-25
+          ],
+          "cov": [
+            [
+              1.2341591283736062e-05,
+              -3.860478046737539e-26
+            ],
+            [
+              -3.860478046737539e-26,
+              5.409780808355608e-25
+            ]
+          ],
+          "side": 2.5649331126602443e-28,
+          "interval90": [
+            [
+              -16.704874076014253,
+              -16.704874076014253
+            ],
+            [
+              38.08047878680283,
+              38.08047878680283
+            ]
+          ]
+        },
+        "identity_station": 28.0,
+        "identity_pre": 8.295975236384235e-42,
+        "identity_post": 2.5649331126602443e-28,
+        "probe_local": false,
+        "identity_correct": false,
+        "identity_correct_before": false,
+        "identity_certified": true,
+        "ambiguous_before": false,
+        "ambiguity_correct": false,
+        "var_drop_mm2": 0.10256207233723837,
+        "sq_position_error": 320.594946980441,
+        "sq_error_before": 339.43513454789263,
+        "interval_covered": 0.0,
+        "fresh_local": false,
+        "terminal_identity_correct": false
+      }
+    },
+    {
+      "passes": true,
+      "sample_count": 251,
+      "duration_s": 5.0,
+      "invalid_kinematic_samples": [],
+      "joint_limit_violations": [],
+      "fk_violations": [],
+      "self_collision_violations": [],
+      "velocity_violation_intervals": [],
+      "minimum_self_clearance_mm": 41.04060893226052,
+      "minimum_joint_margin_rad_or_m": 0.27521369825951136,
+      "maximum_tracking_position_error_mm": 0.0036570228017248647,
+      "maximum_tracking_rotation_error_deg": 0.00033043541519663783,
+      "peak_joint_rate_fraction": 0.02496304632532317,
+      "tcp_travel_mm": 29.896745660906266,
+      "tcp_turn_deg": 5.908098939646916,
+      "tcp_travel_including_preposition_mm": 44.25337598300416,
+      "tcp_turn_including_preposition_deg": 6.518717137714986,
+      "preposition_tcp_mm": 14.356630322097898,
+      "preposition_turn_deg": 0.6106181980680715,
+      "initial_q": [
+        0.27521369825951136,
+        -2.02851449642125,
+        -1.4182258375582557,
+        1.4375960171593507,
+        1.760353057174831,
+        1.8300865867577834,
+        1.1871184102165355,
+        1.9756877261299963
+      ],
+      "final_q": [
+        0.27521369825951136,
+        -2.011263775765749,
+        -1.342966441542372,
+        1.4027335750838252,
+        1.739144843739341,
+        1.712498438039501,
+        1.2771825890994883,
+        2.039552229837381
+      ],
+      "preposition_max_arm_change_rad": 0.06800717856696292,
+      "record_index": 5,
+      "seed": 1600005,
+      "family": "heldout",
+      "angle_mode": "fixed",
+      "arm": "learned",
+      "trace_source": "shared_prefix_and_suffix",
+      "angle_deg": 15.0,
+      "chart_travel_mm": 29.90307459419993,
+      "chart_turn_deg": 5.90878549292384,
+      "maximum_logged_lateral_rate_mm_s": 11.33224831171763,
+      "benchmark_outcome": {
+        "wrong": true,
+        "wrong_certification": true,
+        "wrong_confident_frames": 21,
+        "coverage": 3,
+        "public_coverage": 6,
+        "arrived": true,
+        "frames": 51,
+        "seconds": 5.0,
+        "mpc_revisions": 20,
+        "max_handoff_error": 4.440892098500626e-16,
+        "success": false,
+        "false_complete": true,
+        "hit_rate": 0.23529411764705882,
+        "mean_abs_lateral_mm": 10.636590535902556,
+        "tcp_mm": 29.903074594200014,
+        "turn_deg": 5.90878549292384,
+        "tcp_cost_error": 3.552713678800501e-15,
+        "longitudinal_mm": 29.823195747686412,
+        "max_x_speed": 11.33224831171763,
+        "max_s_speed": 11.793600000000023,
+        "query_bin": 3,
+        "query_station": 19.5,
+        "query_angle": 15.0,
+        "target_truth": [
+          -2.2970804231153235,
+          27.449863353566418
+        ],
+        "identity_truth": true,
+        "pre": {
+          "mean": [
+            -17.34451043818861,
+            38.08047878680283
+          ],
+          "var": [
+            0.10257441392852203,
+            6.79344647616305e-17
+          ],
+          "cov": [
+            [
+              0.10257441392852203,
+              -4.157148294771134e-19
+            ],
+            [
+              -4.1571482947711235e-19,
+              6.79344647616305e-17
+            ]
+          ],
+          "side": 8.295975236384235e-42,
+          "interval90": [
+            [
+              -17.504874076014254,
+              -16.704874076014253
+            ],
+            [
+              38.08047878680283,
+              38.08047878680283
+            ]
+          ]
+        },
+        "post": {
+          "mean": [
+            -16.704889503300862,
+            38.08047878680283
+          ],
+          "var": [
+            1.2341591283736062e-05,
+            5.409780808355608e-25
+          ],
+          "cov": [
+            [
+              1.2341591283736062e-05,
+              -3.860478046737539e-26
+            ],
+            [
+              -3.860478046737539e-26,
+              5.409780808355608e-25
+            ]
+          ],
+          "side": 2.5649331126602443e-28,
+          "interval90": [
+            [
+              -16.704874076014253,
+              -16.704874076014253
+            ],
+            [
+              38.08047878680283,
+              38.08047878680283
+            ]
+          ]
+        },
+        "identity_station": 28.0,
+        "identity_pre": 8.295975236384235e-42,
+        "identity_post": 2.5649331126602443e-28,
+        "probe_local": false,
+        "identity_correct": false,
+        "identity_correct_before": false,
+        "identity_certified": true,
+        "ambiguous_before": false,
+        "ambiguity_correct": false,
+        "var_drop_mm2": 0.10256207233723837,
+        "sq_position_error": 320.594946980441,
+        "sq_error_before": 339.43513454789263,
+        "interval_covered": 0.0,
+        "fresh_local": false,
+        "terminal_identity_correct": false
+      }
+    },
+    {
+      "passes": true,
+      "sample_count": 201,
+      "duration_s": 4.0,
+      "invalid_kinematic_samples": [],
+      "joint_limit_violations": [],
+      "fk_violations": [],
+      "self_collision_violations": [],
+      "velocity_violation_intervals": [],
+      "minimum_self_clearance_mm": 41.04060908660494,
+      "minimum_joint_margin_rad_or_m": 0.27521369825951136,
+      "maximum_tracking_position_error_mm": 0.0018713911354096354,
+      "maximum_tracking_rotation_error_deg": 0.0001457290084915385,
+      "peak_joint_rate_fraction": 0.02593280617897061,
+      "tcp_travel_mm": 31.237818456773898,
+      "tcp_turn_deg": 5.87349724261705,
+      "tcp_travel_including_preposition_mm": 45.594448778871794,
+      "tcp_turn_including_preposition_deg": 6.484115440685121,
+      "preposition_tcp_mm": 14.356630322097898,
+      "preposition_turn_deg": 0.6106181980680715,
+      "initial_q": [
+        0.27521369825951136,
+        -2.02851449642125,
+        -1.4182258375582557,
+        1.4375960171593507,
+        1.760353057174831,
+        1.8300865867577834,
+        1.1871184102165355,
+        1.9756877261299963
+      ],
+      "final_q": [
+        0.27521369825951136,
+        -2.011284515669809,
+        -1.342950639273115,
+        1.4027359091129519,
+        1.7390741416883697,
+        1.7124716016152173,
+        1.2771760805815746,
+        2.0396020305416043
+      ],
+      "preposition_max_arm_change_rad": 0.06800717856696292,
+      "record_index": 5,
+      "seed": 1600005,
+      "family": "heldout",
+      "angle_mode": "fixed",
+      "arm": "a_old",
+      "trace_source": "a_old_trace",
+      "angle_deg": 15.0,
+      "chart_travel_mm": 31.239739455494867,
+      "chart_turn_deg": 5.873622375584916,
+      "maximum_logged_lateral_rate_mm_s": 11.277423468547115,
+      "benchmark_outcome": {
+        "wrong": true,
+        "wrong_certification": true,
+        "wrong_confident_frames": 16,
+        "coverage": 3,
+        "public_coverage": 6,
+        "arrived": true,
+        "frames": 41,
+        "seconds": 4.0,
+        "mpc_revisions": 21,
+        "max_handoff_error": 0.0,
+        "success": false,
+        "false_complete": true,
+        "hit_rate": 0.2926829268292683,
+        "mean_abs_lateral_mm": 8.74668197935927,
+        "tcp_mm": 31.23973945549483,
+        "turn_deg": 5.873622375584916,
+        "tcp_cost_error": 3.552713678800501e-15,
+        "longitudinal_mm": 29.39999999999999,
+        "max_x_speed": 11.277423468547115,
+        "max_s_speed": 11.793599999999985
+      }
+    },
+    {
+      "passes": true,
+      "sample_count": 201,
+      "duration_s": 4.0,
+      "invalid_kinematic_samples": [],
+      "joint_limit_violations": [],
+      "fk_violations": [],
+      "self_collision_violations": [],
+      "velocity_violation_intervals": [],
+      "minimum_self_clearance_mm": 41.04060893226052,
+      "minimum_joint_margin_rad_or_m": 0.27521369825951136,
+      "maximum_tracking_position_error_mm": 0.0036319770220290338,
+      "maximum_tracking_rotation_error_deg": 0.00012705336616328794,
+      "peak_joint_rate_fraction": 0.02496304632532317,
+      "tcp_travel_mm": 29.731248347080854,
+      "tcp_turn_deg": 5.873642834633859,
+      "tcp_travel_including_preposition_mm": 44.08787866917875,
+      "tcp_turn_including_preposition_deg": 6.48426103270193,
+      "preposition_tcp_mm": 14.356630322097898,
+      "preposition_turn_deg": 0.6106181980680715,
+      "initial_q": [
+        0.27521369825951136,
+        -2.02851449642125,
+        -1.4182258375582557,
+        1.4375960171593507,
+        1.760353057174831,
+        1.8300865867577834,
+        1.1871184102165355,
+        1.9756877261299963
+      ],
+      "final_q": [
+        0.27521369825951136,
+        -2.0112404428196684,
+        -1.3429696156727562,
+        1.4027372852372504,
+        1.7392093775052906,
+        1.712512628146694,
+        1.2771810882030386,
+        2.03950570642399
+      ],
+      "preposition_max_arm_change_rad": 0.06800717856696292,
+      "record_index": 5,
+      "seed": 1600005,
+      "family": "heldout",
+      "angle_mode": "fixed",
+      "arm": "a_new",
+      "trace_source": "a_new_trace",
+      "angle_deg": 15.0,
+      "chart_travel_mm": 29.73124920600228,
+      "chart_turn_deg": 5.873622375584916,
+      "maximum_logged_lateral_rate_mm_s": 11.33224831171763,
+      "benchmark_outcome": {
+        "wrong": true,
+        "wrong_certification": true,
+        "wrong_confident_frames": 16,
+        "coverage": 3,
+        "public_coverage": 5,
+        "arrived": true,
+        "frames": 41,
+        "seconds": 4.0,
+        "mpc_revisions": 21,
+        "max_handoff_error": 4.440892098500626e-16,
+        "success": false,
+        "false_complete": false,
+        "hit_rate": 0.2926829268292683,
+        "mean_abs_lateral_mm": 8.869295825907617,
+        "tcp_mm": 29.73124920600231,
+        "turn_deg": 5.873622375584916,
+        "tcp_cost_error": 0.0,
+        "longitudinal_mm": 29.39999999999999,
+        "max_x_speed": 11.33224831171763,
+        "max_s_speed": 11.793599999999985
+      }
+    }
+  ]
+}

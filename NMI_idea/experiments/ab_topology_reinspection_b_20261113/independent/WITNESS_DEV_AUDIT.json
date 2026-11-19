@@ -1,0 +1,168 @@
+{
+  "metrics": {
+    "witness": {
+      "all": {
+        "abstain": 24,
+        "affirmative_error": 7,
+        "correct_declaration": 64,
+        "correct_images": 20,
+        "mean_cost": {
+          "captures": 9.010416666666666,
+          "rail_mm": 448.55482839226096,
+          "seconds": 14.416666666666668,
+          "tcp_mm": 100.95608907873272,
+          "turn_deg": 68.47279759593724
+        },
+        "n": 96,
+        "success": 60,
+        "wrong": 12
+      },
+      "by_family": {
+        "0": {
+          "abstain": 21,
+          "affirmative_error": 7,
+          "correct_declaration": 19,
+          "correct_images": 20,
+          "mean_cost": {
+            "captures": 10.604166666666666,
+            "rail_mm": 501.84897809392794,
+            "seconds": 16.96666666666667,
+            "tcp_mm": 114.67722141169229,
+            "turn_deg": 76.11858026002704
+          },
+          "n": 48,
+          "success": 15,
+          "wrong": 12
+        },
+        "1": {
+          "abstain": 2,
+          "affirmative_error": 0,
+          "correct_declaration": 14,
+          "correct_images": 0,
+          "mean_cost": {
+            "captures": 8.1875,
+            "rail_mm": 423.8575395061226,
+            "seconds": 13.100000000000001,
+            "tcp_mm": 91.05650872504215,
+            "turn_deg": 66.82833554114735
+          },
+          "n": 16,
+          "success": 14,
+          "wrong": 0
+        },
+        "2": {
+          "abstain": 1,
+          "affirmative_error": 0,
+          "correct_declaration": 15,
+          "correct_images": 0,
+          "mean_cost": {
+            "captures": 6.1875,
+            "rail_mm": 353.6652447770977,
+            "seconds": 9.9,
+            "tcp_mm": 75.35149700426962,
+            "turn_deg": 51.39382214924387
+          },
+          "n": 16,
+          "success": 15,
+          "wrong": 0
+        },
+        "3": {
+          "abstain": 0,
+          "affirmative_error": 0,
+          "correct_declaration": 16,
+          "correct_images": 0,
+          "mean_cost": {
+            "captures": 7.875,
+            "rail_mm": 408.2592517885615,
+            "seconds": 12.6,
+            "tcp_mm": 95.2968645080077,
+            "turn_deg": 64.25888710515106
+          },
+          "n": 16,
+          "success": 16,
+          "wrong": 0
+        }
+      }
+    }
+  },
+  "motion": {
+    "inputs": {
+      "ab_full_b_rollout_20261113/motion/BANK_MAIN.json.xz": {
+        "edges": 168,
+        "file_sha256": "f834013839500edcb686a08b045bb4c909d35164620f4056e45cf93d1b78d32f"
+      },
+      "ab_inverse_acquisition_b_20261113/motion/BANK.json.xz": {
+        "edges": 264,
+        "file_sha256": "470d1732dab2f7a89ae67f73fec2f2874c1aeda287a351f133aec78bda4fbb3b"
+      }
+    },
+    "max_abs_error": {
+      "joint_endpoint": 0.0,
+      "rail_mm": 0.0,
+      "sample_endpoint": 0.0,
+      "tcp_mm": 0.0
+    }
+  },
+  "reconstruction": {
+    "distinct_prefix_node_sequences": 37,
+    "distinct_prefix_view_sequences": 37,
+    "model_replayed": true,
+    "prefixes": 96,
+    "prescan_posterior_readout": {
+      "binary_presence_correct": 78,
+      "by_family": {
+        "0": {
+          "family_map_correct": 43,
+          "mean_true_label_mass": 0.5858121722718901,
+          "n": 48
+        },
+        "1": {
+          "family_map_correct": 13,
+          "mean_true_label_mass": 0.7370795279174965,
+          "n": 16
+        },
+        "2": {
+          "family_map_correct": 9,
+          "mean_true_label_mass": 0.8631557738908455,
+          "n": 16
+        },
+        "3": {
+          "family_map_correct": 6,
+          "mean_true_label_mass": 0.6715673409926112,
+          "n": 16
+        }
+      },
+      "family_map_correct": 71,
+      "label_map_correct": 67,
+      "positive": 48,
+      "positive_label_map_correct": 35
+    },
+    "suffix_evidence_diagnostics_positive": {
+      "witness": {
+        "any_pair_with_both_target_returns": 25,
+        "any_supported_public_pair": 33,
+        "chosen_pair_with_both_target_returns": 21,
+        "correct_label": 19,
+        "disjoint_first_failure": {
+          "abstained_despite_stored_target_pair": 6,
+          "declared_absent_despite_stored_target_pair": 1,
+          "fork_localization_outside_tolerance": 2,
+          "no_ordered_near_far_moves": 14,
+          "no_pair_with_two_target_returns": 9,
+          "success": 15,
+          "wrong_slots": 1
+        },
+        "fork_coordinate_only_oracle": 17,
+        "full_packet_pair_with_both_target_returns_on_same_route": 25,
+        "label_and_fork_oracle_same_scan_sites": 17,
+        "n": 48,
+        "ordered_physical_pair": 34,
+        "retained_pair_with_both_target_returns": 25,
+        "slot_only_oracle": 16,
+        "success": 15
+      }
+    },
+    "suffix_packets": 385,
+    "supported_packets": 385
+  }
+}

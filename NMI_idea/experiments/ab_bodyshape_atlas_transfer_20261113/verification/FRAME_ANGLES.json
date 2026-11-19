@@ -1,0 +1,1300 @@
+{
+  "scope": "Paired body shapes at the same knee pose, with admitted geometry only. Compare h/d frames, geometric centerline frames and outer-point azimuths.",
+  "grids": {
+    "stress": {
+      "geometry_input_sha256": "9cd5d06e1f18034e3506e6fabe115228895d2c61677a1f33bd9ed712fff0445e",
+      "max_case_p95_deg": 6.412582007778734,
+      "max_deg": 12.167643423472684,
+      "centerline_frame_max_deg": 15.6994990904378,
+      "remeasured_azimuth_max_drift_deg": 22.604324808240793,
+      "frame_transport_max_abs_error": 1.0014211682118912e-13,
+      "cases": [
+        {
+          "side": "left",
+          "beta_delta": [
+            -2.0,
+            -2.0
+          ],
+          "knee_deg": 0,
+          "sample_tets": 322056,
+          "angle_median_deg": 2.9837976269473607,
+          "angle_p95_deg": 5.173031833392475,
+          "angle_max_deg": 9.504794555186919,
+          "centerline_frame_max_deg": 10.068237225372668,
+          "remeasured_azimuth_max_drift_deg": 14.712030099301055,
+          "gradient_transport_frame_max_abs_error": 7.591149930874508e-14
+        },
+        {
+          "side": "left",
+          "beta_delta": [
+            -2.0,
+            -2.0
+          ],
+          "knee_deg": 45,
+          "sample_tets": 322056,
+          "angle_median_deg": 2.9822891084710355,
+          "angle_p95_deg": 5.266842936160897,
+          "angle_max_deg": 9.544801268562871,
+          "centerline_frame_max_deg": 10.038579032940076,
+          "remeasured_azimuth_max_drift_deg": 15.726005385565031,
+          "gradient_transport_frame_max_abs_error": 4.779510121011299e-14
+        },
+        {
+          "side": "left",
+          "beta_delta": [
+            -2.0,
+            -2.0
+          ],
+          "knee_deg": 90,
+          "sample_tets": 322056,
+          "angle_median_deg": 2.962832866268754,
+          "angle_p95_deg": 5.443541619038033,
+          "angle_max_deg": 10.36868570091847,
+          "centerline_frame_max_deg": 10.022939721620588,
+          "remeasured_azimuth_max_drift_deg": 16.21361174987478,
+          "gradient_transport_frame_max_abs_error": 7.870093465811578e-14
+        },
+        {
+          "side": "left",
+          "beta_delta": [
+            -2.0,
+            0.0
+          ],
+          "knee_deg": 0,
+          "sample_tets": 322056,
+          "angle_median_deg": 1.1816514334658148,
+          "angle_p95_deg": 3.4270190163490413,
+          "angle_max_deg": 4.935101548351812,
+          "centerline_frame_max_deg": 1.819196702901728,
+          "remeasured_azimuth_max_drift_deg": 2.4880522726449135,
+          "gradient_transport_frame_max_abs_error": 7.491229858658244e-14
+        },
+        {
+          "side": "left",
+          "beta_delta": [
+            -2.0,
+            0.0
+          ],
+          "knee_deg": 45,
+          "sample_tets": 322056,
+          "angle_median_deg": 1.1255305939031746,
+          "angle_p95_deg": 3.4104326812679866,
+          "angle_max_deg": 5.031895088541782,
+          "centerline_frame_max_deg": 2.0754687039165534,
+          "remeasured_azimuth_max_drift_deg": 2.9726323517425866,
+          "gradient_transport_frame_max_abs_error": 6.300515664747763e-14
+        },
+        {
+          "side": "left",
+          "beta_delta": [
+            -2.0,
+            0.0
+          ],
+          "knee_deg": 90,
+          "sample_tets": 322056,
+          "angle_median_deg": 1.0526985572984144,
+          "angle_p95_deg": 3.3728192964681165,
+          "angle_max_deg": 5.3876112670612715,
+          "centerline_frame_max_deg": 2.6098739105297533,
+          "remeasured_azimuth_max_drift_deg": 3.7040030632588286,
+          "gradient_transport_frame_max_abs_error": 7.810418978237976e-14
+        },
+        {
+          "side": "left",
+          "beta_delta": [
+            -2.0,
+            2.0
+          ],
+          "knee_deg": 90,
+          "sample_tets": 322056,
+          "angle_median_deg": 2.5419783263297804,
+          "angle_p95_deg": 4.602976610561045,
+          "angle_max_deg": 7.8372634147012805,
+          "centerline_frame_max_deg": 10.664894387967355,
+          "remeasured_azimuth_max_drift_deg": 15.224502446894723,
+          "gradient_transport_frame_max_abs_error": 7.224429388053011e-14
+        },
+        {
+          "side": "left",
+          "beta_delta": [
+            0.0,
+            -2.0
+          ],
+          "knee_deg": 0,
+          "sample_tets": 322056,
+          "angle_median_deg": 2.441901536873738,
+          "angle_p95_deg": 5.149862577086852,
+          "angle_max_deg": 9.237266856521112,
+          "centerline_frame_max_deg": 12.420354784382507,
+          "remeasured_azimuth_max_drift_deg": 17.756330698523534,
+          "gradient_transport_frame_max_abs_error": 7.741030039198904e-14
+        },
+        {
+          "side": "left",
+          "beta_delta": [
+            0.0,
+            -2.0
+          ],
+          "knee_deg": 45,
+          "sample_tets": 322056,
+          "angle_median_deg": 2.352942382391957,
+          "angle_p95_deg": 5.313570145316289,
+          "angle_max_deg": 9.433902057459305,
+          "centerline_frame_max_deg": 12.393760671260836,
+          "remeasured_azimuth_max_drift_deg": 18.687241440233876,
+          "gradient_transport_frame_max_abs_error": 5.806466418789569e-14
+        },
+        {
+          "side": "left",
+          "beta_delta": [
+            0.0,
+            -2.0
+          ],
+          "knee_deg": 90,
+          "sample_tets": 322056,
+          "angle_median_deg": 2.2738683953939245,
+          "angle_p95_deg": 5.552402704117953,
+          "angle_max_deg": 10.376301126546611,
+          "centerline_frame_max_deg": 12.380160040847553,
+          "remeasured_azimuth_max_drift_deg": 19.105011356345468,
+          "gradient_transport_frame_max_abs_error": 7.646661082105766e-14
+        },
+        {
+          "side": "left",
+          "beta_delta": [
+            0.0,
+            2.0
+          ],
+          "knee_deg": 90,
+          "sample_tets": 322056,
+          "angle_median_deg": 1.8777399505863142,
+          "angle_p95_deg": 4.407190737704763,
+          "angle_max_deg": 8.784605584311167,
+          "centerline_frame_max_deg": 10.280330661602491,
+          "remeasured_azimuth_max_drift_deg": 15.22620100155992,
+          "gradient_transport_frame_max_abs_error": 7.015915626240599e-14
+        },
+        {
+          "side": "left",
+          "beta_delta": [
+            2.0,
+            -2.0
+          ],
+          "knee_deg": 0,
+          "sample_tets": 322056,
+          "angle_median_deg": 3.6672264545373867,
+          "angle_p95_deg": 6.272856385556008,
+          "angle_max_deg": 9.830203131835688,
+          "centerline_frame_max_deg": 15.28947824553552,
+          "remeasured_azimuth_max_drift_deg": 21.416373056430356,
+          "gradient_transport_frame_max_abs_error": 7.505107646466058e-14
+        },
+        {
+          "side": "left",
+          "beta_delta": [
+            2.0,
+            -2.0
+          ],
+          "knee_deg": 45,
+          "sample_tets": 322056,
+          "angle_median_deg": 3.582422157975177,
+          "angle_p95_deg": 6.331918101404749,
+          "angle_max_deg": 10.288175694068201,
+          "centerline_frame_max_deg": 15.274683313088463,
+          "remeasured_azimuth_max_drift_deg": 22.259729396132077,
+          "gradient_transport_frame_max_abs_error": 4.9960036108132044e-14
+        },
+        {
+          "side": "left",
+          "beta_delta": [
+            2.0,
+            -2.0
+          ],
+          "knee_deg": 90,
+          "sample_tets": 322056,
+          "angle_median_deg": 3.4685607826231912,
+          "angle_p95_deg": 6.412582007778734,
+          "angle_max_deg": 11.05535856302017,
+          "centerline_frame_max_deg": 15.6994990904378,
+          "remeasured_azimuth_max_drift_deg": 22.604324808240793,
+          "gradient_transport_frame_max_abs_error": 6.999956170261612e-14
+        },
+        {
+          "side": "left",
+          "beta_delta": [
+            2.0,
+            0.0
+          ],
+          "knee_deg": 0,
+          "sample_tets": 322056,
+          "angle_median_deg": 1.3330610735792918,
+          "angle_p95_deg": 3.8689855487559353,
+          "angle_max_deg": 5.68641660793048,
+          "centerline_frame_max_deg": 2.2352882688267637,
+          "remeasured_azimuth_max_drift_deg": 2.953710546343408,
+          "gradient_transport_frame_max_abs_error": 6.941669461468791e-14
+        },
+        {
+          "side": "left",
+          "beta_delta": [
+            2.0,
+            0.0
+          ],
+          "knee_deg": 45,
+          "sample_tets": 322056,
+          "angle_median_deg": 1.269028561863871,
+          "angle_p95_deg": 3.8434662641655386,
+          "angle_max_deg": 5.726819949386871,
+          "centerline_frame_max_deg": 2.54958228426364,
+          "remeasured_azimuth_max_drift_deg": 3.565224763869514,
+          "gradient_transport_frame_max_abs_error": 4.934941344458821e-14
+        },
+        {
+          "side": "left",
+          "beta_delta": [
+            2.0,
+            0.0
+          ],
+          "knee_deg": 90,
+          "sample_tets": 322056,
+          "angle_median_deg": 1.1931341377246585,
+          "angle_p95_deg": 3.800692459970198,
+          "angle_max_deg": 6.123806843011109,
+          "centerline_frame_max_deg": 3.2107232867193445,
+          "remeasured_azimuth_max_drift_deg": 4.483515825888127,
+          "gradient_transport_frame_max_abs_error": 7.066569551739121e-14
+        },
+        {
+          "side": "left",
+          "beta_delta": [
+            2.0,
+            2.0
+          ],
+          "knee_deg": 90,
+          "sample_tets": 322056,
+          "angle_median_deg": 2.722202136704429,
+          "angle_p95_deg": 5.0710736624338875,
+          "angle_max_deg": 10.020606752049911,
+          "centerline_frame_max_deg": 10.065975206901982,
+          "remeasured_azimuth_max_drift_deg": 15.227197561654503,
+          "gradient_transport_frame_max_abs_error": 7.184530748105544e-14
+        },
+        {
+          "side": "right",
+          "beta_delta": [
+            -2.0,
+            -2.0
+          ],
+          "knee_deg": 0,
+          "sample_tets": 322056,
+          "angle_median_deg": 2.917768259715011,
+          "angle_p95_deg": 5.12117990379728,
+          "angle_max_deg": 9.259858680757638,
+          "centerline_frame_max_deg": 9.237303841885822,
+          "remeasured_azimuth_max_drift_deg": 13.095076498028757,
+          "gradient_transport_frame_max_abs_error": 1.0014211682118912e-13
+        },
+        {
+          "side": "right",
+          "beta_delta": [
+            -2.0,
+            -2.0
+          ],
+          "knee_deg": 45,
+          "sample_tets": 322056,
+          "angle_median_deg": 2.872953342416719,
+          "angle_p95_deg": 5.207447799835385,
+          "angle_max_deg": 9.14849766313687,
+          "centerline_frame_max_deg": 9.00698182696358,
+          "remeasured_azimuth_max_drift_deg": 13.587264522865675,
+          "gradient_transport_frame_max_abs_error": 5.422051696513108e-14
+        },
+        {
+          "side": "right",
+          "beta_delta": [
+            -2.0,
+            -2.0
+          ],
+          "knee_deg": 90,
+          "sample_tets": 322056,
+          "angle_median_deg": 2.775745580007376,
+          "angle_p95_deg": 5.380162700543532,
+          "angle_max_deg": 9.83825227040836,
+          "centerline_frame_max_deg": 8.992779237277494,
+          "remeasured_azimuth_max_drift_deg": 13.811699524450248,
+          "gradient_transport_frame_max_abs_error": 9.4167729169925e-14
+        },
+        {
+          "side": "right",
+          "beta_delta": [
+            -2.0,
+            0.0
+          ],
+          "knee_deg": 0,
+          "sample_tets": 322056,
+          "angle_median_deg": 1.203191907582708,
+          "angle_p95_deg": 3.45739295948471,
+          "angle_max_deg": 4.892901100252963,
+          "centerline_frame_max_deg": 1.9148111477757315,
+          "remeasured_azimuth_max_drift_deg": 2.7977619998114345,
+          "gradient_transport_frame_max_abs_error": 7.185918526886326e-14
+        },
+        {
+          "side": "right",
+          "beta_delta": [
+            -2.0,
+            0.0
+          ],
+          "knee_deg": 45,
+          "sample_tets": 322056,
+          "angle_median_deg": 1.1658637820830722,
+          "angle_p95_deg": 3.4514934202882914,
+          "angle_max_deg": 4.925959814123304,
+          "centerline_frame_max_deg": 2.2615354927292564,
+          "remeasured_azimuth_max_drift_deg": 3.2023357619937802,
+          "gradient_transport_frame_max_abs_error": 5.80785419757035e-14
+        },
+        {
+          "side": "right",
+          "beta_delta": [
+            -2.0,
+            0.0
+          ],
+          "knee_deg": 90,
+          "sample_tets": 322056,
+          "angle_median_deg": 1.1184507862525916,
+          "angle_p95_deg": 3.407094056345062,
+          "angle_max_deg": 4.9168539672885325,
+          "centerline_frame_max_deg": 2.9792103652320083,
+          "remeasured_azimuth_max_drift_deg": 4.039010309549591,
+          "gradient_transport_frame_max_abs_error": 8.045647481580431e-14
+        },
+        {
+          "side": "right",
+          "beta_delta": [
+            -2.0,
+            2.0
+          ],
+          "knee_deg": 0,
+          "sample_tets": 322056,
+          "angle_median_deg": 2.654573468072816,
+          "angle_p95_deg": 4.397692526574776,
+          "angle_max_deg": 8.559053394320026,
+          "centerline_frame_max_deg": 10.338801890475805,
+          "remeasured_azimuth_max_drift_deg": 14.113406489721728,
+          "gradient_transport_frame_max_abs_error": 6.886158310237533e-14
+        },
+        {
+          "side": "right",
+          "beta_delta": [
+            -2.0,
+            2.0
+          ],
+          "knee_deg": 45,
+          "sample_tets": 322056,
+          "angle_median_deg": 2.5907942750875614,
+          "angle_p95_deg": 4.414351861323401,
+          "angle_max_deg": 8.767482560195663,
+          "centerline_frame_max_deg": 10.405869046663312,
+          "remeasured_azimuth_max_drift_deg": 14.323212838330113,
+          "gradient_transport_frame_max_abs_error": 4.951594689828198e-14
+        },
+        {
+          "side": "right",
+          "beta_delta": [
+            -2.0,
+            2.0
+          ],
+          "knee_deg": 90,
+          "sample_tets": 322056,
+          "angle_median_deg": 2.52199076829016,
+          "angle_p95_deg": 4.444791165769108,
+          "angle_max_deg": 8.969991208040776,
+          "centerline_frame_max_deg": 10.591338703694557,
+          "remeasured_azimuth_max_drift_deg": 14.38114254937414,
+          "gradient_transport_frame_max_abs_error": 6.454906054109699e-14
+        },
+        {
+          "side": "right",
+          "beta_delta": [
+            0.0,
+            -2.0
+          ],
+          "knee_deg": 0,
+          "sample_tets": 322056,
+          "angle_median_deg": 2.408233972238585,
+          "angle_p95_deg": 5.0886432353651205,
+          "angle_max_deg": 9.9733060380929,
+          "centerline_frame_max_deg": 11.387995442654512,
+          "remeasured_azimuth_max_drift_deg": 16.106766719574313,
+          "gradient_transport_frame_max_abs_error": 7.169265181516948e-14
+        },
+        {
+          "side": "right",
+          "beta_delta": [
+            0.0,
+            -2.0
+          ],
+          "knee_deg": 45,
+          "sample_tets": 322056,
+          "angle_median_deg": 2.3004795110981284,
+          "angle_p95_deg": 5.186739011374207,
+          "angle_max_deg": 9.657650902797451,
+          "centerline_frame_max_deg": 11.301677007333922,
+          "remeasured_azimuth_max_drift_deg": 16.542845381845122,
+          "gradient_transport_frame_max_abs_error": 5.070249775585012e-14
+        },
+        {
+          "side": "right",
+          "beta_delta": [
+            0.0,
+            -2.0
+          ],
+          "knee_deg": 90,
+          "sample_tets": 322056,
+          "angle_median_deg": 2.212168701913468,
+          "angle_p95_deg": 5.304761898583271,
+          "angle_max_deg": 10.062531225178644,
+          "centerline_frame_max_deg": 11.270441260304828,
+          "remeasured_azimuth_max_drift_deg": 16.737249513491935,
+          "gradient_transport_frame_max_abs_error": 8.665290707199347e-14
+        },
+        {
+          "side": "right",
+          "beta_delta": [
+            0.0,
+            2.0
+          ],
+          "knee_deg": 0,
+          "sample_tets": 322056,
+          "angle_median_deg": 1.9677891122486186,
+          "angle_p95_deg": 4.141867641757392,
+          "angle_max_deg": 7.948403824366701,
+          "centerline_frame_max_deg": 9.723215230322166,
+          "remeasured_azimuth_max_drift_deg": 13.400466238154394,
+          "gradient_transport_frame_max_abs_error": 6.52811138479592e-14
+        },
+        {
+          "side": "right",
+          "beta_delta": [
+            0.0,
+            2.0
+          ],
+          "knee_deg": 45,
+          "sample_tets": 322056,
+          "angle_median_deg": 1.8847276741023005,
+          "angle_p95_deg": 4.203678647823784,
+          "angle_max_deg": 8.211767362891386,
+          "centerline_frame_max_deg": 9.691734174608587,
+          "remeasured_azimuth_max_drift_deg": 13.695600715370851,
+          "gradient_transport_frame_max_abs_error": 4.013456234019941e-14
+        },
+        {
+          "side": "right",
+          "beta_delta": [
+            0.0,
+            2.0
+          ],
+          "knee_deg": 90,
+          "sample_tets": 322056,
+          "angle_median_deg": 1.8187423214902143,
+          "angle_p95_deg": 4.274190204486377,
+          "angle_max_deg": 8.442466967153935,
+          "centerline_frame_max_deg": 9.655532407410131,
+          "remeasured_azimuth_max_drift_deg": 13.803018959855153,
+          "gradient_transport_frame_max_abs_error": 6.598888102615774e-14
+        },
+        {
+          "side": "right",
+          "beta_delta": [
+            2.0,
+            -2.0
+          ],
+          "knee_deg": 0,
+          "sample_tets": 322056,
+          "angle_median_deg": 3.667501281021348,
+          "angle_p95_deg": 6.21835492879349,
+          "angle_max_deg": 12.167643423472684,
+          "centerline_frame_max_deg": 14.229756301414263,
+          "remeasured_azimuth_max_drift_deg": 19.68336894787682,
+          "gradient_transport_frame_max_abs_error": 6.830647159006276e-14
+        },
+        {
+          "side": "right",
+          "beta_delta": [
+            2.0,
+            -2.0
+          ],
+          "knee_deg": 45,
+          "sample_tets": 322056,
+          "angle_median_deg": 3.569218587823876,
+          "angle_p95_deg": 6.174296667832777,
+          "angle_max_deg": 10.671391768908169,
+          "centerline_frame_max_deg": 14.31593940980359,
+          "remeasured_azimuth_max_drift_deg": 20.059248076098207,
+          "gradient_transport_frame_max_abs_error": 5.1764148523147924e-14
+        },
+        {
+          "side": "right",
+          "beta_delta": [
+            2.0,
+            -2.0
+          ],
+          "knee_deg": 90,
+          "sample_tets": 322056,
+          "angle_median_deg": 3.4576008622392256,
+          "angle_p95_deg": 6.158132154585022,
+          "angle_max_deg": 10.899992116821748,
+          "centerline_frame_max_deg": 14.545532146432423,
+          "remeasured_azimuth_max_drift_deg": 20.223175943335697,
+          "gradient_transport_frame_max_abs_error": 7.355227538141662e-14
+        },
+        {
+          "side": "right",
+          "beta_delta": [
+            2.0,
+            0.0
+          ],
+          "knee_deg": 0,
+          "sample_tets": 322056,
+          "angle_median_deg": 1.3565887764250673,
+          "angle_p95_deg": 3.8934008836762217,
+          "angle_max_deg": 5.61552129586188,
+          "centerline_frame_max_deg": 2.3519408691696606,
+          "remeasured_azimuth_max_drift_deg": 3.3280369423092244,
+          "gradient_transport_frame_max_abs_error": 7.040201754904274e-14
+        },
+        {
+          "side": "right",
+          "beta_delta": [
+            2.0,
+            0.0
+          ],
+          "knee_deg": 45,
+          "sample_tets": 322056,
+          "angle_median_deg": 1.3119151050273463,
+          "angle_p95_deg": 3.879788826335999,
+          "angle_max_deg": 5.633644756076986,
+          "centerline_frame_max_deg": 2.774570587595246,
+          "remeasured_azimuth_max_drift_deg": 3.840271799845013,
+          "gradient_transport_frame_max_abs_error": 4.5102810375396984e-14
+        },
+        {
+          "side": "right",
+          "beta_delta": [
+            2.0,
+            0.0
+          ],
+          "knee_deg": 90,
+          "sample_tets": 322056,
+          "angle_median_deg": 1.2587142930596875,
+          "angle_p95_deg": 3.8385332232455722,
+          "angle_max_deg": 5.6258336095165635,
+          "centerline_frame_max_deg": 3.6716283263916667,
+          "remeasured_azimuth_max_drift_deg": 4.900228612961993,
+          "gradient_transport_frame_max_abs_error": 7.07489622442381e-14
+        }
+      ]
+    },
+    "moderate": {
+      "geometry_input_sha256": "73655862d0b04bd1f377fe03e401bb8f188da15a4d06b336321a33143edaf5ad",
+      "max_case_p95_deg": 2.9081668715615008,
+      "max_deg": 5.491830776149482,
+      "centerline_frame_max_deg": 7.116615267246749,
+      "remeasured_azimuth_max_drift_deg": 10.156000536776437,
+      "frame_transport_max_abs_error": 1.3134632270705993e-13,
+      "cases": [
+        {
+          "side": "left",
+          "beta_delta": [
+            -1.0,
+            -1.0
+          ],
+          "knee_deg": 0,
+          "sample_tets": 322056,
+          "angle_median_deg": 1.455066450568515,
+          "angle_p95_deg": 2.5373118717486114,
+          "angle_max_deg": 4.781907702969725,
+          "centerline_frame_max_deg": 5.083016145003696,
+          "remeasured_azimuth_max_drift_deg": 7.309662686322521,
+          "gradient_transport_frame_max_abs_error": 6.386557949156213e-14
+        },
+        {
+          "side": "left",
+          "beta_delta": [
+            -1.0,
+            -1.0
+          ],
+          "knee_deg": 45,
+          "sample_tets": 322056,
+          "angle_median_deg": 1.4563352844325204,
+          "angle_p95_deg": 2.5842585312458466,
+          "angle_max_deg": 4.803841324253299,
+          "centerline_frame_max_deg": 5.055295040454793,
+          "remeasured_azimuth_max_drift_deg": 7.771886438320141,
+          "gradient_transport_frame_max_abs_error": 6.23945339839338e-14
+        },
+        {
+          "side": "left",
+          "beta_delta": [
+            -1.0,
+            -1.0
+          ],
+          "knee_deg": 90,
+          "sample_tets": 322056,
+          "angle_median_deg": 1.449751536107823,
+          "angle_p95_deg": 2.665235942862983,
+          "angle_max_deg": 5.169404650604986,
+          "centerline_frame_max_deg": 5.040547356394409,
+          "remeasured_azimuth_max_drift_deg": 7.989188880797912,
+          "gradient_transport_frame_max_abs_error": 7.283063041541027e-14
+        },
+        {
+          "side": "left",
+          "beta_delta": [
+            -1.0,
+            0.0
+          ],
+          "knee_deg": 0,
+          "sample_tets": 322056,
+          "angle_median_deg": 0.6082031383276899,
+          "angle_p95_deg": 1.7651881248845982,
+          "angle_max_deg": 2.570282160644142,
+          "centerline_frame_max_deg": 0.9541361830509223,
+          "remeasured_azimuth_max_drift_deg": 1.2955850494635854,
+          "gradient_transport_frame_max_abs_error": 6.968037258303639e-14
+        },
+        {
+          "side": "left",
+          "beta_delta": [
+            -1.0,
+            0.0
+          ],
+          "knee_deg": 45,
+          "sample_tets": 322056,
+          "angle_median_deg": 0.5792210049150927,
+          "angle_p95_deg": 1.7560763346380963,
+          "angle_max_deg": 2.6373629198979125,
+          "centerline_frame_max_deg": 1.088488084358644,
+          "remeasured_azimuth_max_drift_deg": 1.5512407421122822,
+          "gradient_transport_frame_max_abs_error": 4.9002468749392847e-14
+        },
+        {
+          "side": "left",
+          "beta_delta": [
+            -1.0,
+            0.0
+          ],
+          "knee_deg": 90,
+          "sample_tets": 322056,
+          "angle_median_deg": 0.5422818610811762,
+          "angle_p95_deg": 1.736513820768605,
+          "angle_max_deg": 2.788299268149436,
+          "centerline_frame_max_deg": 1.3691737642698918,
+          "remeasured_azimuth_max_drift_deg": 1.9365984258005324,
+          "gradient_transport_frame_max_abs_error": 7.899236820207989e-14
+        },
+        {
+          "side": "left",
+          "beta_delta": [
+            -1.0,
+            1.0
+          ],
+          "knee_deg": 0,
+          "sample_tets": 322056,
+          "angle_median_deg": 1.4268913985552365,
+          "angle_p95_deg": 2.3857341289981995,
+          "angle_max_deg": 4.098519798906756,
+          "centerline_frame_max_deg": 5.821238876245584,
+          "remeasured_azimuth_max_drift_deg": 8.063642213044462,
+          "gradient_transport_frame_max_abs_error": 6.723788192886104e-14
+        },
+        {
+          "side": "left",
+          "beta_delta": [
+            -1.0,
+            1.0
+          ],
+          "knee_deg": 45,
+          "sample_tets": 322056,
+          "angle_median_deg": 1.3944718062958605,
+          "angle_p95_deg": 2.41720671958089,
+          "angle_max_deg": 4.092195094040011,
+          "centerline_frame_max_deg": 5.7554696529262,
+          "remeasured_azimuth_max_drift_deg": 8.270980455524803,
+          "gradient_transport_frame_max_abs_error": 5.3512749786932545e-14
+        },
+        {
+          "side": "left",
+          "beta_delta": [
+            -1.0,
+            1.0
+          ],
+          "knee_deg": 90,
+          "sample_tets": 322056,
+          "angle_median_deg": 1.3593287874033342,
+          "angle_p95_deg": 2.4731988543339294,
+          "angle_max_deg": 4.201885175894865,
+          "centerline_frame_max_deg": 5.850145139555622,
+          "remeasured_azimuth_max_drift_deg": 8.329747642655006,
+          "gradient_transport_frame_max_abs_error": 7.875297636239509e-14
+        },
+        {
+          "side": "left",
+          "beta_delta": [
+            0.0,
+            -1.0
+          ],
+          "knee_deg": 0,
+          "sample_tets": 322056,
+          "angle_median_deg": 1.1554944218877936,
+          "angle_p95_deg": 2.4367866544504206,
+          "angle_max_deg": 4.481141469519144,
+          "centerline_frame_max_deg": 5.986695144114651,
+          "remeasured_azimuth_max_drift_deg": 8.451185826774577,
+          "gradient_transport_frame_max_abs_error": 7.696621118213898e-14
+        },
+        {
+          "side": "left",
+          "beta_delta": [
+            0.0,
+            -1.0
+          ],
+          "knee_deg": 45,
+          "sample_tets": 322056,
+          "angle_median_deg": 1.1147452047305202,
+          "angle_p95_deg": 2.5043479470016874,
+          "angle_max_deg": 4.527629756054903,
+          "centerline_frame_max_deg": 5.954208620566577,
+          "remeasured_azimuth_max_drift_deg": 8.847239260362164,
+          "gradient_transport_frame_max_abs_error": 5.231405586503257e-14
+        },
+        {
+          "side": "left",
+          "beta_delta": [
+            0.0,
+            -1.0
+          ],
+          "knee_deg": 90,
+          "sample_tets": 322056,
+          "angle_median_deg": 1.0804503300402404,
+          "angle_p95_deg": 2.6007509603924506,
+          "angle_max_deg": 4.992942408057699,
+          "centerline_frame_max_deg": 5.936918370151331,
+          "remeasured_azimuth_max_drift_deg": 9.015158704221278,
+          "gradient_transport_frame_max_abs_error": 7.396860901565105e-14
+        },
+        {
+          "side": "left",
+          "beta_delta": [
+            0.0,
+            1.0
+          ],
+          "knee_deg": 45,
+          "sample_tets": 322056,
+          "angle_median_deg": 1.0116497703504423,
+          "angle_p95_deg": 2.25148026011215,
+          "angle_max_deg": 4.2342700881350455,
+          "centerline_frame_max_deg": 5.4329704828060414,
+          "remeasured_azimuth_max_drift_deg": 7.9361235830394055,
+          "gradient_transport_frame_max_abs_error": 4.596323321948148e-14
+        },
+        {
+          "side": "left",
+          "beta_delta": [
+            0.0,
+            1.0
+          ],
+          "knee_deg": 90,
+          "sample_tets": 322056,
+          "angle_median_deg": 0.9818523077695418,
+          "angle_p95_deg": 2.3178331458939345,
+          "angle_max_deg": 4.585449234591364,
+          "centerline_frame_max_deg": 5.401037159494606,
+          "remeasured_azimuth_max_drift_deg": 8.049439529295471,
+          "gradient_transport_frame_max_abs_error": 7.500250420733323e-14
+        },
+        {
+          "side": "left",
+          "beta_delta": [
+            1.0,
+            -1.0
+          ],
+          "knee_deg": 0,
+          "sample_tets": 322056,
+          "angle_median_deg": 1.673091345875298,
+          "angle_p95_deg": 2.839012617004995,
+          "angle_max_deg": 4.487891588203303,
+          "centerline_frame_max_deg": 6.9874994682067,
+          "remeasured_azimuth_max_drift_deg": 9.714194303245842,
+          "gradient_transport_frame_max_abs_error": 7.166489623955385e-14
+        },
+        {
+          "side": "left",
+          "beta_delta": [
+            1.0,
+            -1.0
+          ],
+          "knee_deg": 45,
+          "sample_tets": 322056,
+          "angle_median_deg": 1.635189465898422,
+          "angle_p95_deg": 2.8636875355648073,
+          "angle_max_deg": 4.520944331383032,
+          "centerline_frame_max_deg": 6.950746337452312,
+          "remeasured_azimuth_max_drift_deg": 10.034290714826055,
+          "gradient_transport_frame_max_abs_error": 5.09280118077271e-14
+        },
+        {
+          "side": "left",
+          "beta_delta": [
+            1.0,
+            -1.0
+          ],
+          "knee_deg": 90,
+          "sample_tets": 322056,
+          "angle_median_deg": 1.5875618272151488,
+          "angle_p95_deg": 2.9081668715615008,
+          "angle_max_deg": 4.875056092039705,
+          "centerline_frame_max_deg": 7.116615267246749,
+          "remeasured_azimuth_max_drift_deg": 10.156000536776437,
+          "gradient_transport_frame_max_abs_error": 1.3134632270705993e-13
+        },
+        {
+          "side": "left",
+          "beta_delta": [
+            1.0,
+            0.0
+          ],
+          "knee_deg": 0,
+          "sample_tets": 322056,
+          "angle_median_deg": 0.6461276834091711,
+          "angle_p95_deg": 1.874863817478933,
+          "angle_max_deg": 2.7826452679705076,
+          "centerline_frame_max_deg": 1.0573902512384858,
+          "remeasured_azimuth_max_drift_deg": 1.4115307820302638,
+          "gradient_transport_frame_max_abs_error": 6.396966290012074e-14
+        },
+        {
+          "side": "left",
+          "beta_delta": [
+            1.0,
+            0.0
+          ],
+          "knee_deg": 45,
+          "sample_tets": 322056,
+          "angle_median_deg": 0.6152159023531996,
+          "angle_p95_deg": 1.8633471866243239,
+          "angle_max_deg": 2.7774072499220015,
+          "centerline_frame_max_deg": 1.2061413478104994,
+          "remeasured_azimuth_max_drift_deg": 1.6986399385379756,
+          "gradient_transport_frame_max_abs_error": 4.3846870578789776e-14
+        },
+        {
+          "side": "left",
+          "beta_delta": [
+            1.0,
+            0.0
+          ],
+          "knee_deg": 90,
+          "sample_tets": 322056,
+          "angle_median_deg": 0.5776214829348869,
+          "angle_p95_deg": 1.8431694665967848,
+          "angle_max_deg": 2.96586311553766,
+          "centerline_frame_max_deg": 1.5182562396436707,
+          "remeasured_azimuth_max_drift_deg": 2.130303551474007,
+          "gradient_transport_frame_max_abs_error": 7.369105325949477e-14
+        },
+        {
+          "side": "left",
+          "beta_delta": [
+            1.0,
+            1.0
+          ],
+          "knee_deg": 45,
+          "sample_tets": 322056,
+          "angle_median_deg": 1.3870182209335002,
+          "angle_p95_deg": 2.4914889510688756,
+          "angle_max_deg": 4.802167713416338,
+          "centerline_frame_max_deg": 5.076710154195496,
+          "remeasured_azimuth_max_drift_deg": 7.567191804739785,
+          "gradient_transport_frame_max_abs_error": 4.516526042053215e-14
+        },
+        {
+          "side": "left",
+          "beta_delta": [
+            1.0,
+            1.0
+          ],
+          "knee_deg": 90,
+          "sample_tets": 322056,
+          "angle_median_deg": 1.3895198573413245,
+          "angle_p95_deg": 2.583143281388418,
+          "angle_max_deg": 5.087007412232302,
+          "centerline_frame_max_deg": 5.04865506467969,
+          "remeasured_azimuth_max_drift_deg": 7.738635913518113,
+          "gradient_transport_frame_max_abs_error": 8.223977054910847e-14
+        },
+        {
+          "side": "right",
+          "beta_delta": [
+            -1.0,
+            -1.0
+          ],
+          "knee_deg": 0,
+          "sample_tets": 322056,
+          "angle_median_deg": 1.4229690600377223,
+          "angle_p95_deg": 2.517932009546362,
+          "angle_max_deg": 4.674647342674476,
+          "centerline_frame_max_deg": 4.652919561259435,
+          "remeasured_azimuth_max_drift_deg": 6.492976038707263,
+          "gradient_transport_frame_max_abs_error": 6.519784712111232e-14
+        },
+        {
+          "side": "right",
+          "beta_delta": [
+            -1.0,
+            -1.0
+          ],
+          "knee_deg": 45,
+          "sample_tets": 322056,
+          "angle_median_deg": 1.4017568261930682,
+          "angle_p95_deg": 2.55356213887383,
+          "angle_max_deg": 4.6008305514904855,
+          "centerline_frame_max_deg": 4.5288225936906255,
+          "remeasured_azimuth_max_drift_deg": 6.723526787556017,
+          "gradient_transport_frame_max_abs_error": 6.036837696399289e-14
+        },
+        {
+          "side": "right",
+          "beta_delta": [
+            -1.0,
+            -1.0
+          ],
+          "knee_deg": 90,
+          "sample_tets": 322056,
+          "angle_median_deg": 1.3588272910602177,
+          "angle_p95_deg": 2.639395599287369,
+          "angle_max_deg": 4.895931004495549,
+          "centerline_frame_max_deg": 4.520927416866471,
+          "remeasured_azimuth_max_drift_deg": 6.826586719574655,
+          "gradient_transport_frame_max_abs_error": 1.0475648126728743e-13
+        },
+        {
+          "side": "right",
+          "beta_delta": [
+            -1.0,
+            0.0
+          ],
+          "knee_deg": 0,
+          "sample_tets": 322056,
+          "angle_median_deg": 0.6191712550942736,
+          "angle_p95_deg": 1.7777364485517018,
+          "angle_max_deg": 2.563236279749835,
+          "centerline_frame_max_deg": 1.004281497014429,
+          "remeasured_azimuth_max_drift_deg": 1.4575786931523667,
+          "gradient_transport_frame_max_abs_error": 6.234335964139248e-14
+        },
+        {
+          "side": "right",
+          "beta_delta": [
+            -1.0,
+            0.0
+          ],
+          "knee_deg": 45,
+          "sample_tets": 322056,
+          "angle_median_deg": 0.5989925721241571,
+          "angle_p95_deg": 1.7761405495252593,
+          "angle_max_deg": 2.5500173910567927,
+          "centerline_frame_max_deg": 1.185850042952388,
+          "remeasured_azimuth_max_drift_deg": 1.6711035193660386,
+          "gradient_transport_frame_max_abs_error": 5.2735593669694936e-14
+        },
+        {
+          "side": "right",
+          "beta_delta": [
+            -1.0,
+            0.0
+          ],
+          "knee_deg": 90,
+          "sample_tets": 322056,
+          "angle_median_deg": 0.5750749160333772,
+          "angle_p95_deg": 1.752566949958106,
+          "angle_max_deg": 2.5423915384103997,
+          "centerline_frame_max_deg": 1.563655801952076,
+          "remeasured_azimuth_max_drift_deg": 2.1127681045739024,
+          "gradient_transport_frame_max_abs_error": 8.631984016460592e-14
+        },
+        {
+          "side": "right",
+          "beta_delta": [
+            -1.0,
+            1.0
+          ],
+          "knee_deg": 0,
+          "sample_tets": 322056,
+          "angle_median_deg": 1.4239578419134051,
+          "angle_p95_deg": 2.3714406503417034,
+          "angle_max_deg": 4.555309280080334,
+          "centerline_frame_max_deg": 5.596826051034311,
+          "remeasured_azimuth_max_drift_deg": 7.6334228088004705,
+          "gradient_transport_frame_max_abs_error": 6.461498003318411e-14
+        },
+        {
+          "side": "right",
+          "beta_delta": [
+            -1.0,
+            1.0
+          ],
+          "knee_deg": 45,
+          "sample_tets": 322056,
+          "angle_median_deg": 1.3923992046255713,
+          "angle_p95_deg": 2.3737769503857606,
+          "angle_max_deg": 4.59163678796228,
+          "centerline_frame_max_deg": 5.631992399015166,
+          "remeasured_azimuth_max_drift_deg": 7.751362793116478,
+          "gradient_transport_frame_max_abs_error": 4.3853809472693683e-14
+        },
+        {
+          "side": "right",
+          "beta_delta": [
+            -1.0,
+            1.0
+          ],
+          "knee_deg": 90,
+          "sample_tets": 322056,
+          "angle_median_deg": 1.3523518818840996,
+          "angle_p95_deg": 2.38966289109299,
+          "angle_max_deg": 4.700295200185537,
+          "centerline_frame_max_deg": 5.728731290816231,
+          "remeasured_azimuth_max_drift_deg": 7.787992008360126,
+          "gradient_transport_frame_max_abs_error": 7.445433158892456e-14
+        },
+        {
+          "side": "right",
+          "beta_delta": [
+            0.0,
+            -1.0
+          ],
+          "knee_deg": 0,
+          "sample_tets": 322056,
+          "angle_median_deg": 1.141495606016289,
+          "angle_p95_deg": 2.4102310992510274,
+          "angle_max_deg": 4.700552629499935,
+          "centerline_frame_max_deg": 5.506813371469295,
+          "remeasured_azimuth_max_drift_deg": 7.703922089299383,
+          "gradient_transport_frame_max_abs_error": 7.713274463583275e-14
+        },
+        {
+          "side": "right",
+          "beta_delta": [
+            0.0,
+            -1.0
+          ],
+          "knee_deg": 45,
+          "sample_tets": 322056,
+          "angle_median_deg": 1.08977671969821,
+          "angle_p95_deg": 2.449656600173272,
+          "angle_max_deg": 4.334891805663375,
+          "centerline_frame_max_deg": 5.46912406110617,
+          "remeasured_azimuth_max_drift_deg": 7.898543767205798,
+          "gradient_transport_frame_max_abs_error": 5.838385330747542e-14
+        },
+        {
+          "side": "right",
+          "beta_delta": [
+            0.0,
+            -1.0
+          ],
+          "knee_deg": 90,
+          "sample_tets": 322056,
+          "angle_median_deg": 1.0513406129183063,
+          "angle_p95_deg": 2.5008673182989543,
+          "angle_max_deg": 4.7149398427265075,
+          "centerline_frame_max_deg": 5.452356371202047,
+          "remeasured_azimuth_max_drift_deg": 7.980172431395224,
+          "gradient_transport_frame_max_abs_error": 8.039402477066915e-14
+        },
+        {
+          "side": "right",
+          "beta_delta": [
+            0.0,
+            1.0
+          ],
+          "knee_deg": 0,
+          "sample_tets": 322056,
+          "angle_median_deg": 1.031801748754589,
+          "angle_p95_deg": 2.178063635084245,
+          "angle_max_deg": 4.19223384665224,
+          "centerline_frame_max_deg": 5.082523365549941,
+          "remeasured_azimuth_max_drift_deg": 7.022649917049667,
+          "gradient_transport_frame_max_abs_error": 6.089573290068984e-14
+        },
+        {
+          "side": "right",
+          "beta_delta": [
+            0.0,
+            1.0
+          ],
+          "knee_deg": 45,
+          "sample_tets": 322056,
+          "angle_median_deg": 0.9856347237694363,
+          "angle_p95_deg": 2.208410350295156,
+          "angle_max_deg": 4.171358941068161,
+          "centerline_frame_max_deg": 5.0585385523373265,
+          "remeasured_azimuth_max_drift_deg": 7.181419814210297,
+          "gradient_transport_frame_max_abs_error": 4.374278717023117e-14
+        },
+        {
+          "side": "right",
+          "beta_delta": [
+            0.0,
+            1.0
+          ],
+          "knee_deg": 90,
+          "sample_tets": 322056,
+          "angle_median_deg": 0.9525244894885729,
+          "angle_p95_deg": 2.245102622957746,
+          "angle_max_deg": 4.354971615972996,
+          "centerline_frame_max_deg": 5.040582327659886,
+          "remeasured_azimuth_max_drift_deg": 7.240381638772997,
+          "gradient_transport_frame_max_abs_error": 6.253331186201194e-14
+        },
+        {
+          "side": "right",
+          "beta_delta": [
+            1.0,
+            -1.0
+          ],
+          "knee_deg": 0,
+          "sample_tets": 322056,
+          "angle_median_deg": 1.6720119971084704,
+          "angle_p95_deg": 2.8153818057411923,
+          "angle_max_deg": 5.491830776149482,
+          "centerline_frame_max_deg": 6.581330205576621,
+          "remeasured_azimuth_max_drift_deg": 9.026376754122694,
+          "gradient_transport_frame_max_abs_error": 6.963873921961294e-14
+        },
+        {
+          "side": "right",
+          "beta_delta": [
+            1.0,
+            -1.0
+          ],
+          "knee_deg": 45,
+          "sample_tets": 322056,
+          "angle_median_deg": 1.633446391278844,
+          "angle_p95_deg": 2.7997930719324584,
+          "angle_max_deg": 5.009871138812569,
+          "centerline_frame_max_deg": 6.620968987789126,
+          "remeasured_azimuth_max_drift_deg": 9.182660773855135,
+          "gradient_transport_frame_max_abs_error": 4.861042124382209e-14
+        },
+        {
+          "side": "right",
+          "beta_delta": [
+            1.0,
+            -1.0
+          ],
+          "knee_deg": 90,
+          "sample_tets": 322056,
+          "angle_median_deg": 1.580921000882292,
+          "angle_p95_deg": 2.8039689519912496,
+          "angle_max_deg": 5.125331522547935,
+          "centerline_frame_max_deg": 6.7283446584467885,
+          "remeasured_azimuth_max_drift_deg": 9.241821531279422,
+          "gradient_transport_frame_max_abs_error": 8.714556853917088e-14
+        },
+        {
+          "side": "right",
+          "beta_delta": [
+            1.0,
+            0.0
+          ],
+          "knee_deg": 0,
+          "sample_tets": 322056,
+          "angle_median_deg": 0.6575817081016126,
+          "angle_p95_deg": 1.885824904540273,
+          "angle_max_deg": 2.752455016001024,
+          "centerline_frame_max_deg": 1.1127788734883284,
+          "remeasured_azimuth_max_drift_deg": 1.5896264617242781,
+          "gradient_transport_frame_max_abs_error": 6.261657858885883e-14
+        },
+        {
+          "side": "right",
+          "beta_delta": [
+            1.0,
+            0.0
+          ],
+          "knee_deg": 45,
+          "sample_tets": 322056,
+          "angle_median_deg": 0.6350159575218017,
+          "angle_p95_deg": 1.8851537654440254,
+          "angle_max_deg": 2.7380594331529235,
+          "centerline_frame_max_deg": 1.3132057930351393,
+          "remeasured_azimuth_max_drift_deg": 1.8297980874375546,
+          "gradient_transport_frame_max_abs_error": 6.727257639838058e-14
+        },
+        {
+          "side": "right",
+          "beta_delta": [
+            1.0,
+            0.0
+          ],
+          "knee_deg": 90,
+          "sample_tets": 322056,
+          "angle_median_deg": 0.6102568239194719,
+          "angle_p95_deg": 1.8587738243623173,
+          "angle_max_deg": 2.734677739153048,
+          "centerline_frame_max_deg": 1.7354744112398317,
+          "remeasured_azimuth_max_drift_deg": 2.3267323477398896,
+          "gradient_transport_frame_max_abs_error": 6.480926906249351e-14
+        },
+        {
+          "side": "right",
+          "beta_delta": [
+            1.0,
+            1.0
+          ],
+          "knee_deg": 0,
+          "sample_tets": 322056,
+          "angle_median_deg": 1.3534153865886287,
+          "angle_p95_deg": 2.4295326055650945,
+          "angle_max_deg": 4.704889094776641,
+          "centerline_frame_max_deg": 4.670947633707794,
+          "remeasured_azimuth_max_drift_deg": 6.355187969515999,
+          "gradient_transport_frame_max_abs_error": 5.709321904134868e-14
+        },
+        {
+          "side": "right",
+          "beta_delta": [
+            1.0,
+            1.0
+          ],
+          "knee_deg": 45,
+          "sample_tets": 322056,
+          "angle_median_deg": 1.3374372323197472,
+          "angle_p95_deg": 2.4549808353903115,
+          "angle_max_deg": 4.611001484404627,
+          "centerline_frame_max_deg": 4.5250710677759685,
+          "remeasured_azimuth_max_drift_deg": 6.5603362527919895,
+          "gradient_transport_frame_max_abs_error": 4.085620730620576e-14
+        },
+        {
+          "side": "right",
+          "beta_delta": [
+            1.0,
+            1.0
+          ],
+          "knee_deg": 90,
+          "sample_tets": 322056,
+          "angle_median_deg": 1.3027961770044674,
+          "angle_p95_deg": 2.534449371117444,
+          "angle_max_deg": 4.7973428326426415,
+          "centerline_frame_max_deg": 4.5157120987657295,
+          "remeasured_azimuth_max_drift_deg": 6.647556896743286,
+          "gradient_transport_frame_max_abs_error": 6.161737786669619e-14
+        }
+      ]
+    }
+  }
+}

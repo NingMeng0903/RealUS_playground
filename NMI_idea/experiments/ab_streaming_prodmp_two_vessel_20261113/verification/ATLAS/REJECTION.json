@@ -1,0 +1,30 @@
+{
+  "beta": [
+    2.7497693083949906,
+    2.0503895169009936,
+    -0.03001714143996312,
+    0.08189267944603904,
+    -0.0021207984097881723,
+    0.016629353580370956,
+    -0.009940500563490932,
+    -0.0010628271762014151,
+    -0.01275786197769593,
+    0.004657044145225384
+  ],
+  "beta_delta_first_two": [
+    2.0,
+    2.0
+  ],
+  "knee_deg": 90.0,
+  "geometry_gate": {
+    "tetrahedra": 322056,
+    "nonpositive_tets": 37,
+    "min_det_ratio": -0.010836454434224901,
+    "positive_overlap_pairs": 658,
+    "volume_boundary_intersection_pairs": 0,
+    "retained_skin_intersection_pairs": 0,
+    "geometry_pass": false
+  },
+  "entered_scan_loop": false,
+  "output_created": false
+}

@@ -1,0 +1,35 @@
+{
+  "num_features": 414,
+  "candidates": 3840,
+  "training_worlds": 192,
+  "development_worlds": 64,
+  "targets": [
+    "corrected_complete",
+    "final_wrong",
+    "new_identity_mistake",
+    "tcp_mm",
+    "turn_degs",
+    "seconds"
+  ],
+  "models_sha256": "f80482a15b63ac8ea6951a7271db2055d7031d5897e923288fd24be1e9021469",
+  "library_sha256": "311d64449d58a7bb0a21c02a2f7ed253ebabc60c4dd55f317a6d6186d2caab20",
+  "labels_sha256": "7024bce96e518453114ed61d64d6955293db130a2558033680c9c9a793fe3f23",
+  "development": {
+    "learned_b_delta": {
+      "corrected_complete": 0.08593749999999999,
+      "final_wrong": -0.0026041666666666665,
+      "new_identity_mistake": -0.005208333333333334,
+      "tcp_mm": -0.731903415724736,
+      "turn_degs": -0.49929220795953344,
+      "seconds": -0.17187499999999994
+    },
+    "privileged_development_headroom": {
+      "corrected_complete": 0.08854166666666666,
+      "final_wrong": -0.0026041666666666665,
+      "new_identity_mistake": -0.015624999999999998,
+      "tcp_mm": -3.4680815124536792,
+      "turn_degs": -0.7945584224655616,
+      "seconds": -0.2942708333333333
+    }
+  }
+}

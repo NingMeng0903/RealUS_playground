@@ -1,0 +1,16 @@
+{
+  "daughter": {
+    "legacy_kernel_max_abs": 0.0,
+    "view_id_invariance_max_abs": 0.0,
+    "new_to_nearest_legacy_mean_total_variation": [],
+    "ghost_extension": "smooth transport and visibility interpolation of fixed legacy anchor regimes",
+    "acoustic_validation": "synthetic interpolation only, not measured ultrasound"
+  },
+  "trunk": {
+    "legacy_kernel_max_abs": 0.0,
+    "view_id_invariance_max_abs": 0.0,
+    "new_to_nearest_legacy_mean_total_variation": [],
+    "ghost_extension": "smooth transport and visibility interpolation of fixed legacy anchor regimes",
+    "acoustic_validation": "synthetic interpolation only, not measured ultrasound"
+  }
+}

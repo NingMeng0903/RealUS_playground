@@ -1,0 +1,361 @@
+{
+  "protocol": "oracle_cem_headroom_v1",
+  "oracle_role": "privileged_world_oracle_offline_search",
+  "public_history_rerank_hook": "public_score_single_step_only",
+  "baseline": "complete MPC: public 10Hz observe/recondition, informative=True, allow_recover=True",
+  "intervention": "up to two 1s relative s/x ProDMP segments, then identical MPC tail",
+  "parameter_order": [
+    "seg0_delta_s_mm",
+    "seg0_delta_x_mm",
+    "seg1_delta_s_mm",
+    "seg1_delta_x_mm"
+  ],
+  "parameter_low": [
+    -6.0,
+    -8.5,
+    -6.0,
+    -8.5
+  ],
+  "parameter_high": [
+    7.8,
+    8.5,
+    7.8,
+    8.5
+  ],
+  "cases": [
+    {
+      "case": 0,
+      "seed": 4100000,
+      "checkpoint_frame": 30,
+      "reason": "recovery_trigger",
+      "prefix_wrong": false,
+      "headroom_eligible": true,
+      "mode": "revisit",
+      "theta": [
+        -4.222131905301461,
+        2.464601463335359,
+        -1.2618072333418509,
+        3.5956819411387158
+      ],
+      "baseline_success": "7/8",
+      "selected_success": "8/8",
+      "baseline_wrong": 0,
+      "selected_wrong": 0,
+      "selected_search_utility": 3.847630503125969,
+      "selected_verify_utility": 3.8510325269688477
+    },
+    {
+      "case": 1,
+      "seed": 4101000,
+      "checkpoint_frame": 10,
+      "reason": "loss",
+      "prefix_wrong": false,
+      "headroom_eligible": true,
+      "mode": "advance",
+      "theta": [
+        2.239948489726485,
+        0.6173727945549496,
+        6.332025199494625,
+        -0.4582753490981192
+      ],
+      "baseline_success": "7/8",
+      "selected_success": "6/8",
+      "baseline_wrong": 0,
+      "selected_wrong": 0,
+      "selected_search_utility": 3.8773295956100657,
+      "selected_verify_utility": 2.857897244630881
+    },
+    {
+      "case": 2,
+      "seed": 4102001,
+      "checkpoint_frame": 10,
+      "reason": "loss",
+      "prefix_wrong": false,
+      "headroom_eligible": true,
+      "mode": "advance",
+      "theta": [
+        1.3060428114153348,
+        -0.8341443121520085,
+        5.13805030485858,
+        -0.6934876015361837
+      ],
+      "baseline_success": "7/8",
+      "selected_success": "8/8",
+      "baseline_wrong": 0,
+      "selected_wrong": 0,
+      "selected_search_utility": 3.9026999422314423,
+      "selected_verify_utility": 3.887798813264369
+    },
+    {
+      "case": 3,
+      "seed": 4103000,
+      "checkpoint_frame": 30,
+      "reason": "loss",
+      "prefix_wrong": false,
+      "headroom_eligible": true,
+      "mode": "revisit",
+      "theta": [
+        -3.6367179733324466,
+        0.9788071218281857,
+        -2.0731059023532357,
+        -5.510032918030033
+      ],
+      "baseline_success": "6/8",
+      "selected_success": "8/8",
+      "baseline_wrong": 0,
+      "selected_wrong": 0,
+      "selected_search_utility": 3.8489775020757766,
+      "selected_verify_utility": 3.847104498757291
+    },
+    {
+      "case": 4,
+      "seed": 4104000,
+      "checkpoint_frame": 30,
+      "reason": "loss",
+      "prefix_wrong": false,
+      "headroom_eligible": true,
+      "mode": "right",
+      "theta": [
+        0.14800569504290673,
+        2.8907291414628045,
+        -4.069022938698561,
+        -3.876975812700866
+      ],
+      "baseline_success": "8/8",
+      "selected_success": "8/8",
+      "baseline_wrong": 0,
+      "selected_wrong": 0,
+      "selected_search_utility": 3.84484937033045,
+      "selected_verify_utility": 3.841625126639469
+    },
+    {
+      "case": 5,
+      "seed": 4105001,
+      "checkpoint_frame": 30,
+      "reason": "loss",
+      "prefix_wrong": false,
+      "headroom_eligible": true,
+      "mode": "revisit",
+      "theta": [
+        -4.806733155280931,
+        0.46272134494362377,
+        0.31373550535706585,
+        1.6243065792206401
+      ],
+      "baseline_success": "8/8",
+      "selected_success": "8/8",
+      "baseline_wrong": 0,
+      "selected_wrong": 0,
+      "selected_search_utility": 3.8527258241278846,
+      "selected_verify_utility": 3.84758962103791
+    },
+    {
+      "case": 6,
+      "seed": 4106000,
+      "checkpoint_frame": 10,
+      "reason": "loss",
+      "prefix_wrong": false,
+      "headroom_eligible": true,
+      "mode": "full_mpc_incumbent",
+      "theta": null,
+      "baseline_success": "4/8",
+      "selected_success": "4/8",
+      "baseline_wrong": 0,
+      "selected_wrong": 0,
+      "selected_search_utility": 3.8123377243020062,
+      "selected_verify_utility": 1.8177656994417648
+    },
+    {
+      "case": 7,
+      "seed": 4107000,
+      "checkpoint_frame": 30,
+      "reason": "loss",
+      "prefix_wrong": false,
+      "headroom_eligible": true,
+      "mode": "left",
+      "theta": [
+        1.4568918717258792,
+        -8.255572303298422,
+        1.2436489219140219,
+        0.4419893015429883
+      ],
+      "baseline_success": "8/8",
+      "selected_success": "8/8",
+      "baseline_wrong": 0,
+      "selected_wrong": 0,
+      "selected_search_utility": 3.894962800076486,
+      "selected_verify_utility": 3.8939149129299695
+    },
+    {
+      "case": 8,
+      "seed": 4108000,
+      "checkpoint_frame": 10,
+      "reason": "loss",
+      "prefix_wrong": false,
+      "headroom_eligible": true,
+      "mode": "left",
+      "theta": [
+        2.694561178059936,
+        -3.5358364041470938,
+        -0.36168650311414186,
+        2.3080952207513117
+      ],
+      "baseline_success": "4/8",
+      "selected_success": "7/8",
+      "baseline_wrong": 0,
+      "selected_wrong": 0,
+      "selected_search_utility": 3.859732192615743,
+      "selected_verify_utility": 3.364006541087343
+    },
+    {
+      "case": 9,
+      "seed": 4109001,
+      "checkpoint_frame": 30,
+      "reason": "recovery_trigger",
+      "prefix_wrong": false,
+      "headroom_eligible": true,
+      "mode": "right",
+      "theta": [
+        -3.9214391109633038,
+        5.0676791502509175,
+        3.036118119257145,
+        0.38183603060094606
+      ],
+      "baseline_success": "7/8",
+      "selected_success": "8/8",
+      "baseline_wrong": 0,
+      "selected_wrong": 0,
+      "selected_search_utility": 3.8566959367665747,
+      "selected_verify_utility": 3.852760171702957
+    },
+    {
+      "case": 10,
+      "seed": 4110000,
+      "checkpoint_frame": 30,
+      "reason": "recovery_trigger",
+      "prefix_wrong": false,
+      "headroom_eligible": true,
+      "mode": "advance",
+      "theta": [
+        7.19794084889771,
+        1.7926623542870004,
+        6.4319623828772965,
+        -0.32991186753414137
+      ],
+      "baseline_success": "0/8",
+      "selected_success": "0/8",
+      "baseline_wrong": 0,
+      "selected_wrong": 0,
+      "selected_search_utility": -0.11649036695121451,
+      "selected_verify_utility": -0.11629692870420696
+    },
+    {
+      "case": 11,
+      "seed": 4111001,
+      "checkpoint_frame": 10,
+      "reason": "loss",
+      "prefix_wrong": false,
+      "headroom_eligible": true,
+      "mode": "advance",
+      "theta": [
+        6.020807119732515,
+        1.0599617363420482,
+        7.397467717383934,
+        5.054632287358189
+      ],
+      "baseline_success": "6/8",
+      "selected_success": "5/8",
+      "baseline_wrong": 0,
+      "selected_wrong": 0,
+      "selected_search_utility": 3.9062991196168864,
+      "selected_verify_utility": 2.368774332918479
+    },
+    {
+      "case": 12,
+      "seed": 4112001,
+      "checkpoint_frame": 30,
+      "reason": "recovery_trigger",
+      "prefix_wrong": false,
+      "headroom_eligible": true,
+      "mode": "right",
+      "theta": [
+        -4.2340145070984665,
+        8.5,
+        -0.5454437168558313,
+        -0.8265106406655759
+      ],
+      "baseline_success": "7/8",
+      "selected_success": "8/8",
+      "baseline_wrong": 0,
+      "selected_wrong": 0,
+      "selected_search_utility": 3.850163957512244,
+      "selected_verify_utility": 3.8506057945458716
+    },
+    {
+      "case": 13,
+      "seed": 4113000,
+      "checkpoint_frame": 30,
+      "reason": "loss",
+      "prefix_wrong": false,
+      "headroom_eligible": true,
+      "mode": "revisit",
+      "theta": [
+        -3.4795284430784355,
+        -1.2686590890928855,
+        -3.8227305007666708,
+        0.5654195213684005
+      ],
+      "baseline_success": "8/8",
+      "selected_success": "8/8",
+      "baseline_wrong": 0,
+      "selected_wrong": 0,
+      "selected_search_utility": 3.8587784041816393,
+      "selected_verify_utility": 3.844063190897244
+    },
+    {
+      "case": 14,
+      "seed": 4114000,
+      "checkpoint_frame": 30,
+      "reason": "loss",
+      "prefix_wrong": false,
+      "headroom_eligible": true,
+      "mode": "full_mpc_incumbent",
+      "theta": null,
+      "baseline_success": "8/8",
+      "selected_success": "8/8",
+      "baseline_wrong": 0,
+      "selected_wrong": 0,
+      "selected_search_utility": 3.846587940906403,
+      "selected_verify_utility": 3.8409558747886328
+    },
+    {
+      "case": 15,
+      "seed": 4115002,
+      "checkpoint_frame": 10,
+      "reason": "loss",
+      "prefix_wrong": false,
+      "headroom_eligible": true,
+      "mode": "advance",
+      "theta": [
+        1.8302152272273242,
+        0.305397150261878,
+        2.929236176899553,
+        -1.874997343769175
+      ],
+      "baseline_success": "7/8",
+      "selected_success": "8/8",
+      "baseline_wrong": 0,
+      "selected_wrong": 0,
+      "selected_search_utility": 3.8828603021143904,
+      "selected_verify_utility": 3.8979347522619174
+    }
+  ],
+  "archive": "/home/camp/Documents/Codex/2026-11-13/ieee-t-ro-b-mpc-b/work/RealUS_playground/NMI_idea/experiments/ab_search_embedding_a_20261117/results/oracle_cem_dev16/oracle_cem_cases.jsonl.gz",
+  "elapsed_s": 112.98302118900028,
+  "limitations": [
+    "CEM reads hidden evaluator fields only during offline search; it is not a deployable policy.",
+    "The comparison is an expanded continuous-action/search upper bound until MPC receives the same action library.",
+    "Record.details strict success permanently counts any earlier wrong acceptance as failure; correction after wrong submission needs a new ledger and is not tested.",
+    "No hidden transition coordinate, role label, or target packet selects an action."
+  ]
+}

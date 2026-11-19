@@ -1,0 +1,32 @@
+{
+  "daughter/anchor/MPC": {
+    "n": 16,
+    "correct": 6,
+    "wrong": 1
+  },
+  "daughter/anchor/B": {
+    "n": 16,
+    "correct": 6,
+    "wrong": 1
+  },
+  "daughter/anchor/unguarded": {
+    "n": 16,
+    "correct": 3,
+    "wrong": 1
+  },
+  "trunk/anchor/MPC": {
+    "n": 16,
+    "correct": 15,
+    "wrong": 0
+  },
+  "trunk/anchor/B": {
+    "n": 16,
+    "correct": 15,
+    "wrong": 0
+  },
+  "trunk/anchor/unguarded": {
+    "n": 16,
+    "correct": 13,
+    "wrong": 1
+  }
+}

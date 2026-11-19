@@ -1,0 +1,62 @@
+{
+  "daughter/coarse/MPC": {
+    "n": 12,
+    "correct": 2,
+    "wrong": 0
+  },
+  "daughter/coarse/B": {
+    "n": 12,
+    "correct": 2,
+    "wrong": 0
+  },
+  "daughter/coarse/unguarded": {
+    "n": 12,
+    "correct": 1,
+    "wrong": 0
+  },
+  "daughter/anchor/MPC": {
+    "n": 12,
+    "correct": 3,
+    "wrong": 2
+  },
+  "daughter/anchor/B": {
+    "n": 12,
+    "correct": 3,
+    "wrong": 2
+  },
+  "daughter/anchor/unguarded": {
+    "n": 12,
+    "correct": 4,
+    "wrong": 1
+  },
+  "trunk/coarse/MPC": {
+    "n": 12,
+    "correct": 10,
+    "wrong": 0
+  },
+  "trunk/coarse/B": {
+    "n": 12,
+    "correct": 10,
+    "wrong": 0
+  },
+  "trunk/coarse/unguarded": {
+    "n": 12,
+    "correct": 10,
+    "wrong": 0
+  },
+  "trunk/anchor/MPC": {
+    "n": 12,
+    "correct": 10,
+    "wrong": 1
+  },
+  "trunk/anchor/B": {
+    "n": 12,
+    "correct": 10,
+    "wrong": 1
+  },
+  "trunk/anchor/unguarded": {
+    "n": 12,
+    "correct": 9,
+    "wrong": 0
+  }
+}

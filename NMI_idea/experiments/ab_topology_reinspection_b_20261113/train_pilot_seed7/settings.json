@@ -1,0 +1,49 @@
+{
+  "arms": [
+    "ppo",
+    "mlp",
+    "cql"
+  ],
+  "cases": 128,
+  "checkpoint_dir": null,
+  "cohort": [
+    723112,
+    723212,
+    "development"
+  ],
+  "dev_cases": 96,
+  "fork_tolerance_mm": 5.0,
+  "grid": 5,
+  "interactions": 64000,
+  "prefix": 5,
+  "prescan_caps": [
+    142.0,
+    114.0,
+    401.0
+  ],
+  "prior_seed": 723101,
+  "prior_size": 256,
+  "seconds_per_acquisition": 1.6,
+  "seed": 7,
+  "source_sha256": {
+    "association": "f38a8ff62a5bdb96e3774112cb34b1dd150af80d46fa54145c2f2074351e6103",
+    "atlas": "e61ff1a05ca957674d3b146dc225b96cce61286094f0e1da052b5874c8219180",
+    "base_bank": "f834013839500edcb686a08b045bb4c909d35164620f4056e45cf93d1b78d32f",
+    "core.py": "41821524a3b5c07e08983b46f06455b5d08f64e57dfb3253b080237640175803",
+    "diagonal_bank": "470d1732dab2f7a89ae67f73fec2f2874c1aeda287a351f133aec78bda4fbb3b",
+    "learner.py": "5b188163ba69d70b0be5a5d4ae384a43832cc8eca4d5fc98de27f5e9aa7d3b02",
+    "plan.py": "4e80988a0f1b8b674a9c57d0990cc9ea92cf9f0cc69b200be6d2bd1ce6ca6b4a",
+    "run_topology.py": "2f467db8a66d929d68c203afdd2b5679185a25c6f6f7468f0767084373ce3af6",
+    "suffix.py": "f5aea6c1d64e199ebdd5a2bf0f07dc0c5a0b8b3db85b7ef5fcd2f6aba5bb6645",
+    "train.py": "0b080c9b0f5e7b6ef66f0a12723f53ad6b51721492ce00b5846fda39e75162d8",
+    "world.py": "ceddb6d4fa7cffb5ed9d765c8c1419409adc9142cea84f74cd322b2145ea863a"
+  },
+  "split": "dev",
+  "suffix": 8,
+  "suffix_caps": [
+    65.0,
+    90.0,
+    250.0
+  ],
+  "train_cases": 768
+}

@@ -1,0 +1,12 @@
+{
+  "original_training_sha256": "fbd0ca72c48322e6c5b99e649b8a07492bcff1415d62ed68a181ff34c27a2aaf",
+  "additional_tasks": 96,
+  "additional_candidates": 2016,
+  "pooled_tasks": 320,
+  "pooled_first_interval_tasks": 112,
+  "frozen_sha256": {
+    "models.joblib": "2e5e76d525a23d186cee55f6a869438cc6bfb4270b4d30290945907f9ab3f351",
+    "additional_training.jsonl.gz": "29abf6f740b0c43f198cfd9ee72263b1f4129f28bec7a8425f60b146bb1869c1",
+    "test_starts.jsonl.gz": "5c87a2551840033906da32dfeeddc491dfdff6a1702c6c6f7369eadd34887033"
+  }
+}

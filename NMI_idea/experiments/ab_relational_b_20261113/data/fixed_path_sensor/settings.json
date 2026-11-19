@@ -1,0 +1,16 @@
+{
+  "sensor": "data/sensor",
+  "grid": 3,
+  "n_cases": 192,
+  "bank_sha256": "a29cad4b5fe37760093e312c5be7a140d7905252c51fe42905908b9fad339e47",
+  "sources": {
+    "acoustics.py": "b36b5b49ab57460553c2061779f121e69ac4e10d831e10f13d7317a39502cc39",
+    "control.py": "bfe70e6965d4272152f4c063781725f66058b50f3be463c9e8a406f42a7f5982",
+    "run.py": "cc70d16ac34d76a24756c9e8d468e0b9a7418c205851276ca82a55b6bf7b0954"
+  },
+  "arms": [
+    "legacy_nearest_7x7",
+    "matched_nearest",
+    "all_returns"
+  ]
+}

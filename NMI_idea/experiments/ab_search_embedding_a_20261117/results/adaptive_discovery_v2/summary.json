@@ -1,0 +1,180 @@
+{
+  "worlds": 36,
+  "paired_worlds": 36,
+  "positives_for_nominal_fit": 21,
+  "fitted": true,
+  "checkpoint_types": {
+    "target_invisible": 11,
+    "tracking": 17,
+    "visible_unassociated": 6,
+    "confident_wrong": 2
+  },
+  "comparison": {
+    "worlds": 36,
+    "replicas_per_world": 6,
+    "means": {
+      "mpc": {
+        "corrected_complete": 0.33333333333333326,
+        "old_strict_complete": 0.33333333333333326,
+        "final_wrong": 0.06944444444444445,
+        "ever_wrong": 0.06944444444444445,
+        "new_centered_mistake": 0.06944444444444445,
+        "fresh_query_confirmed": 0.5324074074074074,
+        "target_reappeared": 0.7777777777777778,
+        "tcp_mm": 39.45650144511917,
+        "turn_degs": 7.430378189360356,
+        "seconds": 6.685185185185187,
+        "frames": 67.85185185185185,
+        "feedback_revisions": 22.912037037037035,
+        "wrong_certificates": 0.2638888888888889,
+        "wrong_card_seconds": 0.45462962962962966,
+        "retractions": 0.0
+      },
+      "cem": {
+        "corrected_complete": 0.7129629629629628,
+        "old_strict_complete": 0.6620370370370369,
+        "final_wrong": 0.0,
+        "ever_wrong": 0.05555555555555555,
+        "new_centered_mistake": 0.05555555555555555,
+        "fresh_query_confirmed": 0.9074074074074073,
+        "target_reappeared": 0.9166666666666666,
+        "tcp_mm": 43.47608858955843,
+        "turn_degs": 8.310603882613055,
+        "seconds": 6.50925925925926,
+        "frames": 66.0925925925926,
+        "feedback_revisions": 27.462962962962973,
+        "wrong_certificates": 0.1111111111111111,
+        "wrong_card_seconds": 0.09074074074074075,
+        "retractions": 0.1111111111111111
+      }
+    },
+    "vs_reference": {
+      "cem": {
+        "corrected_complete": {
+          "delta": 0.37962962962962954,
+          "ci95": [
+            0.25,
+            0.5138888888888888
+          ]
+        },
+        "old_strict_complete": {
+          "delta": 0.3287037037037036,
+          "ci95": [
+            0.19907407407407413,
+            0.4583333333333333
+          ]
+        },
+        "final_wrong": {
+          "delta": -0.06944444444444445,
+          "ci95": [
+            -0.1527777777777778,
+            -0.004629629629629629
+          ]
+        },
+        "ever_wrong": {
+          "delta": -0.013888888888888895,
+          "ci95": [
+            -0.037037037037037035,
+            0.0
+          ]
+        },
+        "new_centered_mistake": {
+          "delta": -0.013888888888888895,
+          "ci95": [
+            -0.037037037037037035,
+            0.0
+          ]
+        },
+        "fresh_query_confirmed": {
+          "delta": 0.3749999999999999,
+          "ci95": [
+            0.24074074074074078,
+            0.5138888888888888
+          ]
+        },
+        "target_reappeared": {
+          "delta": 0.13888888888888884,
+          "ci95": [
+            0.027777777777777776,
+            0.25
+          ]
+        },
+        "tcp_mm": {
+          "delta": 4.019587144439257,
+          "ci95": [
+            1.2100338937538813,
+            7.135782108240376
+          ]
+        },
+        "turn_degs": {
+          "delta": 0.8802256932526991,
+          "ci95": [
+            0.1228379559784018,
+            1.7244594040731789
+          ]
+        },
+        "seconds": {
+          "delta": -0.17592592592592649,
+          "ci95": [
+            -0.5324074074074076,
+            0.17129629629629628
+          ]
+        },
+        "frames": {
+          "delta": -1.7592592592592524,
+          "ci95": [
+            -5.324074074074074,
+            1.712962962962963
+          ]
+        },
+        "feedback_revisions": {
+          "delta": 4.550925925925938,
+          "ci95": [
+            2.12488425925926,
+            7.1993055555555525
+          ]
+        },
+        "wrong_certificates": {
+          "delta": -0.1527777777777778,
+          "ci95": [
+            -0.3333333333333333,
+            -0.004629629629629629
+          ]
+        },
+        "wrong_card_seconds": {
+          "delta": -0.36388888888888893,
+          "ci95": [
+            -0.7893518518518516,
+            -0.024074074074074074
+          ]
+        },
+        "retractions": {
+          "delta": 0.1111111111111111,
+          "ci95": [
+            0.0,
+            0.2777777777777778
+          ]
+        }
+      }
+    }
+  },
+  "config": {
+    "phase": "discover",
+    "out": "results/adaptive_discovery_v2",
+    "cases": 12,
+    "families": [
+      "connection",
+      "parallel",
+      "wrong_prior"
+    ],
+    "replicas": 6,
+    "population": 6,
+    "iterations": 2,
+    "search_samples": 3,
+    "public_samples": 6,
+    "offset": 0,
+    "jobs": 16,
+    "fit": null
+  },
+  "elapsed_s": 34.737627034999605
+}

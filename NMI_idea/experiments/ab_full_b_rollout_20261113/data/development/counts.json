@@ -1,0 +1,142 @@
+{
+  "daughter/coarse/MPC": {
+    "n": 24,
+    "correct": 7,
+    "wrong": 4
+  },
+  "daughter/coarse/B": {
+    "n": 24,
+    "correct": 7,
+    "wrong": 4
+  },
+  "daughter/coarse/one": {
+    "n": 24,
+    "correct": 7,
+    "wrong": 4
+  },
+  "daughter/coarse/fixed": {
+    "n": 24,
+    "correct": 7,
+    "wrong": 4
+  },
+  "daughter/coarse/status": {
+    "n": 24,
+    "correct": 7,
+    "wrong": 4
+  },
+  "daughter/coarse/single_realization": {
+    "n": 24,
+    "correct": 7,
+    "wrong": 4
+  },
+  "daughter/coarse/unguarded": {
+    "n": 24,
+    "correct": 6,
+    "wrong": 4
+  },
+  "daughter/anchor/MPC": {
+    "n": 24,
+    "correct": 7,
+    "wrong": 5
+  },
+  "daughter/anchor/B": {
+    "n": 24,
+    "correct": 7,
+    "wrong": 5
+  },
+  "daughter/anchor/one": {
+    "n": 24,
+    "correct": 7,
+    "wrong": 5
+  },
+  "daughter/anchor/fixed": {
+    "n": 24,
+    "correct": 7,
+    "wrong": 5
+  },
+  "daughter/anchor/status": {
+    "n": 24,
+    "correct": 7,
+    "wrong": 5
+  },
+  "daughter/anchor/single_realization": {
+    "n": 24,
+    "correct": 7,
+    "wrong": 4
+  },
+  "daughter/anchor/unguarded": {
+    "n": 24,
+    "correct": 6,
+    "wrong": 3
+  },
+  "trunk/coarse/MPC": {
+    "n": 24,
+    "correct": 21,
+    "wrong": 2
+  },
+  "trunk/coarse/B": {
+    "n": 24,
+    "correct": 21,
+    "wrong": 2
+  },
+  "trunk/coarse/one": {
+    "n": 24,
+    "correct": 21,
+    "wrong": 2
+  },
+  "trunk/coarse/fixed": {
+    "n": 24,
+    "correct": 21,
+    "wrong": 2
+  },
+  "trunk/coarse/status": {
+    "n": 24,
+    "correct": 21,
+    "wrong": 2
+  },
+  "trunk/coarse/single_realization": {
+    "n": 24,
+    "correct": 21,
+    "wrong": 2
+  },
+  "trunk/coarse/unguarded": {
+    "n": 24,
+    "correct": 21,
+    "wrong": 2
+  },
+  "trunk/anchor/MPC": {
+    "n": 24,
+    "correct": 21,
+    "wrong": 2
+  },
+  "trunk/anchor/B": {
+    "n": 24,
+    "correct": 21,
+    "wrong": 2
+  },
+  "trunk/anchor/one": {
+    "n": 24,
+    "correct": 21,
+    "wrong": 2
+  },
+  "trunk/anchor/fixed": {
+    "n": 24,
+    "correct": 21,
+    "wrong": 2
+  },
+  "trunk/anchor/status": {
+    "n": 24,
+    "correct": 21,
+    "wrong": 2
+  },
+  "trunk/anchor/single_realization": {
+    "n": 24,
+    "correct": 21,
+    "wrong": 2
+  },
+  "trunk/anchor/unguarded": {
+    "n": 24,
+    "correct": 21,
+    "wrong": 2
+  }
+}

@@ -1,0 +1,259 @@
+{
+  "split": [
+    {
+      "family": "connection",
+      "context": "natural",
+      "seed": 71000000
+    },
+    {
+      "family": "connection",
+      "context": "natural",
+      "seed": 71000001
+    },
+    {
+      "family": "connection",
+      "context": "natural",
+      "seed": 71000002
+    },
+    {
+      "family": "connection",
+      "context": "natural",
+      "seed": 71000003
+    },
+    {
+      "family": "connection",
+      "context": "natural",
+      "seed": 71000004
+    },
+    {
+      "family": "connection",
+      "context": "natural",
+      "seed": 71000005
+    },
+    {
+      "family": "connection",
+      "context": "natural",
+      "seed": 71000006
+    },
+    {
+      "family": "connection",
+      "context": "natural",
+      "seed": 71000007
+    },
+    {
+      "family": "connection",
+      "context": "natural",
+      "seed": 71000008
+    },
+    {
+      "family": "connection",
+      "context": "natural",
+      "seed": 71000009
+    },
+    {
+      "family": "connection",
+      "context": "natural",
+      "seed": 71000010
+    },
+    {
+      "family": "connection",
+      "context": "natural",
+      "seed": 71000011
+    },
+    {
+      "family": "connection",
+      "context": "burst",
+      "seed": 71010000
+    },
+    {
+      "family": "connection",
+      "context": "burst",
+      "seed": 71010001
+    },
+    {
+      "family": "connection",
+      "context": "burst",
+      "seed": 71010002
+    },
+    {
+      "family": "connection",
+      "context": "burst",
+      "seed": 71010003
+    },
+    {
+      "family": "connection",
+      "context": "burst",
+      "seed": 71010004
+    },
+    {
+      "family": "connection",
+      "context": "burst",
+      "seed": 71010005
+    },
+    {
+      "family": "connection",
+      "context": "burst",
+      "seed": 71010006
+    },
+    {
+      "family": "connection",
+      "context": "burst",
+      "seed": 71010007
+    },
+    {
+      "family": "connection",
+      "context": "burst",
+      "seed": 71010008
+    },
+    {
+      "family": "connection",
+      "context": "burst",
+      "seed": 71010009
+    },
+    {
+      "family": "connection",
+      "context": "burst",
+      "seed": 71010010
+    },
+    {
+      "family": "connection",
+      "context": "burst",
+      "seed": 71010011
+    },
+    {
+      "family": "parallel",
+      "context": "natural",
+      "seed": 71020000
+    },
+    {
+      "family": "parallel",
+      "context": "natural",
+      "seed": 71020001
+    },
+    {
+      "family": "parallel",
+      "context": "natural",
+      "seed": 71020002
+    },
+    {
+      "family": "parallel",
+      "context": "natural",
+      "seed": 71020003
+    },
+    {
+      "family": "parallel",
+      "context": "natural",
+      "seed": 71020004
+    },
+    {
+      "family": "parallel",
+      "context": "natural",
+      "seed": 71020005
+    },
+    {
+      "family": "parallel",
+      "context": "natural",
+      "seed": 71020006
+    },
+    {
+      "family": "parallel",
+      "context": "natural",
+      "seed": 71020007
+    },
+    {
+      "family": "parallel",
+      "context": "natural",
+      "seed": 71020008
+    },
+    {
+      "family": "parallel",
+      "context": "natural",
+      "seed": 71020009
+    },
+    {
+      "family": "parallel",
+      "context": "natural",
+      "seed": 71020010
+    },
+    {
+      "family": "parallel",
+      "context": "natural",
+      "seed": 71020011
+    },
+    {
+      "family": "parallel",
+      "context": "burst",
+      "seed": 71030000
+    },
+    {
+      "family": "parallel",
+      "context": "burst",
+      "seed": 71030001
+    },
+    {
+      "family": "parallel",
+      "context": "burst",
+      "seed": 71030002
+    },
+    {
+      "family": "parallel",
+      "context": "burst",
+      "seed": 71030003
+    },
+    {
+      "family": "parallel",
+      "context": "burst",
+      "seed": 71030004
+    },
+    {
+      "family": "parallel",
+      "context": "burst",
+      "seed": 71030005
+    },
+    {
+      "family": "parallel",
+      "context": "burst",
+      "seed": 71030006
+    },
+    {
+      "family": "parallel",
+      "context": "burst",
+      "seed": 71030007
+    },
+    {
+      "family": "parallel",
+      "context": "burst",
+      "seed": 71030008
+    },
+    {
+      "family": "parallel",
+      "context": "burst",
+      "seed": 71030009
+    },
+    {
+      "family": "parallel",
+      "context": "burst",
+      "seed": 71030010
+    },
+    {
+      "family": "parallel",
+      "context": "burst",
+      "seed": 71030011
+    }
+  ],
+  "same_public_selector": true,
+  "same_action_budget": true,
+  "source_digests": {
+    "results/startup_b_new_library_v1/library.json": "311d64449d58a7bb0a21c02a2f7ed253ebabc60c4dd55f317a6d6186d2caab20",
+    "results/identity_recovery_data_v1/models.joblib": "0c89b44d2d2a9d9e0eb691de7ee9e868ead502c3a150bf63e38615aa9802fb45",
+    "results/startup_b_new_library_v1/prodmp_fit.npy": "2c0d6d4e7decdfc6f9fd98428f3e529a48f143342473527f60be08de9f9f5571",
+    "MATERIAL_SURFACE.json": "79f085421f1408ed021521996311d5c573ad7eaf08b244c035c5326494ff3520"
+  },
+  "code_digests": {
+    "run.py": "47fb1c524f4a69e66fd8aa8cdae5789d0cb5e98d6ab89bd7dae9130fda0a0a47",
+    "study.py": "9f11e434f79233d7c5230ffd2612a6903770c61a373f021862e1d79d5caa41dd",
+    "teacher_scores.py": "08230a5f150b5a4d3883ae07e313670f4cc49f5a767390877f7e940d469a1033"
+  },
+  "scenario_sha256": "e6179c482177f504f6d9a442e29e3335aa5a061fd64d2ae0fb2bcbe36cb13986",
+  "archive_sha256": "cc835fde7a253eed45c89ad5fb062b0688f7aeda84dbbda1fe3af64b4ca8da25"
+}

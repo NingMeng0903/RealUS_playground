@@ -1,0 +1,14 @@
+{
+  "train": {
+    "cases": 192,
+    "candidates": 4029,
+    "closed_loops": 32232,
+    "sha256": "64aa6565c0c685181d34843e6e6f5026d0cfb88448cdf1ad5c613121ddeb2931"
+  },
+  "dev": {
+    "cases": 64,
+    "candidates": 1344,
+    "closed_loops": 10752,
+    "sha256": "b898f82c0d6ed29eae265a324a454c29e4c55053e0c709ccbb0863d2ac188759"
+  }
+}

@@ -1,0 +1,956 @@
+{
+  "connection": {
+    "worlds": 28,
+    "replicas_per_world": 3,
+    "means": {
+      "mpc_shared_menu": {
+        "corrected_complete": 0.5476190476190476,
+        "old_strict_complete": 0.5476190476190476,
+        "final_wrong": 0.0,
+        "ever_wrong": 0.0,
+        "new_centered_mistake": 0.0,
+        "fresh_query_confirmed": 0.8928571428571429,
+        "target_reappeared": 1.0,
+        "tcp_mm": 40.93918613721373,
+        "turn_degs": 6.7825221833363925,
+        "seconds": 6.023809523809524,
+        "frames": 61.23809523809524,
+        "feedback_revisions": 26.250000000000004,
+        "wrong_certificates": 0.0,
+        "wrong_card_seconds": 0.0,
+        "retractions": 0.0
+      },
+      "public_unconstrained": {
+        "corrected_complete": 0.6785714285714287,
+        "old_strict_complete": 0.6785714285714287,
+        "final_wrong": 0.0,
+        "ever_wrong": 0.0,
+        "new_centered_mistake": 0.0,
+        "fresh_query_confirmed": 1.0,
+        "target_reappeared": 1.0,
+        "tcp_mm": 39.63765971401323,
+        "turn_degs": 6.874553620029211,
+        "seconds": 5.714285714285714,
+        "frames": 58.142857142857146,
+        "feedback_revisions": 27.96428571428572,
+        "wrong_certificates": 0.0,
+        "wrong_card_seconds": 0.0,
+        "retractions": 0.0
+      },
+      "public_budgeted": {
+        "corrected_complete": 0.6785714285714287,
+        "old_strict_complete": 0.6785714285714287,
+        "final_wrong": 0.0,
+        "ever_wrong": 0.0,
+        "new_centered_mistake": 0.0,
+        "fresh_query_confirmed": 1.0,
+        "target_reappeared": 1.0,
+        "tcp_mm": 38.467248467825605,
+        "turn_degs": 6.6889681743833345,
+        "seconds": 5.583333333333333,
+        "frames": 56.833333333333336,
+        "feedback_revisions": 27.27380952380953,
+        "wrong_certificates": 0.0,
+        "wrong_card_seconds": 0.0,
+        "retractions": 0.0
+      }
+    },
+    "vs_reference": {
+      "public_unconstrained": {
+        "corrected_complete": {
+          "delta": 0.13095238095238115,
+          "ci95": [
+            0.03571428571428571,
+            0.25
+          ]
+        },
+        "old_strict_complete": {
+          "delta": 0.13095238095238115,
+          "ci95": [
+            0.03571428571428571,
+            0.25
+          ]
+        },
+        "final_wrong": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        },
+        "ever_wrong": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        },
+        "new_centered_mistake": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        },
+        "fresh_query_confirmed": {
+          "delta": 0.1071428571428571,
+          "ci95": [
+            0.011904761904761906,
+            0.22619047619047622
+          ]
+        },
+        "target_reappeared": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        },
+        "tcp_mm": {
+          "delta": -1.3015264232004995,
+          "ci95": [
+            -3.599058590198608,
+            1.2570150853592323
+          ]
+        },
+        "turn_degs": {
+          "delta": 0.09203143669281832,
+          "ci95": [
+            -0.2741806209990254,
+            0.5185050461830008
+          ]
+        },
+        "seconds": {
+          "delta": -0.3095238095238093,
+          "ci95": [
+            -0.6666666666666667,
+            0.04761904761904764
+          ]
+        },
+        "frames": {
+          "delta": -3.095238095238095,
+          "ci95": [
+            -6.666666666666667,
+            0.47619047619047655
+          ]
+        },
+        "feedback_revisions": {
+          "delta": 1.7142857142857153,
+          "ci95": [
+            -0.3931547619047621,
+            4.0476190476190474
+          ]
+        },
+        "wrong_certificates": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        },
+        "wrong_card_seconds": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        },
+        "retractions": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        }
+      },
+      "public_budgeted": {
+        "corrected_complete": {
+          "delta": 0.13095238095238115,
+          "ci95": [
+            0.03571428571428571,
+            0.25
+          ]
+        },
+        "old_strict_complete": {
+          "delta": 0.13095238095238115,
+          "ci95": [
+            0.03571428571428571,
+            0.25
+          ]
+        },
+        "final_wrong": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        },
+        "ever_wrong": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        },
+        "new_centered_mistake": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        },
+        "fresh_query_confirmed": {
+          "delta": 0.1071428571428571,
+          "ci95": [
+            0.011904761904761906,
+            0.22619047619047622
+          ]
+        },
+        "target_reappeared": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        },
+        "tcp_mm": {
+          "delta": -2.471937669388126,
+          "ci95": [
+            -4.210334365915203,
+            -0.8680740490362553
+          ]
+        },
+        "turn_degs": {
+          "delta": -0.09355400895305799,
+          "ci95": [
+            -0.3875023826273405,
+            0.22556288477180853
+          ]
+        },
+        "seconds": {
+          "delta": -0.4404761904761907,
+          "ci95": [
+            -0.75,
+            -0.1547619047619048
+          ]
+        },
+        "frames": {
+          "delta": -4.404761904761905,
+          "ci95": [
+            -7.5,
+            -1.547619047619048
+          ]
+        },
+        "feedback_revisions": {
+          "delta": 1.0238095238095255,
+          "ci95": [
+            -0.8333333333333331,
+            3.214285714285715
+          ]
+        },
+        "wrong_certificates": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        },
+        "wrong_card_seconds": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        },
+        "retractions": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        }
+      }
+    },
+    "gates": {
+      "public_unconstrained": {
+        "completion": true,
+        "at_most_margin": {
+          "tcp_mm": true,
+          "turn_degs": true,
+          "seconds": true,
+          "frames": true
+        },
+        "within_margin": {
+          "tcp_mm": false,
+          "turn_degs": true,
+          "seconds": false,
+          "frames": false
+        },
+        "risk": {
+          "final_wrong": true,
+          "new_centered_mistake": true
+        }
+      },
+      "public_budgeted": {
+        "completion": true,
+        "at_most_margin": {
+          "tcp_mm": true,
+          "turn_degs": true,
+          "seconds": true,
+          "frames": true
+        },
+        "within_margin": {
+          "tcp_mm": false,
+          "turn_degs": true,
+          "seconds": false,
+          "frames": false
+        },
+        "risk": {
+          "final_wrong": true,
+          "new_centered_mistake": true
+        }
+      }
+    }
+  },
+  "parallel": {
+    "worlds": 28,
+    "replicas_per_world": 3,
+    "means": {
+      "mpc_shared_menu": {
+        "corrected_complete": 0.19047619047619047,
+        "old_strict_complete": 0.19047619047619047,
+        "final_wrong": 0.0,
+        "ever_wrong": 0.0,
+        "new_centered_mistake": 0.0,
+        "fresh_query_confirmed": 0.32142857142857145,
+        "target_reappeared": 0.32142857142857145,
+        "tcp_mm": 37.59656317067895,
+        "turn_degs": 7.14788126480605,
+        "seconds": 7.511904761904761,
+        "frames": 76.11904761904762,
+        "feedback_revisions": 20.3452380952381,
+        "wrong_certificates": 0.0,
+        "wrong_card_seconds": 0.0,
+        "retractions": 0.0
+      },
+      "public_unconstrained": {
+        "corrected_complete": 0.619047619047619,
+        "old_strict_complete": 0.619047619047619,
+        "final_wrong": 0.011904761904761904,
+        "ever_wrong": 0.011904761904761904,
+        "new_centered_mistake": 0.011904761904761904,
+        "fresh_query_confirmed": 0.7857142857142857,
+        "target_reappeared": 0.7857142857142857,
+        "tcp_mm": 48.07972862387867,
+        "turn_degs": 10.559742267425795,
+        "seconds": 7.6309523809523805,
+        "frames": 77.30952380952382,
+        "feedback_revisions": 30.98809523809524,
+        "wrong_certificates": 0.011904761904761904,
+        "wrong_card_seconds": 0.017857142857142856,
+        "retractions": 0.0
+      },
+      "public_budgeted": {
+        "corrected_complete": 0.21428571428571427,
+        "old_strict_complete": 0.21428571428571427,
+        "final_wrong": 0.011904761904761904,
+        "ever_wrong": 0.011904761904761904,
+        "new_centered_mistake": 0.011904761904761904,
+        "fresh_query_confirmed": 0.32142857142857145,
+        "target_reappeared": 0.32142857142857145,
+        "tcp_mm": 36.5938924389604,
+        "turn_degs": 7.190788385711298,
+        "seconds": 7.607142857142856,
+        "frames": 77.07142857142858,
+        "feedback_revisions": 20.238095238095237,
+        "wrong_certificates": 0.011904761904761904,
+        "wrong_card_seconds": 0.017857142857142856,
+        "retractions": 0.0
+      }
+    },
+    "vs_reference": {
+      "public_unconstrained": {
+        "corrected_complete": {
+          "delta": 0.4285714285714285,
+          "ci95": [
+            0.25,
+            0.6071428571428571
+          ]
+        },
+        "old_strict_complete": {
+          "delta": 0.4285714285714285,
+          "ci95": [
+            0.25,
+            0.6071428571428571
+          ]
+        },
+        "final_wrong": {
+          "delta": 0.011904761904761904,
+          "ci95": [
+            0.0,
+            0.03571428571428571
+          ]
+        },
+        "ever_wrong": {
+          "delta": 0.011904761904761904,
+          "ci95": [
+            0.0,
+            0.03571428571428571
+          ]
+        },
+        "new_centered_mistake": {
+          "delta": 0.011904761904761904,
+          "ci95": [
+            0.0,
+            0.03571428571428571
+          ]
+        },
+        "fresh_query_confirmed": {
+          "delta": 0.46428571428571425,
+          "ci95": [
+            0.25,
+            0.6785714285714286
+          ]
+        },
+        "target_reappeared": {
+          "delta": 0.46428571428571425,
+          "ci95": [
+            0.25,
+            0.6785714285714286
+          ]
+        },
+        "tcp_mm": {
+          "delta": 10.483165453199724,
+          "ci95": [
+            6.310203666718486,
+            14.7251182724338
+          ]
+        },
+        "turn_degs": {
+          "delta": 3.4118610026197453,
+          "ci95": [
+            2.121073413955303,
+            4.7359524529791
+          ]
+        },
+        "seconds": {
+          "delta": 0.11904761904761951,
+          "ci95": [
+            0.02380952380952382,
+            0.23809523809523808
+          ]
+        },
+        "frames": {
+          "delta": 1.190476190476204,
+          "ci95": [
+            0.23809523809523828,
+            2.3809523809523805
+          ]
+        },
+        "feedback_revisions": {
+          "delta": 10.642857142857142,
+          "ci95": [
+            6.702380952380955,
+            14.607440476190472
+          ]
+        },
+        "wrong_certificates": {
+          "delta": 0.011904761904761904,
+          "ci95": [
+            0.0,
+            0.03571428571428571
+          ]
+        },
+        "wrong_card_seconds": {
+          "delta": 0.017857142857142856,
+          "ci95": [
+            0.0,
+            0.05357142857142857
+          ]
+        },
+        "retractions": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        }
+      },
+      "public_budgeted": {
+        "corrected_complete": {
+          "delta": 0.023809523809523808,
+          "ci95": [
+            -0.02380952380952381,
+            0.08333333333333334
+          ]
+        },
+        "old_strict_complete": {
+          "delta": 0.023809523809523808,
+          "ci95": [
+            -0.02380952380952381,
+            0.08333333333333334
+          ]
+        },
+        "final_wrong": {
+          "delta": 0.011904761904761904,
+          "ci95": [
+            0.0,
+            0.03571428571428571
+          ]
+        },
+        "ever_wrong": {
+          "delta": 0.011904761904761904,
+          "ci95": [
+            0.0,
+            0.03571428571428571
+          ]
+        },
+        "new_centered_mistake": {
+          "delta": 0.011904761904761904,
+          "ci95": [
+            0.0,
+            0.03571428571428571
+          ]
+        },
+        "fresh_query_confirmed": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        },
+        "target_reappeared": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        },
+        "tcp_mm": {
+          "delta": -1.0026707317185455,
+          "ci95": [
+            -2.214169219086859,
+            -0.16744434058603855
+          ]
+        },
+        "turn_degs": {
+          "delta": 0.042907120905248064,
+          "ci95": [
+            -0.07017096241765998,
+            0.1585648838547002
+          ]
+        },
+        "seconds": {
+          "delta": 0.0952380952380949,
+          "ci95": [
+            0.0,
+            0.21428571428571427
+          ]
+        },
+        "frames": {
+          "delta": 0.9523809523809632,
+          "ci95": [
+            0.0,
+            2.142857142857143
+          ]
+        },
+        "feedback_revisions": {
+          "delta": -0.1071428571428612,
+          "ci95": [
+            -1.4999999999999996,
+            1.1785714285714286
+          ]
+        },
+        "wrong_certificates": {
+          "delta": 0.011904761904761904,
+          "ci95": [
+            0.0,
+            0.03571428571428571
+          ]
+        },
+        "wrong_card_seconds": {
+          "delta": 0.017857142857142856,
+          "ci95": [
+            0.0,
+            0.05357142857142857
+          ]
+        },
+        "retractions": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        }
+      }
+    },
+    "gates": {
+      "public_unconstrained": {
+        "completion": true,
+        "at_most_margin": {
+          "tcp_mm": false,
+          "turn_degs": false,
+          "seconds": false,
+          "frames": false
+        },
+        "within_margin": {
+          "tcp_mm": false,
+          "turn_degs": false,
+          "seconds": false,
+          "frames": false
+        },
+        "risk": {
+          "final_wrong": false,
+          "new_centered_mistake": false
+        }
+      },
+      "public_budgeted": {
+        "completion": false,
+        "at_most_margin": {
+          "tcp_mm": true,
+          "turn_degs": true,
+          "seconds": false,
+          "frames": false
+        },
+        "within_margin": {
+          "tcp_mm": false,
+          "turn_degs": true,
+          "seconds": false,
+          "frames": false
+        },
+        "risk": {
+          "final_wrong": false,
+          "new_centered_mistake": false
+        }
+      }
+    }
+  },
+  "pooled": {
+    "worlds": 56,
+    "replicas_per_world": 3,
+    "means": {
+      "mpc_shared_menu": {
+        "corrected_complete": 0.369047619047619,
+        "old_strict_complete": 0.369047619047619,
+        "final_wrong": 0.0,
+        "ever_wrong": 0.0,
+        "new_centered_mistake": 0.0,
+        "fresh_query_confirmed": 0.6071428571428571,
+        "target_reappeared": 0.6607142857142857,
+        "tcp_mm": 39.26787465394634,
+        "turn_degs": 6.96520172407122,
+        "seconds": 6.767857142857143,
+        "frames": 68.67857142857143,
+        "feedback_revisions": 23.297619047619047,
+        "wrong_certificates": 0.0,
+        "wrong_card_seconds": 0.0,
+        "retractions": 0.0
+      },
+      "public_unconstrained": {
+        "corrected_complete": 0.6488095238095237,
+        "old_strict_complete": 0.6488095238095237,
+        "final_wrong": 0.005952380952380952,
+        "ever_wrong": 0.005952380952380952,
+        "new_centered_mistake": 0.005952380952380952,
+        "fresh_query_confirmed": 0.8928571428571429,
+        "target_reappeared": 0.8928571428571429,
+        "tcp_mm": 43.85869416894597,
+        "turn_degs": 8.717147943727502,
+        "seconds": 6.672619047619048,
+        "frames": 67.72619047619047,
+        "feedback_revisions": 29.476190476190478,
+        "wrong_certificates": 0.005952380952380952,
+        "wrong_card_seconds": 0.008928571428571428,
+        "retractions": 0.0
+      },
+      "public_budgeted": {
+        "corrected_complete": 0.4464285714285715,
+        "old_strict_complete": 0.4464285714285715,
+        "final_wrong": 0.005952380952380952,
+        "ever_wrong": 0.005952380952380952,
+        "new_centered_mistake": 0.005952380952380952,
+        "fresh_query_confirmed": 0.6607142857142857,
+        "target_reappeared": 0.6607142857142857,
+        "tcp_mm": 37.53057045339302,
+        "turn_degs": 6.939878280047314,
+        "seconds": 6.595238095238096,
+        "frames": 66.95238095238095,
+        "feedback_revisions": 23.75595238095238,
+        "wrong_certificates": 0.005952380952380952,
+        "wrong_card_seconds": 0.008928571428571428,
+        "retractions": 0.0
+      }
+    },
+    "vs_reference": {
+      "public_unconstrained": {
+        "corrected_complete": {
+          "delta": 0.2797619047619047,
+          "ci95": [
+            0.17261904761904762,
+            0.3988095238095238
+          ]
+        },
+        "old_strict_complete": {
+          "delta": 0.2797619047619047,
+          "ci95": [
+            0.17261904761904762,
+            0.3988095238095238
+          ]
+        },
+        "final_wrong": {
+          "delta": 0.005952380952380952,
+          "ci95": [
+            0.0,
+            0.017857142857142856
+          ]
+        },
+        "ever_wrong": {
+          "delta": 0.005952380952380952,
+          "ci95": [
+            0.0,
+            0.017857142857142856
+          ]
+        },
+        "new_centered_mistake": {
+          "delta": 0.005952380952380952,
+          "ci95": [
+            0.0,
+            0.017857142857142856
+          ]
+        },
+        "fresh_query_confirmed": {
+          "delta": 0.2857142857142858,
+          "ci95": [
+            0.16071428571428573,
+            0.41666666666666663
+          ]
+        },
+        "target_reappeared": {
+          "delta": 0.2321428571428572,
+          "ci95": [
+            0.10714285714285714,
+            0.35714285714285715
+          ]
+        },
+        "tcp_mm": {
+          "delta": 4.59081951499963,
+          "ci95": [
+            1.7664720647866543,
+            7.606214136182185
+          ]
+        },
+        "turn_degs": {
+          "delta": 1.7519462196562818,
+          "ci95": [
+            0.9655283553531598,
+            2.6090505173378427
+          ]
+        },
+        "seconds": {
+          "delta": -0.0952380952380949,
+          "ci95": [
+            -0.3035714285714285,
+            0.10119047619047615
+          ]
+        },
+        "frames": {
+          "delta": -0.9523809523809632,
+          "ci95": [
+            -3.035714285714285,
+            1.0119047619047614
+          ]
+        },
+        "feedback_revisions": {
+          "delta": 6.178571428571431,
+          "ci95": [
+            3.708333333333333,
+            8.857142857142854
+          ]
+        },
+        "wrong_certificates": {
+          "delta": 0.005952380952380952,
+          "ci95": [
+            0.0,
+            0.017857142857142856
+          ]
+        },
+        "wrong_card_seconds": {
+          "delta": 0.008928571428571428,
+          "ci95": [
+            0.0,
+            0.026785714285714284
+          ]
+        },
+        "retractions": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        }
+      },
+      "public_budgeted": {
+        "corrected_complete": {
+          "delta": 0.0773809523809525,
+          "ci95": [
+            0.017857142857142856,
+            0.14285714285714288
+          ]
+        },
+        "old_strict_complete": {
+          "delta": 0.0773809523809525,
+          "ci95": [
+            0.017857142857142856,
+            0.14285714285714288
+          ]
+        },
+        "final_wrong": {
+          "delta": 0.005952380952380952,
+          "ci95": [
+            0.0,
+            0.017857142857142856
+          ]
+        },
+        "ever_wrong": {
+          "delta": 0.005952380952380952,
+          "ci95": [
+            0.0,
+            0.017857142857142856
+          ]
+        },
+        "new_centered_mistake": {
+          "delta": 0.005952380952380952,
+          "ci95": [
+            0.0,
+            0.017857142857142856
+          ]
+        },
+        "fresh_query_confirmed": {
+          "delta": 0.0535714285714286,
+          "ci95": [
+            0.005952380952380953,
+            0.11309523809523811
+          ]
+        },
+        "target_reappeared": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        },
+        "tcp_mm": {
+          "delta": -1.737304200553325,
+          "ci95": [
+            -2.799341072134244,
+            -0.7859935588269726
+          ]
+        },
+        "turn_degs": {
+          "delta": -0.02532344402390585,
+          "ci95": [
+            -0.18202370967230924,
+            0.15085752039488257
+          ]
+        },
+        "seconds": {
+          "delta": -0.17261904761904745,
+          "ci95": [
+            -0.3571428571428572,
+            -0.005952380952380963
+          ]
+        },
+        "frames": {
+          "delta": -1.7261904761904816,
+          "ci95": [
+            -3.5714285714285725,
+            -0.059523809523809694
+          ]
+        },
+        "feedback_revisions": {
+          "delta": 0.45833333333333215,
+          "ci95": [
+            -0.7321428571428571,
+            1.7678571428571428
+          ]
+        },
+        "wrong_certificates": {
+          "delta": 0.005952380952380952,
+          "ci95": [
+            0.0,
+            0.017857142857142856
+          ]
+        },
+        "wrong_card_seconds": {
+          "delta": 0.008928571428571428,
+          "ci95": [
+            0.0,
+            0.026785714285714284
+          ]
+        },
+        "retractions": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        }
+      }
+    },
+    "gates": {
+      "public_unconstrained": {
+        "completion": true,
+        "at_most_margin": {
+          "tcp_mm": false,
+          "turn_degs": false,
+          "seconds": false,
+          "frames": false
+        },
+        "within_margin": {
+          "tcp_mm": false,
+          "turn_degs": false,
+          "seconds": false,
+          "frames": false
+        },
+        "risk": {
+          "final_wrong": true,
+          "new_centered_mistake": true
+        }
+      },
+      "public_budgeted": {
+        "completion": true,
+        "at_most_margin": {
+          "tcp_mm": true,
+          "turn_degs": true,
+          "seconds": true,
+          "frames": true
+        },
+        "within_margin": {
+          "tcp_mm": false,
+          "turn_degs": true,
+          "seconds": false,
+          "frames": false
+        },
+        "risk": {
+          "final_wrong": true,
+          "new_centered_mistake": true
+        }
+      }
+    }
+  },
+  "config": {
+    "out": "results/adaptive_budgeted_v2",
+    "cases": 28,
+    "samples": 12,
+    "replicas": 3,
+    "jobs": 18
+  },
+  "elapsed_s": 50.29138002200125,
+  "prediction_caps": {
+    "tcp_mm": 2.0,
+    "turn_degs": 2.0,
+    "seconds": 0.1,
+    "final_wrong": 0.02,
+    "new_centered_mistake": 0.02
+  }
+}

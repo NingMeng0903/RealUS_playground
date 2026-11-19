@@ -1,0 +1,630 @@
+{
+  "shapes": {
+    "reference": {
+      "beta": [
+        0.7497693083949906,
+        0.050389516900993706,
+        -0.03001714143996312,
+        0.08189267944603904,
+        -0.0021207984097881723,
+        0.016629353580370956,
+        -0.009940500563490932,
+        -0.0010628271762014151,
+        -0.01275786197769593,
+        0.004657044145225384
+      ],
+      "knee_deg": 15.0,
+      "certificate": {
+        "method": "outward_bernstein_interval_sylvester_strong_monotonicity",
+        "certificate_pass": true,
+        "global_injective": true,
+        "scope": "continuous periodic spline on convex solid cylinder; shell inherits injectivity",
+        "roundoff_scope": "directed interval polynomial/trig bounds; C1 spline gluing checked to recorded tolerance",
+        "coefficient_gluing": {
+          "pass": true,
+          "value_tolerance_m": 1e-10,
+          "derivative_tolerance": 1e-08,
+          "surface_h_value_m": 2.220446049250313e-16,
+          "surface_h_derivative": 1.1299826092187049e-15,
+          "surface_theta_value_m": 2.220446049250313e-16,
+          "surface_theta_derivative": 4.163336342344337e-17,
+          "core_value_m": 2.220446049250313e-16,
+          "core_derivative": 2.220446049250313e-16
+        },
+        "radial_endpoints": [
+          0.0,
+          1.0
+        ],
+        "same_preconditioner_at_both_endpoints": true,
+        "minimum_required_margin": 1e-08,
+        "max_subdivision_depth": 8,
+        "preconditioner": [
+          [
+            -0.01934991249444649,
+            -1.2442524416290766,
+            -0.27443846181116516
+          ],
+          [
+            16.841999944247267,
+            -1.2731499738744747,
+            4.602687096307012
+          ],
+          [
+            -4.1442054568618385,
+            -3.7358256872732993,
+            15.629518105532853
+          ]
+        ],
+        "coordinate_scale": [
+          12.0,
+          1.0,
+          1.0
+        ],
+        "sampled_min_symmetric_eigenvalue": 0.3793115727400233,
+        "sampled_min_cartesian_jacobian_det": 0.0005647737385127438,
+        "certified_min_symmetric_eigenvalue": 0.11167779379037861,
+        "initial_polynomial_cells": 7668,
+        "interval_boxes_evaluated": 7668,
+        "certified_leaf_boxes": 7668,
+        "deepest_subdivision": 0,
+        "unresolved_boxes": 0,
+        "unresolved_examples": [],
+        "reason": "all continuous cells certified"
+      },
+      "lattice_node_count": 62208,
+      "maximum_lattice_position_error_m": 1.0837006604576405e-07,
+      "maximum_graph_depth_knot_error": 2.220446049250313e-16,
+      "inverse_query_count": 4480,
+      "max_inverse_label_error_rad_h_d": [
+        9.529446158840216e-07,
+        1.91642302027617e-09,
+        5.935535422191274e-08
+      ],
+      "max_inverse_roundtrip_m": 1.996134488425953e-09,
+      "vessel_numeric_addresses_preserved": true,
+      "max_vessel_prior_shift_vs_tet_mm": 0.11160802046089835,
+      "probe_pose_comparison": {
+        "queries": 3131,
+        "max_tcp_shift_mm": 0.055418492247581747,
+        "max_rotation_deg": 1.6493916987979406e-14
+      },
+      "finite_difference_join_checks": {
+        "h_knots": {
+          "position_derivative_max_jump_m": 1.7763568394002505e-08,
+          "depth_derivative_max_jump": 9.992007221626409e-09
+        },
+        "periodic_theta_knots": {
+          "position_derivative_max_jump_m": 1.2212453270876722e-08,
+          "depth_derivative_max_jump": 1.27675647831893e-08
+        },
+        "r_knots": {
+          "position_derivative_max_jump_m": 6.661338147750939e-09,
+          "depth_derivative_max_jump": 6.661338147750939e-09
+        }
+      }
+    },
+    "minus-plus": {
+      "beta": [
+        -0.25023069160500944,
+        1.0503895169009938,
+        -0.03001714143996312,
+        0.08189267944603904,
+        -0.0021207984097881723,
+        0.016629353580370956,
+        -0.009940500563490932,
+        -0.0010628271762014151,
+        -0.01275786197769593,
+        0.004657044145225384
+      ],
+      "knee_deg": 15.0,
+      "certificate": {
+        "method": "outward_bernstein_interval_sylvester_strong_monotonicity",
+        "certificate_pass": true,
+        "global_injective": true,
+        "scope": "continuous periodic spline on convex solid cylinder; shell inherits injectivity",
+        "roundoff_scope": "directed interval polynomial/trig bounds; C1 spline gluing checked to recorded tolerance",
+        "coefficient_gluing": {
+          "pass": true,
+          "value_tolerance_m": 1e-10,
+          "derivative_tolerance": 1e-08,
+          "surface_h_value_m": 2.220446049250313e-16,
+          "surface_h_derivative": 1.2363428423395328e-15,
+          "surface_theta_value_m": 2.220446049250313e-16,
+          "surface_theta_derivative": 4.163336342344337e-17,
+          "core_value_m": 2.220446049250313e-16,
+          "core_derivative": 3.3306690738754696e-16
+        },
+        "radial_endpoints": [
+          0.0,
+          1.0
+        ],
+        "same_preconditioner_at_both_endpoints": true,
+        "minimum_required_margin": 1e-08,
+        "max_subdivision_depth": 8,
+        "preconditioner": [
+          [
+            -0.031528284155565085,
+            -1.195776243529693,
+            -0.259136465134802
+          ],
+          [
+            15.499985010305805,
+            -1.1963748110428667,
+            4.169908057254541
+          ],
+          [
+            -3.9095244654932735,
+            -3.492381599400254,
+            14.47824909681965
+          ]
+        ],
+        "coordinate_scale": [
+          12.0,
+          1.0,
+          1.0
+        ],
+        "sampled_min_symmetric_eigenvalue": 0.3959036167990447,
+        "sampled_min_cartesian_jacobian_det": 0.0006737062383447061,
+        "certified_min_symmetric_eigenvalue": 0.12918493578506487,
+        "initial_polynomial_cells": 7668,
+        "interval_boxes_evaluated": 7668,
+        "certified_leaf_boxes": 7668,
+        "deepest_subdivision": 0,
+        "unresolved_boxes": 0,
+        "unresolved_examples": [],
+        "reason": "all continuous cells certified"
+      },
+      "lattice_node_count": 62208,
+      "maximum_lattice_position_error_m": 1.0838086581340081e-07,
+      "maximum_graph_depth_knot_error": 2.220446049250313e-16,
+      "inverse_query_count": 4480,
+      "max_inverse_label_error_rad_h_d": [
+        6.991782801613056e-07,
+        2.116203767776881e-09,
+        5.992377637847879e-08
+      ],
+      "max_inverse_roundtrip_m": 1.9943528300009337e-09,
+      "vessel_numeric_addresses_preserved": true,
+      "max_vessel_prior_shift_vs_tet_mm": 0.11935787934271508,
+      "probe_pose_comparison": {
+        "queries": 3131,
+        "max_tcp_shift_mm": 0.06086862940650646,
+        "max_rotation_deg": 0.08183750274149228
+      },
+      "finite_difference_join_checks": {
+        "h_knots": {
+          "position_derivative_max_jump_m": 1.4432899320127035e-08,
+          "depth_derivative_max_jump": 9.992007221626409e-09
+        },
+        "periodic_theta_knots": {
+          "position_derivative_max_jump_m": 2.220446049250313e-08,
+          "depth_derivative_max_jump": 1.27675647831893e-08
+        },
+        "r_knots": {
+          "position_derivative_max_jump_m": 6.661338147750939e-09,
+          "depth_derivative_max_jump": 6.661338147750939e-09
+        }
+      }
+    },
+    "plus-minus": {
+      "beta": [
+        1.7497693083949906,
+        -0.9496104830990063,
+        -0.03001714143996312,
+        0.08189267944603904,
+        -0.0021207984097881723,
+        0.016629353580370956,
+        -0.009940500563490932,
+        -0.0010628271762014151,
+        -0.01275786197769593,
+        0.004657044145225384
+      ],
+      "knee_deg": 15.0,
+      "certificate": {
+        "method": "outward_bernstein_interval_sylvester_strong_monotonicity",
+        "certificate_pass": true,
+        "global_injective": true,
+        "scope": "continuous periodic spline on convex solid cylinder; shell inherits injectivity",
+        "roundoff_scope": "directed interval polynomial/trig bounds; C1 spline gluing checked to recorded tolerance",
+        "coefficient_gluing": {
+          "pass": true,
+          "value_tolerance_m": 1e-10,
+          "derivative_tolerance": 1e-08,
+          "surface_h_value_m": 2.220446049250313e-16,
+          "surface_h_derivative": 1.0118858875807213e-15,
+          "surface_theta_value_m": 2.220446049250313e-16,
+          "surface_theta_derivative": 4.163336342344337e-17,
+          "core_value_m": 2.220446049250313e-16,
+          "core_derivative": 3.3306690738754696e-16
+        },
+        "radial_endpoints": [
+          0.0,
+          1.0
+        ],
+        "same_preconditioner_at_both_endpoints": true,
+        "minimum_required_margin": 1e-08,
+        "max_subdivision_depth": 8,
+        "preconditioner": [
+          [
+            -0.003590491550207715,
+            -1.296748299565912,
+            -0.2917028556098678
+          ],
+          [
+            18.438211782602565,
+            -1.3630935749192559,
+            5.130864416882984
+          ],
+          [
+            -4.405241475248576,
+            -4.018058509614561,
+            16.98047648832001
+          ]
+        ],
+        "coordinate_scale": [
+          9.0,
+          1.0,
+          1.0
+        ],
+        "sampled_min_symmetric_eigenvalue": 0.35409444445777627,
+        "sampled_min_cartesian_jacobian_det": 0.00046805721928986846,
+        "certified_min_symmetric_eigenvalue": 0.08125751675486265,
+        "initial_polynomial_cells": 7668,
+        "interval_boxes_evaluated": 7668,
+        "certified_leaf_boxes": 7668,
+        "deepest_subdivision": 0,
+        "unresolved_boxes": 0,
+        "unresolved_examples": [],
+        "reason": "all continuous cells certified"
+      },
+      "lattice_node_count": 62208,
+      "maximum_lattice_position_error_m": 1.0820659445390335e-07,
+      "maximum_graph_depth_knot_error": 2.220446049250313e-16,
+      "inverse_query_count": 4480,
+      "max_inverse_label_error_rad_h_d": [
+        1.026475367815749e-06,
+        2.981573321569897e-09,
+        5.8650238075885763e-08
+      ],
+      "max_inverse_roundtrip_m": 1.9994542391023895e-09,
+      "vessel_numeric_addresses_preserved": true,
+      "max_vessel_prior_shift_vs_tet_mm": 0.10398485321313122,
+      "probe_pose_comparison": {
+        "queries": 3131,
+        "max_tcp_shift_mm": 0.05048166965398238,
+        "max_rotation_deg": 0.10238971566512022
+      },
+      "finite_difference_join_checks": {
+        "h_knots": {
+          "position_derivative_max_jump_m": 1.3322676295501878e-08,
+          "depth_derivative_max_jump": 9.992007221626409e-09
+        },
+        "periodic_theta_knots": {
+          "position_derivative_max_jump_m": 1.1102230246251565e-08,
+          "depth_derivative_max_jump": 1.27675647831893e-08
+        },
+        "r_knots": {
+          "position_derivative_max_jump_m": 6.661338147750939e-09,
+          "depth_derivative_max_jump": 6.661338147750939e-09
+        }
+      }
+    },
+    "beta2": {
+      "beta": [
+        0.7497693083949906,
+        0.050389516900993706,
+        0.46998285856003685,
+        0.08189267944603904,
+        -0.0021207984097881723,
+        0.016629353580370956,
+        -0.009940500563490932,
+        -0.0010628271762014151,
+        -0.01275786197769593,
+        0.004657044145225384
+      ],
+      "knee_deg": 15.0,
+      "certificate": {
+        "method": "outward_bernstein_interval_sylvester_strong_monotonicity",
+        "certificate_pass": true,
+        "global_injective": true,
+        "scope": "continuous periodic spline on convex solid cylinder; shell inherits injectivity",
+        "roundoff_scope": "directed interval polynomial/trig bounds; C1 spline gluing checked to recorded tolerance",
+        "coefficient_gluing": {
+          "pass": true,
+          "value_tolerance_m": 1e-10,
+          "derivative_tolerance": 1e-08,
+          "surface_h_value_m": 2.220446049250313e-16,
+          "surface_h_derivative": 9.98834803929427e-16,
+          "surface_theta_value_m": 2.220446049250313e-16,
+          "surface_theta_derivative": 4.163336342344337e-17,
+          "core_value_m": 2.220446049250313e-16,
+          "core_derivative": 2.220446049250313e-16
+        },
+        "radial_endpoints": [
+          0.0,
+          1.0
+        ],
+        "same_preconditioner_at_both_endpoints": true,
+        "minimum_required_margin": 1e-08,
+        "max_subdivision_depth": 8,
+        "preconditioner": [
+          [
+            -0.02442668754456968,
+            -1.2563528254311451,
+            -0.2776010580765061
+          ],
+          [
+            16.55553166822334,
+            -1.256225912363505,
+            4.502718670903619
+          ],
+          [
+            -4.105555164867976,
+            -3.69095585612454,
+            15.407758120472435
+          ]
+        ],
+        "coordinate_scale": [
+          12.0,
+          1.0,
+          1.0
+        ],
+        "sampled_min_symmetric_eigenvalue": 0.38469622108801804,
+        "sampled_min_cartesian_jacobian_det": 0.0005764126118534118,
+        "certified_min_symmetric_eigenvalue": 0.11860158352024405,
+        "initial_polynomial_cells": 7668,
+        "interval_boxes_evaluated": 7668,
+        "certified_leaf_boxes": 7668,
+        "deepest_subdivision": 0,
+        "unresolved_boxes": 0,
+        "unresolved_examples": [],
+        "reason": "all continuous cells certified"
+      },
+      "lattice_node_count": 62208,
+      "maximum_lattice_position_error_m": 1.1046752541294835e-07,
+      "maximum_graph_depth_knot_error": 2.220446049250313e-16,
+      "inverse_query_count": 4480,
+      "max_inverse_label_error_rad_h_d": [
+        1.045198965154981e-06,
+        2.040321633867137e-09,
+        5.9450204308031385e-08
+      ],
+      "max_inverse_roundtrip_m": 1.9963917194874518e-09,
+      "vessel_numeric_addresses_preserved": true,
+      "max_vessel_prior_shift_vs_tet_mm": 0.11284788648194499,
+      "probe_pose_comparison": {
+        "queries": 3131,
+        "max_tcp_shift_mm": 0.05655855632402867,
+        "max_rotation_deg": 0.022946135447395963
+      },
+      "finite_difference_join_checks": {
+        "h_knots": {
+          "position_derivative_max_jump_m": 1.6653345369377348e-08,
+          "depth_derivative_max_jump": 9.992007221626409e-09
+        },
+        "periodic_theta_knots": {
+          "position_derivative_max_jump_m": 1.887379141862766e-08,
+          "depth_derivative_max_jump": 1.27675647831893e-08
+        },
+        "r_knots": {
+          "position_derivative_max_jump_m": 6.661338147750939e-09,
+          "depth_derivative_max_jump": 6.661338147750939e-09
+        }
+      }
+    },
+    "pose25": {
+      "beta": [
+        0.7497693083949906,
+        0.050389516900993706,
+        -0.03001714143996312,
+        0.08189267944603904,
+        -0.0021207984097881723,
+        0.016629353580370956,
+        -0.009940500563490932,
+        -0.0010628271762014151,
+        -0.01275786197769593,
+        0.004657044145225384
+      ],
+      "knee_deg": 25.0,
+      "certificate": {
+        "method": "outward_bernstein_interval_sylvester_strong_monotonicity",
+        "certificate_pass": true,
+        "global_injective": true,
+        "scope": "continuous periodic spline on convex solid cylinder; shell inherits injectivity",
+        "roundoff_scope": "directed interval polynomial/trig bounds; C1 spline gluing checked to recorded tolerance",
+        "coefficient_gluing": {
+          "pass": true,
+          "value_tolerance_m": 1e-10,
+          "derivative_tolerance": 1e-08,
+          "surface_h_value_m": 2.220446049250313e-16,
+          "surface_h_derivative": 1.078781161623077e-15,
+          "surface_theta_value_m": 2.220446049250313e-16,
+          "surface_theta_derivative": 4.163336342344337e-17,
+          "core_value_m": 2.220446049250313e-16,
+          "core_derivative": 3.3306690738754696e-16
+        },
+        "radial_endpoints": [
+          0.0,
+          1.0
+        ],
+        "same_preconditioner_at_both_endpoints": true,
+        "minimum_required_margin": 1e-08,
+        "max_subdivision_depth": 8,
+        "preconditioner": [
+          [
+            -0.022244935124295186,
+            -1.2362776877090094,
+            -0.38499672921675476
+          ],
+          [
+            16.813836506585957,
+            -1.7592006551462458,
+            4.4847995262553955
+          ],
+          [
+            -4.056826554443338,
+            -5.397647297482935,
+            15.295519194012702
+          ]
+        ],
+        "coordinate_scale": [
+          12.0,
+          1.0,
+          1.0
+        ],
+        "sampled_min_symmetric_eigenvalue": 0.3839489631270742,
+        "sampled_min_cartesian_jacobian_det": 0.0005680288004454796,
+        "certified_min_symmetric_eigenvalue": 0.11613170780504467,
+        "initial_polynomial_cells": 7668,
+        "interval_boxes_evaluated": 7668,
+        "certified_leaf_boxes": 7668,
+        "deepest_subdivision": 0,
+        "unresolved_boxes": 0,
+        "unresolved_examples": [],
+        "reason": "all continuous cells certified"
+      },
+      "lattice_node_count": 62208,
+      "maximum_lattice_position_error_m": 1.096430615030667e-07,
+      "maximum_graph_depth_knot_error": 2.220446049250313e-16,
+      "inverse_query_count": 4480,
+      "max_inverse_label_error_rad_h_d": [
+        9.033922800938398e-07,
+        1.975650532060058e-09,
+        5.8894855506363974e-08
+      ],
+      "max_inverse_roundtrip_m": 1.9964531207012133e-09,
+      "vessel_numeric_addresses_preserved": true,
+      "max_vessel_prior_shift_vs_tet_mm": 0.11493045495643738,
+      "probe_pose_comparison": {
+        "queries": 3131,
+        "max_tcp_shift_mm": 0.06534545271410391,
+        "max_rotation_deg": 0.06668685459544066
+      },
+      "finite_difference_join_checks": {
+        "h_knots": {
+          "position_derivative_max_jump_m": 1.7763568394002505e-08,
+          "depth_derivative_max_jump": 9.992007221626409e-09
+        },
+        "periodic_theta_knots": {
+          "position_derivative_max_jump_m": 1.887379141862766e-08,
+          "depth_derivative_max_jump": 1.27675647831893e-08
+        },
+        "r_knots": {
+          "position_derivative_max_jump_m": 6.661338147750939e-09,
+          "depth_derivative_max_jump": 6.661338147750939e-09
+        }
+      }
+    }
+  },
+  "rejection_controls": {
+    "previous_extreme_beta_high_flexion": {
+      "minimum_sampled_disk_determinant": -4.8096267591274756e-05,
+      "gate": {
+        "method": "outward_bernstein_interval_sylvester_strong_monotonicity",
+        "certificate_pass": false,
+        "global_injective": false,
+        "scope": "continuous periodic spline on convex solid cylinder; shell inherits injectivity",
+        "roundoff_scope": "directed interval polynomial/trig bounds; C1 spline gluing checked to recorded tolerance",
+        "coefficient_gluing": {
+          "pass": true,
+          "value_tolerance_m": 1e-10,
+          "derivative_tolerance": 1e-08,
+          "surface_h_value_m": 1.1102230246251565e-16,
+          "surface_h_derivative": 9.144703223828987e-16,
+          "surface_theta_value_m": 1.1102230246251565e-16,
+          "surface_theta_derivative": 4.163336342344337e-17,
+          "core_value_m": 1.1102230246251565e-16,
+          "core_derivative": 3.3306690738754696e-16
+        },
+        "radial_endpoints": [
+          0.0,
+          1.0
+        ],
+        "same_preconditioner_at_both_endpoints": true,
+        "minimum_required_margin": 1e-08,
+        "max_subdivision_depth": 8,
+        "preconditioner": [
+          [
+            -0.07891361462486152,
+            -1.3491766625500723,
+            -1.5699983823590737
+          ],
+          [
+            15.682245054438686,
+            -5.499078358143426,
+            2.6684236839266586
+          ],
+          [
+            -3.575889816934916,
+            -18.38737693651515,
+            10.223833230388237
+          ]
+        ],
+        "coordinate_scale": [
+          16.0,
+          1.0,
+          1.0
+        ],
+        "sampled_min_symmetric_eigenvalue": -0.05525772253285375,
+        "sampled_min_cartesian_jacobian_det": -4.0019338005058375e-05,
+        "reason": "fixed global monotonicity preconditioner has no sampled margin",
+        "elapsed_s": 0.1091032370004541
+      }
+    },
+    "two_to_one_positive_local_jacobian": {
+      "minimum_sampled_disk_determinant": 0.007199992656406524,
+      "duplicate_position_gap_m": 7.47927466628754e-15,
+      "gate": {
+        "method": "outward_bernstein_interval_sylvester_strong_monotonicity",
+        "certificate_pass": false,
+        "global_injective": false,
+        "scope": "continuous periodic spline on convex solid cylinder; shell inherits injectivity",
+        "roundoff_scope": "directed interval polynomial/trig bounds; C1 spline gluing checked to recorded tolerance",
+        "coefficient_gluing": {
+          "pass": true,
+          "value_tolerance_m": 1e-10,
+          "derivative_tolerance": 1e-08,
+          "surface_h_value_m": 0.0,
+          "surface_h_derivative": 3.3306690738754696e-16,
+          "surface_theta_value_m": 6.938893903907228e-18,
+          "surface_theta_derivative": 2.7755575615628914e-17,
+          "core_value_m": 1.1102230246251565e-16,
+          "core_derivative": 3.3306690738754696e-16
+        },
+        "radial_endpoints": [
+          0.0,
+          1.0
+        ],
+        "same_preconditioner_at_both_endpoints": true,
+        "minimum_required_margin": 1e-08,
+        "max_subdivision_depth": 8,
+        "preconditioner": [
+          [
+            1.0,
+            -1.2560939715354104e-17,
+            -3.455347973868024e-17
+          ],
+          [
+            -0.0,
+            -11293852198.241924,
+            -11121176595.176184
+          ],
+          [
+            -0.0,
+            -18331490801.623672,
+            -5093447861.164874
+          ]
+        ],
+        "coordinate_scale": [
+          24.0,
+          1.0,
+          1.0
+        ],
+        "sampled_min_symmetric_eigenvalue": -2869126131.822488,
+        "sampled_min_cartesian_jacobian_det": 0.00719999952971277,
+        "reason": "fixed global monotonicity preconditioner has no sampled margin",
+        "elapsed_s": 0.11922655400121585
+      }
+    }
+  }
+}

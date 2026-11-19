@@ -1,0 +1,58 @@
+{
+  "generator": "evidence_teacher",
+  "features_per_action": 457,
+  "targets_vs_mpc_order": [
+    "corrected_complete",
+    "final_wrong",
+    "new_identity_mistake",
+    "tcp_mm",
+    "turn_degs",
+    "seconds"
+  ],
+  "first_seed": 74400000,
+  "roots_per_family_and_condition": 32,
+  "cells": [
+    [
+      "connection",
+      "natural"
+    ],
+    [
+      "connection",
+      "burst"
+    ],
+    [
+      "parallel",
+      "natural"
+    ],
+    [
+      "parallel",
+      "burst"
+    ]
+  ],
+  "paired_replays_per_action": 8,
+  "source_hashes": {
+    "ab_teacher_generation_20261118/results/teacher_generation_v1/frozen.json": "5db3954b03fbabe5cb2381fb09fcec7f25f762eca8449e4581f8a89fe5ed552d",
+    "ab_teacher_generation_20261118/study.py": "9f11e434f79233d7c5230ffd2612a6903770c61a373f021862e1d79d5caa41dd",
+    "ab_search_embedding_a_20261117/results/startup_b_new_library_v1/library.json": "311d64449d58a7bb0a21c02a2f7ed253ebabc60c4dd55f317a6d6186d2caab20",
+    "ab_search_embedding_a_20261117/results/startup_b_new_library_v1/prodmp_fit.npy": "2c0d6d4e7decdfc6f9fd98428f3e529a48f143342473527f60be08de9f9f5571",
+    "ab_search_embedding_a_20261117/MATERIAL_SURFACE.json": "79f085421f1408ed021521996311d5c573ad7eaf08b244c035c5326494ff3520",
+    "ab_search_embedding_a_20261117/results/window_encoding_v1/calibration.json": "e157ae3dd4fdab69ec89dd7eca75a795418f1fafccd50ac467a6d05fe45e2b25",
+    "ab_search_embedding_a_20261117/results/identity_recovery_data_v1/models.joblib": "0c89b44d2d2a9d9e0eb691de7ee9e868ead502c3a150bf63e38615aa9802fb45",
+    "ab_search_embedding_a_20261117/results/identity_recovery_data_v1/frozen.json": "456df86a76a2e2d9df70257f667e2e3c64e7a64beae89f287a16d32051027421",
+    "ab_search_embedding_a_20261117/results/arbitrary_start_v1/training.jsonl.gz": "fbd0ca72c48322e6c5b99e649b8a07492bcff1415d62ed68a181ff34c27a2aaf",
+    "ab_search_embedding_a_20261117/results/first_interval_data_v1/additional_training.jsonl.gz": "29abf6f740b0c43f198cfd9ee72263b1f4129f28bec7a8425f60b146bb1869c1",
+    "ab_search_embedding_a_20261117/results/identity_recovery_data_v1/unconditioned_train.jsonl.gz": "2eebb169ba0b6a878ff732e16b0dbe0b057ca044ebd1696bb7d24e5beddf5249"
+  },
+  "experiment_sha256": "286541828599c2382d09242507558d581c427ee1ecc991230374db09375d7989",
+  "collector_sha256": "c925f234dfcb1fc97a994943ea6f0f43304694215a9890cb75c453766bb2b3f5",
+  "archive_sha256": "53d7f5fddfe9f3725df14a1cc30490a9b32e3cf382c0839ad449b5a3c13eb572",
+  "counts": {
+    "states": 128,
+    "nominated_rows": 512,
+    "mpc_anchor_rows": 128,
+    "total_paired_replays": 5120,
+    "nominated_completion_below_half": 855,
+    "nominated_final_wrong_above_half": 56,
+    "states_with_at_least_one_eighth_completion_gain_without_added_final_wrong": 30
+  }
+}

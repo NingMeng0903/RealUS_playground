@@ -1,0 +1,13 @@
+{
+  "out": "results/qualified_recovery_v1/frozen",
+  "phase": "collect",
+  "split": "dev",
+  "cases": 32,
+  "jobs": 24,
+  "samples": 8,
+  "replicas": 6,
+  "offset": 40000,
+  "elapsed_s": 98.13615454299725,
+  "library_sha256": "6314e4437cf31318d1f4bbc389add947ab00abf852b4fc60106376b5c2157063",
+  "prodmp_sha256": "a96a71304fa8e04af9bfae18fe03ac6bc502b5a496e6bf7d15d9ec49f4c54d0e"
+}

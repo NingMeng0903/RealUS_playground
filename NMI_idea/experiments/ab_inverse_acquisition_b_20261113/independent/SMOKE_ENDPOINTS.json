@@ -1,0 +1,833 @@
+{
+  "verification": {
+    "source_hashes_verified": 8,
+    "anchor_packets": 4,
+    "proposal_witnesses": 48,
+    "joint_resource_witnesses": 18,
+    "task_suffix_tapes": 16,
+    "paths": 168,
+    "trace_packets": 779,
+    "wrong:daughter:MPC:false_structure": 2,
+    "wrong:daughter:coarse:false_structure": 4,
+    "wrong:daughter:original:false_structure": 4,
+    "wrong:daughter:fixed:false_structure": 4,
+    "wrong:daughter:claim_only:false_structure": 4,
+    "wrong:daughter:fixed_angles:false_structure": 4,
+    "wrong:daughter:6:false_structure": 3,
+    "wrong:daughter:8:false_structure": 3,
+    "wrong:daughter:52:false_structure": 1,
+    "wrong:daughter:10:false_structure": 1
+  },
+  "independent_case_suffix_tapes": 8,
+  "different_source_hashes": [],
+  "mechanism": {
+    "daughter": {
+      "witnessed_first_commands": 8,
+      "witnessed_novel_first_commands": 3,
+      "MPC_paths_using_novel_angles": 5,
+      "claim_only_paths_using_novel_angles": 2,
+      "fixed_angles_paths_using_novel_angles": 4,
+      "cost_screened_halves_agree_cases": 2
+    },
+    "trunk": {
+      "witnessed_first_commands": 10,
+      "witnessed_novel_first_commands": 4,
+      "MPC_paths_using_novel_angles": 3,
+      "claim_only_paths_using_novel_angles": 5,
+      "fixed_angles_paths_using_novel_angles": 8,
+      "cost_screened_halves_agree_cases": 2
+    }
+  },
+  "comparisons": {
+    "daughter": {
+      "split_cost_screened_vs_augmented": {
+        "correct_counts": [
+          2,
+          2
+        ],
+        "wrong_counts": [
+          2,
+          2
+        ],
+        "completion_wins": 0,
+        "completion_losses": 0,
+        "harmful_wrong_pairs": 0,
+        "favorable_wrong_pairs": 0,
+        "correct_delta": 0.0,
+        "correct_ci95": [
+          0.0,
+          0.0
+        ],
+        "wrong_delta": 0.0,
+        "wrong_ci95": [
+          0.0,
+          0.0
+        ],
+        "mean_cost_delta": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "cost_simultaneous_ci95": [
+          [
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0
+          ]
+        ],
+        "strict_equivalence": true,
+        "no_worse": true,
+        "cpu_plus_motion_ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "split_hard_caps_vs_augmented": {
+        "correct_counts": [
+          2,
+          2
+        ],
+        "wrong_counts": [
+          2,
+          2
+        ],
+        "completion_wins": 0,
+        "completion_losses": 0,
+        "harmful_wrong_pairs": 0,
+        "favorable_wrong_pairs": 0,
+        "correct_delta": 0.0,
+        "correct_ci95": [
+          0.0,
+          0.0
+        ],
+        "wrong_delta": 0.0,
+        "wrong_ci95": [
+          0.0,
+          0.0
+        ],
+        "mean_cost_delta": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "cost_simultaneous_ci95": [
+          [
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0
+          ]
+        ],
+        "strict_equivalence": true,
+        "no_worse": true,
+        "cpu_plus_motion_ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "split_cost_screened_vs_fixed": {
+        "correct_counts": [
+          2,
+          1
+        ],
+        "wrong_counts": [
+          2,
+          4
+        ],
+        "completion_wins": 1,
+        "completion_losses": 0,
+        "harmful_wrong_pairs": 0,
+        "favorable_wrong_pairs": 2,
+        "correct_delta": 0.125,
+        "correct_ci95": [
+          0.0,
+          0.25
+        ],
+        "wrong_delta": -0.25,
+        "wrong_ci95": [
+          -0.5,
+          0.0
+        ],
+        "mean_cost_delta": [
+          -3.0935777572048444,
+          -1.1206689918792752,
+          0.375
+        ],
+        "cost_simultaneous_ci95": [
+          [
+            -6.187155514409689,
+            0.0
+          ],
+          [
+            -2.2413379837585503,
+            0.0
+          ],
+          [
+            0.0,
+            0.75
+          ]
+        ],
+        "strict_equivalence": false,
+        "no_worse": false,
+        "cpu_plus_motion_ci95": [
+          0.009956502999999728,
+          0.7664296262500001
+        ]
+      },
+      "augmented_vs_coarse": {
+        "correct_counts": [
+          2,
+          1
+        ],
+        "wrong_counts": [
+          2,
+          4
+        ],
+        "completion_wins": 1,
+        "completion_losses": 0,
+        "harmful_wrong_pairs": 0,
+        "favorable_wrong_pairs": 2,
+        "correct_delta": 0.125,
+        "correct_ci95": [
+          0.0,
+          0.25
+        ],
+        "wrong_delta": -0.25,
+        "wrong_ci95": [
+          -0.5,
+          0.0
+        ],
+        "mean_cost_delta": [
+          -3.453531043014204,
+          -1.3330618073267722,
+          0.375
+        ],
+        "cost_simultaneous_ci95": [
+          [
+            -6.357981653670793,
+            -0.5490804323576155
+          ],
+          [
+            -2.003284400986803,
+            -0.6628392136667411
+          ],
+          [
+            0.0,
+            0.75
+          ]
+        ],
+        "strict_equivalence": false,
+        "no_worse": false,
+        "cpu_plus_motion_ci95": [
+          0.044846084499999606,
+          0.7873746997499997
+        ]
+      },
+      "coarse_vs_original": {
+        "correct_counts": [
+          1,
+          0
+        ],
+        "wrong_counts": [
+          4,
+          4
+        ],
+        "completion_wins": 1,
+        "completion_losses": 0,
+        "harmful_wrong_pairs": 0,
+        "favorable_wrong_pairs": 0,
+        "correct_delta": 0.125,
+        "correct_ci95": [
+          0.0,
+          0.25
+        ],
+        "wrong_delta": 0.0,
+        "wrong_ci95": [
+          0.0,
+          0.0
+        ],
+        "mean_cost_delta": [
+          3.5204611500315797,
+          3.6974821101135706,
+          0.1875
+        ],
+        "cost_simultaneous_ci95": [
+          [
+            1.0357991055317042,
+            6.005123194531455
+          ],
+          [
+            1.9798073028082757,
+            5.415156917418866
+          ],
+          [
+            0.0,
+            0.375
+          ]
+        ],
+        "strict_equivalence": false,
+        "no_worse": false,
+        "cpu_plus_motion_ci95": [
+          0.014808167250000226,
+          0.38778214700000024
+        ]
+      },
+      "augmented_vs_claim_only": {
+        "correct_counts": [
+          2,
+          1
+        ],
+        "wrong_counts": [
+          2,
+          4
+        ],
+        "completion_wins": 1,
+        "completion_losses": 0,
+        "harmful_wrong_pairs": 0,
+        "favorable_wrong_pairs": 2,
+        "correct_delta": 0.125,
+        "correct_ci95": [
+          0.0,
+          0.25
+        ],
+        "wrong_delta": -0.25,
+        "wrong_ci95": [
+          -0.5,
+          0.0
+        ],
+        "mean_cost_delta": [
+          -3.0935777572048444,
+          -1.1206689918792752,
+          0.375
+        ],
+        "cost_simultaneous_ci95": [
+          [
+            -6.187155514409689,
+            0.0
+          ],
+          [
+            -2.2413379837585503,
+            0.0
+          ],
+          [
+            0.0,
+            0.75
+          ]
+        ],
+        "strict_equivalence": false,
+        "no_worse": false,
+        "cpu_plus_motion_ci95": [
+          -0.00157935500000006,
+          0.7573566212499998
+        ]
+      },
+      "augmented_vs_fixed_angles": {
+        "correct_counts": [
+          2,
+          1
+        ],
+        "wrong_counts": [
+          2,
+          4
+        ],
+        "completion_wins": 1,
+        "completion_losses": 0,
+        "harmful_wrong_pairs": 0,
+        "favorable_wrong_pairs": 2,
+        "correct_delta": 0.125,
+        "correct_ci95": [
+          0.0,
+          0.25
+        ],
+        "wrong_delta": -0.25,
+        "wrong_ci95": [
+          -0.5,
+          0.0
+        ],
+        "mean_cost_delta": [
+          -1.9548192372467352,
+          -0.0892817416407583,
+          0.375
+        ],
+        "cost_simultaneous_ci95": [
+          [
+            -4.273530594445076,
+            0.36389211995160586
+          ],
+          [
+            -0.7862223678052911,
+            0.6076588845237745
+          ],
+          [
+            0.0,
+            0.75
+          ]
+        ],
+        "strict_equivalence": false,
+        "no_worse": false,
+        "cpu_plus_motion_ci95": [
+          -9.20197500000608e-05,
+          0.7564553874999995
+        ]
+      },
+      "fixed_vs_augmented": {
+        "correct_counts": [
+          1,
+          2
+        ],
+        "wrong_counts": [
+          4,
+          2
+        ],
+        "completion_wins": 0,
+        "completion_losses": 1,
+        "harmful_wrong_pairs": 2,
+        "favorable_wrong_pairs": 0,
+        "correct_delta": -0.125,
+        "correct_ci95": [
+          -0.25,
+          0.0
+        ],
+        "wrong_delta": 0.25,
+        "wrong_ci95": [
+          0.0,
+          0.5
+        ],
+        "mean_cost_delta": [
+          3.0935777572048444,
+          1.1206689918792752,
+          -0.375
+        ],
+        "cost_simultaneous_ci95": [
+          [
+            0.0,
+            6.187155514409689
+          ],
+          [
+            0.0,
+            2.2413379837585503
+          ],
+          [
+            -0.75,
+            0.0
+          ]
+        ],
+        "strict_equivalence": false,
+        "no_worse": false,
+        "cpu_plus_motion_ci95": [
+          -0.7664296262500001,
+          -0.009956502999999728
+        ]
+      },
+      "same_tape_hindsight_gain": 0.0
+    },
+    "trunk": {
+      "split_cost_screened_vs_augmented": {
+        "correct_counts": [
+          7,
+          7
+        ],
+        "wrong_counts": [
+          0,
+          0
+        ],
+        "completion_wins": 0,
+        "completion_losses": 0,
+        "harmful_wrong_pairs": 0,
+        "favorable_wrong_pairs": 0,
+        "correct_delta": 0.0,
+        "correct_ci95": [
+          0.0,
+          0.0
+        ],
+        "wrong_delta": 0.0,
+        "wrong_ci95": [
+          0.0,
+          0.0
+        ],
+        "mean_cost_delta": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "cost_simultaneous_ci95": [
+          [
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0
+          ]
+        ],
+        "strict_equivalence": true,
+        "no_worse": true,
+        "cpu_plus_motion_ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "split_hard_caps_vs_augmented": {
+        "correct_counts": [
+          7,
+          7
+        ],
+        "wrong_counts": [
+          0,
+          0
+        ],
+        "completion_wins": 0,
+        "completion_losses": 0,
+        "harmful_wrong_pairs": 0,
+        "favorable_wrong_pairs": 0,
+        "correct_delta": 0.0,
+        "correct_ci95": [
+          0.0,
+          0.0
+        ],
+        "wrong_delta": 0.0,
+        "wrong_ci95": [
+          0.0,
+          0.0
+        ],
+        "mean_cost_delta": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "cost_simultaneous_ci95": [
+          [
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0
+          ]
+        ],
+        "strict_equivalence": true,
+        "no_worse": true,
+        "cpu_plus_motion_ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "split_cost_screened_vs_fixed": {
+        "correct_counts": [
+          7,
+          7
+        ],
+        "wrong_counts": [
+          0,
+          0
+        ],
+        "completion_wins": 0,
+        "completion_losses": 0,
+        "harmful_wrong_pairs": 0,
+        "favorable_wrong_pairs": 0,
+        "correct_delta": 0.0,
+        "correct_ci95": [
+          0.0,
+          0.0
+        ],
+        "wrong_delta": 0.0,
+        "wrong_ci95": [
+          0.0,
+          0.0
+        ],
+        "mean_cost_delta": [
+          -2.3471973746454737,
+          -8.151217965518029,
+          0.0
+        ],
+        "cost_simultaneous_ci95": [
+          [
+            -4.6943947492909475,
+            0.0
+          ],
+          [
+            -16.302435931036058,
+            0.0
+          ],
+          [
+            0.0,
+            0.0
+          ]
+        ],
+        "strict_equivalence": false,
+        "no_worse": true,
+        "cpu_plus_motion_ci95": [
+          0.015921509500000264,
+          0.016346059750000252
+        ]
+      },
+      "augmented_vs_coarse": {
+        "correct_counts": [
+          7,
+          7
+        ],
+        "wrong_counts": [
+          0,
+          0
+        ],
+        "completion_wins": 0,
+        "completion_losses": 0,
+        "harmful_wrong_pairs": 0,
+        "favorable_wrong_pairs": 0,
+        "correct_delta": 0.0,
+        "correct_ci95": [
+          0.0,
+          0.0
+        ],
+        "wrong_delta": 0.0,
+        "wrong_ci95": [
+          0.0,
+          0.0
+        ],
+        "mean_cost_delta": [
+          -1.833868801987141,
+          -3.137227869443387,
+          0.0
+        ],
+        "cost_simultaneous_ci95": [
+          [
+            -3.4869761691574865,
+            -0.1807614348167954
+          ],
+          [
+            -5.3157429064954975,
+            -0.9587128323912757
+          ],
+          [
+            0.0,
+            0.0
+          ]
+        ],
+        "strict_equivalence": false,
+        "no_worse": true,
+        "cpu_plus_motion_ci95": [
+          0.034482537499999744,
+          0.03582840625000028
+        ]
+      },
+      "coarse_vs_original": {
+        "correct_counts": [
+          7,
+          7
+        ],
+        "wrong_counts": [
+          0,
+          0
+        ],
+        "completion_wins": 0,
+        "completion_losses": 0,
+        "harmful_wrong_pairs": 0,
+        "favorable_wrong_pairs": 0,
+        "correct_delta": 0.0,
+        "correct_ci95": [
+          0.0,
+          0.0
+        ],
+        "wrong_delta": 0.0,
+        "wrong_ci95": [
+          0.0,
+          0.0
+        ],
+        "mean_cost_delta": [
+          3.1398516365580518,
+          7.977932819628062,
+          0.0
+        ],
+        "cost_simultaneous_ci95": [
+          [
+            0.06853993648127776,
+            6.211163336634826
+          ],
+          [
+            6.181829081295776,
+            9.774036557960349
+          ],
+          [
+            0.0,
+            0.0
+          ]
+        ],
+        "strict_equivalence": false,
+        "no_worse": false,
+        "cpu_plus_motion_ci95": [
+          0.013065395499999743,
+          0.013378034250000281
+        ]
+      },
+      "augmented_vs_claim_only": {
+        "correct_counts": [
+          7,
+          7
+        ],
+        "wrong_counts": [
+          0,
+          0
+        ],
+        "completion_wins": 0,
+        "completion_losses": 0,
+        "harmful_wrong_pairs": 0,
+        "favorable_wrong_pairs": 0,
+        "correct_delta": 0.0,
+        "correct_ci95": [
+          0.0,
+          0.0
+        ],
+        "wrong_delta": 0.0,
+        "wrong_ci95": [
+          0.0,
+          0.0
+        ],
+        "mean_cost_delta": [
+          3.144882170783425,
+          3.8806791935908898,
+          0.0
+        ],
+        "cost_simultaneous_ci95": [
+          [
+            -1.0096982851796783,
+            7.299462626746529
+          ],
+          [
+            0.7250783261708338,
+            7.036280061010945
+          ],
+          [
+            0.0,
+            0.0
+          ]
+        ],
+        "strict_equivalence": false,
+        "no_worse": false,
+        "cpu_plus_motion_ci95": [
+          -0.000348631500000085,
+          0.002883476250000294
+        ]
+      },
+      "augmented_vs_fixed_angles": {
+        "correct_counts": [
+          7,
+          7
+        ],
+        "wrong_counts": [
+          0,
+          0
+        ],
+        "completion_wins": 0,
+        "completion_losses": 0,
+        "harmful_wrong_pairs": 0,
+        "favorable_wrong_pairs": 0,
+        "correct_delta": 0.0,
+        "correct_ci95": [
+          0.0,
+          0.0
+        ],
+        "wrong_delta": 0.0,
+        "wrong_ci95": [
+          0.0,
+          0.0
+        ],
+        "mean_cost_delta": [
+          -0.2168113937865379,
+          -3.455898512895579,
+          0.0
+        ],
+        "cost_simultaneous_ci95": [
+          [
+            -2.72877184077213,
+            2.2951490531990544
+          ],
+          [
+            -8.549377939119053,
+            1.6375809133278953
+          ],
+          [
+            0.0,
+            0.0
+          ]
+        ],
+        "strict_equivalence": false,
+        "no_worse": false,
+        "cpu_plus_motion_ci95": [
+          5.098024999994344e-05,
+          0.002788076500000125
+        ]
+      },
+      "fixed_vs_augmented": {
+        "correct_counts": [
+          7,
+          7
+        ],
+        "wrong_counts": [
+          0,
+          0
+        ],
+        "completion_wins": 0,
+        "completion_losses": 0,
+        "harmful_wrong_pairs": 0,
+        "favorable_wrong_pairs": 0,
+        "correct_delta": 0.0,
+        "correct_ci95": [
+          0.0,
+          0.0
+        ],
+        "wrong_delta": 0.0,
+        "wrong_ci95": [
+          0.0,
+          0.0
+        ],
+        "mean_cost_delta": [
+          2.3471973746454737,
+          8.151217965518029,
+          0.0
+        ],
+        "cost_simultaneous_ci95": [
+          [
+            0.0,
+            4.6943947492909475
+          ],
+          [
+            0.0,
+            16.302435931036058
+          ],
+          [
+            0.0,
+            0.0
+          ]
+        ],
+        "strict_equivalence": false,
+        "no_worse": false,
+        "cpu_plus_motion_ci95": [
+          -0.016346059750000252,
+          -0.015921509500000264
+        ]
+      },
+      "same_tape_hindsight_gain": 0.0
+    }
+  }
+}

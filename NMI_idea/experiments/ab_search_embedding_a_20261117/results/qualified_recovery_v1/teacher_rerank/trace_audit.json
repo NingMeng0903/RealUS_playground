@@ -1,0 +1,11 @@
+{
+  "alias_packet_checks": 81,
+  "archives": {
+    "results/qualified_recovery_v1/teacher_rerank/cases.jsonl.gz": {
+      "worlds": 64,
+      "trajectories": 128,
+      "retractions": 790,
+      "centered_mistakes": 1
+    }
+  }
+}

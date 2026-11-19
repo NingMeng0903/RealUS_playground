@@ -40,11 +40,7 @@ import numpy as np
 
 
 HERE = Path(__file__).resolve().parent
-REFERENCE_MOTION = (
-    Path("/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments")
-    / "ab_observation_stress_20261111"
-    / "motion.py"
-)
+REFERENCE_MOTION = HERE.parent / "ab_observation_stress_20261111" / "motion.py"
 
 LAMBDA = 5.0
 RBF_CENTERS = np.asarray([0.12, 0.36, 0.64, 0.88], dtype=float)

@@ -1,0 +1,492 @@
+{
+  "cases": [
+    {
+      "candidates": [
+        {
+          "claim_confirmed": true,
+          "confidence": 0.9897039382901721,
+          "correct_fresh": false,
+          "duration_s": 1.5,
+          "failure": null,
+          "false_confirm": true,
+          "first_capture_t": 13.637535685352237,
+          "first_path": "3:3>3:2",
+          "first_view": 2,
+          "first_visible": false,
+          "label": -1,
+          "legal_completed": true,
+          "reserve": "narrow",
+          "strict": false,
+          "stroke_mm": 8.0,
+          "tail_path": "3:2>4:2",
+          "tail_view": 2,
+          "terminal_capture_t": 14.487535685352237,
+          "terminal_visible": false,
+          "travel_mm": 24.145809947282302,
+          "turn_deg": null
+        },
+        {
+          "claim_confirmed": false,
+          "confidence": 0.08144439888915428,
+          "correct_fresh": false,
+          "duration_s": 1.5,
+          "failure": null,
+          "false_confirm": false,
+          "first_capture_t": 13.637535685352237,
+          "first_path": "3:3>3:3",
+          "first_view": 3,
+          "first_visible": true,
+          "label": -1,
+          "legal_completed": true,
+          "reserve": "narrow",
+          "strict": false,
+          "stroke_mm": 8.0,
+          "tail_path": "3:3>4:2",
+          "tail_view": 2,
+          "terminal_capture_t": 14.487535685352237,
+          "terminal_visible": false,
+          "travel_mm": 17.413890693824243,
+          "turn_deg": null
+        },
+        {
+          "claim_confirmed": true,
+          "confidence": 0.999335308299011,
+          "correct_fresh": true,
+          "duration_s": 1.5,
+          "failure": null,
+          "false_confirm": false,
+          "first_capture_t": 13.637535685352237,
+          "first_path": "3:3>3:3",
+          "first_view": 3,
+          "first_visible": true,
+          "label": 1,
+          "legal_completed": true,
+          "reserve": "narrow",
+          "strict": true,
+          "stroke_mm": 0.0,
+          "tail_path": "3:3>4:3",
+          "tail_view": 3,
+          "terminal_capture_t": 14.487535685352237,
+          "terminal_visible": true,
+          "travel_mm": 15.518940716060852,
+          "turn_deg": null
+        },
+        {
+          "claim_confirmed": true,
+          "confidence": 0.9994770041776722,
+          "correct_fresh": true,
+          "duration_s": 1.5,
+          "failure": null,
+          "false_confirm": false,
+          "first_capture_t": 13.637535685352237,
+          "first_path": "3:3>3:3",
+          "first_view": 3,
+          "first_visible": true,
+          "label": 1,
+          "legal_completed": true,
+          "reserve": "narrow",
+          "strict": true,
+          "stroke_mm": 8.0,
+          "tail_path": "3:3>4:4",
+          "tail_view": 4,
+          "terminal_capture_t": 14.487535685352237,
+          "terminal_visible": true,
+          "travel_mm": 17.396578849152718,
+          "turn_deg": null
+        },
+        {
+          "claim_confirmed": true,
+          "confidence": 0.9998833768198452,
+          "correct_fresh": true,
+          "duration_s": 1.5,
+          "failure": null,
+          "false_confirm": false,
+          "first_capture_t": 13.637535685352237,
+          "first_path": "3:3>3:4",
+          "first_view": 4,
+          "first_visible": true,
+          "label": 1,
+          "legal_completed": true,
+          "reserve": "narrow",
+          "strict": true,
+          "stroke_mm": 8.0,
+          "tail_path": "3:4>4:4",
+          "tail_view": 4,
+          "terminal_capture_t": 14.487535685352237,
+          "terminal_visible": true,
+          "travel_mm": 22.908172824790192,
+          "turn_deg": null
+        },
+        {
+          "claim_confirmed": true,
+          "confidence": 0.9897039382901721,
+          "correct_fresh": false,
+          "duration_s": 1.5,
+          "failure": null,
+          "false_confirm": true,
+          "first_capture_t": 13.637535685352237,
+          "first_path": "3:3>3:2",
+          "first_view": 2,
+          "first_visible": false,
+          "label": -1,
+          "legal_completed": true,
+          "reserve": "wide",
+          "strict": false,
+          "stroke_mm": 8.0,
+          "tail_path": "3:2>4:2",
+          "tail_view": 2,
+          "terminal_capture_t": 14.487535685352237,
+          "terminal_visible": false,
+          "travel_mm": 24.145809947282302,
+          "turn_deg": null
+        },
+        {
+          "claim_confirmed": false,
+          "confidence": 0.6348018913163016,
+          "correct_fresh": false,
+          "duration_s": 1.5,
+          "failure": null,
+          "false_confirm": false,
+          "first_capture_t": 13.637535685352237,
+          "first_path": "3:3>3:2",
+          "first_view": 2,
+          "first_visible": false,
+          "label": -1,
+          "legal_completed": true,
+          "reserve": "wide",
+          "strict": false,
+          "stroke_mm": 16.0,
+          "tail_path": "3:2>4:3",
+          "tail_view": 3,
+          "terminal_capture_t": 14.487535685352237,
+          "terminal_visible": true,
+          "travel_mm": 26.08011558848884,
+          "turn_deg": null
+        },
+        {
+          "claim_confirmed": false,
+          "confidence": 0.513982929369824,
+          "correct_fresh": false,
+          "duration_s": 1.5,
+          "failure": null,
+          "false_confirm": false,
+          "first_capture_t": 13.637535685352237,
+          "first_path": "3:3>3:2",
+          "first_view": 2,
+          "first_visible": false,
+          "label": 1,
+          "legal_completed": true,
+          "reserve": "wide",
+          "strict": false,
+          "stroke_mm": 24.0,
+          "tail_path": "3:2>4:4",
+          "tail_view": 4,
+          "terminal_capture_t": 14.487535685352237,
+          "terminal_visible": true,
+          "travel_mm": 30.669292217836123,
+          "turn_deg": null
+        },
+        {
+          "claim_confirmed": false,
+          "confidence": 0.08144439888915428,
+          "correct_fresh": false,
+          "duration_s": 1.5,
+          "failure": null,
+          "false_confirm": false,
+          "first_capture_t": 13.637535685352237,
+          "first_path": "3:3>3:3",
+          "first_view": 3,
+          "first_visible": true,
+          "label": -1,
+          "legal_completed": true,
+          "reserve": "wide",
+          "strict": false,
+          "stroke_mm": 8.0,
+          "tail_path": "3:3>4:2",
+          "tail_view": 2,
+          "terminal_capture_t": 14.487535685352237,
+          "terminal_visible": false,
+          "travel_mm": 17.413890693824243,
+          "turn_deg": null
+        },
+        {
+          "claim_confirmed": true,
+          "confidence": 0.999335308299011,
+          "correct_fresh": true,
+          "duration_s": 1.5,
+          "failure": null,
+          "false_confirm": false,
+          "first_capture_t": 13.637535685352237,
+          "first_path": "3:3>3:3",
+          "first_view": 3,
+          "first_visible": true,
+          "label": 1,
+          "legal_completed": true,
+          "reserve": "wide",
+          "strict": true,
+          "stroke_mm": 0.0,
+          "tail_path": "3:3>4:3",
+          "tail_view": 3,
+          "terminal_capture_t": 14.487535685352237,
+          "terminal_visible": true,
+          "travel_mm": 15.518940716060852,
+          "turn_deg": null
+        },
+        {
+          "claim_confirmed": true,
+          "confidence": 0.9994770041776722,
+          "correct_fresh": true,
+          "duration_s": 1.5,
+          "failure": null,
+          "false_confirm": false,
+          "first_capture_t": 13.637535685352237,
+          "first_path": "3:3>3:3",
+          "first_view": 3,
+          "first_visible": true,
+          "label": 1,
+          "legal_completed": true,
+          "reserve": "wide",
+          "strict": true,
+          "stroke_mm": 8.0,
+          "tail_path": "3:3>4:4",
+          "tail_view": 4,
+          "terminal_capture_t": 14.487535685352237,
+          "terminal_visible": true,
+          "travel_mm": 17.396578849152718,
+          "turn_deg": null
+        },
+        {
+          "claim_confirmed": false,
+          "confidence": 0.04432996621391718,
+          "correct_fresh": false,
+          "duration_s": 1.5,
+          "failure": null,
+          "false_confirm": false,
+          "first_capture_t": 13.637535685352237,
+          "first_path": "3:3>3:4",
+          "first_view": 4,
+          "first_visible": true,
+          "label": -1,
+          "legal_completed": true,
+          "reserve": "wide",
+          "strict": false,
+          "stroke_mm": 24.0,
+          "tail_path": "3:4>4:2",
+          "tail_view": 2,
+          "terminal_capture_t": 14.487535685352237,
+          "terminal_visible": false,
+          "travel_mm": 29.771104955016924,
+          "turn_deg": null
+        },
+        {
+          "claim_confirmed": true,
+          "confidence": 0.9988399981415904,
+          "correct_fresh": true,
+          "duration_s": 1.5,
+          "failure": null,
+          "false_confirm": false,
+          "first_capture_t": 13.637535685352237,
+          "first_path": "3:3>3:4",
+          "first_view": 4,
+          "first_visible": true,
+          "label": 1,
+          "legal_completed": true,
+          "reserve": "wide",
+          "strict": true,
+          "stroke_mm": 16.0,
+          "tail_path": "3:4>4:3",
+          "tail_view": 3,
+          "terminal_capture_t": 14.487535685352237,
+          "terminal_visible": true,
+          "travel_mm": 24.865763430515084,
+          "turn_deg": null
+        },
+        {
+          "claim_confirmed": true,
+          "confidence": 0.9998833768198452,
+          "correct_fresh": true,
+          "duration_s": 1.5,
+          "failure": null,
+          "false_confirm": false,
+          "first_capture_t": 13.637535685352237,
+          "first_path": "3:3>3:4",
+          "first_view": 4,
+          "first_visible": true,
+          "label": 1,
+          "legal_completed": true,
+          "reserve": "wide",
+          "strict": true,
+          "stroke_mm": 8.0,
+          "tail_path": "3:4>4:4",
+          "tail_view": 4,
+          "terminal_capture_t": 14.487535685352237,
+          "terminal_visible": true,
+          "travel_mm": 22.908172824790192,
+          "turn_deg": null
+        }
+      ],
+      "index": 0,
+      "seed": 509183131,
+      "summary": {
+        "narrow": {
+          "baseline_correct_fresh": true,
+          "baseline_false_confirm": false,
+          "baseline_pair": [
+            3,
+            4
+          ],
+          "baseline_strict": true,
+          "baseline_terminal_visible": true,
+          "candidate_count": 5,
+          "max_confidence": 0.9998833768198452,
+          "oracle_correct_fresh": true,
+          "oracle_false_safe_strict": true,
+          "oracle_strict": true,
+          "oracle_target_visible": true,
+          "strict_pairs": [
+            [
+              3,
+              3
+            ],
+            [
+              3,
+              4
+            ],
+            [
+              4,
+              4
+            ]
+          ],
+          "target_visible_pairs": [
+            [
+              3,
+              3
+            ],
+            [
+              3,
+              4
+            ],
+            [
+              4,
+              4
+            ]
+          ],
+          "wrong_pairs": [
+            [
+              2,
+              2
+            ]
+          ]
+        },
+        "wide": {
+          "baseline_correct_fresh": true,
+          "baseline_false_confirm": false,
+          "baseline_pair": [
+            3,
+            4
+          ],
+          "baseline_strict": true,
+          "baseline_terminal_visible": true,
+          "candidate_count": 9,
+          "max_confidence": 0.9998833768198452,
+          "oracle_correct_fresh": true,
+          "oracle_false_safe_strict": true,
+          "oracle_strict": true,
+          "oracle_target_visible": true,
+          "strict_pairs": [
+            [
+              3,
+              3
+            ],
+            [
+              3,
+              4
+            ],
+            [
+              4,
+              3
+            ],
+            [
+              4,
+              4
+            ]
+          ],
+          "target_visible_pairs": [
+            [
+              2,
+              3
+            ],
+            [
+              2,
+              4
+            ],
+            [
+              3,
+              3
+            ],
+            [
+              3,
+              4
+            ],
+            [
+              4,
+              3
+            ],
+            [
+              4,
+              4
+            ]
+          ],
+          "wrong_pairs": [
+            [
+              2,
+              2
+            ]
+          ]
+        }
+      }
+    }
+  ],
+  "diagnostic_only": true,
+  "n_cases": 1,
+  "oracle_uses_evaluator_labels": true,
+  "ordinary_planner_uses_public_observations": true,
+  "pooled": {
+    "narrow": {
+      "baseline_correct_fresh": 1,
+      "baseline_failed_but_any_strict": 0,
+      "baseline_failed_but_any_target_visible": 0,
+      "baseline_false_confirm": 0,
+      "baseline_strict": 1,
+      "baseline_terminal_visible": 1,
+      "cases_with_any_wrong_pair": 1,
+      "headroom_correct_fresh_cases": 0,
+      "headroom_strict_cases": 0,
+      "n_cases": 1,
+      "oracle_correct_fresh_cases": 1,
+      "oracle_false_safe_strict_cases": 1,
+      "oracle_strict_cases": 1,
+      "oracle_target_visible_cases": 1
+    },
+    "wide": {
+      "baseline_correct_fresh": 1,
+      "baseline_failed_but_any_strict": 0,
+      "baseline_failed_but_any_target_visible": 0,
+      "baseline_false_confirm": 0,
+      "baseline_strict": 1,
+      "baseline_terminal_visible": 1,
+      "cases_with_any_wrong_pair": 1,
+      "headroom_correct_fresh_cases": 0,
+      "headroom_strict_cases": 0,
+      "n_cases": 1,
+      "oracle_correct_fresh_cases": 1,
+      "oracle_false_safe_strict_cases": 1,
+      "oracle_strict_cases": 1,
+      "oracle_target_visible_cases": 1
+    }
+  },
+  "same_executor_and_capture_clock": true,
+  "same_legal_action_library": true,
+  "schema": "moving_y_same_action_truth_only_headroom_v1",
+  "source_commit": "cdb1705a02f60382ffbe9e42f2ed420e27a28ddb"
+}

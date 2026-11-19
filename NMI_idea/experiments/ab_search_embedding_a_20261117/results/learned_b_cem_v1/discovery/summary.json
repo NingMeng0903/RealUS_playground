@@ -1,0 +1,178 @@
+{
+  "worlds": 96,
+  "paired_worlds": 96,
+  "positives_for_nominal_fit": 29,
+  "fitted": true,
+  "checkpoint_types": {
+    "target_invisible": 40,
+    "visible_unassociated": 3,
+    "tracking": 53
+  },
+  "comparison": {
+    "worlds": 96,
+    "replicas_per_world": 8,
+    "means": {
+      "mpc": {
+        "corrected_complete": 0.3854166666666667,
+        "old_strict_complete": 0.3854166666666667,
+        "final_wrong": 0.0013020833333333333,
+        "ever_wrong": 0.01171875,
+        "new_centered_mistake": 0.0013020833333333333,
+        "fresh_query_confirmed": 0.6067708333333334,
+        "target_reappeared": 0.6549479166666666,
+        "tcp_mm": 37.56519841167722,
+        "turn_degs": 6.979491143206967,
+        "seconds": 6.7109375,
+        "frames": 68.109375,
+        "feedback_revisions": 21.89453125,
+        "wrong_certificates": 0.01171875,
+        "wrong_card_seconds": 0.008854166666666668,
+        "retractions": 0.010416666666666666
+      },
+      "cem": {
+        "corrected_complete": 0.6236979166666666,
+        "old_strict_complete": 0.6236979166666666,
+        "final_wrong": 0.00390625,
+        "ever_wrong": 0.014322916666666666,
+        "new_centered_mistake": 0.00390625,
+        "fresh_query_confirmed": 0.8463541666666666,
+        "target_reappeared": 0.8697916666666666,
+        "tcp_mm": 40.89911050684881,
+        "turn_degs": 8.153990794878693,
+        "seconds": 6.483072916666667,
+        "frames": 65.83072916666667,
+        "feedback_revisions": 25.356770833333332,
+        "wrong_certificates": 0.014322916666666666,
+        "wrong_card_seconds": 0.0140625,
+        "retractions": 0.010416666666666666
+      }
+    },
+    "vs_reference": {
+      "cem": {
+        "corrected_complete": {
+          "delta": 0.23828124999999994,
+          "ci95": [
+            0.16145833333333334,
+            0.3203125
+          ]
+        },
+        "old_strict_complete": {
+          "delta": 0.23828124999999994,
+          "ci95": [
+            0.16145833333333334,
+            0.3203125
+          ]
+        },
+        "final_wrong": {
+          "delta": 0.002604166666666667,
+          "ci95": [
+            0.0,
+            0.006510416666666667
+          ]
+        },
+        "ever_wrong": {
+          "delta": 0.002604166666666666,
+          "ci95": [
+            0.0,
+            0.006510416666666667
+          ]
+        },
+        "new_centered_mistake": {
+          "delta": 0.002604166666666667,
+          "ci95": [
+            0.0,
+            0.006510416666666667
+          ]
+        },
+        "fresh_query_confirmed": {
+          "delta": 0.23958333333333326,
+          "ci95": [
+            0.15885416666666666,
+            0.3255208333333333
+          ]
+        },
+        "target_reappeared": {
+          "delta": 0.21484375,
+          "ci95": [
+            0.13671875,
+            0.2981770833333333
+          ]
+        },
+        "tcp_mm": {
+          "delta": 3.333912095171584,
+          "ci95": [
+            1.4436001050952965,
+            5.354466124141489
+          ]
+        },
+        "turn_degs": {
+          "delta": 1.1744996516717263,
+          "ci95": [
+            0.6553236721450021,
+            1.727430911018249
+          ]
+        },
+        "seconds": {
+          "delta": -0.22786458333333304,
+          "ci95": [
+            -0.37109375,
+            -0.09635416666666667
+          ]
+        },
+        "frames": {
+          "delta": -2.2786458333333286,
+          "ci95": [
+            -3.7109375,
+            -0.9635416666666666
+          ]
+        },
+        "feedback_revisions": {
+          "delta": 3.462239583333332,
+          "ci95": [
+            1.70439453125,
+            5.302115885416666
+          ]
+        },
+        "wrong_certificates": {
+          "delta": 0.002604166666666666,
+          "ci95": [
+            0.0,
+            0.006510416666666667
+          ]
+        },
+        "wrong_card_seconds": {
+          "delta": 0.005208333333333332,
+          "ci95": [
+            -0.0049479166666666664,
+            0.019401041666666664
+          ]
+        },
+        "retractions": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        }
+      }
+    }
+  },
+  "config": {
+    "phase": "discover",
+    "out": "results/learned_b_cem_v1/discovery",
+    "cases": 48,
+    "families": [
+      "connection",
+      "parallel"
+    ],
+    "replicas": 8,
+    "population": 6,
+    "iterations": 2,
+    "search_samples": 4,
+    "public_samples": 6,
+    "offset": 30000,
+    "jobs": 20,
+    "fit": null
+  },
+  "elapsed_s": 71.62028188499971
+}

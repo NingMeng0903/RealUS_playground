@@ -1,0 +1,102 @@
+{
+  "daughter/coarse/MPC": {
+    "n": 192,
+    "correct": 48,
+    "wrong": 20
+  },
+  "daughter/coarse/B": {
+    "n": 192,
+    "correct": 48,
+    "wrong": 20
+  },
+  "daughter/coarse/one": {
+    "n": 192,
+    "correct": 48,
+    "wrong": 20
+  },
+  "daughter/coarse/fixed": {
+    "n": 192,
+    "correct": 48,
+    "wrong": 20
+  },
+  "daughter/coarse/unguarded": {
+    "n": 192,
+    "correct": 52,
+    "wrong": 18
+  },
+  "daughter/anchor/MPC": {
+    "n": 192,
+    "correct": 57,
+    "wrong": 18
+  },
+  "daughter/anchor/B": {
+    "n": 192,
+    "correct": 57,
+    "wrong": 18
+  },
+  "daughter/anchor/one": {
+    "n": 192,
+    "correct": 57,
+    "wrong": 18
+  },
+  "daughter/anchor/fixed": {
+    "n": 192,
+    "correct": 57,
+    "wrong": 18
+  },
+  "daughter/anchor/unguarded": {
+    "n": 192,
+    "correct": 57,
+    "wrong": 29
+  },
+  "trunk/coarse/MPC": {
+    "n": 192,
+    "correct": 160,
+    "wrong": 10
+  },
+  "trunk/coarse/B": {
+    "n": 192,
+    "correct": 160,
+    "wrong": 10
+  },
+  "trunk/coarse/one": {
+    "n": 192,
+    "correct": 160,
+    "wrong": 10
+  },
+  "trunk/coarse/fixed": {
+    "n": 192,
+    "correct": 160,
+    "wrong": 10
+  },
+  "trunk/coarse/unguarded": {
+    "n": 192,
+    "correct": 162,
+    "wrong": 10
+  },
+  "trunk/anchor/MPC": {
+    "n": 192,
+    "correct": 162,
+    "wrong": 10
+  },
+  "trunk/anchor/B": {
+    "n": 192,
+    "correct": 162,
+    "wrong": 10
+  },
+  "trunk/anchor/one": {
+    "n": 192,
+    "correct": 162,
+    "wrong": 10
+  },
+  "trunk/anchor/fixed": {
+    "n": 192,
+    "correct": 162,
+    "wrong": 10
+  },
+  "trunk/anchor/unguarded": {
+    "n": 192,
+    "correct": 159,
+    "wrong": 9
+  }
+}

@@ -1,0 +1,61 @@
+{
+  "n_cases": 1,
+  "output": "/home/camp/Documents/Codex/2026-11-13/ieee-t-ro-b-mpc-b/work/noise_headroom/NOISE_HEADROOM_1x2.json",
+  "replicates_per_root_per_case": 2,
+  "schema": "moving_y_suffix_noise_headroom_v1",
+  "summary": {
+    "cross_fitted_per_case": {
+      "case_rows": [
+        {
+          "best_root_test": 3,
+          "best_root_train": 3,
+          "index": 0,
+          "noise_dependent": false,
+          "stable_positive": false,
+          "test_advantage": 0.0,
+          "test_rates": {
+            "2": 1.0,
+            "3": 1.0,
+            "4": 1.0
+          },
+          "train_advantage": 0.0,
+          "train_rates": {
+            "2": 1.0,
+            "3": 1.0,
+            "4": 1.0
+          }
+        }
+      ],
+      "cases_noise_dependent": 0,
+      "cases_selected_side_root": 0,
+      "cases_stable_positive": 0,
+      "center_strict_rate": 1.0,
+      "n_case_test_rows": 1,
+      "selected_strict_rate": 1.0,
+      "strict_advantage": 0.0
+    },
+    "pooled_forced_root": {
+      "2": {
+        "correct_fresh_rate": 1.0,
+        "false_confirm_rate": 0.0,
+        "n": 2,
+        "strict_rate": 1.0,
+        "target_visible_rate": 1.0
+      },
+      "3": {
+        "correct_fresh_rate": 1.0,
+        "false_confirm_rate": 0.0,
+        "n": 2,
+        "strict_rate": 1.0,
+        "target_visible_rate": 1.0
+      },
+      "4": {
+        "correct_fresh_rate": 1.0,
+        "false_confirm_rate": 0.0,
+        "n": 2,
+        "strict_rate": 1.0,
+        "target_visible_rate": 1.0
+      }
+    }
+  }
+}

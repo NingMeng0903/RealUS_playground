@@ -1,0 +1,79 @@
+{
+  "files": {
+    "README.md": "f1bd319174230d646839bdafe82b02db083bbcae38088767d5aa33362687d09a",
+    "PROTOCOL.md": "6ae229fa858fb08b3161c221716db355119ca0b712799190839c701539bc5c77",
+    "INDEPENDENT_REVIEW.md": "ccd0277859c45369228a9f789ce1ceab5ba5f5a40672011f610543984d778065",
+    "FREEZE.json": "8c1db6a0d8620a0bdc048ab04025712794d7b284786fd1e680e9ec95f87653e5",
+    "route_fit.json": "00e4156dda4448b305cac2259055a252da36dd6771946603e15359884c869752",
+    "bench.py": "02800836212ca6992985494acf9fbb21223da7faba11baab5c14f76723bf10b5",
+    "return_sets.py": "f38a8ff62a5bdb96e3774112cb34b1dd150af80d46fa54145c2f2074351e6103",
+    "set_mpc.py": "c330e9a986841c9588827351f077fe25a126abe93dd5febe43c5fb31e750f2c9",
+    "route_b.py": "0fdc48ee76e10d3739357ab41b4cec0f09462040b197d5dcb98d06c618504342",
+    "route_predictor.py": "387baace3c0b5d09e6309ed3084b50f9b1347d1b91e3944c44f05024e4a10dfc",
+    "fixed_path.py": "fef9f7d94375b8e21d79613a61850bded640fd4fbbc1b2c667f04b51917ccd0e",
+    "independent/sensor_audit.py": "cf0dd3a8c85af9a37d4bb76af849214a0c3de72c6eaa57bd1e315cd7e9a48b0a",
+    "independent/route_audit.py": "b31fcc8959ef3022a263382b97df4d73cd4961569a96678aa8797d7d02046a20",
+    "independent/route_audit.log": "be1cc8f2513de876bb0c1bb16e94a19bb410ab28bcf76131d207dc1365bd70dd",
+    "independent/sensor_smoke.json": "850602a117f0f68efa95dd4bc29c6efa38daeaf481043c3b3786c224f5ca5a68",
+    "independent/sensor_sensor.json": "956dae77e4c70667aaa66931aaba7b74e424b689e4d86f10b2f8c44362f28e7c",
+    "independent/sensor_sensitivity.json": "638fd08c00d6db1f84b66199821792b095575c96fd71e504748472d4d148460a",
+    "data/smoke/cases.jsonl.xz": "f4ce9af716972d1f2d5fbc2161f3f94f2b1691827000c8c1fbac6f1d2674dddf",
+    "data/smoke/settings.json": "7be1df60d3b196454077d52b4efdde05c0fc1c77da2bdaaca35f6427473f7c9e",
+    "data/smoke/summary.json": "d1267c67487b9a095264e918f485c87e274ba5d419d0743529e1a905d56ea5d3",
+    "data/sensor/cases.jsonl.xz": "31ff633761589ac51215157535fc99ae97e126b1477206e5848481f4881754b8",
+    "data/sensor/settings.json": "98207f7f570daa87d57311f4d339e98d52cc33b891712badc23fbea69e9e900b",
+    "data/sensor/summary.json": "3d279d5363d3f654946500dadaf806f341cc8e836945ad439557fc2ac7aa1ead",
+    "data/sensitivity/cases.jsonl.xz": "10dd3b238dc09e6fa53f8467ff14206506956fe90fb3c02fc7dd5293abad3edc",
+    "data/sensitivity/settings.json": "edea05c2f050184df4de661681f7cbf86a7fcd2ae13b0c95f48a1c0e010867fa",
+    "data/sensitivity/summary.json": "23d009a3b119a9cae5f4a65928998c3df3fa4a29d3de902ee1d2268931c4b9b5",
+    "data/fixed_path_sensor/frames.jsonl.xz": "61f59e16d7bd16a01d13a11382f8c8f48b9ae453cdcf4cf9d56b1a98b40dafd5",
+    "data/fixed_path_sensor/settings.json": "2868c67d6ba8011b85afc8b3ddd6fe2f9fdc42ac2cb6e77404629ff9f048106f",
+    "data/fixed_path_sensor/summary.json": "f480b9b26cd6fb50f0a16bcf3f8fbfcc8f2325bc57e6e03173793b6ad3b6b520",
+    "data/fixed_path_sensitivity/frames.jsonl.xz": "f53ac33b1db8800cd8f0a8e36fc45ef3d2c7690e477e9e846a63d10ccae95cfe",
+    "data/fixed_path_sensitivity/settings.json": "461b5e51f2219ec583c56c60a4b7d0d8e8db0f4fd99a4442e50d2abe6f0e97f6",
+    "data/fixed_path_sensitivity/summary.json": "600bae92c5168d5fdb25f4af50f4b1848d3ce2da6a10cdbb397583771a2269b5",
+    "data/route_smoke/cases.jsonl.xz": "f6170e051a2f5568b119f52c24a4f746958e2f9a4347bb0521ba521879b33199",
+    "data/route_smoke/settings.json": "b8d9342a6c53dfb72657dc7e6d646649ef86d0e8337cf783f556e2af707a23a0",
+    "data/route_smoke/summary.json": "b3e6f106361a816e2ff6013e6fa21d67d8bd618d2f0f1ef5b58305d57f678863",
+    "data/train/cases.jsonl.xz": "a6058d36b8d4e1d87891b2e74bf1e1f8a04ea06fb5601507157563e9ef913be9",
+    "data/train/settings.json": "7c2ba088e528c42839c462c1aa42e69a2462601d82b00b762071fe0f63f05034",
+    "data/train/summary.json": "26b08957ec8d2fc9f6d22d005fb1526f743614faeb1f01632534d7404f0fb2d6",
+    "data/heldout/cases.jsonl.xz": "3e83ca313edc4f66028c61307ab9dc122c0167f18d7326dca5d85d24347537b9",
+    "data/heldout/settings.json": "00e0475e2184ee6c0d9a543fa558fa4e1d9ed6decb54507178e6ebbc9e407850",
+    "data/heldout/summary.json": "c971699fe16d3ee0b3af30ad4b6968360f582b16d28dd4a8ac02ffd9febbb240"
+  },
+  "decompressed": {
+    "data/smoke/cases.jsonl": {
+      "bytes": 18756,
+      "sha256": "1fbe9525e40a776a15e8fb464c9f100abe36407b3de92115c0afc9b17d0903c7"
+    },
+    "data/sensor/cases.jsonl": {
+      "bytes": 449862,
+      "sha256": "eda1482a00ba567b5bbecb82e984f6994e68febbeb18f217214dc4593fdf2b48"
+    },
+    "data/sensitivity/cases.jsonl": {
+      "bytes": 153707,
+      "sha256": "48cb5a98bfad376b7248b635838c45ee75bb681fd796dff35e618447b058a699"
+    },
+    "data/fixed_path_sensor/frames.jsonl": {
+      "bytes": 902792,
+      "sha256": "ceb19d5d57816f639681f00bf7c70163f4e17c001f0bd9ad5fcf8c2255b2f939"
+    },
+    "data/fixed_path_sensitivity/frames.jsonl": {
+      "bytes": 298139,
+      "sha256": "47a46068cb2f506e62adefb8bb25d40faa4781ee98105068c0ff937b3c5b3c1b"
+    },
+    "data/route_smoke/cases.jsonl": {
+      "bytes": 33206,
+      "sha256": "eb641c2baea434bfa4818550da526a17af94788deea52a4e4e52ba7ed3656a33"
+    },
+    "data/train/cases.jsonl": {
+      "bytes": 1164079,
+      "sha256": "e9df23b75cf7a755dcc39966c02c66620c37c47574f671452ed8af610be47f66"
+    },
+    "data/heldout/cases.jsonl": {
+      "bytes": 1975026,
+      "sha256": "b960890d3472163aff25fa8279ee279ea01e712513649937410d6bfa33e2ed3c"
+    }
+  }
+}

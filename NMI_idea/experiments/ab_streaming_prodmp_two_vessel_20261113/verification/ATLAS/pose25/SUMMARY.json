@@ -1,0 +1,2403 @@
+{
+  "scope": "Known static SMPL-X beta and knee pose; two synthetic centreline returns; sampled RM75 kinematics in the feedback loop",
+  "geometry": {
+    "side": "right",
+    "reference_beta": [
+      0.7497693083949906,
+      0.050389516900993706,
+      -0.03001714143996312,
+      0.08189267944603904,
+      -0.0021207984097881723,
+      0.016629353580370956,
+      -0.009940500563490932,
+      -0.0010628271762014151,
+      -0.01275786197769593,
+      0.004657044145225384
+    ],
+    "beta": [
+      0.7497693083949906,
+      0.050389516900993706,
+      -0.03001714143996312,
+      0.08189267944603904,
+      -0.0021207984097881723,
+      0.016629353580370956,
+      -0.009940500563490932,
+      -0.0010628271762014151,
+      -0.01275786197769593,
+      0.004657044145225384
+    ],
+    "beta_delta": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "knee_deg": 25.0,
+    "reference_knee_deg": 15.0,
+    "material_binding": {
+      "vessel_count": 130,
+      "surface_anchor_count": 65,
+      "vessel_reconstruction_max_m": 2.2247786310271853e-16,
+      "surface_reference_migration_max_mm": 1.2336081991047616,
+      "sha256": "d4a347d7d127ef3d15b9d3c9a46a2276e726ed68d94411a49af893612acf12f0"
+    },
+    "geometry_gate": {
+      "tetrahedra": 322056,
+      "nonpositive_tets": 0,
+      "min_det_ratio": 0.8316929515673448,
+      "positive_overlap_pairs": 0,
+      "volume_boundary_intersection_pairs": 0,
+      "retained_skin_intersection_pairs": 0,
+      "geometry_pass": true
+    },
+    "input_sha256": {
+      "smplx_male": "3613a4c7733be35a9bebf6d72c75f3cd3d2252419782ab7cb32fd2c51a446e72",
+      "recovered_betas": "de34dd7e094683b3db8046a1590022755937e0b48dcc6c2dc2f692ef1c8605c2",
+      "atlas_left": "8d4deac6ab8f364ae08b359ec2878027144fb1c4aa44fba777f5126e99853191",
+      "attachments_left": "d70d2350240fa2e8a9195a173dbb2e92094503a9458fa3b350dbb55fd658b4d5",
+      "owned_skin_left": "263a9b2c761a41b2046b13f87046cc86e87b51c2891d158a235ce4982962acdb",
+      "surface_stencil_left": "f8f2cf1e50a16cf8d4fa50974fce91e5c228ba5cdec7a6eef7a65dff35c9384a",
+      "atlas_right": "f1a42becc403ebf7687025d4ab8b7d3480e52d4713df8c6357449b23d4ebba1c",
+      "attachments_right": "bfc7c76b083be69604ec18c963d4110870d2437afdb19aba8d95c5e6fb4f1b3f",
+      "owned_skin_right": "9d044b374ef7e2f1fefef816a9e0b5f4755eded419655ad605fa1df412ec58f7",
+      "surface_stencil_right": "9503a9db4094bd172dd32baa0f8a7c8fe4afa374308f821a81d6c521d7829663",
+      "sections": "ff5c746f0b3aebde55c7e4ac4a2572beb78c95405fae4724da3fdd4dd5474d39",
+      "robot_transform": "e61ff1a05ca957674d3b146dc225b96cce61286094f0e1da052b5874c8219180",
+      "volume_overlap_checker": "e292e1e1ad0730e19cc055140c07876019644439650e41f6a8657540a974cc7b"
+    }
+  },
+  "seed": 2026111390,
+  "case_count": 2,
+  "frames_per_complete_run": 41,
+  "kinematic_witness_node_id": 0,
+  "fixed_rail_m": 0.27521369825951136,
+  "sample_dt_s": 0.02,
+  "frame_dt_s": 0.1,
+  "nominal_lateral_range_ref_mm": [
+    -18.4101531697793,
+    -14.641074812823792
+  ],
+  "model_input_sha256": {
+    "BANK_MAIN.json.xz": "f834013839500edcb686a08b045bb4c909d35164620f4056e45cf93d1b78d32f",
+    "DEMONSTRATIONS.npz": "af1d911f2553af394e0e31befe1322fe86ef74cb8e96761cd81b89bf36ff00ef"
+  },
+  "robot_input_sha256": {
+    "capability.py": "8dd40a6af7b29ed0b4084e25acb5f403a91a35b364f978ac1233a793467841a4",
+    "adapter.py": "e056959792d4529d7389d5e49facb04b5497ded88d579677680b019f10e22eac",
+    "srs_ik.py": "7470286eb54d312c6f410c13040d0d50b453c7eb025f27021f6d705ee4697487",
+    "model.py": "575647629fbc5fa78c7a0e756986f91459154095821384f132454af546fda2b3",
+    "collision_model.py": "cd83783fd330644a626f47ad750567b1cd64f141b0ed10c10f05364fa5033cec",
+    "RM75-6F-8dof.urdf": "7578310c5ce7b03a301c171175fd4eca2bd8e4b15903a7a9a3ed9bfc366e4ec0",
+    "RM75-6F-8dof.collision.urdf": "ba6f49b4fd9cba74107af25ecd82afccac156a94b194a6acb06a2aadebf1d197",
+    "collision_pairs.yaml": "8d4b96e09ec8bdfd33a7835fb77fa4dcb720551e7d55d28c063994b99c392318"
+  },
+  "means": {
+    "mpc_stream": {
+      "success": 1.0,
+      "wrong": 0.0,
+      "false_complete": 0.0,
+      "coverage": 5.0,
+      "tcp_mm": 22.599481162274664,
+      "turn_deg": 5.833205958721885,
+      "duration_s": 4.0,
+      "revisions": 25.5,
+      "run_failures": 0
+    }
+  },
+  "cases": [
+    {
+      "case": 0,
+      "hidden_static_offset_mm": [
+        -4.0,
+        0.0
+      ],
+      "hidden_calibration_bias_mm": [
+        -0.326217675583407,
+        -0.5125689383850611
+      ],
+      "arms": {
+        "mpc_stream": {
+          "success": true,
+          "wrong": false,
+          "false_complete": false,
+          "coverage": 5,
+          "failure": null,
+          "decisions": [
+            {
+              "step": 0,
+              "view_offset_ref_mm": -2.0,
+              "goal_ref_mm": -17.640914994067057,
+              "candidate_goals_ref_mm": [
+                -17.640914994067057,
+                -15.640914994067057,
+                -13.640914994067057
+              ],
+              "used_carry_or_hold": false,
+              "values": [
+                1.0631442020310047,
+                0.6808694947248604,
+                0.2081389133944714
+              ],
+              "fixed_first_center_available": true
+            },
+            {
+              "step": 50,
+              "view_offset_ref_mm": -2.0,
+              "goal_ref_mm": -18.59888708145293,
+              "candidate_goals_ref_mm": [
+                -18.59888708145293,
+                -16.59888708145293,
+                -14.59888708145293
+              ],
+              "used_carry_or_hold": false,
+              "values": [
+                1.2134760336341133,
+                null,
+                null
+              ],
+              "fixed_first_center_available": false
+            },
+            {
+              "step": 100,
+              "view_offset_ref_mm": -2.0,
+              "goal_ref_mm": -19.44500742603458,
+              "candidate_goals_ref_mm": [
+                -19.44500742603458,
+                -17.44500742603458,
+                -15.445007426034579
+              ],
+              "used_carry_or_hold": false,
+              "values": [
+                1.2132694800556507,
+                null,
+                null
+              ],
+              "fixed_first_center_available": false
+            },
+            {
+              "step": 150,
+              "view_offset_ref_mm": -2.0,
+              "goal_ref_mm": -20.4101531697793,
+              "candidate_goals_ref_mm": [
+                -20.4101531697793,
+                -18.4101531697793,
+                -16.4101531697793
+              ],
+              "used_carry_or_hold": false,
+              "values": [
+                0.7667940869596935,
+                null,
+                null
+              ],
+              "fixed_first_center_available": false
+            }
+          ],
+          "frames": [
+            {
+              "t_s": 0.0,
+              "station_ref_mm": 3.1410056769206953,
+              "packet_mm": [
+                [
+                  -3.971697337987384,
+                  35.490355437404055
+                ],
+                [
+                  11.477730225190125,
+                  33.825616590337816
+                ]
+              ],
+              "role_truth": [
+                0,
+                1
+              ],
+              "artery_probability": [
+                1.0000000000000002,
+                1.4594605213083248e-100
+              ],
+              "selected_slot": 0,
+              "accepted": false,
+              "correct": false,
+              "wrong": false,
+              "physical_lateral_mm": -3.6372729185529407
+            },
+            {
+              "t_s": 0.1,
+              "station_ref_mm": 3.7692068123048346,
+              "packet_mm": [
+                [
+                  -2.5808664660578273,
+                  36.634306042733336
+                ],
+                [
+                  11.244383190722306,
+                  33.0905345124062
+                ]
+              ],
+              "role_truth": [
+                0,
+                1
+              ],
+              "artery_probability": [
+                1.0,
+                4.740582840828268e-98
+              ],
+              "selected_slot": 0,
+              "accepted": true,
+              "correct": false,
+              "wrong": false,
+              "physical_lateral_mm": -3.3857660084210077,
+              "next_frame_shift_from_revision_mm": 0.1832887441839985
+            },
+            {
+              "t_s": 0.2,
+              "station_ref_mm": 4.397407947688974,
+              "packet_mm": [
+                [
+                  -5.0223420524899165,
+                  36.2989389433866
+                ],
+                [
+                  11.456206984378175,
+                  32.13380279850829
+                ]
+              ],
+              "role_truth": [
+                0,
+                1
+              ],
+              "artery_probability": [
+                1.0,
+                2.58243516262147e-117
+              ],
+              "selected_slot": 0,
+              "accepted": false,
+              "correct": false,
+              "wrong": false,
+              "physical_lateral_mm": -2.6580359365992856,
+              "next_frame_shift_from_revision_mm": 0.25498896841715357
+            },
+            {
+              "t_s": 0.3,
+              "station_ref_mm": 5.025609083073112,
+              "packet_mm": [
+                [
+                  -1.3257522489784543,
+                  36.95615478607291
+                ],
+                [
+                  12.904642082247912,
+                  32.29647166762956
+                ]
+              ],
+              "role_truth": [
+                0,
+                1
+              ],
+              "artery_probability": [
+                1.0,
+                4.563666121320509e-106
+              ],
+              "selected_slot": 0,
+              "accepted": true,
+              "correct": true,
+              "wrong": false,
+              "physical_lateral_mm": -1.5819871144988853,
+              "next_frame_shift_from_revision_mm": 0.14916140084610763
+            },
+            {
+              "t_s": 0.4,
+              "station_ref_mm": 5.653810218457251,
+              "packet_mm": [
+                [
+                  12.862598580711547,
+                  31.044865994602073
+                ]
+              ],
+              "role_truth": [
+                1
+              ],
+              "artery_probability": [
+                2.4396768313991758e-46
+              ],
+              "selected_slot": -1,
+              "accepted": false,
+              "correct": false,
+              "wrong": false,
+              "physical_lateral_mm": -0.6864621301711946
+            },
+            {
+              "t_s": 0.5,
+              "station_ref_mm": 6.282011353841391,
+              "packet_mm": [
+                [
+                  14.748977869595528,
+                  31.426968513164006
+                ]
+              ],
+              "role_truth": [
+                1
+              ],
+              "artery_probability": [
+                3.2149622041889633e-54
+              ],
+              "selected_slot": -1,
+              "accepted": false,
+              "correct": false,
+              "wrong": false,
+              "physical_lateral_mm": -0.1722549648056626
+            },
+            {
+              "t_s": 0.6,
+              "station_ref_mm": 6.91021248922553,
+              "packet_mm": [
+                [
+                  -0.016370484980211875,
+                  35.374633168319015
+                ],
+                [
+                  14.308149573314633,
+                  30.26038253523503
+                ]
+              ],
+              "role_truth": [
+                0,
+                1
+              ],
+              "artery_probability": [
+                1.0,
+                2.9474815296832135e-111
+              ],
+              "selected_slot": 0,
+              "accepted": true,
+              "correct": true,
+              "wrong": false,
+              "physical_lateral_mm": 0.12068232789609977,
+              "next_frame_shift_from_revision_mm": 0.020601841181077135
+            },
+            {
+              "t_s": 0.7000000000000001,
+              "station_ref_mm": 7.538413624609669,
+              "packet_mm": [
+                [
+                  0.5569947911081459,
+                  36.25898494219317
+                ],
+                [
+                  13.3498636584848,
+                  30.5166812941156
+                ]
+              ],
+              "role_truth": [
+                0,
+                1
+              ],
+              "artery_probability": [
+                1.0,
+                1.4246103880989017e-105
+              ],
+              "selected_slot": 0,
+              "accepted": true,
+              "correct": true,
+              "wrong": false,
+              "physical_lateral_mm": 0.14667322981652234,
+              "next_frame_shift_from_revision_mm": 0.1293175276940298
+            },
+            {
+              "t_s": 0.8,
+              "station_ref_mm": 8.166614759993807,
+              "packet_mm": [
+                [
+                  0.0050036126047114104,
+                  36.22423430682492
+                ],
+                [
+                  15.872761537399803,
+                  30.90025501966741
+                ]
+              ],
+              "role_truth": [
+                0,
+                1
+              ],
+              "artery_probability": [
+                1.0,
+                2.579869338853544e-124
+              ],
+              "selected_slot": 0,
+              "accepted": true,
+              "correct": true,
+              "wrong": false,
+              "physical_lateral_mm": 0.13748879668487457,
+              "next_frame_shift_from_revision_mm": 0.10958696547565867
+            },
+            {
+              "t_s": 0.9,
+              "station_ref_mm": 8.794815895377948,
+              "packet_mm": [
+                [
+                  0.4474366560632853,
+                  34.17599342538239
+                ],
+                [
+                  13.452626412876434,
+                  31.763396689597418
+                ]
+              ],
+              "role_truth": [
+                0,
+                1
+              ],
+              "artery_probability": [
+                1.0,
+                5.959886393859989e-94
+              ],
+              "selected_slot": 0,
+              "accepted": true,
+              "correct": true,
+              "wrong": false,
+              "physical_lateral_mm": 0.23197073678403052,
+              "next_frame_shift_from_revision_mm": 0.04953893819982696
+            },
+            {
+              "t_s": 1.0,
+              "station_ref_mm": 9.423017030762086,
+              "packet_mm": [
+                [
+                  -0.4400107079226079,
+                  34.974912039684305
+                ],
+                [
+                  14.2367665525555,
+                  30.39893202086142
+                ]
+              ],
+              "role_truth": [
+                0,
+                1
+              ],
+              "artery_probability": [
+                1.0,
+                1.4079437150272689e-115
+              ],
+              "selected_slot": 0,
+              "accepted": true,
+              "correct": true,
+              "wrong": false,
+              "physical_lateral_mm": 0.2010084820179346
+            },
+            {
+              "t_s": 1.1,
+              "station_ref_mm": 10.051218166146224,
+              "packet_mm": [
+                [
+                  -0.9786101185411021,
+                  35.493110393687445
+                ]
+              ],
+              "role_truth": [
+                0
+              ],
+              "artery_probability": [
+                1.0
+              ],
+              "selected_slot": 0,
+              "accepted": true,
+              "correct": true,
+              "wrong": false,
+              "physical_lateral_mm": -0.013190264366098308,
+              "next_frame_shift_from_revision_mm": 0.27302341766420307
+            },
+            {
+              "t_s": 1.2,
+              "station_ref_mm": 10.679419301530364,
+              "packet_mm": [
+                [
+                  0.6294951009950102,
+                  35.21294501202898
+                ]
+              ],
+              "role_truth": [
+                0
+              ],
+              "artery_probability": [
+                1.0
+              ],
+              "selected_slot": 0,
+              "accepted": true,
+              "correct": true,
+              "wrong": false,
+              "physical_lateral_mm": -0.010853928597405308,
+              "next_frame_shift_from_revision_mm": 0.073664075419268
+            },
+            {
+              "t_s": 1.3,
+              "station_ref_mm": 11.307620436914503,
+              "packet_mm": [
+                [
+                  0.7878726045676504,
+                  35.40727673685866
+                ]
+              ],
+              "role_truth": [
+                0
+              ],
+              "artery_probability": [
+                1.0
+              ],
+              "selected_slot": 0,
+              "accepted": true,
+              "correct": true,
+              "wrong": false,
+              "physical_lateral_mm": 0.06440243397335796
+            },
+            {
+              "t_s": 1.4000000000000001,
+              "station_ref_mm": 11.935821572298643,
+              "packet_mm": [
+                [
+                  -2.2390128165548804,
+                  34.1892157191369
+                ]
+              ],
+              "role_truth": [
+                0
+              ],
+              "artery_probability": [
+                1.0
+              ],
+              "selected_slot": 0,
+              "accepted": true,
+              "correct": true,
+              "wrong": false,
+              "physical_lateral_mm": 0.13240714898571906,
+              "next_frame_shift_from_revision_mm": 0.18174192057259103
+            },
+            {
+              "t_s": 1.5,
+              "station_ref_mm": 12.564022707682781,
+              "packet_mm": [
+                [
+                  -0.32806527087491233,
+                  36.33722453111472
+                ]
+              ],
+              "role_truth": [
+                0
+              ],
+              "artery_probability": [
+                1.0
+              ],
+              "selected_slot": 0,
+              "accepted": true,
+              "correct": true,
+              "wrong": false,
+              "physical_lateral_mm": 0.3416044966767214,
+              "next_frame_shift_from_revision_mm": 0.16869092130373478
+            },
+            {
+              "t_s": 1.6,
+              "station_ref_mm": 13.19222384306692,
+              "packet_mm": [
+                [
+                  -0.07814166398706433,
+                  36.380166213714084
+                ]
+              ],
+              "role_truth": [
+                0
+              ],
+              "artery_probability": [
+                1.0
+              ],
+              "selected_slot": 0,
+              "accepted": true,
+              "correct": true,
+              "wrong": false,
+              "physical_lateral_mm": 0.4302596467739909
+            },
+            {
+              "t_s": 1.7,
+              "station_ref_mm": 13.82042497845106,
+              "packet_mm": [
+                [
+                  0.2413515596004288,
+                  35.84076669969533
+                ]
+              ],
+              "role_truth": [
+                0
+              ],
+              "artery_probability": [
+                1.0
+              ],
+              "selected_slot": 0,
+              "accepted": true,
+              "correct": true,
+              "wrong": false,
+              "physical_lateral_mm": 0.4142094854810934,
+              "next_frame_shift_from_revision_mm": 0.12346934647924329
+            },
+            {
+              "t_s": 1.8,
+              "station_ref_mm": 14.448626113835198,
+              "packet_mm": [
+                [
+                  -0.236406123783591,
+                  35.73831845164886
+                ],
+                [
+                  15.33023501054754,
+                  30.439023635066192
+                ]
+              ],
+              "role_truth": [
+                0,
+                1
+              ],
+              "artery_probability": [
+                1.0,
+                1.2933985198119831e-134
+              ],
+              "selected_slot": 0,
+              "accepted": true,
+              "correct": true,
+              "wrong": false,
+              "physical_lateral_mm": 0.26382611039813225,
+              "next_frame_shift_from_revision_mm": 0.0599749945780167
+            },
+            {
+              "t_s": 1.9000000000000001,
+              "station_ref_mm": 15.076827249219338,
+              "packet_mm": [
+                [
+                  0.41360807897910595,
+                  34.89516247164534
+                ],
+                [
+                  15.151556394276515,
+                  29.98387892834534
+                ]
+              ],
+              "role_truth": [
+                0,
+                1
+              ],
+              "artery_probability": [
+                1.0,
+                5.033342272849794e-128
+              ],
+              "selected_slot": 0,
+              "accepted": true,
+              "correct": true,
+              "wrong": false,
+              "physical_lateral_mm": 0.26618580414819637
+            },
+            {
+              "t_s": 2.0,
+              "station_ref_mm": 15.705028384603477,
+              "packet_mm": [
+                [
+                  1.141499480980688,
+                  35.328868039251816
+                ],
+                [
+                  14.411695783812899,
+                  29.079892616016377
+                ]
+              ],
+              "role_truth": [
+                0,
+                1
+              ],
+              "artery_probability": [
+                1.0,
+                9.248769981833265e-128
+              ],
+              "selected_slot": 0,
+              "accepted": true,
+              "correct": true,
+              "wrong": false,
+              "physical_lateral_mm": 0.2998825106795098
+            },
+            {
+              "t_s": 2.1,
+              "station_ref_mm": 16.33322951998762,
+              "packet_mm": [
+                [
+                  0.004628051973494585,
+                  36.49040019277983
+                ],
+                [
+                  15.864304341365564,
+                  28.88468486084518
+                ]
+              ],
+              "role_truth": [
+                0,
+                1
+              ],
+              "artery_probability": [
+                1.0,
+                4.0953602152579906e-155
+              ],
+              "selected_slot": 0,
+              "accepted": true,
+              "correct": true,
+              "wrong": false,
+              "physical_lateral_mm": 0.12540911062588764,
+              "next_frame_shift_from_revision_mm": 0.24268736589149786
+            },
+            {
+              "t_s": 2.2,
+              "station_ref_mm": 16.961430655371757,
+              "packet_mm": [
+                [
+                  0.5223665138466793,
+                  35.82537427027433
+                ],
+                [
+                  16.063791953316485,
+                  28.262690306786382
+                ]
+              ],
+              "role_truth": [
+                0,
+                1
+              ],
+              "artery_probability": [
+                1.0,
+                2.2962603778158387e-154
+              ],
+              "selected_slot": 0,
+              "accepted": true,
+              "correct": true,
+              "wrong": false,
+              "physical_lateral_mm": 0.036187842478132136,
+              "next_frame_shift_from_revision_mm": 0.02766075988037375
+            },
+            {
+              "t_s": 2.3000000000000003,
+              "station_ref_mm": 17.589631790755895,
+              "packet_mm": [
+                [
+                  -1.0445286190629883,
+                  35.663271727280524
+                ],
+                [
+                  15.688027019373752,
+                  28.4946436815828
+                ]
+              ],
+              "role_truth": [
+                0,
+                1
+              ],
+              "artery_probability": [
+                1.0,
+                2.2951179475495008e-161
+              ],
+              "selected_slot": 0,
+              "accepted": true,
+              "correct": true,
+              "wrong": false,
+              "physical_lateral_mm": 0.11121621953589704,
+              "next_frame_shift_from_revision_mm": 0.08479852282506782
+            },
+            {
+              "t_s": 2.4,
+              "station_ref_mm": 18.217832926140034,
+              "packet_mm": [
+                [
+                  -0.5719373238209483,
+                  34.725507504398315
+                ],
+                [
+                  15.68418251057214,
+                  27.919855492567677
+                ]
+              ],
+              "role_truth": [
+                0,
+                1
+              ],
+              "artery_probability": [
+                1.0,
+                7.54409320037475e-157
+              ],
+              "selected_slot": 0,
+              "accepted": true,
+              "correct": true,
+              "wrong": false,
+              "physical_lateral_mm": 0.26944584150819345,
+              "next_frame_shift_from_revision_mm": 0.035415932872410856
+            },
+            {
+              "t_s": 2.5,
+              "station_ref_mm": 18.846034061524172,
+              "packet_mm": [
+                [
+                  -0.7384309419365116,
+                  36.42071237353047
+                ],
+                [
+                  16.37807036312334,
+                  28.090304255970445
+                ]
+              ],
+              "role_truth": [
+                0,
+                1
+              ],
+              "artery_probability": [
+                1.0,
+                1.2031618419410689e-174
+              ],
+              "selected_slot": 0,
+              "accepted": true,
+              "correct": true,
+              "wrong": false,
+              "physical_lateral_mm": 0.4151269932683607,
+              "next_frame_shift_from_revision_mm": 0.0033221928620470915
+            },
+            {
+              "t_s": 2.6,
+              "station_ref_mm": 19.47423519690831,
+              "packet_mm": [
+                [
+                  0.6677820459922261,
+                  35.813901963666595
+                ],
+                [
+                  15.23142605756705,
+                  28.31055241375737
+                ]
+              ],
+              "role_truth": [
+                0,
+                1
+              ],
+              "artery_probability": [
+                1.0,
+                4.853799396621371e-153
+              ],
+              "selected_slot": 0,
+              "accepted": true,
+              "correct": true,
+              "wrong": false,
+              "physical_lateral_mm": 0.5143119519110307,
+              "next_frame_shift_from_revision_mm": 0.19152904200131482
+            },
+            {
+              "t_s": 2.7,
+              "station_ref_mm": 20.10243633229245,
+              "packet_mm": [
+                [
+                  0.09116039691086804,
+                  35.731670510697825
+                ],
+                [
+                  13.786097653640311,
+                  29.062774013787102
+                ]
+              ],
+              "role_truth": [
+                0,
+                1
+              ],
+              "artery_probability": [
+                1.0,
+                9.843255966647586e-143
+              ],
+              "selected_slot": 0,
+              "accepted": true,
+              "correct": true,
+              "wrong": false,
+              "physical_lateral_mm": 0.26119462873439553,
+              "next_frame_shift_from_revision_mm": 0.019164435077846112
+            },
+            {
+              "t_s": 2.8000000000000003,
+              "station_ref_mm": 20.73063746767659,
+              "packet_mm": [
+                [
+                  0.38667045010087614,
+                  35.50897251343223
+                ],
+                [
+                  15.782758359876247,
+                  27.86449059358796
+                ]
+              ],
+              "role_truth": [
+                0,
+                1
+              ],
+              "artery_probability": [
+                1.0,
+                4.687031100378876e-163
+              ],
+              "selected_slot": 0,
+              "accepted": true,
+              "correct": true,
+              "wrong": false,
+              "physical_lateral_mm": 0.19052309576025947,
+              "next_frame_shift_from_revision_mm": 0.09712936186178381
+            },
+            {
+              "t_s": 2.9,
+              "station_ref_mm": 21.35883860306073,
+              "packet_mm": [
+                [
+                  0.6724767731357106,
+                  34.494081187805534
+                ],
+                [
+                  15.721531677437309,
+                  26.8309838461854
+                ]
+              ],
+              "role_truth": [
+                0,
+                1
+              ],
+              "artery_probability": [
+                1.0,
+                1.9444731208415443e-162
+              ],
+              "selected_slot": 0,
+              "accepted": true,
+              "correct": true,
+              "wrong": false,
+              "physical_lateral_mm": 0.11104900294378572,
+              "next_frame_shift_from_revision_mm": 0.05141183032196447
+            },
+            {
+              "t_s": 3.0,
+              "station_ref_mm": 21.987039738444867,
+              "packet_mm": [
+                [
+                  0.33849398592927765,
+                  36.954226571686476
+                ],
+                [
+                  16.281409448459964,
+                  29.322435149538506
+                ]
+              ],
+              "role_truth": [
+                0,
+                1
+              ],
+              "artery_probability": [
+                1.0,
+                5.833051645163209e-170
+              ],
+              "selected_slot": 0,
+              "accepted": true,
+              "correct": true,
+              "wrong": false,
+              "physical_lateral_mm": 0.08735314501173673
+            },
+            {
+              "t_s": 3.1,
+              "station_ref_mm": 22.615240873829006,
+              "packet_mm": [
+                [
+                  -1.2664383047260284,
+                  36.45155418933208
+                ],
+                [
+                  15.485610223896037,
+                  29.526499638867826
+                ]
+              ],
+              "role_truth": [
+                0,
+                1
+              ],
+              "artery_probability": [
+                1.0,
+                1.0466004047216428e-171
+              ],
+              "selected_slot": 0,
+              "accepted": true,
+              "correct": true,
+              "wrong": false,
+              "physical_lateral_mm": -0.07995731205890873,
+              "next_frame_shift_from_revision_mm": 0.26456592075464525
+            },
+            {
+              "t_s": 3.2,
+              "station_ref_mm": 23.243442009213144,
+              "packet_mm": [
+                [
+                  1.389092976386139,
+                  36.135405348136906
+                ],
+                [
+                  16.21102746083205,
+                  28.74153450202778
+                ]
+              ],
+              "role_truth": [
+                0,
+                1
+              ],
+              "artery_probability": [
+                1.0,
+                1.2313385970267735e-163
+              ],
+              "selected_slot": 0,
+              "accepted": true,
+              "correct": true,
+              "wrong": false,
+              "physical_lateral_mm": -0.13403401041742652,
+              "next_frame_shift_from_revision_mm": 0.13133237197916928
+            },
+            {
+              "t_s": 3.3000000000000003,
+              "station_ref_mm": 23.871643144597286,
+              "packet_mm": [
+                [
+                  -2.1460479162134103,
+                  35.86435841955146
+                ]
+              ],
+              "role_truth": [
+                0
+              ],
+              "artery_probability": [
+                1.0
+              ],
+              "selected_slot": 0,
+              "accepted": true,
+              "correct": true,
+              "wrong": false,
+              "physical_lateral_mm": -0.09316023851958269,
+              "next_frame_shift_from_revision_mm": 0.18198443575225315
+            },
+            {
+              "t_s": 3.4,
+              "station_ref_mm": 24.499844279981424,
+              "packet_mm": [
+                [
+                  0.5712260849962925,
+                  36.60317272751483
+                ]
+              ],
+              "role_truth": [
+                0
+              ],
+              "artery_probability": [
+                1.0
+              ],
+              "selected_slot": 0,
+              "accepted": true,
+              "correct": true,
+              "wrong": false,
+              "physical_lateral_mm": 0.0744201012359093,
+              "next_frame_shift_from_revision_mm": 0.19548219629989952
+            },
+            {
+              "t_s": 3.5,
+              "station_ref_mm": 25.128045415365563,
+              "packet_mm": [
+                [
+                  -0.6782582493831537,
+                  36.80445074454431
+                ],
+                [
+                  15.014093101241366,
+                  27.716470172473823
+                ]
+              ],
+              "role_truth": [
+                0,
+                1
+              ],
+              "artery_probability": [
+                1.0,
+                4.688748036005328e-189
+              ],
+              "selected_slot": 0,
+              "accepted": true,
+              "correct": true,
+              "wrong": false,
+              "physical_lateral_mm": 0.1459130716659013,
+              "next_frame_shift_from_revision_mm": 0.07695244165466239
+            },
+            {
+              "t_s": 3.6,
+              "station_ref_mm": 25.7562465507497,
+              "packet_mm": [
+                [
+                  -0.6787381974390777,
+                  36.307924733778954
+                ]
+              ],
+              "role_truth": [
+                0
+              ],
+              "artery_probability": [
+                1.0
+              ],
+              "selected_slot": 0,
+              "accepted": true,
+              "correct": true,
+              "wrong": false,
+              "physical_lateral_mm": 0.18602270415506372
+            },
+            {
+              "t_s": 3.7,
+              "station_ref_mm": 26.384447686133843,
+              "packet_mm": [
+                [
+                  0.6274433454256159,
+                  36.72036732495395
+                ]
+              ],
+              "role_truth": [
+                0
+              ],
+              "artery_probability": [
+                1.0
+              ],
+              "selected_slot": 0,
+              "accepted": true,
+              "correct": true,
+              "wrong": false,
+              "physical_lateral_mm": 0.2814350517927636,
+              "next_frame_shift_from_revision_mm": 0.1329852856967956
+            },
+            {
+              "t_s": 3.8000000000000003,
+              "station_ref_mm": 27.01264882151798,
+              "packet_mm": [
+                [
+                  -0.531467668025619,
+                  36.24263258378439
+                ]
+              ],
+              "role_truth": [
+                0
+              ],
+              "artery_probability": [
+                1.0
+              ],
+              "selected_slot": 0,
+              "accepted": true,
+              "correct": true,
+              "wrong": false,
+              "physical_lateral_mm": 0.2186432336384703,
+              "next_frame_shift_from_revision_mm": 0.09490499155153712
+            },
+            {
+              "t_s": 3.9,
+              "station_ref_mm": 27.64084995690212,
+              "packet_mm": [
+                [
+                  2.062071631726173,
+                  37.567643589447236
+                ]
+              ],
+              "role_truth": [
+                0
+              ],
+              "artery_probability": [
+                1.0
+              ],
+              "selected_slot": 0,
+              "accepted": true,
+              "correct": true,
+              "wrong": false,
+              "physical_lateral_mm": 0.3201447557561293
+            },
+            {
+              "t_s": 4.0,
+              "station_ref_mm": 28.269051092286258,
+              "packet_mm": [
+                [
+                  1.5541681939346643,
+                  37.12157420246061
+                ]
+              ],
+              "role_truth": [
+                0
+              ],
+              "artery_probability": [
+                1.0
+              ],
+              "selected_slot": 0,
+              "accepted": true,
+              "correct": true,
+              "wrong": false,
+              "physical_lateral_mm": 0.4000968570115
+            }
+          ],
+          "tcp_mm": 23.010965669098162,
+          "turn_deg": 5.840618760572708,
+          "duration_s": 4.0,
+          "revisions": 29,
+          "max_chart_handoff_x_ref_mm": 0.0,
+          "max_chart_handoff_v_ref_mm_s": 1.7763568394002505e-15
+        }
+      }
+    },
+    {
+      "case": 1,
+      "hidden_static_offset_mm": [
+        2.0,
+        -2.0
+      ],
+      "hidden_calibration_bias_mm": [
+        -0.15136325739781797,
+        -0.0059184219444223685
+      ],
+      "arms": {
+        "mpc_stream": {
+          "success": true,
+          "wrong": false,
+          "false_complete": false,
+          "coverage": 5,
+          "failure": null,
+          "decisions": [
+            {
+              "step": 0,
+              "view_offset_ref_mm": 2.0,
+              "goal_ref_mm": -13.640914994067057,
+              "candidate_goals_ref_mm": [
+                -17.640914994067057,
+                -15.640914994067057,
+                -13.640914994067057
+              ],
+              "used_carry_or_hold": false,
+              "values": [
+                0.5349776410057807,
+                1.120709307148966,
+                1.2718503656478062
+              ],
+              "fixed_first_center_available": true
+            },
+            {
+              "step": 50,
+              "view_offset_ref_mm": 2.0,
+              "goal_ref_mm": -14.59888708145293,
+              "candidate_goals_ref_mm": [
+                -18.59888708145293,
+                -16.59888708145293,
+                -14.59888708145293
+              ],
+              "used_carry_or_hold": false,
+              "values": [
+                null,
+                0.9696148276470333,
+                1.075871628333746
+              ],
+              "fixed_first_center_available": true
+            },
+            {
+              "step": 100,
+              "view_offset_ref_mm": 2.0,
+              "goal_ref_mm": -15.445007426034579,
+              "candidate_goals_ref_mm": [
+                -19.44500742603458,
+                -17.44500742603458,
+                -15.445007426034579
+              ],
+              "used_carry_or_hold": false,
+              "values": [
+                null,
+                1.212954541508256,
+                1.329192977280512
+              ],
+              "fixed_first_center_available": true
+            },
+            {
+              "step": 150,
+              "view_offset_ref_mm": 2.0,
+              "goal_ref_mm": -16.4101531697793,
+              "candidate_goals_ref_mm": [
+                -20.4101531697793,
+                -18.4101531697793,
+                -16.4101531697793
+              ],
+              "used_carry_or_hold": false,
+              "values": [
+                null,
+                0.7425818054244322,
+                0.823395602668561
+              ],
+              "fixed_first_center_available": true
+            }
+          ],
+          "frames": [
+            {
+              "t_s": 0.0,
+              "station_ref_mm": 3.1410056769206953,
+              "packet_mm": [
+                [
+                  2.9792646374446545,
+                  35.0917778940365
+                ],
+                [
+                  15.951084309941315,
+                  31.335598091725526
+                ]
+              ],
+              "role_truth": [
+                0,
+                1
+              ],
+              "artery_probability": [
+                1.0,
+                1.9312584071139533e-93
+              ],
+              "selected_slot": 0,
+              "accepted": true,
+              "correct": true,
+              "wrong": false,
+              "physical_lateral_mm": 2.1212632035512495
+            },
+            {
+              "t_s": 0.1,
+              "station_ref_mm": 3.7692068123048346,
+              "packet_mm": [
+                [
+                  3.718145717869673,
+                  35.41403041388903
+                ],
+                [
+                  17.15375794619408,
+                  29.904984059531408
+                ]
+              ],
+              "role_truth": [
+                0,
+                1
+              ],
+              "artery_probability": [
+                0.9999999999999999,
+                5.3476482816894647e-104
+              ],
+              "selected_slot": 0,
+              "accepted": false,
+              "correct": false,
+              "wrong": false,
+              "physical_lateral_mm": 1.8413117361035656,
+              "next_frame_shift_from_revision_mm": 0.21838362858274418
+            },
+            {
+              "t_s": 0.2,
+              "station_ref_mm": 4.397407947688974,
+              "packet_mm": [
+                [
+                  16.964110036979854,
+                  30.60984078228771
+                ]
+              ],
+              "role_truth": [
+                1
+              ],
+              "artery_probability": [
+                1.4510706303958995e-47
+              ],
+              "selected_slot": -1,
+              "accepted": false,
+              "correct": false,
+              "wrong": false,
+              "physical_lateral_mm": 1.2059130703378038
+            },
+            {
+              "t_s": 0.3,
+              "station_ref_mm": 5.025609083073112,
+              "packet_mm": [
+                [
+                  13.730371681546593,
+                  30.0971257705891
+                ]
+              ],
+              "role_truth": [
+                1
+              ],
+              "artery_probability": [
+                1.2295724311409026e-40
+              ],
+              "selected_slot": -1,
+              "accepted": false,
+              "correct": false,
+              "wrong": false,
+              "physical_lateral_mm": 0.45807748940391296
+            },
+            {
+              "t_s": 0.4,
+              "station_ref_mm": 5.653810218457251,
+              "packet_mm": [
+                [
+                  -0.6285605625187698,
+                  35.19676180472937
+                ],
+                [
+                  12.887464671000023,
+                  30.191640639882607
+                ]
+              ],
+              "role_truth": [
+                0,
+                1
+              ],
+              "artery_probability": [
+                1.0,
+                9.01609001768961e-107
+              ],
+              "selected_slot": 0,
+              "accepted": true,
+              "correct": true,
+              "wrong": false,
+              "physical_lateral_mm": -0.12491396653207285,
+              "next_frame_shift_from_revision_mm": 0.28815826844482706
+            },
+            {
+              "t_s": 0.5,
+              "station_ref_mm": 6.282011353841391,
+              "packet_mm": [
+                [
+                  0.5437077808310307,
+                  36.47173228387296
+                ],
+                [
+                  15.250313007693686,
+                  29.924992177390582
+                ]
+              ],
+              "role_truth": [
+                0,
+                1
+              ],
+              "artery_probability": [
+                0.9999999999999998,
+                2.664248538653028e-122
+              ],
+              "selected_slot": 0,
+              "accepted": true,
+              "correct": true,
+              "wrong": false,
+              "physical_lateral_mm": -0.22657758588986066,
+              "next_frame_shift_from_revision_mm": 0.12162754157871768
+            },
+            {
+              "t_s": 0.6,
+              "station_ref_mm": 6.91021248922553,
+              "packet_mm": [
+                [
+                  13.8026798629795,
+                  30.9744888082207
+                ]
+              ],
+              "role_truth": [
+                1
+              ],
+              "artery_probability": [
+                4.668774598116372e-45
+              ],
+              "selected_slot": -1,
+              "accepted": false,
+              "correct": false,
+              "wrong": false,
+              "physical_lateral_mm": -0.16211155585464823
+            },
+            {
+              "t_s": 0.7000000000000001,
+              "station_ref_mm": 7.538413624609669,
+              "packet_mm": [
+                [
+                  13.526394074886666,
+                  30.960577340566598
+                ]
+              ],
+              "role_truth": [
+                1
+              ],
+              "artery_probability": [
+                1.4972496407961082e-46
+              ],
+              "selected_slot": -1,
+              "accepted": false,
+              "correct": false,
+              "wrong": false,
+              "physical_lateral_mm": -0.19599287866426066
+            },
+            {
+              "t_s": 0.8,
+              "station_ref_mm": 8.166614759993807,
+              "packet_mm": [
+                [
+                  14.621916137266384,
+                  30.826361040480798
+                ]
+              ],
+              "role_truth": [
+                1
+              ],
+              "artery_probability": [
+                3.853963063743586e-54
+              ],
+              "selected_slot": -1,
+              "accepted": false,
+              "correct": false,
+              "wrong": false,
+              "physical_lateral_mm": -0.12325050172827176
+            },
+            {
+              "t_s": 0.9,
+              "station_ref_mm": 8.794815895377948,
+              "packet_mm": [
+                [
+                  14.361872433148585,
+                  30.65627058554351
+                ]
+              ],
+              "role_truth": [
+                1
+              ],
+              "artery_probability": [
+                3.819639555955857e-54
+              ],
+              "selected_slot": -1,
+              "accepted": false,
+              "correct": false,
+              "wrong": false,
+              "physical_lateral_mm": -0.10632995488250958
+            },
+            {
+              "t_s": 1.0,
+              "station_ref_mm": 9.423017030762086,
+              "packet_mm": [
+                [
+                  14.094008817569803,
+                  29.52176449703167
+                ]
+              ],
+              "role_truth": [
+                1
+              ],
+              "artery_probability": [
+                1.0621050742374068e-59
+              ],
+              "selected_slot": -1,
+              "accepted": false,
+              "correct": false,
+              "wrong": false,
+              "physical_lateral_mm": -0.13391008098119206
+            },
+            {
+              "t_s": 1.1,
+              "station_ref_mm": 10.051218166146224,
+              "packet_mm": [
+                [
+                  14.896890727198867,
+                  29.638948945313313
+                ]
+              ],
+              "role_truth": [
+                1
+              ],
+              "artery_probability": [
+                1.008493194125308e-64
+              ],
+              "selected_slot": -1,
+              "accepted": false,
+              "correct": false,
+              "wrong": false,
+              "physical_lateral_mm": -0.09717614845690875
+            },
+            {
+              "t_s": 1.2,
+              "station_ref_mm": 10.679419301530364,
+              "packet_mm": [
+                [
+                  0.08802549162398757,
+                  35.511991653389565
+                ],
+                [
+                  16.117794992766537,
+                  28.579708005411288
+                ]
+              ],
+              "role_truth": [
+                0,
+                1
+              ],
+              "artery_probability": [
+                1.0,
+                1.6677796644961593e-142
+              ],
+              "selected_slot": 0,
+              "accepted": true,
+              "correct": true,
+              "wrong": false,
+              "physical_lateral_mm": 0.05815767855779649,
+              "next_frame_shift_from_revision_mm": 0.0006979084689365564
+            },
+            {
+              "t_s": 1.3,
+              "station_ref_mm": 11.307620436914503,
+              "packet_mm": [
+                [
+                  -0.3656132179411093,
+                  35.285834436454664
+                ],
+                [
+                  14.972105285428409,
+                  28.95094062614178
+                ]
+              ],
+              "role_truth": [
+                0,
+                1
+              ],
+              "artery_probability": [
+                1.0,
+                3.89231475145631e-136
+              ],
+              "selected_slot": 0,
+              "accepted": true,
+              "correct": true,
+              "wrong": false,
+              "physical_lateral_mm": 0.17935491390102581,
+              "next_frame_shift_from_revision_mm": 0.015543760216466885
+            },
+            {
+              "t_s": 1.4000000000000001,
+              "station_ref_mm": 11.935821572298643,
+              "packet_mm": [
+                [
+                  -1.1079008375543669,
+                  35.687972035512736
+                ],
+                [
+                  14.60110169011184,
+                  29.964418346731584
+                ]
+              ],
+              "role_truth": [
+                0,
+                1
+              ],
+              "artery_probability": [
+                1.0,
+                2.0611875796033215e-136
+              ],
+              "selected_slot": 0,
+              "accepted": true,
+              "correct": true,
+              "wrong": false,
+              "physical_lateral_mm": 0.2813808812022675,
+              "next_frame_shift_from_revision_mm": 0.04188732396682165
+            },
+            {
+              "t_s": 1.5,
+              "station_ref_mm": 12.564022707682781,
+              "packet_mm": [
+                [
+                  0.683766309667096,
+                  35.05809302047261
+                ],
+                [
+                  15.922632801225479,
+                  28.801158764975554
+                ]
+              ],
+              "role_truth": [
+                0,
+                1
+              ],
+              "artery_probability": [
+                1.0,
+                1.0545421162552814e-137
+              ],
+              "selected_slot": 0,
+              "accepted": true,
+              "correct": true,
+              "wrong": false,
+              "physical_lateral_mm": 0.38879518050613443,
+              "next_frame_shift_from_revision_mm": 0.17990238467307126
+            },
+            {
+              "t_s": 1.6,
+              "station_ref_mm": 13.19222384306692,
+              "packet_mm": [
+                [
+                  -1.2171040199386471,
+                  35.69638371687096
+                ],
+                [
+                  14.700372576326359,
+                  28.81288214061629
+                ]
+              ],
+              "role_truth": [
+                0,
+                1
+              ],
+              "artery_probability": [
+                1.0,
+                2.1970616669241246e-147
+              ],
+              "selected_slot": 0,
+              "accepted": true,
+              "correct": true,
+              "wrong": false,
+              "physical_lateral_mm": 0.3073898909424984,
+              "next_frame_shift_from_revision_mm": 0.18333718266403046
+            },
+            {
+              "t_s": 1.7,
+              "station_ref_mm": 13.82042497845106,
+              "packet_mm": [
+                [
+                  -0.38628720356654667,
+                  37.5900603148388
+                ],
+                [
+                  16.066983132633844,
+                  27.165222442713503
+                ]
+              ],
+              "role_truth": [
+                0,
+                1
+              ],
+              "artery_probability": [
+                1.0,
+                3.0537084873746124e-174
+              ],
+              "selected_slot": 0,
+              "accepted": true,
+              "correct": true,
+              "wrong": false,
+              "physical_lateral_mm": 0.36165895069048454,
+              "next_frame_shift_from_revision_mm": 0.14493386891009485
+            },
+            {
+              "t_s": 1.8,
+              "station_ref_mm": 14.448626113835198,
+              "packet_mm": [
+                [
+                  -1.147600029876589,
+                  35.54299880624357
+                ]
+              ],
+              "role_truth": [
+                0
+              ],
+              "artery_probability": [
+                1.0
+              ],
+              "selected_slot": 0,
+              "accepted": true,
+              "correct": true,
+              "wrong": false,
+              "physical_lateral_mm": 0.33647429402471424,
+              "next_frame_shift_from_revision_mm": 0.1557360425353297
+            },
+            {
+              "t_s": 1.9000000000000001,
+              "station_ref_mm": 15.076827249219338,
+              "packet_mm": [
+                [
+                  1.0841526697818622,
+                  35.89046816573522
+                ]
+              ],
+              "role_truth": [
+                0
+              ],
+              "artery_probability": [
+                1.0
+              ],
+              "selected_slot": 0,
+              "accepted": true,
+              "correct": true,
+              "wrong": false,
+              "physical_lateral_mm": 0.4727657925426335
+            },
+            {
+              "t_s": 2.0,
+              "station_ref_mm": 15.705028384603477,
+              "packet_mm": [
+                [
+                  0.7218646883326924,
+                  36.385189911296344
+                ],
+                [
+                  16.479915713872526,
+                  28.89194709238602
+                ]
+              ],
+              "role_truth": [
+                0,
+                1
+              ],
+              "artery_probability": [
+                1.0,
+                4.5771782616285953e-156
+              ],
+              "selected_slot": 0,
+              "accepted": true,
+              "correct": true,
+              "wrong": false,
+              "physical_lateral_mm": 0.5250052762514307
+            },
+            {
+              "t_s": 2.1,
+              "station_ref_mm": 16.33322951998762,
+              "packet_mm": [
+                [
+                  0.6191280063521402,
+                  35.99967506206977
+                ],
+                [
+                  14.690876450450554,
+                  26.70634532415692
+                ]
+              ],
+              "role_truth": [
+                0,
+                1
+              ],
+              "artery_probability": [
+                1.0,
+                2.3830325485899612e-158
+              ],
+              "selected_slot": 0,
+              "accepted": true,
+              "correct": true,
+              "wrong": false,
+              "physical_lateral_mm": 0.5166167824058729
+            },
+            {
+              "t_s": 2.2,
+              "station_ref_mm": 16.961430655371757,
+              "packet_mm": [
+                [
+                  -1.1285128272863174,
+                  35.35746199821678
+                ],
+                [
+                  14.433411681878948,
+                  28.034472652874168
+                ]
+              ],
+              "role_truth": [
+                0,
+                1
+              ],
+              "artery_probability": [
+                1.0,
+                1.0686220103801834e-156
+              ],
+              "selected_slot": 0,
+              "accepted": true,
+              "correct": true,
+              "wrong": false,
+              "physical_lateral_mm": 0.49843652652351533,
+              "next_frame_shift_from_revision_mm": 0.06718474279542629
+            },
+            {
+              "t_s": 2.3000000000000003,
+              "station_ref_mm": 17.589631790755895,
+              "packet_mm": [
+                [
+                  1.7386352997879868,
+                  36.152987514499976
+                ]
+              ],
+              "role_truth": [
+                0
+              ],
+              "artery_probability": [
+                1.0
+              ],
+              "selected_slot": 0,
+              "accepted": true,
+              "correct": true,
+              "wrong": false,
+              "physical_lateral_mm": 0.5427187220387292,
+              "next_frame_shift_from_revision_mm": 0.182107565336053
+            },
+            {
+              "t_s": 2.4,
+              "station_ref_mm": 18.217832926140034,
+              "packet_mm": [
+                [
+                  0.6911680726101197,
+                  36.246772263643265
+                ]
+              ],
+              "role_truth": [
+                0
+              ],
+              "artery_probability": [
+                1.0
+              ],
+              "selected_slot": 0,
+              "accepted": true,
+              "correct": true,
+              "wrong": false,
+              "physical_lateral_mm": 0.44454832650764114,
+              "next_frame_shift_from_revision_mm": 0.03347917753828379
+            },
+            {
+              "t_s": 2.5,
+              "station_ref_mm": 18.846034061524172,
+              "packet_mm": [
+                [
+                  -1.7981884253403173,
+                  35.395078308614806
+                ]
+              ],
+              "role_truth": [
+                0
+              ],
+              "artery_probability": [
+                1.0
+              ],
+              "selected_slot": 0,
+              "accepted": true,
+              "correct": true,
+              "wrong": false,
+              "physical_lateral_mm": 0.28311460635634045,
+              "next_frame_shift_from_revision_mm": 0.19830624711999342
+            },
+            {
+              "t_s": 2.6,
+              "station_ref_mm": 19.47423519690831,
+              "packet_mm": [
+                [
+                  -0.3820300403161615,
+                  35.56393423695205
+                ],
+                [
+                  17.357719089454804,
+                  26.921705004716454
+                ]
+              ],
+              "role_truth": [
+                0,
+                1
+              ],
+              "artery_probability": [
+                1.0,
+                1.4413236150731274e-187
+              ],
+              "selected_slot": 0,
+              "accepted": true,
+              "correct": true,
+              "wrong": false,
+              "physical_lateral_mm": 0.4060868961248002,
+              "next_frame_shift_from_revision_mm": 0.17070214980456924
+            },
+            {
+              "t_s": 2.7,
+              "station_ref_mm": 20.10243633229245,
+              "packet_mm": [
+                [
+                  0.36041903914597084,
+                  36.1227114625493
+                ],
+                [
+                  15.387132969834127,
+                  28.038955100861077
+                ]
+              ],
+              "role_truth": [
+                0,
+                1
+              ],
+              "artery_probability": [
+                1.0,
+                2.1247930711103286e-166
+              ],
+              "selected_slot": 0,
+              "accepted": true,
+              "correct": true,
+              "wrong": false,
+              "physical_lateral_mm": 0.32188461714913696,
+              "next_frame_shift_from_revision_mm": 0.17443683436537785
+            },
+            {
+              "t_s": 2.8000000000000003,
+              "station_ref_mm": 20.73063746767659,
+              "packet_mm": [
+                [
+                  -1.2093521060677135,
+                  36.222364942179645
+                ],
+                [
+                  16.207299464612895,
+                  28.865134508581
+                ]
+              ],
+              "role_truth": [
+                0,
+                1
+              ],
+              "artery_probability": [
+                1.0,
+                4.1217236155782514e-179
+              ],
+              "selected_slot": 0,
+              "accepted": true,
+              "correct": true,
+              "wrong": false,
+              "physical_lateral_mm": 0.14127601288235686,
+              "next_frame_shift_from_revision_mm": 0.14631439777509817
+            },
+            {
+              "t_s": 2.9,
+              "station_ref_mm": 21.35883860306073,
+              "packet_mm": [
+                [
+                  1.4250238597660743,
+                  36.453976273090625
+                ],
+                [
+                  17.05560868753937,
+                  28.439213591479398
+                ]
+              ],
+              "role_truth": [
+                0,
+                1
+              ],
+              "artery_probability": [
+                1.0,
+                1.8747968554839378e-173
+              ],
+              "selected_slot": 0,
+              "accepted": true,
+              "correct": true,
+              "wrong": false,
+              "physical_lateral_mm": 0.22184973825270896
+            },
+            {
+              "t_s": 3.0,
+              "station_ref_mm": 21.987039738444867,
+              "packet_mm": [
+                [
+                  -1.5287157933492554,
+                  34.85311194604296
+                ],
+                [
+                  15.514368059736675,
+                  27.254349139545017
+                ]
+              ],
+              "role_truth": [
+                0,
+                1
+              ],
+              "artery_probability": [
+                1.0,
+                1.3143230388291186e-181
+              ],
+              "selected_slot": 0,
+              "accepted": true,
+              "correct": true,
+              "wrong": false,
+              "physical_lateral_mm": 0.29100210481052324
+            },
+            {
+              "t_s": 3.1,
+              "station_ref_mm": 22.615240873829006,
+              "packet_mm": [
+                [
+                  -0.08578394188708274,
+                  34.50717142666418
+                ],
+                [
+                  16.810421926823146,
+                  27.299027758820255
+                ]
+              ],
+              "role_truth": [
+                0,
+                1
+              ],
+              "artery_probability": [
+                1.0,
+                4.115023916321533e-179
+              ],
+              "selected_slot": 0,
+              "accepted": true,
+              "correct": true,
+              "wrong": false,
+              "physical_lateral_mm": 0.29130310199441617,
+              "next_frame_shift_from_revision_mm": 0.02043088787041895
+            },
+            {
+              "t_s": 3.2,
+              "station_ref_mm": 23.243442009213144,
+              "packet_mm": [
+                [
+                  -0.4023320721299195,
+                  36.33060390118635
+                ],
+                [
+                  14.622976099408312,
+                  27.023549778914948
+                ]
+              ],
+              "role_truth": [
+                0,
+                1
+              ],
+              "artery_probability": [
+                1.0,
+                2.2780856959664847e-185
+              ],
+              "selected_slot": 0,
+              "accepted": true,
+              "correct": true,
+              "wrong": false,
+              "physical_lateral_mm": 0.29419112382572127,
+              "next_frame_shift_from_revision_mm": 0.0025417852793824564
+            },
+            {
+              "t_s": 3.3000000000000003,
+              "station_ref_mm": 23.871643144597286,
+              "packet_mm": [
+                [
+                  -0.5244812247913495,
+                  35.72885772671315
+                ],
+                [
+                  14.878410007674756,
+                  26.725695436738324
+                ]
+              ],
+              "role_truth": [
+                0,
+                1
+              ],
+              "artery_probability": [
+                1.0,
+                2.28877825263182e-187
+              ],
+              "selected_slot": 0,
+              "accepted": true,
+              "correct": true,
+              "wrong": false,
+              "physical_lateral_mm": 0.3097914181136149
+            },
+            {
+              "t_s": 3.4,
+              "station_ref_mm": 24.499844279981424,
+              "packet_mm": [
+                [
+                  0.7629867302662179,
+                  36.46497268416601
+                ],
+                [
+                  15.581436447798438,
+                  26.62824617591757
+                ]
+              ],
+              "role_truth": [
+                0,
+                1
+              ],
+              "artery_probability": [
+                1.0,
+                2.476717924621104e-192
+              ],
+              "selected_slot": 0,
+              "accepted": true,
+              "correct": true,
+              "wrong": false,
+              "physical_lateral_mm": 0.3309732074600319,
+              "next_frame_shift_from_revision_mm": 0.12591171765556394
+            },
+            {
+              "t_s": 3.5,
+              "station_ref_mm": 25.128045415365563,
+              "packet_mm": [
+                [
+                  1.1494112412233914,
+                  36.059845628064586
+                ],
+                [
+                  17.29469094379376,
+                  27.707187826721633
+                ]
+              ],
+              "role_truth": [
+                0,
+                1
+              ],
+              "artery_probability": [
+                1.0,
+                1.7284156067729657e-190
+              ],
+              "selected_slot": 0,
+              "accepted": true,
+              "correct": true,
+              "wrong": false,
+              "physical_lateral_mm": 0.22471665212774497,
+              "next_frame_shift_from_revision_mm": 0.08884514602658813
+            },
+            {
+              "t_s": 3.6,
+              "station_ref_mm": 25.7562465507497,
+              "packet_mm": [
+                [
+                  -0.897353984300418,
+                  36.58369915703269
+                ],
+                [
+                  16.322203329042523,
+                  26.663868378087567
+                ]
+              ],
+              "role_truth": [
+                0,
+                1
+              ],
+              "artery_probability": [
+                1.0,
+                3.482426525915657e-214
+              ],
+              "selected_slot": 0,
+              "accepted": true,
+              "correct": true,
+              "wrong": false,
+              "physical_lateral_mm": 0.005810508299563939,
+              "next_frame_shift_from_revision_mm": 0.181791030563801
+            },
+            {
+              "t_s": 3.7,
+              "station_ref_mm": 26.384447686133843,
+              "packet_mm": [
+                [
+                  1.2650525383228006,
+                  36.13611925536762
+                ],
+                [
+                  17.587684103517596,
+                  27.090590363914878
+                ]
+              ],
+              "role_truth": [
+                0,
+                1
+              ],
+              "artery_probability": [
+                1.0,
+                1.7909767634406265e-201
+              ],
+              "selected_slot": 0,
+              "accepted": true,
+              "correct": true,
+              "wrong": false,
+              "physical_lateral_mm": 0.06192747589804662,
+              "next_frame_shift_from_revision_mm": 0.19305176909587451
+            },
+            {
+              "t_s": 3.8000000000000003,
+              "station_ref_mm": 27.01264882151798,
+              "packet_mm": [
+                [
+                  0.3295917195970848,
+                  36.20450036697845
+                ],
+                [
+                  16.034547762214576,
+                  26.670528765857558
+                ]
+              ],
+              "role_truth": [
+                0,
+                1
+              ],
+              "artery_probability": [
+                1.0,
+                2.4723477253574294e-203
+              ],
+              "selected_slot": 0,
+              "accepted": true,
+              "correct": true,
+              "wrong": false,
+              "physical_lateral_mm": 0.02869610424101138
+            },
+            {
+              "t_s": 3.9,
+              "station_ref_mm": 27.64084995690212,
+              "packet_mm": [
+                [
+                  -0.9794274153980195,
+                  36.37041583930271
+                ],
+                [
+                  15.055523529786262,
+                  26.827943228483143
+                ]
+              ],
+              "role_truth": [
+                0,
+                1
+              ],
+              "artery_probability": [
+                1.0,
+                1.6614803235682636e-207
+              ],
+              "selected_slot": 0,
+              "accepted": true,
+              "correct": true,
+              "wrong": false,
+              "physical_lateral_mm": 0.03334873761608348
+            },
+            {
+              "t_s": 4.0,
+              "station_ref_mm": 28.269051092286258,
+              "packet_mm": [
+                [
+                  -0.13668889497742603,
+                  37.5474734971385
+                ],
+                [
+                  15.639965401752264,
+                  26.10202163635162
+                ]
+              ],
+              "role_truth": [
+                0,
+                1
+              ],
+              "artery_probability": [
+                1.0,
+                7.945737365540691e-226
+              ],
+              "selected_slot": 0,
+              "accepted": true,
+              "correct": true,
+              "wrong": false,
+              "physical_lateral_mm": 0.06246187679723147
+            }
+          ],
+          "tcp_mm": 22.187996655451162,
+          "turn_deg": 5.825793156871064,
+          "duration_s": 4.0,
+          "revisions": 22,
+          "max_chart_handoff_x_ref_mm": 0.0,
+          "max_chart_handoff_v_ref_mm_s": 4.440892098500626e-16
+        }
+      }
+    }
+  ]
+}

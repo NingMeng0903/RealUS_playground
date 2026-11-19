@@ -1,0 +1,11 @@
+{
+  "alias_packet_checks": 81,
+  "archives": {
+    "results/qualified_recovery_v1/frozen/test.jsonl.gz": {
+      "worlds": 192,
+      "trajectories": 768,
+      "retractions": 4088,
+      "centered_mistakes": 11
+    }
+  }
+}

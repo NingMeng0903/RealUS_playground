@@ -1,0 +1,142 @@
+{
+  "reference": {
+    "mpc_stream": {
+      "exposures": 1312,
+      "max_association_difference": 3.3306690738754696e-16,
+      "max_effective_offset_difference_mm": 5.269118474870993e-13,
+      "max_residual_mean_difference_mm": 0.0
+    },
+    "mpc_iid": {
+      "exposures": 1312,
+      "max_association_difference": 6.085050112954822e-14,
+      "max_effective_offset_difference_mm": 1.2440886099085446e-09,
+      "max_residual_mean_difference_mm": 1.2860246201285008e-09
+    },
+    "mpc_ou": {
+      "exposures": 1312,
+      "max_association_difference": 1.0627262958529116e-12,
+      "max_effective_offset_difference_mm": 1.6107275513377317e-09,
+      "max_residual_mean_difference_mm": 8.814236007737009e-09
+    }
+  },
+  "minus-plus": {
+    "mpc_stream": {
+      "exposures": 1312,
+      "max_association_difference": 2.220446049250313e-16,
+      "max_effective_offset_difference_mm": 1.794120407794253e-13,
+      "max_residual_mean_difference_mm": 0.0
+    },
+    "mpc_iid": {
+      "exposures": 1312,
+      "max_association_difference": 8.56046483699302e-12,
+      "max_effective_offset_difference_mm": 1.2566924445511773e-09,
+      "max_residual_mean_difference_mm": 1.2959215922592193e-09
+    },
+    "mpc_ou": {
+      "exposures": 1312,
+      "max_association_difference": 8.560471775886924e-12,
+      "max_effective_offset_difference_mm": 1.7974617350091648e-09,
+      "max_residual_mean_difference_mm": 9.33274546532914e-09
+    }
+  },
+  "plus-minus": {
+    "mpc_stream": {
+      "exposures": 1312,
+      "max_association_difference": 3.122502256758253e-16,
+      "max_effective_offset_difference_mm": 5.000444502911705e-13,
+      "max_residual_mean_difference_mm": 0.0
+    },
+    "mpc_iid": {
+      "exposures": 1312,
+      "max_association_difference": 6.724343304398417e-13,
+      "max_effective_offset_difference_mm": 1.2201779864273732e-09,
+      "max_residual_mean_difference_mm": 1.2695018369868194e-09
+    },
+    "mpc_ou": {
+      "exposures": 1312,
+      "max_association_difference": 3.7786440643117203e-13,
+      "max_effective_offset_difference_mm": 1.807528349218046e-09,
+      "max_residual_mean_difference_mm": 9.059419880941277e-09
+    }
+  },
+  "beta2": {
+    "mpc_stream": {
+      "exposures": 656,
+      "max_association_difference": 4.440892098500626e-16,
+      "max_effective_offset_difference_mm": 4.745093207247919e-13,
+      "max_residual_mean_difference_mm": 0.0
+    },
+    "mpc_iid": {
+      "exposures": 656,
+      "max_association_difference": 2.10883649355151e-14,
+      "max_effective_offset_difference_mm": 6.585834100292232e-10,
+      "max_residual_mean_difference_mm": 6.585723077989769e-10
+    },
+    "mpc_ou": {
+      "exposures": 656,
+      "max_association_difference": 2.1088366523701877e-14,
+      "max_effective_offset_difference_mm": 1.5204220105147215e-09,
+      "max_residual_mean_difference_mm": 9.336972528473098e-09
+    }
+  },
+  "pose25": {
+    "mpc_stream": {
+      "exposures": 656,
+      "max_association_difference": 2.220446049250313e-16,
+      "max_effective_offset_difference_mm": 2.398081733190338e-13,
+      "max_residual_mean_difference_mm": 0.0
+    },
+    "mpc_iid": {
+      "exposures": 656,
+      "max_association_difference": 4.0494690933812194e-12,
+      "max_effective_offset_difference_mm": 6.579257139094352e-10,
+      "max_residual_mean_difference_mm": 6.579248257310155e-10
+    },
+    "mpc_ou": {
+      "exposures": 656,
+      "max_association_difference": 4.0494690933812194e-12,
+      "max_effective_offset_difference_mm": 1.2915859493034532e-09,
+      "max_residual_mean_difference_mm": 9.161043479366526e-09
+    }
+  },
+  "transient": {
+    "mpc_stream": {
+      "exposures": 1312,
+      "max_association_difference": 4.440892098500626e-16,
+      "max_effective_offset_difference_mm": 3.9479530755670567e-13,
+      "max_residual_mean_difference_mm": 0.0
+    },
+    "mpc_iid": {
+      "exposures": 1312,
+      "max_association_difference": 3.389382162113279e-13,
+      "max_effective_offset_difference_mm": 2.17782218925322e-08,
+      "max_residual_mean_difference_mm": 2.180609293134239e-08
+    },
+    "mpc_ou": {
+      "exposures": 1312,
+      "max_association_difference": 3.341595550079122e-14,
+      "max_effective_offset_difference_mm": 3.843370954825787e-09,
+      "max_residual_mean_difference_mm": 1.5054576474327064e-08
+    }
+  },
+  "static-world": {
+    "mpc_stream": {
+      "exposures": 492,
+      "max_association_difference": 2.220446049250313e-16,
+      "max_effective_offset_difference_mm": 4.440892098500626e-14,
+      "max_residual_mean_difference_mm": 0.0
+    },
+    "mpc_iid": {
+      "exposures": 492,
+      "max_association_difference": 3.734238311229937e-13,
+      "max_effective_offset_difference_mm": 1.7466028623402963e-11,
+      "max_residual_mean_difference_mm": 5.627570631716594e-11
+    },
+    "mpc_ou": {
+      "exposures": 492,
+      "max_association_difference": 3.7342385907508093e-13,
+      "max_effective_offset_difference_mm": 5.098321764762659e-11,
+      "max_residual_mean_difference_mm": 2.9232870291107105e-10
+    }
+  }
+}

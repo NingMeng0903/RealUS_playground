@@ -1,0 +1,515 @@
+{
+  "daughter": {
+    "checkpoint": {
+      "opportunity": {
+        "n_cases": 4,
+        "n_repeats": 4,
+        "repeated_case_clustered": true,
+        "candidate_rate": {
+          "correct_completion": 0.4375,
+          "any_wrong": 0.0
+        },
+        "baseline_rate": {
+          "correct_completion": 0.25,
+          "any_wrong": 0.0
+        },
+        "delta": {
+          "correct_completion": 0.1875,
+          "any_wrong": 0.0,
+          "tcp_mm": 0.313568462091673,
+          "turn_deg": -0.7124628764931789,
+          "motion_s": -0.375,
+          "rail_mm": 0.0,
+          "captures": -0.25,
+          "combined_s": -0.3764467516250001
+        },
+        "delta_ci95_case_clustered": {
+          "correct_completion": [
+            0.0,
+            0.5625
+          ],
+          "any_wrong": [
+            0.0,
+            0.0
+          ],
+          "tcp_mm": [
+            0.0,
+            0.940705386275019
+          ],
+          "turn_deg": [
+            -2.1373886294795366,
+            0.0
+          ],
+          "motion_s": [
+            -1.125,
+            0.0
+          ],
+          "rail_mm": [
+            0.0,
+            0.0
+          ],
+          "captures": [
+            -0.75,
+            0.0
+          ],
+          "combined_s": [
+            -1.1293402548750002,
+            0.0
+          ]
+        },
+        "success_wins_losses_ties": [
+          1,
+          0,
+          3
+        ],
+        "wrong_harm_benefit_ties_cases": [
+          0,
+          0,
+          4
+        ],
+        "wrong_harm_975_upper": null,
+        "success_sign_p_greater": null,
+        "wrong_harm_sign_p_greater": null,
+        "cost_delta": {
+          "tcp_mm": 0.313568462091673,
+          "turn_deg": -0.7124628764931789,
+          "motion_s": -0.375
+        },
+        "cost_bonferroni_ci95": {
+          "tcp_mm": [
+            0.0,
+            0.940705386275019
+          ],
+          "turn_deg": [
+            -2.1373886294795366,
+            0.0
+          ],
+          "motion_s": [
+            -1.125,
+            0.0
+          ]
+        },
+        "cost_margins": {
+          "tcp_mm": 2.0,
+          "turn_deg": 2.0,
+          "motion_s": 0.1
+        },
+        "cost_equivalent": {
+          "tcp_mm": true,
+          "turn_deg": false,
+          "motion_s": false
+        },
+        "cost_nonincrease": {
+          "tcp_mm": false,
+          "turn_deg": true,
+          "motion_s": true
+        },
+        "cost_noninferior_with_margin": {
+          "tcp_mm": true,
+          "turn_deg": true,
+          "motion_s": true
+        },
+        "all_costs_equivalent": false,
+        "all_costs_nonincrease": false,
+        "all_costs_noninferior_with_margin": true,
+        "strong_gate_single_repeat": false,
+        "inference_note": "Repeated tapes are clustered by latent case. Case-level bootstrap intervals are descriptive and no binomial discordance inference is reported.",
+        "bootstrap_samples": 20000,
+        "bootstrap_seed": 57216
+      },
+      "case_options": {
+        "MPC": 4,
+        "advance": 3
+      },
+      "ranking_half_choices": {
+        "advance": 2,
+        "MPC": 6
+      },
+      "half_signs": {
+        "advance/+1,+1": 1,
+        "advance/+0,+0": 2
+      }
+    },
+    "probe": {
+      "opportunity": {
+        "n_cases": 4,
+        "n_repeats": 4,
+        "repeated_case_clustered": true,
+        "candidate_rate": {
+          "correct_completion": 0.3125,
+          "any_wrong": 0.0
+        },
+        "baseline_rate": {
+          "correct_completion": 0.3125,
+          "any_wrong": 0.0
+        },
+        "delta": {
+          "correct_completion": 0.0,
+          "any_wrong": 0.0,
+          "tcp_mm": 0.0,
+          "turn_deg": 0.0,
+          "motion_s": 0.0,
+          "rail_mm": 0.0,
+          "captures": 0.0,
+          "combined_s": 0.0
+        },
+        "delta_ci95_case_clustered": {
+          "correct_completion": [
+            0.0,
+            0.0
+          ],
+          "any_wrong": [
+            0.0,
+            0.0
+          ],
+          "tcp_mm": [
+            0.0,
+            0.0
+          ],
+          "turn_deg": [
+            0.0,
+            0.0
+          ],
+          "motion_s": [
+            0.0,
+            0.0
+          ],
+          "rail_mm": [
+            0.0,
+            0.0
+          ],
+          "captures": [
+            0.0,
+            0.0
+          ],
+          "combined_s": [
+            0.0,
+            0.0
+          ]
+        },
+        "success_wins_losses_ties": [
+          0,
+          0,
+          4
+        ],
+        "wrong_harm_benefit_ties_cases": [
+          0,
+          0,
+          4
+        ],
+        "wrong_harm_975_upper": null,
+        "success_sign_p_greater": null,
+        "wrong_harm_sign_p_greater": null,
+        "cost_delta": {
+          "tcp_mm": 0.0,
+          "turn_deg": 0.0,
+          "motion_s": 0.0
+        },
+        "cost_bonferroni_ci95": {
+          "tcp_mm": [
+            0.0,
+            0.0
+          ],
+          "turn_deg": [
+            0.0,
+            0.0
+          ],
+          "motion_s": [
+            0.0,
+            0.0
+          ]
+        },
+        "cost_margins": {
+          "tcp_mm": 2.0,
+          "turn_deg": 2.0,
+          "motion_s": 0.1
+        },
+        "cost_equivalent": {
+          "tcp_mm": true,
+          "turn_deg": true,
+          "motion_s": true
+        },
+        "cost_nonincrease": {
+          "tcp_mm": true,
+          "turn_deg": true,
+          "motion_s": true
+        },
+        "cost_noninferior_with_margin": {
+          "tcp_mm": true,
+          "turn_deg": true,
+          "motion_s": true
+        },
+        "all_costs_equivalent": true,
+        "all_costs_nonincrease": true,
+        "all_costs_noninferior_with_margin": true,
+        "strong_gate_single_repeat": false,
+        "inference_note": "Repeated tapes are clustered by latent case. Case-level bootstrap intervals are descriptive and no binomial discordance inference is reported.",
+        "bootstrap_samples": 20000,
+        "bootstrap_seed": 57216
+      },
+      "case_options": {
+        "MPC": 4,
+        "view": 3
+      },
+      "ranking_half_choices": {
+        "MPC": 8
+      },
+      "half_signs": {
+        "view/-1,+0": 1,
+        "view/+0,+0": 2
+      }
+    }
+  },
+  "trunk": {
+    "checkpoint": {
+      "opportunity": {
+        "n_cases": 4,
+        "n_repeats": 4,
+        "repeated_case_clustered": true,
+        "candidate_rate": {
+          "correct_completion": 0.75,
+          "any_wrong": 0.0625
+        },
+        "baseline_rate": {
+          "correct_completion": 0.75,
+          "any_wrong": 0.0625
+        },
+        "delta": {
+          "correct_completion": 0.0,
+          "any_wrong": 0.0,
+          "tcp_mm": 0.0,
+          "turn_deg": 0.0,
+          "motion_s": 0.0,
+          "rail_mm": 0.0,
+          "captures": 0.0,
+          "combined_s": 0.0
+        },
+        "delta_ci95_case_clustered": {
+          "correct_completion": [
+            0.0,
+            0.0
+          ],
+          "any_wrong": [
+            0.0,
+            0.0
+          ],
+          "tcp_mm": [
+            0.0,
+            0.0
+          ],
+          "turn_deg": [
+            0.0,
+            0.0
+          ],
+          "motion_s": [
+            0.0,
+            0.0
+          ],
+          "rail_mm": [
+            0.0,
+            0.0
+          ],
+          "captures": [
+            0.0,
+            0.0
+          ],
+          "combined_s": [
+            0.0,
+            0.0
+          ]
+        },
+        "success_wins_losses_ties": [
+          0,
+          0,
+          4
+        ],
+        "wrong_harm_benefit_ties_cases": [
+          0,
+          0,
+          4
+        ],
+        "wrong_harm_975_upper": null,
+        "success_sign_p_greater": null,
+        "wrong_harm_sign_p_greater": null,
+        "cost_delta": {
+          "tcp_mm": 0.0,
+          "turn_deg": 0.0,
+          "motion_s": 0.0
+        },
+        "cost_bonferroni_ci95": {
+          "tcp_mm": [
+            0.0,
+            0.0
+          ],
+          "turn_deg": [
+            0.0,
+            0.0
+          ],
+          "motion_s": [
+            0.0,
+            0.0
+          ]
+        },
+        "cost_margins": {
+          "tcp_mm": 2.0,
+          "turn_deg": 2.0,
+          "motion_s": 0.1
+        },
+        "cost_equivalent": {
+          "tcp_mm": true,
+          "turn_deg": true,
+          "motion_s": true
+        },
+        "cost_nonincrease": {
+          "tcp_mm": true,
+          "turn_deg": true,
+          "motion_s": true
+        },
+        "cost_noninferior_with_margin": {
+          "tcp_mm": true,
+          "turn_deg": true,
+          "motion_s": true
+        },
+        "all_costs_equivalent": true,
+        "all_costs_nonincrease": true,
+        "all_costs_noninferior_with_margin": true,
+        "strong_gate_single_repeat": false,
+        "inference_note": "Repeated tapes are clustered by latent case. Case-level bootstrap intervals are descriptive and no binomial discordance inference is reported.",
+        "bootstrap_samples": 20000,
+        "bootstrap_seed": 57216
+      },
+      "case_options": {
+        "MPC": 4
+      },
+      "ranking_half_choices": {
+        "MPC": 8
+      },
+      "half_signs": {}
+    },
+    "probe": {
+      "opportunity": {
+        "n_cases": 4,
+        "n_repeats": 4,
+        "repeated_case_clustered": true,
+        "candidate_rate": {
+          "correct_completion": 0.6875,
+          "any_wrong": 0.0625
+        },
+        "baseline_rate": {
+          "correct_completion": 0.6875,
+          "any_wrong": 0.0625
+        },
+        "delta": {
+          "correct_completion": 0.0,
+          "any_wrong": 0.0,
+          "tcp_mm": 0.0,
+          "turn_deg": 0.0,
+          "motion_s": 0.0,
+          "rail_mm": 0.0,
+          "captures": 0.0,
+          "combined_s": 0.0
+        },
+        "delta_ci95_case_clustered": {
+          "correct_completion": [
+            0.0,
+            0.0
+          ],
+          "any_wrong": [
+            0.0,
+            0.0
+          ],
+          "tcp_mm": [
+            0.0,
+            0.0
+          ],
+          "turn_deg": [
+            0.0,
+            0.0
+          ],
+          "motion_s": [
+            0.0,
+            0.0
+          ],
+          "rail_mm": [
+            0.0,
+            0.0
+          ],
+          "captures": [
+            0.0,
+            0.0
+          ],
+          "combined_s": [
+            0.0,
+            0.0
+          ]
+        },
+        "success_wins_losses_ties": [
+          0,
+          0,
+          4
+        ],
+        "wrong_harm_benefit_ties_cases": [
+          0,
+          0,
+          4
+        ],
+        "wrong_harm_975_upper": null,
+        "success_sign_p_greater": null,
+        "wrong_harm_sign_p_greater": null,
+        "cost_delta": {
+          "tcp_mm": 0.0,
+          "turn_deg": 0.0,
+          "motion_s": 0.0
+        },
+        "cost_bonferroni_ci95": {
+          "tcp_mm": [
+            0.0,
+            0.0
+          ],
+          "turn_deg": [
+            0.0,
+            0.0
+          ],
+          "motion_s": [
+            0.0,
+            0.0
+          ]
+        },
+        "cost_margins": {
+          "tcp_mm": 2.0,
+          "turn_deg": 2.0,
+          "motion_s": 0.1
+        },
+        "cost_equivalent": {
+          "tcp_mm": true,
+          "turn_deg": true,
+          "motion_s": true
+        },
+        "cost_nonincrease": {
+          "tcp_mm": true,
+          "turn_deg": true,
+          "motion_s": true
+        },
+        "cost_noninferior_with_margin": {
+          "tcp_mm": true,
+          "turn_deg": true,
+          "motion_s": true
+        },
+        "all_costs_equivalent": true,
+        "all_costs_nonincrease": true,
+        "all_costs_noninferior_with_margin": true,
+        "strong_gate_single_repeat": false,
+        "inference_note": "Repeated tapes are clustered by latent case. Case-level bootstrap intervals are descriptive and no binomial discordance inference is reported.",
+        "bootstrap_samples": 20000,
+        "bootstrap_seed": 57216
+      },
+      "case_options": {
+        "MPC": 4
+      },
+      "ranking_half_choices": {
+        "MPC": 8
+      },
+      "half_signs": {}
+    }
+  }
+}

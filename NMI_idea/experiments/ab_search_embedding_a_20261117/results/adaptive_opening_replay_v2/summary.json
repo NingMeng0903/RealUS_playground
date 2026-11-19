@@ -1,0 +1,821 @@
+{
+  "connection": {
+    "worlds": 28,
+    "replicas_per_world": 3,
+    "means": {
+      "mpc_shared_menu": {
+        "corrected_complete": 0.48809523809523814,
+        "old_strict_complete": 0.4761904761904762,
+        "final_wrong": 0.0,
+        "ever_wrong": 0.011904761904761904,
+        "new_centered_mistake": 0.011904761904761904,
+        "fresh_query_confirmed": 0.8571428571428571,
+        "target_reappeared": 1.0,
+        "tcp_mm": 41.32338871408098,
+        "turn_degs": 6.981639248663454,
+        "seconds": 6.25,
+        "frames": 63.5,
+        "feedback_revisions": 29.107142857142858,
+        "wrong_certificates": 0.0,
+        "wrong_card_seconds": 0.0,
+        "retractions": 0.0
+      },
+      "public_original_first_menu": {
+        "corrected_complete": 0.619047619047619,
+        "old_strict_complete": 0.619047619047619,
+        "final_wrong": 0.0,
+        "ever_wrong": 0.0,
+        "new_centered_mistake": 0.0,
+        "fresh_query_confirmed": 0.8690476190476192,
+        "target_reappeared": 1.0,
+        "tcp_mm": 38.81780343647325,
+        "turn_degs": 6.53603170430343,
+        "seconds": 6.035714285714286,
+        "frames": 61.35714285714285,
+        "feedback_revisions": 28.488095238095244,
+        "wrong_certificates": 0.0,
+        "wrong_card_seconds": 0.0,
+        "retractions": 0.0
+      },
+      "public_first_only": {
+        "corrected_complete": 0.7142857142857143,
+        "old_strict_complete": 0.7142857142857143,
+        "final_wrong": 0.0,
+        "ever_wrong": 0.0,
+        "new_centered_mistake": 0.0,
+        "fresh_query_confirmed": 0.9761904761904762,
+        "target_reappeared": 1.0,
+        "tcp_mm": 37.637895236141375,
+        "turn_degs": 6.457677295756588,
+        "seconds": 5.595238095238095,
+        "frames": 56.952380952380956,
+        "feedback_revisions": 27.25,
+        "wrong_certificates": 0.0,
+        "wrong_card_seconds": 0.0,
+        "retractions": 0.0
+      }
+    },
+    "vs_reference": {
+      "public_original_first_menu": {
+        "corrected_complete": {
+          "delta": 0.13095238095238082,
+          "ci95": [
+            0.011904761904761904,
+            0.2619047619047619
+          ]
+        },
+        "old_strict_complete": {
+          "delta": 0.14285714285714274,
+          "ci95": [
+            0.02380952380952381,
+            0.27380952380952384
+          ]
+        },
+        "final_wrong": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        },
+        "ever_wrong": {
+          "delta": -0.011904761904761904,
+          "ci95": [
+            -0.03571428571428571,
+            0.0
+          ]
+        },
+        "new_centered_mistake": {
+          "delta": -0.011904761904761904,
+          "ci95": [
+            -0.03571428571428571,
+            0.0
+          ]
+        },
+        "fresh_query_confirmed": {
+          "delta": 0.011904761904762085,
+          "ci95": [
+            -0.11904761904761904,
+            0.14285714285714285
+          ]
+        },
+        "target_reappeared": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        },
+        "tcp_mm": {
+          "delta": -2.5055852776077288,
+          "ci95": [
+            -4.3283021893608336,
+            -0.7912545978107598
+          ]
+        },
+        "turn_degs": {
+          "delta": -0.4456075443600236,
+          "ci95": [
+            -0.7920926139289298,
+            -0.13329594030788422
+          ]
+        },
+        "seconds": {
+          "delta": -0.2142857142857144,
+          "ci95": [
+            -0.511904761904762,
+            0.08333333333333333
+          ]
+        },
+        "frames": {
+          "delta": -2.142857142857153,
+          "ci95": [
+            -5.11904761904762,
+            0.8333333333333331
+          ]
+        },
+        "feedback_revisions": {
+          "delta": -0.6190476190476133,
+          "ci95": [
+            -3.059523809523808,
+            2.2619047619047614
+          ]
+        },
+        "wrong_certificates": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        },
+        "wrong_card_seconds": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        },
+        "retractions": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        }
+      },
+      "public_first_only": {
+        "corrected_complete": {
+          "delta": 0.22619047619047616,
+          "ci95": [
+            0.07142857142857141,
+            0.380952380952381
+          ]
+        },
+        "old_strict_complete": {
+          "delta": 0.23809523809523808,
+          "ci95": [
+            0.07142857142857142,
+            0.4047619047619047
+          ]
+        },
+        "final_wrong": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        },
+        "ever_wrong": {
+          "delta": -0.011904761904761904,
+          "ci95": [
+            -0.03571428571428571,
+            0.0
+          ]
+        },
+        "new_centered_mistake": {
+          "delta": -0.011904761904761904,
+          "ci95": [
+            -0.03571428571428571,
+            0.0
+          ]
+        },
+        "fresh_query_confirmed": {
+          "delta": 0.11904761904761907,
+          "ci95": [
+            0.0,
+            0.25000000000000006
+          ]
+        },
+        "target_reappeared": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        },
+        "tcp_mm": {
+          "delta": -3.685493477939602,
+          "ci95": [
+            -5.711890001493183,
+            -1.8359626795223816
+          ]
+        },
+        "turn_degs": {
+          "delta": -0.5239619529068653,
+          "ci95": [
+            -0.9301392387649776,
+            -0.1644420314269122
+          ]
+        },
+        "seconds": {
+          "delta": -0.6547619047619051,
+          "ci95": [
+            -1.0476190476190477,
+            -0.2619047619047619
+          ]
+        },
+        "frames": {
+          "delta": -6.547619047619044,
+          "ci95": [
+            -10.476190476190478,
+            -2.6190476190476195
+          ]
+        },
+        "feedback_revisions": {
+          "delta": -1.8571428571428577,
+          "ci95": [
+            -3.595238095238095,
+            -0.16666666666666696
+          ]
+        },
+        "wrong_certificates": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        },
+        "wrong_card_seconds": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        },
+        "retractions": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        }
+      }
+    }
+  },
+  "parallel": {
+    "worlds": 28,
+    "replicas_per_world": 3,
+    "means": {
+      "mpc_shared_menu": {
+        "corrected_complete": 0.3095238095238095,
+        "old_strict_complete": 0.3095238095238095,
+        "final_wrong": 0.0,
+        "ever_wrong": 0.0,
+        "new_centered_mistake": 0.0,
+        "fresh_query_confirmed": 0.4880952380952381,
+        "target_reappeared": 0.5,
+        "tcp_mm": 39.53612361719035,
+        "turn_degs": 7.90551698575041,
+        "seconds": 7.285714285714286,
+        "frames": 73.85714285714286,
+        "feedback_revisions": 19.952380952380956,
+        "wrong_certificates": 0.0,
+        "wrong_card_seconds": 0.0,
+        "retractions": 0.0
+      },
+      "public_original_first_menu": {
+        "corrected_complete": 0.5476190476190476,
+        "old_strict_complete": 0.5476190476190476,
+        "final_wrong": 0.0,
+        "ever_wrong": 0.0,
+        "new_centered_mistake": 0.0,
+        "fresh_query_confirmed": 0.7023809523809523,
+        "target_reappeared": 0.7142857142857143,
+        "tcp_mm": 44.589052865244795,
+        "turn_degs": 9.662703882690142,
+        "seconds": 7.3690476190476195,
+        "frames": 74.69047619047618,
+        "feedback_revisions": 24.404761904761905,
+        "wrong_certificates": 0.0,
+        "wrong_card_seconds": 0.0,
+        "retractions": 0.0
+      },
+      "public_first_only": {
+        "corrected_complete": 0.5476190476190476,
+        "old_strict_complete": 0.5476190476190476,
+        "final_wrong": 0.0,
+        "ever_wrong": 0.0,
+        "new_centered_mistake": 0.0,
+        "fresh_query_confirmed": 0.7023809523809523,
+        "target_reappeared": 0.7142857142857143,
+        "tcp_mm": 44.589052865244795,
+        "turn_degs": 9.662703882690142,
+        "seconds": 7.3690476190476195,
+        "frames": 74.69047619047618,
+        "feedback_revisions": 24.404761904761905,
+        "wrong_certificates": 0.0,
+        "wrong_card_seconds": 0.0,
+        "retractions": 0.0
+      }
+    },
+    "vs_reference": {
+      "public_original_first_menu": {
+        "corrected_complete": {
+          "delta": 0.23809523809523808,
+          "ci95": [
+            0.10714285714285714,
+            0.3928571428571428
+          ]
+        },
+        "old_strict_complete": {
+          "delta": 0.23809523809523808,
+          "ci95": [
+            0.10714285714285714,
+            0.3928571428571428
+          ]
+        },
+        "final_wrong": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        },
+        "ever_wrong": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        },
+        "new_centered_mistake": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        },
+        "fresh_query_confirmed": {
+          "delta": 0.21428571428571425,
+          "ci95": [
+            0.03571428571428571,
+            0.39285714285714285
+          ]
+        },
+        "target_reappeared": {
+          "delta": 0.2142857142857143,
+          "ci95": [
+            0.03571428571428571,
+            0.39285714285714285
+          ]
+        },
+        "tcp_mm": {
+          "delta": 5.052929248054447,
+          "ci95": [
+            1.3562166705252436,
+            9.035397240796582
+          ]
+        },
+        "turn_degs": {
+          "delta": 1.7571868969397322,
+          "ci95": [
+            0.5714348471095655,
+            2.985067254383698
+          ]
+        },
+        "seconds": {
+          "delta": 0.08333333333333393,
+          "ci95": [
+            0.0,
+            0.1785714285714286
+          ]
+        },
+        "frames": {
+          "delta": 0.8333333333333144,
+          "ci95": [
+            0.0,
+            1.7857142857142863
+          ]
+        },
+        "feedback_revisions": {
+          "delta": 4.452380952380949,
+          "ci95": [
+            1.0711309523809527,
+            8.095535714285711
+          ]
+        },
+        "wrong_certificates": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        },
+        "wrong_card_seconds": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        },
+        "retractions": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        }
+      },
+      "public_first_only": {
+        "corrected_complete": {
+          "delta": 0.23809523809523808,
+          "ci95": [
+            0.10714285714285714,
+            0.3928571428571428
+          ]
+        },
+        "old_strict_complete": {
+          "delta": 0.23809523809523808,
+          "ci95": [
+            0.10714285714285714,
+            0.3928571428571428
+          ]
+        },
+        "final_wrong": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        },
+        "ever_wrong": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        },
+        "new_centered_mistake": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        },
+        "fresh_query_confirmed": {
+          "delta": 0.21428571428571425,
+          "ci95": [
+            0.03571428571428571,
+            0.39285714285714285
+          ]
+        },
+        "target_reappeared": {
+          "delta": 0.2142857142857143,
+          "ci95": [
+            0.03571428571428571,
+            0.39285714285714285
+          ]
+        },
+        "tcp_mm": {
+          "delta": 5.052929248054447,
+          "ci95": [
+            1.3562166705252436,
+            9.035397240796582
+          ]
+        },
+        "turn_degs": {
+          "delta": 1.7571868969397322,
+          "ci95": [
+            0.5714348471095655,
+            2.985067254383698
+          ]
+        },
+        "seconds": {
+          "delta": 0.08333333333333393,
+          "ci95": [
+            0.0,
+            0.1785714285714286
+          ]
+        },
+        "frames": {
+          "delta": 0.8333333333333144,
+          "ci95": [
+            0.0,
+            1.7857142857142863
+          ]
+        },
+        "feedback_revisions": {
+          "delta": 4.452380952380949,
+          "ci95": [
+            1.0711309523809527,
+            8.095535714285711
+          ]
+        },
+        "wrong_certificates": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        },
+        "wrong_card_seconds": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        },
+        "retractions": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        }
+      }
+    }
+  },
+  "pooled": {
+    "worlds": 56,
+    "replicas_per_world": 3,
+    "means": {
+      "mpc_shared_menu": {
+        "corrected_complete": 0.39880952380952384,
+        "old_strict_complete": 0.39285714285714285,
+        "final_wrong": 0.0,
+        "ever_wrong": 0.005952380952380952,
+        "new_centered_mistake": 0.005952380952380952,
+        "fresh_query_confirmed": 0.6726190476190477,
+        "target_reappeared": 0.75,
+        "tcp_mm": 40.42975616563566,
+        "turn_degs": 7.44357811720693,
+        "seconds": 6.767857142857143,
+        "frames": 68.67857142857143,
+        "feedback_revisions": 24.529761904761898,
+        "wrong_certificates": 0.0,
+        "wrong_card_seconds": 0.0,
+        "retractions": 0.0
+      },
+      "public_original_first_menu": {
+        "corrected_complete": 0.5833333333333334,
+        "old_strict_complete": 0.5833333333333334,
+        "final_wrong": 0.0,
+        "ever_wrong": 0.0,
+        "new_centered_mistake": 0.0,
+        "fresh_query_confirmed": 0.7857142857142857,
+        "target_reappeared": 0.8571428571428571,
+        "tcp_mm": 41.70342815085902,
+        "turn_degs": 8.099367793496786,
+        "seconds": 6.702380952380952,
+        "frames": 68.02380952380952,
+        "feedback_revisions": 26.446428571428562,
+        "wrong_certificates": 0.0,
+        "wrong_card_seconds": 0.0,
+        "retractions": 0.0
+      },
+      "public_first_only": {
+        "corrected_complete": 0.630952380952381,
+        "old_strict_complete": 0.630952380952381,
+        "final_wrong": 0.0,
+        "ever_wrong": 0.0,
+        "new_centered_mistake": 0.0,
+        "fresh_query_confirmed": 0.8392857142857143,
+        "target_reappeared": 0.8571428571428571,
+        "tcp_mm": 41.113474050693085,
+        "turn_degs": 8.060190589223364,
+        "seconds": 6.482142857142857,
+        "frames": 65.82142857142857,
+        "feedback_revisions": 25.82738095238094,
+        "wrong_certificates": 0.0,
+        "wrong_card_seconds": 0.0,
+        "retractions": 0.0
+      }
+    },
+    "vs_reference": {
+      "public_original_first_menu": {
+        "corrected_complete": {
+          "delta": 0.18452380952380953,
+          "ci95": [
+            0.08928571428571429,
+            0.2857142857142857
+          ]
+        },
+        "old_strict_complete": {
+          "delta": 0.19047619047619052,
+          "ci95": [
+            0.09523809523809525,
+            0.29166666666666663
+          ]
+        },
+        "final_wrong": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        },
+        "ever_wrong": {
+          "delta": -0.005952380952380952,
+          "ci95": [
+            -0.017857142857142856,
+            0.0
+          ]
+        },
+        "new_centered_mistake": {
+          "delta": -0.005952380952380952,
+          "ci95": [
+            -0.017857142857142856,
+            0.0
+          ]
+        },
+        "fresh_query_confirmed": {
+          "delta": 0.11309523809523803,
+          "ci95": [
+            3.96508223080413e-18,
+            0.23214285714285715
+          ]
+        },
+        "target_reappeared": {
+          "delta": 0.1071428571428571,
+          "ci95": [
+            0.017857142857142856,
+            0.21428571428571427
+          ]
+        },
+        "tcp_mm": {
+          "delta": 1.2736719852233591,
+          "ci95": [
+            -0.9968542560977752,
+            3.7495900645229936
+          ]
+        },
+        "turn_degs": {
+          "delta": 0.6557896762898556,
+          "ci95": [
+            -0.005448000728082236,
+            1.407157564766044
+          ]
+        },
+        "seconds": {
+          "delta": -0.06547619047619158,
+          "ci95": [
+            -0.22619047619047628,
+            0.08928571428571429
+          ]
+        },
+        "frames": {
+          "delta": -0.6547619047619122,
+          "ci95": [
+            -2.2619047619047623,
+            0.8928571428571429
+          ]
+        },
+        "feedback_revisions": {
+          "delta": 1.9166666666666643,
+          "ci95": [
+            -0.2916666666666665,
+            4.321428571428571
+          ]
+        },
+        "wrong_certificates": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        },
+        "wrong_card_seconds": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        },
+        "retractions": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        }
+      },
+      "public_first_only": {
+        "corrected_complete": {
+          "delta": 0.2321428571428572,
+          "ci95": [
+            0.12499999999999999,
+            0.34523809523809523
+          ]
+        },
+        "old_strict_complete": {
+          "delta": 0.2380952380952382,
+          "ci95": [
+            0.125,
+            0.3511904761904762
+          ]
+        },
+        "final_wrong": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        },
+        "ever_wrong": {
+          "delta": -0.005952380952380952,
+          "ci95": [
+            -0.017857142857142856,
+            0.0
+          ]
+        },
+        "new_centered_mistake": {
+          "delta": -0.005952380952380952,
+          "ci95": [
+            -0.017857142857142856,
+            0.0
+          ]
+        },
+        "fresh_query_confirmed": {
+          "delta": 0.16666666666666663,
+          "ci95": [
+            0.05357142857142859,
+            0.27976190476190477
+          ]
+        },
+        "target_reappeared": {
+          "delta": 0.1071428571428571,
+          "ci95": [
+            0.017857142857142856,
+            0.21428571428571427
+          ]
+        },
+        "tcp_mm": {
+          "delta": 0.6837178850574261,
+          "ci95": [
+            -1.6831623514987073,
+            3.254055352072413
+          ]
+        },
+        "turn_degs": {
+          "delta": 0.6166124720164339,
+          "ci95": [
+            -0.06008913616819019,
+            1.3747164535491805
+          ]
+        },
+        "seconds": {
+          "delta": -0.2857142857142865,
+          "ci95": [
+            -0.5119047619047618,
+            -0.07142857142857141
+          ]
+        },
+        "frames": {
+          "delta": -2.857142857142861,
+          "ci95": [
+            -5.119047619047619,
+            -0.7142857142857143
+          ]
+        },
+        "feedback_revisions": {
+          "delta": 1.2976190476190403,
+          "ci95": [
+            -0.7142857142857141,
+            3.5535714285714293
+          ]
+        },
+        "wrong_certificates": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        },
+        "wrong_card_seconds": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        },
+        "retractions": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        }
+      }
+    }
+  }
+}

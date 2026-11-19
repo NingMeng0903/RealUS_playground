@@ -1,0 +1,43 @@
+{
+  "runs": [
+    {
+      "run": "beta2",
+      "beta": [
+        0.7497693083949906,
+        0.050389516900993706,
+        0.46998285856003685,
+        0.08189267944603904,
+        -0.0021207984097881723,
+        0.016629353580370956,
+        -0.009940500563490932,
+        -0.0010628271762014151,
+        -0.01275786197769593,
+        0.004657044145225384
+      ],
+      "knee_deg": 15.0,
+      "material_binding_sha256": "d4a347d7d127ef3d15b9d3c9a46a2276e726ed68d94411a49af893612acf12f0",
+      "inputs_sha256": {
+        "SUMMARY.json": "1f6130eeddc7f1e77040f7b6ae6e9d50ab204293f4d30cbdb06125f642410c4d",
+        "TRACES.npz": "3946499a0f02810a869c1e3d4c64a20d4087a093e12757998e6b711a2630df16"
+      },
+      "max_label_error_rad_h_d": [
+        1.9367831629658912e-07,
+        2.8523133299707126e-08,
+        2.651369826001202e-14
+      ],
+      "max_coordinate_roundtrip_m": 2.3136093248425763e-08,
+      "max_relative_rotation_matrix_element_error": 2.886579864025407e-15,
+      "paths": 48,
+      "joint_samples": 9648,
+      "acquisitions": 1968,
+      "max_position_tracking_mm": 0.0008861891925506779,
+      "max_rotation_tracking_deg": 0.00014343469325259423,
+      "max_joint_rate_fraction": 0.027348324136376553,
+      "minimum_robot_self_clearance_mm": 41.040608924137985,
+      "max_material_probe_origin_change_vs_first_mm": 0.0,
+      "max_material_probe_rotation_change_vs_first_deg": 0.0,
+      "max_material_vessel_point_change_vs_first_mm": 0.0,
+      "matching_disturbance_tapes_vs_first": 16
+    }
+  ]
+}

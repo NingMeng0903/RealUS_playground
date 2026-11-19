@@ -1,0 +1,7 @@
+{
+  "public_anchor_states": 16,
+  "public_proposal_scores": 192,
+  "archive_original_complete_traces": 64,
+  "independent_mpc_commands": 2868,
+  "terminal_state_hashes": 668
+}

@@ -1,0 +1,169 @@
+{
+  "namespace": 719920,
+  "n": 128,
+  "source_sha256": "4cdbf3a9a948250313f98b0a4cc4ff40bcb22b15e9033939313eddb130db33f5",
+  "model_atoms": 256,
+  "bank_sha256": "a29cad4b5fe37760093e312c5be7a140d7905252c51fe42905908b9fad339e47",
+  "hold_s": [
+    0.0,
+    0.5,
+    1.0
+  ],
+  "clocks_s": [
+    0.0,
+    9.0
+  ],
+  "base_edge_s": 1.5,
+  "legacy_grid_parity": {
+    "daughter": {
+      "likelihood_max_abs": 0.0,
+      "correct_max_abs": 0.0
+    },
+    "trunk": {
+      "likelihood_max_abs": 0.0,
+      "correct_max_abs": 0.0
+    }
+  },
+  "summary": {
+    "daughter": {
+      "1": {
+        "n_model_histories": 128,
+        "active": 108,
+        "mean_nominal_values": [
+          0.5599243907712228,
+          0.5573354027422774,
+          0.5612793651516798
+        ],
+        "mean_signed_claim_mass": [
+          0.1834758552441047,
+          0.17372968175468362,
+          0.19020926046515693
+        ],
+        "best_fixed_hold_s": 1.0,
+        "contextual_nominal_minus_no_hold": 0.0038835112637546354,
+        "contextual_nominal_minus_best_fixed": 0.002528536883297794,
+        "contextual_claim_minus_best_fixed": 0.011864815807802104,
+        "selected_hold_counts": [
+          50,
+          4,
+          74
+        ],
+        "mean_extra_hold_s": 0.59375,
+        "infeasible_hold_counts": [
+          0,
+          0,
+          0
+        ],
+        "reasons": {
+          "no_needed_site_command_at_checkpoint": 20,
+          "public_nominal_value_comparison": 108
+        }
+      },
+      "2": {
+        "n_model_histories": 128,
+        "active": 116,
+        "mean_nominal_values": [
+          0.5350394199811668,
+          0.5364089185046398,
+          0.5351850117036611
+        ],
+        "mean_signed_claim_mass": [
+          0.27315814833530583,
+          0.27596570774566653,
+          0.26797395899093834
+        ],
+        "best_fixed_hold_s": 0.5,
+        "contextual_nominal_minus_no_hold": 0.005594558463547283,
+        "contextual_nominal_minus_best_fixed": 0.004225059940074383,
+        "contextual_claim_minus_best_fixed": 0.014789001722358197,
+        "selected_hold_counts": [
+          63,
+          16,
+          49
+        ],
+        "mean_extra_hold_s": 0.4453125,
+        "infeasible_hold_counts": [
+          0,
+          0,
+          0
+        ],
+        "reasons": {
+          "no_needed_site_command_at_checkpoint": 12,
+          "public_nominal_value_comparison": 116
+        }
+      }
+    },
+    "trunk": {
+      "1": {
+        "n_model_histories": 128,
+        "active": 26,
+        "mean_nominal_values": [
+          0.18844576755902898,
+          0.18749844405030539,
+          0.1881175799913128
+        ],
+        "mean_signed_claim_mass": [
+          0.12869449811167324,
+          0.12259349275688765,
+          0.13125057941474963
+        ],
+        "best_fixed_hold_s": 0.0,
+        "contextual_nominal_minus_no_hold": 0.00038852477726919465,
+        "contextual_nominal_minus_best_fixed": 0.00038852477726919465,
+        "contextual_claim_minus_best_fixed": 0.002951499870278068,
+        "selected_hold_counts": [
+          116,
+          1,
+          11
+        ],
+        "mean_extra_hold_s": 0.08984375,
+        "infeasible_hold_counts": [
+          0,
+          0,
+          0
+        ],
+        "reasons": {
+          "no_needed_site_command_at_checkpoint": 102,
+          "public_nominal_value_comparison": 26
+        }
+      },
+      "2": {
+        "n_model_histories": 128,
+        "active": 111,
+        "mean_nominal_values": [
+          0.7483700110655012,
+          0.7481102862824883,
+          0.74794419604816
+        ],
+        "mean_signed_claim_mass": [
+          0.5717043750467272,
+          0.571035527682843,
+          0.5725051686977587
+        ],
+        "best_fixed_hold_s": 0.0,
+        "contextual_nominal_minus_no_hold": 0.00034433218444640534,
+        "contextual_nominal_minus_best_fixed": 0.00034433218444640534,
+        "contextual_claim_minus_best_fixed": 0.002311001717459682,
+        "selected_hold_counts": [
+          76,
+          11,
+          41
+        ],
+        "mean_extra_hold_s": 0.36328125,
+        "infeasible_hold_counts": [
+          0,
+          0,
+          0
+        ],
+        "reasons": {
+          "no_needed_site_command_at_checkpoint": 17,
+          "public_nominal_value_comparison": 111
+        }
+      }
+    }
+  },
+  "elapsed_wall_s": 6.464223590010079,
+  "scope": "Prior-only public-history claim/nominal-tail surrogate, no terminal outcome or B-vs-time-aware-MPC test.",
+  "latency": "CPU does not advance clocks; deployed timing needs explicit planning-latency treatment before validation.",
+  "dropout_scope": "Latest additional dropout ends4.45s: depth1 can encounter it, depth2 earliest4.5s tests lag/identity."
+}

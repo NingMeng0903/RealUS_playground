@@ -1,0 +1,67 @@
+{
+  "arms": [
+    "mpc",
+    "rollout",
+    "fisher",
+    "nearest",
+    "greedy",
+    "prescan_only",
+    "ppo",
+    "mlp",
+    "cql",
+    "bc",
+    "bc_mlp"
+  ],
+  "cases": 96,
+  "checkpoint_dir": "work/topology_b/fitted/seed7",
+  "checkpoint_sha256": {
+    "bc": "a24491afaf8e96b18c96651e0b0aa599991493ebd1148d9a10048ef94a882d5d",
+    "bc_mlp": "9770c391223f54bc380d69b811c575b50a53dc1a6e01281d0c91f58d4b2532a9",
+    "cql": "623239fa2b6dcad744f3638ce397c67cefb882b90c42efb5311271c541d8b90b",
+    "mlp": "645ccb87bdbd4224442fd1b809f5c263bdc19f936e3e38c648e466ae87f9487e",
+    "ppo": "3b263e3cf0ec007ce2bd5448711215979fbe354d41913fd4c9869548e7889374"
+  },
+  "cohort": [
+    723112,
+    723212,
+    "development"
+  ],
+  "dev_cases": 64,
+  "fork_tolerance_mm": 5.0,
+  "grid": 5,
+  "interactions": 32000,
+  "prefix": 5,
+  "prescan_caps": [
+    142.0,
+    114.0,
+    401.0
+  ],
+  "prior_seed": 723101,
+  "prior_size": 256,
+  "seconds_per_acquisition": 1.6,
+  "seed": 7,
+  "source_sha256": {
+    "association": "f38a8ff62a5bdb96e3774112cb34b1dd150af80d46fa54145c2f2074351e6103",
+    "atlas": "e61ff1a05ca957674d3b146dc225b96cce61286094f0e1da052b5874c8219180",
+    "base_bank": "f834013839500edcb686a08b045bb4c909d35164620f4056e45cf93d1b78d32f",
+    "core.py": "492e6b87777f29c2c95a7342887fcf207dfd20e854a327c9f88de043d1533c14",
+    "diagonal_bank": "470d1732dab2f7a89ae67f73fec2f2874c1aeda287a351f133aec78bda4fbb3b",
+    "fit_topology.py": "8a4ea49d41807d9f282685942c872a16618fb8e2e6ce9c79c49141b7781eb43d",
+    "imitation.py": "276f69ec3b35a2ec5558c85b8e9681269988157d26354373f2e38ef4860e9586",
+    "learner.py": "5b188163ba69d70b0be5a5d4ae384a43832cc8eca4d5fc98de27f5e9aa7d3b02",
+    "plan.py": "4e80988a0f1b8b674a9c57d0990cc9ea92cf9f0cc69b200be6d2bd1ce6ca6b4a",
+    "prescan.py": "de8ef0e8b1fa541edaa08f4322d8c2032cbfc45b36b67a9ae3bfff8b1d651711",
+    "run_topology.py": "f9cbf9d763969f9e0ae7f63b7990f9f57a645e9400f19a88980ae98a5f10276f",
+    "suffix.py": "f5aea6c1d64e199ebdd5a2bf0f07dc0c5a0b8b3db85b7ef5fcd2f6aba5bb6645",
+    "train.py": "e4ad3608765797a24559e961a4333de3f3d0645b5cccb09d18ece3d37a38bb93",
+    "world.py": "c7f95ce9edabc3d4184a6957e4041d07093c954286bb8ebbe38414a998aebf88"
+  },
+  "split": "dev",
+  "suffix": 8,
+  "suffix_caps": [
+    65.0,
+    90.0,
+    250.0
+  ],
+  "train_cases": 512
+}

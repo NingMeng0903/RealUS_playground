@@ -1,0 +1,15 @@
+{
+  "frozen_reference_atlas_sha256": {
+    "SUMMARY.json": "3e89bf026b3c70c5f4a12cc3bed04509b44b566891f645402b025e197f217d5a",
+    "TRACES.npz": "cc4294d686b7821ac981ed53eea8a6f1abcc0eb7457808d401b33efc63903b7d"
+  },
+  "frozen_reference_atlas_byte_identical": true,
+  "legacy_section": {
+    "cases_per_arm": 256,
+    "completed": {
+      "learned_boundary_feedback": 174,
+      "endpoint_stream_feedback": 213,
+      "learned_stream_feedback": 214
+    }
+  }
+}

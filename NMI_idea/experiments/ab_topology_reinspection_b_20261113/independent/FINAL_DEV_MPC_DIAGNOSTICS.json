@@ -1,0 +1,168 @@
+{
+  "metrics": {
+    "mpc": {
+      "all": {
+        "abstain": 19,
+        "affirmative_error": 7,
+        "correct_declaration": 69,
+        "correct_images": 25,
+        "mean_cost": {
+          "captures": 9.21875,
+          "rail_mm": 444.19597425432164,
+          "seconds": 14.75,
+          "tcp_mm": 100.37297722997052,
+          "turn_deg": 66.21424701154214
+        },
+        "n": 96,
+        "success": 67,
+        "wrong": 10
+      },
+      "by_family": {
+        "0": {
+          "abstain": 17,
+          "affirmative_error": 6,
+          "correct_declaration": 24,
+          "correct_images": 25,
+          "mean_cost": {
+            "captures": 10.75,
+            "rail_mm": 507.048407333115,
+            "seconds": 17.200000000000003,
+            "tcp_mm": 116.83258786450075,
+            "turn_deg": 75.25466094080404
+          },
+          "n": 48,
+          "success": 22,
+          "wrong": 9
+        },
+        "1": {
+          "abstain": 1,
+          "affirmative_error": 1,
+          "correct_declaration": 14,
+          "correct_images": 0,
+          "mean_cost": {
+            "captures": 8.3125,
+            "rail_mm": 377.0626763534393,
+            "seconds": 13.3,
+            "tcp_mm": 82.56992447383655,
+            "turn_deg": 62.096603604036034
+          },
+          "n": 16,
+          "success": 14,
+          "wrong": 1
+        },
+        "2": {
+          "abstain": 0,
+          "affirmative_error": 0,
+          "correct_declaration": 16,
+          "correct_images": 0,
+          "mean_cost": {
+            "captures": 6.5,
+            "rail_mm": 361.46438863587827,
+            "seconds": 10.4,
+            "tcp_mm": 75.83089546939443,
+            "turn_deg": 49.920189734025556
+          },
+          "n": 16,
+          "success": 16,
+          "wrong": 0
+        },
+        "3": {
+          "abstain": 1,
+          "affirmative_error": 0,
+          "correct_declaration": 15,
+          "correct_images": 0,
+          "mean_cost": {
+            "captures": 8.25,
+            "rail_mm": 405.50355853726717,
+            "seconds": 13.200000000000001,
+            "tcp_mm": 93.33927984308988,
+            "turn_deg": 59.50470590877912
+          },
+          "n": 16,
+          "success": 15,
+          "wrong": 0
+        }
+      }
+    }
+  },
+  "motion": {
+    "inputs": {
+      "ab_full_b_rollout_20261113/motion/BANK_MAIN.json.xz": {
+        "edges": 168,
+        "file_sha256": "f834013839500edcb686a08b045bb4c909d35164620f4056e45cf93d1b78d32f"
+      },
+      "ab_inverse_acquisition_b_20261113/motion/BANK.json.xz": {
+        "edges": 264,
+        "file_sha256": "470d1732dab2f7a89ae67f73fec2f2874c1aeda287a351f133aec78bda4fbb3b"
+      }
+    },
+    "max_abs_error": {
+      "joint_endpoint": 0.0,
+      "rail_mm": 0.0,
+      "sample_endpoint": 0.0,
+      "tcp_mm": 0.0
+    }
+  },
+  "reconstruction": {
+    "distinct_prefix_node_sequences": 37,
+    "distinct_prefix_view_sequences": 37,
+    "model_replayed": true,
+    "prefixes": 96,
+    "prescan_posterior_readout": {
+      "binary_presence_correct": 78,
+      "by_family": {
+        "0": {
+          "family_map_correct": 43,
+          "mean_true_label_mass": 0.5858121722718901,
+          "n": 48
+        },
+        "1": {
+          "family_map_correct": 13,
+          "mean_true_label_mass": 0.7370795279174965,
+          "n": 16
+        },
+        "2": {
+          "family_map_correct": 9,
+          "mean_true_label_mass": 0.8631557738908455,
+          "n": 16
+        },
+        "3": {
+          "family_map_correct": 6,
+          "mean_true_label_mass": 0.6715673409926112,
+          "n": 16
+        }
+      },
+      "family_map_correct": 71,
+      "label_map_correct": 67,
+      "positive": 48,
+      "positive_label_map_correct": 35
+    },
+    "suffix_evidence_diagnostics_positive": {
+      "mpc": {
+        "any_pair_with_both_target_returns": 29,
+        "any_supported_public_pair": 36,
+        "chosen_pair_with_both_target_returns": 28,
+        "correct_label": 24,
+        "disjoint_first_failure": {
+          "abstained_despite_stored_target_pair": 3,
+          "fork_localization_outside_tolerance": 1,
+          "no_ordered_near_far_moves": 11,
+          "no_pair_with_two_target_returns": 8,
+          "success": 22,
+          "wrong_fork_interval_or_side": 2,
+          "wrong_slots": 1
+        },
+        "fork_coordinate_only_oracle": 23,
+        "full_packet_pair_with_both_target_returns_on_same_route": 29,
+        "label_and_fork_oracle_same_scan_sites": 23,
+        "n": 48,
+        "ordered_physical_pair": 37,
+        "retained_pair_with_both_target_returns": 29,
+        "slot_only_oracle": 23,
+        "success": 22
+      }
+    },
+    "suffix_packets": 405,
+    "supported_packets": 405
+  }
+}

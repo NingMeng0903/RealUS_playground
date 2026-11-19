@@ -1,0 +1,709 @@
+{
+  "targeted_train": {
+    "scenes": 72,
+    "sha256": "c4974fbda60c63f3a0c8fb97171af5819ae79c86e16bdbad9d6de5704d8e35e7",
+    "screening": [
+      {
+        "cell": [
+          "connection",
+          "after_loss",
+          2
+        ],
+        "seed": 65000000,
+        "counts": {
+          "ambiguous": 6,
+          "clear": 8,
+          "no_prior_confirmation": 4,
+          "weak": 1,
+          "no_packet_at_checkpoint": 3
+        }
+      },
+      {
+        "cell": [
+          "connection",
+          "after_loss",
+          3
+        ],
+        "seed": 65001000,
+        "counts": {
+          "clear": 13,
+          "ambiguous": 6,
+          "weak": 3,
+          "no_packet_at_checkpoint": 3
+        }
+      },
+      {
+        "cell": [
+          "connection",
+          "after_loss",
+          4
+        ],
+        "seed": 65002000,
+        "counts": {
+          "ambiguous": 6,
+          "weak": 3,
+          "clear": 14,
+          "prefix_unavailable": 12,
+          "no_packet_at_checkpoint": 2
+        }
+      },
+      {
+        "cell": [
+          "connection",
+          "revisit",
+          1
+        ],
+        "seed": 65003000,
+        "counts": {
+          "weak": 17,
+          "clear": 42,
+          "no_packet_at_checkpoint": 12,
+          "ambiguous": 6,
+          "no_feasible_return": 2
+        }
+      },
+      {
+        "cell": [
+          "connection",
+          "revisit",
+          2
+        ],
+        "seed": 65004000,
+        "counts": {
+          "ambiguous": 6,
+          "weak": 10,
+          "no_feasible_return": 35,
+          "clear": 16,
+          "no_packet_at_checkpoint": 7
+        }
+      },
+      {
+        "cell": [
+          "connection",
+          "revisit",
+          3
+        ],
+        "seed": 65005000,
+        "counts": {
+          "no_packet_at_checkpoint": 4,
+          "clear": 20,
+          "ambiguous": 6,
+          "weak": 4,
+          "no_feasible_return": 2
+        }
+      },
+      {
+        "cell": [
+          "parallel",
+          "after_loss",
+          2
+        ],
+        "seed": 65006000,
+        "counts": {
+          "no_prior_confirmation": 28,
+          "clear": 28,
+          "weak": 14,
+          "ambiguous": 6,
+          "no_packet_at_checkpoint": 6
+        }
+      },
+      {
+        "cell": [
+          "parallel",
+          "after_loss",
+          3
+        ],
+        "seed": 65007000,
+        "counts": {
+          "clear": 39,
+          "weak": 10,
+          "no_packet_at_checkpoint": 6,
+          "ambiguous": 6,
+          "no_prior_confirmation": 2
+        }
+      },
+      {
+        "cell": [
+          "parallel",
+          "after_loss",
+          4
+        ],
+        "seed": 65008000,
+        "counts": {
+          "prefix_unavailable": 75,
+          "weak": 12,
+          "clear": 37,
+          "ambiguous": 6,
+          "no_packet_at_checkpoint": 2,
+          "no_prior_confirmation": 1
+        }
+      },
+      {
+        "cell": [
+          "parallel",
+          "revisit",
+          1
+        ],
+        "seed": 65009000,
+        "counts": {
+          "clear": 2,
+          "ambiguous": 6,
+          "weak": 3,
+          "no_packet_at_checkpoint": 1
+        }
+      },
+      {
+        "cell": [
+          "parallel",
+          "revisit",
+          2
+        ],
+        "seed": 65010000,
+        "counts": {
+          "no_feasible_return": 17,
+          "weak": 7,
+          "clear": 23,
+          "ambiguous": 6,
+          "no_packet_at_checkpoint": 5
+        }
+      },
+      {
+        "cell": [
+          "parallel",
+          "revisit",
+          3
+        ],
+        "seed": 65011000,
+        "counts": {
+          "clear": 68,
+          "weak": 12,
+          "ambiguous": 6,
+          "no_feasible_return": 2,
+          "no_packet_at_checkpoint": 2
+        }
+      }
+    ]
+  },
+  "unconditioned_train": {
+    "scenes": 72,
+    "sha256": "63686dc5f25b846e26af14cfae318b7ad33289f8ca02b91b26903e4fd23646f0",
+    "screening": [
+      {
+        "cell": [
+          "connection",
+          "after_loss",
+          2
+        ],
+        "seed": 65100000,
+        "counts": {
+          "clear": 3,
+          "ambiguous": 2,
+          "weak": 1,
+          "no_prior_confirmation": 1
+        }
+      },
+      {
+        "cell": [
+          "connection",
+          "after_loss",
+          3
+        ],
+        "seed": 65101000,
+        "counts": {
+          "no_packet_at_checkpoint": 2,
+          "clear": 4,
+          "weak": 2
+        }
+      },
+      {
+        "cell": [
+          "connection",
+          "after_loss",
+          4
+        ],
+        "seed": 65102000,
+        "counts": {
+          "weak": 4,
+          "prefix_unavailable": 1,
+          "no_prior_confirmation": 2,
+          "clear": 2,
+          "no_packet_at_checkpoint": 1
+        }
+      },
+      {
+        "cell": [
+          "connection",
+          "revisit",
+          1
+        ],
+        "seed": 65103000,
+        "counts": {
+          "weak": 3,
+          "clear": 3
+        }
+      },
+      {
+        "cell": [
+          "connection",
+          "revisit",
+          2
+        ],
+        "seed": 65104000,
+        "counts": {
+          "clear": 3,
+          "weak": 3,
+          "no_feasible_return": 2
+        }
+      },
+      {
+        "cell": [
+          "connection",
+          "revisit",
+          3
+        ],
+        "seed": 65105000,
+        "counts": {
+          "clear": 3,
+          "weak": 2,
+          "no_packet_at_checkpoint": 1,
+          "ambiguous": 1
+        }
+      },
+      {
+        "cell": [
+          "parallel",
+          "after_loss",
+          2
+        ],
+        "seed": 65106000,
+        "counts": {
+          "clear": 4,
+          "no_prior_confirmation": 6,
+          "weak": 2
+        }
+      },
+      {
+        "cell": [
+          "parallel",
+          "after_loss",
+          3
+        ],
+        "seed": 65107000,
+        "counts": {
+          "clear": 6,
+          "no_packet_at_checkpoint": 1
+        }
+      },
+      {
+        "cell": [
+          "parallel",
+          "after_loss",
+          4
+        ],
+        "seed": 65108000,
+        "counts": {
+          "prefix_unavailable": 7,
+          "clear": 5,
+          "ambiguous": 1
+        }
+      },
+      {
+        "cell": [
+          "parallel",
+          "revisit",
+          1
+        ],
+        "seed": 65109000,
+        "counts": {
+          "no_packet_at_checkpoint": 1,
+          "weak": 1,
+          "clear": 4,
+          "ambiguous": 1
+        }
+      },
+      {
+        "cell": [
+          "parallel",
+          "revisit",
+          2
+        ],
+        "seed": 65110000,
+        "counts": {
+          "weak": 1,
+          "clear": 4,
+          "no_packet_at_checkpoint": 2,
+          "no_feasible_return": 3,
+          "ambiguous": 1
+        }
+      },
+      {
+        "cell": [
+          "parallel",
+          "revisit",
+          3
+        ],
+        "seed": 65111000,
+        "counts": {
+          "ambiguous": 1,
+          "clear": 4,
+          "weak": 1
+        }
+      }
+    ]
+  },
+  "stress_test": {
+    "scenes": 96,
+    "sha256": "cea7206a2c94fca3ce5c2d76ae76e989309d4d841841b1a1962d4e605dfceb06",
+    "screening": [
+      {
+        "cell": [
+          "connection",
+          "after_loss",
+          2
+        ],
+        "seed": 65200000,
+        "counts": {
+          "weak": 18,
+          "no_prior_confirmation": 7,
+          "ambiguous": 8,
+          "no_packet_at_checkpoint": 19,
+          "clear": 23
+        }
+      },
+      {
+        "cell": [
+          "connection",
+          "after_loss",
+          3
+        ],
+        "seed": 65201000,
+        "counts": {
+          "clear": 48,
+          "weak": 4,
+          "no_packet_at_checkpoint": 6,
+          "ambiguous": 8,
+          "no_prior_confirmation": 3
+        }
+      },
+      {
+        "cell": [
+          "connection",
+          "after_loss",
+          4
+        ],
+        "seed": 65202000,
+        "counts": {
+          "ambiguous": 8,
+          "prefix_unavailable": 24,
+          "clear": 23,
+          "weak": 3,
+          "no_packet_at_checkpoint": 2
+        }
+      },
+      {
+        "cell": [
+          "connection",
+          "revisit",
+          1
+        ],
+        "seed": 65203000,
+        "counts": {
+          "clear": 100,
+          "weak": 56,
+          "no_packet_at_checkpoint": 31,
+          "no_feasible_return": 3,
+          "ambiguous": 8
+        }
+      },
+      {
+        "cell": [
+          "connection",
+          "revisit",
+          2
+        ],
+        "seed": 65204000,
+        "counts": {
+          "no_feasible_return": 93,
+          "clear": 64,
+          "no_packet_at_checkpoint": 30,
+          "weak": 38,
+          "ambiguous": 8
+        }
+      },
+      {
+        "cell": [
+          "connection",
+          "revisit",
+          3
+        ],
+        "seed": 65205000,
+        "counts": {
+          "no_packet_at_checkpoint": 9,
+          "weak": 8,
+          "clear": 30,
+          "ambiguous": 8,
+          "no_feasible_return": 2
+        }
+      },
+      {
+        "cell": [
+          "parallel",
+          "after_loss",
+          2
+        ],
+        "seed": 65206000,
+        "counts": {
+          "clear": 15,
+          "no_prior_confirmation": 13,
+          "ambiguous": 8,
+          "no_packet_at_checkpoint": 3,
+          "weak": 5
+        }
+      },
+      {
+        "cell": [
+          "parallel",
+          "after_loss",
+          3
+        ],
+        "seed": 65207000,
+        "counts": {
+          "clear": 73,
+          "weak": 17,
+          "ambiguous": 8,
+          "no_packet_at_checkpoint": 8,
+          "no_prior_confirmation": 2
+        }
+      },
+      {
+        "cell": [
+          "parallel",
+          "after_loss",
+          4
+        ],
+        "seed": 65208000,
+        "counts": {
+          "prefix_unavailable": 124,
+          "weak": 15,
+          "clear": 57,
+          "ambiguous": 8,
+          "no_packet_at_checkpoint": 6,
+          "no_prior_confirmation": 1
+        }
+      },
+      {
+        "cell": [
+          "parallel",
+          "revisit",
+          1
+        ],
+        "seed": 65209000,
+        "counts": {
+          "no_packet_at_checkpoint": 7,
+          "clear": 15,
+          "weak": 9,
+          "ambiguous": 8
+        }
+      },
+      {
+        "cell": [
+          "parallel",
+          "revisit",
+          2
+        ],
+        "seed": 65210000,
+        "counts": {
+          "clear": 29,
+          "ambiguous": 8,
+          "no_packet_at_checkpoint": 10,
+          "no_feasible_return": 16,
+          "weak": 10
+        }
+      },
+      {
+        "cell": [
+          "parallel",
+          "revisit",
+          3
+        ],
+        "seed": 65211000,
+        "counts": {
+          "weak": 18,
+          "ambiguous": 8,
+          "clear": 45,
+          "no_packet_at_checkpoint": 4,
+          "no_feasible_return": 2
+        }
+      }
+    ]
+  },
+  "clear_test": {
+    "scenes": 48,
+    "sha256": "3df2e7f7c0df72790ae57314b24a6cff8afc4a6b311ee7109abd0ac691cc840d",
+    "screening": [
+      {
+        "cell": [
+          "connection",
+          "after_loss",
+          2
+        ],
+        "seed": 65300000,
+        "counts": {
+          "clear": 4,
+          "ambiguous": 2
+        }
+      },
+      {
+        "cell": [
+          "connection",
+          "after_loss",
+          3
+        ],
+        "seed": 65301000,
+        "counts": {
+          "clear": 4,
+          "weak": 1
+        }
+      },
+      {
+        "cell": [
+          "connection",
+          "after_loss",
+          4
+        ],
+        "seed": 65302000,
+        "counts": {
+          "prefix_unavailable": 2,
+          "clear": 4,
+          "weak": 1,
+          "ambiguous": 1
+        }
+      },
+      {
+        "cell": [
+          "connection",
+          "revisit",
+          1
+        ],
+        "seed": 65303000,
+        "counts": {
+          "clear": 4,
+          "no_feasible_return": 1
+        }
+      },
+      {
+        "cell": [
+          "connection",
+          "revisit",
+          2
+        ],
+        "seed": 65304000,
+        "counts": {
+          "no_packet_at_checkpoint": 3,
+          "ambiguous": 1,
+          "clear": 4,
+          "weak": 7,
+          "no_feasible_return": 15
+        }
+      },
+      {
+        "cell": [
+          "connection",
+          "revisit",
+          3
+        ],
+        "seed": 65305000,
+        "counts": {
+          "no_packet_at_checkpoint": 2,
+          "weak": 1,
+          "clear": 4,
+          "ambiguous": 1
+        }
+      },
+      {
+        "cell": [
+          "parallel",
+          "after_loss",
+          2
+        ],
+        "seed": 65306000,
+        "counts": {
+          "clear": 4,
+          "ambiguous": 3,
+          "weak": 5,
+          "no_prior_confirmation": 5
+        }
+      },
+      {
+        "cell": [
+          "parallel",
+          "after_loss",
+          3
+        ],
+        "seed": 65307000,
+        "counts": {
+          "clear": 4,
+          "no_packet_at_checkpoint": 1
+        }
+      },
+      {
+        "cell": [
+          "parallel",
+          "after_loss",
+          4
+        ],
+        "seed": 65308000,
+        "counts": {
+          "prefix_unavailable": 11,
+          "weak": 1,
+          "clear": 4
+        }
+      },
+      {
+        "cell": [
+          "parallel",
+          "revisit",
+          1
+        ],
+        "seed": 65309000,
+        "counts": {
+          "weak": 4,
+          "clear": 4,
+          "ambiguous": 3,
+          "no_packet_at_checkpoint": 1
+        }
+      },
+      {
+        "cell": [
+          "parallel",
+          "revisit",
+          2
+        ],
+        "seed": 65310000,
+        "counts": {
+          "clear": 4
+        }
+      },
+      {
+        "cell": [
+          "parallel",
+          "revisit",
+          3
+        ],
+        "seed": 65311000,
+        "counts": {
+          "clear": 4,
+          "weak": 1
+        }
+      }
+    ]
+  },
+  "first_interval_test": {
+    "scenes": 64,
+    "sha256": "74ccfd7c3992fa10cfde1a83ea4ec78409ef0bae732d81989eb218f8833dccae"
+  },
+  "later_test": {
+    "scenes": 40,
+    "sha256": "83b4623d550a1a8e627df13777c4269af09e8fb739f3af347e1e414253b7175e"
+  }
+}

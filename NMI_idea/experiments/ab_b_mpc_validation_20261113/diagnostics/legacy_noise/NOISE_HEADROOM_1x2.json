@@ -1,0 +1,215 @@
+{
+  "cases": [
+    {
+      "index": 0,
+      "replicates": {
+        "2": [
+          {
+            "confidence": 0.9001252630695791,
+            "correct_fresh": true,
+            "false_confirm": false,
+            "first_t": 13.637535685352237,
+            "first_view": 2,
+            "label": 1,
+            "replicate": 0,
+            "reserve": "wide",
+            "strict": true,
+            "tail_scores": [
+              0.6921383772038697,
+              0.7061345945545994,
+              0.7058638751549814
+            ],
+            "tail_view": 3,
+            "target_visible": true,
+            "terminal_t": 14.487535685352237
+          },
+          {
+            "confidence": 0.9805221815187527,
+            "correct_fresh": true,
+            "false_confirm": false,
+            "first_t": 13.637535685352237,
+            "first_view": 2,
+            "label": 1,
+            "replicate": 1,
+            "reserve": "wide",
+            "strict": true,
+            "tail_scores": [
+              0.6900003563625445,
+              0.7047480817100038,
+              0.7039815167923728
+            ],
+            "tail_view": 3,
+            "target_visible": true,
+            "terminal_t": 14.487535685352237
+          }
+        ],
+        "3": [
+          {
+            "confidence": 0.995158923171199,
+            "correct_fresh": true,
+            "false_confirm": false,
+            "first_t": 13.637535685352237,
+            "first_view": 3,
+            "label": 1,
+            "replicate": 0,
+            "reserve": "wide",
+            "strict": true,
+            "tail_scores": [
+              0.6951222700040979,
+              0.6952101284885993,
+              0.6956876457342376
+            ],
+            "tail_view": 4,
+            "target_visible": true,
+            "terminal_t": 14.487535685352237
+          },
+          {
+            "confidence": 0.9982296566093294,
+            "correct_fresh": true,
+            "false_confirm": false,
+            "first_t": 13.637535685352237,
+            "first_view": 3,
+            "label": 1,
+            "replicate": 1,
+            "reserve": "wide",
+            "strict": true,
+            "tail_scores": [
+              0.7016605507815834,
+              0.7018526395363569,
+              0.70231470639993
+            ],
+            "tail_view": 4,
+            "target_visible": true,
+            "terminal_t": 14.487535685352237
+          }
+        ],
+        "4": [
+          {
+            "confidence": 0.9951576573164739,
+            "correct_fresh": true,
+            "false_confirm": false,
+            "first_t": 13.637535685352237,
+            "first_view": 4,
+            "label": 1,
+            "replicate": 0,
+            "reserve": "wide",
+            "strict": true,
+            "tail_scores": [
+              0.6931356442327238,
+              0.6945782089421972,
+              0.6967815637936478
+            ],
+            "tail_view": 4,
+            "target_visible": true,
+            "terminal_t": 14.487535685352237
+          },
+          {
+            "confidence": 0.9982293080627966,
+            "correct_fresh": true,
+            "false_confirm": false,
+            "first_t": 13.637535685352237,
+            "first_view": 4,
+            "label": 1,
+            "replicate": 1,
+            "reserve": "wide",
+            "strict": true,
+            "tail_scores": [
+              0.6996742615951698,
+              0.7012210356330373,
+              0.7034089432013217
+            ],
+            "tail_view": 4,
+            "target_visible": true,
+            "terminal_t": 14.487535685352237
+          }
+        ]
+      },
+      "roots": [
+        2,
+        3,
+        4
+      ],
+      "seed": 509183131
+    }
+  ],
+  "common_random_numbers_across_views": true,
+  "diagnostic_only": true,
+  "limitations": [
+    "Root selection uses strict outcomes on the training half and is evaluated only on the disjoint test half.",
+    "No new policy is trained and no evaluator label is exposed to the public filter or choose_real_tail.",
+    "The acoustic innovation bank is a local common-random-number simulator. It does not claim that the synthetic noise distribution matches a physical scanner.",
+    "Motion legality is inherited from the frozen wide-reserve preflight graph. Robot execution is not rerun by this diagnostic."
+  ],
+  "n_cases": 1,
+  "public_filter_and_choose_real_tail": true,
+  "replicates_per_root_per_case": 2,
+  "reserve": "wide",
+  "same_case_dropout_and_persistent_ghost": true,
+  "same_prefix_and_common_probe": true,
+  "schema": "moving_y_suffix_noise_headroom_v1",
+  "source_commit": "cdb1705a02f60382ffbe9e42f2ed420e27a28ddb",
+  "split": {
+    "test_replicates": [
+      1
+    ],
+    "train_replicates": [
+      0
+    ]
+  },
+  "suffix_noise_only": true,
+  "summary": {
+    "cross_fitted_per_case": {
+      "case_rows": [
+        {
+          "best_root_test": 3,
+          "best_root_train": 3,
+          "index": 0,
+          "noise_dependent": false,
+          "stable_positive": false,
+          "test_advantage": 0.0,
+          "test_rates": {
+            "2": 1.0,
+            "3": 1.0,
+            "4": 1.0
+          },
+          "train_advantage": 0.0,
+          "train_rates": {
+            "2": 1.0,
+            "3": 1.0,
+            "4": 1.0
+          }
+        }
+      ],
+      "cases_noise_dependent": 0,
+      "cases_selected_side_root": 0,
+      "cases_stable_positive": 0,
+      "center_strict_rate": 1.0,
+      "n_case_test_rows": 1,
+      "selected_strict_rate": 1.0,
+      "strict_advantage": 0.0
+    },
+    "pooled_forced_root": {
+      "2": {
+        "correct_fresh_rate": 1.0,
+        "false_confirm_rate": 0.0,
+        "n": 2,
+        "strict_rate": 1.0,
+        "target_visible_rate": 1.0
+      },
+      "3": {
+        "correct_fresh_rate": 1.0,
+        "false_confirm_rate": 0.0,
+        "n": 2,
+        "strict_rate": 1.0,
+        "target_visible_rate": 1.0
+      },
+      "4": {
+        "correct_fresh_rate": 1.0,
+        "false_confirm_rate": 0.0,
+        "n": 2,
+        "strict_rate": 1.0,
+        "target_visible_rate": 1.0
+      }
+    }
+  }
+}

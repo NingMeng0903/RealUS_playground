@@ -1,0 +1,82 @@
+{
+  "protocol": "ab_teacher_b_training_20261118",
+  "runner": "/home/camp/Documents/Codex/2026-11-13/ieee-t-ro-b-mpc-b/work/RealUS_b_teacher_fit/NMI_idea/experiments/ab_teacher_b_training_20261118/run.py",
+  "runner_sha256": "0d3ce46ada85c1ae4d35a364a1c3769a60ceaa6666760885b857a14ef162bc4c",
+  "adapter_hashes": {
+    "ab_teacher_generation_20261118/results/teacher_generation_v1/frozen.json": "5db3954b03fbabe5cb2381fb09fcec7f25f762eca8449e4581f8a89fe5ed552d",
+    "ab_teacher_generation_20261118/study.py": "9f11e434f79233d7c5230ffd2612a6903770c61a373f021862e1d79d5caa41dd",
+    "ab_search_embedding_a_20261117/results/startup_b_new_library_v1/library.json": "311d64449d58a7bb0a21c02a2f7ed253ebabc60c4dd55f317a6d6186d2caab20",
+    "ab_search_embedding_a_20261117/results/startup_b_new_library_v1/prodmp_fit.npy": "2c0d6d4e7decdfc6f9fd98428f3e529a48f143342473527f60be08de9f9f5571",
+    "ab_search_embedding_a_20261117/MATERIAL_SURFACE.json": "79f085421f1408ed021521996311d5c573ad7eaf08b244c035c5326494ff3520",
+    "ab_search_embedding_a_20261117/results/window_encoding_v1/calibration.json": "e157ae3dd4fdab69ec89dd7eca75a795418f1fafccd50ac467a6d05fe45e2b25",
+    "ab_search_embedding_a_20261117/results/identity_recovery_data_v1/models.joblib": "0c89b44d2d2a9d9e0eb691de7ee9e868ead502c3a150bf63e38615aa9802fb45",
+    "ab_search_embedding_a_20261117/results/identity_recovery_data_v1/frozen.json": "456df86a76a2e2d9df70257f667e2e3c64e7a64beae89f287a16d32051027421",
+    "ab_search_embedding_a_20261117/results/arbitrary_start_v1/training.jsonl.gz": "fbd0ca72c48322e6c5b99e649b8a07492bcff1415d62ed68a181ff34c27a2aaf",
+    "ab_search_embedding_a_20261117/results/first_interval_data_v1/additional_training.jsonl.gz": "29abf6f740b0c43f198cfd9ee72263b1f4129f28bec7a8425f60b146bb1869c1",
+    "ab_search_embedding_a_20261117/results/identity_recovery_data_v1/unconditioned_train.jsonl.gz": "2eebb169ba0b6a878ff732e16b0dbe0b057ca044ebd1696bb7d24e5beddf5249"
+  },
+  "sources": [
+    "random",
+    "direct",
+    "evidence"
+  ],
+  "cells": [
+    [
+      "connection",
+      "natural"
+    ],
+    [
+      "connection",
+      "burst"
+    ],
+    [
+      "parallel",
+      "natural"
+    ],
+    [
+      "parallel",
+      "burst"
+    ]
+  ],
+  "fields": [
+    "corrected_complete",
+    "final_wrong",
+    "new_identity_mistake",
+    "tcp_mm",
+    "turn_degs",
+    "seconds",
+    "frames",
+    "first_block_true_image",
+    "fresh_query_confirmed",
+    "target_reappeared",
+    "centered_complete",
+    "feedback_revisions",
+    "max_handoff_error",
+    "new_image_and_complete",
+    "new_query_image_retained"
+  ],
+  "visible_targets": [
+    "corrected_complete",
+    "final_wrong",
+    "new_identity_mistake",
+    "tcp_mm",
+    "turn_degs",
+    "seconds"
+  ],
+  "proposals": 4,
+  "label_tapes": 8,
+  "dev_tapes": 4,
+  "test_tapes": 8,
+  "feature_dim": 457,
+  "train_roots": 128,
+  "dev_roots": 32,
+  "test_roots": 128,
+  "seeds": {
+    "train": 74100000,
+    "dev": 74200000,
+    "test": 74300000
+  },
+  "smoke": false,
+  "executed_runner_sha256": "7793ae083cbdb9b18d02c0bc6f1a3f1f22455246064f849be4797635a154b960",
+  "experiment_sha256": "286541828599c2382d09242507558d581c427ee1ecc991230374db09375d7989"
+}

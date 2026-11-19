@@ -1,0 +1,11 @@
+{
+  "alias_packet_checks": 81,
+  "archives": {
+    "results/verified_teacher_b_v1/test.jsonl.gz": {
+      "worlds": 192,
+      "trajectories": 960,
+      "retractions": 7,
+      "centered_mistakes": 5
+    }
+  }
+}

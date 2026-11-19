@@ -1,0 +1,24 @@
+{
+  "library_sha256": "311d64449d58a7bb0a21c02a2f7ed253ebabc60c4dd55f317a6d6186d2caab20",
+  "rollouts_per_candidate": 6,
+  "targets": [
+    "corrected_complete",
+    "final_wrong",
+    "new_identity_mistake",
+    "tcp_mm",
+    "turn_degs",
+    "seconds"
+  ],
+  "train": {
+    "worlds": 192,
+    "candidate_rows": 3840,
+    "rollouts": 23040,
+    "archive_sha256": "5146dd4c284fa2f5b776b207534c0e1105b14c336043a00edc6492846cd13eb3"
+  },
+  "dev": {
+    "worlds": 64,
+    "candidate_rows": 1280,
+    "rollouts": 7680,
+    "archive_sha256": "673b8883e31a19048bd5189d342607d66dd08429358a64de83bfa39a7baf434a"
+  }
+}
