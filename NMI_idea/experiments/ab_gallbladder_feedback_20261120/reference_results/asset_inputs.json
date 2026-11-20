@@ -1,0 +1,14 @@
+{
+  "REALUS_GB_ANATOMY": {
+    "default_filename": "registered_torso.npz",
+    "sha256": "7987efe1bc8f57fc6aef35abf6132e254aaa003a990f3020e420918c86caeeac"
+  },
+  "REALUS_GB_SMPLX": {
+    "default_filename": "SMPLX_MALE.npz",
+    "sha256": "3613a4c7733be35a9bebf6d72c75f3cd3d2252419782ab7cb32fd2c51a446e72"
+  },
+  "REALUS_GB_ATLAS": {
+    "default_filename": "thorax_atlas.npz",
+    "sha256": "4f5a3828ff9bd073a5a6c43bd9a98bae5d9ba5d5006bdf972450cd8738202361"
+  }
+}

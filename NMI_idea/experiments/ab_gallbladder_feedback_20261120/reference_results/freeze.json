@@ -1,0 +1,40 @@
+{
+  "test_anatomies": [
+    58659000,
+    58659040
+  ],
+  "test_noise_streams": [
+    120,
+    121
+  ],
+  "gate_training_anatomies": [
+    58658000,
+    58658028
+  ],
+  "source_sha256": {
+    "belief.py": "91033d2e73f56399457cf70205e01312c354d15ac732bac60930290f39baaa69",
+    "motion_feedback.py": "4affd33dbfea61d2850a15fd812bcce0a46401cc8436fae05bee3c8a7d28d582",
+    "curriculum.py": "27d07118ca45a01df2eb9f41670776f54e8f1dc003814ad6b2c9289cba89a085",
+    "policy.py": "09fe4271f9cbab43b0d926521e6ed8025c62101c4ccf08d533d2c1bff6707654",
+    "engine.py": "2f28053d0c8ec51b17c425d2d71c26a854c8720eb0b6dceadb108933cc3804f7",
+    "train.py": "7377c3078d743e71a212040b8ad4ca136a75154fa582e810c4569b38751fb766",
+    "evaluate.py": "651e420e7c204cccd3c166af03bac92b004ef1947b199457945f4a575e772c40",
+    "../gallbladder_recovery/acquire.py": "b66436a21dfac39dc54a4dd8eafa2ff54b0710c72c603ed8e29957c54b473540",
+    "../gallbladder_recovery/view_geometry.py": "cf9b1ab765a2897c02874e152bae53ec5f827c6198c4836770df87bcb9f74518",
+    "../gallbladder_intent/pilot.py": "a5f9ef441aa2335e6658d860ad7b33bf9c93907124ca0c8c47d3bc89340c8bc1",
+    "../gallbladder_intent/landmark_repair.py": "17c65315cc07a02cde80f3666ad0223b3bed9af3b64d1cfcfbe09dde1a8b6e6d"
+  },
+  "model_sha256": {
+    "frozen_local.joblib": "590e834046503cd530eb88de6144e331722aaed7851116d10949dd9ad5749610",
+    "reverse_policy.joblib": "6aba325d467b993691d0b1463359ae20b369b0fa5145e6bf3fb237e9324de4c7",
+    "frozen_gate.joblib": "98a52df42419dda9edec43b9156dbba9b788362672205d5050235c55d8ec5ff7"
+  },
+  "utility": [
+    1.0,
+    -0.8,
+    -0.006,
+    -0.00025
+  ],
+  "station_confirmation": "original stationary gate, actual stopped view and exact accepted frame",
+  "comparison": "same probe-frame cadence and geometry; read vs masked ranker evaluated after one cloned exit"
+}

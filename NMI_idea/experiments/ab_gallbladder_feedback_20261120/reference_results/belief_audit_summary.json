@@ -1,0 +1,20 @@
+{
+  "n": 80,
+  "median_continuous_fit_rms_marker_mm": 6.597474355888111,
+  "median_posterior_weighted_mean_rms_marker_mm": 7.54129864607604,
+  "median_map_particle_rms_marker_mm": 10.398166814658948,
+  "median_nearest_particle_rms_marker_mm": 6.142459851981943,
+  "median_posterior_effective_particles": 10.771749495495268,
+  "stationary": {
+    "n": 80,
+    "strict_first_pose": 15,
+    "median_abs_center_mm": 6.4762056740930625,
+    "median_axis_deg": 1.961241305648501
+  },
+  "multimodal": {
+    "n": 80,
+    "strict_first_pose": 4,
+    "median_abs_center_mm": 6.0800697885643356,
+    "median_axis_deg": 2.1271947036346206
+  }
+}

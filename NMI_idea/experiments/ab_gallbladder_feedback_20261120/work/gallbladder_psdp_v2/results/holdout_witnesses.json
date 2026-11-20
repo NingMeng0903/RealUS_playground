@@ -1,0 +1,1049 @@
+{
+  "summary": {
+    "anatomies": 40,
+    "geometry_and_stop_witness": 40,
+    "profiles_with_genuine_old_public_confirmation": 80
+  },
+  "anatomies": [
+    {
+      "seed": 58654000,
+      "tested": 318,
+      "strict_poses": 23,
+      "stop_feasible": true,
+      "target": [
+        -225.0,
+        -44.0,
+        32.810298865834774,
+        -18.353810112889594
+      ],
+      "centroid_mm": 0.9239654576841746,
+      "plane_deg": 0.3093369706741027,
+      "on_evaluation_tapes": {
+        "wide": {
+          "arrival": 82,
+          "end": 102,
+          "first_accepts_genuine": true
+        },
+        "stress": {
+          "arrival": 82,
+          "end": 102,
+          "first_accepts_genuine": true
+        }
+      }
+    },
+    {
+      "seed": 58654001,
+      "tested": 318,
+      "strict_poses": 15,
+      "stop_feasible": true,
+      "target": [
+        -245.0,
+        -52.0,
+        28.3630618598326,
+        -18.129382994905594
+      ],
+      "centroid_mm": 0.39438327951902263,
+      "plane_deg": 0.16227865830214797,
+      "on_evaluation_tapes": {
+        "wide": {
+          "arrival": 184,
+          "end": 204,
+          "first_accepts_genuine": true
+        },
+        "stress": {
+          "arrival": 184,
+          "end": 204,
+          "first_accepts_genuine": true
+        }
+      }
+    },
+    {
+      "seed": 58654002,
+      "tested": 318,
+      "strict_poses": 23,
+      "stop_feasible": true,
+      "target": [
+        -233.0,
+        -30.0,
+        29.917328337478992,
+        -18.07281384640476
+      ],
+      "centroid_mm": 0.31896817537490685,
+      "plane_deg": 0.6179663789260499,
+      "on_evaluation_tapes": {
+        "wide": {
+          "arrival": 70,
+          "end": 90,
+          "first_accepts_genuine": true
+        },
+        "stress": {
+          "arrival": 70,
+          "end": 90,
+          "first_accepts_genuine": true
+        }
+      }
+    },
+    {
+      "seed": 58654003,
+      "tested": 318,
+      "strict_poses": 6,
+      "stop_feasible": true,
+      "target": [
+        -229.0,
+        -57.0,
+        25.815742688217288,
+        -14.34953141257645
+      ],
+      "centroid_mm": -0.7999057100764341,
+      "plane_deg": 0.09947863181731524,
+      "on_evaluation_tapes": {
+        "wide": {
+          "arrival": 84,
+          "end": 104,
+          "first_accepts_genuine": true
+        },
+        "stress": {
+          "arrival": 84,
+          "end": 104,
+          "first_accepts_genuine": true
+        }
+      }
+    },
+    {
+      "seed": 58654004,
+      "tested": 318,
+      "strict_poses": 23,
+      "stop_feasible": true,
+      "target": [
+        -237.0,
+        -32.0,
+        26.51287689354494,
+        -23.830377347137738
+      ],
+      "centroid_mm": 0.12645659808209217,
+      "plane_deg": 0.10740328609156354,
+      "on_evaluation_tapes": {
+        "wide": {
+          "arrival": 176,
+          "end": 196,
+          "first_accepts_genuine": true
+        },
+        "stress": {
+          "arrival": 176,
+          "end": 196,
+          "first_accepts_genuine": true
+        }
+      }
+    },
+    {
+      "seed": 58654005,
+      "tested": 318,
+      "strict_poses": 18,
+      "stop_feasible": true,
+      "target": [
+        -245.0,
+        -47.0,
+        27.251598193931702,
+        -29.699920312650164
+      ],
+      "centroid_mm": -1.4887389120618397,
+      "plane_deg": 0.11903855548912662,
+      "on_evaluation_tapes": {
+        "wide": {
+          "arrival": 76,
+          "end": 96,
+          "first_accepts_genuine": true
+        },
+        "stress": {
+          "arrival": 76,
+          "end": 96,
+          "first_accepts_genuine": true
+        }
+      }
+    },
+    {
+      "seed": 58654006,
+      "tested": 318,
+      "strict_poses": 11,
+      "stop_feasible": true,
+      "target": [
+        -229.0,
+        -52.0,
+        28.290566985036104,
+        -12.697829808998906
+      ],
+      "centroid_mm": -2.118070548153777,
+      "plane_deg": 0.14344841098671035,
+      "on_evaluation_tapes": {
+        "wide": {
+          "arrival": 82,
+          "end": 102,
+          "first_accepts_genuine": true
+        },
+        "stress": {
+          "arrival": 82,
+          "end": 102,
+          "first_accepts_genuine": true
+        }
+      }
+    },
+    {
+      "seed": 58654007,
+      "tested": 318,
+      "strict_poses": 76,
+      "stop_feasible": true,
+      "target": [
+        -213.0,
+        -62.0,
+        36.885674843375675,
+        -13.677827825237475
+      ],
+      "centroid_mm": 0.9848436582387472,
+      "plane_deg": 0.21293814991476087,
+      "on_evaluation_tapes": {
+        "wide": {
+          "arrival": 188,
+          "end": 208,
+          "first_accepts_genuine": true
+        },
+        "stress": {
+          "arrival": 188,
+          "end": 208,
+          "first_accepts_genuine": true
+        }
+      }
+    },
+    {
+      "seed": 58654008,
+      "tested": 316,
+      "strict_poses": 16,
+      "stop_feasible": true,
+      "target": [
+        -229.0,
+        -57.0,
+        29.698279074850745,
+        -16.42844291716264
+      ],
+      "centroid_mm": -0.07870264067695054,
+      "plane_deg": 0.09418343724875584,
+      "on_evaluation_tapes": {
+        "wide": {
+          "arrival": 80,
+          "end": 100,
+          "first_accepts_genuine": true
+        },
+        "stress": {
+          "arrival": 80,
+          "end": 100,
+          "first_accepts_genuine": true
+        }
+      }
+    },
+    {
+      "seed": 58654009,
+      "tested": 318,
+      "strict_poses": 35,
+      "stop_feasible": true,
+      "target": [
+        -233.0,
+        -47.0,
+        18.71794630477639,
+        -23.101085778904796
+      ],
+      "centroid_mm": -0.1060182649974279,
+      "plane_deg": 2.7338634570684994,
+      "on_evaluation_tapes": {
+        "wide": {
+          "arrival": 84,
+          "end": 104,
+          "first_accepts_genuine": true
+        },
+        "stress": {
+          "arrival": 84,
+          "end": 104,
+          "first_accepts_genuine": true
+        }
+      }
+    },
+    {
+      "seed": 58654010,
+      "tested": 318,
+      "strict_poses": 31,
+      "stop_feasible": true,
+      "target": [
+        -249.0,
+        -40.0,
+        28.0048713341699,
+        -21.94834693100657
+      ],
+      "centroid_mm": -0.7670479831915678,
+      "plane_deg": 0.031922163935964365,
+      "on_evaluation_tapes": {
+        "wide": {
+          "arrival": 189,
+          "end": 209,
+          "first_accepts_genuine": true
+        },
+        "stress": {
+          "arrival": 189,
+          "end": 209,
+          "first_accepts_genuine": true
+        }
+      }
+    },
+    {
+      "seed": 58654011,
+      "tested": 318,
+      "strict_poses": 27,
+      "stop_feasible": true,
+      "target": [
+        -249.0,
+        -39.0,
+        28.63216921466262,
+        -21.901990452989402
+      ],
+      "centroid_mm": -0.04054130042821919,
+      "plane_deg": 0.06732097931780529,
+      "on_evaluation_tapes": {
+        "wide": {
+          "arrival": 77,
+          "end": 97,
+          "first_accepts_genuine": true
+        },
+        "stress": {
+          "arrival": 77,
+          "end": 97,
+          "first_accepts_genuine": true
+        }
+      }
+    },
+    {
+      "seed": 58654012,
+      "tested": 318,
+      "strict_poses": 17,
+      "stop_feasible": true,
+      "target": [
+        -221.0,
+        -62.0,
+        26.77419959393551,
+        -3.593207812426067
+      ],
+      "centroid_mm": 1.2616408886916863,
+      "plane_deg": 0.14436328251356137,
+      "on_evaluation_tapes": {
+        "wide": {
+          "arrival": 84,
+          "end": 104,
+          "first_accepts_genuine": true
+        },
+        "stress": {
+          "arrival": 84,
+          "end": 104,
+          "first_accepts_genuine": true
+        }
+      }
+    },
+    {
+      "seed": 58654013,
+      "tested": 318,
+      "strict_poses": 35,
+      "stop_feasible": true,
+      "target": [
+        -233.0,
+        -30.0,
+        27.39233073030594,
+        -15.478389758535261
+      ],
+      "centroid_mm": -0.5726000930884777,
+      "plane_deg": 0.2032269030617658,
+      "on_evaluation_tapes": {
+        "wide": {
+          "arrival": 188,
+          "end": 208,
+          "first_accepts_genuine": true
+        },
+        "stress": {
+          "arrival": 188,
+          "end": 208,
+          "first_accepts_genuine": true
+        }
+      }
+    },
+    {
+      "seed": 58654014,
+      "tested": 318,
+      "strict_poses": 14,
+      "stop_feasible": true,
+      "target": [
+        -213.0,
+        -57.0,
+        33.94359755409544,
+        -5.468927689879837
+      ],
+      "centroid_mm": -1.1077554551356423,
+      "plane_deg": 0.14773638868742575,
+      "on_evaluation_tapes": {
+        "wide": {
+          "arrival": 73,
+          "end": 93,
+          "first_accepts_genuine": true
+        },
+        "stress": {
+          "arrival": 73,
+          "end": 93,
+          "first_accepts_genuine": true
+        }
+      }
+    },
+    {
+      "seed": 58654015,
+      "tested": 318,
+      "strict_poses": 18,
+      "stop_feasible": true,
+      "target": [
+        -225.0,
+        -50.0,
+        36.12951801796179,
+        -16.759483745068227
+      ],
+      "centroid_mm": -3.2622031647490766,
+      "plane_deg": 0.3968692785061244,
+      "on_evaluation_tapes": {
+        "wide": {
+          "arrival": 64,
+          "end": 84,
+          "first_accepts_genuine": true
+        },
+        "stress": {
+          "arrival": 64,
+          "end": 84,
+          "first_accepts_genuine": true
+        }
+      }
+    },
+    {
+      "seed": 58654016,
+      "tested": 318,
+      "strict_poses": 13,
+      "stop_feasible": true,
+      "target": [
+        -237.0,
+        -47.0,
+        26.606302377364052,
+        -21.888228289465392
+      ],
+      "centroid_mm": -1.5691357546305118,
+      "plane_deg": 0.10522699684041321,
+      "on_evaluation_tapes": {
+        "wide": {
+          "arrival": 171,
+          "end": 191,
+          "first_accepts_genuine": true
+        },
+        "stress": {
+          "arrival": 171,
+          "end": 191,
+          "first_accepts_genuine": true
+        }
+      }
+    },
+    {
+      "seed": 58654017,
+      "tested": 318,
+      "strict_poses": 63,
+      "stop_feasible": true,
+      "target": [
+        -261.0,
+        -27.0,
+        25.09125622174373,
+        -22.81386107188257
+      ],
+      "centroid_mm": 0.05404817532956603,
+      "plane_deg": 0.12653878927315426,
+      "on_evaluation_tapes": {
+        "wide": {
+          "arrival": 82,
+          "end": 102,
+          "first_accepts_genuine": true
+        },
+        "stress": {
+          "arrival": 82,
+          "end": 102,
+          "first_accepts_genuine": true
+        }
+      }
+    },
+    {
+      "seed": 58654018,
+      "tested": 318,
+      "strict_poses": 13,
+      "stop_feasible": true,
+      "target": [
+        -213.0,
+        -62.0,
+        29.704813612573865,
+        -6.656832153833896
+      ],
+      "centroid_mm": 0.004587083461387495,
+      "plane_deg": 0.13620781647058122,
+      "on_evaluation_tapes": {
+        "wide": {
+          "arrival": 62,
+          "end": 82,
+          "first_accepts_genuine": true
+        },
+        "stress": {
+          "arrival": 62,
+          "end": 82,
+          "first_accepts_genuine": true
+        }
+      }
+    },
+    {
+      "seed": 58654019,
+      "tested": 318,
+      "strict_poses": 23,
+      "stop_feasible": true,
+      "target": [
+        -233.0,
+        -54.0,
+        30.908687566970006,
+        -14.433577926553124
+      ],
+      "centroid_mm": 0.6671635565418489,
+      "plane_deg": 1.90666637022334,
+      "on_evaluation_tapes": {
+        "wide": {
+          "arrival": 156,
+          "end": 176,
+          "first_accepts_genuine": true
+        },
+        "stress": {
+          "arrival": 156,
+          "end": 176,
+          "first_accepts_genuine": true
+        }
+      }
+    },
+    {
+      "seed": 58654020,
+      "tested": 318,
+      "strict_poses": 12,
+      "stop_feasible": true,
+      "target": [
+        -229.0,
+        -67.0,
+        18.629642960581304,
+        5.665566343995286
+      ],
+      "centroid_mm": 0.6850487031503196,
+      "plane_deg": 0.15468457531163057,
+      "on_evaluation_tapes": {
+        "wide": {
+          "arrival": 83,
+          "end": 103,
+          "first_accepts_genuine": true
+        },
+        "stress": {
+          "arrival": 83,
+          "end": 103,
+          "first_accepts_genuine": true
+        }
+      }
+    },
+    {
+      "seed": 58654021,
+      "tested": 318,
+      "strict_poses": 22,
+      "stop_feasible": true,
+      "target": [
+        -229.0,
+        -47.0,
+        27.964911305251995,
+        -22.554414107122916
+      ],
+      "centroid_mm": -0.05585007780805169,
+      "plane_deg": 0.19164666560153962,
+      "on_evaluation_tapes": {
+        "wide": {
+          "arrival": 67,
+          "end": 87,
+          "first_accepts_genuine": true
+        },
+        "stress": {
+          "arrival": 67,
+          "end": 87,
+          "first_accepts_genuine": true
+        }
+      }
+    },
+    {
+      "seed": 58654022,
+      "tested": 318,
+      "strict_poses": 19,
+      "stop_feasible": true,
+      "target": [
+        -233.0,
+        -50.0,
+        30.425495459390604,
+        -22.627267611337654
+      ],
+      "centroid_mm": -0.058675767543651856,
+      "plane_deg": 4.267407909262824,
+      "on_evaluation_tapes": {
+        "wide": {
+          "arrival": 170,
+          "end": 190,
+          "first_accepts_genuine": true
+        },
+        "stress": {
+          "arrival": 170,
+          "end": 190,
+          "first_accepts_genuine": true
+        }
+      }
+    },
+    {
+      "seed": 58654023,
+      "tested": 318,
+      "strict_poses": 12,
+      "stop_feasible": true,
+      "target": [
+        -229.0,
+        -62.0,
+        31.539542699538856,
+        -7.316008287918337
+      ],
+      "centroid_mm": -1.0794493930897677,
+      "plane_deg": 0.14976817690345634,
+      "on_evaluation_tapes": {
+        "wide": {
+          "arrival": 85,
+          "end": 105,
+          "first_accepts_genuine": true
+        },
+        "stress": {
+          "arrival": 85,
+          "end": 105,
+          "first_accepts_genuine": true
+        }
+      }
+    },
+    {
+      "seed": 58654024,
+      "tested": 318,
+      "strict_poses": 17,
+      "stop_feasible": true,
+      "target": [
+        -237.0,
+        -57.0,
+        26.492322692571403,
+        -17.050363689264604
+      ],
+      "centroid_mm": -1.288461885840003,
+      "plane_deg": 0.18059343372441092,
+      "on_evaluation_tapes": {
+        "wide": {
+          "arrival": 92,
+          "end": 112,
+          "first_accepts_genuine": true
+        },
+        "stress": {
+          "arrival": 92,
+          "end": 112,
+          "first_accepts_genuine": true
+        }
+      }
+    },
+    {
+      "seed": 58654025,
+      "tested": 318,
+      "strict_poses": 44,
+      "stop_feasible": true,
+      "target": [
+        -241.0,
+        -42.0,
+        17.70630972995438,
+        -15.298716826336166
+      ],
+      "centroid_mm": -0.20645264291608775,
+      "plane_deg": 0.021196746998043078,
+      "on_evaluation_tapes": {
+        "wide": {
+          "arrival": 188,
+          "end": 208,
+          "first_accepts_genuine": true
+        },
+        "stress": {
+          "arrival": 188,
+          "end": 208,
+          "first_accepts_genuine": true
+        }
+      }
+    },
+    {
+      "seed": 58654026,
+      "tested": 318,
+      "strict_poses": 13,
+      "stop_feasible": true,
+      "target": [
+        -221.0,
+        -52.0,
+        25.095834492679664,
+        -14.862095434027228
+      ],
+      "centroid_mm": -2.443901789139865,
+      "plane_deg": 0.20651990346179253,
+      "on_evaluation_tapes": {
+        "wide": {
+          "arrival": 73,
+          "end": 93,
+          "first_accepts_genuine": true
+        },
+        "stress": {
+          "arrival": 73,
+          "end": 93,
+          "first_accepts_genuine": true
+        }
+      }
+    },
+    {
+      "seed": 58654027,
+      "tested": 318,
+      "strict_poses": 16,
+      "stop_feasible": true,
+      "target": [
+        -229.0,
+        -47.0,
+        27.71497289054239,
+        -21.03287941964086
+      ],
+      "centroid_mm": -0.1837957736371006,
+      "plane_deg": 0.15215984979177186,
+      "on_evaluation_tapes": {
+        "wide": {
+          "arrival": 65,
+          "end": 85,
+          "first_accepts_genuine": true
+        },
+        "stress": {
+          "arrival": 65,
+          "end": 85,
+          "first_accepts_genuine": true
+        }
+      }
+    },
+    {
+      "seed": 58654028,
+      "tested": 318,
+      "strict_poses": 25,
+      "stop_feasible": true,
+      "target": [
+        -229.0,
+        -42.0,
+        29.297386447584326,
+        -20.168564034126085
+      ],
+      "centroid_mm": -0.2969919890486601,
+      "plane_deg": 0.13433828158351843,
+      "on_evaluation_tapes": {
+        "wide": {
+          "arrival": 172,
+          "end": 192,
+          "first_accepts_genuine": true
+        },
+        "stress": {
+          "arrival": 172,
+          "end": 192,
+          "first_accepts_genuine": true
+        }
+      }
+    },
+    {
+      "seed": 58654029,
+      "tested": 318,
+      "strict_poses": 60,
+      "stop_feasible": true,
+      "target": [
+        -221.0,
+        -52.0,
+        33.20183071517196,
+        -7.660134943000742
+      ],
+      "centroid_mm": -0.2339294575900771,
+      "plane_deg": 0.1624459377917885,
+      "on_evaluation_tapes": {
+        "wide": {
+          "arrival": 69,
+          "end": 89,
+          "first_accepts_genuine": true
+        },
+        "stress": {
+          "arrival": 69,
+          "end": 89,
+          "first_accepts_genuine": true
+        }
+      }
+    },
+    {
+      "seed": 58654030,
+      "tested": 318,
+      "strict_poses": 29,
+      "stop_feasible": true,
+      "target": [
+        -229.0,
+        -27.0,
+        29.430741191860523,
+        -19.65250305858815
+      ],
+      "centroid_mm": -0.5326440558140394,
+      "plane_deg": 0.11715581498809284,
+      "on_evaluation_tapes": {
+        "wide": {
+          "arrival": 88,
+          "end": 108,
+          "first_accepts_genuine": true
+        },
+        "stress": {
+          "arrival": 88,
+          "end": 108,
+          "first_accepts_genuine": true
+        }
+      }
+    },
+    {
+      "seed": 58654031,
+      "tested": 318,
+      "strict_poses": 21,
+      "stop_feasible": true,
+      "target": [
+        -213.0,
+        -62.0,
+        34.654168157962765,
+        -11.182830691861712
+      ],
+      "centroid_mm": 0.00039353132708893306,
+      "plane_deg": 0.16875619792100321,
+      "on_evaluation_tapes": {
+        "wide": {
+          "arrival": 182,
+          "end": 202,
+          "first_accepts_genuine": true
+        },
+        "stress": {
+          "arrival": 182,
+          "end": 202,
+          "first_accepts_genuine": true
+        }
+      }
+    },
+    {
+      "seed": 58654032,
+      "tested": 318,
+      "strict_poses": 13,
+      "stop_feasible": true,
+      "target": [
+        -225.0,
+        -67.0,
+        25.30148394516426,
+        -4.467672226910841
+      ],
+      "centroid_mm": -0.021150224165613896,
+      "plane_deg": 0.4301988182464916,
+      "on_evaluation_tapes": {
+        "wide": {
+          "arrival": 103,
+          "end": 123,
+          "first_accepts_genuine": true
+        },
+        "stress": {
+          "arrival": 103,
+          "end": 123,
+          "first_accepts_genuine": true
+        }
+      }
+    },
+    {
+      "seed": 58654033,
+      "tested": 318,
+      "strict_poses": 17,
+      "stop_feasible": true,
+      "target": [
+        -249.0,
+        -52.0,
+        23.057336797911596,
+        -18.333565806293638
+      ],
+      "centroid_mm": -1.0871232906525474,
+      "plane_deg": 0.3733105335782954,
+      "on_evaluation_tapes": {
+        "wide": {
+          "arrival": 99,
+          "end": 119,
+          "first_accepts_genuine": true
+        },
+        "stress": {
+          "arrival": 99,
+          "end": 119,
+          "first_accepts_genuine": true
+        }
+      }
+    },
+    {
+      "seed": 58654034,
+      "tested": 318,
+      "strict_poses": 63,
+      "stop_feasible": true,
+      "target": [
+        -229.0,
+        -37.0,
+        29.67347477616054,
+        -21.973918537574963
+      ],
+      "centroid_mm": -0.3056952031952295,
+      "plane_deg": 0.18346788511499126,
+      "on_evaluation_tapes": {
+        "wide": {
+          "arrival": 182,
+          "end": 202,
+          "first_accepts_genuine": true
+        },
+        "stress": {
+          "arrival": 182,
+          "end": 202,
+          "first_accepts_genuine": true
+        }
+      }
+    },
+    {
+      "seed": 58654035,
+      "tested": 318,
+      "strict_poses": 34,
+      "stop_feasible": true,
+      "target": [
+        -213.0,
+        -57.0,
+        32.28760650747957,
+        -11.983111348728983
+      ],
+      "centroid_mm": -0.3447169888710773,
+      "plane_deg": 0.2558131327161675,
+      "on_evaluation_tapes": {
+        "wide": {
+          "arrival": 72,
+          "end": 92,
+          "first_accepts_genuine": true
+        },
+        "stress": {
+          "arrival": 72,
+          "end": 92,
+          "first_accepts_genuine": true
+        }
+      }
+    },
+    {
+      "seed": 58654036,
+      "tested": 318,
+      "strict_poses": 19,
+      "stop_feasible": true,
+      "target": [
+        -205.0,
+        -65.0,
+        27.77295437995431,
+        -2.6719315453427197
+      ],
+      "centroid_mm": -0.8437540651461922,
+      "plane_deg": 1.4149695297491627,
+      "on_evaluation_tapes": {
+        "wide": {
+          "arrival": 82,
+          "end": 102,
+          "first_accepts_genuine": true
+        },
+        "stress": {
+          "arrival": 82,
+          "end": 102,
+          "first_accepts_genuine": true
+        }
+      }
+    },
+    {
+      "seed": 58654037,
+      "tested": 318,
+      "strict_poses": 19,
+      "stop_feasible": true,
+      "target": [
+        -237.0,
+        -67.0,
+        23.055494929709965,
+        -3.6077563292425983
+      ],
+      "centroid_mm": 0.7731401798515188,
+      "plane_deg": 0.2154361999274594,
+      "on_evaluation_tapes": {
+        "wide": {
+          "arrival": 171,
+          "end": 191,
+          "first_accepts_genuine": true
+        },
+        "stress": {
+          "arrival": 171,
+          "end": 191,
+          "first_accepts_genuine": true
+        }
+      }
+    },
+    {
+      "seed": 58654038,
+      "tested": 318,
+      "strict_poses": 14,
+      "stop_feasible": true,
+      "target": [
+        -221.0,
+        -57.0,
+        30.706622401474892,
+        -11.148824728971352
+      ],
+      "centroid_mm": -0.37475120197951967,
+      "plane_deg": 0.07074453191412322,
+      "on_evaluation_tapes": {
+        "wide": {
+          "arrival": 75,
+          "end": 95,
+          "first_accepts_genuine": true
+        },
+        "stress": {
+          "arrival": 75,
+          "end": 95,
+          "first_accepts_genuine": true
+        }
+      }
+    },
+    {
+      "seed": 58654039,
+      "tested": 316,
+      "strict_poses": 22,
+      "stop_feasible": true,
+      "target": [
+        -225.0,
+        -50.0,
+        29.451525148430616,
+        -19.602874493236875
+      ],
+      "centroid_mm": -0.019292154101082933,
+      "plane_deg": 0.6360601097020064,
+      "on_evaluation_tapes": {
+        "wide": {
+          "arrival": 64,
+          "end": 84,
+          "first_accepts_genuine": true
+        },
+        "stress": {
+          "arrival": 64,
+          "end": 84,
+          "first_accepts_genuine": true
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,150 @@
+{
+  "reverse": {
+    "rows": 183,
+    "anatomies": 32,
+    "actions": 1032,
+    "stages": {
+      "near_overshoot": 61,
+      "nominal_approach": 60,
+      "wide_near_miss": 62
+    },
+    "any_correct": 161,
+    "continue_correct": 64,
+    "changed_can_rescue": 97
+  },
+  "student_fit": {
+    "rows": 205,
+    "anatomies": 24,
+    "actions": 1037,
+    "stages": {
+      "student": 205
+    },
+    "any_correct": 76,
+    "continue_correct": 54,
+    "changed_can_rescue": 22
+  },
+  "student_validation": {
+    "rows": 70,
+    "anatomies": 8,
+    "actions": 349,
+    "stages": {
+      "student": 70
+    },
+    "any_correct": 22,
+    "continue_correct": 10,
+    "changed_can_rescue": 12
+  },
+  "selection": [
+    {
+      "margin": 0.075,
+      "utility": 0.11150845781288786,
+      "correct": 10,
+      "wrong": 1
+    },
+    {
+      "margin": 0.05,
+      "utility": 0.11150845781288786,
+      "correct": 10,
+      "wrong": 1
+    },
+    {
+      "margin": 0.025,
+      "utility": 0.11150845781288786,
+      "correct": 10,
+      "wrong": 1
+    },
+    {
+      "margin": 0.0,
+      "utility": 0.11150845781288786,
+      "correct": 10,
+      "wrong": 1
+    },
+    {
+      "margin": 0.45,
+      "utility": 0.11149121752056962,
+      "correct": 10,
+      "wrong": 1
+    },
+    {
+      "margin": 0.3,
+      "utility": 0.11149121752056962,
+      "correct": 10,
+      "wrong": 1
+    },
+    {
+      "margin": 0.2,
+      "utility": 0.0971249088810532,
+      "correct": 9,
+      "wrong": 1
+    },
+    {
+      "margin": 0.15,
+      "utility": 0.0971249088810532,
+      "correct": 9,
+      "wrong": 1
+    },
+    {
+      "margin": 0.1,
+      "utility": 0.09704498309673504,
+      "correct": 9,
+      "wrong": 1
+    }
+  ],
+  "reverse_selection": [
+    {
+      "margin": 0.15,
+      "utility": 0.1265083303756633,
+      "correct": 11,
+      "wrong": 1
+    },
+    {
+      "margin": 0.2,
+      "utility": 0.12612959182287967,
+      "correct": 11,
+      "wrong": 1
+    },
+    {
+      "margin": 0.075,
+      "utility": 0.11263767315674304,
+      "correct": 10,
+      "wrong": 1
+    },
+    {
+      "margin": 0.1,
+      "utility": 0.11262524019935795,
+      "correct": 10,
+      "wrong": 1
+    },
+    {
+      "margin": 0.45,
+      "utility": 0.11134428091858804,
+      "correct": 10,
+      "wrong": 1
+    },
+    {
+      "margin": 0.3,
+      "utility": 0.11128869657365688,
+      "correct": 10,
+      "wrong": 1
+    },
+    {
+      "margin": 0.0,
+      "utility": 0.07038263069902927,
+      "correct": 7,
+      "wrong": 1
+    },
+    {
+      "margin": 0.05,
+      "utility": 0.0696806674169191,
+      "correct": 7,
+      "wrong": 1
+    },
+    {
+      "margin": 0.025,
+      "utility": 0.05579702230853118,
+      "correct": 6,
+      "wrong": 1
+    }
+  ],
+  "joint_train_uses_all_feasible_success_and_failure_labels": true
+}

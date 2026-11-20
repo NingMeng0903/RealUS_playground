@@ -1,0 +1,82 @@
+{
+  "secondary_study": "one correction to the first rule-based decision using whole-scan returns",
+  "fit_range": [
+    58661000,
+    58661036
+  ],
+  "calibration_range": [
+    58662000,
+    58662016
+  ],
+  "test_range": [
+    58663000,
+    58663032
+  ],
+  "streams": {
+    "fit": 130,
+    "calibrate": 140,
+    "test": 150
+  },
+  "labels": 308,
+  "paired_training_exits": 56,
+  "calibration": [
+    {
+      "margin": null,
+      "utility_delta": 0.0,
+      "wrong_delta": 0,
+      "correct_delta": 0,
+      "changed": 0
+    },
+    {
+      "margin": 0.25,
+      "utility_delta": 0.0,
+      "wrong_delta": 0,
+      "correct_delta": 0,
+      "changed": 0
+    },
+    {
+      "margin": 0.15,
+      "utility_delta": -0.021235927791392942,
+      "wrong_delta": 1,
+      "correct_delta": 0,
+      "changed": 1
+    },
+    {
+      "margin": 0.1,
+      "utility_delta": -0.021235927791392942,
+      "wrong_delta": 1,
+      "correct_delta": 0,
+      "changed": 1
+    },
+    {
+      "margin": 0.06,
+      "utility_delta": -0.02136257402382556,
+      "wrong_delta": 1,
+      "correct_delta": 0,
+      "changed": 2
+    },
+    {
+      "margin": 0.025,
+      "utility_delta": -0.057328807481367046,
+      "wrong_delta": 1,
+      "correct_delta": -1,
+      "changed": 3
+    },
+    {
+      "margin": 0.0,
+      "utility_delta": -0.057093897749086776,
+      "wrong_delta": 1,
+      "correct_delta": -1,
+      "changed": 4
+    }
+  ],
+  "chosen": {
+    "margin": null,
+    "utility_delta": 0.0,
+    "wrong_delta": 0,
+    "correct_delta": 0,
+    "changed": 0
+  },
+  "software_sha256": "19078ebba7b7676b84c6eab5eb1b52ed452d295928d3ac19e09c97332226b80a",
+  "policy_sha256": "5bffe4279bf500c642f4d7c6cbb0c44cccb413f53ec76b08a36154a13efe89b2"
+}

@@ -1,0 +1,68 @@
+{
+  "arms": {
+    "stationary": {
+      "n": 64,
+      "correct": 42,
+      "wrong": 5,
+      "seconds": 13.837499999999999,
+      "travel_mm": 131.12001770671947
+    },
+    "hand": {
+      "n": 64,
+      "correct": 45,
+      "wrong": 6,
+      "seconds": 12.015625,
+      "travel_mm": 118.16846689454286
+    },
+    "residual": {
+      "n": 64,
+      "correct": 45,
+      "wrong": 6,
+      "seconds": 12.015625,
+      "travel_mm": 118.16846689454286
+    },
+    "zero_margin": {
+      "n": 64,
+      "correct": 46,
+      "wrong": 4,
+      "seconds": 12.0125,
+      "travel_mm": 118.37395876375803
+    }
+  },
+  "comparisons": {
+    "hand_vs_stationary": {
+      "percentage_points": 4.6875,
+      "paired_95ci_pp": [
+        -4.6875,
+        14.0625
+      ],
+      "win": 10,
+      "loss": 7,
+      "anatomies": 32
+    },
+    "residual_vs_hand": {
+      "percentage_points": 0.0,
+      "paired_95ci_pp": [
+        0.0,
+        0.0
+      ],
+      "win": 0,
+      "loss": 0,
+      "anatomies": 32
+    },
+    "zero_margin_vs_hand": {
+      "percentage_points": 1.5625,
+      "paired_95ci_pp": [
+        -3.125,
+        6.25
+      ],
+      "win": 2,
+      "loss": 1,
+      "anatomies": 32
+    }
+  },
+  "eligible_hand_exits": 53,
+  "changed": 0,
+  "changed_no_margin": 11,
+  "cases_the_same_menu_can_rescue": 9
+}
