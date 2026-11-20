@@ -1,0 +1,37 @@
+{
+  "type": "synthetic_algorithm_check",
+  "no_medical_success_rate": true,
+  "status": "passed",
+  "torch_version": "2.5.1+cpu",
+  "test_environment": "synthetic vectors, scripted endpoint dictionaries, mocked asset preflight and fingerprints",
+  "shape": {
+    "public": 507,
+    "privileged": 17,
+    "hidden": 128,
+    "warmup": 8,
+    "episode": 12
+  },
+  "maximum_absolute_replay_error": {
+    "log_prob": 2.384185791015625e-07,
+    "value": 5.960464477539063e-08
+  },
+  "checks": [
+    "hybrid actions and zero settle delta",
+    "GRU log probability and value replay",
+    "public actor and detached critic",
+    "actual policy update with finite losses",
+    "asset preflight fails before creating outputs",
+    "checkpoint records asset fingerprints",
+    "terminal outcomes retain endpoint diagnostics",
+    "mixed conditions toggle for each seed",
+    "compatible curriculum transfer and incompatible checkpoint rejection",
+    "inherited and current training seed overlap rejection"
+  ],
+  "file_sha256": {
+    "env.py": "cf3a740e59fd703d2af22213e9a8bb65edfb77bcc31c5e11527488864e9736ec",
+    "evaluate_rl.py": "50d772858ae477d1a5391c235b96cb5cfdb4d87b464ab57539caf0989bded3aa",
+    "recurrent_ppo.py": "e3901b2cc8467c7322c2b690365c01fb3dcba269516e4d4c3781d9982214ee56",
+    "train_rl.py": "09d14588d66eb19fd5098de814d31cab5370b63b5fb1301dc926ff76b7cbe9df",
+    "test_ppo.py": "d5af63303b1db81e9dd4dda034e7632ca8e7ed59c2a20280feaadb52e898828c"
+  }
+}

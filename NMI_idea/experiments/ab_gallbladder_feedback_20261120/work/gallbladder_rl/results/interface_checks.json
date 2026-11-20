@@ -1,0 +1,8 @@
+{
+  "audit_type": "synthetic_contract_check",
+  "scope": "Asset-free unittest with SimpleNamespace and stub API; no torch, no asset loading, no simulator execution, no claim of physical motion feasibility.",
+  "tests_run": 7,
+  "failures": [],
+  "errors": [],
+  "passed": true
+}
