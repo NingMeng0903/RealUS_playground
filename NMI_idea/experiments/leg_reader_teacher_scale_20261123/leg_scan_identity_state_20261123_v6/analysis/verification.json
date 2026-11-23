@@ -1,0 +1,41 @@
+{
+  "stages": {
+    "reader_fresh": {
+      "layouts": 160,
+      "verified_shards": 5,
+      "verified_layout_counts_by_route": {
+        "femoral": 64,
+        "groin_to_distal_calf": 96
+      }
+    },
+    "closed_dev": {
+      "layouts": 48,
+      "verified_shards": 3,
+      "verified_layout_counts_by_route": {
+        "femoral": 16,
+        "groin_to_distal_calf": 32
+      },
+      "scoring_executions": 48,
+      "teacher_search_executions": 492,
+      "all_action_paired_observations": 630
+    },
+    "closed_test": {
+      "layouts": 128,
+      "verified_shards": 8,
+      "verified_layout_counts_by_route": {
+        "femoral": 32,
+        "groin_to_distal_calf": 96
+      },
+      "scoring_executions": 2208,
+      "teacher_search_executions": 508,
+      "all_action_paired_observations": 598
+    }
+  },
+  "unique_fresh_layouts": 336,
+  "complete_scoring_trajectories": 2256,
+  "reader_freeze_sha256": "4b17a308a9aa6c74863d7a6596263c347580013505402ef70d684a599687597d",
+  "closed_freeze_sha256": "666a7dc4058a2345c1535e0c06ab86d909ad56cf46d9366d643bb78307be7492",
+  "student_manifest_sha256": "299fc50b2af188cc0cb415917106c08f64097078edb3985465379c5d3d9605eb",
+  "verified_student_bundle_sha256": "46cce9437e30c0114ba84131fde4f886eca94232d9d6e54595cf56d6fdee23ae",
+  "verified_usability_bundle_sha256": "1adff4a15ed34c1a3458b2e18eb9bc453a9bef8b0cc7ec6ee5240400e4cba1e0"
+}

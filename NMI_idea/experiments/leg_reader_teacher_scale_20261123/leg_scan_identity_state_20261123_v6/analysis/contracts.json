@@ -1,0 +1,90 @@
+{
+  "femoral": {
+    "prefix_partition_points": [
+      [
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63
+      ],
+      [
+        54,
+        57,
+        60,
+        63
+      ],
+      [
+        54,
+        63
+      ],
+      [
+        63
+      ]
+    ],
+    "candidates": 188,
+    "v6_max_difference": 0.0,
+    "v5_entry_cadence_target_delta_max": 0.017863035202026367,
+    "v5_entry_cadence_moved_more_than_0.01": 3,
+    "swapped_label_invariant": true,
+    "v5_forward_frames": 3,
+    "v5_time_s": 11.3,
+    "v5_travel_mm": 223.8337701212762,
+    "still_legal": [
+      "prefix_frozen",
+      "unary_dynamic",
+      "objects_dynamic",
+      "objects_no_stop",
+      "objects_stop"
+    ]
+  },
+  "groin_to_distal_calf": {
+    "prefix_partition_points": [
+      [
+        169,
+        170,
+        171,
+        172,
+        173,
+        174,
+        175,
+        176,
+        177,
+        178
+      ],
+      [
+        169,
+        172,
+        175,
+        178
+      ],
+      [
+        169,
+        178
+      ],
+      [
+        178
+      ]
+    ],
+    "candidates": 405,
+    "v6_max_difference": 0.0,
+    "v5_entry_cadence_target_delta_max": 0.11732509732246399,
+    "v5_entry_cadence_moved_more_than_0.01": 11,
+    "swapped_label_invariant": true,
+    "v5_forward_frames": 3,
+    "v5_time_s": 34.7,
+    "v5_travel_mm": 871.4366404659808,
+    "still_legal": [
+      "prefix_frozen",
+      "unary_dynamic",
+      "objects_dynamic",
+      "objects_no_stop",
+      "objects_stop"
+    ]
+  }
+}

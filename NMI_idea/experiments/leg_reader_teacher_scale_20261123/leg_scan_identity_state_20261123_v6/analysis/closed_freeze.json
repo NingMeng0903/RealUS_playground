@@ -1,0 +1,67 @@
+{
+  "experiment": "leg_scan_identity_state_20261123_v6",
+  "base_commit": "ba2871673325b714d877b8004acef0f58139b959",
+  "atlas_sha256": "aad4100d6e594de6279a2297fae3c5cb6e84a68077bfde56435113d5b0c352d5",
+  "reader_freeze_sha256": "4b17a308a9aa6c74863d7a6596263c347580013505402ef70d684a599687597d",
+  "source_sha256": {
+    "live_programs.py": "66d3d180682e8295915f31a226fff1923d3e13cc3fa184112d3427e2a5e0772e",
+    "anchor_logic.py": "fbdfdf04aff6538d29b0bf63d72d81883b692c6d4619f4d08247e5eb94141d40",
+    "paired_value.py": "b689b891a41abd76df014f0aae56ba4a3b90099623da17a777c2b7f3170bbca7",
+    "run_closed.py": "779de46611a7887c04a2e8666be17f54d9f7b8330818458aaebb9bdc708e7101"
+  },
+  "gates": {
+    "candidate": "locked v5 public anchor vs common MPC on whole route",
+    "identity": "matched objects_dynamic vs unary_dynamic",
+    "teacher": "adaptive search vs locked v5 public anchor on preselected test subset",
+    "pass": "proof mean strict 95% lower bound positive, wrong-branch 95% upper bound <= .03, actual strict delta nonnegative",
+    "false_branch_noninferiority_margin": 0.03
+  },
+  "seeds": {
+    "reader_fresh": 2084500001000000,
+    "closed_dev": 2084500010000000,
+    "closed_test": 2084500020000000
+  },
+  "stages": {
+    "reader_fresh": {
+      "femoral": 64,
+      "groin_to_distal_calf": 96
+    },
+    "closed_dev": {
+      "femoral": 16,
+      "groin_to_distal_calf": 32
+    },
+    "closed_test": {
+      "femoral": 32,
+      "groin_to_distal_calf": 96
+    }
+  },
+  "actions": [
+    "mpc",
+    "equal_time_hold",
+    "v5_public",
+    "prefix_frozen",
+    "unary_dynamic",
+    "objects_dynamic",
+    "objects_no_stop",
+    "objects_stop"
+  ],
+  "teacher_actions": [
+    "mpc",
+    "equal_time_hold",
+    "v5_public",
+    "objects_dynamic",
+    "objects_stop"
+  ],
+  "search_offsets": [
+    3000000000000,
+    4000000000000,
+    7000000000000,
+    8000000000000
+  ],
+  "proof_offsets": [
+    5000000000000,
+    6000000000000
+  ],
+  "teacher_test_selection": "layout ordinal//2 modulo 3 equals zero",
+  "dird": false
+}

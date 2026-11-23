@@ -1,0 +1,396 @@
+{
+  "scope": "fixed first 16 held-out layouts per route, no policy selection",
+  "temper_same_geometry": "same current forecasts, swap only previous object weights on overlapping frame-slot histories",
+  "routes": {
+    "femoral": {
+      "layouts": 16,
+      "triggered": 9,
+      "comparable_same_geometry": 4,
+      "new_evidence_changes_slot": 0,
+      "changed_with_attached_new_candidates": 0
+    },
+    "groin_to_distal_calf": {
+      "layouts": 16,
+      "triggered": 10,
+      "comparable_same_geometry": 5,
+      "new_evidence_changes_slot": 0,
+      "changed_with_attached_new_candidates": 0
+    }
+  },
+  "observations": [
+    {
+      "route": "femoral",
+      "case": "v6_closed_test_00000",
+      "layout_id": "atlas_v2_b323fe7a6f1075e2f133",
+      "triggered": true,
+      "decisions": [
+        {
+          "station": 53,
+          "tick": 61,
+          "same_forecast_changed_slot": false,
+          "previous_slot": 0,
+          "actual_slot": 0,
+          "existing_object_weights": [
+            0.5246642291281609,
+            0.47533577087183915
+          ],
+          "new_object_weights": [
+            0.5087793832374666,
+            0.4912206167625333
+          ],
+          "new_attached_candidates": 2
+        }
+      ]
+    },
+    {
+      "route": "groin_to_distal_calf",
+      "case": "v6_closed_test_00001",
+      "layout_id": "atlas_v2_79afcfaca81627e4de22",
+      "triggered": false,
+      "decisions": []
+    },
+    {
+      "route": "femoral",
+      "case": "v6_closed_test_00002",
+      "layout_id": "atlas_v2_c08ef831a5b277b47f04",
+      "triggered": false,
+      "decisions": []
+    },
+    {
+      "route": "groin_to_distal_calf",
+      "case": "v6_closed_test_00003",
+      "layout_id": "atlas_v2_ebb0848a8b7de04cb78c",
+      "triggered": false,
+      "decisions": []
+    },
+    {
+      "route": "femoral",
+      "case": "v6_closed_test_00004",
+      "layout_id": "atlas_v2_1545f4542fb3c9c23128",
+      "triggered": true,
+      "decisions": []
+    },
+    {
+      "route": "groin_to_distal_calf",
+      "case": "v6_closed_test_00005",
+      "layout_id": "atlas_v2_3a2d02969fada7788104",
+      "triggered": false,
+      "decisions": []
+    },
+    {
+      "route": "femoral",
+      "case": "v6_closed_test_00006",
+      "layout_id": "atlas_v2_c4bdbd2a0dd33180c6a9",
+      "triggered": true,
+      "decisions": []
+    },
+    {
+      "route": "groin_to_distal_calf",
+      "case": "v6_closed_test_00007",
+      "layout_id": "atlas_v2_8dabdebf59047df20107",
+      "triggered": false,
+      "decisions": []
+    },
+    {
+      "route": "femoral",
+      "case": "v6_closed_test_00008",
+      "layout_id": "atlas_v2_ea4e5e88796792c9cf81",
+      "triggered": false,
+      "decisions": []
+    },
+    {
+      "route": "groin_to_distal_calf",
+      "case": "v6_closed_test_00009",
+      "layout_id": "atlas_v2_0485a9955ba8049e532c",
+      "triggered": true,
+      "decisions": []
+    },
+    {
+      "route": "femoral",
+      "case": "v6_closed_test_00010",
+      "layout_id": "atlas_v2_fee58fb28184e4bcd77a",
+      "triggered": false,
+      "decisions": []
+    },
+    {
+      "route": "groin_to_distal_calf",
+      "case": "v6_closed_test_00011",
+      "layout_id": "atlas_v2_e3c52322ff02d9d4150b",
+      "triggered": true,
+      "decisions": []
+    },
+    {
+      "route": "femoral",
+      "case": "v6_closed_test_00012",
+      "layout_id": "atlas_v2_63292bf97a34d886add8",
+      "triggered": true,
+      "decisions": [
+        {
+          "station": 53,
+          "tick": 61,
+          "same_forecast_changed_slot": false,
+          "previous_slot": 0,
+          "actual_slot": 0,
+          "existing_object_weights": [
+            0.48358640315347806,
+            0.516413596846522
+          ],
+          "new_object_weights": [
+            0.4881654889554894,
+            0.5118345110445106
+          ],
+          "new_attached_candidates": 0
+        }
+      ]
+    },
+    {
+      "route": "groin_to_distal_calf",
+      "case": "v6_closed_test_00013",
+      "layout_id": "atlas_v2_d071e9f0e9d6a20b5c11",
+      "triggered": true,
+      "decisions": []
+    },
+    {
+      "route": "femoral",
+      "case": "v6_closed_test_00014",
+      "layout_id": "atlas_v2_057bc7a9b88c36a8b0bd",
+      "triggered": true,
+      "decisions": []
+    },
+    {
+      "route": "groin_to_distal_calf",
+      "case": "v6_closed_test_00015",
+      "layout_id": "atlas_v2_cf3b962ff8ec6adc2715",
+      "triggered": true,
+      "decisions": []
+    },
+    {
+      "route": "femoral",
+      "case": "v6_closed_test_00016",
+      "layout_id": "atlas_v2_4faa7bfd385b59d66857",
+      "triggered": false,
+      "decisions": []
+    },
+    {
+      "route": "groin_to_distal_calf",
+      "case": "v6_closed_test_00017",
+      "layout_id": "atlas_v2_29c1bce48ddaf6ec733b",
+      "triggered": true,
+      "decisions": [
+        {
+          "station": 84,
+          "tick": 174,
+          "same_forecast_changed_slot": false,
+          "previous_slot": 0,
+          "actual_slot": 0,
+          "existing_object_weights": [
+            0.501237396034541,
+            0.498762603965459
+          ],
+          "new_object_weights": [
+            0.5005680220626639,
+            0.4994319779373361
+          ],
+          "new_attached_candidates": 2
+        }
+      ]
+    },
+    {
+      "route": "femoral",
+      "case": "v6_closed_test_00018",
+      "layout_id": "atlas_v2_33d0d406fa77ccf7c7e9",
+      "triggered": true,
+      "decisions": []
+    },
+    {
+      "route": "groin_to_distal_calf",
+      "case": "v6_closed_test_00019",
+      "layout_id": "atlas_v2_a1073384f1d558f049bb",
+      "triggered": true,
+      "decisions": []
+    },
+    {
+      "route": "femoral",
+      "case": "v6_closed_test_00020",
+      "layout_id": "atlas_v2_6bb432200168749897d4",
+      "triggered": true,
+      "decisions": []
+    },
+    {
+      "route": "groin_to_distal_calf",
+      "case": "v6_closed_test_00021",
+      "layout_id": "atlas_v2_37ccdfe91fc047e9fe84",
+      "triggered": true,
+      "decisions": []
+    },
+    {
+      "route": "femoral",
+      "case": "v6_closed_test_00022",
+      "layout_id": "atlas_v2_e7c2cdcbe42a59d7c70b",
+      "triggered": false,
+      "decisions": []
+    },
+    {
+      "route": "groin_to_distal_calf",
+      "case": "v6_closed_test_00023",
+      "layout_id": "atlas_v2_6fe49a20ea9d19d7ee34",
+      "triggered": false,
+      "decisions": []
+    },
+    {
+      "route": "femoral",
+      "case": "v6_closed_test_00024",
+      "layout_id": "atlas_v2_7849d47f27c11db83925",
+      "triggered": true,
+      "decisions": [
+        {
+          "station": 51,
+          "tick": 57,
+          "same_forecast_changed_slot": false,
+          "previous_slot": 0,
+          "actual_slot": 0,
+          "existing_object_weights": [
+            0.5000042619487907,
+            0.49999573805120934
+          ],
+          "new_object_weights": [
+            0.5000046573518406,
+            0.49999534264815937
+          ],
+          "new_attached_candidates": 0
+        },
+        {
+          "station": 53,
+          "tick": 61,
+          "same_forecast_changed_slot": false,
+          "previous_slot": 0,
+          "actual_slot": 0,
+          "existing_object_weights": [
+            0.9999981525566581,
+            1.8474433418861537e-06
+          ],
+          "new_object_weights": [
+            0.9999981792774436,
+            1.820722556344249e-06
+          ],
+          "new_attached_candidates": 4
+        }
+      ]
+    },
+    {
+      "route": "groin_to_distal_calf",
+      "case": "v6_closed_test_00025",
+      "layout_id": "atlas_v2_39a44c7f74b98991004a",
+      "triggered": true,
+      "decisions": [
+        {
+          "station": 84,
+          "tick": 201,
+          "same_forecast_changed_slot": false,
+          "previous_slot": 0,
+          "actual_slot": 0,
+          "existing_object_weights": [
+            0.5003139863616486,
+            0.4996860136383514
+          ],
+          "new_object_weights": [
+            0.5002246167605423,
+            0.4997753832394578
+          ],
+          "new_attached_candidates": 0
+        }
+      ]
+    },
+    {
+      "route": "femoral",
+      "case": "v6_closed_test_00026",
+      "layout_id": "atlas_v2_7cc7e11639c5e35893c4",
+      "triggered": false,
+      "decisions": []
+    },
+    {
+      "route": "groin_to_distal_calf",
+      "case": "v6_closed_test_00027",
+      "layout_id": "atlas_v2_8d422d292ed90a0ef41b",
+      "triggered": true,
+      "decisions": [
+        {
+          "station": 83,
+          "tick": 199,
+          "same_forecast_changed_slot": false,
+          "previous_slot": 0,
+          "actual_slot": 0,
+          "existing_object_weights": [
+            0.8647450843872656,
+            0.13525491561273445
+          ],
+          "new_object_weights": [
+            0.862928766582607,
+            0.13707123341739297
+          ],
+          "new_attached_candidates": 0
+        },
+        {
+          "station": 84,
+          "tick": 201,
+          "same_forecast_changed_slot": false,
+          "previous_slot": 0,
+          "actual_slot": 0,
+          "existing_object_weights": [
+            0.8629287650260682,
+            0.13707123497393178
+          ],
+          "new_object_weights": [
+            0.8627551389670849,
+            0.1372448610329152
+          ],
+          "new_attached_candidates": 0
+        },
+        {
+          "station": 85,
+          "tick": 203,
+          "same_forecast_changed_slot": false,
+          "previous_slot": 0,
+          "actual_slot": 0,
+          "existing_object_weights": [
+            0.9999989963461193,
+            1.003653880634332e-06
+          ],
+          "new_object_weights": [
+            0.9999989963433065,
+            1.003656693501225e-06
+          ],
+          "new_attached_candidates": 0
+        }
+      ]
+    },
+    {
+      "route": "femoral",
+      "case": "v6_closed_test_00028",
+      "layout_id": "atlas_v2_9fb34d5938946fdad1e9",
+      "triggered": false,
+      "decisions": []
+    },
+    {
+      "route": "groin_to_distal_calf",
+      "case": "v6_closed_test_00029",
+      "layout_id": "atlas_v2_3bb33782964442cdebdf",
+      "triggered": false,
+      "decisions": []
+    },
+    {
+      "route": "femoral",
+      "case": "v6_closed_test_00030",
+      "layout_id": "atlas_v2_06061e037db51531b1f9",
+      "triggered": true,
+      "decisions": []
+    },
+    {
+      "route": "groin_to_distal_calf",
+      "case": "v6_closed_test_00031",
+      "layout_id": "atlas_v2_d7dd2f61e77c869bc818",
+      "triggered": true,
+      "decisions": []
+    }
+  ]
+}

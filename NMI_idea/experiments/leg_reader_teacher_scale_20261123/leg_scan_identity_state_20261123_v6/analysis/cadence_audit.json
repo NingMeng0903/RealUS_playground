@@ -1,0 +1,6650 @@
+{
+  "program": "ordinary MPC fixed path, v5 probability intake schedules",
+  "layout_scope": "first 16 per route from the v6 fixed-track reader confirmation",
+  "routes": {
+    "femoral": {
+      "layouts": 16,
+      "candidates": 3039,
+      "scores": {
+        "complete_only": {
+          "strict": 6,
+          "acquired_ceiling": 11,
+          "wrong_delivery": 1,
+          "wrong_branch": 0,
+          "wrong_region_count": 1,
+          "wrong_branch_regions": 0,
+          "artifact_regions": 1,
+          "correct_regions": 86,
+          "submitted": 87,
+          "cases": 16,
+          "captured_regions": 91,
+          "reader_misses_on_seen": 5,
+          "vs_once": {
+            "strict": {
+              "rescued_or_added": 0,
+              "lost_or_removed": 0,
+              "delta_per_scan": 0.0,
+              "clustered95": [
+                0.0,
+                0.0
+              ]
+            },
+            "wrong_delivery": {
+              "rescued_or_added": 0,
+              "lost_or_removed": 0,
+              "delta_per_scan": 0.0,
+              "clustered95": [
+                0.0,
+                0.0
+              ]
+            },
+            "wrong_branch": {
+              "rescued_or_added": 0,
+              "lost_or_removed": 0,
+              "delta_per_scan": 0.0,
+              "clustered95": [
+                0.0,
+                0.0
+              ]
+            },
+            "correct_regions": {
+              "rescued_or_added": 0,
+              "lost_or_removed": 0,
+              "delta_per_scan": 0.0,
+              "clustered95": [
+                0.0,
+                0.0
+              ]
+            }
+          },
+          "changed_candidates": 0,
+          "worst_probability_delta": 0.0
+        },
+        "region_boundaries": {
+          "strict": 6,
+          "acquired_ceiling": 11,
+          "wrong_delivery": 1,
+          "wrong_branch": 0,
+          "wrong_region_count": 1,
+          "wrong_branch_regions": 0,
+          "artifact_regions": 1,
+          "correct_regions": 86,
+          "submitted": 87,
+          "cases": 16,
+          "captured_regions": 91,
+          "reader_misses_on_seen": 5,
+          "vs_once": {
+            "strict": {
+              "rescued_or_added": 0,
+              "lost_or_removed": 0,
+              "delta_per_scan": 0.0,
+              "clustered95": [
+                0.0,
+                0.0
+              ]
+            },
+            "wrong_delivery": {
+              "rescued_or_added": 0,
+              "lost_or_removed": 0,
+              "delta_per_scan": 0.0,
+              "clustered95": [
+                0.0,
+                0.0
+              ]
+            },
+            "wrong_branch": {
+              "rescued_or_added": 0,
+              "lost_or_removed": 0,
+              "delta_per_scan": 0.0,
+              "clustered95": [
+                0.0,
+                0.0
+              ]
+            },
+            "correct_regions": {
+              "rescued_or_added": 0,
+              "lost_or_removed": 0,
+              "delta_per_scan": 0.0,
+              "clustered95": [
+                0.0,
+                0.0
+              ]
+            }
+          },
+          "changed_candidates": 244,
+          "worst_probability_delta": 0.1816161870956421
+        },
+        "anchor_stations_then_regions": {
+          "strict": 6,
+          "acquired_ceiling": 11,
+          "wrong_delivery": 1,
+          "wrong_branch": 0,
+          "wrong_region_count": 1,
+          "wrong_branch_regions": 0,
+          "artifact_regions": 1,
+          "correct_regions": 86,
+          "submitted": 87,
+          "cases": 16,
+          "captured_regions": 91,
+          "reader_misses_on_seen": 5,
+          "vs_once": {
+            "strict": {
+              "rescued_or_added": 0,
+              "lost_or_removed": 0,
+              "delta_per_scan": 0.0,
+              "clustered95": [
+                0.0,
+                0.0
+              ]
+            },
+            "wrong_delivery": {
+              "rescued_or_added": 0,
+              "lost_or_removed": 0,
+              "delta_per_scan": 0.0,
+              "clustered95": [
+                0.0,
+                0.0
+              ]
+            },
+            "wrong_branch": {
+              "rescued_or_added": 0,
+              "lost_or_removed": 0,
+              "delta_per_scan": 0.0,
+              "clustered95": [
+                0.0,
+                0.0
+              ]
+            },
+            "correct_regions": {
+              "rescued_or_added": 0,
+              "lost_or_removed": 0,
+              "delta_per_scan": 0.0,
+              "clustered95": [
+                0.0,
+                0.0
+              ]
+            }
+          },
+          "changed_candidates": 149,
+          "worst_probability_delta": 0.10270708799362183
+        }
+      }
+    },
+    "groin_to_distal_calf": {
+      "layouts": 16,
+      "candidates": 12927,
+      "scores": {
+        "complete_only": {
+          "strict": 4,
+          "acquired_ceiling": 16,
+          "wrong_delivery": 10,
+          "wrong_branch": 8,
+          "wrong_region_count": 12,
+          "wrong_branch_regions": 10,
+          "artifact_regions": 2,
+          "correct_regions": 77,
+          "submitted": 89,
+          "cases": 16,
+          "captured_regions": 96,
+          "reader_misses_on_seen": 19,
+          "vs_once": {
+            "strict": {
+              "rescued_or_added": 0,
+              "lost_or_removed": 0,
+              "delta_per_scan": 0.0,
+              "clustered95": [
+                0.0,
+                0.0
+              ]
+            },
+            "wrong_delivery": {
+              "rescued_or_added": 0,
+              "lost_or_removed": 0,
+              "delta_per_scan": 0.0,
+              "clustered95": [
+                0.0,
+                0.0
+              ]
+            },
+            "wrong_branch": {
+              "rescued_or_added": 0,
+              "lost_or_removed": 0,
+              "delta_per_scan": 0.0,
+              "clustered95": [
+                0.0,
+                0.0
+              ]
+            },
+            "correct_regions": {
+              "rescued_or_added": 0,
+              "lost_or_removed": 0,
+              "delta_per_scan": 0.0,
+              "clustered95": [
+                0.0,
+                0.0
+              ]
+            }
+          },
+          "changed_candidates": 0,
+          "worst_probability_delta": 0.0
+        },
+        "region_boundaries": {
+          "strict": 5,
+          "acquired_ceiling": 16,
+          "wrong_delivery": 9,
+          "wrong_branch": 7,
+          "wrong_region_count": 11,
+          "wrong_branch_regions": 9,
+          "artifact_regions": 2,
+          "correct_regions": 78,
+          "submitted": 89,
+          "cases": 16,
+          "captured_regions": 96,
+          "reader_misses_on_seen": 18,
+          "vs_once": {
+            "strict": {
+              "rescued_or_added": 1,
+              "lost_or_removed": 0,
+              "delta_per_scan": 0.0625,
+              "clustered95": [
+                0.0,
+                0.1875
+              ]
+            },
+            "wrong_delivery": {
+              "rescued_or_added": 0,
+              "lost_or_removed": 1,
+              "delta_per_scan": -0.0625,
+              "clustered95": [
+                -0.1875,
+                0.0
+              ]
+            },
+            "wrong_branch": {
+              "rescued_or_added": 0,
+              "lost_or_removed": 1,
+              "delta_per_scan": -0.0625,
+              "clustered95": [
+                -0.1875,
+                0.0
+              ]
+            },
+            "correct_regions": {
+              "rescued_or_added": 1,
+              "lost_or_removed": 0,
+              "delta_per_scan": 0.0625,
+              "clustered95": [
+                0.0,
+                0.1875
+              ]
+            }
+          },
+          "changed_candidates": 882,
+          "worst_probability_delta": 0.30780771374702454
+        },
+        "anchor_stations_then_regions": {
+          "strict": 5,
+          "acquired_ceiling": 16,
+          "wrong_delivery": 9,
+          "wrong_branch": 7,
+          "wrong_region_count": 11,
+          "wrong_branch_regions": 9,
+          "artifact_regions": 2,
+          "correct_regions": 78,
+          "submitted": 89,
+          "cases": 16,
+          "captured_regions": 96,
+          "reader_misses_on_seen": 18,
+          "vs_once": {
+            "strict": {
+              "rescued_or_added": 1,
+              "lost_or_removed": 0,
+              "delta_per_scan": 0.0625,
+              "clustered95": [
+                0.0,
+                0.1875
+              ]
+            },
+            "wrong_delivery": {
+              "rescued_or_added": 0,
+              "lost_or_removed": 1,
+              "delta_per_scan": -0.0625,
+              "clustered95": [
+                -0.1875,
+                0.0
+              ]
+            },
+            "wrong_branch": {
+              "rescued_or_added": 0,
+              "lost_or_removed": 1,
+              "delta_per_scan": -0.0625,
+              "clustered95": [
+                -0.1875,
+                0.0
+              ]
+            },
+            "correct_regions": {
+              "rescued_or_added": 1,
+              "lost_or_removed": 0,
+              "delta_per_scan": 0.0625,
+              "clustered95": [
+                0.0,
+                0.1875
+              ]
+            }
+          },
+          "changed_candidates": 669,
+          "worst_probability_delta": 0.30780771374702454
+        }
+      }
+    }
+  },
+  "per_layout": [
+    {
+      "task": "femoral",
+      "case": "v6_reader_fresh_00000",
+      "layout": "atlas_v2_be18547b6e9fcf2596cd",
+      "raw_candidate_count": 196,
+      "scores": {
+        "complete_only": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            false
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            -1
+          ],
+          "selected_ids": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            -99
+          ],
+          "candidate_indices": [
+            30,
+            50,
+            94,
+            125,
+            165,
+            -1
+          ],
+          "scores": [
+            0.9996633529663086,
+            0.9998242259025574,
+            0.9981761574745178,
+            0.9998348355293274,
+            0.9992203712463379,
+            0.19150575995445251
+          ],
+          "strict": false,
+          "acquired_ceiling": false,
+          "wrong_delivery": false,
+          "wrong_branch": false,
+          "wrong_region_count": 0,
+          "wrong_branch_regions": 0,
+          "artifact_regions": 0,
+          "correct_regions": 5,
+          "submitted": 5
+        },
+        "region_boundaries": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            false
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            -1
+          ],
+          "selected_ids": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            -99
+          ],
+          "candidate_indices": [
+            30,
+            50,
+            94,
+            125,
+            165,
+            -1
+          ],
+          "scores": [
+            0.9996716380119324,
+            0.9998232126235962,
+            0.9978899359703064,
+            0.9998343586921692,
+            0.9991891980171204,
+            0.19150575995445251
+          ],
+          "strict": false,
+          "acquired_ceiling": false,
+          "wrong_delivery": false,
+          "wrong_branch": false,
+          "wrong_region_count": 0,
+          "wrong_branch_regions": 0,
+          "artifact_regions": 0,
+          "correct_regions": 5,
+          "submitted": 5
+        },
+        "anchor_stations_then_regions": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            false
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            -1
+          ],
+          "selected_ids": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            -99
+          ],
+          "candidate_indices": [
+            30,
+            50,
+            94,
+            125,
+            165,
+            -1
+          ],
+          "scores": [
+            0.9996638894081116,
+            0.999824047088623,
+            0.9981716275215149,
+            0.9998310804367065,
+            0.9991894364356995,
+            0.19150575995445251
+          ],
+          "strict": false,
+          "acquired_ceiling": false,
+          "wrong_delivery": false,
+          "wrong_branch": false,
+          "wrong_region_count": 0,
+          "wrong_branch_regions": 0,
+          "artifact_regions": 0,
+          "correct_regions": 5,
+          "submitted": 5
+        }
+      },
+      "schedule_points": {
+        "complete_only": [
+          79
+        ],
+        "region_boundaries": [
+          15,
+          29,
+          41,
+          55,
+          69,
+          79
+        ],
+        "anchor_stations_then_regions": [
+          57,
+          59,
+          61,
+          63,
+          69,
+          79
+        ]
+      },
+      "changed": {
+        "complete_only": {
+          "candidates_changed_gt_0_01": 0,
+          "largest_target_probability_change": 0.0
+        },
+        "region_boundaries": {
+          "candidates_changed_gt_0_01": 6,
+          "largest_target_probability_change": 0.06846296787261963
+        },
+        "anchor_stations_then_regions": {
+          "candidates_changed_gt_0_01": 3,
+          "largest_target_probability_change": 0.028048019856214523
+        }
+      }
+    },
+    {
+      "task": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00001",
+      "layout": "atlas_v2_dc7e5cd45036f8962a1b",
+      "raw_candidate_count": 884,
+      "scores": {
+        "complete_only": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            1,
+            0,
+            1,
+            1
+          ],
+          "selected_ids": [
+            0,
+            0,
+            0,
+            1,
+            0,
+            0
+          ],
+          "candidate_indices": [
+            57,
+            320,
+            439,
+            547,
+            600,
+            870
+          ],
+          "scores": [
+            0.9629362225532532,
+            0.9912747740745544,
+            0.9816973209381104,
+            0.7914763689041138,
+            0.7335252165794373,
+            0.8618260025978088
+          ],
+          "strict": false,
+          "acquired_ceiling": true,
+          "wrong_delivery": true,
+          "wrong_branch": true,
+          "wrong_region_count": 1,
+          "wrong_branch_regions": 1,
+          "artifact_regions": 0,
+          "correct_regions": 5,
+          "submitted": 6
+        },
+        "region_boundaries": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            1,
+            0,
+            1,
+            1
+          ],
+          "selected_ids": [
+            0,
+            0,
+            0,
+            1,
+            0,
+            0
+          ],
+          "candidate_indices": [
+            57,
+            320,
+            439,
+            547,
+            631,
+            870
+          ],
+          "scores": [
+            0.9629324674606323,
+            0.9879788756370544,
+            0.9819494485855103,
+            0.7826831936836243,
+            0.7201549410820007,
+            0.8614596128463745
+          ],
+          "strict": false,
+          "acquired_ceiling": true,
+          "wrong_delivery": true,
+          "wrong_branch": true,
+          "wrong_region_count": 1,
+          "wrong_branch_regions": 1,
+          "artifact_regions": 0,
+          "correct_regions": 5,
+          "submitted": 6
+        },
+        "anchor_stations_then_regions": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            1,
+            0,
+            1,
+            1
+          ],
+          "selected_ids": [
+            0,
+            0,
+            0,
+            1,
+            0,
+            0
+          ],
+          "candidate_indices": [
+            57,
+            320,
+            439,
+            547,
+            631,
+            870
+          ],
+          "scores": [
+            0.9629353880882263,
+            0.9902958869934082,
+            0.9816833138465881,
+            0.7826831936836243,
+            0.7201549410820007,
+            0.8614596128463745
+          ],
+          "strict": false,
+          "acquired_ceiling": true,
+          "wrong_delivery": true,
+          "wrong_branch": true,
+          "wrong_region_count": 1,
+          "wrong_branch_regions": 1,
+          "artifact_regions": 0,
+          "correct_regions": 5,
+          "submitted": 6
+        }
+      },
+      "schedule_points": {
+        "complete_only": [
+          349
+        ],
+        "region_boundaries": [
+          63,
+          134,
+          199,
+          247,
+          301,
+          349
+        ],
+        "anchor_stations_then_regions": [
+          199,
+          201,
+          203,
+          205,
+          247,
+          301,
+          349
+        ]
+      },
+      "changed": {
+        "complete_only": {
+          "candidates_changed_gt_0_01": 0,
+          "largest_target_probability_change": 0.0
+        },
+        "region_boundaries": {
+          "candidates_changed_gt_0_01": 58,
+          "largest_target_probability_change": 0.07999873161315918
+        },
+        "anchor_stations_then_regions": {
+          "candidates_changed_gt_0_01": 47,
+          "largest_target_probability_change": 0.06160891056060791
+        }
+      }
+    },
+    {
+      "task": "femoral",
+      "case": "v6_reader_fresh_00002",
+      "layout": "atlas_v2_386fc6a67f010c6fe835",
+      "raw_candidate_count": 179,
+      "scores": {
+        "complete_only": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            false
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            -1
+          ],
+          "selected_ids": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            -99
+          ],
+          "candidate_indices": [
+            6,
+            61,
+            80,
+            113,
+            153,
+            -1
+          ],
+          "scores": [
+            0.9705877900123596,
+            0.9963676333427429,
+            0.9888244271278381,
+            0.9996348023414612,
+            0.9922124743461609,
+            0.17612259089946747
+          ],
+          "strict": false,
+          "acquired_ceiling": false,
+          "wrong_delivery": false,
+          "wrong_branch": false,
+          "wrong_region_count": 0,
+          "wrong_branch_regions": 0,
+          "artifact_regions": 0,
+          "correct_regions": 5,
+          "submitted": 5
+        },
+        "region_boundaries": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            false
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            -1
+          ],
+          "selected_ids": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            -99
+          ],
+          "candidate_indices": [
+            6,
+            61,
+            74,
+            113,
+            153,
+            -1
+          ],
+          "scores": [
+            0.9707444310188293,
+            0.99749356508255,
+            0.9852430820465088,
+            0.9995964765548706,
+            0.991550087928772,
+            0.17612259089946747
+          ],
+          "strict": false,
+          "acquired_ceiling": false,
+          "wrong_delivery": false,
+          "wrong_branch": false,
+          "wrong_region_count": 0,
+          "wrong_branch_regions": 0,
+          "artifact_regions": 0,
+          "correct_regions": 5,
+          "submitted": 5
+        },
+        "anchor_stations_then_regions": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            false
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            -1
+          ],
+          "selected_ids": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            -99
+          ],
+          "candidate_indices": [
+            6,
+            61,
+            80,
+            113,
+            153,
+            -1
+          ],
+          "scores": [
+            0.9705789089202881,
+            0.996411144733429,
+            0.9889010787010193,
+            0.9996058940887451,
+            0.991949200630188,
+            0.17612259089946747
+          ],
+          "strict": false,
+          "acquired_ceiling": false,
+          "wrong_delivery": false,
+          "wrong_branch": false,
+          "wrong_region_count": 0,
+          "wrong_branch_regions": 0,
+          "artifact_regions": 0,
+          "correct_regions": 5,
+          "submitted": 5
+        }
+      },
+      "schedule_points": {
+        "complete_only": [
+          79
+        ],
+        "region_boundaries": [
+          15,
+          29,
+          41,
+          55,
+          69,
+          79
+        ],
+        "anchor_stations_then_regions": [
+          57,
+          59,
+          61,
+          63,
+          69,
+          79
+        ]
+      },
+      "changed": {
+        "complete_only": {
+          "candidates_changed_gt_0_01": 0,
+          "largest_target_probability_change": 0.0
+        },
+        "region_boundaries": {
+          "candidates_changed_gt_0_01": 13,
+          "largest_target_probability_change": 0.1816161870956421
+        },
+        "anchor_stations_then_regions": {
+          "candidates_changed_gt_0_01": 8,
+          "largest_target_probability_change": 0.05450934171676636
+        }
+      }
+    },
+    {
+      "task": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00003",
+      "layout": "atlas_v2_0182ff73d83031e65c19",
+      "raw_candidate_count": 709,
+      "scores": {
+        "complete_only": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            1,
+            -1,
+            -1,
+            1
+          ],
+          "selected_ids": [
+            0,
+            0,
+            0,
+            -99,
+            -99,
+            0
+          ],
+          "candidate_indices": [
+            55,
+            228,
+            300,
+            -1,
+            -1,
+            650
+          ],
+          "scores": [
+            0.9602225422859192,
+            0.9864838719367981,
+            0.9739786386489868,
+            0.597874104976654,
+            0.6159876585006714,
+            0.8701574206352234
+          ],
+          "strict": false,
+          "acquired_ceiling": true,
+          "wrong_delivery": false,
+          "wrong_branch": false,
+          "wrong_region_count": 0,
+          "wrong_branch_regions": 0,
+          "artifact_regions": 0,
+          "correct_regions": 4,
+          "submitted": 4
+        },
+        "region_boundaries": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            1,
+            -1,
+            -1,
+            1
+          ],
+          "selected_ids": [
+            0,
+            0,
+            0,
+            -99,
+            -99,
+            0
+          ],
+          "candidate_indices": [
+            55,
+            228,
+            300,
+            -1,
+            -1,
+            650
+          ],
+          "scores": [
+            0.9592815637588501,
+            0.9865122437477112,
+            0.9759122729301453,
+            0.6042022109031677,
+            0.6189388632774353,
+            0.8701574206352234
+          ],
+          "strict": false,
+          "acquired_ceiling": true,
+          "wrong_delivery": false,
+          "wrong_branch": false,
+          "wrong_region_count": 0,
+          "wrong_branch_regions": 0,
+          "artifact_regions": 0,
+          "correct_regions": 4,
+          "submitted": 4
+        },
+        "anchor_stations_then_regions": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            1,
+            -1,
+            -1,
+            1
+          ],
+          "selected_ids": [
+            0,
+            0,
+            0,
+            -99,
+            -99,
+            0
+          ],
+          "candidate_indices": [
+            55,
+            228,
+            300,
+            -1,
+            -1,
+            650
+          ],
+          "scores": [
+            0.9600788950920105,
+            0.9864926338195801,
+            0.9758092164993286,
+            0.6042022109031677,
+            0.6189388632774353,
+            0.8701574206352234
+          ],
+          "strict": false,
+          "acquired_ceiling": true,
+          "wrong_delivery": false,
+          "wrong_branch": false,
+          "wrong_region_count": 0,
+          "wrong_branch_regions": 0,
+          "artifact_regions": 0,
+          "correct_regions": 4,
+          "submitted": 4
+        }
+      },
+      "schedule_points": {
+        "complete_only": [
+          349
+        ],
+        "region_boundaries": [
+          63,
+          134,
+          199,
+          247,
+          301,
+          349
+        ],
+        "anchor_stations_then_regions": [
+          199,
+          201,
+          203,
+          205,
+          247,
+          301,
+          349
+        ]
+      },
+      "changed": {
+        "complete_only": {
+          "candidates_changed_gt_0_01": 0,
+          "largest_target_probability_change": 0.0
+        },
+        "region_boundaries": {
+          "candidates_changed_gt_0_01": 71,
+          "largest_target_probability_change": 0.07643485069274902
+        },
+        "anchor_stations_then_regions": {
+          "candidates_changed_gt_0_01": 44,
+          "largest_target_probability_change": 0.05150333046913147
+        }
+      }
+    },
+    {
+      "task": "femoral",
+      "case": "v6_reader_fresh_00004",
+      "layout": "atlas_v2_bbb8726a2c3460165b41",
+      "raw_candidate_count": 227,
+      "scores": {
+        "complete_only": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "selected_ids": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "candidate_indices": [
+            21,
+            33,
+            74,
+            106,
+            145,
+            201
+          ],
+          "scores": [
+            0.9994970560073853,
+            0.9990134239196777,
+            0.9991447925567627,
+            0.9999273419380188,
+            0.9977256655693054,
+            0.9996752142906189
+          ],
+          "strict": true,
+          "acquired_ceiling": true,
+          "wrong_delivery": false,
+          "wrong_branch": false,
+          "wrong_region_count": 0,
+          "wrong_branch_regions": 0,
+          "artifact_regions": 0,
+          "correct_regions": 6,
+          "submitted": 6
+        },
+        "region_boundaries": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "selected_ids": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "candidate_indices": [
+            21,
+            45,
+            74,
+            117,
+            145,
+            201
+          ],
+          "scores": [
+            0.9994693994522095,
+            0.9980093240737915,
+            0.998880922794342,
+            0.9998477101325989,
+            0.997885525226593,
+            0.9996750950813293
+          ],
+          "strict": true,
+          "acquired_ceiling": true,
+          "wrong_delivery": false,
+          "wrong_branch": false,
+          "wrong_region_count": 0,
+          "wrong_branch_regions": 0,
+          "artifact_regions": 0,
+          "correct_regions": 6,
+          "submitted": 6
+        },
+        "anchor_stations_then_regions": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "selected_ids": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "candidate_indices": [
+            21,
+            33,
+            74,
+            106,
+            145,
+            201
+          ],
+          "scores": [
+            0.9994936585426331,
+            0.9989911317825317,
+            0.9990205764770508,
+            0.9999259114265442,
+            0.9978966116905212,
+            0.9996745586395264
+          ],
+          "strict": true,
+          "acquired_ceiling": true,
+          "wrong_delivery": false,
+          "wrong_branch": false,
+          "wrong_region_count": 0,
+          "wrong_branch_regions": 0,
+          "artifact_regions": 0,
+          "correct_regions": 6,
+          "submitted": 6
+        }
+      },
+      "schedule_points": {
+        "complete_only": [
+          110
+        ],
+        "region_boundaries": [
+          15,
+          29,
+          41,
+          55,
+          79,
+          110
+        ],
+        "anchor_stations_then_regions": [
+          57,
+          59,
+          61,
+          63,
+          79,
+          110
+        ]
+      },
+      "changed": {
+        "complete_only": {
+          "candidates_changed_gt_0_01": 0,
+          "largest_target_probability_change": 0.0
+        },
+        "region_boundaries": {
+          "candidates_changed_gt_0_01": 9,
+          "largest_target_probability_change": 0.12952986359596252
+        },
+        "anchor_stations_then_regions": {
+          "candidates_changed_gt_0_01": 7,
+          "largest_target_probability_change": 0.06627911329269409
+        }
+      }
+    },
+    {
+      "task": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00005",
+      "layout": "atlas_v2_bddef495e21c06b66d8e",
+      "raw_candidate_count": 883,
+      "scores": {
+        "complete_only": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "selected_ids": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "candidate_indices": [
+            12,
+            174,
+            321,
+            405,
+            610,
+            779
+          ],
+          "scores": [
+            0.9764811396598816,
+            0.9977618455886841,
+            0.9802713990211487,
+            0.9429404735565186,
+            0.8278921842575073,
+            0.8020612001419067
+          ],
+          "strict": true,
+          "acquired_ceiling": true,
+          "wrong_delivery": false,
+          "wrong_branch": false,
+          "wrong_region_count": 0,
+          "wrong_branch_regions": 0,
+          "artifact_regions": 0,
+          "correct_regions": 6,
+          "submitted": 6
+        },
+        "region_boundaries": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "selected_ids": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "candidate_indices": [
+            12,
+            174,
+            321,
+            405,
+            610,
+            779
+          ],
+          "scores": [
+            0.9764589071273804,
+            0.9971945285797119,
+            0.9801283478736877,
+            0.9451713562011719,
+            0.8283954858779907,
+            0.8020612001419067
+          ],
+          "strict": true,
+          "acquired_ceiling": true,
+          "wrong_delivery": false,
+          "wrong_branch": false,
+          "wrong_region_count": 0,
+          "wrong_branch_regions": 0,
+          "artifact_regions": 0,
+          "correct_regions": 6,
+          "submitted": 6
+        },
+        "anchor_stations_then_regions": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "selected_ids": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "candidate_indices": [
+            12,
+            174,
+            321,
+            405,
+            610,
+            779
+          ],
+          "scores": [
+            0.9764787554740906,
+            0.9977620840072632,
+            0.9803350567817688,
+            0.9451713562011719,
+            0.8283954858779907,
+            0.8020612001419067
+          ],
+          "strict": true,
+          "acquired_ceiling": true,
+          "wrong_delivery": false,
+          "wrong_branch": false,
+          "wrong_region_count": 0,
+          "wrong_branch_regions": 0,
+          "artifact_regions": 0,
+          "correct_regions": 6,
+          "submitted": 6
+        }
+      },
+      "schedule_points": {
+        "complete_only": [
+          319
+        ],
+        "region_boundaries": [
+          56,
+          107,
+          172,
+          222,
+          272,
+          319
+        ],
+        "anchor_stations_then_regions": [
+          172,
+          174,
+          176,
+          178,
+          222,
+          272,
+          319
+        ]
+      },
+      "changed": {
+        "complete_only": {
+          "candidates_changed_gt_0_01": 0,
+          "largest_target_probability_change": 0.0
+        },
+        "region_boundaries": {
+          "candidates_changed_gt_0_01": 47,
+          "largest_target_probability_change": 0.24804097414016724
+        },
+        "anchor_stations_then_regions": {
+          "candidates_changed_gt_0_01": 44,
+          "largest_target_probability_change": 0.24804097414016724
+        }
+      }
+    },
+    {
+      "task": "femoral",
+      "case": "v6_reader_fresh_00006",
+      "layout": "atlas_v2_671af284b0ad5f2b901c",
+      "raw_candidate_count": 226,
+      "scores": {
+        "complete_only": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "selected_ids": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "candidate_indices": [
+            19,
+            52,
+            83,
+            107,
+            160,
+            173
+          ],
+          "scores": [
+            0.9987099766731262,
+            0.9945464730262756,
+            0.9857076406478882,
+            0.996262788772583,
+            0.9932180643081665,
+            0.9981959462165833
+          ],
+          "strict": true,
+          "acquired_ceiling": true,
+          "wrong_delivery": false,
+          "wrong_branch": false,
+          "wrong_region_count": 0,
+          "wrong_branch_regions": 0,
+          "artifact_regions": 0,
+          "correct_regions": 6,
+          "submitted": 6
+        },
+        "region_boundaries": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "selected_ids": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "candidate_indices": [
+            19,
+            52,
+            83,
+            107,
+            160,
+            208
+          ],
+          "scores": [
+            0.9985851049423218,
+            0.9954577088356018,
+            0.985370934009552,
+            0.9959883093833923,
+            0.9931400418281555,
+            0.9977376461029053
+          ],
+          "strict": true,
+          "acquired_ceiling": true,
+          "wrong_delivery": false,
+          "wrong_branch": false,
+          "wrong_region_count": 0,
+          "wrong_branch_regions": 0,
+          "artifact_regions": 0,
+          "correct_regions": 6,
+          "submitted": 6
+        },
+        "anchor_stations_then_regions": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "selected_ids": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "candidate_indices": [
+            19,
+            52,
+            83,
+            107,
+            160,
+            208
+          ],
+          "scores": [
+            0.998708188533783,
+            0.9944555759429932,
+            0.9857091307640076,
+            0.9962541460990906,
+            0.9931058883666992,
+            0.9977364540100098
+          ],
+          "strict": true,
+          "acquired_ceiling": true,
+          "wrong_delivery": false,
+          "wrong_branch": false,
+          "wrong_region_count": 0,
+          "wrong_branch_regions": 0,
+          "artifact_regions": 0,
+          "correct_regions": 6,
+          "submitted": 6
+        }
+      },
+      "schedule_points": {
+        "complete_only": [
+          110
+        ],
+        "region_boundaries": [
+          15,
+          29,
+          41,
+          55,
+          79,
+          110
+        ],
+        "anchor_stations_then_regions": [
+          57,
+          59,
+          61,
+          63,
+          79,
+          110
+        ]
+      },
+      "changed": {
+        "complete_only": {
+          "candidates_changed_gt_0_01": 0,
+          "largest_target_probability_change": 0.0
+        },
+        "region_boundaries": {
+          "candidates_changed_gt_0_01": 25,
+          "largest_target_probability_change": 0.08683198690414429
+        },
+        "anchor_stations_then_regions": {
+          "candidates_changed_gt_0_01": 16,
+          "largest_target_probability_change": 0.07957303524017334
+        }
+      }
+    },
+    {
+      "task": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00007",
+      "layout": "atlas_v2_fa786b5bda8688ffaf53",
+      "raw_candidate_count": 713,
+      "scores": {
+        "complete_only": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            1,
+            1,
+            0,
+            0
+          ],
+          "selected_ids": [
+            0,
+            0,
+            0,
+            0,
+            1,
+            1
+          ],
+          "candidate_indices": [
+            11,
+            211,
+            322,
+            345,
+            546,
+            695
+          ],
+          "scores": [
+            0.9825109243392944,
+            0.975447952747345,
+            0.9709303379058838,
+            0.8592955470085144,
+            0.7946612238883972,
+            0.7141323089599609
+          ],
+          "strict": false,
+          "acquired_ceiling": true,
+          "wrong_delivery": true,
+          "wrong_branch": true,
+          "wrong_region_count": 2,
+          "wrong_branch_regions": 2,
+          "artifact_regions": 0,
+          "correct_regions": 4,
+          "submitted": 6
+        },
+        "region_boundaries": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            1,
+            1,
+            0,
+            0
+          ],
+          "selected_ids": [
+            0,
+            0,
+            0,
+            0,
+            1,
+            1
+          ],
+          "candidate_indices": [
+            11,
+            229,
+            322,
+            345,
+            546,
+            695
+          ],
+          "scores": [
+            0.9825171232223511,
+            0.9355759024620056,
+            0.9741519093513489,
+            0.8601555228233337,
+            0.801308810710907,
+            0.7141323089599609
+          ],
+          "strict": false,
+          "acquired_ceiling": true,
+          "wrong_delivery": true,
+          "wrong_branch": true,
+          "wrong_region_count": 2,
+          "wrong_branch_regions": 2,
+          "artifact_regions": 0,
+          "correct_regions": 4,
+          "submitted": 6
+        },
+        "anchor_stations_then_regions": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            1,
+            1,
+            0,
+            0
+          ],
+          "selected_ids": [
+            0,
+            0,
+            0,
+            0,
+            1,
+            1
+          ],
+          "candidate_indices": [
+            11,
+            229,
+            322,
+            427,
+            546,
+            695
+          ],
+          "scores": [
+            0.9825109839439392,
+            0.9350315928459167,
+            0.9741519093513489,
+            0.8924381732940674,
+            0.801308810710907,
+            0.7141323089599609
+          ],
+          "strict": false,
+          "acquired_ceiling": true,
+          "wrong_delivery": true,
+          "wrong_branch": true,
+          "wrong_region_count": 2,
+          "wrong_branch_regions": 2,
+          "artifact_regions": 0,
+          "correct_regions": 4,
+          "submitted": 6
+        }
+      },
+      "schedule_points": {
+        "complete_only": [
+          322
+        ],
+        "region_boundaries": [
+          56,
+          107,
+          173,
+          221,
+          275,
+          322
+        ],
+        "anchor_stations_then_regions": [
+          173,
+          175,
+          177,
+          179,
+          221,
+          275,
+          322
+        ]
+      },
+      "changed": {
+        "complete_only": {
+          "candidates_changed_gt_0_01": 0,
+          "largest_target_probability_change": 0.0
+        },
+        "region_boundaries": {
+          "candidates_changed_gt_0_01": 49,
+          "largest_target_probability_change": 0.07058024406433105
+        },
+        "anchor_stations_then_regions": {
+          "candidates_changed_gt_0_01": 40,
+          "largest_target_probability_change": 0.12239605188369751
+        }
+      }
+    },
+    {
+      "task": "femoral",
+      "case": "v6_reader_fresh_00008",
+      "layout": "atlas_v2_1348c09a091e2a83b974",
+      "raw_candidate_count": 192,
+      "scores": {
+        "complete_only": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            false
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            -1
+          ],
+          "selected_ids": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            -99
+          ],
+          "candidate_indices": [
+            25,
+            39,
+            95,
+            135,
+            158,
+            -1
+          ],
+          "scores": [
+            0.9998265504837036,
+            0.9998252987861633,
+            0.9993710517883301,
+            0.9999632835388184,
+            0.9997566938400269,
+            0.4834710359573364
+          ],
+          "strict": false,
+          "acquired_ceiling": false,
+          "wrong_delivery": false,
+          "wrong_branch": false,
+          "wrong_region_count": 0,
+          "wrong_branch_regions": 0,
+          "artifact_regions": 0,
+          "correct_regions": 5,
+          "submitted": 5
+        },
+        "region_boundaries": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            false
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            -1
+          ],
+          "selected_ids": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            -99
+          ],
+          "candidate_indices": [
+            22,
+            51,
+            95,
+            135,
+            158,
+            -1
+          ],
+          "scores": [
+            0.9998378157615662,
+            0.9998210072517395,
+            0.9993687272071838,
+            0.999963104724884,
+            0.9997219443321228,
+            0.5896328091621399
+          ],
+          "strict": false,
+          "acquired_ceiling": false,
+          "wrong_delivery": false,
+          "wrong_branch": false,
+          "wrong_region_count": 0,
+          "wrong_branch_regions": 0,
+          "artifact_regions": 0,
+          "correct_regions": 5,
+          "submitted": 5
+        },
+        "anchor_stations_then_regions": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            false
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            -1
+          ],
+          "selected_ids": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            -99
+          ],
+          "candidate_indices": [
+            25,
+            39,
+            95,
+            135,
+            158,
+            -1
+          ],
+          "scores": [
+            0.999826192855835,
+            0.9998250603675842,
+            0.9993700385093689,
+            0.9999631643295288,
+            0.9997456669807434,
+            0.5896328091621399
+          ],
+          "strict": false,
+          "acquired_ceiling": false,
+          "wrong_delivery": false,
+          "wrong_branch": false,
+          "wrong_region_count": 0,
+          "wrong_branch_regions": 0,
+          "artifact_regions": 0,
+          "correct_regions": 5,
+          "submitted": 5
+        }
+      },
+      "schedule_points": {
+        "complete_only": [
+          82
+        ],
+        "region_boundaries": [
+          15,
+          29,
+          41,
+          55,
+          69,
+          82
+        ],
+        "anchor_stations_then_regions": [
+          57,
+          59,
+          61,
+          63,
+          69,
+          82
+        ]
+      },
+      "changed": {
+        "complete_only": {
+          "candidates_changed_gt_0_01": 0,
+          "largest_target_probability_change": 0.0
+        },
+        "region_boundaries": {
+          "candidates_changed_gt_0_01": 5,
+          "largest_target_probability_change": 0.07684069871902466
+        },
+        "anchor_stations_then_regions": {
+          "candidates_changed_gt_0_01": 2,
+          "largest_target_probability_change": 0.07684069871902466
+        }
+      }
+    },
+    {
+      "task": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00009",
+      "layout": "atlas_v2_a99aa4faeb564c6fe840",
+      "raw_candidate_count": 951,
+      "scores": {
+        "complete_only": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "selected_ids": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "candidate_indices": [
+            169,
+            267,
+            366,
+            532,
+            734,
+            815
+          ],
+          "scores": [
+            0.9979026913642883,
+            0.9880977869033813,
+            0.9745650887489319,
+            0.9430968165397644,
+            0.87009596824646,
+            0.932604193687439
+          ],
+          "strict": true,
+          "acquired_ceiling": true,
+          "wrong_delivery": false,
+          "wrong_branch": false,
+          "wrong_region_count": 0,
+          "wrong_branch_regions": 0,
+          "artifact_regions": 0,
+          "correct_regions": 6,
+          "submitted": 6
+        },
+        "region_boundaries": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "selected_ids": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "candidate_indices": [
+            135,
+            267,
+            366,
+            532,
+            734,
+            815
+          ],
+          "scores": [
+            0.9975529313087463,
+            0.9881150126457214,
+            0.9752278923988342,
+            0.9437016844749451,
+            0.8714863657951355,
+            0.928882896900177
+          ],
+          "strict": true,
+          "acquired_ceiling": true,
+          "wrong_delivery": false,
+          "wrong_branch": false,
+          "wrong_region_count": 0,
+          "wrong_branch_regions": 0,
+          "artifact_regions": 0,
+          "correct_regions": 6,
+          "submitted": 6
+        },
+        "anchor_stations_then_regions": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "selected_ids": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "candidate_indices": [
+            169,
+            267,
+            366,
+            532,
+            734,
+            815
+          ],
+          "scores": [
+            0.9979009628295898,
+            0.9881063103675842,
+            0.9752358198165894,
+            0.9437016844749451,
+            0.8714863657951355,
+            0.928882896900177
+          ],
+          "strict": true,
+          "acquired_ceiling": true,
+          "wrong_delivery": false,
+          "wrong_branch": false,
+          "wrong_region_count": 0,
+          "wrong_branch_regions": 0,
+          "artifact_regions": 0,
+          "correct_regions": 6,
+          "submitted": 6
+        }
+      },
+      "schedule_points": {
+        "complete_only": [
+          337
+        ],
+        "region_boundaries": [
+          51,
+          117,
+          181,
+          234,
+          289,
+          337
+        ],
+        "anchor_stations_then_regions": [
+          181,
+          183,
+          185,
+          187,
+          234,
+          289,
+          337
+        ]
+      },
+      "changed": {
+        "complete_only": {
+          "candidates_changed_gt_0_01": 0,
+          "largest_target_probability_change": 0.0
+        },
+        "region_boundaries": {
+          "candidates_changed_gt_0_01": 50,
+          "largest_target_probability_change": 0.11375582218170166
+        },
+        "anchor_stations_then_regions": {
+          "candidates_changed_gt_0_01": 43,
+          "largest_target_probability_change": 0.08166348934173584
+        }
+      }
+    },
+    {
+      "task": "femoral",
+      "case": "v6_reader_fresh_00010",
+      "layout": "atlas_v2_57818ed798d658943f78",
+      "raw_candidate_count": 163,
+      "scores": {
+        "complete_only": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            0
+          ],
+          "selected_ids": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            -1
+          ],
+          "candidate_indices": [
+            16,
+            31,
+            70,
+            82,
+            123,
+            159
+          ],
+          "scores": [
+            0.996720016002655,
+            0.9748432636260986,
+            0.9944080114364624,
+            0.999521017074585,
+            0.9914278984069824,
+            0.9140486717224121
+          ],
+          "strict": false,
+          "acquired_ceiling": true,
+          "wrong_delivery": true,
+          "wrong_branch": false,
+          "wrong_region_count": 1,
+          "wrong_branch_regions": 0,
+          "artifact_regions": 1,
+          "correct_regions": 5,
+          "submitted": 6
+        },
+        "region_boundaries": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            0
+          ],
+          "selected_ids": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            -1
+          ],
+          "candidate_indices": [
+            16,
+            31,
+            70,
+            109,
+            123,
+            159
+          ],
+          "scores": [
+            0.9968918561935425,
+            0.9733747243881226,
+            0.9897179007530212,
+            0.9997275471687317,
+            0.991319477558136,
+            0.9140486717224121
+          ],
+          "strict": false,
+          "acquired_ceiling": true,
+          "wrong_delivery": true,
+          "wrong_branch": false,
+          "wrong_region_count": 1,
+          "wrong_branch_regions": 0,
+          "artifact_regions": 1,
+          "correct_regions": 5,
+          "submitted": 6
+        },
+        "anchor_stations_then_regions": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            0
+          ],
+          "selected_ids": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            -1
+          ],
+          "candidate_indices": [
+            16,
+            31,
+            70,
+            82,
+            123,
+            159
+          ],
+          "scores": [
+            0.9967119097709656,
+            0.9730225205421448,
+            0.9940635561943054,
+            0.9995238184928894,
+            0.9908653497695923,
+            0.9140486717224121
+          ],
+          "strict": false,
+          "acquired_ceiling": true,
+          "wrong_delivery": true,
+          "wrong_branch": false,
+          "wrong_region_count": 1,
+          "wrong_branch_regions": 0,
+          "artifact_regions": 1,
+          "correct_regions": 5,
+          "submitted": 6
+        }
+      },
+      "schedule_points": {
+        "complete_only": [
+          82
+        ],
+        "region_boundaries": [
+          15,
+          29,
+          41,
+          55,
+          69,
+          82
+        ],
+        "anchor_stations_then_regions": [
+          57,
+          59,
+          61,
+          63,
+          69,
+          82
+        ]
+      },
+      "changed": {
+        "complete_only": {
+          "candidates_changed_gt_0_01": 0,
+          "largest_target_probability_change": 0.0
+        },
+        "region_boundaries": {
+          "candidates_changed_gt_0_01": 10,
+          "largest_target_probability_change": 0.10538333654403687
+        },
+        "anchor_stations_then_regions": {
+          "candidates_changed_gt_0_01": 6,
+          "largest_target_probability_change": 0.08042213320732117
+        }
+      }
+    },
+    {
+      "task": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00011",
+      "layout": "atlas_v2_12f36ba55e73046cf4b3",
+      "raw_candidate_count": 688,
+      "scores": {
+        "complete_only": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            1,
+            1,
+            0,
+            1
+          ],
+          "selected_ids": [
+            0,
+            0,
+            0,
+            0,
+            1,
+            0
+          ],
+          "candidate_indices": [
+            110,
+            214,
+            312,
+            421,
+            542,
+            576
+          ],
+          "scores": [
+            0.99081951379776,
+            0.9849564433097839,
+            0.9034414887428284,
+            0.9121763706207275,
+            0.7156165242195129,
+            0.8028771281242371
+          ],
+          "strict": false,
+          "acquired_ceiling": true,
+          "wrong_delivery": true,
+          "wrong_branch": true,
+          "wrong_region_count": 1,
+          "wrong_branch_regions": 1,
+          "artifact_regions": 0,
+          "correct_regions": 5,
+          "submitted": 6
+        },
+        "region_boundaries": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            1,
+            1,
+            0,
+            1
+          ],
+          "selected_ids": [
+            0,
+            0,
+            0,
+            0,
+            1,
+            0
+          ],
+          "candidate_indices": [
+            110,
+            214,
+            312,
+            421,
+            542,
+            576
+          ],
+          "scores": [
+            0.9906303286552429,
+            0.9849885106086731,
+            0.9050424098968506,
+            0.9129549264907837,
+            0.7226601243019104,
+            0.8028771281242371
+          ],
+          "strict": false,
+          "acquired_ceiling": true,
+          "wrong_delivery": true,
+          "wrong_branch": true,
+          "wrong_region_count": 1,
+          "wrong_branch_regions": 1,
+          "artifact_regions": 0,
+          "correct_regions": 5,
+          "submitted": 6
+        },
+        "anchor_stations_then_regions": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            1,
+            1,
+            0,
+            1
+          ],
+          "selected_ids": [
+            0,
+            0,
+            0,
+            0,
+            1,
+            0
+          ],
+          "candidate_indices": [
+            110,
+            214,
+            312,
+            421,
+            542,
+            576
+          ],
+          "scores": [
+            0.99033123254776,
+            0.9849673509597778,
+            0.9050248265266418,
+            0.9129549264907837,
+            0.7226601243019104,
+            0.8028771281242371
+          ],
+          "strict": false,
+          "acquired_ceiling": true,
+          "wrong_delivery": true,
+          "wrong_branch": true,
+          "wrong_region_count": 1,
+          "wrong_branch_regions": 1,
+          "artifact_regions": 0,
+          "correct_regions": 5,
+          "submitted": 6
+        }
+      },
+      "schedule_points": {
+        "complete_only": [
+          336
+        ],
+        "region_boundaries": [
+          51,
+          117,
+          181,
+          234,
+          288,
+          336
+        ],
+        "anchor_stations_then_regions": [
+          181,
+          183,
+          185,
+          187,
+          234,
+          288,
+          336
+        ]
+      },
+      "changed": {
+        "complete_only": {
+          "candidates_changed_gt_0_01": 0,
+          "largest_target_probability_change": 0.0
+        },
+        "region_boundaries": {
+          "candidates_changed_gt_0_01": 48,
+          "largest_target_probability_change": 0.0945202112197876
+        },
+        "anchor_stations_then_regions": {
+          "candidates_changed_gt_0_01": 24,
+          "largest_target_probability_change": 0.05412334203720093
+        }
+      }
+    },
+    {
+      "task": "femoral",
+      "case": "v6_reader_fresh_00012",
+      "layout": "atlas_v2_a1f6ba3011a45113b035",
+      "raw_candidate_count": 224,
+      "scores": {
+        "complete_only": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "selected_ids": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "candidate_indices": [
+            30,
+            74,
+            99,
+            154,
+            189,
+            208
+          ],
+          "scores": [
+            0.9996400475502014,
+            0.999911367893219,
+            0.9991602301597595,
+            0.999592125415802,
+            0.9818874597549438,
+            0.9648139476776123
+          ],
+          "strict": true,
+          "acquired_ceiling": true,
+          "wrong_delivery": false,
+          "wrong_branch": false,
+          "wrong_region_count": 0,
+          "wrong_branch_regions": 0,
+          "artifact_regions": 0,
+          "correct_regions": 6,
+          "submitted": 6
+        },
+        "region_boundaries": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "selected_ids": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "candidate_indices": [
+            30,
+            74,
+            107,
+            154,
+            189,
+            208
+          ],
+          "scores": [
+            0.9996606111526489,
+            0.9996145367622375,
+            0.9993386268615723,
+            0.9995293617248535,
+            0.9770134091377258,
+            0.9648139476776123
+          ],
+          "strict": true,
+          "acquired_ceiling": true,
+          "wrong_delivery": false,
+          "wrong_branch": false,
+          "wrong_region_count": 0,
+          "wrong_branch_regions": 0,
+          "artifact_regions": 0,
+          "correct_regions": 6,
+          "submitted": 6
+        },
+        "anchor_stations_then_regions": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "selected_ids": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "candidate_indices": [
+            30,
+            74,
+            99,
+            154,
+            189,
+            208
+          ],
+          "scores": [
+            0.9996406435966492,
+            0.9999114274978638,
+            0.9991401433944702,
+            0.999535858631134,
+            0.97575443983078,
+            0.9648139476776123
+          ],
+          "strict": true,
+          "acquired_ceiling": true,
+          "wrong_delivery": false,
+          "wrong_branch": false,
+          "wrong_region_count": 0,
+          "wrong_branch_regions": 0,
+          "artifact_regions": 0,
+          "correct_regions": 6,
+          "submitted": 6
+        }
+      },
+      "schedule_points": {
+        "complete_only": [
+          82
+        ],
+        "region_boundaries": [
+          15,
+          29,
+          41,
+          55,
+          69,
+          82
+        ],
+        "anchor_stations_then_regions": [
+          57,
+          59,
+          61,
+          63,
+          69,
+          82
+        ]
+      },
+      "changed": {
+        "complete_only": {
+          "candidates_changed_gt_0_01": 0,
+          "largest_target_probability_change": 0.0
+        },
+        "region_boundaries": {
+          "candidates_changed_gt_0_01": 26,
+          "largest_target_probability_change": 0.07715624570846558
+        },
+        "anchor_stations_then_regions": {
+          "candidates_changed_gt_0_01": 13,
+          "largest_target_probability_change": 0.0433424711227417
+        }
+      }
+    },
+    {
+      "task": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00013",
+      "layout": "atlas_v2_94a9f0181e50552629fc",
+      "raw_candidate_count": 912,
+      "scores": {
+        "complete_only": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            0
+          ],
+          "selected_ids": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "candidate_indices": [
+            59,
+            305,
+            421,
+            552,
+            642,
+            846
+          ],
+          "scores": [
+            0.9623803496360779,
+            0.9875781536102295,
+            0.9817703366279602,
+            0.9140467643737793,
+            0.7414065599441528,
+            0.8369374871253967
+          ],
+          "strict": false,
+          "acquired_ceiling": true,
+          "wrong_delivery": true,
+          "wrong_branch": true,
+          "wrong_region_count": 1,
+          "wrong_branch_regions": 1,
+          "artifact_regions": 0,
+          "correct_regions": 5,
+          "submitted": 6
+        },
+        "region_boundaries": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            0
+          ],
+          "selected_ids": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "candidate_indices": [
+            59,
+            305,
+            421,
+            552,
+            642,
+            846
+          ],
+          "scores": [
+            0.9623749852180481,
+            0.9875109195709229,
+            0.9820361733436584,
+            0.9053469300270081,
+            0.7188693881034851,
+            0.8369324207305908
+          ],
+          "strict": false,
+          "acquired_ceiling": true,
+          "wrong_delivery": true,
+          "wrong_branch": true,
+          "wrong_region_count": 1,
+          "wrong_branch_regions": 1,
+          "artifact_regions": 0,
+          "correct_regions": 5,
+          "submitted": 6
+        },
+        "anchor_stations_then_regions": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            0
+          ],
+          "selected_ids": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "candidate_indices": [
+            59,
+            305,
+            421,
+            552,
+            642,
+            846
+          ],
+          "scores": [
+            0.9623738527297974,
+            0.987612783908844,
+            0.9820546507835388,
+            0.9053469300270081,
+            0.7188693881034851,
+            0.8369324207305908
+          ],
+          "strict": false,
+          "acquired_ceiling": true,
+          "wrong_delivery": true,
+          "wrong_branch": true,
+          "wrong_region_count": 1,
+          "wrong_branch_regions": 1,
+          "artifact_regions": 0,
+          "correct_regions": 5,
+          "submitted": 6
+        }
+      },
+      "schedule_points": {
+        "complete_only": [
+          349
+        ],
+        "region_boundaries": [
+          63,
+          134,
+          199,
+          247,
+          301,
+          349
+        ],
+        "anchor_stations_then_regions": [
+          197,
+          199,
+          201,
+          203,
+          205,
+          247,
+          301,
+          349
+        ]
+      },
+      "changed": {
+        "complete_only": {
+          "candidates_changed_gt_0_01": 0,
+          "largest_target_probability_change": 0.0
+        },
+        "region_boundaries": {
+          "candidates_changed_gt_0_01": 65,
+          "largest_target_probability_change": 0.09331506490707397
+        },
+        "anchor_stations_then_regions": {
+          "candidates_changed_gt_0_01": 42,
+          "largest_target_probability_change": 0.04055769741535187
+        }
+      }
+    },
+    {
+      "task": "femoral",
+      "case": "v6_reader_fresh_00014",
+      "layout": "atlas_v2_3d192271705c31197bc7",
+      "raw_candidate_count": 168,
+      "scores": {
+        "complete_only": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            -1
+          ],
+          "selected_ids": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            -99
+          ],
+          "candidate_indices": [
+            21,
+            40,
+            73,
+            120,
+            143,
+            -1
+          ],
+          "scores": [
+            0.995823085308075,
+            0.9445241093635559,
+            0.9439666271209717,
+            0.997624397277832,
+            0.9820451736450195,
+            0.8878266215324402
+          ],
+          "strict": false,
+          "acquired_ceiling": true,
+          "wrong_delivery": false,
+          "wrong_branch": false,
+          "wrong_region_count": 0,
+          "wrong_branch_regions": 0,
+          "artifact_regions": 0,
+          "correct_regions": 5,
+          "submitted": 5
+        },
+        "region_boundaries": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            -1
+          ],
+          "selected_ids": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            -99
+          ],
+          "candidate_indices": [
+            8,
+            40,
+            73,
+            120,
+            143,
+            -1
+          ],
+          "scores": [
+            0.9954882264137268,
+            0.9449630975723267,
+            0.9398791193962097,
+            0.9977636933326721,
+            0.9734527468681335,
+            0.8878266215324402
+          ],
+          "strict": false,
+          "acquired_ceiling": true,
+          "wrong_delivery": false,
+          "wrong_branch": false,
+          "wrong_region_count": 0,
+          "wrong_branch_regions": 0,
+          "artifact_regions": 0,
+          "correct_regions": 5,
+          "submitted": 5
+        },
+        "anchor_stations_then_regions": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            -1
+          ],
+          "selected_ids": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            -99
+          ],
+          "candidate_indices": [
+            21,
+            40,
+            73,
+            120,
+            143,
+            -1
+          ],
+          "scores": [
+            0.9958152770996094,
+            0.9445701837539673,
+            0.944013774394989,
+            0.9976089000701904,
+            0.9726515412330627,
+            0.8878266215324402
+          ],
+          "strict": false,
+          "acquired_ceiling": true,
+          "wrong_delivery": false,
+          "wrong_branch": false,
+          "wrong_region_count": 0,
+          "wrong_branch_regions": 0,
+          "artifact_regions": 0,
+          "correct_regions": 5,
+          "submitted": 5
+        }
+      },
+      "schedule_points": {
+        "complete_only": [
+          82
+        ],
+        "region_boundaries": [
+          15,
+          29,
+          41,
+          55,
+          69,
+          82
+        ],
+        "anchor_stations_then_regions": [
+          57,
+          59,
+          61,
+          63,
+          69,
+          82
+        ]
+      },
+      "changed": {
+        "complete_only": {
+          "candidates_changed_gt_0_01": 0,
+          "largest_target_probability_change": 0.0
+        },
+        "region_boundaries": {
+          "candidates_changed_gt_0_01": 26,
+          "largest_target_probability_change": 0.0540827214717865
+        },
+        "anchor_stations_then_regions": {
+          "candidates_changed_gt_0_01": 14,
+          "largest_target_probability_change": 0.0533716082572937
+        }
+      }
+    },
+    {
+      "task": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00015",
+      "layout": "atlas_v2_5cbefb578077f9d7711d",
+      "raw_candidate_count": 714,
+      "scores": {
+        "complete_only": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "region_outcomes": [
+            1,
+            0,
+            1,
+            1,
+            -1,
+            1
+          ],
+          "selected_ids": [
+            0,
+            -1,
+            0,
+            0,
+            -99,
+            0
+          ],
+          "candidate_indices": [
+            70,
+            218,
+            318,
+            510,
+            -1,
+            610
+          ],
+          "scores": [
+            0.9771459698677063,
+            0.987442672252655,
+            0.980207085609436,
+            0.7583163380622864,
+            0.5930261611938477,
+            0.6667739152908325
+          ],
+          "strict": false,
+          "acquired_ceiling": true,
+          "wrong_delivery": true,
+          "wrong_branch": false,
+          "wrong_region_count": 1,
+          "wrong_branch_regions": 0,
+          "artifact_regions": 1,
+          "correct_regions": 4,
+          "submitted": 5
+        },
+        "region_boundaries": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "region_outcomes": [
+            1,
+            0,
+            1,
+            1,
+            -1,
+            1
+          ],
+          "selected_ids": [
+            0,
+            -1,
+            0,
+            0,
+            -99,
+            0
+          ],
+          "candidate_indices": [
+            70,
+            218,
+            318,
+            467,
+            -1,
+            610
+          ],
+          "scores": [
+            0.977022647857666,
+            0.9874696731567383,
+            0.9806694984436035,
+            0.7648874521255493,
+            0.5762074589729309,
+            0.6667739152908325
+          ],
+          "strict": false,
+          "acquired_ceiling": true,
+          "wrong_delivery": true,
+          "wrong_branch": false,
+          "wrong_region_count": 1,
+          "wrong_branch_regions": 0,
+          "artifact_regions": 1,
+          "correct_regions": 4,
+          "submitted": 5
+        },
+        "anchor_stations_then_regions": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "region_outcomes": [
+            1,
+            0,
+            1,
+            1,
+            -1,
+            1
+          ],
+          "selected_ids": [
+            0,
+            -1,
+            0,
+            0,
+            -99,
+            0
+          ],
+          "candidate_indices": [
+            70,
+            218,
+            318,
+            467,
+            -1,
+            610
+          ],
+          "scores": [
+            0.9771278500556946,
+            0.9874519109725952,
+            0.9808817505836487,
+            0.7648874521255493,
+            0.5762074589729309,
+            0.6667739152908325
+          ],
+          "strict": false,
+          "acquired_ceiling": true,
+          "wrong_delivery": true,
+          "wrong_branch": false,
+          "wrong_region_count": 1,
+          "wrong_branch_regions": 0,
+          "artifact_regions": 1,
+          "correct_regions": 4,
+          "submitted": 5
+        }
+      },
+      "schedule_points": {
+        "complete_only": [
+          349
+        ],
+        "region_boundaries": [
+          63,
+          134,
+          199,
+          247,
+          299,
+          349
+        ],
+        "anchor_stations_then_regions": [
+          197,
+          199,
+          201,
+          203,
+          205,
+          247,
+          299,
+          349
+        ]
+      },
+      "changed": {
+        "complete_only": {
+          "candidates_changed_gt_0_01": 0,
+          "largest_target_probability_change": 0.0
+        },
+        "region_boundaries": {
+          "candidates_changed_gt_0_01": 61,
+          "largest_target_probability_change": 0.14392811059951782
+        },
+        "anchor_stations_then_regions": {
+          "candidates_changed_gt_0_01": 42,
+          "largest_target_probability_change": 0.14392811059951782
+        }
+      }
+    },
+    {
+      "task": "femoral",
+      "case": "v6_reader_fresh_00016",
+      "layout": "atlas_v2_d48063625dacbaa07b9d",
+      "raw_candidate_count": 180,
+      "scores": {
+        "complete_only": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            false
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            -1
+          ],
+          "selected_ids": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            -99
+          ],
+          "candidate_indices": [
+            1,
+            61,
+            94,
+            114,
+            152,
+            -1
+          ],
+          "scores": [
+            0.9914361238479614,
+            0.9986122846603394,
+            0.9996665120124817,
+            0.9999780654907227,
+            0.9968879222869873,
+            0.2072460949420929
+          ],
+          "strict": false,
+          "acquired_ceiling": false,
+          "wrong_delivery": false,
+          "wrong_branch": false,
+          "wrong_region_count": 0,
+          "wrong_branch_regions": 0,
+          "artifact_regions": 0,
+          "correct_regions": 5,
+          "submitted": 5
+        },
+        "region_boundaries": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            false
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            -1
+          ],
+          "selected_ids": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            -99
+          ],
+          "candidate_indices": [
+            1,
+            61,
+            94,
+            114,
+            152,
+            -1
+          ],
+          "scores": [
+            0.991453230381012,
+            0.9984936714172363,
+            0.999640166759491,
+            0.9999780654907227,
+            0.996852457523346,
+            0.2072460949420929
+          ],
+          "strict": false,
+          "acquired_ceiling": false,
+          "wrong_delivery": false,
+          "wrong_branch": false,
+          "wrong_region_count": 0,
+          "wrong_branch_regions": 0,
+          "artifact_regions": 0,
+          "correct_regions": 5,
+          "submitted": 5
+        },
+        "anchor_stations_then_regions": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            false
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            -1
+          ],
+          "selected_ids": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            -99
+          ],
+          "candidate_indices": [
+            1,
+            61,
+            94,
+            114,
+            152,
+            -1
+          ],
+          "scores": [
+            0.9914374947547913,
+            0.99859219789505,
+            0.9996663928031921,
+            0.9999780654907227,
+            0.9971245527267456,
+            0.2072460949420929
+          ],
+          "strict": false,
+          "acquired_ceiling": false,
+          "wrong_delivery": false,
+          "wrong_branch": false,
+          "wrong_region_count": 0,
+          "wrong_branch_regions": 0,
+          "artifact_regions": 0,
+          "correct_regions": 5,
+          "submitted": 5
+        }
+      },
+      "schedule_points": {
+        "complete_only": [
+          79
+        ],
+        "region_boundaries": [
+          15,
+          29,
+          41,
+          55,
+          69,
+          79
+        ],
+        "anchor_stations_then_regions": [
+          57,
+          59,
+          61,
+          63,
+          69,
+          79
+        ]
+      },
+      "changed": {
+        "complete_only": {
+          "candidates_changed_gt_0_01": 0,
+          "largest_target_probability_change": 0.0
+        },
+        "region_boundaries": {
+          "candidates_changed_gt_0_01": 8,
+          "largest_target_probability_change": 0.041110336780548096
+        },
+        "anchor_stations_then_regions": {
+          "candidates_changed_gt_0_01": 3,
+          "largest_target_probability_change": 0.01562577486038208
+        }
+      }
+    },
+    {
+      "task": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00017",
+      "layout": "atlas_v2_73c05463bb70d876e7dd",
+      "raw_candidate_count": 904,
+      "scores": {
+        "complete_only": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            1,
+            1,
+            0,
+            0
+          ],
+          "selected_ids": [
+            0,
+            0,
+            0,
+            0,
+            1,
+            1
+          ],
+          "candidate_indices": [
+            24,
+            207,
+            356,
+            507,
+            654,
+            900
+          ],
+          "scores": [
+            0.9916303157806396,
+            0.9936134219169617,
+            0.9815163016319275,
+            0.9721797108650208,
+            0.8686215877532959,
+            0.8323399424552917
+          ],
+          "strict": false,
+          "acquired_ceiling": true,
+          "wrong_delivery": true,
+          "wrong_branch": true,
+          "wrong_region_count": 2,
+          "wrong_branch_regions": 2,
+          "artifact_regions": 0,
+          "correct_regions": 4,
+          "submitted": 6
+        },
+        "region_boundaries": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            1,
+            1,
+            0,
+            0
+          ],
+          "selected_ids": [
+            0,
+            0,
+            0,
+            0,
+            1,
+            1
+          ],
+          "candidate_indices": [
+            24,
+            207,
+            356,
+            507,
+            654,
+            900
+          ],
+          "scores": [
+            0.991628110408783,
+            0.9929220080375671,
+            0.9814833998680115,
+            0.9710652828216553,
+            0.8704121708869934,
+            0.8323399424552917
+          ],
+          "strict": false,
+          "acquired_ceiling": true,
+          "wrong_delivery": true,
+          "wrong_branch": true,
+          "wrong_region_count": 2,
+          "wrong_branch_regions": 2,
+          "artifact_regions": 0,
+          "correct_regions": 4,
+          "submitted": 6
+        },
+        "anchor_stations_then_regions": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            1,
+            1,
+            0,
+            0
+          ],
+          "selected_ids": [
+            0,
+            0,
+            0,
+            0,
+            1,
+            1
+          ],
+          "candidate_indices": [
+            24,
+            207,
+            356,
+            507,
+            654,
+            900
+          ],
+          "scores": [
+            0.9916295409202576,
+            0.99362713098526,
+            0.9814663529396057,
+            0.9710652828216553,
+            0.8704121708869934,
+            0.8323399424552917
+          ],
+          "strict": false,
+          "acquired_ceiling": true,
+          "wrong_delivery": true,
+          "wrong_branch": true,
+          "wrong_region_count": 2,
+          "wrong_branch_regions": 2,
+          "artifact_regions": 0,
+          "correct_regions": 4,
+          "submitted": 6
+        }
+      },
+      "schedule_points": {
+        "complete_only": [
+          319
+        ],
+        "region_boundaries": [
+          56,
+          107,
+          172,
+          222,
+          272,
+          319
+        ],
+        "anchor_stations_then_regions": [
+          168,
+          172,
+          174,
+          176,
+          178,
+          222,
+          272,
+          319
+        ]
+      },
+      "changed": {
+        "complete_only": {
+          "candidates_changed_gt_0_01": 0,
+          "largest_target_probability_change": 0.0
+        },
+        "region_boundaries": {
+          "candidates_changed_gt_0_01": 53,
+          "largest_target_probability_change": 0.30780771374702454
+        },
+        "anchor_stations_then_regions": {
+          "candidates_changed_gt_0_01": 49,
+          "largest_target_probability_change": 0.30780771374702454
+        }
+      }
+    },
+    {
+      "task": "femoral",
+      "case": "v6_reader_fresh_00018",
+      "layout": "atlas_v2_c0db5592bbc0d06d81bf",
+      "raw_candidate_count": 153,
+      "scores": {
+        "complete_only": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            -1
+          ],
+          "selected_ids": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            -99
+          ],
+          "candidate_indices": [
+            18,
+            41,
+            72,
+            86,
+            122,
+            -1
+          ],
+          "scores": [
+            0.9888383150100708,
+            0.9909504652023315,
+            0.9833743572235107,
+            0.9993712902069092,
+            0.989127516746521,
+            0.4958242177963257
+          ],
+          "strict": false,
+          "acquired_ceiling": true,
+          "wrong_delivery": false,
+          "wrong_branch": false,
+          "wrong_region_count": 0,
+          "wrong_branch_regions": 0,
+          "artifact_regions": 0,
+          "correct_regions": 5,
+          "submitted": 5
+        },
+        "region_boundaries": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            -1
+          ],
+          "selected_ids": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            -99
+          ],
+          "candidate_indices": [
+            18,
+            41,
+            72,
+            86,
+            122,
+            -1
+          ],
+          "scores": [
+            0.9883359670639038,
+            0.9909442663192749,
+            0.983433187007904,
+            0.9993749856948853,
+            0.9869410395622253,
+            0.49244821071624756
+          ],
+          "strict": false,
+          "acquired_ceiling": true,
+          "wrong_delivery": false,
+          "wrong_branch": false,
+          "wrong_region_count": 0,
+          "wrong_branch_regions": 0,
+          "artifact_regions": 0,
+          "correct_regions": 5,
+          "submitted": 5
+        },
+        "anchor_stations_then_regions": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            -1
+          ],
+          "selected_ids": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            -99
+          ],
+          "candidate_indices": [
+            18,
+            41,
+            72,
+            86,
+            122,
+            -1
+          ],
+          "scores": [
+            0.9888482093811035,
+            0.9910067915916443,
+            0.9835931062698364,
+            0.9993772506713867,
+            0.9910056591033936,
+            0.49244821071624756
+          ],
+          "strict": false,
+          "acquired_ceiling": true,
+          "wrong_delivery": false,
+          "wrong_branch": false,
+          "wrong_region_count": 0,
+          "wrong_branch_regions": 0,
+          "artifact_regions": 0,
+          "correct_regions": 5,
+          "submitted": 5
+        }
+      },
+      "schedule_points": {
+        "complete_only": [
+          79
+        ],
+        "region_boundaries": [
+          15,
+          29,
+          41,
+          55,
+          69,
+          79
+        ],
+        "anchor_stations_then_regions": [
+          57,
+          59,
+          61,
+          63,
+          69,
+          79
+        ]
+      },
+      "changed": {
+        "complete_only": {
+          "candidates_changed_gt_0_01": 0,
+          "largest_target_probability_change": 0.0
+        },
+        "region_boundaries": {
+          "candidates_changed_gt_0_01": 15,
+          "largest_target_probability_change": 0.07226958125829697
+        },
+        "anchor_stations_then_regions": {
+          "candidates_changed_gt_0_01": 8,
+          "largest_target_probability_change": 0.10270708799362183
+        }
+      }
+    },
+    {
+      "task": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00019",
+      "layout": "atlas_v2_9080a0bbd69677a94774",
+      "raw_candidate_count": 700,
+      "scores": {
+        "complete_only": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "selected_ids": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "candidate_indices": [
+            58,
+            180,
+            297,
+            347,
+            590,
+            594
+          ],
+          "scores": [
+            0.9903113842010498,
+            0.9657085537910461,
+            0.9074677228927612,
+            0.9503480792045593,
+            0.6763212084770203,
+            0.8710892200469971
+          ],
+          "strict": true,
+          "acquired_ceiling": true,
+          "wrong_delivery": false,
+          "wrong_branch": false,
+          "wrong_region_count": 0,
+          "wrong_branch_regions": 0,
+          "artifact_regions": 0,
+          "correct_regions": 6,
+          "submitted": 6
+        },
+        "region_boundaries": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "selected_ids": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "candidate_indices": [
+            58,
+            180,
+            297,
+            347,
+            559,
+            594
+          ],
+          "scores": [
+            0.9903703331947327,
+            0.9658514261245728,
+            0.9092499017715454,
+            0.9319256544113159,
+            0.7034777402877808,
+            0.7412374019622803
+          ],
+          "strict": true,
+          "acquired_ceiling": true,
+          "wrong_delivery": false,
+          "wrong_branch": false,
+          "wrong_region_count": 0,
+          "wrong_branch_regions": 0,
+          "artifact_regions": 0,
+          "correct_regions": 6,
+          "submitted": 6
+        },
+        "anchor_stations_then_regions": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "selected_ids": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "candidate_indices": [
+            58,
+            180,
+            297,
+            347,
+            559,
+            594
+          ],
+          "scores": [
+            0.9903226494789124,
+            0.9657678604125977,
+            0.9093326330184937,
+            0.9088753461837769,
+            0.7034777402877808,
+            0.7412374019622803
+          ],
+          "strict": true,
+          "acquired_ceiling": true,
+          "wrong_delivery": false,
+          "wrong_branch": false,
+          "wrong_region_count": 0,
+          "wrong_branch_regions": 0,
+          "artifact_regions": 0,
+          "correct_regions": 6,
+          "submitted": 6
+        }
+      },
+      "schedule_points": {
+        "complete_only": [
+          319
+        ],
+        "region_boundaries": [
+          56,
+          107,
+          172,
+          222,
+          272,
+          319
+        ],
+        "anchor_stations_then_regions": [
+          168,
+          172,
+          174,
+          176,
+          178,
+          222,
+          272,
+          319
+        ]
+      },
+      "changed": {
+        "complete_only": {
+          "candidates_changed_gt_0_01": 0,
+          "largest_target_probability_change": 0.0
+        },
+        "region_boundaries": {
+          "candidates_changed_gt_0_01": 52,
+          "largest_target_probability_change": 0.22925317287445068
+        },
+        "anchor_stations_then_regions": {
+          "candidates_changed_gt_0_01": 37,
+          "largest_target_probability_change": 0.22925317287445068
+        }
+      }
+    },
+    {
+      "task": "femoral",
+      "case": "v6_reader_fresh_00020",
+      "layout": "atlas_v2_da22cee7b017771f0dc7",
+      "raw_candidate_count": 206,
+      "scores": {
+        "complete_only": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "selected_ids": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "candidate_indices": [
+            15,
+            46,
+            86,
+            124,
+            162,
+            190
+          ],
+          "scores": [
+            0.9993780851364136,
+            0.9981490969657898,
+            0.9990419745445251,
+            0.9997379779815674,
+            0.9971365332603455,
+            0.999236524105072
+          ],
+          "strict": true,
+          "acquired_ceiling": true,
+          "wrong_delivery": false,
+          "wrong_branch": false,
+          "wrong_region_count": 0,
+          "wrong_branch_regions": 0,
+          "artifact_regions": 0,
+          "correct_regions": 6,
+          "submitted": 6
+        },
+        "region_boundaries": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "selected_ids": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "candidate_indices": [
+            15,
+            46,
+            86,
+            124,
+            162,
+            190
+          ],
+          "scores": [
+            0.999879777431488,
+            0.9977239370346069,
+            0.9988279342651367,
+            0.99985271692276,
+            0.9971430897712708,
+            0.9992362260818481
+          ],
+          "strict": true,
+          "acquired_ceiling": true,
+          "wrong_delivery": false,
+          "wrong_branch": false,
+          "wrong_region_count": 0,
+          "wrong_branch_regions": 0,
+          "artifact_regions": 0,
+          "correct_regions": 6,
+          "submitted": 6
+        },
+        "anchor_stations_then_regions": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "selected_ids": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "candidate_indices": [
+            15,
+            46,
+            86,
+            124,
+            162,
+            190
+          ],
+          "scores": [
+            0.999374508857727,
+            0.9979794025421143,
+            0.9988831877708435,
+            0.9998416900634766,
+            0.9971292018890381,
+            0.9992341995239258
+          ],
+          "strict": true,
+          "acquired_ceiling": true,
+          "wrong_delivery": false,
+          "wrong_branch": false,
+          "wrong_region_count": 0,
+          "wrong_branch_regions": 0,
+          "artifact_regions": 0,
+          "correct_regions": 6,
+          "submitted": 6
+        }
+      },
+      "schedule_points": {
+        "complete_only": [
+          96
+        ],
+        "region_boundaries": [
+          15,
+          29,
+          41,
+          55,
+          80,
+          96
+        ],
+        "anchor_stations_then_regions": [
+          57,
+          59,
+          61,
+          63,
+          80,
+          96
+        ]
+      },
+      "changed": {
+        "complete_only": {
+          "candidates_changed_gt_0_01": 0,
+          "largest_target_probability_change": 0.0
+        },
+        "region_boundaries": {
+          "candidates_changed_gt_0_01": 16,
+          "largest_target_probability_change": 0.0308150053024292
+        },
+        "anchor_stations_then_regions": {
+          "candidates_changed_gt_0_01": 6,
+          "largest_target_probability_change": 0.02846229076385498
+        }
+      }
+    },
+    {
+      "task": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00021",
+      "layout": "atlas_v2_de1d957e703f6ba8bd07",
+      "raw_candidate_count": 945,
+      "scores": {
+        "complete_only": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "selected_ids": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "candidate_indices": [
+            158,
+            271,
+            379,
+            544,
+            781,
+            939
+          ],
+          "scores": [
+            0.9982333183288574,
+            0.9873830080032349,
+            0.9792250990867615,
+            0.9309064745903015,
+            0.8656874895095825,
+            0.8749935030937195
+          ],
+          "strict": true,
+          "acquired_ceiling": true,
+          "wrong_delivery": false,
+          "wrong_branch": false,
+          "wrong_region_count": 0,
+          "wrong_branch_regions": 0,
+          "artifact_regions": 0,
+          "correct_regions": 6,
+          "submitted": 6
+        },
+        "region_boundaries": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "selected_ids": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "candidate_indices": [
+            158,
+            271,
+            379,
+            544,
+            781,
+            939
+          ],
+          "scores": [
+            0.9990183115005493,
+            0.9874460697174072,
+            0.9797714948654175,
+            0.9316286444664001,
+            0.8668345808982849,
+            0.8749935030937195
+          ],
+          "strict": true,
+          "acquired_ceiling": true,
+          "wrong_delivery": false,
+          "wrong_branch": false,
+          "wrong_region_count": 0,
+          "wrong_branch_regions": 0,
+          "artifact_regions": 0,
+          "correct_regions": 6,
+          "submitted": 6
+        },
+        "anchor_stations_then_regions": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "selected_ids": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "candidate_indices": [
+            158,
+            271,
+            379,
+            544,
+            781,
+            939
+          ],
+          "scores": [
+            0.9982305765151978,
+            0.9874017238616943,
+            0.9797813296318054,
+            0.9316286444664001,
+            0.8668345808982849,
+            0.8749935030937195
+          ],
+          "strict": true,
+          "acquired_ceiling": true,
+          "wrong_delivery": false,
+          "wrong_branch": false,
+          "wrong_region_count": 0,
+          "wrong_branch_regions": 0,
+          "artifact_regions": 0,
+          "correct_regions": 6,
+          "submitted": 6
+        }
+      },
+      "schedule_points": {
+        "complete_only": [
+          337
+        ],
+        "region_boundaries": [
+          51,
+          117,
+          181,
+          234,
+          289,
+          337
+        ],
+        "anchor_stations_then_regions": [
+          179,
+          181,
+          183,
+          185,
+          187,
+          234,
+          289,
+          337
+        ]
+      },
+      "changed": {
+        "complete_only": {
+          "candidates_changed_gt_0_01": 0,
+          "largest_target_probability_change": 0.0
+        },
+        "region_boundaries": {
+          "candidates_changed_gt_0_01": 56,
+          "largest_target_probability_change": 0.0734831690788269
+        },
+        "anchor_stations_then_regions": {
+          "candidates_changed_gt_0_01": 43,
+          "largest_target_probability_change": 0.07837033271789551
+        }
+      }
+    },
+    {
+      "task": "femoral",
+      "case": "v6_reader_fresh_00022",
+      "layout": "atlas_v2_373111059b3a66ec6225",
+      "raw_candidate_count": 179,
+      "scores": {
+        "complete_only": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            -1,
+            1,
+            1,
+            1
+          ],
+          "selected_ids": [
+            0,
+            0,
+            -99,
+            0,
+            0,
+            0
+          ],
+          "candidate_indices": [
+            3,
+            56,
+            -1,
+            117,
+            125,
+            171
+          ],
+          "scores": [
+            0.9780063629150391,
+            0.9589391946792603,
+            0.8119873404502869,
+            0.9882943630218506,
+            0.941084086894989,
+            0.9693862199783325
+          ],
+          "strict": false,
+          "acquired_ceiling": true,
+          "wrong_delivery": false,
+          "wrong_branch": false,
+          "wrong_region_count": 0,
+          "wrong_branch_regions": 0,
+          "artifact_regions": 0,
+          "correct_regions": 5,
+          "submitted": 5
+        },
+        "region_boundaries": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            -1,
+            1,
+            1,
+            1
+          ],
+          "selected_ids": [
+            0,
+            0,
+            -99,
+            0,
+            0,
+            0
+          ],
+          "candidate_indices": [
+            16,
+            56,
+            -1,
+            117,
+            125,
+            171
+          ],
+          "scores": [
+            0.9863752126693726,
+            0.9599495530128479,
+            0.7988598346710205,
+            0.9880359768867493,
+            0.941807746887207,
+            0.9736451506614685
+          ],
+          "strict": false,
+          "acquired_ceiling": true,
+          "wrong_delivery": false,
+          "wrong_branch": false,
+          "wrong_region_count": 0,
+          "wrong_branch_regions": 0,
+          "artifact_regions": 0,
+          "correct_regions": 5,
+          "submitted": 5
+        },
+        "anchor_stations_then_regions": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            -1,
+            1,
+            1,
+            1
+          ],
+          "selected_ids": [
+            0,
+            0,
+            -99,
+            0,
+            0,
+            0
+          ],
+          "candidate_indices": [
+            3,
+            56,
+            -1,
+            117,
+            125,
+            171
+          ],
+          "scores": [
+            0.9794661998748779,
+            0.9589207768440247,
+            0.8160845041275024,
+            0.9883109331130981,
+            0.9411076307296753,
+            0.9736451506614685
+          ],
+          "strict": false,
+          "acquired_ceiling": true,
+          "wrong_delivery": false,
+          "wrong_branch": false,
+          "wrong_region_count": 0,
+          "wrong_branch_regions": 0,
+          "artifact_regions": 0,
+          "correct_regions": 5,
+          "submitted": 5
+        }
+      },
+      "schedule_points": {
+        "complete_only": [
+          96
+        ],
+        "region_boundaries": [
+          15,
+          29,
+          41,
+          55,
+          80,
+          96
+        ],
+        "anchor_stations_then_regions": [
+          57,
+          59,
+          61,
+          63,
+          80,
+          96
+        ]
+      },
+      "changed": {
+        "complete_only": {
+          "candidates_changed_gt_0_01": 0,
+          "largest_target_probability_change": 0.0
+        },
+        "region_boundaries": {
+          "candidates_changed_gt_0_01": 29,
+          "largest_target_probability_change": 0.054832398891448975
+        },
+        "anchor_stations_then_regions": {
+          "candidates_changed_gt_0_01": 16,
+          "largest_target_probability_change": 0.05801659822463989
+        }
+      }
+    },
+    {
+      "task": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00023",
+      "layout": "atlas_v2_85dc13f76b40ab6d9ab8",
+      "raw_candidate_count": 722,
+      "scores": {
+        "complete_only": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            0
+          ],
+          "selected_ids": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "candidate_indices": [
+            37,
+            224,
+            277,
+            412,
+            498,
+            717
+          ],
+          "scores": [
+            0.9896957874298096,
+            0.9627799987792969,
+            0.9694900512695312,
+            0.8708159923553467,
+            0.8352126479148865,
+            0.8137372732162476
+          ],
+          "strict": false,
+          "acquired_ceiling": true,
+          "wrong_delivery": true,
+          "wrong_branch": true,
+          "wrong_region_count": 1,
+          "wrong_branch_regions": 1,
+          "artifact_regions": 0,
+          "correct_regions": 5,
+          "submitted": 6
+        },
+        "region_boundaries": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            0
+          ],
+          "selected_ids": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "candidate_indices": [
+            37,
+            224,
+            277,
+            412,
+            498,
+            717
+          ],
+          "scores": [
+            0.9896150827407837,
+            0.9628306031227112,
+            0.970025897026062,
+            0.8707541823387146,
+            0.8371702432632446,
+            0.8137372732162476
+          ],
+          "strict": false,
+          "acquired_ceiling": true,
+          "wrong_delivery": true,
+          "wrong_branch": true,
+          "wrong_region_count": 1,
+          "wrong_branch_regions": 1,
+          "artifact_regions": 0,
+          "correct_regions": 5,
+          "submitted": 6
+        },
+        "anchor_stations_then_regions": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            0
+          ],
+          "selected_ids": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "candidate_indices": [
+            37,
+            224,
+            277,
+            412,
+            498,
+            717
+          ],
+          "scores": [
+            0.9896832704544067,
+            0.9628098607063293,
+            0.970020055770874,
+            0.8707541823387146,
+            0.8371702432632446,
+            0.8137372732162476
+          ],
+          "strict": false,
+          "acquired_ceiling": true,
+          "wrong_delivery": true,
+          "wrong_branch": true,
+          "wrong_region_count": 1,
+          "wrong_branch_regions": 1,
+          "artifact_regions": 0,
+          "correct_regions": 5,
+          "submitted": 6
+        }
+      },
+      "schedule_points": {
+        "complete_only": [
+          332
+        ],
+        "region_boundaries": [
+          51,
+          117,
+          178,
+          229,
+          284,
+          332
+        ],
+        "anchor_stations_then_regions": [
+          176,
+          178,
+          180,
+          182,
+          184,
+          229,
+          284,
+          332
+        ]
+      },
+      "changed": {
+        "complete_only": {
+          "candidates_changed_gt_0_01": 0,
+          "largest_target_probability_change": 0.0
+        },
+        "region_boundaries": {
+          "candidates_changed_gt_0_01": 49,
+          "largest_target_probability_change": 0.08734041452407837
+        },
+        "anchor_stations_then_regions": {
+          "candidates_changed_gt_0_01": 30,
+          "largest_target_probability_change": 0.10788583755493164
+        }
+      }
+    },
+    {
+      "task": "femoral",
+      "case": "v6_reader_fresh_00024",
+      "layout": "atlas_v2_be63c2426aefa82c0900",
+      "raw_candidate_count": 174,
+      "scores": {
+        "complete_only": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            -1
+          ],
+          "selected_ids": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            -99
+          ],
+          "candidate_indices": [
+            24,
+            48,
+            98,
+            124,
+            145,
+            -1
+          ],
+          "scores": [
+            0.9993960857391357,
+            0.9995549321174622,
+            0.9991302490234375,
+            0.9997707009315491,
+            0.9964534640312195,
+            0.7415071129798889
+          ],
+          "strict": false,
+          "acquired_ceiling": true,
+          "wrong_delivery": false,
+          "wrong_branch": false,
+          "wrong_region_count": 0,
+          "wrong_branch_regions": 0,
+          "artifact_regions": 0,
+          "correct_regions": 5,
+          "submitted": 5
+        },
+        "region_boundaries": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            -1
+          ],
+          "selected_ids": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            -99
+          ],
+          "candidate_indices": [
+            24,
+            48,
+            98,
+            124,
+            145,
+            -1
+          ],
+          "scores": [
+            0.999403178691864,
+            0.9995542168617249,
+            0.9991265535354614,
+            0.9997746348381042,
+            0.9964473843574524,
+            0.7774872183799744
+          ],
+          "strict": false,
+          "acquired_ceiling": true,
+          "wrong_delivery": false,
+          "wrong_branch": false,
+          "wrong_region_count": 0,
+          "wrong_branch_regions": 0,
+          "artifact_regions": 0,
+          "correct_regions": 5,
+          "submitted": 5
+        },
+        "anchor_stations_then_regions": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            -1
+          ],
+          "selected_ids": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            -99
+          ],
+          "candidate_indices": [
+            24,
+            48,
+            98,
+            124,
+            145,
+            -1
+          ],
+          "scores": [
+            0.9993964433670044,
+            0.9995545148849487,
+            0.9991288781166077,
+            0.9997746348381042,
+            0.996324896812439,
+            0.7774887681007385
+          ],
+          "strict": false,
+          "acquired_ceiling": true,
+          "wrong_delivery": false,
+          "wrong_branch": false,
+          "wrong_region_count": 0,
+          "wrong_branch_regions": 0,
+          "artifact_regions": 0,
+          "correct_regions": 5,
+          "submitted": 5
+        }
+      },
+      "schedule_points": {
+        "complete_only": [
+          79
+        ],
+        "region_boundaries": [
+          15,
+          29,
+          41,
+          55,
+          69,
+          79
+        ],
+        "anchor_stations_then_regions": [
+          55,
+          57,
+          59,
+          61,
+          63,
+          69,
+          79
+        ]
+      },
+      "changed": {
+        "complete_only": {
+          "candidates_changed_gt_0_01": 0,
+          "largest_target_probability_change": 0.0
+        },
+        "region_boundaries": {
+          "candidates_changed_gt_0_01": 2,
+          "largest_target_probability_change": 0.03534623980522156
+        },
+        "anchor_stations_then_regions": {
+          "candidates_changed_gt_0_01": 7,
+          "largest_target_probability_change": 0.03918138146400452
+        }
+      }
+    },
+    {
+      "task": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00025",
+      "layout": "atlas_v2_7268d3bf8ed90eba96da",
+      "raw_candidate_count": 905,
+      "scores": {
+        "complete_only": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            1,
+            1,
+            0,
+            1
+          ],
+          "selected_ids": [
+            0,
+            0,
+            0,
+            0,
+            1,
+            0
+          ],
+          "candidate_indices": [
+            65,
+            293,
+            413,
+            601,
+            696,
+            802
+          ],
+          "scores": [
+            0.962660551071167,
+            0.9873886704444885,
+            0.9821308255195618,
+            0.903949499130249,
+            0.683034360408783,
+            0.7102657556533813
+          ],
+          "strict": false,
+          "acquired_ceiling": true,
+          "wrong_delivery": true,
+          "wrong_branch": true,
+          "wrong_region_count": 1,
+          "wrong_branch_regions": 1,
+          "artifact_regions": 0,
+          "correct_regions": 5,
+          "submitted": 6
+        },
+        "region_boundaries": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "selected_ids": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "candidate_indices": [
+            65,
+            293,
+            413,
+            601,
+            715,
+            802
+          ],
+          "scores": [
+            0.9626761078834534,
+            0.9874430894851685,
+            0.9822753667831421,
+            0.8969103097915649,
+            0.7105345129966736,
+            0.7102657556533813
+          ],
+          "strict": true,
+          "acquired_ceiling": true,
+          "wrong_delivery": false,
+          "wrong_branch": false,
+          "wrong_region_count": 0,
+          "wrong_branch_regions": 0,
+          "artifact_regions": 0,
+          "correct_regions": 6,
+          "submitted": 6
+        },
+        "anchor_stations_then_regions": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "selected_ids": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "candidate_indices": [
+            65,
+            293,
+            413,
+            601,
+            715,
+            802
+          ],
+          "scores": [
+            0.9626632332801819,
+            0.9874048829078674,
+            0.9823439121246338,
+            0.8969103097915649,
+            0.7105345129966736,
+            0.7102657556533813
+          ],
+          "strict": true,
+          "acquired_ceiling": true,
+          "wrong_delivery": false,
+          "wrong_branch": false,
+          "wrong_region_count": 0,
+          "wrong_branch_regions": 0,
+          "artifact_regions": 0,
+          "correct_regions": 6,
+          "submitted": 6
+        }
+      },
+      "schedule_points": {
+        "complete_only": [
+          349
+        ],
+        "region_boundaries": [
+          63,
+          134,
+          199,
+          247,
+          301,
+          349
+        ],
+        "anchor_stations_then_regions": [
+          195,
+          197,
+          199,
+          201,
+          203,
+          205,
+          247,
+          301,
+          349
+        ]
+      },
+      "changed": {
+        "complete_only": {
+          "candidates_changed_gt_0_01": 0,
+          "largest_target_probability_change": 0.0
+        },
+        "region_boundaries": {
+          "candidates_changed_gt_0_01": 65,
+          "largest_target_probability_change": 0.13047462701797485
+        },
+        "anchor_stations_then_regions": {
+          "candidates_changed_gt_0_01": 51,
+          "largest_target_probability_change": 0.13047462701797485
+        }
+      }
+    },
+    {
+      "task": "femoral",
+      "case": "v6_reader_fresh_00026",
+      "layout": "atlas_v2_c4b3c7fa13cb091242c5",
+      "raw_candidate_count": 147,
+      "scores": {
+        "complete_only": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            false
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            -1
+          ],
+          "selected_ids": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            -99
+          ],
+          "candidate_indices": [
+            22,
+            55,
+            75,
+            96,
+            123,
+            -1
+          ],
+          "scores": [
+            0.9887616634368896,
+            0.9524099826812744,
+            0.9826725125312805,
+            0.9908246397972107,
+            0.9645690321922302,
+            0.11695417761802673
+          ],
+          "strict": false,
+          "acquired_ceiling": false,
+          "wrong_delivery": false,
+          "wrong_branch": false,
+          "wrong_region_count": 0,
+          "wrong_branch_regions": 0,
+          "artifact_regions": 0,
+          "correct_regions": 5,
+          "submitted": 5
+        },
+        "region_boundaries": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            false
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            -1
+          ],
+          "selected_ids": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            -99
+          ],
+          "candidate_indices": [
+            22,
+            55,
+            75,
+            96,
+            123,
+            -1
+          ],
+          "scores": [
+            0.9872892498970032,
+            0.9529649615287781,
+            0.9816970825195312,
+            0.990683376789093,
+            0.9648159146308899,
+            0.11695417761802673
+          ],
+          "strict": false,
+          "acquired_ceiling": false,
+          "wrong_delivery": false,
+          "wrong_branch": false,
+          "wrong_region_count": 0,
+          "wrong_branch_regions": 0,
+          "artifact_regions": 0,
+          "correct_regions": 5,
+          "submitted": 5
+        },
+        "anchor_stations_then_regions": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            false
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            -1
+          ],
+          "selected_ids": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            -99
+          ],
+          "candidate_indices": [
+            22,
+            55,
+            75,
+            96,
+            123,
+            -1
+          ],
+          "scores": [
+            0.9879826307296753,
+            0.9525339603424072,
+            0.9815358519554138,
+            0.9907209277153015,
+            0.9489692449569702,
+            0.11695417761802673
+          ],
+          "strict": false,
+          "acquired_ceiling": false,
+          "wrong_delivery": false,
+          "wrong_branch": false,
+          "wrong_region_count": 0,
+          "wrong_branch_regions": 0,
+          "artifact_regions": 0,
+          "correct_regions": 5,
+          "submitted": 5
+        }
+      },
+      "schedule_points": {
+        "complete_only": [
+          79
+        ],
+        "region_boundaries": [
+          15,
+          29,
+          41,
+          55,
+          69,
+          79
+        ],
+        "anchor_stations_then_regions": [
+          55,
+          57,
+          59,
+          61,
+          63,
+          69,
+          79
+        ]
+      },
+      "changed": {
+        "complete_only": {
+          "candidates_changed_gt_0_01": 0,
+          "largest_target_probability_change": 0.0
+        },
+        "region_boundaries": {
+          "candidates_changed_gt_0_01": 12,
+          "largest_target_probability_change": 0.05705094337463379
+        },
+        "anchor_stations_then_regions": {
+          "candidates_changed_gt_0_01": 8,
+          "largest_target_probability_change": 0.09479182958602905
+        }
+      }
+    },
+    {
+      "task": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00027",
+      "layout": "atlas_v2_7a88c8b3c7df27f29f89",
+      "raw_candidate_count": 632,
+      "scores": {
+        "complete_only": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            0,
+            -1,
+            -1,
+            1
+          ],
+          "selected_ids": [
+            0,
+            0,
+            -2,
+            -99,
+            -99,
+            0
+          ],
+          "candidate_indices": [
+            42,
+            187,
+            250,
+            -1,
+            -1,
+            551
+          ],
+          "scores": [
+            0.9764024615287781,
+            0.9356077313423157,
+            0.9760008454322815,
+            0.3269105553627014,
+            0.24563926458358765,
+            0.8497589826583862
+          ],
+          "strict": false,
+          "acquired_ceiling": true,
+          "wrong_delivery": true,
+          "wrong_branch": false,
+          "wrong_region_count": 1,
+          "wrong_branch_regions": 0,
+          "artifact_regions": 1,
+          "correct_regions": 3,
+          "submitted": 4
+        },
+        "region_boundaries": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            0,
+            -1,
+            -1,
+            1
+          ],
+          "selected_ids": [
+            0,
+            0,
+            -2,
+            -99,
+            -99,
+            0
+          ],
+          "candidate_indices": [
+            42,
+            168,
+            250,
+            -1,
+            -1,
+            551
+          ],
+          "scores": [
+            0.9763811230659485,
+            0.9569351673126221,
+            0.9778371453285217,
+            0.30215156078338623,
+            0.15878675878047943,
+            0.8497589826583862
+          ],
+          "strict": false,
+          "acquired_ceiling": true,
+          "wrong_delivery": true,
+          "wrong_branch": false,
+          "wrong_region_count": 1,
+          "wrong_branch_regions": 0,
+          "artifact_regions": 1,
+          "correct_regions": 3,
+          "submitted": 4
+        },
+        "anchor_stations_then_regions": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            0,
+            -1,
+            -1,
+            1
+          ],
+          "selected_ids": [
+            0,
+            0,
+            -2,
+            -99,
+            -99,
+            0
+          ],
+          "candidate_indices": [
+            42,
+            187,
+            250,
+            -1,
+            -1,
+            551
+          ],
+          "scores": [
+            0.976399838924408,
+            0.9350612759590149,
+            0.9776779413223267,
+            0.30215156078338623,
+            0.15878675878047943,
+            0.8497589826583862
+          ],
+          "strict": false,
+          "acquired_ceiling": true,
+          "wrong_delivery": true,
+          "wrong_branch": false,
+          "wrong_region_count": 1,
+          "wrong_branch_regions": 0,
+          "artifact_regions": 1,
+          "correct_regions": 3,
+          "submitted": 4
+        }
+      },
+      "schedule_points": {
+        "complete_only": [
+          349
+        ],
+        "region_boundaries": [
+          63,
+          134,
+          199,
+          247,
+          301,
+          349
+        ],
+        "anchor_stations_then_regions": [
+          195,
+          197,
+          199,
+          201,
+          203,
+          205,
+          247,
+          301,
+          349
+        ]
+      },
+      "changed": {
+        "complete_only": {
+          "candidates_changed_gt_0_01": 0,
+          "largest_target_probability_change": 0.0
+        },
+        "region_boundaries": {
+          "candidates_changed_gt_0_01": 48,
+          "largest_target_probability_change": 0.1543980836868286
+        },
+        "anchor_stations_then_regions": {
+          "candidates_changed_gt_0_01": 36,
+          "largest_target_probability_change": 0.07301998138427734
+        }
+      }
+    },
+    {
+      "task": "femoral",
+      "case": "v6_reader_fresh_00028",
+      "layout": "atlas_v2_8e501a87df2b802cb6ae",
+      "raw_candidate_count": 237,
+      "scores": {
+        "complete_only": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "selected_ids": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "candidate_indices": [
+            14,
+            42,
+            85,
+            151,
+            159,
+            212
+          ],
+          "scores": [
+            0.9986656904220581,
+            0.9994108080863953,
+            0.9986840486526489,
+            0.9995440244674683,
+            0.9981691241264343,
+            0.9994890093803406
+          ],
+          "strict": true,
+          "acquired_ceiling": true,
+          "wrong_delivery": false,
+          "wrong_branch": false,
+          "wrong_region_count": 0,
+          "wrong_branch_regions": 0,
+          "artifact_regions": 0,
+          "correct_regions": 6,
+          "submitted": 6
+        },
+        "region_boundaries": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "selected_ids": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "candidate_indices": [
+            14,
+            42,
+            85,
+            151,
+            181,
+            212
+          ],
+          "scores": [
+            0.9986470937728882,
+            0.9992837905883789,
+            0.998670756816864,
+            0.9997988343238831,
+            0.9965454936027527,
+            0.999487042427063
+          ],
+          "strict": true,
+          "acquired_ceiling": true,
+          "wrong_delivery": false,
+          "wrong_branch": false,
+          "wrong_region_count": 0,
+          "wrong_branch_regions": 0,
+          "artifact_regions": 0,
+          "correct_regions": 6,
+          "submitted": 6
+        },
+        "anchor_stations_then_regions": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "selected_ids": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "candidate_indices": [
+            14,
+            42,
+            85,
+            151,
+            159,
+            212
+          ],
+          "scores": [
+            0.9986584186553955,
+            0.9993544220924377,
+            0.9986754059791565,
+            0.9997997879981995,
+            0.9982834458351135,
+            0.9994844794273376
+          ],
+          "strict": true,
+          "acquired_ceiling": true,
+          "wrong_delivery": false,
+          "wrong_branch": false,
+          "wrong_region_count": 0,
+          "wrong_branch_regions": 0,
+          "artifact_regions": 0,
+          "correct_regions": 6,
+          "submitted": 6
+        }
+      },
+      "schedule_points": {
+        "complete_only": [
+          110
+        ],
+        "region_boundaries": [
+          15,
+          29,
+          41,
+          55,
+          79,
+          110
+        ],
+        "anchor_stations_then_regions": [
+          55,
+          57,
+          59,
+          61,
+          63,
+          79,
+          110
+        ]
+      },
+      "changed": {
+        "complete_only": {
+          "candidates_changed_gt_0_01": 0,
+          "largest_target_probability_change": 0.0
+        },
+        "region_boundaries": {
+          "candidates_changed_gt_0_01": 15,
+          "largest_target_probability_change": 0.05766502022743225
+        },
+        "anchor_stations_then_regions": {
+          "candidates_changed_gt_0_01": 11,
+          "largest_target_probability_change": 0.05477982759475708
+        }
+      }
+    },
+    {
+      "task": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00029",
+      "layout": "atlas_v2_fa2b8304b4e4a9e68083",
+      "raw_candidate_count": 933,
+      "scores": {
+        "complete_only": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            1,
+            1,
+            0,
+            1
+          ],
+          "selected_ids": [
+            0,
+            0,
+            0,
+            0,
+            1,
+            0
+          ],
+          "candidate_indices": [
+            176,
+            197,
+            387,
+            419,
+            737,
+            920
+          ],
+          "scores": [
+            0.9918438196182251,
+            0.9874327182769775,
+            0.9808221459388733,
+            0.9812982678413391,
+            0.7973446249961853,
+            0.8459630012512207
+          ],
+          "strict": false,
+          "acquired_ceiling": true,
+          "wrong_delivery": true,
+          "wrong_branch": true,
+          "wrong_region_count": 1,
+          "wrong_branch_regions": 1,
+          "artifact_regions": 0,
+          "correct_regions": 5,
+          "submitted": 6
+        },
+        "region_boundaries": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            1,
+            1,
+            0,
+            1
+          ],
+          "selected_ids": [
+            0,
+            0,
+            0,
+            0,
+            1,
+            0
+          ],
+          "candidate_indices": [
+            176,
+            212,
+            387,
+            422,
+            737,
+            920
+          ],
+          "scores": [
+            0.991879403591156,
+            0.9878042340278625,
+            0.9808719158172607,
+            0.9352110028266907,
+            0.8037121295928955,
+            0.8462635278701782
+          ],
+          "strict": false,
+          "acquired_ceiling": true,
+          "wrong_delivery": true,
+          "wrong_branch": true,
+          "wrong_region_count": 1,
+          "wrong_branch_regions": 1,
+          "artifact_regions": 0,
+          "correct_regions": 5,
+          "submitted": 6
+        },
+        "anchor_stations_then_regions": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            1,
+            1,
+            0,
+            1
+          ],
+          "selected_ids": [
+            0,
+            0,
+            0,
+            0,
+            1,
+            0
+          ],
+          "candidate_indices": [
+            176,
+            197,
+            387,
+            419,
+            737,
+            920
+          ],
+          "scores": [
+            0.9918527603149414,
+            0.9874472618103027,
+            0.9809115529060364,
+            0.9127808213233948,
+            0.8037121295928955,
+            0.8462635278701782
+          ],
+          "strict": false,
+          "acquired_ceiling": true,
+          "wrong_delivery": true,
+          "wrong_branch": true,
+          "wrong_region_count": 1,
+          "wrong_branch_regions": 1,
+          "artifact_regions": 0,
+          "correct_regions": 5,
+          "submitted": 6
+        }
+      },
+      "schedule_points": {
+        "complete_only": [
+          319
+        ],
+        "region_boundaries": [
+          56,
+          107,
+          172,
+          222,
+          272,
+          319
+        ],
+        "anchor_stations_then_regions": [
+          166,
+          168,
+          172,
+          174,
+          176,
+          178,
+          222,
+          272,
+          319
+        ]
+      },
+      "changed": {
+        "complete_only": {
+          "candidates_changed_gt_0_01": 0,
+          "largest_target_probability_change": 0.0
+        },
+        "region_boundaries": {
+          "candidates_changed_gt_0_01": 60,
+          "largest_target_probability_change": 0.26248955726623535
+        },
+        "anchor_stations_then_regions": {
+          "candidates_changed_gt_0_01": 53,
+          "largest_target_probability_change": 0.26248955726623535
+        }
+      }
+    },
+    {
+      "task": "femoral",
+      "case": "v6_reader_fresh_00030",
+      "layout": "atlas_v2_e72dc7aa8cc3674a1af2",
+      "raw_candidate_count": 188,
+      "scores": {
+        "complete_only": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "selected_ids": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "candidate_indices": [
+            9,
+            40,
+            71,
+            113,
+            138,
+            151
+          ],
+          "scores": [
+            0.994225025177002,
+            0.9570431709289551,
+            0.9662302136421204,
+            0.9846971035003662,
+            0.9854921698570251,
+            0.9912052154541016
+          ],
+          "strict": true,
+          "acquired_ceiling": true,
+          "wrong_delivery": false,
+          "wrong_branch": false,
+          "wrong_region_count": 0,
+          "wrong_branch_regions": 0,
+          "artifact_regions": 0,
+          "correct_regions": 6,
+          "submitted": 6
+        },
+        "region_boundaries": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "selected_ids": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "candidate_indices": [
+            9,
+            40,
+            71,
+            113,
+            128,
+            151
+          ],
+          "scores": [
+            0.9938898682594299,
+            0.9617754817008972,
+            0.9677098989486694,
+            0.9829135537147522,
+            0.9823341965675354,
+            0.989606499671936
+          ],
+          "strict": true,
+          "acquired_ceiling": true,
+          "wrong_delivery": false,
+          "wrong_branch": false,
+          "wrong_region_count": 0,
+          "wrong_branch_regions": 0,
+          "artifact_regions": 0,
+          "correct_regions": 6,
+          "submitted": 6
+        },
+        "anchor_stations_then_regions": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "selected_ids": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "candidate_indices": [
+            9,
+            40,
+            71,
+            113,
+            138,
+            151
+          ],
+          "scores": [
+            0.9941735863685608,
+            0.9571207761764526,
+            0.9674726724624634,
+            0.9840285181999207,
+            0.9861577749252319,
+            0.989606499671936
+          ],
+          "strict": true,
+          "acquired_ceiling": true,
+          "wrong_delivery": false,
+          "wrong_branch": false,
+          "wrong_region_count": 0,
+          "wrong_branch_regions": 0,
+          "artifact_regions": 0,
+          "correct_regions": 6,
+          "submitted": 6
+        }
+      },
+      "schedule_points": {
+        "complete_only": [
+          110
+        ],
+        "region_boundaries": [
+          15,
+          29,
+          41,
+          55,
+          79,
+          110
+        ],
+        "anchor_stations_then_regions": [
+          55,
+          57,
+          59,
+          61,
+          63,
+          79,
+          110
+        ]
+      },
+      "changed": {
+        "complete_only": {
+          "candidates_changed_gt_0_01": 0,
+          "largest_target_probability_change": 0.0
+        },
+        "region_boundaries": {
+          "candidates_changed_gt_0_01": 27,
+          "largest_target_probability_change": 0.09752696752548218
+        },
+        "anchor_stations_then_regions": {
+          "candidates_changed_gt_0_01": 21,
+          "largest_target_probability_change": 0.09415197372436523
+        }
+      }
+    },
+    {
+      "task": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00031",
+      "layout": "atlas_v2_71c70bda5c40bf2b308f",
+      "raw_candidate_count": 732,
+      "scores": {
+        "complete_only": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            1,
+            1,
+            -1,
+            -1
+          ],
+          "selected_ids": [
+            0,
+            0,
+            0,
+            0,
+            -99,
+            -99
+          ],
+          "candidate_indices": [
+            145,
+            252,
+            297,
+            352,
+            -1,
+            -1
+          ],
+          "scores": [
+            0.9590543508529663,
+            0.9465456604957581,
+            0.9456928372383118,
+            0.866710901260376,
+            0.6122087836265564,
+            0.3624740242958069
+          ],
+          "strict": false,
+          "acquired_ceiling": true,
+          "wrong_delivery": false,
+          "wrong_branch": false,
+          "wrong_region_count": 0,
+          "wrong_branch_regions": 0,
+          "artifact_regions": 0,
+          "correct_regions": 4,
+          "submitted": 4
+        },
+        "region_boundaries": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            1,
+            1,
+            -1,
+            -1
+          ],
+          "selected_ids": [
+            0,
+            0,
+            0,
+            0,
+            -99,
+            -99
+          ],
+          "candidate_indices": [
+            145,
+            252,
+            297,
+            352,
+            -1,
+            -1
+          ],
+          "scores": [
+            0.9595147967338562,
+            0.9467076659202576,
+            0.9467705488204956,
+            0.8717788457870483,
+            0.6137194037437439,
+            0.3624740242958069
+          ],
+          "strict": false,
+          "acquired_ceiling": true,
+          "wrong_delivery": false,
+          "wrong_branch": false,
+          "wrong_region_count": 0,
+          "wrong_branch_regions": 0,
+          "artifact_regions": 0,
+          "correct_regions": 4,
+          "submitted": 4
+        },
+        "anchor_stations_then_regions": {
+          "capture": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "region_outcomes": [
+            1,
+            1,
+            1,
+            1,
+            -1,
+            -1
+          ],
+          "selected_ids": [
+            0,
+            0,
+            0,
+            0,
+            -99,
+            -99
+          ],
+          "candidate_indices": [
+            145,
+            252,
+            297,
+            352,
+            -1,
+            -1
+          ],
+          "scores": [
+            0.9591531157493591,
+            0.9466273784637451,
+            0.9459473490715027,
+            0.8109977841377258,
+            0.6137194037437439,
+            0.3624740242958069
+          ],
+          "strict": false,
+          "acquired_ceiling": true,
+          "wrong_delivery": false,
+          "wrong_branch": false,
+          "wrong_region_count": 0,
+          "wrong_branch_regions": 0,
+          "artifact_regions": 0,
+          "correct_regions": 4,
+          "submitted": 4
+        }
+      },
+      "schedule_points": {
+        "complete_only": [
+          319
+        ],
+        "region_boundaries": [
+          56,
+          107,
+          172,
+          222,
+          272,
+          319
+        ],
+        "anchor_stations_then_regions": [
+          166,
+          168,
+          172,
+          174,
+          176,
+          178,
+          222,
+          272,
+          319
+        ]
+      },
+      "changed": {
+        "complete_only": {
+          "candidates_changed_gt_0_01": 0,
+          "largest_target_probability_change": 0.0
+        },
+        "region_boundaries": {
+          "candidates_changed_gt_0_01": 50,
+          "largest_target_probability_change": 0.14787530899047852
+        },
+        "anchor_stations_then_regions": {
+          "candidates_changed_gt_0_01": 44,
+          "largest_target_probability_change": 0.24644190073013306
+        }
+      }
+    }
+  ]
+}
