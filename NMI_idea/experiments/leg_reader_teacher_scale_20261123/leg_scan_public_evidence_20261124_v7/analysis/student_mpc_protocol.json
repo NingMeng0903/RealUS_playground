@@ -1,0 +1,10 @@
+{
+  "student_protocol_sha256": "1b3995162219d9bdced966ee510afb8ca4c44f5b18dc2157af5cb7e2541a79ab",
+  "scoring_offsets": [
+    null,
+    71000000000000,
+    72000000000000
+  ],
+  "reference": "ordinary MPC from same public prefix",
+  "source_sha256": "3041bf3fb1aeb335d4ee2d4fc8dc511c8cdd7456f6ae1b50f9e59796941d9c03"
+}

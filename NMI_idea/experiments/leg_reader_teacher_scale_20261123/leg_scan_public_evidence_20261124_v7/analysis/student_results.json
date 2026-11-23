@@ -1,0 +1,1335 @@
+{
+  "protocol_sha256": "1b3995162219d9bdced966ee510afb8ca4c44f5b18dc2157af5cb7e2541a79ab",
+  "wave0": {
+    "femoral": {
+      "layouts": 12,
+      "actual_student_strict": 6,
+      "first": {
+        "equal_hold": 3,
+        "mpc": 4,
+        "observe": 3,
+        "reference": 2
+      },
+      "second": {
+        "equal_hold": 4,
+        "observe": 3,
+        "mpc": 2,
+        "reference": 3
+      },
+      "teacher": {
+        "reference": 12
+      },
+      "adaptive_layouts": 12,
+      "strict_positive_negative_neutral": [
+        7,
+        11,
+        162
+      ]
+    },
+    "groin_to_distal_calf": {
+      "layouts": 28,
+      "actual_student_strict": 14,
+      "first": {
+        "observe": 9,
+        "equal_hold": 10,
+        "reference": 5,
+        "mpc": 4
+      },
+      "second": {
+        "mpc": 9,
+        "equal_hold": 7,
+        "reference": 8,
+        "observe": 4
+      },
+      "teacher": {
+        "reference": 28
+      },
+      "adaptive_layouts": 28,
+      "strict_positive_negative_neutral": [
+        28,
+        24,
+        368
+      ]
+    }
+  },
+  "wave1": {
+    "femoral": {
+      "layouts": 12,
+      "actual_student_strict": 5,
+      "first": {
+        "reference": 12
+      },
+      "second": {
+        "reference": 12
+      },
+      "teacher": {
+        "reference": 12
+      },
+      "adaptive_layouts": 12,
+      "strict_positive_negative_neutral": [
+        4,
+        6,
+        170
+      ]
+    },
+    "groin_to_distal_calf": {
+      "layouts": 28,
+      "actual_student_strict": 11,
+      "first": {
+        "reference": 25,
+        "observe": 3
+      },
+      "second": {
+        "reference": 25,
+        "observe": 3
+      },
+      "teacher": {
+        "reference": 28
+      },
+      "adaptive_layouts": 28,
+      "strict_positive_negative_neutral": [
+        15,
+        29,
+        376
+      ]
+    }
+  },
+  "test": {
+    "femoral": {
+      "layouts": 12,
+      "arms": {
+        "reference": {
+          "scores": {
+            "strict": 6,
+            "acquired_ceiling": 8,
+            "wrong_delivery": 1,
+            "wrong_branch": 1,
+            "wrong_region_count": 1,
+            "wrong_branch_regions": 1,
+            "artifact_regions": 0,
+            "correct_regions": 63,
+            "submitted": 64,
+            "cases": 12,
+            "captured_regions": 68,
+            "reader_misses_on_seen": 5,
+            "regions": [
+              {
+                "region": 1,
+                "captured": 12,
+                "delivered_correct": 12,
+                "delivered_other_branch": 0,
+                "artifact_delivered": 0,
+                "seen_and_abstained": 0
+              },
+              {
+                "region": 2,
+                "captured": 12,
+                "delivered_correct": 12,
+                "delivered_other_branch": 0,
+                "artifact_delivered": 0,
+                "seen_and_abstained": 0
+              },
+              {
+                "region": 3,
+                "captured": 12,
+                "delivered_correct": 11,
+                "delivered_other_branch": 1,
+                "artifact_delivered": 0,
+                "seen_and_abstained": 0
+              },
+              {
+                "region": 4,
+                "captured": 12,
+                "delivered_correct": 12,
+                "delivered_other_branch": 0,
+                "artifact_delivered": 0,
+                "seen_and_abstained": 0
+              },
+              {
+                "region": 5,
+                "captured": 12,
+                "delivered_correct": 9,
+                "delivered_other_branch": 0,
+                "artifact_delivered": 0,
+                "seen_and_abstained": 3
+              },
+              {
+                "region": 6,
+                "captured": 8,
+                "delivered_correct": 7,
+                "delivered_other_branch": 0,
+                "artifact_delivered": 0,
+                "seen_and_abstained": 1
+              }
+            ],
+            "joint": 5,
+            "old_pool_correct": 8,
+            "suffix_valid": 7,
+            "mean_time_s": 8.799999999999999,
+            "mean_travel_mm": 241.23447305780837,
+            "mean_correct_mm": 119.464111328125,
+            "mean_longest_mm": 41.77191781997681,
+            "independent_strict": {
+              "proof_0": 5,
+              "proof_1": 6
+            }
+          },
+          "vs_reference": {
+            "strict": {
+              "actual": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_0": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_1": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "independent_tape_expected": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0
+              }
+            },
+            "joint": {
+              "actual": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_0": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_1": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "independent_tape_expected": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0
+              }
+            },
+            "wrong_branch": {
+              "actual": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_0": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_1": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "independent_tape_expected": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0
+              }
+            },
+            "wrong_region_count": {
+              "actual": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_0": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_1": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "independent_tape_expected": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0
+              }
+            },
+            "old_pool_correct": {
+              "actual": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_0": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_1": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "independent_tape_expected": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0
+              }
+            },
+            "suffix_valid": {
+              "actual": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_0": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_1": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "independent_tape_expected": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0
+              }
+            },
+            "time_s": {
+              "actual": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_0": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_1": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "independent_tape_expected": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0
+              }
+            },
+            "travel_mm": {
+              "actual": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_0": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_1": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "independent_tape_expected": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0
+              }
+            }
+          }
+        },
+        "student": {
+          "scores": {
+            "strict": 6,
+            "acquired_ceiling": 8,
+            "wrong_delivery": 1,
+            "wrong_branch": 1,
+            "wrong_region_count": 1,
+            "wrong_branch_regions": 1,
+            "artifact_regions": 0,
+            "correct_regions": 63,
+            "submitted": 64,
+            "cases": 12,
+            "captured_regions": 68,
+            "reader_misses_on_seen": 5,
+            "regions": [
+              {
+                "region": 1,
+                "captured": 12,
+                "delivered_correct": 12,
+                "delivered_other_branch": 0,
+                "artifact_delivered": 0,
+                "seen_and_abstained": 0
+              },
+              {
+                "region": 2,
+                "captured": 12,
+                "delivered_correct": 12,
+                "delivered_other_branch": 0,
+                "artifact_delivered": 0,
+                "seen_and_abstained": 0
+              },
+              {
+                "region": 3,
+                "captured": 12,
+                "delivered_correct": 11,
+                "delivered_other_branch": 1,
+                "artifact_delivered": 0,
+                "seen_and_abstained": 0
+              },
+              {
+                "region": 4,
+                "captured": 12,
+                "delivered_correct": 12,
+                "delivered_other_branch": 0,
+                "artifact_delivered": 0,
+                "seen_and_abstained": 0
+              },
+              {
+                "region": 5,
+                "captured": 12,
+                "delivered_correct": 9,
+                "delivered_other_branch": 0,
+                "artifact_delivered": 0,
+                "seen_and_abstained": 3
+              },
+              {
+                "region": 6,
+                "captured": 8,
+                "delivered_correct": 7,
+                "delivered_other_branch": 0,
+                "artifact_delivered": 0,
+                "seen_and_abstained": 1
+              }
+            ],
+            "joint": 5,
+            "old_pool_correct": 8,
+            "suffix_valid": 7,
+            "mean_time_s": 8.799999999999999,
+            "mean_travel_mm": 241.23447305780837,
+            "mean_correct_mm": 119.464111328125,
+            "mean_longest_mm": 41.77191781997681,
+            "independent_strict": {
+              "proof_0": 5,
+              "proof_1": 6
+            }
+          },
+          "vs_reference": {
+            "strict": {
+              "actual": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_0": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_1": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "independent_tape_expected": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0
+              }
+            },
+            "joint": {
+              "actual": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_0": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_1": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "independent_tape_expected": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0
+              }
+            },
+            "wrong_branch": {
+              "actual": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_0": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_1": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "independent_tape_expected": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0
+              }
+            },
+            "wrong_region_count": {
+              "actual": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_0": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_1": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "independent_tape_expected": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0
+              }
+            },
+            "old_pool_correct": {
+              "actual": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_0": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_1": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "independent_tape_expected": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0
+              }
+            },
+            "suffix_valid": {
+              "actual": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_0": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_1": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "independent_tape_expected": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0
+              }
+            },
+            "time_s": {
+              "actual": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_0": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_1": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "independent_tape_expected": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0
+              }
+            },
+            "travel_mm": {
+              "actual": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_0": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_1": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "independent_tape_expected": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0
+              }
+            }
+          }
+        }
+      },
+      "first_actions": {
+        "reference": 12
+      },
+      "second_actions": {
+        "reference": 12
+      }
+    },
+    "groin_to_distal_calf": {
+      "layouts": 28,
+      "arms": {
+        "reference": {
+          "scores": {
+            "strict": 12,
+            "acquired_ceiling": 28,
+            "wrong_delivery": 11,
+            "wrong_branch": 8,
+            "wrong_region_count": 13,
+            "wrong_branch_regions": 8,
+            "artifact_regions": 5,
+            "correct_regions": 141,
+            "submitted": 154,
+            "cases": 28,
+            "captured_regions": 168,
+            "reader_misses_on_seen": 27,
+            "regions": [
+              {
+                "region": 1,
+                "captured": 28,
+                "delivered_correct": 28,
+                "delivered_other_branch": 0,
+                "artifact_delivered": 0,
+                "seen_and_abstained": 0
+              },
+              {
+                "region": 2,
+                "captured": 28,
+                "delivered_correct": 28,
+                "delivered_other_branch": 0,
+                "artifact_delivered": 0,
+                "seen_and_abstained": 0
+              },
+              {
+                "region": 3,
+                "captured": 28,
+                "delivered_correct": 28,
+                "delivered_other_branch": 0,
+                "artifact_delivered": 0,
+                "seen_and_abstained": 0
+              },
+              {
+                "region": 4,
+                "captured": 28,
+                "delivered_correct": 22,
+                "delivered_other_branch": 2,
+                "artifact_delivered": 1,
+                "seen_and_abstained": 3
+              },
+              {
+                "region": 5,
+                "captured": 28,
+                "delivered_correct": 19,
+                "delivered_other_branch": 1,
+                "artifact_delivered": 1,
+                "seen_and_abstained": 7
+              },
+              {
+                "region": 6,
+                "captured": 28,
+                "delivered_correct": 16,
+                "delivered_other_branch": 5,
+                "artifact_delivered": 3,
+                "seen_and_abstained": 4
+              }
+            ],
+            "joint": 8,
+            "old_pool_correct": 15,
+            "suffix_valid": 13,
+            "mean_time_s": 33.46785714285714,
+            "mean_travel_mm": 945.7517124302627,
+            "mean_correct_mm": 258.76679938180104,
+            "mean_longest_mm": 56.730178969247,
+            "independent_strict": {
+              "proof_0": 13,
+              "proof_1": 14
+            }
+          },
+          "vs_reference": {
+            "strict": {
+              "actual": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_0": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_1": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "independent_tape_expected": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0
+              }
+            },
+            "joint": {
+              "actual": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_0": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_1": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "independent_tape_expected": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0
+              }
+            },
+            "wrong_branch": {
+              "actual": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_0": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_1": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "independent_tape_expected": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0
+              }
+            },
+            "wrong_region_count": {
+              "actual": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_0": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_1": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "independent_tape_expected": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0
+              }
+            },
+            "old_pool_correct": {
+              "actual": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_0": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_1": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "independent_tape_expected": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0
+              }
+            },
+            "suffix_valid": {
+              "actual": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_0": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_1": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "independent_tape_expected": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0
+              }
+            },
+            "time_s": {
+              "actual": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_0": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_1": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "independent_tape_expected": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0
+              }
+            },
+            "travel_mm": {
+              "actual": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_0": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_1": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "independent_tape_expected": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0
+              }
+            }
+          }
+        },
+        "student": {
+          "scores": {
+            "strict": 12,
+            "acquired_ceiling": 28,
+            "wrong_delivery": 11,
+            "wrong_branch": 8,
+            "wrong_region_count": 13,
+            "wrong_branch_regions": 8,
+            "artifact_regions": 5,
+            "correct_regions": 141,
+            "submitted": 154,
+            "cases": 28,
+            "captured_regions": 168,
+            "reader_misses_on_seen": 27,
+            "regions": [
+              {
+                "region": 1,
+                "captured": 28,
+                "delivered_correct": 28,
+                "delivered_other_branch": 0,
+                "artifact_delivered": 0,
+                "seen_and_abstained": 0
+              },
+              {
+                "region": 2,
+                "captured": 28,
+                "delivered_correct": 28,
+                "delivered_other_branch": 0,
+                "artifact_delivered": 0,
+                "seen_and_abstained": 0
+              },
+              {
+                "region": 3,
+                "captured": 28,
+                "delivered_correct": 28,
+                "delivered_other_branch": 0,
+                "artifact_delivered": 0,
+                "seen_and_abstained": 0
+              },
+              {
+                "region": 4,
+                "captured": 28,
+                "delivered_correct": 22,
+                "delivered_other_branch": 2,
+                "artifact_delivered": 1,
+                "seen_and_abstained": 3
+              },
+              {
+                "region": 5,
+                "captured": 28,
+                "delivered_correct": 19,
+                "delivered_other_branch": 1,
+                "artifact_delivered": 1,
+                "seen_and_abstained": 7
+              },
+              {
+                "region": 6,
+                "captured": 28,
+                "delivered_correct": 16,
+                "delivered_other_branch": 5,
+                "artifact_delivered": 3,
+                "seen_and_abstained": 4
+              }
+            ],
+            "joint": 8,
+            "old_pool_correct": 15,
+            "suffix_valid": 13,
+            "mean_time_s": 33.46785714285714,
+            "mean_travel_mm": 945.7517124302627,
+            "mean_correct_mm": 258.76679938180104,
+            "mean_longest_mm": 56.730178969247,
+            "independent_strict": {
+              "proof_0": 13,
+              "proof_1": 14
+            }
+          },
+          "vs_reference": {
+            "strict": {
+              "actual": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_0": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_1": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "independent_tape_expected": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0
+              }
+            },
+            "joint": {
+              "actual": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_0": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_1": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "independent_tape_expected": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0
+              }
+            },
+            "wrong_branch": {
+              "actual": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_0": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_1": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "independent_tape_expected": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0
+              }
+            },
+            "wrong_region_count": {
+              "actual": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_0": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_1": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "independent_tape_expected": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0
+              }
+            },
+            "old_pool_correct": {
+              "actual": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_0": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_1": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "independent_tape_expected": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0
+              }
+            },
+            "suffix_valid": {
+              "actual": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_0": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_1": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "independent_tape_expected": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0
+              }
+            },
+            "time_s": {
+              "actual": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_0": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_1": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "independent_tape_expected": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0
+              }
+            },
+            "travel_mm": {
+              "actual": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_0": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_1": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "independent_tape_expected": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0
+              }
+            }
+          }
+        }
+      },
+      "first_actions": {
+        "reference": 28
+      },
+      "second_actions": {
+        "reference": 28
+      }
+    }
+  },
+  "real_student_training_episodes": 80,
+  "student_weights_sha256": "4d4bc4cfe51e12c1236823cb85fa6516da5963bce92950c601330745f5ce877c"
+}

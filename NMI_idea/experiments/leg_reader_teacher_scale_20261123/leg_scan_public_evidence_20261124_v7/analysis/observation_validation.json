@@ -1,0 +1,67 @@
+{
+  "validation": {
+    "fit_layouts": 42,
+    "validation_layouts": 14,
+    "fit_outcomes": 250,
+    "validation_outcomes": 84,
+    "holdout_model_nll": 0.14046112635401228,
+    "holdout_geometry_nll": 0.15570438818836557,
+    "holdout_constant_nll": 0.08702098472571256,
+    "continuation_advantage_mse": 4.85497540822271,
+    "null_advantage_mse": 4.561732844485757,
+    "fit_outcome_counts": [
+      11.5,
+      0.5,
+      239.5,
+      0.5
+    ],
+    "observed_by_hidden_assignment": [
+      [
+        1,
+        0,
+        5,
+        0
+      ],
+      [
+        0,
+        0,
+        6,
+        0
+      ],
+      [
+        0,
+        0,
+        72,
+        0
+      ]
+    ],
+    "heldout_publicly_ambiguous_layouts": 13,
+    "cross_layout_nearest_pairs": [
+      {
+        "a": "atlas_v2_0250ea4576e148b07aaf",
+        "b": "atlas_v2_79bd872c1df62ed6b328",
+        "public_distance": 0.4316698308041966,
+        "same_label_free_outcome": true,
+        "observed_classes": [
+          2,
+          2
+        ]
+      }
+    ]
+  },
+  "protocol_sha256": "ff752fad54991f319acaa48a2b57c3b0a21c1fad876b31a1276a6718bc8dd68d",
+  "hypotheses": [
+    "a_target",
+    "b_target",
+    "other_or_alias"
+  ],
+  "outcomes": [
+    "evidence_a",
+    "evidence_b",
+    "unresolved",
+    "no_new_observation"
+  ],
+  "use_continuation_value": false,
+  "likelihood_identity_used_in_execution": false,
+  "continuation_value_used_in_execution": false
+}

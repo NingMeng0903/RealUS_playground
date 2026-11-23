@@ -1,0 +1,908 @@
+{
+  "mechanisms": {
+    "legal_normalization_invariant": true,
+    "normalised_valid": [
+      0.0,
+      1.0
+    ],
+    "old_zero_quality_support": [
+      2.0,
+      2.0
+    ],
+    "corrected_zero_quality_support": [
+      0.0,
+      0.0
+    ],
+    "corrected_identity_preserved": true,
+    "planned_goal_toy": {
+      "goal": {
+        "station": 3,
+        "sector": 3,
+        "slots": [
+          0,
+          2,
+          1
+        ],
+        "steps": [
+          {
+            "from_station": 0,
+            "from_sector": 0,
+            "station": 1,
+            "sector": 0,
+            "slot": 0,
+            "ticks": 1,
+            "tick_before": 0,
+            "tick_after": 1,
+            "distance_mm": 1.0,
+            "distance_before_mm": 0.0,
+            "distance_after_mm": 1.0,
+            "state": {
+              "station": 1,
+              "sector": 0
+            },
+            "time": 1
+          },
+          {
+            "from_station": 1,
+            "from_sector": 0,
+            "station": 2,
+            "sector": 2,
+            "slot": 2,
+            "ticks": 1,
+            "tick_before": 1,
+            "tick_after": 2,
+            "distance_mm": 1.0,
+            "distance_before_mm": 1.0,
+            "distance_after_mm": 2.0,
+            "state": {
+              "station": 2,
+              "sector": 2
+            },
+            "time": 2
+          },
+          {
+            "from_station": 2,
+            "from_sector": 2,
+            "station": 3,
+            "sector": 3,
+            "slot": 1,
+            "ticks": 1,
+            "tick_before": 2,
+            "tick_after": 3,
+            "distance_mm": 1.0,
+            "distance_before_mm": 2.0,
+            "distance_after_mm": 3.0,
+            "state": {
+              "station": 3,
+              "sector": 3
+            },
+            "time": 3
+          }
+        ],
+        "score": 1.9969700000000001,
+        "object_ids": [
+          "public-obj-1"
+        ],
+        "relation": "same_object"
+      },
+      "padding_invariant": true
+    }
+  },
+  "object_selection": {
+    "handwritten_winner": 0,
+    "direct_joint_winner": 1,
+    "joint_scores": [
+      0.08971129614663731,
+      0.3358004465103356
+    ],
+    "physical_mass": [
+      0.01,
+      0.9
+    ]
+  },
+  "v6_stopping_audit": {
+    "stops_actual": 6,
+    "deployed_would_reject_actual": 2,
+    "different_winner_actual": 2,
+    "events": [
+      {
+        "case": "v6_closed_test_00018",
+        "route": "femoral",
+        "band": "proof_0",
+        "object_id": [
+          53,
+          0
+        ],
+        "object_readiness": 0.932864248752594,
+        "deployed": {
+          "index": 125,
+          "id": [
+            53,
+            0
+          ],
+          "confidence": 0.7899798154830933,
+          "submitted": false,
+          "label": 0
+        },
+        "same_id": true
+      },
+      {
+        "case": "v6_closed_test_00018",
+        "route": "femoral",
+        "band": "proof_1",
+        "object_id": [
+          53,
+          0
+        ],
+        "object_readiness": 0.9326335787773132,
+        "deployed": {
+          "index": 125,
+          "id": [
+            53,
+            0
+          ],
+          "confidence": 0.7897041440010071,
+          "submitted": false,
+          "label": 0
+        },
+        "same_id": true
+      },
+      {
+        "case": "v6_closed_test_00032",
+        "route": "femoral",
+        "band": "actual",
+        "object_id": [
+          53,
+          1
+        ],
+        "object_readiness": 0.932328999042511,
+        "deployed": {
+          "index": 152,
+          "id": [
+            53,
+            1
+          ],
+          "confidence": 0.8865225911140442,
+          "submitted": false,
+          "label": 0
+        },
+        "same_id": true
+      },
+      {
+        "case": "v6_closed_test_00032",
+        "route": "femoral",
+        "band": "proof_0",
+        "object_id": [
+          53,
+          1
+        ],
+        "object_readiness": 0.9322999119758606,
+        "deployed": {
+          "index": 152,
+          "id": [
+            53,
+            1
+          ],
+          "confidence": 0.886372447013855,
+          "submitted": false,
+          "label": 0
+        },
+        "same_id": true
+      },
+      {
+        "case": "v6_closed_test_00032",
+        "route": "femoral",
+        "band": "proof_1",
+        "object_id": [
+          53,
+          1
+        ],
+        "object_readiness": 0.9323321580886841,
+        "deployed": {
+          "index": 152,
+          "id": [
+            53,
+            1
+          ],
+          "confidence": 0.8866142630577087,
+          "submitted": false,
+          "label": 0
+        },
+        "same_id": true
+      },
+      {
+        "case": "v6_closed_test_00034",
+        "route": "femoral",
+        "band": "proof_1",
+        "object_id": [
+          53,
+          1
+        ],
+        "object_readiness": 0.9371365308761597,
+        "deployed": {
+          "index": 132,
+          "id": [
+            53,
+            1
+          ],
+          "confidence": 0.7787193059921265,
+          "submitted": false,
+          "label": 0
+        },
+        "same_id": true
+      },
+      {
+        "case": "v6_closed_test_00040",
+        "route": "femoral",
+        "band": "proof_1",
+        "object_id": [
+          53,
+          1
+        ],
+        "object_readiness": 0.937927782535553,
+        "deployed": {
+          "index": 164,
+          "id": [
+            53,
+            1
+          ],
+          "confidence": 0.9080908894538879,
+          "submitted": false,
+          "label": 0
+        },
+        "same_id": true
+      },
+      {
+        "case": "v6_closed_test_00042",
+        "route": "femoral",
+        "band": "actual",
+        "object_id": [
+          53,
+          0
+        ],
+        "object_readiness": 0.942110002040863,
+        "deployed": {
+          "index": 92,
+          "id": [
+            53,
+            0
+          ],
+          "confidence": 0.8438591957092285,
+          "submitted": false,
+          "label": 0
+        },
+        "same_id": true
+      },
+      {
+        "case": "v6_closed_test_00044",
+        "route": "femoral",
+        "band": "proof_1",
+        "object_id": [
+          54,
+          0
+        ],
+        "object_readiness": 0.9330465793609619,
+        "deployed": {
+          "index": 153,
+          "id": [
+            54,
+            0
+          ],
+          "confidence": 0.7911690473556519,
+          "submitted": false,
+          "label": 0
+        },
+        "same_id": true
+      },
+      {
+        "case": "v6_closed_test_00048",
+        "route": "femoral",
+        "band": "actual",
+        "object_id": [
+          44,
+          1
+        ],
+        "object_readiness": 0.9979977011680603,
+        "deployed": {
+          "index": 131,
+          "id": [
+            44,
+            1
+          ],
+          "confidence": 0.9940637350082397,
+          "submitted": true,
+          "label": 0
+        },
+        "same_id": true
+      },
+      {
+        "case": "v6_closed_test_00048",
+        "route": "femoral",
+        "band": "proof_0",
+        "object_id": [
+          44,
+          1
+        ],
+        "object_readiness": 0.9979976415634155,
+        "deployed": {
+          "index": 141,
+          "id": [
+            48,
+            1
+          ],
+          "confidence": 0.9940698146820068,
+          "submitted": true,
+          "label": 0
+        },
+        "same_id": false
+      },
+      {
+        "case": "v6_closed_test_00048",
+        "route": "femoral",
+        "band": "proof_1",
+        "object_id": [
+          44,
+          1
+        ],
+        "object_readiness": 0.9979977011680603,
+        "deployed": {
+          "index": 141,
+          "id": [
+            48,
+            1
+          ],
+          "confidence": 0.9940695762634277,
+          "submitted": true,
+          "label": 0
+        },
+        "same_id": false
+      },
+      {
+        "case": "v6_closed_test_00052",
+        "route": "femoral",
+        "band": "proof_0",
+        "object_id": [
+          44,
+          0
+        ],
+        "object_readiness": 0.9977204203605652,
+        "deployed": {
+          "index": 130,
+          "id": [
+            44,
+            0
+          ],
+          "confidence": 0.9923819303512573,
+          "submitted": true,
+          "label": 0
+        },
+        "same_id": true
+      },
+      {
+        "case": "v6_closed_test_00053",
+        "route": "groin_to_distal_calf",
+        "band": "proof_1",
+        "object_id": [
+          171,
+          1
+        ],
+        "object_readiness": 0.9991618990898132,
+        "deployed": {
+          "index": 382,
+          "id": [
+            171,
+            1
+          ],
+          "confidence": 0.9966512322425842,
+          "submitted": true,
+          "label": 0
+        },
+        "same_id": true
+      },
+      {
+        "case": "v6_closed_test_00056",
+        "route": "femoral",
+        "band": "actual",
+        "object_id": [
+          44,
+          1
+        ],
+        "object_readiness": 0.9979735016822815,
+        "deployed": {
+          "index": 129,
+          "id": [
+            47,
+            0
+          ],
+          "confidence": 0.9943739771842957,
+          "submitted": true,
+          "label": 0
+        },
+        "same_id": false
+      },
+      {
+        "case": "v6_closed_test_00056",
+        "route": "femoral",
+        "band": "proof_0",
+        "object_id": [
+          44,
+          1
+        ],
+        "object_readiness": 0.9979733824729919,
+        "deployed": {
+          "index": 129,
+          "id": [
+            47,
+            0
+          ],
+          "confidence": 0.99437415599823,
+          "submitted": true,
+          "label": 0
+        },
+        "same_id": false
+      },
+      {
+        "case": "v6_closed_test_00056",
+        "route": "femoral",
+        "band": "proof_1",
+        "object_id": [
+          44,
+          1
+        ],
+        "object_readiness": 0.9979735016822815,
+        "deployed": {
+          "index": 129,
+          "id": [
+            47,
+            0
+          ],
+          "confidence": 0.9943735003471375,
+          "submitted": true,
+          "label": 0
+        },
+        "same_id": false
+      },
+      {
+        "case": "v6_closed_test_00058",
+        "route": "femoral",
+        "band": "actual",
+        "object_id": [
+          50,
+          1
+        ],
+        "object_readiness": 0.9966012239456177,
+        "deployed": {
+          "index": 111,
+          "id": [
+            50,
+            1
+          ],
+          "confidence": 0.9892135858535767,
+          "submitted": true,
+          "label": 0
+        },
+        "same_id": true
+      },
+      {
+        "case": "v6_closed_test_00058",
+        "route": "femoral",
+        "band": "proof_1",
+        "object_id": [
+          50,
+          1
+        ],
+        "object_readiness": 0.9966061115264893,
+        "deployed": {
+          "index": 111,
+          "id": [
+            50,
+            1
+          ],
+          "confidence": 0.9892401695251465,
+          "submitted": true,
+          "label": 0
+        },
+        "same_id": true
+      },
+      {
+        "case": "v6_closed_test_00060",
+        "route": "femoral",
+        "band": "actual",
+        "object_id": [
+          48,
+          0
+        ],
+        "object_readiness": 0.9970138072967529,
+        "deployed": {
+          "index": 163,
+          "id": [
+            47,
+            0
+          ],
+          "confidence": 0.9877776503562927,
+          "submitted": true,
+          "label": 0
+        },
+        "same_id": false
+      },
+      {
+        "case": "v6_closed_test_00060",
+        "route": "femoral",
+        "band": "proof_0",
+        "object_id": [
+          48,
+          0
+        ],
+        "object_readiness": 0.9970135688781738,
+        "deployed": {
+          "index": 163,
+          "id": [
+            47,
+            0
+          ],
+          "confidence": 0.9877776503562927,
+          "submitted": true,
+          "label": 0
+        },
+        "same_id": false
+      },
+      {
+        "case": "v6_closed_test_00101",
+        "route": "groin_to_distal_calf",
+        "band": "proof_1",
+        "object_id": [
+          170,
+          0
+        ],
+        "object_readiness": 0.9990428686141968,
+        "deployed": {
+          "index": 406,
+          "id": [
+            170,
+            0
+          ],
+          "confidence": 0.9657931923866272,
+          "submitted": true,
+          "label": 0
+        },
+        "same_id": true
+      },
+      {
+        "case": "v6_closed_test_00161",
+        "route": "groin_to_distal_calf",
+        "band": "proof_0",
+        "object_id": [
+          166,
+          0
+        ],
+        "object_readiness": 0.970490574836731,
+        "deployed": {
+          "index": 360,
+          "id": [
+            121,
+            0
+          ],
+          "confidence": 0.9868901968002319,
+          "submitted": true,
+          "label": 0
+        },
+        "same_id": false
+      }
+    ]
+  },
+  "bounded_teacher": {
+    "two_identical_rescues": {
+      "reference": "reference",
+      "selected": "reference",
+      "estimates": {
+        "candidate": {
+          "action": "candidate",
+          "n": 2,
+          "soft": {
+            "n": 2,
+            "mean": 1.0,
+            "variance": 0.0,
+            "std": 0.0,
+            "positive": 2,
+            "negative": 0,
+            "neutral": 0,
+            "posterior_mean": 0.5663845472525373,
+            "posterior_variance": 0.12093135960495896,
+            "interval": [
+              -0.3266556964316464,
+              0.9856421559211163
+            ],
+            "ci95": [
+              -0.3266556964316464,
+              0.9856421559211163
+            ],
+            "interval_type": "Jeffreys-Dirichlet sign posterior; not a frequentist guarantee",
+            "bounded_range": [
+              -1.0,
+              1.0
+            ],
+            "alpha": [
+              0.5,
+              0.5,
+              2.5
+            ]
+          },
+          "strict": {
+            "n": 2,
+            "mean": 1.0,
+            "variance": 0.0,
+            "std": 0.0,
+            "positive": 2,
+            "negative": 0,
+            "neutral": 0,
+            "posterior_mean": 0.5693120120941226,
+            "posterior_variance": 0.12162289745111232,
+            "interval": [
+              -0.2905800224619925,
+              0.9857708192055561
+            ],
+            "ci95": [
+              -0.2905800224619925,
+              0.9857708192055561
+            ],
+            "interval_type": "Jeffreys-Dirichlet sign posterior; not a frequentist guarantee",
+            "bounded_range": [
+              -1.0,
+              1.0
+            ],
+            "alpha": [
+              0.5,
+              0.5,
+              2.5
+            ]
+          },
+          "wrong": {
+            "n": 2,
+            "mean": 0.0,
+            "variance": 0.0,
+            "std": 0.0,
+            "positive": 0,
+            "negative": 0,
+            "neutral": 2,
+            "posterior_mean": 0.002332665776289862,
+            "posterior_variance": 0.06444415914894541,
+            "interval": [
+              -0.5542580489571247,
+              0.5545731645170164
+            ],
+            "ci95": [
+              -0.5542580489571247,
+              0.5545731645170164
+            ],
+            "interval_type": "Jeffreys-Dirichlet sign posterior; not a frequentist guarantee",
+            "bounded_range": [
+              -1.0,
+              1.0
+            ],
+            "alpha": [
+              0.5,
+              2.5,
+              0.5
+            ]
+          },
+          "wrong_branch": {
+            "n": 2,
+            "mean": 0.0,
+            "variance": 0.0,
+            "std": 0.0,
+            "positive": 0,
+            "negative": 0,
+            "neutral": 2,
+            "posterior_mean": 0.002332665776289862,
+            "posterior_variance": 0.06444415914894541,
+            "interval": [
+              -0.5542580489571247,
+              0.5545731645170164
+            ],
+            "ci95": [
+              -0.5542580489571247,
+              0.5545731645170164
+            ],
+            "interval_type": "Jeffreys-Dirichlet sign posterior; not a frequentist guarantee",
+            "bounded_range": [
+              -1.0,
+              1.0
+            ],
+            "alpha": [
+              0.5,
+              2.5,
+              0.5
+            ]
+          },
+          "score": -0.6565098958497548,
+          "gate": {
+            "n": 2,
+            "strict_lower": -0.2905800224619925,
+            "wrong_upper": 0.5545731645170164,
+            "wrong_budget": 0.1,
+            "min_samples": 3,
+            "enough_samples": false,
+            "strict_lower_gt_zero": false,
+            "wrong_upper_leq_budget": false,
+            "uncertain": true,
+            "eligible": false,
+            "reasons": [
+              "insufficient_paired_tapes",
+              "strict_lower_not_positive",
+              "wrong_upper_exceeds_budget"
+            ]
+          }
+        },
+        "reference": {
+          "action": "reference",
+          "n": 2,
+          "soft": {
+            "n": 2,
+            "mean": 0.0,
+            "variance": 0.0,
+            "std": 0.0,
+            "positive": 0,
+            "negative": 0,
+            "neutral": 2,
+            "posterior_mean": 0.009405384216661818,
+            "posterior_variance": 0.06651070138147999,
+            "interval": [
+              -0.5421380026829488,
+              0.5809348316134004
+            ],
+            "ci95": [
+              -0.5421380026829488,
+              0.5809348316134004
+            ],
+            "interval_type": "Jeffreys-Dirichlet sign posterior; not a frequentist guarantee",
+            "bounded_range": [
+              -1.0,
+              1.0
+            ],
+            "alpha": [
+              0.5,
+              2.5,
+              0.5
+            ]
+          },
+          "strict": {
+            "n": 2,
+            "mean": 0.0,
+            "variance": 0.0,
+            "std": 0.0,
+            "positive": 0,
+            "negative": 0,
+            "neutral": 2,
+            "posterior_mean": -0.004337021343936962,
+            "posterior_variance": 0.061302160259369964,
+            "interval": [
+              -0.5457660873243885,
+              0.53537598972286
+            ],
+            "ci95": [
+              -0.5457660873243885,
+              0.53537598972286
+            ],
+            "interval_type": "Jeffreys-Dirichlet sign posterior; not a frequentist guarantee",
+            "bounded_range": [
+              -1.0,
+              1.0
+            ],
+            "alpha": [
+              0.5,
+              2.5,
+              0.5
+            ]
+          },
+          "wrong": {
+            "n": 2,
+            "mean": 0.0,
+            "variance": 0.0,
+            "std": 0.0,
+            "positive": 0,
+            "negative": 0,
+            "neutral": 2,
+            "posterior_mean": -0.0037728728064806223,
+            "posterior_variance": 0.06563942746204135,
+            "interval": [
+              -0.5668845332983209,
+              0.5352999453498316
+            ],
+            "ci95": [
+              -0.5668845332983209,
+              0.5352999453498316
+            ],
+            "interval_type": "Jeffreys-Dirichlet sign posterior; not a frequentist guarantee",
+            "bounded_range": [
+              -1.0,
+              1.0
+            ],
+            "alpha": [
+              0.5,
+              2.5,
+              0.5
+            ]
+          },
+          "wrong_branch": {
+            "n": 2,
+            "mean": 0.0,
+            "variance": 0.0,
+            "std": 0.0,
+            "positive": 0,
+            "negative": 0,
+            "neutral": 2,
+            "posterior_mean": -0.0037728728064806223,
+            "posterior_variance": 0.06563942746204135,
+            "interval": [
+              -0.5668845332983209,
+              0.5352999453498316
+            ],
+            "ci95": [
+              -0.5668845332983209,
+              0.5352999453498316
+            ],
+            "interval_type": "Jeffreys-Dirichlet sign posterior; not a frequentist guarantee",
+            "bounded_range": [
+              -1.0,
+              1.0
+            ],
+            "alpha": [
+              0.5,
+              2.5,
+              0.5
+            ]
+          },
+          "score": 0.0,
+          "gate": {
+            "n": 2,
+            "strict_lower": 0.0,
+            "wrong_upper": 0.0,
+            "wrong_budget": 0.1,
+            "min_samples": 3,
+            "enough_samples": true,
+            "strict_lower_gt_zero": false,
+            "wrong_upper_leq_budget": true,
+            "uncertain": false,
+            "eligible": true,
+            "reasons": [
+              "frozen_reference"
+            ]
+          }
+        }
+      },
+      "all_candidates_passed_gate": false,
+      "gate": {
+        "strict_condition": "posterior lower bound > 0",
+        "wrong_condition": "posterior upper bound <= wrong_budget",
+        "wrong_budget": 0.1,
+        "minimum_paired_tapes": 3,
+        "uncertain_falls_back_to_reference": true,
+        "interval_interpretation": "bounded Jeffreys-Dirichlet posterior, not a frequentist guarantee"
+      },
+      "paired_against_reference": true
+    },
+    "selected": "reference"
+  },
+  "public_only": [
+    {
+      "route": "femoral",
+      "hidden_candidate_labels_changed": 135,
+      "public_features_and_goal_identical": true
+    },
+    {
+      "route": "groin_to_distal_calf",
+      "hidden_candidate_labels_changed": 319,
+      "public_features_and_goal_identical": true
+    },
+    {
+      "route": "femoral",
+      "hidden_candidate_labels_changed": 102,
+      "public_features_and_goal_identical": true
+    },
+    {
+      "route": "groin_to_distal_calf",
+      "hidden_candidate_labels_changed": 186,
+      "public_features_and_goal_identical": true
+    }
+  ]
+}

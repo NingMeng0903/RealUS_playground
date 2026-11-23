@@ -1,0 +1,21 @@
+{
+  "base_commit": "60a77233b60686cfeed377757503c1fa95f8ff6f",
+  "atlas_sha256": "aad4100d6e594de6279a2297fae3c5cb6e84a68077bfde56435113d5b0c352d5",
+  "v6_readout": "4b17a308a9aa6c74863d7a6596263c347580013505402ef70d684a599687597d",
+  "cohort": [
+    16,
+    40
+  ],
+  "seed": 2107240010000000,
+  "tapes": [
+    61000000000000,
+    62000000000000
+  ],
+  "only_development": true,
+  "source_sha256": {
+    "study_v7.py": "e339162bd090714189be9e568dbcc59a361f569c25c0fe1e8f4e428491da97a9",
+    "goal_v7.py": "1b140c6de18383a18a0a7fc52de752449e884fb3c961720ef237624801ca6239",
+    "reader_v7.py": "ab3af76221d6a8700428d32f666eff49cf050fca9c7eec0db08998c743958a57",
+    "observation_v7.py": "6e3a092d9de4fe8a65a2038ca26b8614ddd7aa5f2e50628a5e7725221429e61e"
+  }
+}
