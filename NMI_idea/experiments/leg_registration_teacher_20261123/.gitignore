@@ -1,0 +1,17 @@
+.venv/
+__pycache__/
+*.pyc
+*.nbi
+*.nbc
+*.joblib
+*.pt
+assets/*.npz
+outputs/leg_scan_cli_handoff/leg_scan_target_routes_20261123_v2/
+work/leg_follow_condition/capture_validation_balanced/
+work/leg_registration_teacher_20261123/*_raw.jsonl
+work/leg_registration_teacher_20261123/*_summary.json
+work/leg_registration_teacher_20261123/*_audit.json
+work/leg_registration_teacher_20261123/teacher_*.json
+work/leg_registration_teacher_20261123/reader_*.json
+!work/leg_registration_teacher_20261123/reader_config.json
+sequence_cache/

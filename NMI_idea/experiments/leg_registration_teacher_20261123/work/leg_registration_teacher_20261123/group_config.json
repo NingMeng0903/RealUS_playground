@@ -1,0 +1,89 @@
+{
+  "alpha": 0.2,
+  "develop": [
+    [
+      0.0,
+      {
+        "both": 86,
+        "chain": 56,
+        "bands": 270,
+        "wrong": 67,
+        "artery": 42,
+        "band_wrong": 100,
+        "images": 214,
+        "prefix_mm": 1060,
+        "n": 143
+      }
+    ],
+    [
+      0.2,
+      {
+        "both": 86,
+        "chain": 58,
+        "bands": 268,
+        "wrong": 58,
+        "artery": 39,
+        "band_wrong": 95,
+        "images": 218,
+        "prefix_mm": 1065,
+        "n": 143
+      }
+    ],
+    [
+      0.4,
+      {
+        "both": 84,
+        "chain": 56,
+        "bands": 267,
+        "wrong": 58,
+        "artery": 39,
+        "band_wrong": 88,
+        "images": 213,
+        "prefix_mm": 1025,
+        "n": 143
+      }
+    ],
+    [
+      0.6,
+      {
+        "both": 85,
+        "chain": 53,
+        "bands": 260,
+        "wrong": 49,
+        "artery": 35,
+        "band_wrong": 80,
+        "images": 209,
+        "prefix_mm": 985,
+        "n": 143
+      }
+    ],
+    [
+      0.8,
+      {
+        "both": 80,
+        "chain": 50,
+        "bands": 247,
+        "wrong": 46,
+        "artery": 32,
+        "band_wrong": 76,
+        "images": 197,
+        "prefix_mm": 935,
+        "n": 143
+      }
+    ],
+    [
+      1.0,
+      {
+        "both": 71,
+        "chain": 43,
+        "bands": 219,
+        "wrong": 46,
+        "artery": 33,
+        "band_wrong": 78,
+        "images": 179,
+        "prefix_mm": 810,
+        "n": 143
+      }
+    ]
+  ]
+}

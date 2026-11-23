@@ -1,0 +1,1098 @@
+{
+  "reader_archive": {
+    "summary": {
+      "pair": {
+        "both": 77,
+        "chain": 41,
+        "bands": 222,
+        "wrong": 64,
+        "artery": 42,
+        "band_wrong": 104,
+        "images": 189,
+        "prefix_mm": 755,
+        "n": 128,
+        "mean_prefix_mm": 5.8984375
+      },
+      "registered": {
+        "both": 76,
+        "chain": 43,
+        "bands": 224,
+        "wrong": 64,
+        "artery": 42,
+        "band_wrong": 104,
+        "images": 186,
+        "prefix_mm": 785,
+        "n": 128,
+        "mean_prefix_mm": 6.1328125
+      },
+      "atlas": {
+        "both": 78,
+        "chain": 36,
+        "bands": 210,
+        "wrong": 63,
+        "artery": 38,
+        "band_wrong": 104,
+        "images": 185,
+        "prefix_mm": 665,
+        "n": 128,
+        "mean_prefix_mm": 5.1953125
+      },
+      "weak_update": {
+        "both": 74,
+        "chain": 39,
+        "bands": 218,
+        "wrong": 69,
+        "artery": 43,
+        "band_wrong": 103,
+        "images": 179,
+        "prefix_mm": 760,
+        "n": 128,
+        "mean_prefix_mm": 5.9375
+      },
+      "updated": {
+        "both": 74,
+        "chain": 40,
+        "bands": 221,
+        "wrong": 68,
+        "artery": 45,
+        "band_wrong": 107,
+        "images": 181,
+        "prefix_mm": 770,
+        "n": 128,
+        "mean_prefix_mm": 6.015625
+      },
+      "broader_atlas": {
+        "both": 58,
+        "chain": 29,
+        "bands": 168,
+        "wrong": 70,
+        "artery": 41,
+        "band_wrong": 94,
+        "images": 161,
+        "prefix_mm": 535,
+        "n": 128,
+        "mean_prefix_mm": 4.1796875
+      },
+      "broader_update": {
+        "both": 73,
+        "chain": 37,
+        "bands": 211,
+        "wrong": 66,
+        "artery": 46,
+        "band_wrong": 105,
+        "images": 178,
+        "prefix_mm": 720,
+        "n": 128,
+        "mean_prefix_mm": 5.625
+      }
+    }
+  },
+  "reader_fresh": {
+    "summary": {
+      "pair": {
+        "both": 64,
+        "chain": 38,
+        "bands": 181,
+        "wrong": 43,
+        "artery": 31,
+        "band_wrong": 72,
+        "images": 145,
+        "prefix_mm": 630,
+        "n": 96,
+        "mean_prefix_mm": 6.5625
+      },
+      "registered": {
+        "both": 58,
+        "chain": 38,
+        "bands": 176,
+        "wrong": 52,
+        "artery": 30,
+        "band_wrong": 73,
+        "images": 138,
+        "prefix_mm": 645,
+        "n": 96,
+        "mean_prefix_mm": 6.71875
+      },
+      "atlas": {
+        "both": 54,
+        "chain": 32,
+        "bands": 165,
+        "wrong": 55,
+        "artery": 30,
+        "band_wrong": 71,
+        "images": 134,
+        "prefix_mm": 585,
+        "n": 96,
+        "mean_prefix_mm": 6.09375
+      },
+      "weak_update": {
+        "both": 57,
+        "chain": 37,
+        "bands": 175,
+        "wrong": 52,
+        "artery": 32,
+        "band_wrong": 67,
+        "images": 136,
+        "prefix_mm": 625,
+        "n": 96,
+        "mean_prefix_mm": 6.510416666666667
+      },
+      "updated": {
+        "both": 54,
+        "chain": 39,
+        "bands": 174,
+        "wrong": 55,
+        "artery": 32,
+        "band_wrong": 70,
+        "images": 134,
+        "prefix_mm": 640,
+        "n": 96,
+        "mean_prefix_mm": 6.666666666666667
+      },
+      "broader_atlas": {
+        "both": 45,
+        "chain": 26,
+        "bands": 140,
+        "wrong": 50,
+        "artery": 26,
+        "band_wrong": 69,
+        "images": 121,
+        "prefix_mm": 520,
+        "n": 96,
+        "mean_prefix_mm": 5.416666666666667
+      },
+      "broader_update": {
+        "both": 56,
+        "chain": 37,
+        "bands": 164,
+        "wrong": 52,
+        "artery": 31,
+        "band_wrong": 69,
+        "images": 135,
+        "prefix_mm": 605,
+        "n": 96,
+        "mean_prefix_mm": 6.302083333333333
+      }
+    }
+  },
+  "rank_archive": {
+    "totals": {
+      "pair": {
+        "both": 77,
+        "chain": 41,
+        "bands": 222,
+        "wrong": 64,
+        "artery": 42,
+        "band_wrong": 104,
+        "images": 189,
+        "prefix_mm": 755,
+        "n": 128
+      },
+      "registration": {
+        "both": 76,
+        "chain": 43,
+        "bands": 224,
+        "wrong": 64,
+        "artery": 42,
+        "band_wrong": 104,
+        "images": 186,
+        "prefix_mm": 785,
+        "n": 128
+      },
+      "trained_reader": {
+        "both": 77,
+        "chain": 42,
+        "bands": 224,
+        "wrong": 63,
+        "artery": 36,
+        "band_wrong": 102,
+        "images": 189,
+        "prefix_mm": 770,
+        "n": 128
+      }
+    }
+  },
+  "rank_fresh": {
+    "totals": {
+      "pair": {
+        "both": 64,
+        "chain": 38,
+        "bands": 181,
+        "wrong": 43,
+        "artery": 31,
+        "band_wrong": 72,
+        "images": 145,
+        "prefix_mm": 630,
+        "n": 96
+      },
+      "registration": {
+        "both": 58,
+        "chain": 38,
+        "bands": 176,
+        "wrong": 52,
+        "artery": 30,
+        "band_wrong": 73,
+        "images": 138,
+        "prefix_mm": 645,
+        "n": 96
+      },
+      "trained_reader": {
+        "both": 59,
+        "chain": 38,
+        "bands": 179,
+        "wrong": 48,
+        "artery": 28,
+        "band_wrong": 70,
+        "images": 141,
+        "prefix_mm": 635,
+        "n": 96
+      }
+    }
+  },
+  "album_archive": {
+    "totals": {
+      "0.0": {
+        "both": 77,
+        "correct": 189,
+        "wrong": 64,
+        "artery": 42
+      },
+      "0.65": {
+        "both": 75,
+        "correct": 184,
+        "wrong": 69,
+        "artery": 43
+      }
+    }
+  },
+  "album_fresh": {
+    "totals": {
+      "0.0": {
+        "both": 64,
+        "correct": 145,
+        "wrong": 43,
+        "artery": 31
+      },
+      "0.65": {
+        "both": 60,
+        "correct": 141,
+        "wrong": 47,
+        "artery": 33
+      }
+    }
+  },
+  "hypothesis_archive": {
+    "totals": {
+      "pair": {
+        "both": 77,
+        "chain": 41,
+        "bands": 222,
+        "wrong": 64,
+        "artery": 42,
+        "band_wrong": 104,
+        "images": 189,
+        "prefix_mm": 755,
+        "n": 128
+      },
+      "hypotheses": {
+        "both": 75,
+        "chain": 38,
+        "bands": 215,
+        "wrong": 68,
+        "artery": 40,
+        "band_wrong": 106,
+        "images": 185,
+        "prefix_mm": 720,
+        "n": 128
+      },
+      "only_low": {
+        "both": 48,
+        "chain": 28,
+        "bands": 153,
+        "wrong": 59,
+        "artery": 28,
+        "band_wrong": 67,
+        "images": 132,
+        "prefix_mm": 535,
+        "n": 128
+      },
+      "only_medium": {
+        "both": 47,
+        "chain": 32,
+        "bands": 163,
+        "wrong": 65,
+        "artery": 31,
+        "band_wrong": 75,
+        "images": 134,
+        "prefix_mm": 585,
+        "n": 128
+      },
+      "only_high": {
+        "both": 49,
+        "chain": 32,
+        "bands": 160,
+        "wrong": 61,
+        "artery": 31,
+        "band_wrong": 83,
+        "images": 138,
+        "prefix_mm": 590,
+        "n": 128
+      }
+    }
+  },
+  "hypothesis_fresh": {
+    "totals": {
+      "pair": {
+        "both": 64,
+        "chain": 38,
+        "bands": 181,
+        "wrong": 43,
+        "artery": 31,
+        "band_wrong": 72,
+        "images": 145,
+        "prefix_mm": 630,
+        "n": 96
+      },
+      "hypotheses": {
+        "both": 58,
+        "chain": 37,
+        "bands": 179,
+        "wrong": 50,
+        "artery": 36,
+        "band_wrong": 67,
+        "images": 137,
+        "prefix_mm": 605,
+        "n": 96
+      },
+      "only_low": {
+        "both": 34,
+        "chain": 25,
+        "bands": 125,
+        "wrong": 48,
+        "artery": 22,
+        "band_wrong": 52,
+        "images": 103,
+        "prefix_mm": 455,
+        "n": 96
+      },
+      "only_medium": {
+        "both": 35,
+        "chain": 24,
+        "bands": 125,
+        "wrong": 52,
+        "artery": 23,
+        "band_wrong": 62,
+        "images": 98,
+        "prefix_mm": 450,
+        "n": 96
+      },
+      "only_high": {
+        "both": 33,
+        "chain": 22,
+        "bands": 120,
+        "wrong": 55,
+        "artery": 22,
+        "band_wrong": 73,
+        "images": 95,
+        "prefix_mm": 410,
+        "n": 96
+      }
+    }
+  },
+  "group_archive": {
+    "summary": {
+      "0.0": {
+        "both": 77,
+        "chain": 41,
+        "bands": 222,
+        "wrong": 64,
+        "artery": 42,
+        "band_wrong": 104,
+        "images": 189,
+        "prefix_mm": 755,
+        "n": 128
+      },
+      "0.2": {
+        "both": 77,
+        "chain": 41,
+        "bands": 222,
+        "wrong": 65,
+        "artery": 45,
+        "band_wrong": 97,
+        "images": 187,
+        "prefix_mm": 755,
+        "n": 128
+      },
+      "1.0": {
+        "both": 43,
+        "chain": 34,
+        "bands": 183,
+        "wrong": 52,
+        "artery": 36,
+        "band_wrong": 83,
+        "images": 138,
+        "prefix_mm": 655,
+        "n": 128
+      }
+    }
+  },
+  "group_fresh": {
+    "summary": {
+      "0.0": {
+        "both": 64,
+        "chain": 38,
+        "bands": 181,
+        "wrong": 43,
+        "artery": 31,
+        "band_wrong": 72,
+        "images": 145,
+        "prefix_mm": 630,
+        "n": 96
+      },
+      "0.2": {
+        "both": 60,
+        "chain": 38,
+        "bands": 178,
+        "wrong": 41,
+        "artery": 29,
+        "band_wrong": 68,
+        "images": 142,
+        "prefix_mm": 635,
+        "n": 96
+      },
+      "1.0": {
+        "both": 39,
+        "chain": 27,
+        "bands": 148,
+        "wrong": 36,
+        "artery": 21,
+        "band_wrong": 49,
+        "images": 107,
+        "prefix_mm": 515,
+        "n": 96
+      }
+    }
+  },
+  "cross_replay": {
+    "totals": {
+      "pair": {
+        "fixed": {
+          "both": 58,
+          "chain": 43,
+          "locked": 68,
+          "wrong": 44,
+          "artery": 31
+        },
+        "public": {
+          "both": 59,
+          "chain": 39,
+          "locked": 69,
+          "wrong": 45,
+          "artery": 30
+        },
+        "verified_teacher": {
+          "both": 60,
+          "chain": 48,
+          "locked": 68,
+          "wrong": 45,
+          "artery": 31
+        }
+      },
+      "registered": {
+        "fixed": {
+          "both": 60,
+          "chain": 43,
+          "locked": 69,
+          "wrong": 40,
+          "artery": 29
+        },
+        "public": {
+          "both": 59,
+          "chain": 41,
+          "locked": 68,
+          "wrong": 47,
+          "artery": 32
+        },
+        "verified_teacher": {
+          "both": 64,
+          "chain": 48,
+          "locked": 69,
+          "wrong": 42,
+          "artery": 29
+        }
+      },
+      "evidence": {
+        "fixed": {
+          "both": 59,
+          "chain": 40,
+          "locked": 70,
+          "wrong": 44,
+          "artery": 34
+        },
+        "public": {
+          "both": 59,
+          "chain": 40,
+          "locked": 70,
+          "wrong": 47,
+          "artery": 34
+        },
+        "verified_teacher": {
+          "both": 63,
+          "chain": 46,
+          "locked": 69,
+          "wrong": 44,
+          "artery": 30
+        }
+      },
+      "joint": {
+        "fixed": {
+          "both": 61,
+          "chain": 43,
+          "locked": 68,
+          "wrong": 40,
+          "artery": 27
+        },
+        "public": {
+          "both": 61,
+          "chain": 39,
+          "locked": 69,
+          "wrong": 47,
+          "artery": 31
+        },
+        "verified_teacher": {
+          "both": 63,
+          "chain": 48,
+          "locked": 68,
+          "wrong": 41,
+          "artery": 29
+        }
+      }
+    }
+  },
+  "teacher_pair_summary": {
+    "split": "test",
+    "n": 96,
+    "seed": 650388679,
+    "reader": "pair",
+    "draws": 2,
+    "compact": false,
+    "results": {
+      "fixed": {
+        "both": 48,
+        "chain": 29,
+        "locked": 66,
+        "capture_both": 96,
+        "artery": 34,
+        "wrong": 59,
+        "prefix_mm": 550
+      },
+      "public": {
+        "both": 47,
+        "chain": 30,
+        "locked": 64,
+        "capture_both": 96,
+        "artery": 38,
+        "wrong": 62,
+        "prefix_mm": 585
+      },
+      "capture_teacher": {
+        "both": 47,
+        "chain": 30,
+        "locked": 66,
+        "capture_both": 96,
+        "artery": 36,
+        "wrong": 60,
+        "prefix_mm": 555
+      },
+      "evidence_teacher": {
+        "both": 45,
+        "chain": 35,
+        "locked": 64,
+        "capture_both": 96,
+        "artery": 39,
+        "wrong": 63,
+        "prefix_mm": 625
+      }
+    }
+  },
+  "teacher_verified_summary": {
+    "split": "test",
+    "n": 96,
+    "seed": 604558341,
+    "reader": "pair",
+    "draws": 6,
+    "compact": false,
+    "results": {
+      "fixed": {
+        "both": 58,
+        "chain": 43,
+        "locked": 68,
+        "capture_both": 96,
+        "artery": 31,
+        "wrong": 44,
+        "prefix_mm": 775
+      },
+      "public": {
+        "both": 59,
+        "chain": 39,
+        "locked": 69,
+        "capture_both": 96,
+        "artery": 30,
+        "wrong": 45,
+        "prefix_mm": 755
+      },
+      "verified_teacher": {
+        "both": 60,
+        "chain": 48,
+        "locked": 68,
+        "capture_both": 96,
+        "artery": 31,
+        "wrong": 45,
+        "prefix_mm": 860
+      }
+    }
+  },
+  "teacher_registered_summary": {
+    "split": "test",
+    "n": 96,
+    "seed": 177545318,
+    "reader": "registered",
+    "draws": 6,
+    "compact": false,
+    "results": {
+      "fixed": {
+        "both": 57,
+        "chain": 40,
+        "locked": 71,
+        "capture_both": 96,
+        "artery": 22,
+        "wrong": 43,
+        "prefix_mm": 755
+      },
+      "public": {
+        "both": 60,
+        "chain": 42,
+        "locked": 75,
+        "capture_both": 96,
+        "artery": 22,
+        "wrong": 44,
+        "prefix_mm": 725
+      },
+      "verified_teacher": {
+        "both": 56,
+        "chain": 40,
+        "locked": 74,
+        "capture_both": 96,
+        "artery": 28,
+        "wrong": 46,
+        "prefix_mm": 735
+      }
+    }
+  },
+  "teacher_verified_audit": {
+    "n": 96,
+    "layouts": 90,
+    "paired": {
+      "public": {
+        "both": {
+          "net": 1,
+          "rescued": 3,
+          "lost": 2,
+          "delta": 0.010416666666666666,
+          "interval95": [
+            -0.03260869565217391,
+            0.05434782608695652
+          ]
+        },
+        "chain": {
+          "net": -4,
+          "rescued": 4,
+          "lost": 8,
+          "delta": -0.041666666666666664,
+          "interval95": [
+            -0.1134020618556701,
+            0.02197802197802198
+          ]
+        },
+        "locked": {
+          "net": 1,
+          "rescued": 3,
+          "lost": 2,
+          "delta": 0.010416666666666666,
+          "interval95": [
+            -0.03260869565217391,
+            0.0594059405940594
+          ]
+        },
+        "wrong": {
+          "net": 1,
+          "rescued": 8,
+          "lost": 7,
+          "delta": 0.010416666666666666,
+          "interval95": [
+            -0.07,
+            0.08888888888888889
+          ]
+        },
+        "artery": {
+          "net": -1,
+          "rescued": 5,
+          "lost": 7,
+          "delta": -0.010416666666666666,
+          "interval95": [
+            -0.08888888888888889,
+            0.07142857142857142
+          ]
+        },
+        "prefix_mm": {
+          "net": -20,
+          "rescued": 10,
+          "lost": 10,
+          "delta": -0.20833333333333334,
+          "interval95": [
+            -1.087126358695652,
+            0.6122448979591837
+          ]
+        }
+      },
+      "verified_teacher": {
+        "both": {
+          "net": 2,
+          "rescued": 5,
+          "lost": 3,
+          "delta": 0.020833333333333332,
+          "interval95": [
+            -0.03333333333333333,
+            0.08163265306122448
+          ]
+        },
+        "chain": {
+          "net": 5,
+          "rescued": 9,
+          "lost": 4,
+          "delta": 0.052083333333333336,
+          "interval95": [
+            -0.02041342310119924,
+            0.1276595744680851
+          ]
+        },
+        "locked": {
+          "net": 0,
+          "rescued": 3,
+          "lost": 3,
+          "delta": 0.0,
+          "interval95": [
+            -0.05154639175257732,
+            0.05263157894736842
+          ]
+        },
+        "wrong": {
+          "net": 1,
+          "rescued": 8,
+          "lost": 7,
+          "delta": 0.010416666666666666,
+          "interval95": [
+            -0.0660377358490566,
+            0.09
+          ]
+        },
+        "artery": {
+          "net": 0,
+          "rescued": 7,
+          "lost": 7,
+          "delta": 0.0,
+          "interval95": [
+            -0.07610785953177257,
+            0.07528927068723673
+          ]
+        },
+        "prefix_mm": {
+          "net": 85,
+          "rescued": 15,
+          "lost": 7,
+          "delta": 0.8854166666666666,
+          "interval95": [
+            0.05263157894736842,
+            1.7476979281353198
+          ]
+        }
+      }
+    },
+    "mask": {
+      "n": 28,
+      "locked_full": 4,
+      "locked_hidden": 4,
+      "correction": 2,
+      "spoiled": 2,
+      "ci95": [
+        -0.14285714285714285,
+        0.14285714285714285
+      ]
+    },
+    "replayed_all_action_paths": true
+  },
+  "teacher_registered_audit": {
+    "n": 96,
+    "layouts": 91,
+    "paired": {
+      "public": {
+        "both": {
+          "net": 3,
+          "rescued": 6,
+          "lost": 3,
+          "delta": 0.03125,
+          "interval95": [
+            -0.03,
+            0.09375
+          ]
+        },
+        "chain": {
+          "net": 2,
+          "rescued": 5,
+          "lost": 3,
+          "delta": 0.020833333333333332,
+          "interval95": [
+            -0.043010752688172046,
+            0.08333333333333333
+          ]
+        },
+        "locked": {
+          "net": 4,
+          "rescued": 5,
+          "lost": 1,
+          "delta": 0.041666666666666664,
+          "interval95": [
+            0.0,
+            0.09375
+          ]
+        },
+        "wrong": {
+          "net": 1,
+          "rescued": 8,
+          "lost": 6,
+          "delta": 0.010416666666666666,
+          "interval95": [
+            -0.07526881720430108,
+            0.09574468085106383
+          ]
+        },
+        "artery": {
+          "net": 0,
+          "rescued": 5,
+          "lost": 4,
+          "delta": 0.0,
+          "interval95": [
+            -0.07291666666666667,
+            0.0707070707070707
+          ]
+        },
+        "prefix_mm": {
+          "net": -30,
+          "rescued": 9,
+          "lost": 11,
+          "delta": -0.3125,
+          "interval95": [
+            -1.1956521739130435,
+            0.5050505050505051
+          ]
+        }
+      },
+      "verified_teacher": {
+        "both": {
+          "net": -1,
+          "rescued": 5,
+          "lost": 6,
+          "delta": -0.010416666666666666,
+          "interval95": [
+            -0.07692307692307693,
+            0.0594207920792077
+          ]
+        },
+        "chain": {
+          "net": 0,
+          "rescued": 6,
+          "lost": 6,
+          "delta": 0.0,
+          "interval95": [
+            -0.06521739130434782,
+            0.06315789473684211
+          ]
+        },
+        "locked": {
+          "net": 3,
+          "rescued": 3,
+          "lost": 0,
+          "delta": 0.03125,
+          "interval95": [
+            0.0,
+            0.07291666666666667
+          ]
+        },
+        "wrong": {
+          "net": 3,
+          "rescued": 10,
+          "lost": 6,
+          "delta": 0.03125,
+          "interval95": [
+            -0.0625,
+            0.11650485436893204
+          ]
+        },
+        "artery": {
+          "net": 6,
+          "rescued": 11,
+          "lost": 4,
+          "delta": 0.0625,
+          "interval95": [
+            -0.030303030303030304,
+            0.14736842105263157
+          ]
+        },
+        "prefix_mm": {
+          "net": -20,
+          "rescued": 8,
+          "lost": 13,
+          "delta": -0.20833333333333334,
+          "interval95": [
+            -1.0326086956521738,
+            0.5769736842105255
+          ]
+        }
+      }
+    },
+    "mask": {
+      "n": 19,
+      "locked_full": 2,
+      "locked_hidden": 0,
+      "correction": 2,
+      "spoiled": 0,
+      "ci95": [
+        0.0,
+        0.2631578947368421
+      ]
+    },
+    "replayed_all_action_paths": true
+  },
+  "cross_intervals": {
+    "register_samepath": {
+      "both": {
+        "net": 4,
+        "gain": 4,
+        "loss": 0,
+        "ci95": [
+          0.010101010101010102,
+          0.08421052631578947
+        ]
+      },
+      "chain": {
+        "net": 0,
+        "gain": 2,
+        "loss": 2,
+        "ci95": [
+          -0.041237113402061855,
+          0.04081632653061224
+        ]
+      },
+      "locked": {
+        "net": 1,
+        "gain": 3,
+        "loss": 2,
+        "ci95": [
+          -0.03333333333333333,
+          0.053763440860215055
+        ]
+      },
+      "artery": {
+        "net": -2,
+        "gain": 3,
+        "loss": 5,
+        "ci95": [
+          -0.07922772277227723,
+          0.03333333333333333
+        ]
+      }
+    },
+    "register_sameactor": {
+      "both": {
+        "net": 4,
+        "gain": 5,
+        "loss": 1,
+        "ci95": [
+          0.0,
+          0.09375
+        ]
+      },
+      "chain": {
+        "net": 5,
+        "gain": 8,
+        "loss": 3,
+        "ci95": [
+          -0.010526315789473684,
+          0.12222222222222222
+        ]
+      },
+      "locked": {
+        "net": 0,
+        "gain": 1,
+        "loss": 1,
+        "ci95": [
+          -0.03125,
+          0.031258223684210405
+        ]
+      },
+      "artery": {
+        "net": 0,
+        "gain": 6,
+        "loss": 7,
+        "ci95": [
+          -0.07692307692307693,
+          0.08602150537634409
+        ]
+      }
+    },
+    "combined": {
+      "both": {
+        "net": 6,
+        "gain": 8,
+        "loss": 2,
+        "ci95": [
+          0.0,
+          0.1276595744680851
+        ]
+      },
+      "chain": {
+        "net": 5,
+        "gain": 10,
+        "loss": 5,
+        "ci95": [
+          -0.027291843670348346,
+          0.13333333333333333
+        ]
+      },
+      "locked": {
+        "net": 1,
+        "gain": 4,
+        "loss": 3,
+        "ci95": [
+          -0.043478260869565216,
+          0.06451612903225806
+        ]
+      },
+      "artery": {
+        "net": -2,
+        "gain": 6,
+        "loss": 8,
+        "ci95": [
+          -0.0967741935483871,
+          0.05555555555555555
+        ]
+      }
+    }
+  },
+  "interface_probe": {
+    "raw_rejected": true,
+    "masked_grading_identity_invariant": true,
+    "first_public_action_independent_of_trial": true,
+    "returned_album_candidates_in_each_group": true
+  }
+}

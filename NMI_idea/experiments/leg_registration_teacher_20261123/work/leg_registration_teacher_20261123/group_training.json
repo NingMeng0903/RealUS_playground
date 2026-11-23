@@ -1,0 +1,90 @@
+{
+  "n": 1280,
+  "selected_by": "development",
+  "history": [
+    {
+      "epoch": 2,
+      "utility": 1.5286713286713287,
+      "statistics": {
+        "entry": 94,
+        "fresh": 92,
+        "both": 73,
+        "wrong": 43,
+        "artery": 33,
+        "chain": 38,
+        "prefix": 5.419580419580419,
+        "correct_bands": 213,
+        "wrong_bands": 72,
+        "artery_bands": 46,
+        "high_wrong": 7,
+        "high_total": 77,
+        "n": 143,
+        "threshold": 0.45,
+        "brier": 0.08764032338445492
+      }
+    },
+    {
+      "epoch": 4,
+      "utility": 1.4653846153846153,
+      "statistics": {
+        "entry": 87,
+        "fresh": 87,
+        "both": 69,
+        "wrong": 55,
+        "artery": 41,
+        "chain": 44,
+        "prefix": 5.804195804195804,
+        "correct_bands": 212,
+        "wrong_bands": 67,
+        "artery_bands": 43,
+        "high_wrong": 5,
+        "high_total": 83,
+        "n": 143,
+        "threshold": 0.45,
+        "brier": 0.08827976129138718
+      }
+    },
+    {
+      "epoch": 7,
+      "utility": 1.5332867132867132,
+      "statistics": {
+        "entry": 97,
+        "fresh": 95,
+        "both": 73,
+        "wrong": 57,
+        "artery": 41,
+        "chain": 43,
+        "prefix": 5.804195804195804,
+        "correct_bands": 233,
+        "wrong_bands": 85,
+        "artery_bands": 51,
+        "high_wrong": 7,
+        "high_total": 86,
+        "n": 143,
+        "threshold": 0.45,
+        "brier": 0.08703970817144759
+      }
+    },
+    {
+      "epoch": 10,
+      "utility": 1.5426573426573427,
+      "statistics": {
+        "entry": 89,
+        "fresh": 90,
+        "both": 71,
+        "wrong": 46,
+        "artery": 33,
+        "chain": 43,
+        "prefix": 5.664335664335664,
+        "correct_bands": 219,
+        "wrong_bands": 78,
+        "artery_bands": 48,
+        "high_wrong": 8,
+        "high_total": 86,
+        "n": 143,
+        "threshold": 0.45,
+        "brier": 0.087471047256512
+      }
+    }
+  ]
+}
