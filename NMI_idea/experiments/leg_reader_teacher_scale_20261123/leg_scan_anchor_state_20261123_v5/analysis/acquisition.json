@@ -1,0 +1,25 @@
+{
+  "experiment": "leg_scan_anchor_state_20261123_v5",
+  "base_commit": "c4e4b321d68c011d2c6e5d80b03390e39c8ee5ea",
+  "atlas_sha256": "aad4100d6e594de6279a2297fae3c5cb6e84a68077bfde56435113d5b0c352d5",
+  "fit_count": 1536,
+  "stages": {
+    "fit_revisit": 1536,
+    "reader_test": 512,
+    "anchor_dev": 96,
+    "anchor_test": 192
+  },
+  "case_seed_bases": {
+    "fit_revisit": 2046300000000000,
+    "reader_test": 2046300010000000,
+    "anchor_dev": 2046300020000000,
+    "anchor_test": 2046300030000000
+  },
+  "source_sha256": {
+    "leg_scan_anchor_state_20261123_v5/study_data.py": "da4c44164b284c1efc3319d97b4b15302297e0dbcb8f739462967ed50e3ed141",
+    "leg_scan_reader_feedback_20261123_v4/study_worlds.py": "31d925fac8696db5443ae9a7c523d1b22e62e357f930c6491fbdb8ab5e43caf6",
+    "leg_scan_reader_feedback_20261123_v4/public_features.py": "d2ad13860dfcb56a9adc811adbf87cae7a185146225ebaf7233edce941d0a679",
+    "leg_reader_teacher_scale_20261123_v3/scale_worlds.py": "22ff4c93addb04238c713918f3f1eb262891898bb4dfa0634051a20fb1f7a5e0"
+  },
+  "dird": false
+}

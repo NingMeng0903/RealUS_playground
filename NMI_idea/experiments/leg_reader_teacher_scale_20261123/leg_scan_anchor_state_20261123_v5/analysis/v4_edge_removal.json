@@ -1,0 +1,4136 @@
+{
+  "scope": "offline V4 test diagnosis, remove direct erroneous target links with matches held fixed",
+  "counts": {
+    "harmful_region_winners": 264,
+    "correct_winner_probability_decreased": 264,
+    "wrong_winner_probability_increased": 209,
+    "both": 209,
+    "harmful_winners_directly_linked_to_truth": 217,
+    "winner_correct_after_direct_link_removal": 119
+  },
+  "regions": [
+    {
+      "case": "v4_reader_test_000003",
+      "region": 4,
+      "original": 408,
+      "wrong": 415,
+      "pruned": 422,
+      "pruned_correct": true,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.840743362903595,
+        0.5872586369514465,
+        0.2998288571834564
+      ],
+      "wrong_before_after_remove": [
+        0.45076680183410645,
+        0.7042515873908997,
+        0.45076680183410645
+      ]
+    },
+    {
+      "case": "v4_reader_test_000019",
+      "region": 4,
+      "original": 298,
+      "wrong": 294,
+      "pruned": 294,
+      "pruned_correct": false,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.7917847037315369,
+        0.6594529151916504,
+        0.45494842529296875
+      ],
+      "wrong_before_after_remove": [
+        0.747901201248169,
+        0.7398892045021057,
+        0.6993021368980408
+      ]
+    },
+    {
+      "case": "v4_reader_test_000027",
+      "region": 6,
+      "original": 557,
+      "wrong": 582,
+      "pruned": 582,
+      "pruned_correct": false,
+      "removed_edges": 2,
+      "correct_before_after_remove": [
+        0.9053701758384705,
+        0.5840092301368713,
+        0.5840092301368713
+      ],
+      "wrong_before_after_remove": [
+        0.7250896096229553,
+        0.6517086625099182,
+        0.7250896096229553
+      ]
+    },
+    {
+      "case": "v4_reader_test_000037",
+      "region": 4,
+      "original": 551,
+      "wrong": 627,
+      "pruned": 617,
+      "pruned_correct": true,
+      "removed_edges": 2,
+      "correct_before_after_remove": [
+        0.9394073486328125,
+        0.5730301737785339,
+        0.5730301737785339
+      ],
+      "wrong_before_after_remove": [
+        0.7037454843521118,
+        0.8204901218414307,
+        0.7037454843521118
+      ]
+    },
+    {
+      "case": "v4_reader_test_000037",
+      "region": 5,
+      "original": 744,
+      "wrong": 751,
+      "pruned": 744,
+      "pruned_correct": true,
+      "removed_edges": 2,
+      "correct_before_after_remove": [
+        0.8966705799102783,
+        0.6390082240104675,
+        0.6954694986343384
+      ],
+      "wrong_before_after_remove": [
+        0.4317314624786377,
+        0.7339418530464172,
+        0.4317314624786377
+      ]
+    },
+    {
+      "case": "v4_reader_test_000045",
+      "region": 6,
+      "original": 827,
+      "wrong": 879,
+      "pruned": 827,
+      "pruned_correct": true,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.8771772980690002,
+        0.680308997631073,
+        0.680308997631073
+      ],
+      "wrong_before_after_remove": [
+        0.3963342607021332,
+        0.6828958988189697,
+        0.3963342607021332
+      ]
+    },
+    {
+      "case": "v4_reader_test_000047",
+      "region": 4,
+      "original": 381,
+      "wrong": 371,
+      "pruned": 381,
+      "pruned_correct": true,
+      "removed_edges": 2,
+      "correct_before_after_remove": [
+        0.8561912178993225,
+        0.7368341684341431,
+        0.8561912178993225
+      ],
+      "wrong_before_after_remove": [
+        0.6725649237632751,
+        0.7589471340179443,
+        0.48413246870040894
+      ]
+    },
+    {
+      "case": "v4_reader_test_000049",
+      "region": 4,
+      "original": 557,
+      "wrong": 561,
+      "pruned": 557,
+      "pruned_correct": true,
+      "removed_edges": 3,
+      "correct_before_after_remove": [
+        0.945185661315918,
+        0.8037205338478088,
+        0.945185661315918
+      ],
+      "wrong_before_after_remove": [
+        0.7275468707084656,
+        0.84877610206604,
+        0.7275468707084656
+      ]
+    },
+    {
+      "case": "v4_reader_test_000049",
+      "region": 5,
+      "original": 646,
+      "wrong": 648,
+      "pruned": 646,
+      "pruned_correct": true,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.7762355804443359,
+        0.7275210022926331,
+        0.7275210022926331
+      ],
+      "wrong_before_after_remove": [
+        0.5637593269348145,
+        0.7333902716636658,
+        0.5951176285743713
+      ]
+    },
+    {
+      "case": "v4_reader_test_000071",
+      "region": 6,
+      "original": 649,
+      "wrong": 638,
+      "pruned": 638,
+      "pruned_correct": false,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.7541533708572388,
+        0.39073655009269714,
+        0.39073657989501953
+      ],
+      "wrong_before_after_remove": [
+        0.6728987693786621,
+        0.7257142066955566,
+        0.6728987693786621
+      ]
+    },
+    {
+      "case": "v4_reader_test_000075",
+      "region": 4,
+      "original": 474,
+      "wrong": 497,
+      "pruned": 467,
+      "pruned_correct": false,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.6643688082695007,
+        0.4829111695289612,
+        0.4829111695289612
+      ],
+      "wrong_before_after_remove": [
+        0.5055682063102722,
+        0.5946469306945801,
+        0.5055682063102722
+      ]
+    },
+    {
+      "case": "v4_reader_test_000087",
+      "region": 4,
+      "original": 457,
+      "wrong": 461,
+      "pruned": 457,
+      "pruned_correct": true,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.6313516497612,
+        0.41078266501426697,
+        0.6313516497612
+      ],
+      "wrong_before_after_remove": [
+        0.2920147478580475,
+        0.5125837326049805,
+        0.2920147478580475
+      ]
+    },
+    {
+      "case": "v4_reader_test_000095",
+      "region": 6,
+      "original": 659,
+      "wrong": 654,
+      "pruned": 659,
+      "pruned_correct": true,
+      "removed_edges": 2,
+      "correct_before_after_remove": [
+        0.7949394583702087,
+        0.4478186070919037,
+        0.7949394583702087
+      ],
+      "wrong_before_after_remove": [
+        0.2609074115753174,
+        0.5000512003898621,
+        0.2609074115753174
+      ]
+    },
+    {
+      "case": "v4_reader_test_000097",
+      "region": 5,
+      "original": 696,
+      "wrong": 710,
+      "pruned": 680,
+      "pruned_correct": true,
+      "removed_edges": 2,
+      "correct_before_after_remove": [
+        0.873580813407898,
+        0.6535195708274841,
+        0.4990168809890747
+      ],
+      "wrong_before_after_remove": [
+        0.6926344633102417,
+        0.7292876839637756,
+        0.5489282608032227
+      ]
+    },
+    {
+      "case": "v4_reader_test_000103",
+      "region": 1,
+      "original": 145,
+      "wrong": 137,
+      "pruned": 137,
+      "pruned_correct": false,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.9976160526275635,
+        0.9785962700843811,
+        0.9785962700843811
+      ],
+      "wrong_before_after_remove": [
+        0.9927305579185486,
+        0.9959061145782471,
+        0.9927305579185486
+      ]
+    },
+    {
+      "case": "v4_reader_test_000103",
+      "region": 5,
+      "original": 540,
+      "wrong": 554,
+      "pruned": 583,
+      "pruned_correct": true,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.8190471529960632,
+        0.46084603667259216,
+        0.46084606647491455
+      ],
+      "wrong_before_after_remove": [
+        0.4423094689846039,
+        0.6871889233589172,
+        0.4423094689846039
+      ]
+    },
+    {
+      "case": "v4_reader_test_000109",
+      "region": 5,
+      "original": 668,
+      "wrong": 633,
+      "pruned": 633,
+      "pruned_correct": false,
+      "removed_edges": 3,
+      "correct_before_after_remove": [
+        0.851219892501831,
+        0.44364070892333984,
+        0.44364070892333984
+      ],
+      "wrong_before_after_remove": [
+        0.8280372619628906,
+        0.7438204288482666,
+        0.8280372619628906
+      ]
+    },
+    {
+      "case": "v4_reader_test_000121",
+      "region": 5,
+      "original": 726,
+      "wrong": 678,
+      "pruned": 676,
+      "pruned_correct": true,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.825407087802887,
+        0.6620367765426636,
+        0.6620367765426636
+      ],
+      "wrong_before_after_remove": [
+        0.5747576951980591,
+        0.7348836064338684,
+        0.5747576951980591
+      ]
+    },
+    {
+      "case": "v4_reader_test_000121",
+      "region": 6,
+      "original": 830,
+      "wrong": 822,
+      "pruned": 804,
+      "pruned_correct": true,
+      "removed_edges": 2,
+      "correct_before_after_remove": [
+        0.9475525617599487,
+        0.7706710696220398,
+        0.7141276001930237
+      ],
+      "wrong_before_after_remove": [
+        0.8436199426651001,
+        0.8559637069702148,
+        0.8092615008354187
+      ]
+    },
+    {
+      "case": "v4_reader_test_000123",
+      "region": 3,
+      "original": 351,
+      "wrong": 323,
+      "pruned": 319,
+      "pruned_correct": true,
+      "removed_edges": 2,
+      "correct_before_after_remove": [
+        0.9888687133789062,
+        0.8095504641532898,
+        0.8095504641532898
+      ],
+      "wrong_before_after_remove": [
+        0.9443002343177795,
+        0.9637112021446228,
+        0.9443002343177795
+      ]
+    },
+    {
+      "case": "v4_reader_test_000131",
+      "region": 1,
+      "original": 122,
+      "wrong": 132,
+      "pruned": 49,
+      "pruned_correct": true,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.9979242086410522,
+        0.9270969033241272,
+        0.9270969033241272
+      ],
+      "wrong_before_after_remove": [
+        0.9887175559997559,
+        0.9890485405921936,
+        0.6414669752120972
+      ]
+    },
+    {
+      "case": "v4_reader_test_000133",
+      "region": 6,
+      "original": 861,
+      "wrong": 853,
+      "pruned": 894,
+      "pruned_correct": false,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.9337334632873535,
+        0.7027842998504639,
+        0.6827796697616577
+      ],
+      "wrong_before_after_remove": [
+        0.6082677841186523,
+        0.8198204636573792,
+        0.6082677841186523
+      ]
+    },
+    {
+      "case": "v4_reader_test_000135",
+      "region": 5,
+      "original": 518,
+      "wrong": 524,
+      "pruned": 524,
+      "pruned_correct": false,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.6539356708526611,
+        0.5457330942153931,
+        0.5547789335250854
+      ],
+      "wrong_before_after_remove": [
+        0.47704580426216125,
+        0.5766436457633972,
+        0.5587152242660522
+      ]
+    },
+    {
+      "case": "v4_reader_test_000137",
+      "region": 5,
+      "original": 746,
+      "wrong": 661,
+      "pruned": 598,
+      "pruned_correct": true,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.8609499931335449,
+        0.5025923848152161,
+        0.5025923848152161
+      ],
+      "wrong_before_after_remove": [
+        0.5834294557571411,
+        0.7206564545631409,
+        0.5834294557571411
+      ]
+    },
+    {
+      "case": "v4_reader_test_000141",
+      "region": 6,
+      "original": 910,
+      "wrong": 904,
+      "pruned": 803,
+      "pruned_correct": true,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.947144627571106,
+        0.6570109724998474,
+        0.7217769026756287
+      ],
+      "wrong_before_after_remove": [
+        0.5007851123809814,
+        0.7909188270568848,
+        0.5007851123809814
+      ]
+    },
+    {
+      "case": "v4_reader_test_000143",
+      "region": 4,
+      "original": 368,
+      "wrong": 378,
+      "pruned": 368,
+      "pruned_correct": true,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.69291090965271,
+        0.6136276721954346,
+        0.69291090965271
+      ],
+      "wrong_before_after_remove": [
+        0.5709366798400879,
+        0.616365909576416,
+        0.5945156216621399
+      ]
+    },
+    {
+      "case": "v4_reader_test_000143",
+      "region": 5,
+      "original": 542,
+      "wrong": 530,
+      "pruned": 542,
+      "pruned_correct": true,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.8902431130409241,
+        0.7193472981452942,
+        0.719347357749939
+      ],
+      "wrong_before_after_remove": [
+        0.5469490885734558,
+        0.7700902223587036,
+        0.5469490885734558
+      ]
+    },
+    {
+      "case": "v4_reader_test_000145",
+      "region": 5,
+      "original": 679,
+      "wrong": 685,
+      "pruned": 651,
+      "pruned_correct": true,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.7633572220802307,
+        0.6172118186950684,
+        0.3832941949367523
+      ],
+      "wrong_before_after_remove": [
+        0.6513212323188782,
+        0.7241446375846863,
+        0.6513212323188782
+      ]
+    },
+    {
+      "case": "v4_reader_test_000151",
+      "region": 5,
+      "original": 490,
+      "wrong": 423,
+      "pruned": 429,
+      "pruned_correct": true,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.8363932967185974,
+        0.5574505925178528,
+        0.5574505925178528
+      ],
+      "wrong_before_after_remove": [
+        0.3645980656147003,
+        0.5671697854995728,
+        0.3645980656147003
+      ]
+    },
+    {
+      "case": "v4_reader_test_000153",
+      "region": 5,
+      "original": 668,
+      "wrong": 681,
+      "pruned": 668,
+      "pruned_correct": true,
+      "removed_edges": 2,
+      "correct_before_after_remove": [
+        0.9400293827056885,
+        0.7787359952926636,
+        0.9400293827056885
+      ],
+      "wrong_before_after_remove": [
+        0.6918857097625732,
+        0.8531790971755981,
+        0.6918857097625732
+      ]
+    },
+    {
+      "case": "v4_reader_test_000153",
+      "region": 6,
+      "original": 899,
+      "wrong": 842,
+      "pruned": 842,
+      "pruned_correct": false,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.8893730044364929,
+        0.6366866230964661,
+        0.6366866230964661
+      ],
+      "wrong_before_after_remove": [
+        0.877346396446228,
+        0.8821026086807251,
+        0.877346396446228
+      ]
+    },
+    {
+      "case": "v4_reader_test_000167",
+      "region": 3,
+      "original": 283,
+      "wrong": 255,
+      "pruned": 243,
+      "pruned_correct": true,
+      "removed_edges": 3,
+      "correct_before_after_remove": [
+        0.9861963391304016,
+        0.8265775442123413,
+        0.8265775442123413
+      ],
+      "wrong_before_after_remove": [
+        0.864809513092041,
+        0.9342169761657715,
+        0.864809513092041
+      ]
+    },
+    {
+      "case": "v4_reader_test_000169",
+      "region": 6,
+      "original": 786,
+      "wrong": 767,
+      "pruned": 767,
+      "pruned_correct": false,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.9105721116065979,
+        0.632806122303009,
+        0.4636777937412262
+      ],
+      "wrong_before_after_remove": [
+        0.7686539888381958,
+        0.8609007596969604,
+        0.7686539888381958
+      ]
+    },
+    {
+      "case": "v4_reader_test_000177",
+      "region": 5,
+      "original": 646,
+      "wrong": 660,
+      "pruned": 602,
+      "pruned_correct": true,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.9103649854660034,
+        0.8051954507827759,
+        0.8051953911781311
+      ],
+      "wrong_before_after_remove": [
+        0.8896172642707825,
+        0.8454781174659729,
+        0.7786944508552551
+      ]
+    },
+    {
+      "case": "v4_reader_test_000179",
+      "region": 2,
+      "original": 177,
+      "wrong": 203,
+      "pruned": 222,
+      "pruned_correct": true,
+      "removed_edges": 3,
+      "correct_before_after_remove": [
+        0.9845137000083923,
+        0.6955057978630066,
+        0.6955057978630066
+      ],
+      "wrong_before_after_remove": [
+        0.9377326965332031,
+        0.9527872800827026,
+        0.9377326965332031
+      ]
+    },
+    {
+      "case": "v4_reader_test_000183",
+      "region": 4,
+      "original": 434,
+      "wrong": 436,
+      "pruned": 431,
+      "pruned_correct": true,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.8885065317153931,
+        0.36728498339653015,
+        0.34574729204177856
+      ],
+      "wrong_before_after_remove": [
+        0.12666617333889008,
+        0.6218624114990234,
+        0.12666617333889008
+      ]
+    },
+    {
+      "case": "v4_reader_test_000187",
+      "region": 6,
+      "original": 675,
+      "wrong": 654,
+      "pruned": 636,
+      "pruned_correct": false,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.7472251057624817,
+        0.46089810132980347,
+        0.46089810132980347
+      ],
+      "wrong_before_after_remove": [
+        0.6300379633903503,
+        0.5654085278511047,
+        0.5198394060134888
+      ]
+    },
+    {
+      "case": "v4_reader_test_000191",
+      "region": 4,
+      "original": 402,
+      "wrong": 411,
+      "pruned": 407,
+      "pruned_correct": true,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.8762159943580627,
+        0.537417471408844,
+        0.537417471408844
+      ],
+      "wrong_before_after_remove": [
+        0.6211839318275452,
+        0.7869547605514526,
+        0.6211839318275452
+      ]
+    },
+    {
+      "case": "v4_reader_test_000193",
+      "region": 6,
+      "original": 816,
+      "wrong": 805,
+      "pruned": 767,
+      "pruned_correct": true,
+      "removed_edges": 2,
+      "correct_before_after_remove": [
+        0.903263509273529,
+        0.7467290759086609,
+        0.7297064065933228
+      ],
+      "wrong_before_after_remove": [
+        0.6959081292152405,
+        0.8264529705047607,
+        0.6959081292152405
+      ]
+    },
+    {
+      "case": "v4_reader_test_000195",
+      "region": 4,
+      "original": 472,
+      "wrong": 507,
+      "pruned": 481,
+      "pruned_correct": false,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.753389298915863,
+        0.5135990381240845,
+        0.5135990381240845
+      ],
+      "wrong_before_after_remove": [
+        0.6140808463096619,
+        0.6912568807601929,
+        0.6140808463096619
+      ]
+    },
+    {
+      "case": "v4_reader_test_000197",
+      "region": 6,
+      "original": 791,
+      "wrong": 846,
+      "pruned": 846,
+      "pruned_correct": false,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.9127101898193359,
+        0.7130002975463867,
+        0.7130002975463867
+      ],
+      "wrong_before_after_remove": [
+        0.8598282337188721,
+        0.862708330154419,
+        0.8598282337188721
+      ]
+    },
+    {
+      "case": "v4_reader_test_000205",
+      "region": 4,
+      "original": 564,
+      "wrong": 557,
+      "pruned": 557,
+      "pruned_correct": false,
+      "removed_edges": 2,
+      "correct_before_after_remove": [
+        0.8415607810020447,
+        0.5897873640060425,
+        0.4406132102012634
+      ],
+      "wrong_before_after_remove": [
+        0.7975043654441833,
+        0.8112589120864868,
+        0.7975043654441833
+      ]
+    },
+    {
+      "case": "v4_reader_test_000207",
+      "region": 5,
+      "original": 589,
+      "wrong": 610,
+      "pruned": 610,
+      "pruned_correct": false,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.5759506225585938,
+        0.3914923071861267,
+        0.3914923071861267
+      ],
+      "wrong_before_after_remove": [
+        0.35589441657066345,
+        0.41828861832618713,
+        0.4132474958896637
+      ]
+    },
+    {
+      "case": "v4_reader_test_000215",
+      "region": 5,
+      "original": 592,
+      "wrong": 584,
+      "pruned": 592,
+      "pruned_correct": true,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.7995022535324097,
+        0.4965997040271759,
+        0.613162636756897
+      ],
+      "wrong_before_after_remove": [
+        0.33349835872650146,
+        0.6364008784294128,
+        0.33349835872650146
+      ]
+    },
+    {
+      "case": "v4_reader_test_000217",
+      "region": 4,
+      "original": 577,
+      "wrong": 543,
+      "pruned": 543,
+      "pruned_correct": false,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.9191371202468872,
+        0.6044001579284668,
+        0.6044001579284668
+      ],
+      "wrong_before_after_remove": [
+        0.8320266008377075,
+        0.8386470675468445,
+        0.8320266008377075
+      ]
+    },
+    {
+      "case": "v4_reader_test_000217",
+      "region": 5,
+      "original": 733,
+      "wrong": 661,
+      "pruned": 661,
+      "pruned_correct": false,
+      "removed_edges": 2,
+      "correct_before_after_remove": [
+        0.8903714418411255,
+        0.5956472158432007,
+        0.5956472158432007
+      ],
+      "wrong_before_after_remove": [
+        0.7459231019020081,
+        0.7782215476036072,
+        0.7459231019020081
+      ]
+    },
+    {
+      "case": "v4_reader_test_000217",
+      "region": 6,
+      "original": 782,
+      "wrong": 753,
+      "pruned": 753,
+      "pruned_correct": false,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.9156189560890198,
+        0.7508500218391418,
+        0.7508500218391418
+      ],
+      "wrong_before_after_remove": [
+        0.9020887613296509,
+        0.8161991238594055,
+        0.9020887613296509
+      ]
+    },
+    {
+      "case": "v4_reader_test_000235",
+      "region": 3,
+      "original": 298,
+      "wrong": 296,
+      "pruned": 295,
+      "pruned_correct": false,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.9211158156394958,
+        0.6515901684761047,
+        0.6515902280807495
+      ],
+      "wrong_before_after_remove": [
+        0.28010573983192444,
+        0.696762204170227,
+        0.28010573983192444
+      ]
+    },
+    {
+      "case": "v4_reader_test_000241",
+      "region": 6,
+      "original": 888,
+      "wrong": 807,
+      "pruned": 807,
+      "pruned_correct": false,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.9118801355361938,
+        0.44832101464271545,
+        0.44832101464271545
+      ],
+      "wrong_before_after_remove": [
+        0.8630359768867493,
+        0.8536884784698486,
+        0.8630359768867493
+      ]
+    },
+    {
+      "case": "v4_reader_test_000261",
+      "region": 5,
+      "original": 587,
+      "wrong": 649,
+      "pruned": 577,
+      "pruned_correct": false,
+      "removed_edges": 2,
+      "correct_before_after_remove": [
+        0.9013059735298157,
+        0.6475331783294678,
+        0.6475331783294678
+      ],
+      "wrong_before_after_remove": [
+        0.7091302871704102,
+        0.8077024817466736,
+        0.7091302871704102
+      ]
+    },
+    {
+      "case": "v4_reader_test_000263",
+      "region": 3,
+      "original": 299,
+      "wrong": 273,
+      "pruned": 273,
+      "pruned_correct": false,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.972468912601471,
+        0.846699595451355,
+        0.846699595451355
+      ],
+      "wrong_before_after_remove": [
+        0.9251572489738464,
+        0.9560294151306152,
+        0.9251572489738464
+      ]
+    },
+    {
+      "case": "v4_reader_test_000263",
+      "region": 5,
+      "original": 529,
+      "wrong": 542,
+      "pruned": 529,
+      "pruned_correct": true,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.8795477151870728,
+        0.6568205952644348,
+        0.6568205952644348
+      ],
+      "wrong_before_after_remove": [
+        0.359957218170166,
+        0.6976910829544067,
+        0.359957218170166
+      ]
+    },
+    {
+      "case": "v4_reader_test_000271",
+      "region": 4,
+      "original": 389,
+      "wrong": 430,
+      "pruned": 430,
+      "pruned_correct": false,
+      "removed_edges": 2,
+      "correct_before_after_remove": [
+        0.8730199933052063,
+        0.6267065405845642,
+        0.6267065405845642
+      ],
+      "wrong_before_after_remove": [
+        0.8701528906822205,
+        0.7838491797447205,
+        0.8701528906822205
+      ]
+    },
+    {
+      "case": "v4_reader_test_000289",
+      "region": 4,
+      "original": 566,
+      "wrong": 611,
+      "pruned": 566,
+      "pruned_correct": true,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.8431503176689148,
+        0.7135876417160034,
+        0.7135876417160034
+      ],
+      "wrong_before_after_remove": [
+        0.6779594421386719,
+        0.7837628722190857,
+        0.6779594421386719
+      ]
+    },
+    {
+      "case": "v4_reader_test_000301",
+      "region": 6,
+      "original": 836,
+      "wrong": 774,
+      "pruned": 767,
+      "pruned_correct": true,
+      "removed_edges": 2,
+      "correct_before_after_remove": [
+        0.885388195514679,
+        0.6698393225669861,
+        0.6698393225669861
+      ],
+      "wrong_before_after_remove": [
+        0.7285708785057068,
+        0.7097300291061401,
+        0.6267462372779846
+      ]
+    },
+    {
+      "case": "v4_reader_test_000307",
+      "region": 4,
+      "original": 442,
+      "wrong": 432,
+      "pruned": 442,
+      "pruned_correct": true,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.8675557971000671,
+        0.6763707995414734,
+        0.7631785869598389
+      ],
+      "wrong_before_after_remove": [
+        0.359593003988266,
+        0.6897688508033752,
+        0.359593003988266
+      ]
+    },
+    {
+      "case": "v4_reader_test_000313",
+      "region": 4,
+      "original": 597,
+      "wrong": 555,
+      "pruned": 555,
+      "pruned_correct": false,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.9178074598312378,
+        0.7261351943016052,
+        0.7261351943016052
+      ],
+      "wrong_before_after_remove": [
+        0.8336024284362793,
+        0.8233889937400818,
+        0.8336024284362793
+      ]
+    },
+    {
+      "case": "v4_reader_test_000313",
+      "region": 6,
+      "original": 779,
+      "wrong": 791,
+      "pruned": 779,
+      "pruned_correct": true,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.8865739107131958,
+        0.7653382420539856,
+        0.778031587600708
+      ],
+      "wrong_before_after_remove": [
+        0.6612060070037842,
+        0.8076951503753662,
+        0.6612060070037842
+      ]
+    },
+    {
+      "case": "v4_reader_test_000323",
+      "region": 4,
+      "original": 435,
+      "wrong": 428,
+      "pruned": 428,
+      "pruned_correct": false,
+      "removed_edges": 4,
+      "correct_before_after_remove": [
+        0.9490838050842285,
+        0.8083109259605408,
+        0.499575138092041
+      ],
+      "wrong_before_after_remove": [
+        0.7325102090835571,
+        0.8194741606712341,
+        0.7325102090835571
+      ]
+    },
+    {
+      "case": "v4_reader_test_000325",
+      "region": 3,
+      "original": 387,
+      "wrong": 421,
+      "pruned": 418,
+      "pruned_correct": true,
+      "removed_edges": 2,
+      "correct_before_after_remove": [
+        0.9962616562843323,
+        0.9346128106117249,
+        0.9346128106117249
+      ],
+      "wrong_before_after_remove": [
+        0.9809240102767944,
+        0.9836702942848206,
+        0.9809240102767944
+      ]
+    },
+    {
+      "case": "v4_reader_test_000325",
+      "region": 4,
+      "original": 528,
+      "wrong": 529,
+      "pruned": 531,
+      "pruned_correct": true,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.8596680164337158,
+        0.6825229525566101,
+        0.6825229525566101
+      ],
+      "wrong_before_after_remove": [
+        0.4466738998889923,
+        0.7151200771331787,
+        0.4466738998889923
+      ]
+    },
+    {
+      "case": "v4_reader_test_000325",
+      "region": 5,
+      "original": 712,
+      "wrong": 699,
+      "pruned": 699,
+      "pruned_correct": false,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.9139432311058044,
+        0.7899767160415649,
+        0.7195441722869873
+      ],
+      "wrong_before_after_remove": [
+        0.8521987199783325,
+        0.8923326730728149,
+        0.8521987199783325
+      ]
+    },
+    {
+      "case": "v4_reader_test_000331",
+      "region": 6,
+      "original": 617,
+      "wrong": 611,
+      "pruned": 617,
+      "pruned_correct": true,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.766281247138977,
+        0.6383708119392395,
+        0.7269082069396973
+      ],
+      "wrong_before_after_remove": [
+        0.5694960355758667,
+        0.6974064111709595,
+        0.5694960355758667
+      ]
+    },
+    {
+      "case": "v4_reader_test_000333",
+      "region": 5,
+      "original": 648,
+      "wrong": 636,
+      "pruned": 685,
+      "pruned_correct": true,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.9513118267059326,
+        0.7522527575492859,
+        0.7761728763580322
+      ],
+      "wrong_before_after_remove": [
+        0.556448221206665,
+        0.8131095767021179,
+        0.4365595281124115
+      ]
+    },
+    {
+      "case": "v4_reader_test_000335",
+      "region": 3,
+      "original": 289,
+      "wrong": 296,
+      "pruned": 289,
+      "pruned_correct": true,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.9915739893913269,
+        0.9533283114433289,
+        0.9915739893913269
+      ],
+      "wrong_before_after_remove": [
+        0.9327345490455627,
+        0.9562371373176575,
+        0.823840320110321
+      ]
+    },
+    {
+      "case": "v4_reader_test_000335",
+      "region": 4,
+      "original": 404,
+      "wrong": 409,
+      "pruned": 399,
+      "pruned_correct": false,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.892539918422699,
+        0.5628998875617981,
+        0.5221744775772095
+      ],
+      "wrong_before_after_remove": [
+        0.4404887557029724,
+        0.5991990566253662,
+        0.46549558639526367
+      ]
+    },
+    {
+      "case": "v4_reader_test_000339",
+      "region": 4,
+      "original": 464,
+      "wrong": 455,
+      "pruned": 464,
+      "pruned_correct": true,
+      "removed_edges": 2,
+      "correct_before_after_remove": [
+        0.7937121391296387,
+        0.5860106348991394,
+        0.7937121391296387
+      ],
+      "wrong_before_after_remove": [
+        0.47417140007019043,
+        0.6650928258895874,
+        0.47417140007019043
+      ]
+    },
+    {
+      "case": "v4_reader_test_000339",
+      "region": 6,
+      "original": 652,
+      "wrong": 642,
+      "pruned": 642,
+      "pruned_correct": false,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.9403961300849915,
+        0.7550108432769775,
+        0.6329694390296936
+      ],
+      "wrong_before_after_remove": [
+        0.8528631925582886,
+        0.909759521484375,
+        0.8528631925582886
+      ]
+    },
+    {
+      "case": "v4_reader_test_000343",
+      "region": 3,
+      "original": 260,
+      "wrong": 309,
+      "pruned": 266,
+      "pruned_correct": true,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.9437648057937622,
+        0.7898496985435486,
+        0.7898496985435486
+      ],
+      "wrong_before_after_remove": [
+        0.7577441334724426,
+        0.7997499108314514,
+        0.7577441334724426
+      ]
+    },
+    {
+      "case": "v4_reader_test_000347",
+      "region": 4,
+      "original": 387,
+      "wrong": 392,
+      "pruned": 387,
+      "pruned_correct": true,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.6866394281387329,
+        0.5341862440109253,
+        0.6866394281387329
+      ],
+      "wrong_before_after_remove": [
+        0.45209604501724243,
+        0.6045492887496948,
+        0.45209604501724243
+      ]
+    },
+    {
+      "case": "v4_reader_test_000357",
+      "region": 6,
+      "original": 927,
+      "wrong": 922,
+      "pruned": 927,
+      "pruned_correct": true,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.9193909168243408,
+        0.7185892462730408,
+        0.7331036925315857
+      ],
+      "wrong_before_after_remove": [
+        0.6104652285575867,
+        0.8112669587135315,
+        0.6104652285575867
+      ]
+    },
+    {
+      "case": "v4_reader_test_000361",
+      "region": 6,
+      "original": 877,
+      "wrong": 882,
+      "pruned": 882,
+      "pruned_correct": false,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.9563694596290588,
+        0.7941078543663025,
+        0.5088930130004883
+      ],
+      "wrong_before_after_remove": [
+        0.9129921197891235,
+        0.9411874413490295,
+        0.6518579721450806
+      ]
+    },
+    {
+      "case": "v4_reader_test_000367",
+      "region": 6,
+      "original": 600,
+      "wrong": 593,
+      "pruned": 596,
+      "pruned_correct": true,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.8692883253097534,
+        0.6473969221115112,
+        0.6473968625068665
+      ],
+      "wrong_before_after_remove": [
+        0.5113564729690552,
+        0.7440122365951538,
+        0.5113564729690552
+      ]
+    },
+    {
+      "case": "v4_reader_test_000371",
+      "region": 4,
+      "original": 432,
+      "wrong": 442,
+      "pruned": 393,
+      "pruned_correct": false,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.7659626603126526,
+        0.5531203746795654,
+        0.4834628701210022
+      ],
+      "wrong_before_after_remove": [
+        0.5293676853179932,
+        0.6831544041633606,
+        0.5293676853179932
+      ]
+    },
+    {
+      "case": "v4_reader_test_000373",
+      "region": 4,
+      "original": 562,
+      "wrong": 569,
+      "pruned": 569,
+      "pruned_correct": false,
+      "removed_edges": 2,
+      "correct_before_after_remove": [
+        0.9039011001586914,
+        0.6929561495780945,
+        0.4059012830257416
+      ],
+      "wrong_before_after_remove": [
+        0.8009371757507324,
+        0.8652318120002747,
+        0.8625056743621826
+      ]
+    },
+    {
+      "case": "v4_reader_test_000375",
+      "region": 5,
+      "original": 490,
+      "wrong": 498,
+      "pruned": 490,
+      "pruned_correct": true,
+      "removed_edges": 2,
+      "correct_before_after_remove": [
+        0.4735962748527527,
+        0.3151814937591553,
+        0.4735962748527527
+      ],
+      "wrong_before_after_remove": [
+        0.22988121211528778,
+        0.371513694524765,
+        0.22988121211528778
+      ]
+    },
+    {
+      "case": "v4_reader_test_000381",
+      "region": 5,
+      "original": 765,
+      "wrong": 783,
+      "pruned": 751,
+      "pruned_correct": true,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.911185622215271,
+        0.8351554274559021,
+        0.8444817066192627
+      ],
+      "wrong_before_after_remove": [
+        0.7589541673660278,
+        0.8579045534133911,
+        0.7589541673660278
+      ]
+    },
+    {
+      "case": "v4_reader_test_000385",
+      "region": 6,
+      "original": 892,
+      "wrong": 899,
+      "pruned": 892,
+      "pruned_correct": true,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.9078874588012695,
+        0.8241868019104004,
+        0.8705663681030273
+      ],
+      "wrong_before_after_remove": [
+        0.7239810824394226,
+        0.8435202836990356,
+        0.7239810824394226
+      ]
+    },
+    {
+      "case": "v4_reader_test_000391",
+      "region": 5,
+      "original": 506,
+      "wrong": 498,
+      "pruned": 502,
+      "pruned_correct": true,
+      "removed_edges": 2,
+      "correct_before_after_remove": [
+        0.7809209823608398,
+        0.5839503407478333,
+        0.5779732465744019
+      ],
+      "wrong_before_after_remove": [
+        0.4963468909263611,
+        0.681320071220398,
+        0.4963468909263611
+      ]
+    },
+    {
+      "case": "v4_reader_test_000399",
+      "region": 4,
+      "original": 401,
+      "wrong": 397,
+      "pruned": 397,
+      "pruned_correct": false,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.6614929437637329,
+        0.40871334075927734,
+        0.40871331095695496
+      ],
+      "wrong_before_after_remove": [
+        0.5828049778938293,
+        0.6339521408081055,
+        0.5828049778938293
+      ]
+    },
+    {
+      "case": "v4_reader_test_000401",
+      "region": 6,
+      "original": 842,
+      "wrong": 834,
+      "pruned": 842,
+      "pruned_correct": true,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.8696215748786926,
+        0.7225463390350342,
+        0.7696536779403687
+      ],
+      "wrong_before_after_remove": [
+        0.5257598161697388,
+        0.749269962310791,
+        0.5257598161697388
+      ]
+    },
+    {
+      "case": "v4_reader_test_000407",
+      "region": 4,
+      "original": 467,
+      "wrong": 457,
+      "pruned": 467,
+      "pruned_correct": true,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.930474579334259,
+        0.8781958222389221,
+        0.9145891666412354
+      ],
+      "wrong_before_after_remove": [
+        0.7946246266365051,
+        0.8829271197319031,
+        0.7946246266365051
+      ]
+    },
+    {
+      "case": "v4_reader_test_000411",
+      "region": 4,
+      "original": 445,
+      "wrong": 440,
+      "pruned": 440,
+      "pruned_correct": false,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.5374032855033875,
+        0.4299250841140747,
+        0.36744508147239685
+      ],
+      "wrong_before_after_remove": [
+        0.43855899572372437,
+        0.5028077960014343,
+        0.43855899572372437
+      ]
+    },
+    {
+      "case": "v4_reader_test_000415",
+      "region": 6,
+      "original": 606,
+      "wrong": 687,
+      "pruned": 687,
+      "pruned_correct": false,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.7406335473060608,
+        0.3386298716068268,
+        0.3386298716068268
+      ],
+      "wrong_before_after_remove": [
+        0.5015344619750977,
+        0.5922709703445435,
+        0.5922709703445435
+      ]
+    },
+    {
+      "case": "v4_reader_test_000421",
+      "region": 6,
+      "original": 808,
+      "wrong": 784,
+      "pruned": 808,
+      "pruned_correct": true,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.9351018667221069,
+        0.8089775443077087,
+        0.8089775443077087
+      ],
+      "wrong_before_after_remove": [
+        0.8023133277893066,
+        0.8254244327545166,
+        0.8023133277893066
+      ]
+    },
+    {
+      "case": "v4_reader_test_000431",
+      "region": 6,
+      "original": 700,
+      "wrong": 692,
+      "pruned": 700,
+      "pruned_correct": true,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.6776045560836792,
+        0.4699270725250244,
+        0.4699270725250244
+      ],
+      "wrong_before_after_remove": [
+        0.3972865343093872,
+        0.5794932246208191,
+        0.3972865343093872
+      ]
+    },
+    {
+      "case": "v4_reader_test_000435",
+      "region": 3,
+      "original": 293,
+      "wrong": 304,
+      "pruned": 293,
+      "pruned_correct": true,
+      "removed_edges": 5,
+      "correct_before_after_remove": [
+        0.9870235919952393,
+        0.9739896655082703,
+        0.9870235919952393
+      ],
+      "wrong_before_after_remove": [
+        0.9669714570045471,
+        0.9740877747535706,
+        0.9669714570045471
+      ]
+    },
+    {
+      "case": "v4_reader_test_000437",
+      "region": 4,
+      "original": 433,
+      "wrong": 516,
+      "pruned": 531,
+      "pruned_correct": true,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.9664474129676819,
+        0.7436429262161255,
+        0.7436429262161255
+      ],
+      "wrong_before_after_remove": [
+        0.7796627283096313,
+        0.8761592507362366,
+        0.7796627283096313
+      ]
+    },
+    {
+      "case": "v4_reader_test_000439",
+      "region": 5,
+      "original": 543,
+      "wrong": 435,
+      "pruned": 438,
+      "pruned_correct": false,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.797225296497345,
+        0.483977347612381,
+        0.483977347612381
+      ],
+      "wrong_before_after_remove": [
+        0.43475157022476196,
+        0.6075243353843689,
+        0.43475157022476196
+      ]
+    },
+    {
+      "case": "v4_reader_test_000445",
+      "region": 4,
+      "original": 561,
+      "wrong": 569,
+      "pruned": 569,
+      "pruned_correct": false,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.6325724720954895,
+        0.5151408910751343,
+        0.40364938974380493
+      ],
+      "wrong_before_after_remove": [
+        0.5322892665863037,
+        0.5974733233451843,
+        0.5322892665863037
+      ]
+    },
+    {
+      "case": "v4_reader_test_000457",
+      "region": 4,
+      "original": 610,
+      "wrong": 572,
+      "pruned": 544,
+      "pruned_correct": true,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.9270005822181702,
+        0.6751900911331177,
+        0.6751900911331177
+      ],
+      "wrong_before_after_remove": [
+        0.5051554441452026,
+        0.704025149345398,
+        0.5051554441452026
+      ]
+    },
+    {
+      "case": "v4_reader_test_000459",
+      "region": 5,
+      "original": 601,
+      "wrong": 591,
+      "pruned": 625,
+      "pruned_correct": true,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.6182243227958679,
+        0.3880470395088196,
+        0.3164360821247101
+      ],
+      "wrong_before_after_remove": [
+        0.3820994794368744,
+        0.535580575466156,
+        0.3820994794368744
+      ]
+    },
+    {
+      "case": "v4_reader_test_000461",
+      "region": 5,
+      "original": 753,
+      "wrong": 574,
+      "pruned": 574,
+      "pruned_correct": false,
+      "removed_edges": 2,
+      "correct_before_after_remove": [
+        0.8515328764915466,
+        0.6285653114318848,
+        0.6285653114318848
+      ],
+      "wrong_before_after_remove": [
+        0.794638454914093,
+        0.7154561877250671,
+        0.794638454914093
+      ]
+    },
+    {
+      "case": "v4_reader_test_000469",
+      "region": 6,
+      "original": 867,
+      "wrong": 798,
+      "pruned": 867,
+      "pruned_correct": true,
+      "removed_edges": 2,
+      "correct_before_after_remove": [
+        0.9165295362472534,
+        0.7201460003852844,
+        0.7201460003852844
+      ],
+      "wrong_before_after_remove": [
+        0.45424342155456543,
+        0.7281076312065125,
+        0.45424342155456543
+      ]
+    },
+    {
+      "case": "v4_reader_test_000471",
+      "region": 4,
+      "original": 436,
+      "wrong": 433,
+      "pruned": 436,
+      "pruned_correct": true,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.8967478275299072,
+        0.7696688771247864,
+        0.7644262909889221
+      ],
+      "wrong_before_after_remove": [
+        0.7094964385032654,
+        0.8312098979949951,
+        0.7094964385032654
+      ]
+    },
+    {
+      "case": "v4_reader_test_000479",
+      "region": 6,
+      "original": 579,
+      "wrong": 590,
+      "pruned": 579,
+      "pruned_correct": true,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.9089479446411133,
+        0.8086177110671997,
+        0.8086177110671997
+      ],
+      "wrong_before_after_remove": [
+        0.7571596503257751,
+        0.8182153701782227,
+        0.7571596503257751
+      ]
+    },
+    {
+      "case": "v4_reader_test_000483",
+      "region": 1,
+      "original": 45,
+      "wrong": 72,
+      "pruned": 67,
+      "pruned_correct": false,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.997776448726654,
+        0.9774995446205139,
+        0.9774995446205139
+      ],
+      "wrong_before_after_remove": [
+        0.9874876737594604,
+        0.9939612746238708,
+        0.9874876737594604
+      ]
+    },
+    {
+      "case": "v4_reader_test_000483",
+      "region": 5,
+      "original": 525,
+      "wrong": 536,
+      "pruned": 536,
+      "pruned_correct": false,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.5904836654663086,
+        0.5092012286186218,
+        0.4869663119316101
+      ],
+      "wrong_before_after_remove": [
+        0.5371453762054443,
+        0.5718153119087219,
+        0.5371453762054443
+      ]
+    },
+    {
+      "case": "v4_reader_test_000493",
+      "region": 4,
+      "original": 560,
+      "wrong": 568,
+      "pruned": 560,
+      "pruned_correct": true,
+      "removed_edges": 2,
+      "correct_before_after_remove": [
+        0.8545663356781006,
+        0.7326560616493225,
+        0.7326560616493225
+      ],
+      "wrong_before_after_remove": [
+        0.7309669256210327,
+        0.7676219344139099,
+        0.7309669256210327
+      ]
+    },
+    {
+      "case": "v4_reader_test_000499",
+      "region": 4,
+      "original": 390,
+      "wrong": 427,
+      "pruned": 415,
+      "pruned_correct": false,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.8606807589530945,
+        0.4439072012901306,
+        0.4439072012901306
+      ],
+      "wrong_before_after_remove": [
+        0.3196019232273102,
+        0.6693857908248901,
+        0.3196019232273102
+      ]
+    },
+    {
+      "case": "v4_reader_test_000509",
+      "region": 6,
+      "original": 814,
+      "wrong": 772,
+      "pruned": 847,
+      "pruned_correct": false,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.836590051651001,
+        0.6963582038879395,
+        0.6963582038879395
+      ],
+      "wrong_before_after_remove": [
+        0.7434384226799011,
+        0.7900468707084656,
+        0.7434384226799011
+      ]
+    },
+    {
+      "case": "v4_reader_test_000515",
+      "region": 5,
+      "original": 490,
+      "wrong": 578,
+      "pruned": 584,
+      "pruned_correct": false,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.7349063158035278,
+        0.4229164719581604,
+        0.4229164719581604
+      ],
+      "wrong_before_after_remove": [
+        0.610397219657898,
+        0.671124279499054,
+        0.5889030694961548
+      ]
+    },
+    {
+      "case": "v4_reader_test_000519",
+      "region": 4,
+      "original": 435,
+      "wrong": 440,
+      "pruned": 435,
+      "pruned_correct": true,
+      "removed_edges": 2,
+      "correct_before_after_remove": [
+        0.8887900710105896,
+        0.5939531326293945,
+        0.8887900710105896
+      ],
+      "wrong_before_after_remove": [
+        0.43519479036331177,
+        0.7024619579315186,
+        0.43519479036331177
+      ]
+    },
+    {
+      "case": "v4_reader_test_000519",
+      "region": 6,
+      "original": 593,
+      "wrong": 651,
+      "pruned": 651,
+      "pruned_correct": false,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.8077438473701477,
+        0.5143665075302124,
+        0.5143665075302124
+      ],
+      "wrong_before_after_remove": [
+        0.6888225674629211,
+        0.7449451684951782,
+        0.6888225674629211
+      ]
+    },
+    {
+      "case": "v4_reader_test_000529",
+      "region": 6,
+      "original": 834,
+      "wrong": 853,
+      "pruned": 853,
+      "pruned_correct": false,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.9483766555786133,
+        0.7107860445976257,
+        0.7107860445976257
+      ],
+      "wrong_before_after_remove": [
+        0.8132196068763733,
+        0.8318360447883606,
+        0.8132196068763733
+      ]
+    },
+    {
+      "case": "v4_reader_test_000537",
+      "region": 6,
+      "original": 788,
+      "wrong": 757,
+      "pruned": 749,
+      "pruned_correct": true,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.8208255171775818,
+        0.5703134536743164,
+        0.5703134536743164
+      ],
+      "wrong_before_after_remove": [
+        0.7013315558433533,
+        0.7463355660438538,
+        0.7013315558433533
+      ]
+    },
+    {
+      "case": "v4_reader_test_000541",
+      "region": 5,
+      "original": 722,
+      "wrong": 728,
+      "pruned": 714,
+      "pruned_correct": false,
+      "removed_edges": 2,
+      "correct_before_after_remove": [
+        0.8558294177055359,
+        0.5830838680267334,
+        0.5559289455413818
+      ],
+      "wrong_before_after_remove": [
+        0.500455379486084,
+        0.6976106762886047,
+        0.44255250692367554
+      ]
+    },
+    {
+      "case": "v4_reader_test_000545",
+      "region": 5,
+      "original": 682,
+      "wrong": 747,
+      "pruned": 649,
+      "pruned_correct": true,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.8927843570709229,
+        0.7125562429428101,
+        0.7125562429428101
+      ],
+      "wrong_before_after_remove": [
+        0.6257257461547852,
+        0.7795884609222412,
+        0.6257257461547852
+      ]
+    },
+    {
+      "case": "v4_reader_test_000547",
+      "region": 4,
+      "original": 318,
+      "wrong": 324,
+      "pruned": 326,
+      "pruned_correct": false,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.9231699705123901,
+        0.5859590172767639,
+        0.5956557989120483
+      ],
+      "wrong_before_after_remove": [
+        0.34945812821388245,
+        0.7223708629608154,
+        0.34945812821388245
+      ]
+    },
+    {
+      "case": "v4_reader_test_000563",
+      "region": 3,
+      "original": 303,
+      "wrong": 301,
+      "pruned": 298,
+      "pruned_correct": true,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.9882134795188904,
+        0.8883749842643738,
+        0.8883749842643738
+      ],
+      "wrong_before_after_remove": [
+        0.8734186291694641,
+        0.9271224737167358,
+        0.8734186291694641
+      ]
+    },
+    {
+      "case": "v4_reader_test_000569",
+      "region": 5,
+      "original": 696,
+      "wrong": 689,
+      "pruned": 705,
+      "pruned_correct": true,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.8312603235244751,
+        0.6643738150596619,
+        0.6414616107940674
+      ],
+      "wrong_before_after_remove": [
+        0.5704709887504578,
+        0.7399840950965881,
+        0.5704709887504578
+      ]
+    },
+    {
+      "case": "v4_reader_test_000575",
+      "region": 2,
+      "original": 210,
+      "wrong": 204,
+      "pruned": 112,
+      "pruned_correct": true,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.9996132254600525,
+        0.9860110878944397,
+        0.9818791151046753
+      ],
+      "wrong_before_after_remove": [
+        0.9912490844726562,
+        0.9966857433319092,
+        0.9912490844726562
+      ]
+    },
+    {
+      "case": "v4_reader_test_000577",
+      "region": 6,
+      "original": 811,
+      "wrong": 781,
+      "pruned": 781,
+      "pruned_correct": false,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.9156572222709656,
+        0.7430137395858765,
+        0.7430137395858765
+      ],
+      "wrong_before_after_remove": [
+        0.7519420385360718,
+        0.7653548121452332,
+        0.7519420385360718
+      ]
+    },
+    {
+      "case": "v4_reader_test_000585",
+      "region": 5,
+      "original": 760,
+      "wrong": 613,
+      "pruned": 694,
+      "pruned_correct": true,
+      "removed_edges": 3,
+      "correct_before_after_remove": [
+        0.897223174571991,
+        0.632029116153717,
+        0.632029116153717
+      ],
+      "wrong_before_after_remove": [
+        0.6656029224395752,
+        0.7263660430908203,
+        0.6656029224395752
+      ]
+    },
+    {
+      "case": "v4_reader_test_000587",
+      "region": 5,
+      "original": 433,
+      "wrong": 453,
+      "pruned": 453,
+      "pruned_correct": false,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.8619163036346436,
+        0.7300236225128174,
+        0.7300236225128174
+      ],
+      "wrong_before_after_remove": [
+        0.7459317445755005,
+        0.7737137079238892,
+        0.7737137079238892
+      ]
+    },
+    {
+      "case": "v4_reader_test_000595",
+      "region": 1,
+      "original": 6,
+      "wrong": 0,
+      "pruned": 147,
+      "pruned_correct": true,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.9982210993766785,
+        0.972432017326355,
+        0.9459550976753235
+      ],
+      "wrong_before_after_remove": [
+        0.9847254157066345,
+        0.9934976100921631,
+        0.9847254157066345
+      ]
+    },
+    {
+      "case": "v4_reader_test_000595",
+      "region": 6,
+      "original": 669,
+      "wrong": 674,
+      "pruned": 669,
+      "pruned_correct": true,
+      "removed_edges": 2,
+      "correct_before_after_remove": [
+        0.5555105209350586,
+        0.43288782238960266,
+        0.5555105209350586
+      ],
+      "wrong_before_after_remove": [
+        0.36686018109321594,
+        0.48948290944099426,
+        0.36686018109321594
+      ]
+    },
+    {
+      "case": "v4_reader_test_000597",
+      "region": 5,
+      "original": 735,
+      "wrong": 780,
+      "pruned": 611,
+      "pruned_correct": true,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.8891521096229553,
+        0.7336858510971069,
+        0.7336858510971069
+      ],
+      "wrong_before_after_remove": [
+        0.7319945096969604,
+        0.7817336916923523,
+        0.7319945096969604
+      ]
+    },
+    {
+      "case": "v4_reader_test_000607",
+      "region": 3,
+      "original": 251,
+      "wrong": 265,
+      "pruned": 253,
+      "pruned_correct": true,
+      "removed_edges": 2,
+      "correct_before_after_remove": [
+        0.9517051577568054,
+        0.6939922571182251,
+        0.6939922571182251
+      ],
+      "wrong_before_after_remove": [
+        0.6737374067306519,
+        0.8205309510231018,
+        0.6737374067306519
+      ]
+    },
+    {
+      "case": "v4_reader_test_000607",
+      "region": 6,
+      "original": 638,
+      "wrong": 645,
+      "pruned": 640,
+      "pruned_correct": true,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.7170780897140503,
+        0.46259158849716187,
+        0.49516576528549194
+      ],
+      "wrong_before_after_remove": [
+        0.27665501832962036,
+        0.5629299879074097,
+        0.27665501832962036
+      ]
+    },
+    {
+      "case": "v4_reader_test_000609",
+      "region": 4,
+      "original": 539,
+      "wrong": 529,
+      "pruned": 523,
+      "pruned_correct": true,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.9404932260513306,
+        0.7818995714187622,
+        0.767412006855011
+      ],
+      "wrong_before_after_remove": [
+        0.7368624210357666,
+        0.8692224025726318,
+        0.7368624210357666
+      ]
+    },
+    {
+      "case": "v4_reader_test_000619",
+      "region": 1,
+      "original": 32,
+      "wrong": 115,
+      "pruned": 115,
+      "pruned_correct": false,
+      "removed_edges": 2,
+      "correct_before_after_remove": [
+        0.9985756874084473,
+        0.990745484828949,
+        0.990745484828949
+      ],
+      "wrong_before_after_remove": [
+        0.9978234767913818,
+        0.9966791272163391,
+        0.9978234767913818
+      ]
+    },
+    {
+      "case": "v4_reader_test_000631",
+      "region": 1,
+      "original": 67,
+      "wrong": 51,
+      "pruned": 48,
+      "pruned_correct": true,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.9983997941017151,
+        0.9113356471061707,
+        0.9113356471061707
+      ],
+      "wrong_before_after_remove": [
+        0.9862741827964783,
+        0.9925626516342163,
+        0.9862741827964783
+      ]
+    },
+    {
+      "case": "v4_reader_test_000635",
+      "region": 5,
+      "original": 449,
+      "wrong": 564,
+      "pruned": 564,
+      "pruned_correct": false,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.9014045000076294,
+        0.7899667024612427,
+        0.7899667024612427
+      ],
+      "wrong_before_after_remove": [
+        0.8994472026824951,
+        0.84295654296875,
+        0.84295654296875
+      ]
+    },
+    {
+      "case": "v4_reader_test_000643",
+      "region": 3,
+      "original": 290,
+      "wrong": 284,
+      "pruned": 284,
+      "pruned_correct": false,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.9818838834762573,
+        0.8182343244552612,
+        0.8182343244552612
+      ],
+      "wrong_before_after_remove": [
+        0.8179051876068115,
+        0.9112377762794495,
+        0.8990136981010437
+      ]
+    },
+    {
+      "case": "v4_reader_test_000643",
+      "region": 5,
+      "original": 515,
+      "wrong": 505,
+      "pruned": 505,
+      "pruned_correct": false,
+      "removed_edges": 2,
+      "correct_before_after_remove": [
+        0.7822847962379456,
+        0.716352641582489,
+        0.631044864654541
+      ],
+      "wrong_before_after_remove": [
+        0.7444677948951721,
+        0.7304446697235107,
+        0.7444677948951721
+      ]
+    },
+    {
+      "case": "v4_reader_test_000653",
+      "region": 5,
+      "original": 697,
+      "wrong": 690,
+      "pruned": 690,
+      "pruned_correct": false,
+      "removed_edges": 4,
+      "correct_before_after_remove": [
+        0.9068877100944519,
+        0.7544559836387634,
+        0.6598024368286133
+      ],
+      "wrong_before_after_remove": [
+        0.7655442357063293,
+        0.8366469740867615,
+        0.7655442357063293
+      ]
+    },
+    {
+      "case": "v4_reader_test_000657",
+      "region": 4,
+      "original": 558,
+      "wrong": 575,
+      "pruned": 569,
+      "pruned_correct": true,
+      "removed_edges": 2,
+      "correct_before_after_remove": [
+        0.9316137433052063,
+        0.7333859205245972,
+        0.7333859205245972
+      ],
+      "wrong_before_after_remove": [
+        0.805834949016571,
+        0.8317647576332092,
+        0.805834949016571
+      ]
+    },
+    {
+      "case": "v4_reader_test_000657",
+      "region": 5,
+      "original": 639,
+      "wrong": 629,
+      "pruned": 736,
+      "pruned_correct": true,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.8463494777679443,
+        0.620499312877655,
+        0.620499312877655
+      ],
+      "wrong_before_after_remove": [
+        0.529991090297699,
+        0.7356240153312683,
+        0.529991090297699
+      ]
+    },
+    {
+      "case": "v4_reader_test_000659",
+      "region": 6,
+      "original": 610,
+      "wrong": 613,
+      "pruned": 610,
+      "pruned_correct": true,
+      "removed_edges": 2,
+      "correct_before_after_remove": [
+        0.9230585098266602,
+        0.6563426852226257,
+        0.6370289325714111
+      ],
+      "wrong_before_after_remove": [
+        0.5337360501289368,
+        0.7162681818008423,
+        0.5337360501289368
+      ]
+    },
+    {
+      "case": "v4_reader_test_000667",
+      "region": 3,
+      "original": 293,
+      "wrong": 287,
+      "pruned": 293,
+      "pruned_correct": true,
+      "removed_edges": 3,
+      "correct_before_after_remove": [
+        0.9812114238739014,
+        0.874445378780365,
+        0.9812114238739014
+      ],
+      "wrong_before_after_remove": [
+        0.816956102848053,
+        0.9133573174476624,
+        0.816956102848053
+      ]
+    },
+    {
+      "case": "v4_reader_test_000667",
+      "region": 5,
+      "original": 501,
+      "wrong": 514,
+      "pruned": 514,
+      "pruned_correct": false,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.8644111752510071,
+        0.6296791434288025,
+        0.48711317777633667
+      ],
+      "wrong_before_after_remove": [
+        0.6978158950805664,
+        0.8061028122901917,
+        0.6978158950805664
+      ]
+    },
+    {
+      "case": "v4_reader_test_000671",
+      "region": 2,
+      "original": 215,
+      "wrong": 159,
+      "pruned": 159,
+      "pruned_correct": false,
+      "removed_edges": 3,
+      "correct_before_after_remove": [
+        0.9987375140190125,
+        0.9637981653213501,
+        0.9637981653213501
+      ],
+      "wrong_before_after_remove": [
+        0.9954387545585632,
+        0.9946218729019165,
+        0.9954387545585632
+      ]
+    },
+    {
+      "case": "v4_reader_test_000671",
+      "region": 4,
+      "original": 427,
+      "wrong": 455,
+      "pruned": 455,
+      "pruned_correct": false,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.920001745223999,
+        0.7473424673080444,
+        0.7473424673080444
+      ],
+      "wrong_before_after_remove": [
+        0.8212242126464844,
+        0.8030056953430176,
+        0.7852563261985779
+      ]
+    },
+    {
+      "case": "v4_reader_test_000679",
+      "region": 5,
+      "original": 544,
+      "wrong": 565,
+      "pruned": 533,
+      "pruned_correct": false,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.7676902413368225,
+        0.4334806501865387,
+        0.4334806501865387
+      ],
+      "wrong_before_after_remove": [
+        0.3407590985298157,
+        0.5467058420181274,
+        0.3407590985298157
+      ]
+    },
+    {
+      "case": "v4_reader_test_000683",
+      "region": 5,
+      "original": 471,
+      "wrong": 478,
+      "pruned": 471,
+      "pruned_correct": true,
+      "removed_edges": 2,
+      "correct_before_after_remove": [
+        0.934806227684021,
+        0.7307429909706116,
+        0.8313028812408447
+      ],
+      "wrong_before_after_remove": [
+        0.6208628416061401,
+        0.8249260187149048,
+        0.6208628416061401
+      ]
+    },
+    {
+      "case": "v4_reader_test_000687",
+      "region": 4,
+      "original": 467,
+      "wrong": 477,
+      "pruned": 467,
+      "pruned_correct": true,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.6883735060691833,
+        0.4647674560546875,
+        0.4646987318992615
+      ],
+      "wrong_before_after_remove": [
+        0.3444700539112091,
+        0.5680072903633118,
+        0.3444700539112091
+      ]
+    },
+    {
+      "case": "v4_reader_test_000703",
+      "region": 6,
+      "original": 552,
+      "wrong": 547,
+      "pruned": 589,
+      "pruned_correct": false,
+      "removed_edges": 2,
+      "correct_before_after_remove": [
+        0.8520757555961609,
+        0.5440292358398438,
+        0.5572148561477661
+      ],
+      "wrong_before_after_remove": [
+        0.36528998613357544,
+        0.6817007064819336,
+        0.36528998613357544
+      ]
+    },
+    {
+      "case": "v4_reader_test_000709",
+      "region": 4,
+      "original": 526,
+      "wrong": 535,
+      "pruned": 526,
+      "pruned_correct": true,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.9193392992019653,
+        0.8557558655738831,
+        0.8534591197967529
+      ],
+      "wrong_before_after_remove": [
+        0.8256045579910278,
+        0.8865321278572083,
+        0.8256045579910278
+      ]
+    },
+    {
+      "case": "v4_reader_test_000709",
+      "region": 5,
+      "original": 737,
+      "wrong": 670,
+      "pruned": 708,
+      "pruned_correct": true,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.9135082364082336,
+        0.6293167471885681,
+        0.6293167471885681
+      ],
+      "wrong_before_after_remove": [
+        0.6235301494598389,
+        0.7424555420875549,
+        0.6235301494598389
+      ]
+    },
+    {
+      "case": "v4_reader_test_000715",
+      "region": 4,
+      "original": 421,
+      "wrong": 357,
+      "pruned": 371,
+      "pruned_correct": true,
+      "removed_edges": 2,
+      "correct_before_after_remove": [
+        0.8473231196403503,
+        0.5674183368682861,
+        0.5674183368682861
+      ],
+      "wrong_before_after_remove": [
+        0.7265176177024841,
+        0.7805191278457642,
+        0.7265176177024841
+      ]
+    },
+    {
+      "case": "v4_reader_test_000715",
+      "region": 6,
+      "original": 646,
+      "wrong": 631,
+      "pruned": 631,
+      "pruned_correct": false,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.6806584596633911,
+        0.4929037094116211,
+        0.4166303277015686
+      ],
+      "wrong_before_after_remove": [
+        0.5580591559410095,
+        0.6377487182617188,
+        0.5580591559410095
+      ]
+    },
+    {
+      "case": "v4_reader_test_000727",
+      "region": 1,
+      "original": 27,
+      "wrong": 126,
+      "pruned": 126,
+      "pruned_correct": false,
+      "removed_edges": 2,
+      "correct_before_after_remove": [
+        0.9964151382446289,
+        0.927778959274292,
+        0.927778959274292
+      ],
+      "wrong_before_after_remove": [
+        0.9846845865249634,
+        0.9627431035041809,
+        0.9846845865249634
+      ]
+    },
+    {
+      "case": "v4_reader_test_000735",
+      "region": 4,
+      "original": 467,
+      "wrong": 477,
+      "pruned": 477,
+      "pruned_correct": false,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.940604031085968,
+        0.5958790183067322,
+        0.5958790183067322
+      ],
+      "wrong_before_after_remove": [
+        0.701203465461731,
+        0.8568138480186462,
+        0.701203465461731
+      ]
+    },
+    {
+      "case": "v4_reader_test_000739",
+      "region": 3,
+      "original": 281,
+      "wrong": 286,
+      "pruned": 286,
+      "pruned_correct": false,
+      "removed_edges": 2,
+      "correct_before_after_remove": [
+        0.9599632620811462,
+        0.8686884045600891,
+        0.6898674964904785
+      ],
+      "wrong_before_after_remove": [
+        0.9211258292198181,
+        0.903689444065094,
+        0.9211258292198181
+      ]
+    },
+    {
+      "case": "v4_reader_test_000747",
+      "region": 6,
+      "original": 743,
+      "wrong": 676,
+      "pruned": 683,
+      "pruned_correct": true,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.7341054081916809,
+        0.38002657890319824,
+        0.38002657890319824
+      ],
+      "wrong_before_after_remove": [
+        0.39158570766448975,
+        0.5345321297645569,
+        0.39158570766448975
+      ]
+    },
+    {
+      "case": "v4_reader_test_000749",
+      "region": 4,
+      "original": 558,
+      "wrong": 553,
+      "pruned": 558,
+      "pruned_correct": true,
+      "removed_edges": 2,
+      "correct_before_after_remove": [
+        0.9484249353408813,
+        0.7542386651039124,
+        0.9484249353408813
+      ],
+      "wrong_before_after_remove": [
+        0.6496767997741699,
+        0.766632616519928,
+        0.4798990488052368
+      ]
+    },
+    {
+      "case": "v4_reader_test_000757",
+      "region": 6,
+      "original": 858,
+      "wrong": 900,
+      "pruned": 900,
+      "pruned_correct": false,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.9254967570304871,
+        0.8438065648078918,
+        0.8438065648078918
+      ],
+      "wrong_before_after_remove": [
+        0.8899221420288086,
+        0.8775062561035156,
+        0.8899221420288086
+      ]
+    },
+    {
+      "case": "v4_reader_test_000759",
+      "region": 4,
+      "original": 488,
+      "wrong": 459,
+      "pruned": 459,
+      "pruned_correct": false,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.610044538974762,
+        0.3556685149669647,
+        0.3556685149669647
+      ],
+      "wrong_before_after_remove": [
+        0.5347457528114319,
+        0.5511886477470398,
+        0.5347457528114319
+      ]
+    },
+    {
+      "case": "v4_reader_test_000763",
+      "region": 4,
+      "original": 377,
+      "wrong": 309,
+      "pruned": 304,
+      "pruned_correct": true,
+      "removed_edges": 2,
+      "correct_before_after_remove": [
+        0.9467620253562927,
+        0.5792365670204163,
+        0.5792365670204163
+      ],
+      "wrong_before_after_remove": [
+        0.7533524632453918,
+        0.8182830810546875,
+        0.7533524632453918
+      ]
+    },
+    {
+      "case": "v4_reader_test_000767",
+      "region": 4,
+      "original": 377,
+      "wrong": 349,
+      "pruned": 349,
+      "pruned_correct": false,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.6565577983856201,
+        0.49194931983947754,
+        0.49194931983947754
+      ],
+      "wrong_before_after_remove": [
+        0.5514363050460815,
+        0.6187212467193604,
+        0.5514363050460815
+      ]
+    },
+    {
+      "case": "v4_reader_test_000773",
+      "region": 6,
+      "original": 800,
+      "wrong": 832,
+      "pruned": 849,
+      "pruned_correct": false,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.9390864968299866,
+        0.6806694865226746,
+        0.6806694865226746
+      ],
+      "wrong_before_after_remove": [
+        0.6193807721138,
+        0.7882949113845825,
+        0.6193807721138
+      ]
+    },
+    {
+      "case": "v4_reader_test_000777",
+      "region": 5,
+      "original": 634,
+      "wrong": 721,
+      "pruned": 721,
+      "pruned_correct": false,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.9571970701217651,
+        0.7808262705802917,
+        0.7808262705802917
+      ],
+      "wrong_before_after_remove": [
+        0.8980449438095093,
+        0.7886297702789307,
+        0.8980449438095093
+      ]
+    },
+    {
+      "case": "v4_reader_test_000777",
+      "region": 6,
+      "original": 929,
+      "wrong": 879,
+      "pruned": 835,
+      "pruned_correct": true,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.9180815815925598,
+        0.6166120767593384,
+        0.6166120767593384
+      ],
+      "wrong_before_after_remove": [
+        0.6768283843994141,
+        0.7532401084899902,
+        0.6768283843994141
+      ]
+    },
+    {
+      "case": "v4_reader_test_000779",
+      "region": 3,
+      "original": 276,
+      "wrong": 278,
+      "pruned": 274,
+      "pruned_correct": true,
+      "removed_edges": 3,
+      "correct_before_after_remove": [
+        0.9766913056373596,
+        0.8452970385551453,
+        0.8686394691467285
+      ],
+      "wrong_before_after_remove": [
+        0.7179917693138123,
+        0.8861464262008667,
+        0.7179917693138123
+      ]
+    },
+    {
+      "case": "v4_reader_test_000781",
+      "region": 4,
+      "original": 589,
+      "wrong": 550,
+      "pruned": 547,
+      "pruned_correct": true,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.7784892916679382,
+        0.43153712153434753,
+        0.43153712153434753
+      ],
+      "wrong_before_after_remove": [
+        0.29800283908843994,
+        0.5165130496025085,
+        0.29800283908843994
+      ]
+    },
+    {
+      "case": "v4_reader_test_000783",
+      "region": 4,
+      "original": 460,
+      "wrong": 450,
+      "pruned": 436,
+      "pruned_correct": true,
+      "removed_edges": 2,
+      "correct_before_after_remove": [
+        0.7095944285392761,
+        0.4657607972621918,
+        0.4642235040664673
+      ],
+      "wrong_before_after_remove": [
+        0.3371340036392212,
+        0.5564669966697693,
+        0.3371340036392212
+      ]
+    },
+    {
+      "case": "v4_reader_test_000787",
+      "region": 5,
+      "original": 514,
+      "wrong": 510,
+      "pruned": 505,
+      "pruned_correct": true,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.6434044241905212,
+        0.4516092538833618,
+        0.5046221613883972
+      ],
+      "wrong_before_after_remove": [
+        0.4025118947029114,
+        0.5590920448303223,
+        0.21553607285022736
+      ]
+    },
+    {
+      "case": "v4_reader_test_000795",
+      "region": 3,
+      "original": 327,
+      "wrong": 331,
+      "pruned": 327,
+      "pruned_correct": true,
+      "removed_edges": 2,
+      "correct_before_after_remove": [
+        0.7928014397621155,
+        0.5859529376029968,
+        0.7022440433502197
+      ],
+      "wrong_before_after_remove": [
+        0.30742642283439636,
+        0.6229202151298523,
+        0.30742642283439636
+      ]
+    },
+    {
+      "case": "v4_reader_test_000795",
+      "region": 4,
+      "original": 440,
+      "wrong": 448,
+      "pruned": 442,
+      "pruned_correct": true,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.9637040495872498,
+        0.7945463061332703,
+        0.7456170320510864
+      ],
+      "wrong_before_after_remove": [
+        0.8273565173149109,
+        0.9159824252128601,
+        0.8273565173149109
+      ]
+    },
+    {
+      "case": "v4_reader_test_000811",
+      "region": 4,
+      "original": 370,
+      "wrong": 382,
+      "pruned": 487,
+      "pruned_correct": false,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.892348051071167,
+        0.5162022113800049,
+        0.46347734332084656
+      ],
+      "wrong_before_after_remove": [
+        0.41720137000083923,
+        0.7260466814041138,
+        0.17954549193382263
+      ]
+    },
+    {
+      "case": "v4_reader_test_000811",
+      "region": 5,
+      "original": 503,
+      "wrong": 494,
+      "pruned": 494,
+      "pruned_correct": false,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.6903097629547119,
+        0.4888484477996826,
+        0.4933762550354004
+      ],
+      "wrong_before_after_remove": [
+        0.372636616230011,
+        0.6204054951667786,
+        0.6543240547180176
+      ]
+    },
+    {
+      "case": "v4_reader_test_000811",
+      "region": 6,
+      "original": 713,
+      "wrong": 706,
+      "pruned": 713,
+      "pruned_correct": true,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.904154896736145,
+        0.5909252166748047,
+        0.904154896736145
+      ],
+      "wrong_before_after_remove": [
+        0.4222630262374878,
+        0.7354928255081177,
+        0.6001315712928772
+      ]
+    },
+    {
+      "case": "v4_reader_test_000815",
+      "region": 4,
+      "original": 423,
+      "wrong": 417,
+      "pruned": 414,
+      "pruned_correct": false,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.943500280380249,
+        0.8097012042999268,
+        0.8097012042999268
+      ],
+      "wrong_before_after_remove": [
+        0.7941814064979553,
+        0.8410017490386963,
+        0.7941814064979553
+      ]
+    },
+    {
+      "case": "v4_reader_test_000819",
+      "region": 3,
+      "original": 356,
+      "wrong": 366,
+      "pruned": 366,
+      "pruned_correct": false,
+      "removed_edges": 2,
+      "correct_before_after_remove": [
+        0.9900707602500916,
+        0.8241220712661743,
+        0.7763394713401794
+      ],
+      "wrong_before_after_remove": [
+        0.9557300806045532,
+        0.9333758354187012,
+        0.9557300806045532
+      ]
+    },
+    {
+      "case": "v4_reader_test_000823",
+      "region": 2,
+      "original": 248,
+      "wrong": 252,
+      "pruned": 248,
+      "pruned_correct": true,
+      "removed_edges": 2,
+      "correct_before_after_remove": [
+        0.998745322227478,
+        0.9807491898536682,
+        0.9807491898536682
+      ],
+      "wrong_before_after_remove": [
+        0.98005211353302,
+        0.980902373790741,
+        0.9742066264152527
+      ]
+    },
+    {
+      "case": "v4_reader_test_000823",
+      "region": 4,
+      "original": 386,
+      "wrong": 483,
+      "pruned": 492,
+      "pruned_correct": false,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.8036965727806091,
+        0.5715970396995544,
+        0.5715970396995544
+      ],
+      "wrong_before_after_remove": [
+        0.7512190937995911,
+        0.6492044925689697,
+        0.5495252013206482
+      ]
+    },
+    {
+      "case": "v4_reader_test_000827",
+      "region": 6,
+      "original": 569,
+      "wrong": 596,
+      "pruned": 596,
+      "pruned_correct": false,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.7148058414459229,
+        0.6049522161483765,
+        0.6049522161483765
+      ],
+      "wrong_before_after_remove": [
+        0.5546295046806335,
+        0.6527004837989807,
+        0.6543099880218506
+      ]
+    },
+    {
+      "case": "v4_reader_test_000829",
+      "region": 5,
+      "original": 673,
+      "wrong": 681,
+      "pruned": 681,
+      "pruned_correct": false,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.7412018179893494,
+        0.5416718125343323,
+        0.4908592104911804
+      ],
+      "wrong_before_after_remove": [
+        0.5503001809120178,
+        0.6743862628936768,
+        0.5503001809120178
+      ]
+    },
+    {
+      "case": "v4_reader_test_000835",
+      "region": 3,
+      "original": 263,
+      "wrong": 242,
+      "pruned": 238,
+      "pruned_correct": true,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.9767489433288574,
+        0.844643235206604,
+        0.844643235206604
+      ],
+      "wrong_before_after_remove": [
+        0.7753884196281433,
+        0.8888944983482361,
+        0.7753884196281433
+      ]
+    },
+    {
+      "case": "v4_reader_test_000835",
+      "region": 5,
+      "original": 471,
+      "wrong": 423,
+      "pruned": 471,
+      "pruned_correct": true,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.6296431422233582,
+        0.6192280650138855,
+        0.6192280650138855
+      ],
+      "wrong_before_after_remove": [
+        0.5245763659477234,
+        0.6274241805076599,
+        0.5245763659477234
+      ]
+    },
+    {
+      "case": "v4_reader_test_000839",
+      "region": 3,
+      "original": 274,
+      "wrong": 276,
+      "pruned": 246,
+      "pruned_correct": true,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.9928339719772339,
+        0.6355750560760498,
+        0.6355750560760498
+      ],
+      "wrong_before_after_remove": [
+        0.43091151118278503,
+        0.7452772855758667,
+        0.43091151118278503
+      ]
+    },
+    {
+      "case": "v4_reader_test_000843",
+      "region": 4,
+      "original": 467,
+      "wrong": 474,
+      "pruned": 467,
+      "pruned_correct": true,
+      "removed_edges": 2,
+      "correct_before_after_remove": [
+        0.7865402698516846,
+        0.6187625527381897,
+        0.7865402698516846
+      ],
+      "wrong_before_after_remove": [
+        0.5284206867218018,
+        0.6757595539093018,
+        0.43910253047943115
+      ]
+    },
+    {
+      "case": "v4_reader_test_000843",
+      "region": 5,
+      "original": 601,
+      "wrong": 613,
+      "pruned": 591,
+      "pruned_correct": false,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.7001864910125732,
+        0.5434083342552185,
+        0.5056459903717041
+      ],
+      "wrong_before_after_remove": [
+        0.5735933184623718,
+        0.6558789014816284,
+        0.5735933184623718
+      ]
+    },
+    {
+      "case": "v4_reader_test_000845",
+      "region": 5,
+      "original": 651,
+      "wrong": 689,
+      "pruned": 641,
+      "pruned_correct": false,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.8915814161300659,
+        0.5130079984664917,
+        0.5130079984664917
+      ],
+      "wrong_before_after_remove": [
+        0.560433566570282,
+        0.7629013061523438,
+        0.560433566570282
+      ]
+    },
+    {
+      "case": "v4_reader_test_000847",
+      "region": 4,
+      "original": 377,
+      "wrong": 386,
+      "pruned": 360,
+      "pruned_correct": true,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.8989518880844116,
+        0.5733963251113892,
+        0.43968671560287476
+      ],
+      "wrong_before_after_remove": [
+        0.5622210502624512,
+        0.7810961008071899,
+        0.5622210502624512
+      ]
+    },
+    {
+      "case": "v4_reader_test_000851",
+      "region": 4,
+      "original": 422,
+      "wrong": 415,
+      "pruned": 415,
+      "pruned_correct": false,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.7778698801994324,
+        0.5718525648117065,
+        0.47542256116867065
+      ],
+      "wrong_before_after_remove": [
+        0.569577157497406,
+        0.7049674391746521,
+        0.569577157497406
+      ]
+    },
+    {
+      "case": "v4_reader_test_000863",
+      "region": 3,
+      "original": 276,
+      "wrong": 278,
+      "pruned": 278,
+      "pruned_correct": false,
+      "removed_edges": 2,
+      "correct_before_after_remove": [
+        0.9805010557174683,
+        0.7010852098464966,
+        0.7010852098464966
+      ],
+      "wrong_before_after_remove": [
+        0.9446184039115906,
+        0.9630792737007141,
+        0.9446184039115906
+      ]
+    },
+    {
+      "case": "v4_reader_test_000863",
+      "region": 6,
+      "original": 585,
+      "wrong": 636,
+      "pruned": 579,
+      "pruned_correct": true,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.783321738243103,
+        0.5662406086921692,
+        0.5662406086921692
+      ],
+      "wrong_before_after_remove": [
+        0.35187336802482605,
+        0.6291280388832092,
+        0.35187336802482605
+      ]
+    },
+    {
+      "case": "v4_reader_test_000875",
+      "region": 2,
+      "original": 225,
+      "wrong": 181,
+      "pruned": 181,
+      "pruned_correct": false,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.9950094223022461,
+        0.9431700110435486,
+        0.9431700110435486
+      ],
+      "wrong_before_after_remove": [
+        0.9863864183425903,
+        0.9867631196975708,
+        0.9863864183425903
+      ]
+    },
+    {
+      "case": "v4_reader_test_000875",
+      "region": 4,
+      "original": 448,
+      "wrong": 458,
+      "pruned": 454,
+      "pruned_correct": false,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.7645415663719177,
+        0.6774508357048035,
+        0.6774508357048035
+      ],
+      "wrong_before_after_remove": [
+        0.5217604637145996,
+        0.6995605230331421,
+        0.4895322918891907
+      ]
+    },
+    {
+      "case": "v4_reader_test_000879",
+      "region": 2,
+      "original": 203,
+      "wrong": 194,
+      "pruned": 194,
+      "pruned_correct": false,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.9914724230766296,
+        0.908130943775177,
+        0.908130943775177
+      ],
+      "wrong_before_after_remove": [
+        0.9847599864006042,
+        0.934108555316925,
+        0.9847599864006042
+      ]
+    },
+    {
+      "case": "v4_reader_test_000879",
+      "region": 3,
+      "original": 376,
+      "wrong": 333,
+      "pruned": 334,
+      "pruned_correct": false,
+      "removed_edges": 2,
+      "correct_before_after_remove": [
+        0.9831405282020569,
+        0.7685990333557129,
+        0.7685990333557129
+      ],
+      "wrong_before_after_remove": [
+        0.97639000415802,
+        0.9627928733825684,
+        0.5566232204437256
+      ]
+    },
+    {
+      "case": "v4_reader_test_000879",
+      "region": 5,
+      "original": 541,
+      "wrong": 593,
+      "pruned": 593,
+      "pruned_correct": false,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.6528960466384888,
+        0.39881739020347595,
+        0.39881739020347595
+      ],
+      "wrong_before_after_remove": [
+        0.5468933582305908,
+        0.5766646265983582,
+        0.5468933582305908
+      ]
+    },
+    {
+      "case": "v4_reader_test_000879",
+      "region": 6,
+      "original": 642,
+      "wrong": 638,
+      "pruned": 636,
+      "pruned_correct": true,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.8692326545715332,
+        0.5854165554046631,
+        0.48949068784713745
+      ],
+      "wrong_before_after_remove": [
+        0.5089801549911499,
+        0.7431442737579346,
+        0.5089801549911499
+      ]
+    },
+    {
+      "case": "v4_reader_test_000881",
+      "region": 6,
+      "original": 817,
+      "wrong": 833,
+      "pruned": 809,
+      "pruned_correct": false,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.9457069635391235,
+        0.7628725171089172,
+        0.7628725171089172
+      ],
+      "wrong_before_after_remove": [
+        0.7674338817596436,
+        0.844989538192749,
+        0.7674338817596436
+      ]
+    },
+    {
+      "case": "v4_reader_test_000895",
+      "region": 3,
+      "original": 329,
+      "wrong": 327,
+      "pruned": 327,
+      "pruned_correct": false,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.9736679792404175,
+        0.9138814210891724,
+        0.9138814210891724
+      ],
+      "wrong_before_after_remove": [
+        0.9290379881858826,
+        0.9475982785224915,
+        0.9290379881858826
+      ]
+    },
+    {
+      "case": "v4_reader_test_000897",
+      "region": 4,
+      "original": 501,
+      "wrong": 544,
+      "pruned": 553,
+      "pruned_correct": true,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.9300856590270996,
+        0.7579270005226135,
+        0.7579270005226135
+      ],
+      "wrong_before_after_remove": [
+        0.8386364579200745,
+        0.8717078566551208,
+        0.8386364579200745
+      ]
+    },
+    {
+      "case": "v4_reader_test_000899",
+      "region": 4,
+      "original": 462,
+      "wrong": 381,
+      "pruned": 432,
+      "pruned_correct": true,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.9353291392326355,
+        0.5948774814605713,
+        0.5948774814605713
+      ],
+      "wrong_before_after_remove": [
+        0.5653676986694336,
+        0.6367688179016113,
+        0.5653676986694336
+      ]
+    },
+    {
+      "case": "v4_reader_test_000901",
+      "region": 6,
+      "original": 794,
+      "wrong": 771,
+      "pruned": 768,
+      "pruned_correct": false,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.950981616973877,
+        0.6723445653915405,
+        0.6723445653915405
+      ],
+      "wrong_before_after_remove": [
+        0.7673358917236328,
+        0.8767289519309998,
+        0.7673358917236328
+      ]
+    },
+    {
+      "case": "v4_reader_test_000915",
+      "region": 3,
+      "original": 283,
+      "wrong": 290,
+      "pruned": 283,
+      "pruned_correct": true,
+      "removed_edges": 6,
+      "correct_before_after_remove": [
+        0.9893592596054077,
+        0.9638156294822693,
+        0.9893592596054077
+      ],
+      "wrong_before_after_remove": [
+        0.9500613808631897,
+        0.9669943451881409,
+        0.9500613808631897
+      ]
+    },
+    {
+      "case": "v4_reader_test_000931",
+      "region": 6,
+      "original": 694,
+      "wrong": 688,
+      "pruned": 639,
+      "pruned_correct": false,
+      "removed_edges": 2,
+      "correct_before_after_remove": [
+        0.7675737738609314,
+        0.5771480202674866,
+        0.49031203985214233
+      ],
+      "wrong_before_after_remove": [
+        0.4746111035346985,
+        0.6650367975234985,
+        0.4746111035346985
+      ]
+    },
+    {
+      "case": "v4_reader_test_000933",
+      "region": 5,
+      "original": 667,
+      "wrong": 603,
+      "pruned": 603,
+      "pruned_correct": false,
+      "removed_edges": 2,
+      "correct_before_after_remove": [
+        0.9141656756401062,
+        0.7877536416053772,
+        0.7877536416053772
+      ],
+      "wrong_before_after_remove": [
+        0.9134383797645569,
+        0.8047678470611572,
+        0.9134383797645569
+      ]
+    },
+    {
+      "case": "v4_reader_test_000937",
+      "region": 4,
+      "original": 550,
+      "wrong": 558,
+      "pruned": 556,
+      "pruned_correct": true,
+      "removed_edges": 3,
+      "correct_before_after_remove": [
+        0.911149799823761,
+        0.7497255206108093,
+        0.7195389270782471
+      ],
+      "wrong_before_after_remove": [
+        0.6916294097900391,
+        0.7868149876594543,
+        0.6916294097900391
+      ]
+    },
+    {
+      "case": "v4_reader_test_000941",
+      "region": 5,
+      "original": 630,
+      "wrong": 641,
+      "pruned": 638,
+      "pruned_correct": true,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.9140887260437012,
+        0.5670605897903442,
+        0.5670605897903442
+      ],
+      "wrong_before_after_remove": [
+        0.5431118607521057,
+        0.7842468023300171,
+        0.5431118607521057
+      ]
+    },
+    {
+      "case": "v4_reader_test_000941",
+      "region": 6,
+      "original": 777,
+      "wrong": 747,
+      "pruned": 794,
+      "pruned_correct": true,
+      "removed_edges": 2,
+      "correct_before_after_remove": [
+        0.8683531880378723,
+        0.5796747207641602,
+        0.5796747207641602
+      ],
+      "wrong_before_after_remove": [
+        0.6484987735748291,
+        0.6922036409378052,
+        0.6484987735748291
+      ]
+    },
+    {
+      "case": "v4_reader_test_000943",
+      "region": 4,
+      "original": 349,
+      "wrong": 340,
+      "pruned": 349,
+      "pruned_correct": true,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.8059815168380737,
+        0.6950311064720154,
+        0.6507460474967957
+      ],
+      "wrong_before_after_remove": [
+        0.6050966382026672,
+        0.7356717586517334,
+        0.6050966382026672
+      ]
+    },
+    {
+      "case": "v4_reader_test_000947",
+      "region": 3,
+      "original": 308,
+      "wrong": 324,
+      "pruned": 330,
+      "pruned_correct": true,
+      "removed_edges": 2,
+      "correct_before_after_remove": [
+        0.9382064342498779,
+        0.6429563760757446,
+        0.6429563760757446
+      ],
+      "wrong_before_after_remove": [
+        0.6734557747840881,
+        0.7591085433959961,
+        0.6734557747840881
+      ]
+    },
+    {
+      "case": "v4_reader_test_000947",
+      "region": 4,
+      "original": 467,
+      "wrong": 437,
+      "pruned": 437,
+      "pruned_correct": false,
+      "removed_edges": 2,
+      "correct_before_after_remove": [
+        0.8611756563186646,
+        0.5766711235046387,
+        0.5766711235046387
+      ],
+      "wrong_before_after_remove": [
+        0.8259193301200867,
+        0.6938889622688293,
+        0.8259193301200867
+      ]
+    },
+    {
+      "case": "v4_reader_test_000951",
+      "region": 6,
+      "original": 690,
+      "wrong": 766,
+      "pruned": 690,
+      "pruned_correct": true,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.7942306995391846,
+        0.43757933378219604,
+        0.43757933378219604
+      ],
+      "wrong_before_after_remove": [
+        0.36809155344963074,
+        0.4494404196739197,
+        0.36809155344963074
+      ]
+    },
+    {
+      "case": "v4_reader_test_000953",
+      "region": 6,
+      "original": 926,
+      "wrong": 931,
+      "pruned": 854,
+      "pruned_correct": true,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.9510559439659119,
+        0.5931253433227539,
+        0.5995646715164185
+      ],
+      "wrong_before_after_remove": [
+        0.37496134638786316,
+        0.7494228482246399,
+        0.37496134638786316
+      ]
+    },
+    {
+      "case": "v4_reader_test_000959",
+      "region": 6,
+      "original": 637,
+      "wrong": 645,
+      "pruned": 652,
+      "pruned_correct": true,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.6810646653175354,
+        0.4398173689842224,
+        0.46237605810165405
+      ],
+      "wrong_before_after_remove": [
+        0.2351464033126831,
+        0.5249933004379272,
+        0.2351464033126831
+      ]
+    },
+    {
+      "case": "v4_reader_test_000961",
+      "region": 6,
+      "original": 802,
+      "wrong": 796,
+      "pruned": 793,
+      "pruned_correct": true,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.9668315052986145,
+        0.8587130308151245,
+        0.8425337076187134
+      ],
+      "wrong_before_after_remove": [
+        0.9048194289207458,
+        0.9451272487640381,
+        0.9048194289207458
+      ]
+    },
+    {
+      "case": "v4_reader_test_000963",
+      "region": 4,
+      "original": 467,
+      "wrong": 472,
+      "pruned": 475,
+      "pruned_correct": false,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.9371192455291748,
+        0.6307447552680969,
+        0.4779245853424072
+      ],
+      "wrong_before_after_remove": [
+        0.6261964440345764,
+        0.716911256313324,
+        0.5750207901000977
+      ]
+    },
+    {
+      "case": "v4_reader_test_000963",
+      "region": 5,
+      "original": 534,
+      "wrong": 637,
+      "pruned": 637,
+      "pruned_correct": false,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.5738153457641602,
+        0.32357171177864075,
+        0.32357171177864075
+      ],
+      "wrong_before_after_remove": [
+        0.35412293672561646,
+        0.394137978553772,
+        0.35412293672561646
+      ]
+    },
+    {
+      "case": "v4_reader_test_000967",
+      "region": 6,
+      "original": 667,
+      "wrong": 671,
+      "pruned": 678,
+      "pruned_correct": true,
+      "removed_edges": 2,
+      "correct_before_after_remove": [
+        0.7110282778739929,
+        0.4826831817626953,
+        0.40769433975219727
+      ],
+      "wrong_before_after_remove": [
+        0.45660319924354553,
+        0.6024023294448853,
+        0.46750491857528687
+      ]
+    },
+    {
+      "case": "v4_reader_test_000973",
+      "region": 6,
+      "original": 800,
+      "wrong": 865,
+      "pruned": 865,
+      "pruned_correct": false,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.9069966673851013,
+        0.6840024590492249,
+        0.6840024590492249
+      ],
+      "wrong_before_after_remove": [
+        0.729926586151123,
+        0.7487837672233582,
+        0.729926586151123
+      ]
+    },
+    {
+      "case": "v4_reader_test_000991",
+      "region": 5,
+      "original": 459,
+      "wrong": 475,
+      "pruned": 468,
+      "pruned_correct": false,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.8858864903450012,
+        0.7113304138183594,
+        0.6013414859771729
+      ],
+      "wrong_before_after_remove": [
+        0.7425716519355774,
+        0.835726261138916,
+        0.49104559421539307
+      ]
+    },
+    {
+      "case": "v4_reader_test_000991",
+      "region": 6,
+      "original": 676,
+      "wrong": 639,
+      "pruned": 644,
+      "pruned_correct": true,
+      "removed_edges": 2,
+      "correct_before_after_remove": [
+        0.8081990480422974,
+        0.5965462923049927,
+        0.5965462923049927
+      ],
+      "wrong_before_after_remove": [
+        0.6984172463417053,
+        0.7200810313224792,
+        0.6984172463417053
+      ]
+    },
+    {
+      "case": "v4_reader_test_000997",
+      "region": 6,
+      "original": 771,
+      "wrong": 841,
+      "pruned": 841,
+      "pruned_correct": false,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.9437959790229797,
+        0.7340158224105835,
+        0.7340158224105835
+      ],
+      "wrong_before_after_remove": [
+        0.8455531597137451,
+        0.9036749005317688,
+        0.8455531597137451
+      ]
+    },
+    {
+      "case": "v4_reader_test_000999",
+      "region": 4,
+      "original": 477,
+      "wrong": 464,
+      "pruned": 477,
+      "pruned_correct": true,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.7173853516578674,
+        0.5971670746803284,
+        0.5971670746803284
+      ],
+      "wrong_before_after_remove": [
+        0.5647711157798767,
+        0.6118156313896179,
+        0.5966490507125854
+      ]
+    },
+    {
+      "case": "v4_reader_test_001003",
+      "region": 4,
+      "original": 355,
+      "wrong": 343,
+      "pruned": 424,
+      "pruned_correct": false,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.8884260654449463,
+        0.6808847784996033,
+        0.6728200912475586
+      ],
+      "wrong_before_after_remove": [
+        0.5887242555618286,
+        0.7835304141044617,
+        0.5887242555618286
+      ]
+    },
+    {
+      "case": "v4_reader_test_001003",
+      "region": 6,
+      "original": 582,
+      "wrong": 588,
+      "pruned": 687,
+      "pruned_correct": false,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.5121800303459167,
+        0.27470940351486206,
+        0.27281755208969116
+      ],
+      "wrong_before_after_remove": [
+        0.14982269704341888,
+        0.3853549361228943,
+        0.14982269704341888
+      ]
+    },
+    {
+      "case": "v4_reader_test_001009",
+      "region": 4,
+      "original": 604,
+      "wrong": 611,
+      "pruned": 604,
+      "pruned_correct": true,
+      "removed_edges": 2,
+      "correct_before_after_remove": [
+        0.83680260181427,
+        0.7322763800621033,
+        0.83680260181427
+      ],
+      "wrong_before_after_remove": [
+        0.675993025302887,
+        0.7805192470550537,
+        0.675993025302887
+      ]
+    },
+    {
+      "case": "v4_reader_test_001011",
+      "region": 6,
+      "original": 698,
+      "wrong": 692,
+      "pruned": 670,
+      "pruned_correct": true,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.8712498545646667,
+        0.663918673992157,
+        0.6268304586410522
+      ],
+      "wrong_before_after_remove": [
+        0.5967571139335632,
+        0.7751773595809937,
+        0.5967571139335632
+      ]
+    },
+    {
+      "case": "v4_reader_test_001013",
+      "region": 5,
+      "original": 638,
+      "wrong": 650,
+      "pruned": 650,
+      "pruned_correct": false,
+      "removed_edges": 1,
+      "correct_before_after_remove": [
+        0.8355984687805176,
+        0.7090747952461243,
+        0.6449916958808899
+      ],
+      "wrong_before_after_remove": [
+        0.8177345991134644,
+        0.8293461203575134,
+        0.8177345991134644
+      ]
+    },
+    {
+      "case": "v4_reader_test_001013",
+      "region": 6,
+      "original": 774,
+      "wrong": 765,
+      "pruned": 769,
+      "pruned_correct": false,
+      "removed_edges": 2,
+      "correct_before_after_remove": [
+        0.9057657122612,
+        0.7311975359916687,
+        0.6591012477874756
+      ],
+      "wrong_before_after_remove": [
+        0.8786613345146179,
+        0.8542259335517883,
+        0.53449946641922
+      ]
+    }
+  ]
+}

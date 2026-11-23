@@ -1,0 +1,42 @@
+{
+  "experiment": "leg_scan_anchor_state_20261123_v5",
+  "reader_freeze_sha256": "8ffd4695d5357f3112a8638948a243cddb43745874c6817007ed4010f286face",
+  "section_confidence_frozen": true,
+  "state": "whole-history linked observations by frame and slot, dual trajectory forecasts",
+  "joint_endpoint": "fixed old pool correct at terminal, all later regions correct with physically forward post-prefix acquisitions and legal completion",
+  "anchor_suffix": "same route.advance for all arms",
+  "clock_comparator": "same signed anchor station and elapsed clock, selected sectors may differ",
+  "programs": [
+    "mpc",
+    "equal_time_hold",
+    "anchor_information",
+    "anchor_first",
+    "anchor_second"
+  ],
+  "dev_noise": [
+    "search_0",
+    "search_1",
+    "proof_0",
+    "proof_1"
+  ],
+  "test_noise": [
+    "actual",
+    "search_0",
+    "search_1",
+    "proof_0",
+    "proof_1"
+  ],
+  "case_counts": {
+    "anchor_dev": 96,
+    "anchor_test": 192
+  },
+  "dird": false,
+  "source_sha256": {
+    "study_data.py": "da4c44164b284c1efc3319d97b4b15302297e0dbcb8f739462967ed50e3ed141",
+    "object_tracks.py": "a29e23b68602de1be999c3b731ba97d317e0aecfc37d3e949fdee144f766036e",
+    "forward_anchor.py": "62117397f3bd623c5a4985ab9b2bc324ced2b4acfe19cae2b942fe5dd3c92499",
+    "anchor_policy.py": "721efa10d655ae3a3d7270104fab3b7def6222891177293547e28d702c1dca24",
+    "anchor_experiment.py": "e2536afaefe7a7836745951201fac22d17efd35bf6c4ddcf29d80f109c867a5c",
+    "run_anchor_study.py": "71d72bd4526faf0a152a119390ecc67421dd5af27c4eca1e474a73e46cae76ac"
+  }
+}

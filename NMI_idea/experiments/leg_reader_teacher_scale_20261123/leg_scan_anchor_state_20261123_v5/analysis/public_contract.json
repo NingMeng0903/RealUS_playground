@@ -1,0 +1,50 @@
+[
+  {
+    "route": "femoral",
+    "pose_invariance_with_same_slot": true,
+    "label_swap_actor_invariant": true,
+    "idempotent_update": true
+  },
+  {
+    "route": "groin_to_distal_calf",
+    "pose_invariance_with_same_slot": true,
+    "label_swap_actor_invariant": true,
+    "idempotent_update": true
+  },
+  {
+    "route": "femoral",
+    "pose_invariance_with_same_slot": true,
+    "label_swap_actor_invariant": true,
+    "idempotent_update": true
+  },
+  {
+    "route": "groin_to_distal_calf",
+    "pose_invariance_with_same_slot": true,
+    "label_swap_actor_invariant": true,
+    "idempotent_update": true
+  },
+  {
+    "route": "femoral",
+    "pose_invariance_with_same_slot": true,
+    "label_swap_actor_invariant": true,
+    "idempotent_update": true
+  },
+  {
+    "route": "groin_to_distal_calf",
+    "pose_invariance_with_same_slot": true,
+    "label_swap_actor_invariant": true,
+    "idempotent_update": true
+  },
+  {
+    "route": "femoral",
+    "pose_invariance_with_same_slot": true,
+    "label_swap_actor_invariant": true,
+    "idempotent_update": true
+  },
+  {
+    "route": "groin_to_distal_calf",
+    "pose_invariance_with_same_slot": true,
+    "label_swap_actor_invariant": true,
+    "idempotent_update": true
+  }
+]

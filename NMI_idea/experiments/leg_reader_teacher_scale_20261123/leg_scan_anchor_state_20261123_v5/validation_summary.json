@@ -1,0 +1,1043 @@
+{
+  "experiment": "leg_scan_anchor_state_20261123_v5",
+  "base_commit": "c4e4b321d68c011d2c6e5d80b03390e39c8ee5ea",
+  "collection_seed_bases": {
+    "fit_revisit": 2046300000000000,
+    "reader_test": 2046300010000000,
+    "anchor_dev": 2046300020000000,
+    "anchor_test": 2046300030000000
+  },
+  "training": {
+    "weights": "leg_scan_anchor_state_20261123_v5/run/reader_weights/association.pt",
+    "sha256": "55f0d0fea46d6624bb047a65f2f6926f2f4bd70f648e8b3c8feb5371280715c0",
+    "warm_start": "leg_scan_reader_feedback_20261123_v4/run/reader_weights/public_association.pt",
+    "warm_start_sha256": "70aeb3f61ac88f60daebe5a3a48cb7bbe20d237ec0616f639a31bb828477644c",
+    "device": "cuda:0",
+    "optimizer_steps": 4794,
+    "epochs": 3,
+    "loss": [
+      0.5245101458051513,
+      0.49076651307160923,
+      0.49138628856485267
+    ],
+    "identity_unchanged": true,
+    "changed_parameters": [
+      "association.weight",
+      "association.bias"
+    ],
+    "supervision": {
+      "competing_pairs_at_shared_destination": 979728,
+      "long_gap_pairs": 404106,
+      "long_gap_positive_pairs": 133348,
+      "same_instance": 907097,
+      "near_artery": 367435,
+      "clutter": 459119,
+      "mixture": 351192,
+      "same_named_or_role_competitor": 76648,
+      "other_instance": 258794,
+      "retrieved_before_sampling": 26276563,
+      "candidate_rows": 2888127,
+      "observed_histories": 8064
+    },
+    "shards": [
+      "leg_scan_reader_feedback_20261123_v4/run/fit/00000/data.npz",
+      "leg_scan_reader_feedback_20261123_v4/run/fit/00001/data.npz",
+      "leg_scan_reader_feedback_20261123_v4/run/fit/00002/data.npz",
+      "leg_scan_reader_feedback_20261123_v4/run/fit/00003/data.npz",
+      "leg_scan_reader_feedback_20261123_v4/run/fit/00004/data.npz",
+      "leg_scan_reader_feedback_20261123_v4/run/fit/00005/data.npz",
+      "leg_scan_reader_feedback_20261123_v4/run/fit/00006/data.npz",
+      "leg_scan_reader_feedback_20261123_v4/run/fit/00007/data.npz",
+      "leg_scan_reader_feedback_20261123_v4/run/fit/00008/data.npz",
+      "leg_scan_reader_feedback_20261123_v4/run/fit/00009/data.npz",
+      "leg_scan_reader_feedback_20261123_v4/run/fit/00010/data.npz",
+      "leg_scan_reader_feedback_20261123_v4/run/fit/00011/data.npz",
+      "leg_scan_anchor_state_20261123_v5/run/fit_revisit/00000/data.npz",
+      "leg_scan_anchor_state_20261123_v5/run/fit_revisit/00001/data.npz",
+      "leg_scan_anchor_state_20261123_v5/run/fit_revisit/00002/data.npz",
+      "leg_scan_anchor_state_20261123_v5/run/fit_revisit/00003/data.npz",
+      "leg_scan_anchor_state_20261123_v5/run/fit_revisit/00004/data.npz",
+      "leg_scan_anchor_state_20261123_v5/run/fit_revisit/00005/data.npz",
+      "leg_scan_anchor_state_20261123_v5/run/fit_revisit/00006/data.npz",
+      "leg_scan_anchor_state_20261123_v5/run/fit_revisit/00007/data.npz",
+      "leg_scan_anchor_state_20261123_v5/run/fit_revisit/00008/data.npz",
+      "leg_scan_anchor_state_20261123_v5/run/fit_revisit/00009/data.npz",
+      "leg_scan_anchor_state_20261123_v5/run/fit_revisit/00010/data.npz",
+      "leg_scan_anchor_state_20261123_v5/run/fit_revisit/00011/data.npz",
+      "leg_scan_anchor_state_20261123_v5/run/fit_revisit/00012/data.npz",
+      "leg_scan_anchor_state_20261123_v5/run/fit_revisit/00013/data.npz",
+      "leg_scan_anchor_state_20261123_v5/run/fit_revisit/00014/data.npz",
+      "leg_scan_anchor_state_20261123_v5/run/fit_revisit/00015/data.npz",
+      "leg_scan_anchor_state_20261123_v5/run/fit_revisit/00016/data.npz",
+      "leg_scan_anchor_state_20261123_v5/run/fit_revisit/00017/data.npz",
+      "leg_scan_anchor_state_20261123_v5/run/fit_revisit/00018/data.npz",
+      "leg_scan_anchor_state_20261123_v5/run/fit_revisit/00019/data.npz",
+      "leg_scan_anchor_state_20261123_v5/run/fit_revisit/00020/data.npz",
+      "leg_scan_anchor_state_20261123_v5/run/fit_revisit/00021/data.npz",
+      "leg_scan_anchor_state_20261123_v5/run/fit_revisit/00022/data.npz",
+      "leg_scan_anchor_state_20261123_v5/run/fit_revisit/00023/data.npz"
+    ]
+  },
+  "reader": {
+    "freeze_sha256": "8ffd4695d5357f3112a8638948a243cddb43745874c6817007ed4010f286face",
+    "routes": {
+      "femoral": {
+        "cases": 256,
+        "terminal": {
+          "fixed": {
+            "unary": {
+              "strict": 111,
+              "acquired_ceiling": 189,
+              "wrong_delivery": 21,
+              "wrong_branch": 2,
+              "wrong_region_count": 24,
+              "wrong_branch_regions": 2,
+              "artifact_regions": 22,
+              "correct_regions": 1357,
+              "submitted": 1381,
+              "cases": 256,
+              "captured_regions": 1469,
+              "reader_misses_on_seen": 112,
+              "paired_vs_unary": {
+                "strict": {
+                  "rescued_or_added": 0,
+                  "lost_or_removed": 0,
+                  "delta_per_scan": 0.0,
+                  "clustered95": [
+                    0.0,
+                    0.0
+                  ]
+                },
+                "wrong_delivery": {
+                  "rescued_or_added": 0,
+                  "lost_or_removed": 0,
+                  "delta_per_scan": 0.0,
+                  "clustered95": [
+                    0.0,
+                    0.0
+                  ]
+                },
+                "wrong_branch": {
+                  "rescued_or_added": 0,
+                  "lost_or_removed": 0,
+                  "delta_per_scan": 0.0,
+                  "clustered95": [
+                    0.0,
+                    0.0
+                  ]
+                },
+                "correct_regions": {
+                  "rescued_or_added": 0,
+                  "lost_or_removed": 0,
+                  "delta_per_scan": 0.0,
+                  "clustered95": [
+                    0.0,
+                    0.0
+                  ]
+                }
+              }
+            },
+            "v4_guard": {
+              "strict": 118,
+              "acquired_ceiling": 189,
+              "wrong_delivery": 24,
+              "wrong_branch": 2,
+              "wrong_region_count": 27,
+              "wrong_branch_regions": 2,
+              "artifact_regions": 25,
+              "correct_regions": 1373,
+              "submitted": 1400,
+              "cases": 256,
+              "captured_regions": 1469,
+              "reader_misses_on_seen": 96,
+              "paired_vs_unary": {
+                "strict": {
+                  "rescued_or_added": 12,
+                  "lost_or_removed": 5,
+                  "delta_per_scan": 0.02734375,
+                  "clustered95": [
+                    -0.00390625,
+                    0.05859375
+                  ]
+                },
+                "wrong_delivery": {
+                  "rescued_or_added": 6,
+                  "lost_or_removed": 3,
+                  "delta_per_scan": 0.01171875,
+                  "clustered95": [
+                    -0.01171875,
+                    0.03515625
+                  ]
+                },
+                "wrong_branch": {
+                  "rescued_or_added": 0,
+                  "lost_or_removed": 0,
+                  "delta_per_scan": 0.0,
+                  "clustered95": [
+                    0.0,
+                    0.0
+                  ]
+                },
+                "correct_regions": {
+                  "rescued_or_added": 24,
+                  "lost_or_removed": 9,
+                  "delta_per_scan": 0.0625,
+                  "clustered95": [
+                    0.015625,
+                    0.109375
+                  ]
+                }
+              }
+            },
+            "prematch_track": {
+              "strict": 119,
+              "acquired_ceiling": 189,
+              "wrong_delivery": 20,
+              "wrong_branch": 2,
+              "wrong_region_count": 23,
+              "wrong_branch_regions": 2,
+              "artifact_regions": 21,
+              "correct_regions": 1372,
+              "submitted": 1395,
+              "cases": 256,
+              "captured_regions": 1469,
+              "reader_misses_on_seen": 97,
+              "paired_vs_unary": {
+                "strict": {
+                  "rescued_or_added": 13,
+                  "lost_or_removed": 5,
+                  "delta_per_scan": 0.03125,
+                  "clustered95": [
+                    0.0,
+                    0.06640625
+                  ]
+                },
+                "wrong_delivery": {
+                  "rescued_or_added": 2,
+                  "lost_or_removed": 3,
+                  "delta_per_scan": -0.00390625,
+                  "clustered95": [
+                    -0.01953125,
+                    0.01171875
+                  ]
+                },
+                "wrong_branch": {
+                  "rescued_or_added": 0,
+                  "lost_or_removed": 0,
+                  "delta_per_scan": 0.0,
+                  "clustered95": [
+                    0.0,
+                    0.0
+                  ]
+                },
+                "correct_regions": {
+                  "rescued_or_added": 30,
+                  "lost_or_removed": 15,
+                  "delta_per_scan": 0.05859375,
+                  "clustered95": [
+                    0.00390625,
+                    0.11328125
+                  ]
+                }
+              }
+            },
+            "true_instance_diagnostic": {
+              "strict": 124,
+              "acquired_ceiling": 189,
+              "wrong_delivery": 65,
+              "wrong_branch": 15,
+              "wrong_region_count": 70,
+              "wrong_branch_regions": 15,
+              "artifact_regions": 55,
+              "correct_regions": 1356,
+              "submitted": 1426,
+              "cases": 256,
+              "captured_regions": 1469,
+              "reader_misses_on_seen": 113,
+              "paired_vs_unary": {
+                "strict": {
+                  "rescued_or_added": 35,
+                  "lost_or_removed": 22,
+                  "delta_per_scan": 0.05078125,
+                  "clustered95": [
+                    -0.0078125,
+                    0.109375
+                  ]
+                },
+                "wrong_delivery": {
+                  "rescued_or_added": 50,
+                  "lost_or_removed": 6,
+                  "delta_per_scan": 0.171875,
+                  "clustered95": [
+                    0.12109375,
+                    0.22265625
+                  ]
+                },
+                "wrong_branch": {
+                  "rescued_or_added": 15,
+                  "lost_or_removed": 2,
+                  "delta_per_scan": 0.05078125,
+                  "clustered95": [
+                    0.0234375,
+                    0.08203125
+                  ]
+                },
+                "correct_regions": {
+                  "rescued_or_added": 45,
+                  "lost_or_removed": 42,
+                  "delta_per_scan": -0.00390625,
+                  "clustered95": [
+                    -0.10361328124999997,
+                    0.09765625
+                  ]
+                }
+              }
+            }
+          },
+          "matched": {
+            "unary": {
+              "strict": 111,
+              "acquired_ceiling": 189,
+              "wrong_delivery": 21,
+              "wrong_branch": 2,
+              "wrong_region_count": 24,
+              "wrong_branch_regions": 2,
+              "artifact_regions": 22,
+              "correct_regions": 1357,
+              "submitted": 1381,
+              "cases": 256,
+              "captured_regions": 1469,
+              "reader_misses_on_seen": 112,
+              "paired_vs_unary": {
+                "strict": {
+                  "rescued_or_added": 0,
+                  "lost_or_removed": 0,
+                  "delta_per_scan": 0.0,
+                  "clustered95": [
+                    0.0,
+                    0.0
+                  ]
+                },
+                "wrong_delivery": {
+                  "rescued_or_added": 0,
+                  "lost_or_removed": 0,
+                  "delta_per_scan": 0.0,
+                  "clustered95": [
+                    0.0,
+                    0.0
+                  ]
+                },
+                "wrong_branch": {
+                  "rescued_or_added": 0,
+                  "lost_or_removed": 0,
+                  "delta_per_scan": 0.0,
+                  "clustered95": [
+                    0.0,
+                    0.0
+                  ]
+                },
+                "correct_regions": {
+                  "rescued_or_added": 0,
+                  "lost_or_removed": 0,
+                  "delta_per_scan": 0.0,
+                  "clustered95": [
+                    0.0,
+                    0.0
+                  ]
+                }
+              }
+            },
+            "v4_guard": {
+              "strict": 109,
+              "acquired_ceiling": 189,
+              "wrong_delivery": 24,
+              "wrong_branch": 2,
+              "wrong_region_count": 27,
+              "wrong_branch_regions": 2,
+              "artifact_regions": 25,
+              "correct_regions": 1354,
+              "submitted": 1381,
+              "cases": 256,
+              "captured_regions": 1469,
+              "reader_misses_on_seen": 115,
+              "paired_vs_unary": {
+                "strict": {
+                  "rescued_or_added": 2,
+                  "lost_or_removed": 4,
+                  "delta_per_scan": -0.0078125,
+                  "clustered95": [
+                    -0.02734375,
+                    0.0078125
+                  ]
+                },
+                "wrong_delivery": {
+                  "rescued_or_added": 5,
+                  "lost_or_removed": 2,
+                  "delta_per_scan": 0.01171875,
+                  "clustered95": [
+                    -0.0078125,
+                    0.03125
+                  ]
+                },
+                "wrong_branch": {
+                  "rescued_or_added": 0,
+                  "lost_or_removed": 0,
+                  "delta_per_scan": 0.0,
+                  "clustered95": [
+                    0.0,
+                    0.0
+                  ]
+                },
+                "correct_regions": {
+                  "rescued_or_added": 2,
+                  "lost_or_removed": 5,
+                  "delta_per_scan": -0.01171875,
+                  "clustered95": [
+                    -0.03125,
+                    0.0078125
+                  ]
+                }
+              }
+            },
+            "prematch_track": {
+              "strict": 110,
+              "acquired_ceiling": 189,
+              "wrong_delivery": 21,
+              "wrong_branch": 1,
+              "wrong_region_count": 24,
+              "wrong_branch_regions": 1,
+              "artifact_regions": 23,
+              "correct_regions": 1357,
+              "submitted": 1381,
+              "cases": 256,
+              "captured_regions": 1469,
+              "reader_misses_on_seen": 112,
+              "paired_vs_unary": {
+                "strict": {
+                  "rescued_or_added": 0,
+                  "lost_or_removed": 1,
+                  "delta_per_scan": -0.00390625,
+                  "clustered95": [
+                    -0.01171875,
+                    0.0
+                  ]
+                },
+                "wrong_delivery": {
+                  "rescued_or_added": 2,
+                  "lost_or_removed": 2,
+                  "delta_per_scan": 0.0,
+                  "clustered95": [
+                    -0.015625,
+                    0.015625
+                  ]
+                },
+                "wrong_branch": {
+                  "rescued_or_added": 0,
+                  "lost_or_removed": 1,
+                  "delta_per_scan": -0.00390625,
+                  "clustered95": [
+                    -0.01171875,
+                    0.0
+                  ]
+                },
+                "correct_regions": {
+                  "rescued_or_added": 2,
+                  "lost_or_removed": 2,
+                  "delta_per_scan": 0.0,
+                  "clustered95": [
+                    -0.015625,
+                    0.015625
+                  ]
+                }
+              }
+            },
+            "true_instance_diagnostic": {
+              "strict": 89,
+              "acquired_ceiling": 189,
+              "wrong_delivery": 50,
+              "wrong_branch": 0,
+              "wrong_region_count": 77,
+              "wrong_branch_regions": 0,
+              "artifact_regions": 77,
+              "correct_regions": 1304,
+              "submitted": 1381,
+              "cases": 256,
+              "captured_regions": 1469,
+              "reader_misses_on_seen": 165,
+              "paired_vs_unary": {
+                "strict": {
+                  "rescued_or_added": 0,
+                  "lost_or_removed": 22,
+                  "delta_per_scan": -0.0859375,
+                  "clustered95": [
+                    -0.12109375,
+                    -0.0546875
+                  ]
+                },
+                "wrong_delivery": {
+                  "rescued_or_added": 32,
+                  "lost_or_removed": 3,
+                  "delta_per_scan": 0.11328125,
+                  "clustered95": [
+                    0.0703125,
+                    0.15625
+                  ]
+                },
+                "wrong_branch": {
+                  "rescued_or_added": 0,
+                  "lost_or_removed": 2,
+                  "delta_per_scan": -0.0078125,
+                  "clustered95": [
+                    -0.01953125,
+                    0.0
+                  ]
+                },
+                "correct_regions": {
+                  "rescued_or_added": 4,
+                  "lost_or_removed": 42,
+                  "delta_per_scan": -0.20703125,
+                  "clustered95": [
+                    -0.28125,
+                    -0.140625
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "probe_vs_hold_old_pool": {
+          "unary": {
+            "pairs": 256,
+            "rescued": 4,
+            "harmed": 2
+          },
+          "v4_guard": {
+            "pairs": 256,
+            "rescued": 8,
+            "harmed": 0
+          },
+          "prematch_track": {
+            "pairs": 256,
+            "rescued": 7,
+            "harmed": 0
+          },
+          "true_instance_diagnostic": {
+            "pairs": 256,
+            "rescued": 1,
+            "harmed": 3
+          }
+        },
+        "correct_and_total_edges": {
+          "unary": [
+            0,
+            0
+          ],
+          "v4_guard": [
+            24581,
+            25502
+          ],
+          "prematch_track": [
+            26992,
+            27973
+          ],
+          "true_instance_diagnostic": [
+            34419,
+            34419
+          ]
+        }
+      },
+      "groin_to_distal_calf": {
+        "cases": 256,
+        "terminal": {
+          "fixed": {
+            "unary": {
+              "strict": 113,
+              "acquired_ceiling": 256,
+              "wrong_delivery": 88,
+              "wrong_branch": 59,
+              "wrong_region_count": 107,
+              "wrong_branch_regions": 68,
+              "artifact_regions": 39,
+              "correct_regions": 1298,
+              "submitted": 1405,
+              "cases": 256,
+              "captured_regions": 1536,
+              "reader_misses_on_seen": 238,
+              "paired_vs_unary": {
+                "strict": {
+                  "rescued_or_added": 0,
+                  "lost_or_removed": 0,
+                  "delta_per_scan": 0.0,
+                  "clustered95": [
+                    0.0,
+                    0.0
+                  ]
+                },
+                "wrong_delivery": {
+                  "rescued_or_added": 0,
+                  "lost_or_removed": 0,
+                  "delta_per_scan": 0.0,
+                  "clustered95": [
+                    0.0,
+                    0.0
+                  ]
+                },
+                "wrong_branch": {
+                  "rescued_or_added": 0,
+                  "lost_or_removed": 0,
+                  "delta_per_scan": 0.0,
+                  "clustered95": [
+                    0.0,
+                    0.0
+                  ]
+                },
+                "correct_regions": {
+                  "rescued_or_added": 0,
+                  "lost_or_removed": 0,
+                  "delta_per_scan": 0.0,
+                  "clustered95": [
+                    0.0,
+                    0.0
+                  ]
+                }
+              }
+            },
+            "v4_guard": {
+              "strict": 112,
+              "acquired_ceiling": 256,
+              "wrong_delivery": 92,
+              "wrong_branch": 59,
+              "wrong_region_count": 107,
+              "wrong_branch_regions": 67,
+              "artifact_regions": 40,
+              "correct_regions": 1298,
+              "submitted": 1405,
+              "cases": 256,
+              "captured_regions": 1536,
+              "reader_misses_on_seen": 238,
+              "paired_vs_unary": {
+                "strict": {
+                  "rescued_or_added": 3,
+                  "lost_or_removed": 4,
+                  "delta_per_scan": -0.00390625,
+                  "clustered95": [
+                    -0.0234375,
+                    0.015625
+                  ]
+                },
+                "wrong_delivery": {
+                  "rescued_or_added": 6,
+                  "lost_or_removed": 2,
+                  "delta_per_scan": 0.015625,
+                  "clustered95": [
+                    -0.00390625,
+                    0.0390625
+                  ]
+                },
+                "wrong_branch": {
+                  "rescued_or_added": 1,
+                  "lost_or_removed": 1,
+                  "delta_per_scan": 0.0,
+                  "clustered95": [
+                    -0.01171875,
+                    0.01171875
+                  ]
+                },
+                "correct_regions": {
+                  "rescued_or_added": 12,
+                  "lost_or_removed": 12,
+                  "delta_per_scan": 0.0,
+                  "clustered95": [
+                    -0.03515625,
+                    0.0390625
+                  ]
+                }
+              }
+            },
+            "prematch_track": {
+              "strict": 112,
+              "acquired_ceiling": 256,
+              "wrong_delivery": 93,
+              "wrong_branch": 59,
+              "wrong_region_count": 108,
+              "wrong_branch_regions": 66,
+              "artifact_regions": 42,
+              "correct_regions": 1300,
+              "submitted": 1408,
+              "cases": 256,
+              "captured_regions": 1536,
+              "reader_misses_on_seen": 236,
+              "paired_vs_unary": {
+                "strict": {
+                  "rescued_or_added": 4,
+                  "lost_or_removed": 5,
+                  "delta_per_scan": -0.00390625,
+                  "clustered95": [
+                    -0.02734375,
+                    0.01953125
+                  ]
+                },
+                "wrong_delivery": {
+                  "rescued_or_added": 6,
+                  "lost_or_removed": 1,
+                  "delta_per_scan": 0.01953125,
+                  "clustered95": [
+                    0.0,
+                    0.0390625
+                  ]
+                },
+                "wrong_branch": {
+                  "rescued_or_added": 1,
+                  "lost_or_removed": 1,
+                  "delta_per_scan": 0.0,
+                  "clustered95": [
+                    -0.01171875,
+                    0.01171875
+                  ]
+                },
+                "correct_regions": {
+                  "rescued_or_added": 14,
+                  "lost_or_removed": 14,
+                  "delta_per_scan": 0.0078125,
+                  "clustered95": [
+                    -0.03515625,
+                    0.05078125
+                  ]
+                }
+              }
+            },
+            "true_instance_diagnostic": {
+              "strict": 62,
+              "acquired_ceiling": 256,
+              "wrong_delivery": 191,
+              "wrong_branch": 45,
+              "wrong_region_count": 382,
+              "wrong_branch_regions": 52,
+              "artifact_regions": 330,
+              "correct_regions": 1131,
+              "submitted": 1513,
+              "cases": 256,
+              "captured_regions": 1536,
+              "reader_misses_on_seen": 405,
+              "paired_vs_unary": {
+                "strict": {
+                  "rescued_or_added": 13,
+                  "lost_or_removed": 64,
+                  "delta_per_scan": -0.19921875,
+                  "clustered95": [
+                    -0.26171875,
+                    -0.1328125
+                  ]
+                },
+                "wrong_delivery": {
+                  "rescued_or_added": 113,
+                  "lost_or_removed": 10,
+                  "delta_per_scan": 0.40234375,
+                  "clustered95": [
+                    0.33203125,
+                    0.46484375
+                  ]
+                },
+                "wrong_branch": {
+                  "rescued_or_added": 18,
+                  "lost_or_removed": 32,
+                  "delta_per_scan": -0.0546875,
+                  "clustered95": [
+                    -0.109375,
+                    -0.00390625
+                  ]
+                },
+                "correct_regions": {
+                  "rescued_or_added": 29,
+                  "lost_or_removed": 129,
+                  "delta_per_scan": -0.65234375,
+                  "clustered95": [
+                    -0.7890625,
+                    -0.51953125
+                  ]
+                }
+              }
+            }
+          },
+          "matched": {
+            "unary": {
+              "strict": 113,
+              "acquired_ceiling": 256,
+              "wrong_delivery": 88,
+              "wrong_branch": 59,
+              "wrong_region_count": 107,
+              "wrong_branch_regions": 68,
+              "artifact_regions": 39,
+              "correct_regions": 1298,
+              "submitted": 1405,
+              "cases": 256,
+              "captured_regions": 1536,
+              "reader_misses_on_seen": 238,
+              "paired_vs_unary": {
+                "strict": {
+                  "rescued_or_added": 0,
+                  "lost_or_removed": 0,
+                  "delta_per_scan": 0.0,
+                  "clustered95": [
+                    0.0,
+                    0.0
+                  ]
+                },
+                "wrong_delivery": {
+                  "rescued_or_added": 0,
+                  "lost_or_removed": 0,
+                  "delta_per_scan": 0.0,
+                  "clustered95": [
+                    0.0,
+                    0.0
+                  ]
+                },
+                "wrong_branch": {
+                  "rescued_or_added": 0,
+                  "lost_or_removed": 0,
+                  "delta_per_scan": 0.0,
+                  "clustered95": [
+                    0.0,
+                    0.0
+                  ]
+                },
+                "correct_regions": {
+                  "rescued_or_added": 0,
+                  "lost_or_removed": 0,
+                  "delta_per_scan": 0.0,
+                  "clustered95": [
+                    0.0,
+                    0.0
+                  ]
+                }
+              }
+            },
+            "v4_guard": {
+              "strict": 113,
+              "acquired_ceiling": 256,
+              "wrong_delivery": 91,
+              "wrong_branch": 59,
+              "wrong_region_count": 107,
+              "wrong_branch_regions": 67,
+              "artifact_regions": 40,
+              "correct_regions": 1298,
+              "submitted": 1405,
+              "cases": 256,
+              "captured_regions": 1536,
+              "reader_misses_on_seen": 238,
+              "paired_vs_unary": {
+                "strict": {
+                  "rescued_or_added": 1,
+                  "lost_or_removed": 1,
+                  "delta_per_scan": 0.0,
+                  "clustered95": [
+                    -0.01171875,
+                    0.01171875
+                  ]
+                },
+                "wrong_delivery": {
+                  "rescued_or_added": 4,
+                  "lost_or_removed": 1,
+                  "delta_per_scan": 0.01171875,
+                  "clustered95": [
+                    -0.00390625,
+                    0.02734375
+                  ]
+                },
+                "wrong_branch": {
+                  "rescued_or_added": 0,
+                  "lost_or_removed": 0,
+                  "delta_per_scan": 0.0,
+                  "clustered95": [
+                    0.0,
+                    0.0
+                  ]
+                },
+                "correct_regions": {
+                  "rescued_or_added": 4,
+                  "lost_or_removed": 4,
+                  "delta_per_scan": 0.0,
+                  "clustered95": [
+                    -0.01953125,
+                    0.021582031250000355
+                  ]
+                }
+              }
+            },
+            "prematch_track": {
+              "strict": 112,
+              "acquired_ceiling": 256,
+              "wrong_delivery": 91,
+              "wrong_branch": 59,
+              "wrong_region_count": 108,
+              "wrong_branch_regions": 67,
+              "artifact_regions": 41,
+              "correct_regions": 1297,
+              "submitted": 1405,
+              "cases": 256,
+              "captured_regions": 1536,
+              "reader_misses_on_seen": 239,
+              "paired_vs_unary": {
+                "strict": {
+                  "rescued_or_added": 0,
+                  "lost_or_removed": 1,
+                  "delta_per_scan": -0.00390625,
+                  "clustered95": [
+                    -0.01171875,
+                    0.0
+                  ]
+                },
+                "wrong_delivery": {
+                  "rescued_or_added": 3,
+                  "lost_or_removed": 0,
+                  "delta_per_scan": 0.01171875,
+                  "clustered95": [
+                    0.0,
+                    0.02734375
+                  ]
+                },
+                "wrong_branch": {
+                  "rescued_or_added": 0,
+                  "lost_or_removed": 0,
+                  "delta_per_scan": 0.0,
+                  "clustered95": [
+                    0.0,
+                    0.0
+                  ]
+                },
+                "correct_regions": {
+                  "rescued_or_added": 3,
+                  "lost_or_removed": 4,
+                  "delta_per_scan": -0.00390625,
+                  "clustered95": [
+                    -0.0234375,
+                    0.015625
+                  ]
+                }
+              }
+            },
+            "true_instance_diagnostic": {
+              "strict": 59,
+              "acquired_ceiling": 256,
+              "wrong_delivery": 168,
+              "wrong_branch": 39,
+              "wrong_region_count": 294,
+              "wrong_branch_regions": 45,
+              "artifact_regions": 249,
+              "correct_regions": 1111,
+              "submitted": 1405,
+              "cases": 256,
+              "captured_regions": 1536,
+              "reader_misses_on_seen": 425,
+              "paired_vs_unary": {
+                "strict": {
+                  "rescued_or_added": 10,
+                  "lost_or_removed": 64,
+                  "delta_per_scan": -0.2109375,
+                  "clustered95": [
+                    -0.26953125,
+                    -0.1484375
+                  ]
+                },
+                "wrong_delivery": {
+                  "rescued_or_added": 95,
+                  "lost_or_removed": 15,
+                  "delta_per_scan": 0.3125,
+                  "clustered95": [
+                    0.2421875,
+                    0.3828125
+                  ]
+                },
+                "wrong_branch": {
+                  "rescued_or_added": 13,
+                  "lost_or_removed": 33,
+                  "delta_per_scan": -0.078125,
+                  "clustered95": [
+                    -0.12890625,
+                    -0.02734375
+                  ]
+                },
+                "correct_regions": {
+                  "rescued_or_added": 18,
+                  "lost_or_removed": 132,
+                  "delta_per_scan": -0.73046875,
+                  "clustered95": [
+                    -0.86328125,
+                    -0.60546875
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "probe_vs_hold_old_pool": {
+          "unary": {
+            "pairs": 256,
+            "rescued": 9,
+            "harmed": 1
+          },
+          "v4_guard": {
+            "pairs": 256,
+            "rescued": 6,
+            "harmed": 3
+          },
+          "prematch_track": {
+            "pairs": 256,
+            "rescued": 8,
+            "harmed": 1
+          },
+          "true_instance_diagnostic": {
+            "pairs": 256,
+            "rescued": 6,
+            "harmed": 6
+          }
+        },
+        "correct_and_total_edges": {
+          "unary": [
+            0,
+            0
+          ],
+          "v4_guard": [
+            63542,
+            66701
+          ],
+          "prematch_track": [
+            71909,
+            75473
+          ],
+          "true_instance_diagnostic": [
+            144594,
+            144594
+          ]
+        }
+      }
+    }
+  },
+  "closed_loop": {
+    "protocol_sha256": "5e81e352a3037e27ec1ee6b8d2f677f740029ad646c8fdb72b78e9d5f208bdee",
+    "development_gate": {
+      "femoral": {
+        "action_expected_gate": false,
+        "mechanical_sensitivity_executed": true
+      },
+      "groin_to_distal_calf": {
+        "action_expected_gate": false,
+        "mechanical_sensitivity_executed": true
+      }
+    },
+    "independent_test_gate": {
+      "femoral": {
+        "action_expected_gate": false,
+        "mechanical_sensitivity_executed": true
+      },
+      "groin_to_distal_calf": {
+        "action_expected_gate": false,
+        "mechanical_sensitivity_executed": true
+      }
+    },
+    "new_test_layouts": 192,
+    "executed_continuations": 6720,
+    "evidence": "analysis/anchor_results.json"
+  },
+  "data_and_weights": "Local frozen artifacts, identified by hashes in the published manifests."
+}

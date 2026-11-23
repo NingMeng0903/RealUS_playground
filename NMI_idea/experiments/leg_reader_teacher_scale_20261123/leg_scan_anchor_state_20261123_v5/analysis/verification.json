@@ -1,0 +1,113 @@
+{
+  "new_distinct_layouts": 2336,
+  "stages": {
+    "fit_revisit": {
+      "cases": 1536,
+      "sha256_verified_shards": 24,
+      "source_indices_by_route": {
+        "femoral": [
+          0,
+          2
+        ],
+        "groin_to_distal_calf": [
+          2
+        ]
+      }
+    },
+    "reader_test": {
+      "cases": 512,
+      "sha256_verified_shards": 8,
+      "source_indices_by_route": {
+        "femoral": [
+          0,
+          2
+        ],
+        "groin_to_distal_calf": [
+          2
+        ]
+      }
+    },
+    "anchor_dev": {
+      "cases": 96,
+      "sha256_verified_shards": 6,
+      "source_indices_by_route": {
+        "femoral": [
+          0,
+          2
+        ],
+        "groin_to_distal_calf": [
+          2
+        ]
+      },
+      "budget_legal_complete_continuations": 1920,
+      "post_prefix_and_final_suffix_all_correct_differ": 0
+    },
+    "anchor_test": {
+      "cases": 192,
+      "sha256_verified_shards": 12,
+      "source_indices_by_route": {
+        "femoral": [
+          0,
+          2
+        ],
+        "groin_to_distal_calf": [
+          2
+        ]
+      },
+      "budget_legal_complete_continuations": 4800,
+      "post_prefix_and_final_suffix_all_correct_differ": 0
+    }
+  },
+  "complete_anchor_continuations": 6720,
+  "independent_tape_active_menu_descriptive_signal": {
+    "femoral": {
+      "mpc": {
+        "layout_with_any_active_program_rescue": 10,
+        "layout_with_any_active_program_harm": 13,
+        "layout_with_an_active_program_rescuing_both": 1,
+        "layout_with_an_active_program_harming_both": 2
+      },
+      "equal_time_hold": {
+        "layout_with_any_active_program_rescue": 4,
+        "layout_with_any_active_program_harm": 3,
+        "layout_with_an_active_program_rescuing_both": 0,
+        "layout_with_an_active_program_harming_both": 0
+      },
+      "same_geometry_rank_sensitivity": {
+        "decisions_with_at_least_two_legal_windows": 429,
+        "new_graph_score_change_median": 0.00012549831167030234,
+        "new_graph_score_change_maximum": 0.009073869601743167,
+        "decisions_unary_lead_exceeds_twice_the_change": 427,
+        "discrete_changes_vs_unary": 0
+      }
+    },
+    "groin_to_distal_calf": {
+      "mpc": {
+        "layout_with_any_active_program_rescue": 28,
+        "layout_with_any_active_program_harm": 18,
+        "layout_with_an_active_program_rescuing_both": 2,
+        "layout_with_an_active_program_harming_both": 0
+      },
+      "equal_time_hold": {
+        "layout_with_any_active_program_rescue": 26,
+        "layout_with_any_active_program_harm": 6,
+        "layout_with_an_active_program_rescuing_both": 3,
+        "layout_with_an_active_program_harming_both": 0
+      },
+      "same_geometry_rank_sensitivity": {
+        "decisions_with_at_least_two_legal_windows": 419,
+        "new_graph_score_change_median": 0.0,
+        "new_graph_score_change_maximum": 0.014871870796839382,
+        "decisions_unary_lead_exceeds_twice_the_change": 415,
+        "discrete_changes_vs_unary": 0
+      }
+    }
+  },
+  "reader_freeze_sha256": "8ffd4695d5357f3112a8638948a243cddb43745874c6817007ed4010f286face",
+  "anchor_freeze_sha256": "5e81e352a3037e27ec1ee6b8d2f677f740029ad646c8fdb72b78e9d5f208bdee",
+  "association_weights_sha256": "55f0d0fea46d6624bb047a65f2f6926f2f4bd70f648e8b3c8feb5371280715c0",
+  "reader_freeze_reference_only_source_changes": [
+    "replay_v4.py",
+    "run_anchor_study.py"
+  ]
+}

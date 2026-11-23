@@ -1,0 +1,38 @@
+{
+  "femoral": {
+    "initial_probability_fixture": 0.7,
+    "stop": {
+      "station": 52,
+      "sector": 3,
+      "tick": 59,
+      "reason": "fixed_public_candidate_confirmed",
+      "new_target_probability": 0.9795579314231873
+    },
+    "boundary": {
+      "station": 54,
+      "sector": 3,
+      "tick": 91,
+      "distance_mm": 157.7890317554383,
+      "signed_forward_travel_mm": 20.0
+    },
+    "complete_budget": true
+  },
+  "groin_to_distal_calf": {
+    "initial_probability_fixture": 0.7,
+    "stop": {
+      "station": 84,
+      "sector": 21,
+      "tick": 177,
+      "reason": "fixed_public_candidate_confirmed",
+      "new_target_probability": 0.9768849015235901
+    },
+    "boundary": {
+      "station": 86,
+      "sector": 21,
+      "tick": 206,
+      "distance_mm": 517.949176300085,
+      "signed_forward_travel_mm": 20.0
+    },
+    "complete_budget": true
+  }
+}
