@@ -1,0 +1,36 @@
+{
+  "femoral": {
+    "layouts": 16,
+    "baseline_strict": 9,
+    "teacher_strict": 14,
+    "rescue": 5,
+    "loss": 0,
+    "target_region_fixed": 3,
+    "target_region_lost": 0,
+    "teacher_wrong": 0,
+    "baseline_wrong": 0,
+    "replayed": 16,
+    "post_recovery_labels": 0,
+    "two_step_programs": 3,
+    "positive_deploy_commands": 7,
+    "selection_avg": 0.8886899041248677,
+    "proof_avg": 0.8765865389291433
+  },
+  "groin_to_distal_calf": {
+    "layouts": 32,
+    "baseline_strict": 20,
+    "teacher_strict": 20,
+    "rescue": 1,
+    "loss": 1,
+    "target_region_fixed": 1,
+    "target_region_lost": 1,
+    "teacher_wrong": 7,
+    "baseline_wrong": 7,
+    "replayed": 32,
+    "post_recovery_labels": 0,
+    "two_step_programs": 5,
+    "positive_deploy_commands": 7,
+    "selection_avg": 0.26224431433931117,
+    "proof_avg": -0.018256432068285117
+  }
+}

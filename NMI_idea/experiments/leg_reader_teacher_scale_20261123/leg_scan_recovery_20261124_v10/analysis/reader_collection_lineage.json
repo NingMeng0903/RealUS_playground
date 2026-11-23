@@ -1,0 +1,19 @@
+{
+  "parent_protocol_sha256": "99f11af572774a94cbe62cfe650dd242039bb0c6c623b590dcca4a31961d9ab8",
+  "original_sources": {
+    "recovery_task.py": "e9885f282b02c642080afe3a2faae0253c804c2028150b11d15f5603763c8ad0",
+    "recovery_motion.py": "223f746809b8f523bc2f52037b226cf9bd5c93b49a1b2021514dca84c6ae9a2f",
+    "recovery_teacher.py": "1d55bb7132861a5c5c484718675a07ba4b71bc96323f12f7df8b66db2bcfe0de",
+    "recovery_policy.py": "fab63ebb65b1202944218767f468853a1ba0a8955bcd56d0547e8cb80f3e2fe5",
+    "recovery_reader.py": "5ef925a7c54487966741b436d50a717d439526775ee5335da0357a695ca39030",
+    "run_recovery.py": "52deed201868c5279aa9800cee892b840337261ede9224dd517a07dd621c4431"
+  },
+  "reuse": {
+    "strong_teacher_preliminary": 144,
+    "reader_fitted_layouts": 132,
+    "reader_calibration_layouts": 36,
+    "reader_development_layouts": 48
+  },
+  "reader_bundle_sha256": "5bf341e5262e37194ced028d104fbe5b227f9acb01f954fc7bf0fb8c3441f609",
+  "reason": "Train continuation with actual post-recovery states and restrict review to targets with unresolved public evidence."
+}

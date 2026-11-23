@@ -1,0 +1,27 @@
+{
+  "actor_input_identical_after_hidden_label_permutation": true,
+  "layout": "atlas_v2_5246217b6bd92e198b3e",
+  "exact_backward_action": {
+    "skill": "recover",
+    "goal_region": 3,
+    "goal_station": 76,
+    "goal_sector": 20,
+    "dwell": 4,
+    "sweep": 0.0,
+    "station": 155,
+    "sector": 22,
+    "tick": 319,
+    "next_station": 76,
+    "next_sector": 20,
+    "next_tick": 483,
+    "ticks": 164,
+    "distance_mm": 416.47017070864956,
+    "frontier": 155,
+    "earlier_region": true,
+    "dird": false,
+    "executed_sweep": null
+  },
+  "completed": true,
+  "final_clock": 648,
+  "total_mm": 1728.9255504540374
+}

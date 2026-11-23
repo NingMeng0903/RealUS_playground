@@ -1,0 +1,142 @@
+{
+  "panel": {
+    "femoral": {
+      "MPC_new": {
+        "all_seen_failed": 9,
+        "strict": [
+          26,
+          27,
+          32
+        ],
+        "layouts": 54,
+        "backward": 0
+      },
+      "MPC_v9": {
+        "all_seen_failed": 8,
+        "strict": [
+          27,
+          27,
+          32
+        ],
+        "layouts": 54,
+        "backward": 0
+      },
+      "student_BC": {
+        "all_seen_failed": 6,
+        "strict": [
+          48,
+          47,
+          48
+        ],
+        "layouts": 54,
+        "backward": 25
+      },
+      "student_BC_sample": {
+        "all_seen_failed": 7,
+        "strict": [
+          47,
+          46,
+          48
+        ],
+        "layouts": 54,
+        "backward": 26
+      },
+      "student": {
+        "all_seen_failed": 6,
+        "strict": [
+          48,
+          47,
+          48
+        ],
+        "layouts": 54,
+        "backward": 25
+      }
+    },
+    "groin_to_distal_calf": {
+      "MPC_new": {
+        "all_seen_failed": 48,
+        "strict": [
+          58,
+          60,
+          50
+        ],
+        "layouts": 106,
+        "backward": 0
+      },
+      "MPC_v9": {
+        "all_seen_failed": 48,
+        "strict": [
+          58,
+          56,
+          54
+        ],
+        "layouts": 106,
+        "backward": 0
+      },
+      "student_BC": {
+        "all_seen_failed": 34,
+        "strict": [
+          72,
+          62,
+          63
+        ],
+        "layouts": 106,
+        "backward": 106
+      },
+      "student_BC_sample": {
+        "all_seen_failed": 39,
+        "strict": [
+          67,
+          60,
+          54
+        ],
+        "layouts": 106,
+        "backward": 66
+      },
+      "student": {
+        "all_seen_failed": 34,
+        "strict": [
+          72,
+          62,
+          63
+        ],
+        "layouts": 106,
+        "backward": 106
+      }
+    }
+  },
+  "maximum_terminal_tick": 1226,
+  "maximum_macros": 41,
+  "teacher": {
+    "strong": {
+      "layouts": 144,
+      "rescue": 19,
+      "loss": 14,
+      "backward": 206,
+      "two_options": 123
+    },
+    "compose_teacher": {
+      "layouts": 168,
+      "rescue": 11,
+      "loss": 1,
+      "backward": 43,
+      "two_options": 27
+    },
+    "strong_dev": {
+      "layouts": 48,
+      "rescue": 6,
+      "loss": 1,
+      "backward": 15,
+      "two_options": 8
+    }
+  },
+  "online": 192,
+  "starting_at_route_origin": 96,
+  "adaptation": {
+    "paired_prefixes": 4,
+    "strict_rescue": 6,
+    "strict_loss": 0
+  },
+  "verified_cohorts_disjoint": 928,
+  "max_online_logp_replay_error": 1.2141513661134695e-07
+}
