@@ -1,0 +1,8 @@
+__pycache__/
+*.np[yz]
+*.pt
+*.pth
+*.log
+/run/
+**/run/
+**/smoke/

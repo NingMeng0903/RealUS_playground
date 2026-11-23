@@ -1,0 +1,3331 @@
+{
+  "experiment": "leg_reader_teacher_scale_20261123_v3",
+  "gpu": {
+    "device": "NVIDIA GeForce RTX 4080 Laptop GPU",
+    "torch": "2.12.0+cu126",
+    "torch_cuda_build": "12.6",
+    "cuda_optimizer_step_verified": true
+  },
+  "driver_version": "580.178.04",
+  "counts_verified": {
+    "reader_fit": {
+      "cases": 12288,
+      "shards": 96,
+      "window_generated": 0,
+      "candidates": 6181845
+    },
+    "reader_calibration": {
+      "cases": 512,
+      "shards": 4,
+      "window_generated": 0,
+      "candidates": 243810
+    },
+    "reader_test": {
+      "cases": 1024,
+      "shards": 8,
+      "window_generated": 0,
+      "candidates": 507505
+    },
+    "teacher_fit": {
+      "cases": 2048,
+      "shards": 43,
+      "window_generated": 0,
+      "full_continuations": 28504
+    },
+    "teacher_calibration": {
+      "cases": 384,
+      "shards": 8,
+      "window_generated": 0,
+      "full_continuations": 2672
+    },
+    "teacher_test": {
+      "cases": 768,
+      "shards": 16,
+      "window_generated": 0,
+      "full_continuations": 26220
+    }
+  },
+  "unique_synthetic_layout_ids": 17024,
+  "reader_weights": {
+    "scaled_identity": {
+      "sha256": "1e0c19133f1c1a0e676d85e4cc147ca1ee3705d9012f1e4cbaf5a17bfa7abd12",
+      "device": "cuda:0",
+      "parameters": 4296,
+      "epochs": 4,
+      "optimizer_steps": 33040,
+      "parameter_update_verified": true
+    },
+    "updated_reader": {
+      "sha256": "0c5fa24eb51f0f72bc2aebffbccf62d7e3ff1226b9263ff10da8d076de8ee3e1",
+      "device": "cuda:0",
+      "parameters": 4296,
+      "epochs": 4,
+      "optimizer_steps": 33040,
+      "parameter_update_verified": true
+    }
+  },
+  "teacher_weights": {
+    "sha256": "1f94c2513e6310f9e5fe24b187aa263737639245456ae2197da4b1a94d9c3073",
+    "device": "cuda:0",
+    "parameters": 8453,
+    "prefix_count": 2048,
+    "candidate_rows": 14252,
+    "tape_count": 2,
+    "changed_on_cuda": true
+  },
+  "reader_thresholds": {
+    "femoral": {
+      "legacy": 0.82,
+      "v2_reader": 0.7100263833999634,
+      "scaled_identity": 0.7448336482048035,
+      "updated_reader": 0.6553057432174683
+    },
+    "groin_to_distal_calf": {
+      "legacy": 0.82,
+      "v2_reader": 0.7781712412834167,
+      "scaled_identity": 0.8511373400688171,
+      "updated_reader": 0.7644504904747009
+    }
+  },
+  "teacher_selection_rules": {
+    "femoral": {
+      "updated_teacher": {
+        "margin": 0.12,
+        "strict_weight": 1.5,
+        "calibration_strict_delta": 0.0,
+        "calibration_wrong_branch_delta": 0.0,
+        "calibration_utility_delta": 4.9591064453125e-05,
+        "calibration_non_hold": 2
+      },
+      "updated_with_continue": {
+        "margin": 0.06,
+        "strict_weight": 0.0,
+        "calibration_strict_delta": 0.020833313465118408,
+        "calibration_wrong_branch_delta": 0.0,
+        "calibration_utility_delta": 0.07525062561035156,
+        "calibration_non_hold": 33
+      }
+    },
+    "groin_to_distal_calf": {
+      "updated_teacher": {
+        "margin": 0.0,
+        "strict_weight": 1.5,
+        "calibration_strict_delta": 0.0,
+        "calibration_wrong_branch_delta": 0.0,
+        "calibration_utility_delta": 0.008704662322998047,
+        "calibration_non_hold": 137
+      },
+      "updated_with_continue": {
+        "margin": 0.12,
+        "strict_weight": 1.5,
+        "calibration_strict_delta": 0.03125,
+        "calibration_wrong_branch_delta": -0.015625,
+        "calibration_utility_delta": 0.13049650192260742,
+        "calibration_non_hold": 31
+      }
+    }
+  },
+  "atlas_scope": "synthetic layouts from BodyParts3D right and Open3DModel right",
+  "completed_student_training_this_round": false,
+  "dird": false,
+  "routes": {
+    "femoral": {
+      "readout": {
+        "fixed": {
+          "legacy": {
+            "cases": 512,
+            "submitted": 2892,
+            "strict": 229,
+            "wrong_delivery": 148,
+            "wrong_branch": 6,
+            "wrong_region_count": 183,
+            "correct_regions": 2709,
+            "acquired_ceiling": 376,
+            "paired_vs_v2": {
+              "strict": {
+                "rescued_or_added": 45,
+                "lost_or_removed": 56,
+                "delta_per_scan": -0.021484375,
+                "clustered95": [
+                  -0.05859375,
+                  0.015625
+                ]
+              },
+              "wrong_delivery": {
+                "rescued_or_added": 75,
+                "lost_or_removed": 37,
+                "delta_per_scan": 0.07421875,
+                "clustered95": [
+                  0.03515625,
+                  0.115234375
+                ]
+              },
+              "wrong_branch": {
+                "rescued_or_added": 3,
+                "lost_or_removed": 2,
+                "delta_per_scan": 0.001953125,
+                "clustered95": [
+                  -0.005859375,
+                  0.009765625
+                ]
+              },
+              "correct_regions": {
+                "rescued_or_added": 65,
+                "lost_or_removed": 91,
+                "delta_per_scan": -0.072265625,
+                "clustered95": [
+                  -0.12890625,
+                  -0.015625
+                ]
+              }
+            }
+          },
+          "v2_reader": {
+            "cases": 512,
+            "submitted": 2878,
+            "strict": 240,
+            "wrong_delivery": 110,
+            "wrong_branch": 5,
+            "wrong_region_count": 132,
+            "correct_regions": 2746,
+            "acquired_ceiling": 376,
+            "paired_vs_v2": {
+              "strict": {
+                "rescued_or_added": 0,
+                "lost_or_removed": 0,
+                "delta_per_scan": 0.0,
+                "clustered95": [
+                  0.0,
+                  0.0
+                ]
+              },
+              "wrong_delivery": {
+                "rescued_or_added": 0,
+                "lost_or_removed": 0,
+                "delta_per_scan": 0.0,
+                "clustered95": [
+                  0.0,
+                  0.0
+                ]
+              },
+              "wrong_branch": {
+                "rescued_or_added": 0,
+                "lost_or_removed": 0,
+                "delta_per_scan": 0.0,
+                "clustered95": [
+                  0.0,
+                  0.0
+                ]
+              },
+              "correct_regions": {
+                "rescued_or_added": 0,
+                "lost_or_removed": 0,
+                "delta_per_scan": 0.0,
+                "clustered95": [
+                  0.0,
+                  0.0
+                ]
+              }
+            }
+          },
+          "scaled_identity": {
+            "cases": 512,
+            "submitted": 2866,
+            "strict": 279,
+            "wrong_delivery": 44,
+            "wrong_branch": 6,
+            "wrong_region_count": 48,
+            "correct_regions": 2818,
+            "acquired_ceiling": 376,
+            "paired_vs_v2": {
+              "strict": {
+                "rescued_or_added": 54,
+                "lost_or_removed": 15,
+                "delta_per_scan": 0.076171875,
+                "clustered95": [
+                  0.044921875,
+                  0.107421875
+                ]
+              },
+              "wrong_delivery": {
+                "rescued_or_added": 12,
+                "lost_or_removed": 78,
+                "delta_per_scan": -0.12890625,
+                "clustered95": [
+                  -0.1640625,
+                  -0.09375
+                ]
+              },
+              "wrong_branch": {
+                "rescued_or_added": 4,
+                "lost_or_removed": 3,
+                "delta_per_scan": 0.001953125,
+                "clustered95": [
+                  -0.0078125,
+                  0.01171875
+                ]
+              },
+              "correct_regions": {
+                "rescued_or_added": 86,
+                "lost_or_removed": 23,
+                "delta_per_scan": 0.140625,
+                "clustered95": [
+                  0.095703125,
+                  0.185546875
+                ]
+              }
+            }
+          },
+          "updated_reader": {
+            "cases": 512,
+            "submitted": 2876,
+            "strict": 292,
+            "wrong_delivery": 37,
+            "wrong_branch": 6,
+            "wrong_region_count": 44,
+            "correct_regions": 2832,
+            "acquired_ceiling": 376,
+            "paired_vs_v2": {
+              "strict": {
+                "rescued_or_added": 66,
+                "lost_or_removed": 14,
+                "delta_per_scan": 0.1015625,
+                "clustered95": [
+                  0.068359375,
+                  0.134765625
+                ]
+              },
+              "wrong_delivery": {
+                "rescued_or_added": 12,
+                "lost_or_removed": 85,
+                "delta_per_scan": -0.142578125,
+                "clustered95": [
+                  -0.177734375,
+                  -0.107421875
+                ]
+              },
+              "wrong_branch": {
+                "rescued_or_added": 3,
+                "lost_or_removed": 2,
+                "delta_per_scan": 0.001953125,
+                "clustered95": [
+                  -0.005859375,
+                  0.01171875
+                ]
+              },
+              "correct_regions": {
+                "rescued_or_added": 98,
+                "lost_or_removed": 24,
+                "delta_per_scan": 0.16796875,
+                "clustered95": [
+                  0.123046875,
+                  0.21484375
+                ]
+              }
+            }
+          }
+        },
+        "matched": {
+          "legacy": {
+            "cases": 512,
+            "submitted": 2878,
+            "strict": 214,
+            "wrong_delivery": 137,
+            "wrong_branch": 9,
+            "wrong_region_count": 176,
+            "correct_regions": 2702,
+            "acquired_ceiling": 376,
+            "paired_vs_v2": {
+              "strict": {
+                "rescued_or_added": 20,
+                "lost_or_removed": 46,
+                "delta_per_scan": -0.05078125,
+                "clustered95": [
+                  -0.08203125,
+                  -0.021484375
+                ]
+              },
+              "wrong_delivery": {
+                "rescued_or_added": 63,
+                "lost_or_removed": 36,
+                "delta_per_scan": 0.052734375,
+                "clustered95": [
+                  0.015625,
+                  0.08984375
+                ]
+              },
+              "wrong_branch": {
+                "rescued_or_added": 4,
+                "lost_or_removed": 0,
+                "delta_per_scan": 0.0078125,
+                "clustered95": [
+                  0.001953125,
+                  0.015625
+                ]
+              },
+              "correct_regions": {
+                "rescued_or_added": 43,
+                "lost_or_removed": 78,
+                "delta_per_scan": -0.0859375,
+                "clustered95": [
+                  -0.1328125,
+                  -0.0390625
+                ]
+              }
+            }
+          },
+          "v2_reader": {
+            "cases": 512,
+            "submitted": 2878,
+            "strict": 240,
+            "wrong_delivery": 110,
+            "wrong_branch": 5,
+            "wrong_region_count": 132,
+            "correct_regions": 2746,
+            "acquired_ceiling": 376,
+            "paired_vs_v2": {
+              "strict": {
+                "rescued_or_added": 0,
+                "lost_or_removed": 0,
+                "delta_per_scan": 0.0,
+                "clustered95": [
+                  0.0,
+                  0.0
+                ]
+              },
+              "wrong_delivery": {
+                "rescued_or_added": 0,
+                "lost_or_removed": 0,
+                "delta_per_scan": 0.0,
+                "clustered95": [
+                  0.0,
+                  0.0
+                ]
+              },
+              "wrong_branch": {
+                "rescued_or_added": 0,
+                "lost_or_removed": 0,
+                "delta_per_scan": 0.0,
+                "clustered95": [
+                  0.0,
+                  0.0
+                ]
+              },
+              "correct_regions": {
+                "rescued_or_added": 0,
+                "lost_or_removed": 0,
+                "delta_per_scan": 0.0,
+                "clustered95": [
+                  0.0,
+                  0.0
+                ]
+              }
+            }
+          },
+          "scaled_identity": {
+            "cases": 512,
+            "submitted": 2878,
+            "strict": 280,
+            "wrong_delivery": 47,
+            "wrong_branch": 7,
+            "wrong_region_count": 53,
+            "correct_regions": 2825,
+            "acquired_ceiling": 376,
+            "paired_vs_v2": {
+              "strict": {
+                "rescued_or_added": 47,
+                "lost_or_removed": 7,
+                "delta_per_scan": 0.078125,
+                "clustered95": [
+                  0.05078125,
+                  0.10546875
+                ]
+              },
+              "wrong_delivery": {
+                "rescued_or_added": 12,
+                "lost_or_removed": 75,
+                "delta_per_scan": -0.123046875,
+                "clustered95": [
+                  -0.158203125,
+                  -0.087890625
+                ]
+              },
+              "wrong_branch": {
+                "rescued_or_added": 4,
+                "lost_or_removed": 2,
+                "delta_per_scan": 0.00390625,
+                "clustered95": [
+                  -0.005859375,
+                  0.013671875
+                ]
+              },
+              "correct_regions": {
+                "rescued_or_added": 83,
+                "lost_or_removed": 12,
+                "delta_per_scan": 0.154296875,
+                "clustered95": [
+                  0.11328125,
+                  0.1953125
+                ]
+              }
+            }
+          },
+          "updated_reader": {
+            "cases": 512,
+            "submitted": 2878,
+            "strict": 284,
+            "wrong_delivery": 41,
+            "wrong_branch": 7,
+            "wrong_region_count": 49,
+            "correct_regions": 2829,
+            "acquired_ceiling": 376,
+            "paired_vs_v2": {
+              "strict": {
+                "rescued_or_added": 51,
+                "lost_or_removed": 7,
+                "delta_per_scan": 0.0859375,
+                "clustered95": [
+                  0.05859375,
+                  0.11328125
+                ]
+              },
+              "wrong_delivery": {
+                "rescued_or_added": 11,
+                "lost_or_removed": 80,
+                "delta_per_scan": -0.134765625,
+                "clustered95": [
+                  -0.16796875,
+                  -0.1015625
+                ]
+              },
+              "wrong_branch": {
+                "rescued_or_added": 3,
+                "lost_or_removed": 1,
+                "delta_per_scan": 0.00390625,
+                "clustered95": [
+                  -0.00390625,
+                  0.01171875
+                ]
+              },
+              "correct_regions": {
+                "rescued_or_added": 87,
+                "lost_or_removed": 14,
+                "delta_per_scan": 0.162109375,
+                "clustered95": [
+                  0.12109375,
+                  0.205078125
+                ]
+              }
+            }
+          }
+        }
+      },
+      "reader_wrong_region_contrasts": {
+        "legacy": {
+          "delta": -127,
+          "delta_per_scan": -0.248046875,
+          "layout95_delta_per_scan": [
+            -0.298828125,
+            -0.197265625
+          ]
+        },
+        "v2_reader": {
+          "delta": -83,
+          "delta_per_scan": -0.162109375,
+          "layout95_delta_per_scan": [
+            -0.205078125,
+            -0.12109375
+          ]
+        },
+        "scaled_identity": {
+          "delta": -4,
+          "delta_per_scan": -0.0078125,
+          "layout95_delta_per_scan": [
+            -0.02734375,
+            0.009765625
+          ]
+        }
+      },
+      "teacher": {
+        "mpc": {
+          "counts": {
+            "strict": 217,
+            "acquired_ceiling": 282,
+            "wrong_delivery": 26,
+            "wrong_branch": 2,
+            "wrong_region_count": 26,
+            "wrong_branch_regions": 2,
+            "artifact_regions": 24,
+            "correct_regions": 2129,
+            "submitted": 2155,
+            "cases": 384,
+            "captured_regions": 2201,
+            "reader_misses_on_seen": 72,
+            "time_s": 8.800000000000002,
+            "distance_mm": 241.23377283414206,
+            "correct_mm": 125.66437921921413,
+            "utility": 4.26122459055235,
+            "actions": {
+              "continue": 384,
+              "equal_time_hold": 0,
+              "window_left": 0,
+              "window_right": 0,
+              "revisit_left": 0,
+              "revisit_center": 0,
+              "revisit_right": 0
+            },
+            "reference_window_visited": 0,
+            "both_windows_visited": 0
+          },
+          "paired": {
+            "mpc": {
+              "strict": {
+                "rescued_or_added": 0,
+                "lost_or_removed": 0,
+                "delta_per_scan": 0.0,
+                "clustered95": [
+                  0.0,
+                  0.0
+                ]
+              },
+              "wrong_delivery": {
+                "rescued_or_added": 0,
+                "lost_or_removed": 0,
+                "delta_per_scan": 0.0,
+                "clustered95": [
+                  0.0,
+                  0.0
+                ]
+              },
+              "wrong_branch": {
+                "rescued_or_added": 0,
+                "lost_or_removed": 0,
+                "delta_per_scan": 0.0,
+                "clustered95": [
+                  0.0,
+                  0.0
+                ]
+              },
+              "correct_regions": {
+                "rescued_or_added": 0,
+                "lost_or_removed": 0,
+                "delta_per_scan": 0.0,
+                "clustered95": [
+                  0.0,
+                  0.0
+                ]
+              },
+              "proof": {
+                "strict_delta_counts": [
+                  0,
+                  0
+                ],
+                "same_case_rescue_on_both": 0,
+                "same_case_loss_on_both": 0
+              },
+              "old_image_after_review": {
+                "rescued": 0,
+                "lost": 0
+              }
+            },
+            "equal_time_hold": {
+              "strict": {
+                "rescued_or_added": 26,
+                "lost_or_removed": 22,
+                "delta_per_scan": 0.010416666666666666,
+                "clustered95": [
+                  -0.026041666666666668,
+                  0.046875
+                ]
+              },
+              "wrong_delivery": {
+                "rescued_or_added": 9,
+                "lost_or_removed": 15,
+                "delta_per_scan": -0.015625,
+                "clustered95": [
+                  -0.041666666666666664,
+                  0.010416666666666666
+                ]
+              },
+              "wrong_branch": {
+                "rescued_or_added": 1,
+                "lost_or_removed": 2,
+                "delta_per_scan": -0.0026041666666666665,
+                "clustered95": [
+                  -0.013020833333333334,
+                  0.005208333333333333
+                ]
+              },
+              "correct_regions": {
+                "rescued_or_added": 34,
+                "lost_or_removed": 24,
+                "delta_per_scan": 0.026041666666666668,
+                "clustered95": [
+                  -0.015625,
+                  0.06770833333333333
+                ]
+              },
+              "proof": {
+                "strict_delta_counts": [
+                  -14,
+                  -14
+                ],
+                "same_case_rescue_on_both": 1,
+                "same_case_loss_on_both": 8
+              },
+              "old_image_after_review": {
+                "rescued": 0,
+                "lost": 1
+              }
+            },
+            "prior_search": {
+              "strict": {
+                "rescued_or_added": 25,
+                "lost_or_removed": 21,
+                "delta_per_scan": 0.010416666666666666,
+                "clustered95": [
+                  -0.0234375,
+                  0.046875
+                ]
+              },
+              "wrong_delivery": {
+                "rescued_or_added": 9,
+                "lost_or_removed": 13,
+                "delta_per_scan": -0.010416666666666666,
+                "clustered95": [
+                  -0.033854166666666664,
+                  0.013020833333333334
+                ]
+              },
+              "wrong_branch": {
+                "rescued_or_added": 1,
+                "lost_or_removed": 2,
+                "delta_per_scan": -0.0026041666666666665,
+                "clustered95": [
+                  -0.013020833333333334,
+                  0.005208333333333333
+                ]
+              },
+              "correct_regions": {
+                "rescued_or_added": 33,
+                "lost_or_removed": 23,
+                "delta_per_scan": 0.026041666666666668,
+                "clustered95": [
+                  -0.015625,
+                  0.06770833333333333
+                ]
+              },
+              "proof": {
+                "strict_delta_counts": [
+                  -13,
+                  -14
+                ],
+                "same_case_rescue_on_both": 1,
+                "same_case_loss_on_both": 8
+              },
+              "old_image_after_review": {
+                "rescued": 1,
+                "lost": 1
+              }
+            }
+          }
+        },
+        "equal_time_hold": {
+          "counts": {
+            "strict": 213,
+            "acquired_ceiling": 282,
+            "wrong_delivery": 32,
+            "wrong_branch": 3,
+            "wrong_region_count": 34,
+            "wrong_branch_regions": 3,
+            "artifact_regions": 31,
+            "correct_regions": 2119,
+            "submitted": 2153,
+            "cases": 384,
+            "captured_regions": 2202,
+            "reader_misses_on_seen": 83,
+            "time_s": 11.707812500000001,
+            "distance_mm": 241.1359829902649,
+            "correct_mm": 127.09832643469174,
+            "utility": 4.207113315972189,
+            "actions": {
+              "continue": 0,
+              "equal_time_hold": 384,
+              "window_left": 0,
+              "window_right": 0,
+              "revisit_left": 0,
+              "revisit_center": 0,
+              "revisit_right": 0
+            },
+            "reference_window_visited": 0,
+            "both_windows_visited": 0
+          },
+          "paired": {
+            "mpc": {
+              "strict": {
+                "rescued_or_added": 22,
+                "lost_or_removed": 26,
+                "delta_per_scan": -0.010416666666666666,
+                "clustered95": [
+                  -0.046875,
+                  0.026041666666666668
+                ]
+              },
+              "wrong_delivery": {
+                "rescued_or_added": 15,
+                "lost_or_removed": 9,
+                "delta_per_scan": 0.015625,
+                "clustered95": [
+                  -0.010416666666666666,
+                  0.041666666666666664
+                ]
+              },
+              "wrong_branch": {
+                "rescued_or_added": 2,
+                "lost_or_removed": 1,
+                "delta_per_scan": 0.0026041666666666665,
+                "clustered95": [
+                  -0.005208333333333333,
+                  0.013020833333333334
+                ]
+              },
+              "correct_regions": {
+                "rescued_or_added": 24,
+                "lost_or_removed": 34,
+                "delta_per_scan": -0.026041666666666668,
+                "clustered95": [
+                  -0.06770833333333333,
+                  0.015625
+                ]
+              },
+              "proof": {
+                "strict_delta_counts": [
+                  14,
+                  14
+                ],
+                "same_case_rescue_on_both": 8,
+                "same_case_loss_on_both": 1
+              },
+              "old_image_after_review": {
+                "rescued": 1,
+                "lost": 0
+              }
+            },
+            "equal_time_hold": {
+              "strict": {
+                "rescued_or_added": 0,
+                "lost_or_removed": 0,
+                "delta_per_scan": 0.0,
+                "clustered95": [
+                  0.0,
+                  0.0
+                ]
+              },
+              "wrong_delivery": {
+                "rescued_or_added": 0,
+                "lost_or_removed": 0,
+                "delta_per_scan": 0.0,
+                "clustered95": [
+                  0.0,
+                  0.0
+                ]
+              },
+              "wrong_branch": {
+                "rescued_or_added": 0,
+                "lost_or_removed": 0,
+                "delta_per_scan": 0.0,
+                "clustered95": [
+                  0.0,
+                  0.0
+                ]
+              },
+              "correct_regions": {
+                "rescued_or_added": 0,
+                "lost_or_removed": 0,
+                "delta_per_scan": 0.0,
+                "clustered95": [
+                  0.0,
+                  0.0
+                ]
+              },
+              "proof": {
+                "strict_delta_counts": [
+                  0,
+                  0
+                ],
+                "same_case_rescue_on_both": 0,
+                "same_case_loss_on_both": 0
+              },
+              "old_image_after_review": {
+                "rescued": 0,
+                "lost": 0
+              }
+            },
+            "prior_search": {
+              "strict": {
+                "rescued_or_added": 1,
+                "lost_or_removed": 1,
+                "delta_per_scan": 0.0,
+                "clustered95": [
+                  -0.0078125,
+                  0.0078125
+                ]
+              },
+              "wrong_delivery": {
+                "rescued_or_added": 2,
+                "lost_or_removed": 0,
+                "delta_per_scan": 0.005208333333333333,
+                "clustered95": [
+                  0.0,
+                  0.013020833333333334
+                ]
+              },
+              "wrong_branch": {
+                "rescued_or_added": 0,
+                "lost_or_removed": 0,
+                "delta_per_scan": 0.0,
+                "clustered95": [
+                  0.0,
+                  0.0
+                ]
+              },
+              "correct_regions": {
+                "rescued_or_added": 1,
+                "lost_or_removed": 1,
+                "delta_per_scan": 0.0,
+                "clustered95": [
+                  -0.0078125,
+                  0.0078125
+                ]
+              },
+              "proof": {
+                "strict_delta_counts": [
+                  1,
+                  0
+                ],
+                "same_case_rescue_on_both": 0,
+                "same_case_loss_on_both": 0
+              },
+              "old_image_after_review": {
+                "rescued": 1,
+                "lost": 0
+              }
+            }
+          }
+        },
+        "active_mpc": {
+          "counts": {
+            "strict": 223,
+            "acquired_ceiling": 283,
+            "wrong_delivery": 28,
+            "wrong_branch": 1,
+            "wrong_region_count": 28,
+            "wrong_branch_regions": 1,
+            "artifact_regions": 27,
+            "correct_regions": 2132,
+            "submitted": 2160,
+            "cases": 384,
+            "captured_regions": 2203,
+            "reader_misses_on_seen": 71,
+            "time_s": 10.575520833333334,
+            "distance_mm": 253.71536119778952,
+            "correct_mm": 127.91383275389671,
+            "utility": 4.308171414770186,
+            "actions": {
+              "continue": 154,
+              "equal_time_hold": 0,
+              "window_left": 22,
+              "window_right": 0,
+              "revisit_left": 22,
+              "revisit_center": 186,
+              "revisit_right": 0
+            },
+            "reference_window_visited": 0,
+            "both_windows_visited": 0
+          },
+          "paired": {
+            "mpc": {
+              "strict": {
+                "rescued_or_added": 15,
+                "lost_or_removed": 9,
+                "delta_per_scan": 0.015625,
+                "clustered95": [
+                  -0.0078125,
+                  0.041666666666666664
+                ]
+              },
+              "wrong_delivery": {
+                "rescued_or_added": 6,
+                "lost_or_removed": 4,
+                "delta_per_scan": 0.005208333333333333,
+                "clustered95": [
+                  -0.010416666666666666,
+                  0.020833333333333332
+                ]
+              },
+              "wrong_branch": {
+                "rescued_or_added": 0,
+                "lost_or_removed": 1,
+                "delta_per_scan": -0.0026041666666666665,
+                "clustered95": [
+                  -0.0078125,
+                  0.0
+                ]
+              },
+              "correct_regions": {
+                "rescued_or_added": 16,
+                "lost_or_removed": 13,
+                "delta_per_scan": 0.0078125,
+                "clustered95": [
+                  -0.018229166666666668,
+                  0.036458333333333336
+                ]
+              },
+              "proof": {
+                "strict_delta_counts": [
+                  8,
+                  4
+                ],
+                "same_case_rescue_on_both": 4,
+                "same_case_loss_on_both": 1
+              },
+              "old_image_after_review": {
+                "rescued": 1,
+                "lost": 2
+              }
+            },
+            "equal_time_hold": {
+              "strict": {
+                "rescued_or_added": 17,
+                "lost_or_removed": 7,
+                "delta_per_scan": 0.026041666666666668,
+                "clustered95": [
+                  0.0,
+                  0.052083333333333336
+                ]
+              },
+              "wrong_delivery": {
+                "rescued_or_added": 5,
+                "lost_or_removed": 9,
+                "delta_per_scan": -0.010416666666666666,
+                "clustered95": [
+                  -0.028645833333333332,
+                  0.0078125
+                ]
+              },
+              "wrong_branch": {
+                "rescued_or_added": 0,
+                "lost_or_removed": 2,
+                "delta_per_scan": -0.005208333333333333,
+                "clustered95": [
+                  -0.013020833333333334,
+                  0.0
+                ]
+              },
+              "correct_regions": {
+                "rescued_or_added": 21,
+                "lost_or_removed": 8,
+                "delta_per_scan": 0.033854166666666664,
+                "clustered95": [
+                  0.005208333333333333,
+                  0.06510416666666667
+                ]
+              },
+              "proof": {
+                "strict_delta_counts": [
+                  -6,
+                  -10
+                ],
+                "same_case_rescue_on_both": 0,
+                "same_case_loss_on_both": 4
+              },
+              "old_image_after_review": {
+                "rescued": 0,
+                "lost": 2
+              }
+            },
+            "prior_search": {
+              "strict": {
+                "rescued_or_added": 17,
+                "lost_or_removed": 7,
+                "delta_per_scan": 0.026041666666666668,
+                "clustered95": [
+                  0.0,
+                  0.052083333333333336
+                ]
+              },
+              "wrong_delivery": {
+                "rescued_or_added": 6,
+                "lost_or_removed": 8,
+                "delta_per_scan": -0.005208333333333333,
+                "clustered95": [
+                  -0.0234375,
+                  0.015625
+                ]
+              },
+              "wrong_branch": {
+                "rescued_or_added": 0,
+                "lost_or_removed": 2,
+                "delta_per_scan": -0.005208333333333333,
+                "clustered95": [
+                  -0.013020833333333334,
+                  0.0
+                ]
+              },
+              "correct_regions": {
+                "rescued_or_added": 21,
+                "lost_or_removed": 8,
+                "delta_per_scan": 0.033854166666666664,
+                "clustered95": [
+                  0.0026041666666666665,
+                  0.06510416666666667
+                ]
+              },
+              "proof": {
+                "strict_delta_counts": [
+                  -5,
+                  -10
+                ],
+                "same_case_rescue_on_both": 0,
+                "same_case_loss_on_both": 4
+              },
+              "old_image_after_review": {
+                "rescued": 0,
+                "lost": 1
+              }
+            }
+          }
+        },
+        "prior_search": {
+          "counts": {
+            "strict": 213,
+            "acquired_ceiling": 282,
+            "wrong_delivery": 30,
+            "wrong_branch": 3,
+            "wrong_region_count": 32,
+            "wrong_branch_regions": 3,
+            "artifact_regions": 29,
+            "correct_regions": 2119,
+            "submitted": 2151,
+            "cases": 384,
+            "captured_regions": 2202,
+            "reader_misses_on_seen": 83,
+            "time_s": 11.707812500000001,
+            "distance_mm": 259.8821063041687,
+            "correct_mm": 128.70199925700823,
+            "utility": 4.212247741408646,
+            "actions": {
+              "continue": 0,
+              "equal_time_hold": 231,
+              "window_left": 5,
+              "window_right": 1,
+              "revisit_left": 120,
+              "revisit_center": 24,
+              "revisit_right": 3
+            },
+            "reference_window_visited": 0,
+            "both_windows_visited": 0
+          },
+          "paired": {
+            "mpc": {
+              "strict": {
+                "rescued_or_added": 21,
+                "lost_or_removed": 25,
+                "delta_per_scan": -0.010416666666666666,
+                "clustered95": [
+                  -0.046875,
+                  0.0234375
+                ]
+              },
+              "wrong_delivery": {
+                "rescued_or_added": 13,
+                "lost_or_removed": 9,
+                "delta_per_scan": 0.010416666666666666,
+                "clustered95": [
+                  -0.013020833333333334,
+                  0.033854166666666664
+                ]
+              },
+              "wrong_branch": {
+                "rescued_or_added": 2,
+                "lost_or_removed": 1,
+                "delta_per_scan": 0.0026041666666666665,
+                "clustered95": [
+                  -0.005208333333333333,
+                  0.013020833333333334
+                ]
+              },
+              "correct_regions": {
+                "rescued_or_added": 23,
+                "lost_or_removed": 33,
+                "delta_per_scan": -0.026041666666666668,
+                "clustered95": [
+                  -0.06770833333333333,
+                  0.015625
+                ]
+              },
+              "proof": {
+                "strict_delta_counts": [
+                  13,
+                  14
+                ],
+                "same_case_rescue_on_both": 8,
+                "same_case_loss_on_both": 1
+              },
+              "old_image_after_review": {
+                "rescued": 1,
+                "lost": 1
+              }
+            },
+            "equal_time_hold": {
+              "strict": {
+                "rescued_or_added": 1,
+                "lost_or_removed": 1,
+                "delta_per_scan": 0.0,
+                "clustered95": [
+                  -0.0078125,
+                  0.0078125
+                ]
+              },
+              "wrong_delivery": {
+                "rescued_or_added": 0,
+                "lost_or_removed": 2,
+                "delta_per_scan": -0.005208333333333333,
+                "clustered95": [
+                  -0.013020833333333334,
+                  0.0
+                ]
+              },
+              "wrong_branch": {
+                "rescued_or_added": 0,
+                "lost_or_removed": 0,
+                "delta_per_scan": 0.0,
+                "clustered95": [
+                  0.0,
+                  0.0
+                ]
+              },
+              "correct_regions": {
+                "rescued_or_added": 1,
+                "lost_or_removed": 1,
+                "delta_per_scan": 0.0,
+                "clustered95": [
+                  -0.0078125,
+                  0.0078125
+                ]
+              },
+              "proof": {
+                "strict_delta_counts": [
+                  -1,
+                  0
+                ],
+                "same_case_rescue_on_both": 0,
+                "same_case_loss_on_both": 0
+              },
+              "old_image_after_review": {
+                "rescued": 0,
+                "lost": 1
+              }
+            },
+            "prior_search": {
+              "strict": {
+                "rescued_or_added": 0,
+                "lost_or_removed": 0,
+                "delta_per_scan": 0.0,
+                "clustered95": [
+                  0.0,
+                  0.0
+                ]
+              },
+              "wrong_delivery": {
+                "rescued_or_added": 0,
+                "lost_or_removed": 0,
+                "delta_per_scan": 0.0,
+                "clustered95": [
+                  0.0,
+                  0.0
+                ]
+              },
+              "wrong_branch": {
+                "rescued_or_added": 0,
+                "lost_or_removed": 0,
+                "delta_per_scan": 0.0,
+                "clustered95": [
+                  0.0,
+                  0.0
+                ]
+              },
+              "correct_regions": {
+                "rescued_or_added": 0,
+                "lost_or_removed": 0,
+                "delta_per_scan": 0.0,
+                "clustered95": [
+                  0.0,
+                  0.0
+                ]
+              },
+              "proof": {
+                "strict_delta_counts": [
+                  0,
+                  0
+                ],
+                "same_case_rescue_on_both": 0,
+                "same_case_loss_on_both": 0
+              },
+              "old_image_after_review": {
+                "rescued": 0,
+                "lost": 0
+              }
+            }
+          }
+        },
+        "updated_teacher": {
+          "counts": {
+            "strict": 213,
+            "acquired_ceiling": 282,
+            "wrong_delivery": 32,
+            "wrong_branch": 3,
+            "wrong_region_count": 34,
+            "wrong_branch_regions": 3,
+            "artifact_regions": 31,
+            "correct_regions": 2119,
+            "submitted": 2153,
+            "cases": 384,
+            "captured_regions": 2202,
+            "reader_misses_on_seen": 83,
+            "time_s": 11.707812500000001,
+            "distance_mm": 242.60585792859396,
+            "correct_mm": 127.09832643469174,
+            "utility": 4.2071133165930705,
+            "actions": {
+              "continue": 0,
+              "equal_time_hold": 374,
+              "window_left": 2,
+              "window_right": 0,
+              "revisit_left": 0,
+              "revisit_center": 0,
+              "revisit_right": 8
+            },
+            "reference_window_visited": 0,
+            "both_windows_visited": 0
+          },
+          "paired": {
+            "mpc": {
+              "strict": {
+                "rescued_or_added": 22,
+                "lost_or_removed": 26,
+                "delta_per_scan": -0.010416666666666666,
+                "clustered95": [
+                  -0.046875,
+                  0.026041666666666668
+                ]
+              },
+              "wrong_delivery": {
+                "rescued_or_added": 15,
+                "lost_or_removed": 9,
+                "delta_per_scan": 0.015625,
+                "clustered95": [
+                  -0.010416666666666666,
+                  0.041666666666666664
+                ]
+              },
+              "wrong_branch": {
+                "rescued_or_added": 2,
+                "lost_or_removed": 1,
+                "delta_per_scan": 0.0026041666666666665,
+                "clustered95": [
+                  -0.005208333333333333,
+                  0.013020833333333334
+                ]
+              },
+              "correct_regions": {
+                "rescued_or_added": 24,
+                "lost_or_removed": 34,
+                "delta_per_scan": -0.026041666666666668,
+                "clustered95": [
+                  -0.06770833333333333,
+                  0.015625
+                ]
+              },
+              "proof": {
+                "strict_delta_counts": [
+                  14,
+                  14
+                ],
+                "same_case_rescue_on_both": 8,
+                "same_case_loss_on_both": 1
+              },
+              "old_image_after_review": {
+                "rescued": 1,
+                "lost": 0
+              }
+            },
+            "equal_time_hold": {
+              "strict": {
+                "rescued_or_added": 0,
+                "lost_or_removed": 0,
+                "delta_per_scan": 0.0,
+                "clustered95": [
+                  0.0,
+                  0.0
+                ]
+              },
+              "wrong_delivery": {
+                "rescued_or_added": 0,
+                "lost_or_removed": 0,
+                "delta_per_scan": 0.0,
+                "clustered95": [
+                  0.0,
+                  0.0
+                ]
+              },
+              "wrong_branch": {
+                "rescued_or_added": 0,
+                "lost_or_removed": 0,
+                "delta_per_scan": 0.0,
+                "clustered95": [
+                  0.0,
+                  0.0
+                ]
+              },
+              "correct_regions": {
+                "rescued_or_added": 0,
+                "lost_or_removed": 0,
+                "delta_per_scan": 0.0,
+                "clustered95": [
+                  0.0,
+                  0.0
+                ]
+              },
+              "proof": {
+                "strict_delta_counts": [
+                  0,
+                  0
+                ],
+                "same_case_rescue_on_both": 0,
+                "same_case_loss_on_both": 0
+              },
+              "old_image_after_review": {
+                "rescued": 0,
+                "lost": 0
+              }
+            },
+            "prior_search": {
+              "strict": {
+                "rescued_or_added": 1,
+                "lost_or_removed": 1,
+                "delta_per_scan": 0.0,
+                "clustered95": [
+                  -0.0078125,
+                  0.0078125
+                ]
+              },
+              "wrong_delivery": {
+                "rescued_or_added": 2,
+                "lost_or_removed": 0,
+                "delta_per_scan": 0.005208333333333333,
+                "clustered95": [
+                  0.0,
+                  0.013020833333333334
+                ]
+              },
+              "wrong_branch": {
+                "rescued_or_added": 0,
+                "lost_or_removed": 0,
+                "delta_per_scan": 0.0,
+                "clustered95": [
+                  0.0,
+                  0.0
+                ]
+              },
+              "correct_regions": {
+                "rescued_or_added": 1,
+                "lost_or_removed": 1,
+                "delta_per_scan": 0.0,
+                "clustered95": [
+                  -0.0078125,
+                  0.0078125
+                ]
+              },
+              "proof": {
+                "strict_delta_counts": [
+                  1,
+                  0
+                ],
+                "same_case_rescue_on_both": 0,
+                "same_case_loss_on_both": 0
+              },
+              "old_image_after_review": {
+                "rescued": 1,
+                "lost": 0
+              }
+            }
+          }
+        },
+        "updated_with_continue": {
+          "counts": {
+            "strict": 216,
+            "acquired_ceiling": 283,
+            "wrong_delivery": 31,
+            "wrong_branch": 3,
+            "wrong_region_count": 33,
+            "wrong_branch_regions": 3,
+            "artifact_regions": 30,
+            "correct_regions": 2123,
+            "submitted": 2156,
+            "cases": 384,
+            "captured_regions": 2203,
+            "reader_misses_on_seen": 80,
+            "time_s": 11.308333333333335,
+            "distance_mm": 241.87654666105905,
+            "correct_mm": 126.92855936288834,
+            "utility": 4.2373987808823586,
+            "actions": {
+              "continue": 52,
+              "equal_time_hold": 327,
+              "window_left": 1,
+              "window_right": 1,
+              "revisit_left": 0,
+              "revisit_center": 0,
+              "revisit_right": 3
+            },
+            "reference_window_visited": 0,
+            "both_windows_visited": 0
+          },
+          "paired": {
+            "mpc": {
+              "strict": {
+                "rescued_or_added": 20,
+                "lost_or_removed": 21,
+                "delta_per_scan": -0.0026041666666666665,
+                "clustered95": [
+                  -0.036458333333333336,
+                  0.03125
+                ]
+              },
+              "wrong_delivery": {
+                "rescued_or_added": 14,
+                "lost_or_removed": 9,
+                "delta_per_scan": 0.013020833333333334,
+                "clustered95": [
+                  -0.013020833333333334,
+                  0.0390625
+                ]
+              },
+              "wrong_branch": {
+                "rescued_or_added": 2,
+                "lost_or_removed": 1,
+                "delta_per_scan": 0.0026041666666666665,
+                "clustered95": [
+                  -0.005208333333333333,
+                  0.013020833333333334
+                ]
+              },
+              "correct_regions": {
+                "rescued_or_added": 22,
+                "lost_or_removed": 28,
+                "delta_per_scan": -0.015625,
+                "clustered95": [
+                  -0.0546875,
+                  0.0234375
+                ]
+              },
+              "proof": {
+                "strict_delta_counts": [
+                  11,
+                  9
+                ],
+                "same_case_rescue_on_both": 6,
+                "same_case_loss_on_both": 0
+              },
+              "old_image_after_review": {
+                "rescued": 1,
+                "lost": 0
+              }
+            },
+            "equal_time_hold": {
+              "strict": {
+                "rescued_or_added": 5,
+                "lost_or_removed": 2,
+                "delta_per_scan": 0.0078125,
+                "clustered95": [
+                  -0.005208333333333333,
+                  0.020833333333333332
+                ]
+              },
+              "wrong_delivery": {
+                "rescued_or_added": 0,
+                "lost_or_removed": 1,
+                "delta_per_scan": -0.0026041666666666665,
+                "clustered95": [
+                  -0.0078125,
+                  0.0
+                ]
+              },
+              "wrong_branch": {
+                "rescued_or_added": 0,
+                "lost_or_removed": 0,
+                "delta_per_scan": 0.0,
+                "clustered95": [
+                  0.0,
+                  0.0
+                ]
+              },
+              "correct_regions": {
+                "rescued_or_added": 6,
+                "lost_or_removed": 2,
+                "delta_per_scan": 0.010416666666666666,
+                "clustered95": [
+                  -0.0026041666666666665,
+                  0.026041666666666668
+                ]
+              },
+              "proof": {
+                "strict_delta_counts": [
+                  -3,
+                  -5
+                ],
+                "same_case_rescue_on_both": 1,
+                "same_case_loss_on_both": 2
+              },
+              "old_image_after_review": {
+                "rescued": 0,
+                "lost": 0
+              }
+            },
+            "prior_search": {
+              "strict": {
+                "rescued_or_added": 6,
+                "lost_or_removed": 3,
+                "delta_per_scan": 0.0078125,
+                "clustered95": [
+                  -0.0078125,
+                  0.0234375
+                ]
+              },
+              "wrong_delivery": {
+                "rescued_or_added": 2,
+                "lost_or_removed": 1,
+                "delta_per_scan": 0.0026041666666666665,
+                "clustered95": [
+                  -0.005208333333333333,
+                  0.013020833333333334
+                ]
+              },
+              "wrong_branch": {
+                "rescued_or_added": 0,
+                "lost_or_removed": 0,
+                "delta_per_scan": 0.0,
+                "clustered95": [
+                  0.0,
+                  0.0
+                ]
+              },
+              "correct_regions": {
+                "rescued_or_added": 7,
+                "lost_or_removed": 3,
+                "delta_per_scan": 0.010416666666666666,
+                "clustered95": [
+                  -0.005208333333333333,
+                  0.026041666666666668
+                ]
+              },
+              "proof": {
+                "strict_delta_counts": [
+                  -2,
+                  -5
+                ],
+                "same_case_rescue_on_both": 1,
+                "same_case_loss_on_both": 2
+              },
+              "old_image_after_review": {
+                "rescued": 1,
+                "lost": 0
+              }
+            }
+          }
+        }
+      },
+      "teacher_training_signal": {
+        "active_comparable_actions": 5036,
+        "cases_with_active_option": 1024,
+        "robust_rescue_actions": 1,
+        "cases_with_robust_rescue": 1,
+        "robust_harm_actions": 0,
+        "cases_with_robust_harm": 0,
+        "consistent_utility_gain_actions": 6,
+        "consistent_utility_loss_actions": 2,
+        "consistent_old_image_rescues": 6,
+        "consistent_old_image_losses": 2
+      },
+      "two_proof_signal_vs_hold": {
+        "active_comparable_actions": 1788,
+        "cases_with_active_option": 384,
+        "robust_rescue_actions": 0,
+        "cases_with_robust_rescue": 0,
+        "robust_harm_actions": 0,
+        "cases_with_robust_harm": 0,
+        "consistent_utility_gain_actions": 0,
+        "consistent_utility_loss_actions": 5,
+        "consistent_old_image_rescues": 0,
+        "consistent_old_image_losses": 5
+      },
+      "public_history_pair_summary": {
+        "pair_count": 136,
+        "pairs_with_opposite_effects": 0,
+        "pairs_with_consistently_positive_shared_action": 0
+      },
+      "action_attribution": {
+        "continue": {
+          "cases": 52,
+          "net_strict_vs_hold": 3,
+          "net_strict_vs_mpc": 0
+        },
+        "equal_time_hold": {
+          "cases": 327,
+          "net_strict_vs_hold": 0,
+          "net_strict_vs_mpc": -1
+        },
+        "revisit_right": {
+          "cases": 3,
+          "net_strict_vs_hold": 0,
+          "net_strict_vs_mpc": 0
+        },
+        "window_left": {
+          "cases": 1,
+          "net_strict_vs_hold": 0,
+          "net_strict_vs_mpc": 0
+        },
+        "window_right": {
+          "cases": 1,
+          "net_strict_vs_hold": 0,
+          "net_strict_vs_mpc": 0
+        }
+      },
+      "value_prediction_utility_mae": 0.14046606421470642,
+      "zero_prediction_utility_mae": 0.11843833327293396,
+      "next_experiment": {
+        "reader_gate": true,
+        "teacher_gate": false,
+        "next_experiment": "Collect across-window/anchor views at public ambiguous prefixes; verify more reproducible rescue than loss before supervision.",
+        "candidates_with_two_tape_rescue": 0
+      }
+    },
+    "groin_to_distal_calf": {
+      "readout": {
+        "fixed": {
+          "legacy": {
+            "cases": 512,
+            "submitted": 2180,
+            "strict": 6,
+            "wrong_delivery": 161,
+            "wrong_branch": 26,
+            "wrong_region_count": 182,
+            "correct_regions": 1998,
+            "acquired_ceiling": 512,
+            "paired_vs_v2": {
+              "strict": {
+                "rescued_or_added": 3,
+                "lost_or_removed": 28,
+                "delta_per_scan": -0.048828125,
+                "clustered95": [
+                  -0.0703125,
+                  -0.029296875
+                ]
+              },
+              "wrong_delivery": {
+                "rescued_or_added": 73,
+                "lost_or_removed": 88,
+                "delta_per_scan": -0.029296875,
+                "clustered95": [
+                  -0.07719726562499998,
+                  0.01953125
+                ]
+              },
+              "wrong_branch": {
+                "rescued_or_added": 8,
+                "lost_or_removed": 27,
+                "delta_per_scan": -0.037109375,
+                "clustered95": [
+                  -0.060546875,
+                  -0.015625
+                ]
+              },
+              "correct_regions": {
+                "rescued_or_added": 78,
+                "lost_or_removed": 168,
+                "delta_per_scan": -0.220703125,
+                "clustered95": [
+                  -0.29008789062499996,
+                  -0.150390625
+                ]
+              }
+            }
+          },
+          "v2_reader": {
+            "cases": 512,
+            "submitted": 2323,
+            "strict": 31,
+            "wrong_delivery": 176,
+            "wrong_branch": 45,
+            "wrong_region_count": 212,
+            "correct_regions": 2111,
+            "acquired_ceiling": 512,
+            "paired_vs_v2": {
+              "strict": {
+                "rescued_or_added": 0,
+                "lost_or_removed": 0,
+                "delta_per_scan": 0.0,
+                "clustered95": [
+                  0.0,
+                  0.0
+                ]
+              },
+              "wrong_delivery": {
+                "rescued_or_added": 0,
+                "lost_or_removed": 0,
+                "delta_per_scan": 0.0,
+                "clustered95": [
+                  0.0,
+                  0.0
+                ]
+              },
+              "wrong_branch": {
+                "rescued_or_added": 0,
+                "lost_or_removed": 0,
+                "delta_per_scan": 0.0,
+                "clustered95": [
+                  0.0,
+                  0.0
+                ]
+              },
+              "correct_regions": {
+                "rescued_or_added": 0,
+                "lost_or_removed": 0,
+                "delta_per_scan": 0.0,
+                "clustered95": [
+                  0.0,
+                  0.0
+                ]
+              }
+            }
+          },
+          "scaled_identity": {
+            "cases": 512,
+            "submitted": 2482,
+            "strict": 102,
+            "wrong_delivery": 129,
+            "wrong_branch": 67,
+            "wrong_region_count": 153,
+            "correct_regions": 2329,
+            "acquired_ceiling": 512,
+            "paired_vs_v2": {
+              "strict": {
+                "rescued_or_added": 87,
+                "lost_or_removed": 16,
+                "delta_per_scan": 0.138671875,
+                "clustered95": [
+                  0.1015625,
+                  0.177734375
+                ]
+              },
+              "wrong_delivery": {
+                "rescued_or_added": 68,
+                "lost_or_removed": 115,
+                "delta_per_scan": -0.091796875,
+                "clustered95": [
+                  -0.140625,
+                  -0.0390625
+                ]
+              },
+              "wrong_branch": {
+                "rescued_or_added": 52,
+                "lost_or_removed": 30,
+                "delta_per_scan": 0.04296875,
+                "clustered95": [
+                  0.0078125,
+                  0.076171875
+                ]
+              },
+              "correct_regions": {
+                "rescued_or_added": 237,
+                "lost_or_removed": 77,
+                "delta_per_scan": 0.42578125,
+                "clustered95": [
+                  0.341796875,
+                  0.5078125
+                ]
+              }
+            }
+          },
+          "updated_reader": {
+            "cases": 512,
+            "submitted": 2490,
+            "strict": 75,
+            "wrong_delivery": 201,
+            "wrong_branch": 137,
+            "wrong_region_count": 256,
+            "correct_regions": 2234,
+            "acquired_ceiling": 512,
+            "paired_vs_v2": {
+              "strict": {
+                "rescued_or_added": 60,
+                "lost_or_removed": 16,
+                "delta_per_scan": 0.0859375,
+                "clustered95": [
+                  0.0546875,
+                  0.11821289062500018
+                ]
+              },
+              "wrong_delivery": {
+                "rescued_or_added": 119,
+                "lost_or_removed": 94,
+                "delta_per_scan": 0.048828125,
+                "clustered95": [
+                  -0.00390625,
+                  0.107421875
+                ]
+              },
+              "wrong_branch": {
+                "rescued_or_added": 116,
+                "lost_or_removed": 24,
+                "delta_per_scan": 0.1796875,
+                "clustered95": [
+                  0.138671875,
+                  0.22265625
+                ]
+              },
+              "correct_regions": {
+                "rescued_or_added": 199,
+                "lost_or_removed": 109,
+                "delta_per_scan": 0.240234375,
+                "clustered95": [
+                  0.15234375,
+                  0.326171875
+                ]
+              }
+            }
+          }
+        },
+        "matched": {
+          "legacy": {
+            "cases": 512,
+            "submitted": 2323,
+            "strict": 20,
+            "wrong_delivery": 201,
+            "wrong_branch": 36,
+            "wrong_region_count": 232,
+            "correct_regions": 2091,
+            "acquired_ceiling": 512,
+            "paired_vs_v2": {
+              "strict": {
+                "rescued_or_added": 3,
+                "lost_or_removed": 14,
+                "delta_per_scan": -0.021484375,
+                "clustered95": [
+                  -0.037109375,
+                  -0.005859375
+                ]
+              },
+              "wrong_delivery": {
+                "rescued_or_added": 90,
+                "lost_or_removed": 65,
+                "delta_per_scan": 0.048828125,
+                "clustered95": [
+                  0.001953125,
+                  0.095703125
+                ]
+              },
+              "wrong_branch": {
+                "rescued_or_added": 17,
+                "lost_or_removed": 26,
+                "delta_per_scan": -0.017578125,
+                "clustered95": [
+                  -0.041015625,
+                  0.0078125
+                ]
+              },
+              "correct_regions": {
+                "rescued_or_added": 81,
+                "lost_or_removed": 102,
+                "delta_per_scan": -0.0390625,
+                "clustered95": [
+                  -0.09765625,
+                  0.01953125
+                ]
+              }
+            }
+          },
+          "v2_reader": {
+            "cases": 512,
+            "submitted": 2323,
+            "strict": 31,
+            "wrong_delivery": 176,
+            "wrong_branch": 45,
+            "wrong_region_count": 212,
+            "correct_regions": 2111,
+            "acquired_ceiling": 512,
+            "paired_vs_v2": {
+              "strict": {
+                "rescued_or_added": 0,
+                "lost_or_removed": 0,
+                "delta_per_scan": 0.0,
+                "clustered95": [
+                  0.0,
+                  0.0
+                ]
+              },
+              "wrong_delivery": {
+                "rescued_or_added": 0,
+                "lost_or_removed": 0,
+                "delta_per_scan": 0.0,
+                "clustered95": [
+                  0.0,
+                  0.0
+                ]
+              },
+              "wrong_branch": {
+                "rescued_or_added": 0,
+                "lost_or_removed": 0,
+                "delta_per_scan": 0.0,
+                "clustered95": [
+                  0.0,
+                  0.0
+                ]
+              },
+              "correct_regions": {
+                "rescued_or_added": 0,
+                "lost_or_removed": 0,
+                "delta_per_scan": 0.0,
+                "clustered95": [
+                  0.0,
+                  0.0
+                ]
+              }
+            }
+          },
+          "scaled_identity": {
+            "cases": 512,
+            "submitted": 2323,
+            "strict": 37,
+            "wrong_delivery": 108,
+            "wrong_branch": 50,
+            "wrong_region_count": 126,
+            "correct_regions": 2197,
+            "acquired_ceiling": 512,
+            "paired_vs_v2": {
+              "strict": {
+                "rescued_or_added": 11,
+                "lost_or_removed": 5,
+                "delta_per_scan": 0.01171875,
+                "clustered95": [
+                  -0.001953125,
+                  0.02734375
+                ]
+              },
+              "wrong_delivery": {
+                "rescued_or_added": 48,
+                "lost_or_removed": 116,
+                "delta_per_scan": -0.1328125,
+                "clustered95": [
+                  -0.1796875,
+                  -0.083984375
+                ]
+              },
+              "wrong_branch": {
+                "rescued_or_added": 31,
+                "lost_or_removed": 26,
+                "delta_per_scan": 0.009765625,
+                "clustered95": [
+                  -0.01953125,
+                  0.0390625
+                ]
+              },
+              "correct_regions": {
+                "rescued_or_added": 128,
+                "lost_or_removed": 53,
+                "delta_per_scan": 0.16796875,
+                "clustered95": [
+                  0.10546875,
+                  0.23046875
+                ]
+              }
+            }
+          },
+          "updated_reader": {
+            "cases": 512,
+            "submitted": 2323,
+            "strict": 32,
+            "wrong_delivery": 189,
+            "wrong_branch": 127,
+            "wrong_region_count": 226,
+            "correct_regions": 2097,
+            "acquired_ceiling": 512,
+            "paired_vs_v2": {
+              "strict": {
+                "rescued_or_added": 8,
+                "lost_or_removed": 7,
+                "delta_per_scan": 0.001953125,
+                "clustered95": [
+                  -0.01171875,
+                  0.015625
+                ]
+              },
+              "wrong_delivery": {
+                "rescued_or_added": 103,
+                "lost_or_removed": 90,
+                "delta_per_scan": 0.025390625,
+                "clustered95": [
+                  -0.025390625,
+                  0.080078125
+                ]
+              },
+              "wrong_branch": {
+                "rescued_or_added": 105,
+                "lost_or_removed": 23,
+                "delta_per_scan": 0.16015625,
+                "clustered95": [
+                  0.119140625,
+                  0.201171875
+                ]
+              },
+              "correct_regions": {
+                "rescued_or_added": 104,
+                "lost_or_removed": 119,
+                "delta_per_scan": -0.02734375,
+                "clustered95": [
+                  -0.09765625,
+                  0.0390625
+                ]
+              }
+            }
+          }
+        }
+      },
+      "reader_wrong_region_contrasts": {
+        "legacy": {
+          "delta": -6,
+          "delta_per_scan": -0.01171875,
+          "layout95_delta_per_scan": [
+            -0.08203125,
+            0.05859375
+          ]
+        },
+        "v2_reader": {
+          "delta": 14,
+          "delta_per_scan": 0.02734375,
+          "layout95_delta_per_scan": [
+            -0.041015625,
+            0.09375
+          ]
+        },
+        "scaled_identity": {
+          "delta": 100,
+          "delta_per_scan": 0.1953125,
+          "layout95_delta_per_scan": [
+            0.142578125,
+            0.248046875
+          ]
+        }
+      },
+      "teacher": {
+        "mpc": {
+          "counts": {
+            "strict": 59,
+            "acquired_ceiling": 383,
+            "wrong_delivery": 160,
+            "wrong_branch": 93,
+            "wrong_region_count": 204,
+            "wrong_branch_regions": 100,
+            "artifact_regions": 104,
+            "correct_regions": 1657,
+            "submitted": 1861,
+            "cases": 384,
+            "captured_regions": 2303,
+            "reader_misses_on_seen": 646,
+            "time_s": 33.46510416666666,
+            "distance_mm": 947.9987861315409,
+            "correct_mm": 235.82508127888045,
+            "utility": 2.3067543363589116,
+            "actions": {
+              "continue": 384,
+              "equal_time_hold": 0,
+              "window_left": 0,
+              "window_right": 0,
+              "revisit_left": 0,
+              "revisit_center": 0,
+              "revisit_right": 0
+            },
+            "reference_window_visited": 0,
+            "both_windows_visited": 0
+          },
+          "paired": {
+            "mpc": {
+              "strict": {
+                "rescued_or_added": 0,
+                "lost_or_removed": 0,
+                "delta_per_scan": 0.0,
+                "clustered95": [
+                  0.0,
+                  0.0
+                ]
+              },
+              "wrong_delivery": {
+                "rescued_or_added": 0,
+                "lost_or_removed": 0,
+                "delta_per_scan": 0.0,
+                "clustered95": [
+                  0.0,
+                  0.0
+                ]
+              },
+              "wrong_branch": {
+                "rescued_or_added": 0,
+                "lost_or_removed": 0,
+                "delta_per_scan": 0.0,
+                "clustered95": [
+                  0.0,
+                  0.0
+                ]
+              },
+              "correct_regions": {
+                "rescued_or_added": 0,
+                "lost_or_removed": 0,
+                "delta_per_scan": 0.0,
+                "clustered95": [
+                  0.0,
+                  0.0
+                ]
+              },
+              "proof": {
+                "strict_delta_counts": [
+                  0,
+                  0
+                ],
+                "same_case_rescue_on_both": 0,
+                "same_case_loss_on_both": 0
+              },
+              "old_image_after_review": {
+                "rescued": 0,
+                "lost": 0
+              }
+            },
+            "equal_time_hold": {
+              "strict": {
+                "rescued_or_added": 37,
+                "lost_or_removed": 29,
+                "delta_per_scan": 0.020833333333333332,
+                "clustered95": [
+                  -0.020833333333333332,
+                  0.0625
+                ]
+              },
+              "wrong_delivery": {
+                "rescued_or_added": 37,
+                "lost_or_removed": 38,
+                "delta_per_scan": -0.0026041666666666665,
+                "clustered95": [
+                  -0.046875,
+                  0.041666666666666664
+                ]
+              },
+              "wrong_branch": {
+                "rescued_or_added": 27,
+                "lost_or_removed": 47,
+                "delta_per_scan": -0.052083333333333336,
+                "clustered95": [
+                  -0.09635416666666667,
+                  -0.0078125
+                ]
+              },
+              "correct_regions": {
+                "rescued_or_added": 92,
+                "lost_or_removed": 98,
+                "delta_per_scan": 0.013020833333333334,
+                "clustered95": [
+                  -0.0703125,
+                  0.09635416666666667
+                ]
+              },
+              "proof": {
+                "strict_delta_counts": [
+                  4,
+                  14
+                ],
+                "same_case_rescue_on_both": 7,
+                "same_case_loss_on_both": 7
+              },
+              "old_image_after_review": {
+                "rescued": 0,
+                "lost": 8
+              }
+            },
+            "prior_search": {
+              "strict": {
+                "rescued_or_added": 37,
+                "lost_or_removed": 30,
+                "delta_per_scan": 0.018229166666666668,
+                "clustered95": [
+                  -0.0234375,
+                  0.059895833333333336
+                ]
+              },
+              "wrong_delivery": {
+                "rescued_or_added": 37,
+                "lost_or_removed": 38,
+                "delta_per_scan": -0.0026041666666666665,
+                "clustered95": [
+                  -0.046875,
+                  0.041666666666666664
+                ]
+              },
+              "wrong_branch": {
+                "rescued_or_added": 27,
+                "lost_or_removed": 47,
+                "delta_per_scan": -0.052083333333333336,
+                "clustered95": [
+                  -0.09635416666666667,
+                  -0.0078125
+                ]
+              },
+              "correct_regions": {
+                "rescued_or_added": 92,
+                "lost_or_removed": 100,
+                "delta_per_scan": 0.0078125,
+                "clustered95": [
+                  -0.07428385416666665,
+                  0.09114583333333333
+                ]
+              },
+              "proof": {
+                "strict_delta_counts": [
+                  3,
+                  13
+                ],
+                "same_case_rescue_on_both": 7,
+                "same_case_loss_on_both": 8
+              },
+              "old_image_after_review": {
+                "rescued": 0,
+                "lost": 16
+              }
+            }
+          }
+        },
+        "equal_time_hold": {
+          "counts": {
+            "strict": 51,
+            "acquired_ceiling": 383,
+            "wrong_delivery": 161,
+            "wrong_branch": 113,
+            "wrong_region_count": 210,
+            "wrong_branch_regions": 128,
+            "artifact_regions": 82,
+            "correct_regions": 1652,
+            "submitted": 1862,
+            "cases": 384,
+            "captured_regions": 2303,
+            "reader_misses_on_seen": 651,
+            "time_s": 36.311197916666664,
+            "distance_mm": 948.0248489379883,
+            "correct_mm": 235.72273061672846,
+            "utility": 2.2112371297007485,
+            "actions": {
+              "continue": 0,
+              "equal_time_hold": 384,
+              "window_left": 0,
+              "window_right": 0,
+              "revisit_left": 0,
+              "revisit_center": 0,
+              "revisit_right": 0
+            },
+            "reference_window_visited": 0,
+            "both_windows_visited": 0
+          },
+          "paired": {
+            "mpc": {
+              "strict": {
+                "rescued_or_added": 29,
+                "lost_or_removed": 37,
+                "delta_per_scan": -0.020833333333333332,
+                "clustered95": [
+                  -0.0625,
+                  0.020833333333333332
+                ]
+              },
+              "wrong_delivery": {
+                "rescued_or_added": 38,
+                "lost_or_removed": 37,
+                "delta_per_scan": 0.0026041666666666665,
+                "clustered95": [
+                  -0.041666666666666664,
+                  0.046875
+                ]
+              },
+              "wrong_branch": {
+                "rescued_or_added": 47,
+                "lost_or_removed": 27,
+                "delta_per_scan": 0.052083333333333336,
+                "clustered95": [
+                  0.0078125,
+                  0.09635416666666667
+                ]
+              },
+              "correct_regions": {
+                "rescued_or_added": 98,
+                "lost_or_removed": 92,
+                "delta_per_scan": -0.013020833333333334,
+                "clustered95": [
+                  -0.09635416666666667,
+                  0.0703125
+                ]
+              },
+              "proof": {
+                "strict_delta_counts": [
+                  -4,
+                  -14
+                ],
+                "same_case_rescue_on_both": 7,
+                "same_case_loss_on_both": 7
+              },
+              "old_image_after_review": {
+                "rescued": 8,
+                "lost": 0
+              }
+            },
+            "equal_time_hold": {
+              "strict": {
+                "rescued_or_added": 0,
+                "lost_or_removed": 0,
+                "delta_per_scan": 0.0,
+                "clustered95": [
+                  0.0,
+                  0.0
+                ]
+              },
+              "wrong_delivery": {
+                "rescued_or_added": 0,
+                "lost_or_removed": 0,
+                "delta_per_scan": 0.0,
+                "clustered95": [
+                  0.0,
+                  0.0
+                ]
+              },
+              "wrong_branch": {
+                "rescued_or_added": 0,
+                "lost_or_removed": 0,
+                "delta_per_scan": 0.0,
+                "clustered95": [
+                  0.0,
+                  0.0
+                ]
+              },
+              "correct_regions": {
+                "rescued_or_added": 0,
+                "lost_or_removed": 0,
+                "delta_per_scan": 0.0,
+                "clustered95": [
+                  0.0,
+                  0.0
+                ]
+              },
+              "proof": {
+                "strict_delta_counts": [
+                  0,
+                  0
+                ],
+                "same_case_rescue_on_both": 0,
+                "same_case_loss_on_both": 0
+              },
+              "old_image_after_review": {
+                "rescued": 0,
+                "lost": 0
+              }
+            },
+            "prior_search": {
+              "strict": {
+                "rescued_or_added": 0,
+                "lost_or_removed": 1,
+                "delta_per_scan": -0.0026041666666666665,
+                "clustered95": [
+                  -0.0078125,
+                  0.0
+                ]
+              },
+              "wrong_delivery": {
+                "rescued_or_added": 0,
+                "lost_or_removed": 0,
+                "delta_per_scan": 0.0,
+                "clustered95": [
+                  0.0,
+                  0.0
+                ]
+              },
+              "wrong_branch": {
+                "rescued_or_added": 0,
+                "lost_or_removed": 0,
+                "delta_per_scan": 0.0,
+                "clustered95": [
+                  0.0,
+                  0.0
+                ]
+              },
+              "correct_regions": {
+                "rescued_or_added": 0,
+                "lost_or_removed": 2,
+                "delta_per_scan": -0.005208333333333333,
+                "clustered95": [
+                  -0.013020833333333334,
+                  0.0
+                ]
+              },
+              "proof": {
+                "strict_delta_counts": [
+                  -1,
+                  -1
+                ],
+                "same_case_rescue_on_both": 0,
+                "same_case_loss_on_both": 1
+              },
+              "old_image_after_review": {
+                "rescued": 0,
+                "lost": 8
+              }
+            }
+          }
+        },
+        "active_mpc": {
+          "counts": {
+            "strict": 50,
+            "acquired_ceiling": 383,
+            "wrong_delivery": 165,
+            "wrong_branch": 114,
+            "wrong_region_count": 215,
+            "wrong_branch_regions": 129,
+            "artifact_regions": 86,
+            "correct_regions": 1651,
+            "submitted": 1866,
+            "cases": 384,
+            "captured_regions": 2303,
+            "reader_misses_on_seen": 652,
+            "time_s": 35.74218749999999,
+            "distance_mm": 985.7196909586588,
+            "correct_mm": 235.97433106104532,
+            "utility": 2.196323661661154,
+            "actions": {
+              "continue": 87,
+              "equal_time_hold": 0,
+              "window_left": 81,
+              "window_right": 87,
+              "revisit_left": 43,
+              "revisit_center": 44,
+              "revisit_right": 42
+            },
+            "reference_window_visited": 0,
+            "both_windows_visited": 0
+          },
+          "paired": {
+            "mpc": {
+              "strict": {
+                "rescued_or_added": 23,
+                "lost_or_removed": 32,
+                "delta_per_scan": -0.0234375,
+                "clustered95": [
+                  -0.0625,
+                  0.015625
+                ]
+              },
+              "wrong_delivery": {
+                "rescued_or_added": 37,
+                "lost_or_removed": 32,
+                "delta_per_scan": 0.013020833333333334,
+                "clustered95": [
+                  -0.03001302083333331,
+                  0.057291666666666664
+                ]
+              },
+              "wrong_branch": {
+                "rescued_or_added": 44,
+                "lost_or_removed": 23,
+                "delta_per_scan": 0.0546875,
+                "clustered95": [
+                  0.010416666666666666,
+                  0.09635416666666667
+                ]
+              },
+              "correct_regions": {
+                "rescued_or_added": 82,
+                "lost_or_removed": 77,
+                "delta_per_scan": -0.015625,
+                "clustered95": [
+                  -0.09511718749999998,
+                  0.059895833333333336
+                ]
+              },
+              "proof": {
+                "strict_delta_counts": [
+                  -2,
+                  -13
+                ],
+                "same_case_rescue_on_both": 6,
+                "same_case_loss_on_both": 7
+              },
+              "old_image_after_review": {
+                "rescued": 4,
+                "lost": 0
+              }
+            },
+            "equal_time_hold": {
+              "strict": {
+                "rescued_or_added": 5,
+                "lost_or_removed": 6,
+                "delta_per_scan": -0.0026041666666666665,
+                "clustered95": [
+                  -0.020833333333333332,
+                  0.013020833333333334
+                ]
+              },
+              "wrong_delivery": {
+                "rescued_or_added": 7,
+                "lost_or_removed": 3,
+                "delta_per_scan": 0.010416666666666666,
+                "clustered95": [
+                  -0.005208333333333333,
+                  0.028645833333333332
+                ]
+              },
+              "wrong_branch": {
+                "rescued_or_added": 4,
+                "lost_or_removed": 3,
+                "delta_per_scan": 0.0026041666666666665,
+                "clustered95": [
+                  -0.010416666666666666,
+                  0.015625
+                ]
+              },
+              "correct_regions": {
+                "rescued_or_added": 16,
+                "lost_or_removed": 17,
+                "delta_per_scan": -0.0026041666666666665,
+                "clustered95": [
+                  -0.033854166666666664,
+                  0.028645833333333332
+                ]
+              },
+              "proof": {
+                "strict_delta_counts": [
+                  2,
+                  1
+                ],
+                "same_case_rescue_on_both": 0,
+                "same_case_loss_on_both": 1
+              },
+              "old_image_after_review": {
+                "rescued": 2,
+                "lost": 6
+              }
+            },
+            "prior_search": {
+              "strict": {
+                "rescued_or_added": 5,
+                "lost_or_removed": 7,
+                "delta_per_scan": -0.005208333333333333,
+                "clustered95": [
+                  -0.0234375,
+                  0.013020833333333334
+                ]
+              },
+              "wrong_delivery": {
+                "rescued_or_added": 7,
+                "lost_or_removed": 3,
+                "delta_per_scan": 0.010416666666666666,
+                "clustered95": [
+                  -0.005208333333333333,
+                  0.028645833333333332
+                ]
+              },
+              "wrong_branch": {
+                "rescued_or_added": 4,
+                "lost_or_removed": 3,
+                "delta_per_scan": 0.0026041666666666665,
+                "clustered95": [
+                  -0.010416666666666666,
+                  0.015625
+                ]
+              },
+              "correct_regions": {
+                "rescued_or_added": 16,
+                "lost_or_removed": 19,
+                "delta_per_scan": -0.0078125,
+                "clustered95": [
+                  -0.041666666666666664,
+                  0.026041666666666668
+                ]
+              },
+              "proof": {
+                "strict_delta_counts": [
+                  1,
+                  0
+                ],
+                "same_case_rescue_on_both": 0,
+                "same_case_loss_on_both": 2
+              },
+              "old_image_after_review": {
+                "rescued": 1,
+                "lost": 13
+              }
+            }
+          }
+        },
+        "prior_search": {
+          "counts": {
+            "strict": 52,
+            "acquired_ceiling": 383,
+            "wrong_delivery": 161,
+            "wrong_branch": 113,
+            "wrong_region_count": 210,
+            "wrong_branch_regions": 128,
+            "artifact_regions": 82,
+            "correct_regions": 1654,
+            "submitted": 1864,
+            "cases": 384,
+            "captured_regions": 2303,
+            "reader_misses_on_seen": 649,
+            "time_s": 36.311197916666664,
+            "distance_mm": 961.3538071314493,
+            "correct_mm": 236.34253311157227,
+            "utility": 2.2324246520717375,
+            "actions": {
+              "continue": 0,
+              "equal_time_hold": 288,
+              "window_left": 43,
+              "window_right": 2,
+              "revisit_left": 40,
+              "revisit_center": 2,
+              "revisit_right": 9
+            },
+            "reference_window_visited": 0,
+            "both_windows_visited": 0
+          },
+          "paired": {
+            "mpc": {
+              "strict": {
+                "rescued_or_added": 30,
+                "lost_or_removed": 37,
+                "delta_per_scan": -0.018229166666666668,
+                "clustered95": [
+                  -0.059895833333333336,
+                  0.0234375
+                ]
+              },
+              "wrong_delivery": {
+                "rescued_or_added": 38,
+                "lost_or_removed": 37,
+                "delta_per_scan": 0.0026041666666666665,
+                "clustered95": [
+                  -0.041666666666666664,
+                  0.046875
+                ]
+              },
+              "wrong_branch": {
+                "rescued_or_added": 47,
+                "lost_or_removed": 27,
+                "delta_per_scan": 0.052083333333333336,
+                "clustered95": [
+                  0.0078125,
+                  0.09635416666666667
+                ]
+              },
+              "correct_regions": {
+                "rescued_or_added": 100,
+                "lost_or_removed": 92,
+                "delta_per_scan": -0.0078125,
+                "clustered95": [
+                  -0.09114583333333333,
+                  0.0742838541666669
+                ]
+              },
+              "proof": {
+                "strict_delta_counts": [
+                  -3,
+                  -13
+                ],
+                "same_case_rescue_on_both": 8,
+                "same_case_loss_on_both": 7
+              },
+              "old_image_after_review": {
+                "rescued": 16,
+                "lost": 0
+              }
+            },
+            "equal_time_hold": {
+              "strict": {
+                "rescued_or_added": 1,
+                "lost_or_removed": 0,
+                "delta_per_scan": 0.0026041666666666665,
+                "clustered95": [
+                  0.0,
+                  0.0078125
+                ]
+              },
+              "wrong_delivery": {
+                "rescued_or_added": 0,
+                "lost_or_removed": 0,
+                "delta_per_scan": 0.0,
+                "clustered95": [
+                  0.0,
+                  0.0
+                ]
+              },
+              "wrong_branch": {
+                "rescued_or_added": 0,
+                "lost_or_removed": 0,
+                "delta_per_scan": 0.0,
+                "clustered95": [
+                  0.0,
+                  0.0
+                ]
+              },
+              "correct_regions": {
+                "rescued_or_added": 2,
+                "lost_or_removed": 0,
+                "delta_per_scan": 0.005208333333333333,
+                "clustered95": [
+                  0.0,
+                  0.013020833333333334
+                ]
+              },
+              "proof": {
+                "strict_delta_counts": [
+                  1,
+                  1
+                ],
+                "same_case_rescue_on_both": 1,
+                "same_case_loss_on_both": 0
+              },
+              "old_image_after_review": {
+                "rescued": 8,
+                "lost": 0
+              }
+            },
+            "prior_search": {
+              "strict": {
+                "rescued_or_added": 0,
+                "lost_or_removed": 0,
+                "delta_per_scan": 0.0,
+                "clustered95": [
+                  0.0,
+                  0.0
+                ]
+              },
+              "wrong_delivery": {
+                "rescued_or_added": 0,
+                "lost_or_removed": 0,
+                "delta_per_scan": 0.0,
+                "clustered95": [
+                  0.0,
+                  0.0
+                ]
+              },
+              "wrong_branch": {
+                "rescued_or_added": 0,
+                "lost_or_removed": 0,
+                "delta_per_scan": 0.0,
+                "clustered95": [
+                  0.0,
+                  0.0
+                ]
+              },
+              "correct_regions": {
+                "rescued_or_added": 0,
+                "lost_or_removed": 0,
+                "delta_per_scan": 0.0,
+                "clustered95": [
+                  0.0,
+                  0.0
+                ]
+              },
+              "proof": {
+                "strict_delta_counts": [
+                  0,
+                  0
+                ],
+                "same_case_rescue_on_both": 0,
+                "same_case_loss_on_both": 0
+              },
+              "old_image_after_review": {
+                "rescued": 0,
+                "lost": 0
+              }
+            }
+          }
+        },
+        "updated_teacher": {
+          "counts": {
+            "strict": 53,
+            "acquired_ceiling": 383,
+            "wrong_delivery": 160,
+            "wrong_branch": 113,
+            "wrong_region_count": 211,
+            "wrong_branch_regions": 128,
+            "artifact_regions": 83,
+            "correct_regions": 1656,
+            "submitted": 1867,
+            "cases": 384,
+            "captured_regions": 2303,
+            "reader_misses_on_seen": 647,
+            "time_s": 36.311197916666664,
+            "distance_mm": 987.5384289423624,
+            "correct_mm": 236.01526087522507,
+            "utility": 2.2337492747695555,
+            "actions": {
+              "continue": 0,
+              "equal_time_hold": 87,
+              "window_left": 19,
+              "window_right": 133,
+              "revisit_left": 54,
+              "revisit_center": 4,
+              "revisit_right": 87
+            },
+            "reference_window_visited": 0,
+            "both_windows_visited": 0
+          },
+          "paired": {
+            "mpc": {
+              "strict": {
+                "rescued_or_added": 31,
+                "lost_or_removed": 37,
+                "delta_per_scan": -0.015625,
+                "clustered95": [
+                  -0.057291666666666664,
+                  0.026041666666666668
+                ]
+              },
+              "wrong_delivery": {
+                "rescued_or_added": 38,
+                "lost_or_removed": 38,
+                "delta_per_scan": 0.0,
+                "clustered95": [
+                  -0.046875,
+                  0.044270833333333336
+                ]
+              },
+              "wrong_branch": {
+                "rescued_or_added": 47,
+                "lost_or_removed": 27,
+                "delta_per_scan": 0.052083333333333336,
+                "clustered95": [
+                  0.0078125,
+                  0.09635416666666667
+                ]
+              },
+              "correct_regions": {
+                "rescued_or_added": 101,
+                "lost_or_removed": 92,
+                "delta_per_scan": -0.0026041666666666665,
+                "clustered95": [
+                  -0.08854166666666667,
+                  0.0820963541666669
+                ]
+              },
+              "proof": {
+                "strict_delta_counts": [
+                  -3,
+                  -13
+                ],
+                "same_case_rescue_on_both": 8,
+                "same_case_loss_on_both": 7
+              },
+              "old_image_after_review": {
+                "rescued": 13,
+                "lost": 0
+              }
+            },
+            "equal_time_hold": {
+              "strict": {
+                "rescued_or_added": 2,
+                "lost_or_removed": 0,
+                "delta_per_scan": 0.005208333333333333,
+                "clustered95": [
+                  0.0,
+                  0.013020833333333334
+                ]
+              },
+              "wrong_delivery": {
+                "rescued_or_added": 0,
+                "lost_or_removed": 1,
+                "delta_per_scan": -0.0026041666666666665,
+                "clustered95": [
+                  -0.0078125,
+                  0.0
+                ]
+              },
+              "wrong_branch": {
+                "rescued_or_added": 0,
+                "lost_or_removed": 0,
+                "delta_per_scan": 0.0,
+                "clustered95": [
+                  0.0,
+                  0.0
+                ]
+              },
+              "correct_regions": {
+                "rescued_or_added": 5,
+                "lost_or_removed": 1,
+                "delta_per_scan": 0.010416666666666666,
+                "clustered95": [
+                  0.0,
+                  0.0234375
+                ]
+              },
+              "proof": {
+                "strict_delta_counts": [
+                  1,
+                  1
+                ],
+                "same_case_rescue_on_both": 1,
+                "same_case_loss_on_both": 0
+              },
+              "old_image_after_review": {
+                "rescued": 7,
+                "lost": 2
+              }
+            },
+            "prior_search": {
+              "strict": {
+                "rescued_or_added": 1,
+                "lost_or_removed": 0,
+                "delta_per_scan": 0.0026041666666666665,
+                "clustered95": [
+                  0.0,
+                  0.0078125
+                ]
+              },
+              "wrong_delivery": {
+                "rescued_or_added": 0,
+                "lost_or_removed": 1,
+                "delta_per_scan": -0.0026041666666666665,
+                "clustered95": [
+                  -0.0078125,
+                  0.0
+                ]
+              },
+              "wrong_branch": {
+                "rescued_or_added": 0,
+                "lost_or_removed": 0,
+                "delta_per_scan": 0.0,
+                "clustered95": [
+                  0.0,
+                  0.0
+                ]
+              },
+              "correct_regions": {
+                "rescued_or_added": 4,
+                "lost_or_removed": 2,
+                "delta_per_scan": 0.005208333333333333,
+                "clustered95": [
+                  -0.0078125,
+                  0.018229166666666668
+                ]
+              },
+              "proof": {
+                "strict_delta_counts": [
+                  0,
+                  0
+                ],
+                "same_case_rescue_on_both": 0,
+                "same_case_loss_on_both": 0
+              },
+              "old_image_after_review": {
+                "rescued": 3,
+                "lost": 6
+              }
+            }
+          }
+        },
+        "updated_with_continue": {
+          "counts": {
+            "strict": 66,
+            "acquired_ceiling": 383,
+            "wrong_delivery": 154,
+            "wrong_branch": 102,
+            "wrong_region_count": 203,
+            "wrong_branch_regions": 113,
+            "artifact_regions": 90,
+            "correct_regions": 1674,
+            "submitted": 1877,
+            "cases": 384,
+            "captured_regions": 2303,
+            "reader_misses_on_seen": 629,
+            "time_s": 35.110416666666666,
+            "distance_mm": 949.337926864624,
+            "correct_mm": 235.34803928931555,
+            "utility": 2.3709044151146372,
+            "actions": {
+              "continue": 158,
+              "equal_time_hold": 216,
+              "window_left": 0,
+              "window_right": 6,
+              "revisit_left": 1,
+              "revisit_center": 0,
+              "revisit_right": 3
+            },
+            "reference_window_visited": 0,
+            "both_windows_visited": 0
+          },
+          "paired": {
+            "mpc": {
+              "strict": {
+                "rescued_or_added": 19,
+                "lost_or_removed": 12,
+                "delta_per_scan": 0.018229166666666668,
+                "clustered95": [
+                  -0.010416666666666666,
+                  0.046875
+                ]
+              },
+              "wrong_delivery": {
+                "rescued_or_added": 21,
+                "lost_or_removed": 27,
+                "delta_per_scan": -0.015625,
+                "clustered95": [
+                  -0.052083333333333336,
+                  0.020833333333333332
+                ]
+              },
+              "wrong_branch": {
+                "rescued_or_added": 31,
+                "lost_or_removed": 22,
+                "delta_per_scan": 0.0234375,
+                "clustered95": [
+                  -0.013020833333333334,
+                  0.06126302083333357
+                ]
+              },
+              "correct_regions": {
+                "rescued_or_added": 64,
+                "lost_or_removed": 42,
+                "delta_per_scan": 0.044270833333333336,
+                "clustered95": [
+                  -0.018229166666666668,
+                  0.10416666666666667
+                ]
+              },
+              "proof": {
+                "strict_delta_counts": [
+                  4,
+                  -10
+                ],
+                "same_case_rescue_on_both": 5,
+                "same_case_loss_on_both": 2
+              },
+              "old_image_after_review": {
+                "rescued": 5,
+                "lost": 0
+              }
+            },
+            "equal_time_hold": {
+              "strict": {
+                "rescued_or_added": 25,
+                "lost_or_removed": 10,
+                "delta_per_scan": 0.0390625,
+                "clustered95": [
+                  0.010416666666666666,
+                  0.0703125
+                ]
+              },
+              "wrong_delivery": {
+                "rescued_or_added": 10,
+                "lost_or_removed": 17,
+                "delta_per_scan": -0.018229166666666668,
+                "clustered95": [
+                  -0.046875,
+                  0.0078125
+                ]
+              },
+              "wrong_branch": {
+                "rescued_or_added": 5,
+                "lost_or_removed": 16,
+                "delta_per_scan": -0.028645833333333332,
+                "clustered95": [
+                  -0.052083333333333336,
+                  -0.005208333333333333
+                ]
+              },
+              "correct_regions": {
+                "rescued_or_added": 50,
+                "lost_or_removed": 34,
+                "delta_per_scan": 0.057291666666666664,
+                "clustered95": [
+                  0.0,
+                  0.11458333333333333
+                ]
+              },
+              "proof": {
+                "strict_delta_counts": [
+                  8,
+                  4
+                ],
+                "same_case_rescue_on_both": 5,
+                "same_case_loss_on_both": 2
+              },
+              "old_image_after_review": {
+                "rescued": 0,
+                "lost": 3
+              }
+            },
+            "prior_search": {
+              "strict": {
+                "rescued_or_added": 25,
+                "lost_or_removed": 11,
+                "delta_per_scan": 0.036458333333333336,
+                "clustered95": [
+                  0.0078125,
+                  0.06770833333333333
+                ]
+              },
+              "wrong_delivery": {
+                "rescued_or_added": 10,
+                "lost_or_removed": 17,
+                "delta_per_scan": -0.018229166666666668,
+                "clustered95": [
+                  -0.046875,
+                  0.0078125
+                ]
+              },
+              "wrong_branch": {
+                "rescued_or_added": 5,
+                "lost_or_removed": 16,
+                "delta_per_scan": -0.028645833333333332,
+                "clustered95": [
+                  -0.052083333333333336,
+                  -0.005208333333333333
+                ]
+              },
+              "correct_regions": {
+                "rescued_or_added": 50,
+                "lost_or_removed": 36,
+                "delta_per_scan": 0.052083333333333336,
+                "clustered95": [
+                  -0.005208333333333333,
+                  0.11197916666666667
+                ]
+              },
+              "proof": {
+                "strict_delta_counts": [
+                  7,
+                  3
+                ],
+                "same_case_rescue_on_both": 5,
+                "same_case_loss_on_both": 3
+              },
+              "old_image_after_review": {
+                "rescued": 0,
+                "lost": 11
+              }
+            }
+          }
+        }
+      },
+      "teacher_training_signal": {
+        "active_comparable_actions": 5120,
+        "cases_with_active_option": 1024,
+        "robust_rescue_actions": 1,
+        "cases_with_robust_rescue": 1,
+        "robust_harm_actions": 0,
+        "cases_with_robust_harm": 0,
+        "consistent_utility_gain_actions": 30,
+        "consistent_utility_loss_actions": 6,
+        "consistent_old_image_rescues": 24,
+        "consistent_old_image_losses": 5
+      },
+      "two_proof_signal_vs_hold": {
+        "active_comparable_actions": 1920,
+        "cases_with_active_option": 384,
+        "robust_rescue_actions": 2,
+        "cases_with_robust_rescue": 1,
+        "robust_harm_actions": 0,
+        "cases_with_robust_harm": 0,
+        "consistent_utility_gain_actions": 24,
+        "consistent_utility_loss_actions": 4,
+        "consistent_old_image_rescues": 24,
+        "consistent_old_image_losses": 2
+      },
+      "public_history_pair_summary": {
+        "pair_count": 169,
+        "pairs_with_opposite_effects": 0,
+        "pairs_with_consistently_positive_shared_action": 2
+      },
+      "action_attribution": {
+        "continue": {
+          "cases": 158,
+          "net_strict_vs_hold": 15,
+          "net_strict_vs_mpc": 0
+        },
+        "equal_time_hold": {
+          "cases": 216,
+          "net_strict_vs_hold": 0,
+          "net_strict_vs_mpc": 6
+        },
+        "revisit_left": {
+          "cases": 1,
+          "net_strict_vs_hold": 0,
+          "net_strict_vs_mpc": 1
+        },
+        "revisit_right": {
+          "cases": 3,
+          "net_strict_vs_hold": 0,
+          "net_strict_vs_mpc": 0
+        },
+        "window_right": {
+          "cases": 6,
+          "net_strict_vs_hold": 0,
+          "net_strict_vs_mpc": 0
+        }
+      },
+      "value_prediction_utility_mae": 0.19860471785068512,
+      "zero_prediction_utility_mae": 0.17634716629981995,
+      "next_experiment": {
+        "reader_gate": false,
+        "teacher_gate": false,
+        "next_experiment": "Trace false top candidates on held-out routes; fit alternate-window association supervised on new development layouts.",
+        "candidates_with_two_tape_rescue": 2
+      }
+    }
+  },
+  "window_filter_diagnostic": {
+    "scope": "separate development geometries, exact existing design filter replay",
+    "routes": {
+      "femoral": {
+        "layouts": 32,
+        "legal_window_program_layouts": 0,
+        "legal_window_program_options": 0,
+        "alternate_enough_separated_layouts": 0,
+        "alternate_enough_separated_options": 0,
+        "alternate_more_separated_layouts": 0,
+        "alternate_more_separated_options": 0,
+        "passes_full_sensor_test_layouts": 0,
+        "passes_full_sensor_test_options": 0
+      },
+      "groin_to_distal_calf": {
+        "layouts": 32,
+        "legal_window_program_layouts": 0,
+        "legal_window_program_options": 0,
+        "alternate_enough_separated_layouts": 0,
+        "alternate_enough_separated_options": 0,
+        "alternate_more_separated_layouts": 0,
+        "alternate_more_separated_options": 0,
+        "passes_full_sensor_test_layouts": 0,
+        "passes_full_sensor_test_options": 0
+      }
+    }
+  },
+  "evidence_sha256": {
+    "reader_results.json": "421fc76a63b324bd8f8f320c6acae27c36f760018e4eaaaebaf073106d7b9f93",
+    "teacher_results.json": "f13892c09caceeb110335826f4a02bdfe64f20e0583f8dd2a5a6dceeaeab625e",
+    "next_experiment.json": "364611952dcbb0db8b12e84dbdc57216bf652bcc6cb2c1e71360f4ed853f8255"
+  },
+  "reader_protocol_sha256": "f7d4b355fd381e447c051ac4698eab11cd2db229f23a9874c6eb7d671c89a952",
+  "teacher_protocol_sha256": "ee492b812905b77fc94c85eaeeabda7217d43c02578d23331a7aac4a3fbb71a4"
+}
