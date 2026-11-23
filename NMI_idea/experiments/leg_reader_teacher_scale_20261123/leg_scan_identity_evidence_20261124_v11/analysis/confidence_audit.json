@@ -1,0 +1,62 @@
+{
+  "femoral": {
+    "layouts": 80,
+    "strict": 68,
+    "regions": {
+      "4": {
+        "anchors": 0,
+        "misses": 0,
+        "high_confidence_wrong": 0,
+        "named": 0,
+        "artifact_or_mix": 0,
+        "old_alternative_true": 0
+      },
+      "5": {
+        "anchors": 0,
+        "misses": 0,
+        "high_confidence_wrong": 0,
+        "named": 0,
+        "artifact_or_mix": 0,
+        "old_alternative_true": 0
+      },
+      "6": {
+        "anchors": 80,
+        "misses": 1,
+        "high_confidence_wrong": 4,
+        "named": 0,
+        "artifact_or_mix": 4,
+        "old_alternative_true": 3
+      }
+    }
+  },
+  "groin_to_distal_calf": {
+    "layouts": 160,
+    "strict": 98,
+    "regions": {
+      "4": {
+        "anchors": 160,
+        "misses": 0,
+        "high_confidence_wrong": 16,
+        "named": 5,
+        "artifact_or_mix": 11,
+        "old_alternative_true": 6
+      },
+      "5": {
+        "anchors": 160,
+        "misses": 0,
+        "high_confidence_wrong": 27,
+        "named": 17,
+        "artifact_or_mix": 10,
+        "old_alternative_true": 11
+      },
+      "6": {
+        "anchors": 160,
+        "misses": 0,
+        "high_confidence_wrong": 14,
+        "named": 5,
+        "artifact_or_mix": 9,
+        "old_alternative_true": 6
+      }
+    }
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "source_sha256": "d8e698bf8036cb8c3079793ffc2604154b84915378391d055d23278698fc70a3",
+  "first_protocol_sha256": "2aca57ea50a0aa8313120f996ddca99a4bbd25c51183bc315701105861e44a62",
+  "first_results_sha256": "cd3b43838fe1239021a3479aca2af9cd679879e3dd3735eae81a2a831ee4534e",
+  "first_panel_sha256": "cae2ca4320f4ed7ec5dc419e005961a80e25e19426c68a570b8f28fbe92ce1dd",
+  "frozen_settings": {
+    "trigger": 0.2,
+    "advantage": 0.0,
+    "trust": 0.66
+  },
+  "layouts": 144,
+  "layout_seed": 8158696000000000,
+  "tapes": [
+    null,
+    104293477,
+    104311579
+  ],
+  "primary": "whole-route strict delivery, geometry minus equal-time repeat, mean over the two retapes",
+  "secondary": "whole-route strict and wrong-branch delivery versus v10; actual tape and both retapes"
+}

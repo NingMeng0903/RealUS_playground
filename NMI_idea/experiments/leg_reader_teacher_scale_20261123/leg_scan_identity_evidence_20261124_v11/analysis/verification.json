@@ -1,0 +1,23 @@
+{
+  "source_and_checkpoint_digests": true,
+  "disjoint_layouts": 720,
+  "primary": {
+    "episode_grades": 3240,
+    "matched_acquisition_sets": 206,
+    "paired_endpoints": 160,
+    "true_b": 17,
+    "old_images_promoted": 0,
+    "B_only": 12,
+    "B_only_and_true_b": 0
+  },
+  "confirmation": {
+    "episode_grades": 3888,
+    "matched_acquisition_sets": 264,
+    "paired_endpoints": 160,
+    "true_b": 16,
+    "old_images_promoted": 0,
+    "B_only": 24,
+    "B_only_and_true_b": 1
+  },
+  "public_prefix_only_label_swap": true
+}

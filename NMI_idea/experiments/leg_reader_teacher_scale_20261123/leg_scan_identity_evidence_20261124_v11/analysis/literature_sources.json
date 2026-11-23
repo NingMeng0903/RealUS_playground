@@ -1,0 +1,115 @@
+[
+  {
+    "title": "SonoAtlasWorld",
+    "primary_source": "https://arxiv.org/html/2611.26867v1",
+    "pdf": "sonoatlasworld.pdf",
+    "pages": 10,
+    "sha256": "90f342ff4dcd30f5d643e87615e5c9f5f3814fbb6d22eb951ec6d6602dad7e2b"
+  },
+  {
+    "title": "SonoGraph-WM",
+    "primary_source": "https://arxiv.org/pdf/2609.32837",
+    "pdf": "sonograph.pdf",
+    "pages": 9,
+    "sha256": "37ffb2e752bbe8b7e403835b940dfcf977110d0bdc997362d1d1344b0500be73"
+  },
+  {
+    "title": "Anatomy-Anchored Streaming Flow Policy",
+    "primary_source": "https://arxiv.org/html/2610.32525v1",
+    "pdf": "anatomy_anchored.pdf",
+    "pages": 18,
+    "sha256": "a90c12e6dfe27e6b1791b9dbf5c2bc5c988a12ff22891c6b569fc3724c408f25"
+  },
+  {
+    "title": "SAMe",
+    "primary_source": "https://arxiv.org/html/2604.25646v1",
+    "pdf": "same.pdf",
+    "pages": 42,
+    "sha256": "305987b59770cb92ee35b697d96858250bbae68e668849d4ba1f89e57eae197f"
+  },
+  {
+    "title": "UltraBot",
+    "primary_source": "https://www.nature.com/articles/s41467-025-62865-w",
+    "pdf": "ultrabot.pdf",
+    "pages": 21,
+    "sha256": "ce0d7d6eaa7833a0688640bcb3dd6452bbc0f7bfc32376a83f707d36c5d9798e"
+  },
+  {
+    "title": "DopUS-Net",
+    "primary_source": "https://arxiv.org/pdf/2305.08938",
+    "pdf": "dopus.pdf",
+    "pages": 14,
+    "sha256": "73e123d4a6ed79bc3f1e3ad4680a59c102f3d38e7b9770271f2bd3410aa90fdd"
+  },
+  {
+    "title": "Automatic robotic doppler sonography of leg arteries",
+    "primary_source": "https://link.springer.com/article/10.1007/s11548-024-03235-7",
+    "pdf": "doppler_leg.pdf",
+    "pages": 10,
+    "sha256": "9658b033b0dc987b956fec69f159dc762cc400250d04b16bba812b40795e2a31"
+  },
+  {
+    "title": "Denzler–Brown",
+    "primary_source": "https://mplab.ucsd.edu/users/marni/Igert/Denzler_2002.pdf"
+  },
+  {
+    "title": "DA-BSP",
+    "primary_source": "https://indelman.github.io/ANPL-Website/Publications/Pathak18ijrr.pdf",
+    "pdf": "dabsp.pdf",
+    "pages": 29,
+    "sha256": "25597097944f16c8a5e6b7060e81d2b8db954f4898550310e3ed8044f50d66ab"
+  },
+  {
+    "title": "Multiple Hypothesis Semantic Mapping",
+    "primary_source": "https://arxiv.org/pdf/2012.04423",
+    "pdf": "mh_mapping.pdf",
+    "pages": 8,
+    "sha256": "72c94399d02c11cba961d1d898ea974bca4c0b0582c4179b309ac9330740a31b"
+  },
+  {
+    "title": "Where Did I Leave My Glasses?",
+    "primary_source": "https://arxiv.org/html/2509.19851"
+  },
+  {
+    "title": "Evidential Active Recognition",
+    "primary_source": "https://arxiv.org/html/2311.13793",
+    "pdf": "ear.pdf",
+    "pages": 11,
+    "sha256": "e59ce6914f91b16ce2dfe28734d99f909c17f566a862ed130d1d4a1a3ab8f90f"
+  },
+  {
+    "title": "LSP-AIG",
+    "primary_source": "https://arxiv.org/html/2403.03269",
+    "pdf": "lsp_aig.pdf",
+    "pages": 7,
+    "sha256": "e03526df2fbea840303ae3473dbd5127ead91feca286335d0f5a1dbe8656e58d"
+  },
+  {
+    "title": "IntervenGen",
+    "primary_source": "https://arxiv.org/html/2405.01472",
+    "pdf": "intervengen.pdf",
+    "pages": 8,
+    "sha256": "f48937379bc49480f6553447cbb01c68a43efc0e4a153b15ac31231ae352caa3"
+  },
+  {
+    "title": "Reverse Curriculum Generation",
+    "primary_source": "https://proceedings.mlr.press/v78/florensa17a.html",
+    "pdf": "reverse_curriculum.pdf",
+    "pages": 14,
+    "sha256": "a2fdd75141791f415204f6086ac7095c90d0c1ff090c0e8a3670a7e2e409fb64"
+  },
+  {
+    "title": "Intra-Sweep Ultrasound Retrieval",
+    "primary_source": "https://arxiv.org/abs/2412.07741",
+    "pdf": "intrasweep.pdf",
+    "pages": 12,
+    "sha256": "068153feda2c4216f23371749f6b5f2b1998ab80ebce03c2ac27d6fc2cb5ab93"
+  },
+  {
+    "title": "ProDMP",
+    "primary_source": "https://arxiv.org/abs/2210.01531",
+    "pdf": "pro_dmp.pdf",
+    "pages": 12,
+    "sha256": "2fa225f0c0187c647056325ced3a1020cec82557b004bb27581d881455ead159"
+  }
+]

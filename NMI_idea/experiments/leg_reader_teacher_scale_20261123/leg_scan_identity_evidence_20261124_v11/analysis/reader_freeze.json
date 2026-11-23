@@ -1,0 +1,14 @@
+{
+  "protocol_sha256": "2aca57ea50a0aa8313120f996ddca99a4bbd25c51183bc315701105861e44a62",
+  "reader_sha256": "48c6a7acb4095b8ef1de550065549b6a4d22bdf7ec358533c1dcfc5cab5e7253",
+  "mixed_reader_sha256": "48c6a7acb4095b8ef1de550065549b6a4d22bdf7ec358533c1dcfc5cab5e7253",
+  "selected": "mixed",
+  "development_mixed": [
+    21,
+    -2
+  ],
+  "development_v10": [
+    20,
+    -4
+  ]
+}
