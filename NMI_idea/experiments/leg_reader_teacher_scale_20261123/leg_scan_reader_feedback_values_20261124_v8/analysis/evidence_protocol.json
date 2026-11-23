@@ -1,0 +1,46 @@
+{
+  "base_git": "2f2c704eb0085f78e638d41cd2467c436713b695",
+  "sources": {
+    "study_v8.py": "2173c1546209b1fb551cc331591776f191304110ca64a78075bb147cc96a58a5",
+    "reader_v8.py": "a511645b0d725ba2eb6436938fc5de899db41e00e551f9d2b356d46c147773f5",
+    "edge_v8.py": "dbf0bcc70acf73abb7703f205aeb02e473620a47cde267dd6810674d424732d4",
+    "motion_v8.py": "311a364698198b02a188b81f171a1f490221855579043431d1cbe27a02b729bd",
+    "evidence_v8.py": "23fc92953f0aa05a8b0f1c7a0762e55a652921c7750bb7c09c4d2b8e3ce31619"
+  },
+  "reader_sha256": "cc756b054f271d626ecc55a16fb0ae702e10091284002f7b768e75ba0d0de2b8",
+  "atlas_sha256": "aad4100d6e594de6279a2297fae3c5cb6e84a68077bfde56435113d5b0c352d5",
+  "rosters": {
+    "evidence_dev": {
+      "counts": [
+        16,
+        44
+      ],
+      "seed": 2612408012000000
+    },
+    "evidence_test": {
+      "counts": [
+        16,
+        48
+      ],
+      "seed": 2612408024000000
+    }
+  },
+  "proof_offsets": [
+    null,
+    107000000000000,
+    108000000000000
+  ],
+  "programs": [
+    "continue",
+    "hold",
+    "prefer_a",
+    "prefer_b",
+    "both"
+  ],
+  "horizon_stations": 4,
+  "terminology": {
+    "alias": "same nonnegative instance",
+    "neither": "distinct and neither target",
+    "unresolved": "public evidence event"
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "rows": 1955147,
+  "positive": 655983,
+  "forest_kept_edges": 150659,
+  "forest_true_kept_edges": 132626,
+  "forest_precision": 0.8803058562714474,
+  "all_scored_mean": 0.32257617487535345,
+  "v6_edge_audit": {
+    "unique_layouts": 160,
+    "unique_cases": 160,
+    "thresholds": {
+      "old_v5": 0.9,
+      "new_v8": 0.7233270207460591
+    },
+    "counts": {
+      "retrieved_rows": 1955147,
+      "retrieved_positive": 655983,
+      "hard_positive": 66190,
+      "hard_negative": 101369,
+      "old_hard_positive_pass": 14,
+      "new_hard_positive_pass": 4880,
+      "old_hard_negative_reject": 93134,
+      "new_hard_negative_reject": 78168,
+      "old_hard_negative_accept": 8235,
+      "new_hard_negative_accept": 23201,
+      "old_forest_kept_edges": 113999,
+      "new_forest_kept_edges": 150659,
+      "old_forest_true_kept_edges": 109293,
+      "new_forest_true_kept_edges": 132626,
+      "old_hard_positive_forest_kept": 12,
+      "new_hard_positive_forest_kept": 1878
+    },
+    "old": {
+      "retrieved_precision": 0.9588324459207294,
+      "retrieved_recall": 0.5342150635001212,
+      "hard_positive_recall": 0.0002115123130382233,
+      "hard_negative_rejection": 0.9187621462182719,
+      "hard_negative_false_acceptance": 0.08123785378172814,
+      "positive_missed": 305547
+    },
+    "new": {
+      "retrieved_precision": 0.8908276600983582,
+      "retrieved_recall": 0.6121896451584873,
+      "hard_positive_recall": 0.0737271491161807,
+      "hard_negative_rejection": 0.7711233217255768,
+      "hard_negative_false_acceptance": 0.22887667827442315,
+      "positive_missed": 254397
+    }
+  }
+}

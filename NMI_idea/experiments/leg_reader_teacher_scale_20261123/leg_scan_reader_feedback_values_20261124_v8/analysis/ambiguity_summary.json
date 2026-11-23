@@ -1,0 +1,3356 @@
+{
+  "protocol_sha256": "c119f23521924072c1df6fcf555a75a038a588f997db8a77867014da22b6c0bb",
+  "layout_counts": {
+    "femoral": 12,
+    "groin_to_distal_calf": 36
+  },
+  "balanced_counts": {
+    "femoral": 8,
+    "groin_to_distal_calf": 19
+  },
+  "assignment_counts": {
+    "femoral": {
+      "a_target": 4,
+      "b_target": 4
+    },
+    "groin_to_distal_calf": {
+      "a_target": 5,
+      "neither_target": 8,
+      "b_target": 6
+    }
+  },
+  "comparisons": {
+    "femoral": {
+      "layouts": 8,
+      "assignment_counts": {
+        "a_target": 4,
+        "b_target": 4
+      },
+      "arms": {
+        "continue": {
+          "applicable_layouts": 8,
+          "scores": {
+            "strict": 2,
+            "acquired_ceiling": 6,
+            "wrong_delivery": 1,
+            "wrong_branch": 0,
+            "wrong_region_count": 1,
+            "wrong_branch_regions": 0,
+            "artifact_regions": 1,
+            "correct_regions": 42,
+            "submitted": 43,
+            "cases": 8,
+            "captured_regions": 46,
+            "reader_misses_on_seen": 4,
+            "regions": [
+              {
+                "region": 1,
+                "captured": 8,
+                "delivered_correct": 8,
+                "delivered_other_branch": 0,
+                "artifact_delivered": 0,
+                "seen_and_abstained": 0
+              },
+              {
+                "region": 2,
+                "captured": 8,
+                "delivered_correct": 7,
+                "delivered_other_branch": 0,
+                "artifact_delivered": 1,
+                "seen_and_abstained": 0
+              },
+              {
+                "region": 3,
+                "captured": 8,
+                "delivered_correct": 8,
+                "delivered_other_branch": 0,
+                "artifact_delivered": 0,
+                "seen_and_abstained": 0
+              },
+              {
+                "region": 4,
+                "captured": 8,
+                "delivered_correct": 8,
+                "delivered_other_branch": 0,
+                "artifact_delivered": 0,
+                "seen_and_abstained": 0
+              },
+              {
+                "region": 5,
+                "captured": 8,
+                "delivered_correct": 7,
+                "delivered_other_branch": 0,
+                "artifact_delivered": 0,
+                "seen_and_abstained": 1
+              },
+              {
+                "region": 6,
+                "captured": 6,
+                "delivered_correct": 4,
+                "delivered_other_branch": 0,
+                "artifact_delivered": 0,
+                "seen_and_abstained": 2
+              }
+            ],
+            "joint": 1,
+            "old_pool_correct": 3,
+            "suffix_valid": 6,
+            "mean_time_s": 8.7875,
+            "mean_travel_mm": 237.39683053694077,
+            "mean_correct_mm": 126.82189178466797,
+            "mean_longest_mm": 59.7736394405365,
+            "independent_strict": {
+              "proof_0": 3,
+              "proof_1": 2
+            }
+          },
+          "vs_mpc": {
+            "strict": {
+              "actual": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_0": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_1": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "independent_tape_expected": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0
+              }
+            },
+            "joint": {
+              "actual": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_0": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_1": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "independent_tape_expected": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0
+              }
+            },
+            "wrong_branch": {
+              "actual": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_0": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_1": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "independent_tape_expected": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0
+              }
+            },
+            "wrong_region_count": {
+              "actual": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_0": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_1": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "independent_tape_expected": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0
+              }
+            },
+            "old_pool_correct": {
+              "actual": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_0": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_1": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "independent_tape_expected": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0
+              }
+            },
+            "suffix_valid": {
+              "actual": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_0": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_1": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "independent_tape_expected": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0
+              }
+            },
+            "time_s": {
+              "actual": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_0": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_1": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "independent_tape_expected": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0
+              }
+            },
+            "travel_mm": {
+              "actual": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_0": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_1": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "independent_tape_expected": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0
+              }
+            }
+          },
+          "outcomes_by_hidden_hypothesis": {
+            "a_target": {
+              "unresolved": 11,
+              "supports_a": 1
+            },
+            "b_target": {
+              "unresolved": 12
+            }
+          },
+          "target_side_mechanism": {
+            "no_distinct_echo": 5,
+            "edge_score": 5,
+            "linked": 14,
+            "linked_without_positive_role_shift_ge_0.02": 14
+          },
+          "fixed_old_on_probe": 1,
+          "fixed_old_and_preserved_required_suffix": 0,
+          "fixed_reference_id_on_probe": 1,
+          "fixed_reference_id_and_suffix_vs_mpc": [
+            0,
+            0
+          ],
+          "actual_path_changed_vs_mpc": 0
+        },
+        "hold": {
+          "applicable_layouts": 8,
+          "scores": {
+            "strict": 3,
+            "acquired_ceiling": 6,
+            "wrong_delivery": 1,
+            "wrong_branch": 0,
+            "wrong_region_count": 1,
+            "wrong_branch_regions": 0,
+            "artifact_regions": 1,
+            "correct_regions": 43,
+            "submitted": 44,
+            "cases": 8,
+            "captured_regions": 46,
+            "reader_misses_on_seen": 3,
+            "regions": [
+              {
+                "region": 1,
+                "captured": 8,
+                "delivered_correct": 8,
+                "delivered_other_branch": 0,
+                "artifact_delivered": 0,
+                "seen_and_abstained": 0
+              },
+              {
+                "region": 2,
+                "captured": 8,
+                "delivered_correct": 7,
+                "delivered_other_branch": 0,
+                "artifact_delivered": 1,
+                "seen_and_abstained": 0
+              },
+              {
+                "region": 3,
+                "captured": 8,
+                "delivered_correct": 8,
+                "delivered_other_branch": 0,
+                "artifact_delivered": 0,
+                "seen_and_abstained": 0
+              },
+              {
+                "region": 4,
+                "captured": 8,
+                "delivered_correct": 8,
+                "delivered_other_branch": 0,
+                "artifact_delivered": 0,
+                "seen_and_abstained": 0
+              },
+              {
+                "region": 5,
+                "captured": 8,
+                "delivered_correct": 7,
+                "delivered_other_branch": 0,
+                "artifact_delivered": 0,
+                "seen_and_abstained": 1
+              },
+              {
+                "region": 6,
+                "captured": 6,
+                "delivered_correct": 5,
+                "delivered_other_branch": 0,
+                "artifact_delivered": 0,
+                "seen_and_abstained": 1
+              }
+            ],
+            "joint": 1,
+            "old_pool_correct": 3,
+            "suffix_valid": 6,
+            "mean_time_s": 9.2875,
+            "mean_travel_mm": 237.39683053694077,
+            "mean_correct_mm": 125.89493465423584,
+            "mean_longest_mm": 54.387531995773315,
+            "independent_strict": {
+              "proof_0": 3,
+              "proof_1": 3
+            }
+          },
+          "vs_mpc": {
+            "strict": {
+              "actual": {
+                "delta": 0.125,
+                "lower95": 0.0,
+                "upper95": 0.375,
+                "added_or_increased": 1,
+                "removed_or_decreased": 0
+              },
+              "proof_0": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_1": {
+                "delta": 0.125,
+                "lower95": 0.0,
+                "upper95": 0.375,
+                "added_or_increased": 1,
+                "removed_or_decreased": 0
+              },
+              "independent_tape_expected": {
+                "delta": 0.0625,
+                "lower95": 0.0,
+                "upper95": 0.1875
+              }
+            },
+            "joint": {
+              "actual": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_0": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_1": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "independent_tape_expected": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0
+              }
+            },
+            "wrong_branch": {
+              "actual": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_0": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_1": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "independent_tape_expected": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0
+              }
+            },
+            "wrong_region_count": {
+              "actual": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_0": {
+                "delta": 0.125,
+                "lower95": 0.0,
+                "upper95": 0.375,
+                "added_or_increased": 1,
+                "removed_or_decreased": 0
+              },
+              "proof_1": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "independent_tape_expected": {
+                "delta": 0.0625,
+                "lower95": 0.0,
+                "upper95": 0.1875
+              }
+            },
+            "old_pool_correct": {
+              "actual": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_0": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_1": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "independent_tape_expected": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0
+              }
+            },
+            "suffix_valid": {
+              "actual": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_0": {
+                "delta": -0.125,
+                "lower95": -0.375,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 1
+              },
+              "proof_1": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "independent_tape_expected": {
+                "delta": -0.0625,
+                "lower95": -0.1875,
+                "upper95": 0.0
+              }
+            },
+            "time_s": {
+              "actual": {
+                "delta": 0.5,
+                "lower95": 0.5,
+                "upper95": 0.5,
+                "added_or_increased": 8,
+                "removed_or_decreased": 0
+              },
+              "proof_0": {
+                "delta": 0.5,
+                "lower95": 0.5,
+                "upper95": 0.5,
+                "added_or_increased": 8,
+                "removed_or_decreased": 0
+              },
+              "proof_1": {
+                "delta": 0.5,
+                "lower95": 0.5,
+                "upper95": 0.5,
+                "added_or_increased": 8,
+                "removed_or_decreased": 0
+              },
+              "independent_tape_expected": {
+                "delta": 0.5,
+                "lower95": 0.5,
+                "upper95": 0.5
+              }
+            },
+            "travel_mm": {
+              "actual": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_0": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_1": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "independent_tape_expected": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0
+              }
+            }
+          },
+          "outcomes_by_hidden_hypothesis": {
+            "a_target": {
+              "unresolved": 12
+            },
+            "b_target": {
+              "unresolved": 12
+            }
+          },
+          "target_side_mechanism": {
+            "edge_score": 5,
+            "no_distinct_echo": 2,
+            "matching": 1,
+            "linked": 16,
+            "linked_without_positive_role_shift_ge_0.02": 16
+          },
+          "fixed_old_on_probe": 2,
+          "fixed_old_and_preserved_required_suffix": 0,
+          "fixed_reference_id_on_probe": 2,
+          "fixed_reference_id_and_suffix_vs_mpc": [
+            0,
+            0
+          ],
+          "actual_path_changed_vs_mpc": 8
+        },
+        "prefer_a": {
+          "applicable_layouts": 8,
+          "scores": {
+            "strict": 3,
+            "acquired_ceiling": 6,
+            "wrong_delivery": 2,
+            "wrong_branch": 0,
+            "wrong_region_count": 2,
+            "wrong_branch_regions": 0,
+            "artifact_regions": 2,
+            "correct_regions": 43,
+            "submitted": 45,
+            "cases": 8,
+            "captured_regions": 46,
+            "reader_misses_on_seen": 3,
+            "regions": [
+              {
+                "region": 1,
+                "captured": 8,
+                "delivered_correct": 8,
+                "delivered_other_branch": 0,
+                "artifact_delivered": 0,
+                "seen_and_abstained": 0
+              },
+              {
+                "region": 2,
+                "captured": 8,
+                "delivered_correct": 7,
+                "delivered_other_branch": 0,
+                "artifact_delivered": 1,
+                "seen_and_abstained": 0
+              },
+              {
+                "region": 3,
+                "captured": 8,
+                "delivered_correct": 8,
+                "delivered_other_branch": 0,
+                "artifact_delivered": 0,
+                "seen_and_abstained": 0
+              },
+              {
+                "region": 4,
+                "captured": 8,
+                "delivered_correct": 8,
+                "delivered_other_branch": 0,
+                "artifact_delivered": 0,
+                "seen_and_abstained": 0
+              },
+              {
+                "region": 5,
+                "captured": 8,
+                "delivered_correct": 7,
+                "delivered_other_branch": 0,
+                "artifact_delivered": 0,
+                "seen_and_abstained": 1
+              },
+              {
+                "region": 6,
+                "captured": 6,
+                "delivered_correct": 5,
+                "delivered_other_branch": 0,
+                "artifact_delivered": 1,
+                "seen_and_abstained": 0
+              }
+            ],
+            "joint": 1,
+            "old_pool_correct": 3,
+            "suffix_valid": 6,
+            "mean_time_s": 9.9625,
+            "mean_travel_mm": 286.57539501533057,
+            "mean_correct_mm": 129.29808044433594,
+            "mean_longest_mm": 66.35666632652283,
+            "independent_strict": {
+              "proof_0": 3,
+              "proof_1": 2
+            }
+          },
+          "vs_mpc": {
+            "strict": {
+              "actual": {
+                "delta": 0.125,
+                "lower95": 0.0,
+                "upper95": 0.375,
+                "added_or_increased": 1,
+                "removed_or_decreased": 0
+              },
+              "proof_0": {
+                "delta": 0.0,
+                "lower95": -0.375,
+                "upper95": 0.375,
+                "added_or_increased": 1,
+                "removed_or_decreased": 1
+              },
+              "proof_1": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "independent_tape_expected": {
+                "delta": 0.0,
+                "lower95": -0.1875,
+                "upper95": 0.1875
+              }
+            },
+            "joint": {
+              "actual": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_0": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_1": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "independent_tape_expected": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0
+              }
+            },
+            "wrong_branch": {
+              "actual": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_0": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_1": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "independent_tape_expected": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0
+              }
+            },
+            "wrong_region_count": {
+              "actual": {
+                "delta": 0.125,
+                "lower95": 0.0,
+                "upper95": 0.375,
+                "added_or_increased": 1,
+                "removed_or_decreased": 0
+              },
+              "proof_0": {
+                "delta": 0.125,
+                "lower95": 0.0,
+                "upper95": 0.375,
+                "added_or_increased": 1,
+                "removed_or_decreased": 0
+              },
+              "proof_1": {
+                "delta": 0.25,
+                "lower95": 0.0,
+                "upper95": 0.625,
+                "added_or_increased": 2,
+                "removed_or_decreased": 0
+              },
+              "independent_tape_expected": {
+                "delta": 0.1875,
+                "lower95": 0.0,
+                "upper95": 0.4375
+              }
+            },
+            "old_pool_correct": {
+              "actual": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_0": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_1": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "independent_tape_expected": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0
+              }
+            },
+            "suffix_valid": {
+              "actual": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_0": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_1": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "independent_tape_expected": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0
+              }
+            },
+            "time_s": {
+              "actual": {
+                "delta": 1.175,
+                "lower95": 0.4249999999999997,
+                "upper95": 1.9875000000000003,
+                "added_or_increased": 6,
+                "removed_or_decreased": 0
+              },
+              "proof_0": {
+                "delta": 1.175,
+                "lower95": 0.4249999999999997,
+                "upper95": 1.9875000000000003,
+                "added_or_increased": 6,
+                "removed_or_decreased": 0
+              },
+              "proof_1": {
+                "delta": 1.175,
+                "lower95": 0.4249999999999997,
+                "upper95": 1.9875000000000003,
+                "added_or_increased": 6,
+                "removed_or_decreased": 0
+              },
+              "independent_tape_expected": {
+                "delta": 1.175,
+                "lower95": 0.4249999999999997,
+                "upper95": 1.9875000000000003
+              }
+            },
+            "travel_mm": {
+              "actual": {
+                "delta": 49.17856447838983,
+                "lower95": 18.293493468572077,
+                "upper95": 82.69251553053346,
+                "added_or_increased": 6,
+                "removed_or_decreased": 1
+              },
+              "proof_0": {
+                "delta": 49.17856447838983,
+                "lower95": 18.293493468572077,
+                "upper95": 82.69251553053346,
+                "added_or_increased": 6,
+                "removed_or_decreased": 1
+              },
+              "proof_1": {
+                "delta": 49.17856447838983,
+                "lower95": 18.293493468572077,
+                "upper95": 82.69251553053346,
+                "added_or_increased": 6,
+                "removed_or_decreased": 1
+              },
+              "independent_tape_expected": {
+                "delta": 49.17856447838983,
+                "lower95": 18.293493468572077,
+                "upper95": 82.69251553053346
+              }
+            }
+          },
+          "outcomes_by_hidden_hypothesis": {
+            "a_target": {
+              "unresolved": 11,
+              "supports_a": 1
+            },
+            "b_target": {
+              "unresolved": 12
+            }
+          },
+          "target_side_mechanism": {
+            "retrieval": 1,
+            "no_distinct_echo": 2,
+            "edge_score": 8,
+            "linked": 13,
+            "linked_without_positive_role_shift_ge_0.02": 13
+          },
+          "fixed_old_on_probe": 1,
+          "fixed_old_and_preserved_required_suffix": 0,
+          "fixed_reference_id_on_probe": 1,
+          "fixed_reference_id_and_suffix_vs_mpc": [
+            0,
+            0
+          ],
+          "actual_path_changed_vs_mpc": 7
+        },
+        "prefer_b": {
+          "applicable_layouts": 8,
+          "scores": {
+            "strict": 3,
+            "acquired_ceiling": 6,
+            "wrong_delivery": 1,
+            "wrong_branch": 0,
+            "wrong_region_count": 1,
+            "wrong_branch_regions": 0,
+            "artifact_regions": 1,
+            "correct_regions": 43,
+            "submitted": 44,
+            "cases": 8,
+            "captured_regions": 46,
+            "reader_misses_on_seen": 3,
+            "regions": [
+              {
+                "region": 1,
+                "captured": 8,
+                "delivered_correct": 8,
+                "delivered_other_branch": 0,
+                "artifact_delivered": 0,
+                "seen_and_abstained": 0
+              },
+              {
+                "region": 2,
+                "captured": 8,
+                "delivered_correct": 7,
+                "delivered_other_branch": 0,
+                "artifact_delivered": 1,
+                "seen_and_abstained": 0
+              },
+              {
+                "region": 3,
+                "captured": 8,
+                "delivered_correct": 8,
+                "delivered_other_branch": 0,
+                "artifact_delivered": 0,
+                "seen_and_abstained": 0
+              },
+              {
+                "region": 4,
+                "captured": 8,
+                "delivered_correct": 8,
+                "delivered_other_branch": 0,
+                "artifact_delivered": 0,
+                "seen_and_abstained": 0
+              },
+              {
+                "region": 5,
+                "captured": 8,
+                "delivered_correct": 7,
+                "delivered_other_branch": 0,
+                "artifact_delivered": 0,
+                "seen_and_abstained": 1
+              },
+              {
+                "region": 6,
+                "captured": 6,
+                "delivered_correct": 5,
+                "delivered_other_branch": 0,
+                "artifact_delivered": 0,
+                "seen_and_abstained": 1
+              }
+            ],
+            "joint": 1,
+            "old_pool_correct": 3,
+            "suffix_valid": 6,
+            "mean_time_s": 8.9375,
+            "mean_travel_mm": 245.42354340007685,
+            "mean_correct_mm": 125.62497997283936,
+            "mean_longest_mm": 55.584444761276245,
+            "independent_strict": {
+              "proof_0": 3,
+              "proof_1": 2
+            }
+          },
+          "vs_mpc": {
+            "strict": {
+              "actual": {
+                "delta": 0.125,
+                "lower95": 0.0,
+                "upper95": 0.375,
+                "added_or_increased": 1,
+                "removed_or_decreased": 0
+              },
+              "proof_0": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_1": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "independent_tape_expected": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0
+              }
+            },
+            "joint": {
+              "actual": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_0": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_1": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "independent_tape_expected": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0
+              }
+            },
+            "wrong_branch": {
+              "actual": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_0": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_1": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "independent_tape_expected": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0
+              }
+            },
+            "wrong_region_count": {
+              "actual": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_0": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_1": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "independent_tape_expected": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0
+              }
+            },
+            "old_pool_correct": {
+              "actual": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_0": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_1": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "independent_tape_expected": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0
+              }
+            },
+            "suffix_valid": {
+              "actual": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_0": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_1": {
+                "delta": -0.125,
+                "lower95": -0.375,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 1
+              },
+              "independent_tape_expected": {
+                "delta": -0.0625,
+                "lower95": -0.1875,
+                "upper95": 0.0
+              }
+            },
+            "time_s": {
+              "actual": {
+                "delta": 0.1499999999999997,
+                "lower95": 0.012499999999999734,
+                "upper95": 0.3065625000000009,
+                "added_or_increased": 4,
+                "removed_or_decreased": 1
+              },
+              "proof_0": {
+                "delta": 0.1499999999999997,
+                "lower95": 0.012499999999999734,
+                "upper95": 0.3065625000000009,
+                "added_or_increased": 4,
+                "removed_or_decreased": 1
+              },
+              "proof_1": {
+                "delta": 0.1499999999999997,
+                "lower95": 0.012499999999999734,
+                "upper95": 0.3065625000000009,
+                "added_or_increased": 4,
+                "removed_or_decreased": 1
+              },
+              "independent_tape_expected": {
+                "delta": 0.1499999999999997,
+                "lower95": 0.012499999999999734,
+                "upper95": 0.3065625000000009
+              }
+            },
+            "travel_mm": {
+              "actual": {
+                "delta": 8.026712863136108,
+                "lower95": 2.1250345995607667,
+                "upper95": 15.003581574191495,
+                "added_or_increased": 5,
+                "removed_or_decreased": 1
+              },
+              "proof_0": {
+                "delta": 8.026712863136108,
+                "lower95": 2.1250345995607667,
+                "upper95": 15.003581574191495,
+                "added_or_increased": 5,
+                "removed_or_decreased": 1
+              },
+              "proof_1": {
+                "delta": 8.026712863136108,
+                "lower95": 2.1250345995607667,
+                "upper95": 15.003581574191495,
+                "added_or_increased": 5,
+                "removed_or_decreased": 1
+              },
+              "independent_tape_expected": {
+                "delta": 8.026712863136108,
+                "lower95": 2.1250345995607667,
+                "upper95": 15.003581574191495
+              }
+            }
+          },
+          "outcomes_by_hidden_hypothesis": {
+            "a_target": {
+              "unresolved": 11,
+              "supports_a": 1
+            },
+            "b_target": {
+              "unresolved": 12
+            }
+          },
+          "target_side_mechanism": {
+            "no_distinct_echo": 5,
+            "edge_score": 6,
+            "retrieval": 1,
+            "linked": 12,
+            "linked_without_positive_role_shift_ge_0.02": 12
+          },
+          "fixed_old_on_probe": 0,
+          "fixed_old_and_preserved_required_suffix": 0,
+          "fixed_reference_id_on_probe": 0,
+          "fixed_reference_id_and_suffix_vs_mpc": [
+            0,
+            0
+          ],
+          "actual_path_changed_vs_mpc": 6
+        },
+        "both": {
+          "applicable_layouts": 8,
+          "scores": {
+            "strict": 3,
+            "acquired_ceiling": 5,
+            "wrong_delivery": 1,
+            "wrong_branch": 0,
+            "wrong_region_count": 1,
+            "wrong_branch_regions": 0,
+            "artifact_regions": 1,
+            "correct_regions": 43,
+            "submitted": 44,
+            "cases": 8,
+            "captured_regions": 45,
+            "reader_misses_on_seen": 2,
+            "regions": [
+              {
+                "region": 1,
+                "captured": 8,
+                "delivered_correct": 8,
+                "delivered_other_branch": 0,
+                "artifact_delivered": 0,
+                "seen_and_abstained": 0
+              },
+              {
+                "region": 2,
+                "captured": 8,
+                "delivered_correct": 7,
+                "delivered_other_branch": 0,
+                "artifact_delivered": 1,
+                "seen_and_abstained": 0
+              },
+              {
+                "region": 3,
+                "captured": 8,
+                "delivered_correct": 8,
+                "delivered_other_branch": 0,
+                "artifact_delivered": 0,
+                "seen_and_abstained": 0
+              },
+              {
+                "region": 4,
+                "captured": 8,
+                "delivered_correct": 8,
+                "delivered_other_branch": 0,
+                "artifact_delivered": 0,
+                "seen_and_abstained": 0
+              },
+              {
+                "region": 5,
+                "captured": 8,
+                "delivered_correct": 7,
+                "delivered_other_branch": 0,
+                "artifact_delivered": 0,
+                "seen_and_abstained": 1
+              },
+              {
+                "region": 6,
+                "captured": 5,
+                "delivered_correct": 5,
+                "delivered_other_branch": 0,
+                "artifact_delivered": 0,
+                "seen_and_abstained": 0
+              }
+            ],
+            "joint": 1,
+            "old_pool_correct": 3,
+            "suffix_valid": 6,
+            "mean_time_s": 9.05,
+            "mean_travel_mm": 249.75069896961952,
+            "mean_correct_mm": 126.55193901062012,
+            "mean_longest_mm": 59.7736394405365,
+            "independent_strict": {
+              "proof_0": 3,
+              "proof_1": 3
+            }
+          },
+          "vs_mpc": {
+            "strict": {
+              "actual": {
+                "delta": 0.125,
+                "lower95": 0.0,
+                "upper95": 0.375,
+                "added_or_increased": 1,
+                "removed_or_decreased": 0
+              },
+              "proof_0": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_1": {
+                "delta": 0.125,
+                "lower95": 0.0,
+                "upper95": 0.375,
+                "added_or_increased": 1,
+                "removed_or_decreased": 0
+              },
+              "independent_tape_expected": {
+                "delta": 0.0625,
+                "lower95": 0.0,
+                "upper95": 0.1875
+              }
+            },
+            "joint": {
+              "actual": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_0": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_1": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "independent_tape_expected": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0
+              }
+            },
+            "wrong_branch": {
+              "actual": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_0": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_1": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "independent_tape_expected": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0
+              }
+            },
+            "wrong_region_count": {
+              "actual": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_0": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_1": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "independent_tape_expected": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0
+              }
+            },
+            "old_pool_correct": {
+              "actual": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_0": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_1": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "independent_tape_expected": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0
+              }
+            },
+            "suffix_valid": {
+              "actual": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_0": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_1": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "independent_tape_expected": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0
+              }
+            },
+            "time_s": {
+              "actual": {
+                "delta": 0.26249999999999973,
+                "lower95": 0.07499999999999996,
+                "upper95": 0.4624999999999997,
+                "added_or_increased": 4,
+                "removed_or_decreased": 0
+              },
+              "proof_0": {
+                "delta": 0.26249999999999973,
+                "lower95": 0.07499999999999996,
+                "upper95": 0.4624999999999997,
+                "added_or_increased": 4,
+                "removed_or_decreased": 0
+              },
+              "proof_1": {
+                "delta": 0.26249999999999973,
+                "lower95": 0.07499999999999996,
+                "upper95": 0.4624999999999997,
+                "added_or_increased": 4,
+                "removed_or_decreased": 0
+              },
+              "independent_tape_expected": {
+                "delta": 0.26249999999999973,
+                "lower95": 0.07499999999999996,
+                "upper95": 0.4624999999999997
+              }
+            },
+            "travel_mm": {
+              "actual": {
+                "delta": 12.353868432678773,
+                "lower95": 3.535153568642208,
+                "upper95": 22.14490033109751,
+                "added_or_increased": 4,
+                "removed_or_decreased": 1
+              },
+              "proof_0": {
+                "delta": 12.353868432678773,
+                "lower95": 3.535153568642208,
+                "upper95": 22.14490033109751,
+                "added_or_increased": 4,
+                "removed_or_decreased": 1
+              },
+              "proof_1": {
+                "delta": 12.353868432678773,
+                "lower95": 3.535153568642208,
+                "upper95": 22.14490033109751,
+                "added_or_increased": 4,
+                "removed_or_decreased": 1
+              },
+              "independent_tape_expected": {
+                "delta": 12.353868432678773,
+                "lower95": 3.535153568642208,
+                "upper95": 22.14490033109751
+              }
+            }
+          },
+          "outcomes_by_hidden_hypothesis": {
+            "a_target": {
+              "unresolved": 11,
+              "supports_a": 1
+            },
+            "b_target": {
+              "unresolved": 12
+            }
+          },
+          "target_side_mechanism": {
+            "no_distinct_echo": 4,
+            "edge_score": 6,
+            "linked": 13,
+            "linked_without_positive_role_shift_ge_0.02": 13,
+            "retrieval": 1
+          },
+          "fixed_old_on_probe": 1,
+          "fixed_old_and_preserved_required_suffix": 0,
+          "fixed_reference_id_on_probe": 1,
+          "fixed_reference_id_and_suffix_vs_mpc": [
+            0,
+            0
+          ],
+          "actual_path_changed_vs_mpc": 5
+        }
+      }
+    },
+    "groin_to_distal_calf": {
+      "layouts": 19,
+      "assignment_counts": {
+        "a_target": 5,
+        "neither_target": 8,
+        "b_target": 6
+      },
+      "arms": {
+        "continue": {
+          "applicable_layouts": 19,
+          "scores": {
+            "strict": 11,
+            "acquired_ceiling": 19,
+            "wrong_delivery": 6,
+            "wrong_branch": 3,
+            "wrong_region_count": 6,
+            "wrong_branch_regions": 3,
+            "artifact_regions": 3,
+            "correct_regions": 99,
+            "submitted": 105,
+            "cases": 19,
+            "captured_regions": 114,
+            "reader_misses_on_seen": 15,
+            "regions": [
+              {
+                "region": 1,
+                "captured": 19,
+                "delivered_correct": 19,
+                "delivered_other_branch": 0,
+                "artifact_delivered": 0,
+                "seen_and_abstained": 0
+              },
+              {
+                "region": 2,
+                "captured": 19,
+                "delivered_correct": 19,
+                "delivered_other_branch": 0,
+                "artifact_delivered": 0,
+                "seen_and_abstained": 0
+              },
+              {
+                "region": 3,
+                "captured": 19,
+                "delivered_correct": 19,
+                "delivered_other_branch": 0,
+                "artifact_delivered": 0,
+                "seen_and_abstained": 0
+              },
+              {
+                "region": 4,
+                "captured": 19,
+                "delivered_correct": 15,
+                "delivered_other_branch": 0,
+                "artifact_delivered": 1,
+                "seen_and_abstained": 3
+              },
+              {
+                "region": 5,
+                "captured": 19,
+                "delivered_correct": 12,
+                "delivered_other_branch": 2,
+                "artifact_delivered": 1,
+                "seen_and_abstained": 4
+              },
+              {
+                "region": 6,
+                "captured": 19,
+                "delivered_correct": 15,
+                "delivered_other_branch": 1,
+                "artifact_delivered": 1,
+                "seen_and_abstained": 2
+              }
+            ],
+            "joint": 10,
+            "old_pool_correct": 12,
+            "suffix_valid": 15,
+            "mean_time_s": 33.43157894736842,
+            "mean_travel_mm": 951.331190764824,
+            "mean_correct_mm": 277.1248634739926,
+            "mean_longest_mm": 54.041794425562806,
+            "independent_strict": {
+              "proof_0": 8,
+              "proof_1": 9
+            }
+          },
+          "vs_mpc": {
+            "strict": {
+              "actual": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_0": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_1": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "independent_tape_expected": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0
+              }
+            },
+            "joint": {
+              "actual": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_0": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_1": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "independent_tape_expected": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0
+              }
+            },
+            "wrong_branch": {
+              "actual": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_0": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_1": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "independent_tape_expected": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0
+              }
+            },
+            "wrong_region_count": {
+              "actual": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_0": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_1": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "independent_tape_expected": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0
+              }
+            },
+            "old_pool_correct": {
+              "actual": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_0": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_1": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "independent_tape_expected": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0
+              }
+            },
+            "suffix_valid": {
+              "actual": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_0": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_1": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "independent_tape_expected": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0
+              }
+            },
+            "time_s": {
+              "actual": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_0": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_1": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "independent_tape_expected": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0
+              }
+            },
+            "travel_mm": {
+              "actual": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_0": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_1": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "independent_tape_expected": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0
+              }
+            }
+          },
+          "outcomes_by_hidden_hypothesis": {
+            "a_target": {
+              "supports_a": 2,
+              "unresolved": 11,
+              "supports_b": 2
+            },
+            "b_target": {
+              "unresolved": 16,
+              "supports_b": 2
+            },
+            "neither_target": {
+              "unresolved": 23,
+              "supports_a": 1
+            }
+          },
+          "target_side_mechanism": {
+            "linked": 7,
+            "linked_without_positive_role_shift_ge_0.02": 2,
+            "edge_score": 18,
+            "linked_positive_role_shift_ge_0.02": 5,
+            "matching": 8
+          },
+          "fixed_old_on_probe": 0,
+          "fixed_old_and_preserved_required_suffix": 0,
+          "fixed_reference_id_on_probe": 0,
+          "fixed_reference_id_and_suffix_vs_mpc": [
+            0,
+            0
+          ],
+          "actual_path_changed_vs_mpc": 0
+        },
+        "hold": {
+          "applicable_layouts": 19,
+          "scores": {
+            "strict": 9,
+            "acquired_ceiling": 19,
+            "wrong_delivery": 9,
+            "wrong_branch": 6,
+            "wrong_region_count": 9,
+            "wrong_branch_regions": 6,
+            "artifact_regions": 3,
+            "correct_regions": 97,
+            "submitted": 106,
+            "cases": 19,
+            "captured_regions": 114,
+            "reader_misses_on_seen": 17,
+            "regions": [
+              {
+                "region": 1,
+                "captured": 19,
+                "delivered_correct": 19,
+                "delivered_other_branch": 0,
+                "artifact_delivered": 0,
+                "seen_and_abstained": 0
+              },
+              {
+                "region": 2,
+                "captured": 19,
+                "delivered_correct": 19,
+                "delivered_other_branch": 0,
+                "artifact_delivered": 0,
+                "seen_and_abstained": 0
+              },
+              {
+                "region": 3,
+                "captured": 19,
+                "delivered_correct": 19,
+                "delivered_other_branch": 0,
+                "artifact_delivered": 0,
+                "seen_and_abstained": 0
+              },
+              {
+                "region": 4,
+                "captured": 19,
+                "delivered_correct": 15,
+                "delivered_other_branch": 0,
+                "artifact_delivered": 1,
+                "seen_and_abstained": 3
+              },
+              {
+                "region": 5,
+                "captured": 19,
+                "delivered_correct": 13,
+                "delivered_other_branch": 2,
+                "artifact_delivered": 1,
+                "seen_and_abstained": 3
+              },
+              {
+                "region": 6,
+                "captured": 19,
+                "delivered_correct": 12,
+                "delivered_other_branch": 4,
+                "artifact_delivered": 1,
+                "seen_and_abstained": 2
+              }
+            ],
+            "joint": 8,
+            "old_pool_correct": 12,
+            "suffix_valid": 13,
+            "mean_time_s": 33.926315789473676,
+            "mean_travel_mm": 951.3066615029502,
+            "mean_correct_mm": 275.91941512258427,
+            "mean_longest_mm": 52.53295637431898,
+            "independent_strict": {
+              "proof_0": 9,
+              "proof_1": 8
+            }
+          },
+          "vs_mpc": {
+            "strict": {
+              "actual": {
+                "delta": -0.10526315789473684,
+                "lower95": -0.2631578947368421,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 2
+              },
+              "proof_0": {
+                "delta": 0.05263157894736842,
+                "lower95": -0.15789473684210525,
+                "upper95": 0.2631578947368421,
+                "added_or_increased": 3,
+                "removed_or_decreased": 2
+              },
+              "proof_1": {
+                "delta": -0.05263157894736842,
+                "lower95": -0.21052631578947367,
+                "upper95": 0.10526315789473684,
+                "added_or_increased": 1,
+                "removed_or_decreased": 2
+              },
+              "independent_tape_expected": {
+                "delta": 0.0,
+                "lower95": -0.15789473684210525,
+                "upper95": 0.15789473684210525
+              }
+            },
+            "joint": {
+              "actual": {
+                "delta": -0.10526315789473684,
+                "lower95": -0.2631578947368421,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 2
+              },
+              "proof_0": {
+                "delta": -0.05263157894736842,
+                "lower95": -0.21052631578947367,
+                "upper95": 0.10526315789473684,
+                "added_or_increased": 1,
+                "removed_or_decreased": 2
+              },
+              "proof_1": {
+                "delta": -0.15789473684210525,
+                "lower95": -0.3157894736842105,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 3
+              },
+              "independent_tape_expected": {
+                "delta": -0.10526315789473684,
+                "lower95": -0.23684210526315788,
+                "upper95": 0.02631578947368421
+              }
+            },
+            "wrong_branch": {
+              "actual": {
+                "delta": 0.15789473684210525,
+                "lower95": 0.0,
+                "upper95": 0.3157894736842105,
+                "added_or_increased": 3,
+                "removed_or_decreased": 0
+              },
+              "proof_0": {
+                "delta": -0.15789473684210525,
+                "lower95": -0.42105263157894735,
+                "upper95": 0.10526315789473684,
+                "added_or_increased": 2,
+                "removed_or_decreased": 5
+              },
+              "proof_1": {
+                "delta": 0.10526315789473684,
+                "lower95": 0.0,
+                "upper95": 0.2631578947368421,
+                "added_or_increased": 2,
+                "removed_or_decreased": 0
+              },
+              "independent_tape_expected": {
+                "delta": -0.02631578947368421,
+                "lower95": -0.18421052631578946,
+                "upper95": 0.15789473684210525
+              }
+            },
+            "wrong_region_count": {
+              "actual": {
+                "delta": 0.15789473684210525,
+                "lower95": 0.0,
+                "upper95": 0.3157894736842105,
+                "added_or_increased": 3,
+                "removed_or_decreased": 0
+              },
+              "proof_0": {
+                "delta": -0.10526315789473684,
+                "lower95": -0.47368421052631576,
+                "upper95": 0.2631578947368421,
+                "added_or_increased": 3,
+                "removed_or_decreased": 5
+              },
+              "proof_1": {
+                "delta": 0.0,
+                "lower95": -0.21052631578947367,
+                "upper95": 0.21052631578947367,
+                "added_or_increased": 2,
+                "removed_or_decreased": 2
+              },
+              "independent_tape_expected": {
+                "delta": -0.05263157894736842,
+                "lower95": -0.2894736842105263,
+                "upper95": 0.18421052631578946
+              }
+            },
+            "old_pool_correct": {
+              "actual": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_0": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_1": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "independent_tape_expected": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0
+              }
+            },
+            "suffix_valid": {
+              "actual": {
+                "delta": -0.10526315789473684,
+                "lower95": -0.3157894736842105,
+                "upper95": 0.10526315789473684,
+                "added_or_increased": 1,
+                "removed_or_decreased": 3
+              },
+              "proof_0": {
+                "delta": -0.05263157894736842,
+                "lower95": -0.2631578947368421,
+                "upper95": 0.15789473684210525,
+                "added_or_increased": 2,
+                "removed_or_decreased": 3
+              },
+              "proof_1": {
+                "delta": -0.21052631578947367,
+                "lower95": -0.42105263157894735,
+                "upper95": -0.05263157894736842,
+                "added_or_increased": 0,
+                "removed_or_decreased": 4
+              },
+              "independent_tape_expected": {
+                "delta": -0.13157894736842105,
+                "lower95": -0.3157894736842105,
+                "upper95": 0.02631578947368421
+              }
+            },
+            "time_s": {
+              "actual": {
+                "delta": 0.494736842105262,
+                "lower95": 0.4842105263157879,
+                "upper95": 0.49999999999999944,
+                "added_or_increased": 19,
+                "removed_or_decreased": 0
+              },
+              "proof_0": {
+                "delta": 0.5157894736842095,
+                "lower95": 0.4684210526315765,
+                "upper95": 0.5736842105263147,
+                "added_or_increased": 19,
+                "removed_or_decreased": 0
+              },
+              "proof_1": {
+                "delta": 0.4631578947368408,
+                "lower95": 0.39999999999999897,
+                "upper95": 0.49999999999999906,
+                "added_or_increased": 18,
+                "removed_or_decreased": 0
+              },
+              "independent_tape_expected": {
+                "delta": 0.4894736842105251,
+                "lower95": 0.47105263157894506,
+                "upper95": 0.5026315789473679
+              }
+            },
+            "travel_mm": {
+              "actual": {
+                "delta": -0.024529261873639324,
+                "lower95": -0.08551243435433782,
+                "upper95": 0.011924648733419849,
+                "added_or_increased": 1,
+                "removed_or_decreased": 2
+              },
+              "proof_0": {
+                "delta": 0.6263711760138007,
+                "lower95": -1.8244936608728697,
+                "upper95": 3.679158813232388,
+                "added_or_increased": 4,
+                "removed_or_decreased": 1
+              },
+              "proof_1": {
+                "delta": -1.9842113533373524,
+                "lower95": -5.237138426189918,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 3
+              },
+              "independent_tape_expected": {
+                "delta": -0.678920088661776,
+                "lower95": -1.679147996058074,
+                "upper95": 0.007284047453956064
+              }
+            }
+          },
+          "outcomes_by_hidden_hypothesis": {
+            "a_target": {
+              "supports_a": 3,
+              "unresolved": 10,
+              "supports_b": 2
+            },
+            "b_target": {
+              "unresolved": 14,
+              "supports_a": 2,
+              "supports_b": 2
+            },
+            "neither_target": {
+              "unresolved": 22,
+              "supports_b": 1,
+              "supports_a": 1
+            }
+          },
+          "target_side_mechanism": {
+            "linked": 9,
+            "linked_positive_role_shift_ge_0.02": 7,
+            "linked_without_positive_role_shift_ge_0.02": 2,
+            "edge_score": 17,
+            "matching": 7
+          },
+          "fixed_old_on_probe": 1,
+          "fixed_old_and_preserved_required_suffix": 0,
+          "fixed_reference_id_on_probe": 0,
+          "fixed_reference_id_and_suffix_vs_mpc": [
+            0,
+            0
+          ],
+          "actual_path_changed_vs_mpc": 19
+        },
+        "prefer_a": {
+          "applicable_layouts": 19,
+          "scores": {
+            "strict": 7,
+            "acquired_ceiling": 18,
+            "wrong_delivery": 6,
+            "wrong_branch": 4,
+            "wrong_region_count": 7,
+            "wrong_branch_regions": 4,
+            "artifact_regions": 3,
+            "correct_regions": 90,
+            "submitted": 97,
+            "cases": 19,
+            "captured_regions": 113,
+            "reader_misses_on_seen": 23,
+            "regions": [
+              {
+                "region": 1,
+                "captured": 19,
+                "delivered_correct": 19,
+                "delivered_other_branch": 0,
+                "artifact_delivered": 0,
+                "seen_and_abstained": 0
+              },
+              {
+                "region": 2,
+                "captured": 19,
+                "delivered_correct": 19,
+                "delivered_other_branch": 0,
+                "artifact_delivered": 0,
+                "seen_and_abstained": 0
+              },
+              {
+                "region": 3,
+                "captured": 18,
+                "delivered_correct": 18,
+                "delivered_other_branch": 0,
+                "artifact_delivered": 0,
+                "seen_and_abstained": 0
+              },
+              {
+                "region": 4,
+                "captured": 19,
+                "delivered_correct": 15,
+                "delivered_other_branch": 0,
+                "artifact_delivered": 1,
+                "seen_and_abstained": 3
+              },
+              {
+                "region": 5,
+                "captured": 19,
+                "delivered_correct": 10,
+                "delivered_other_branch": 2,
+                "artifact_delivered": 2,
+                "seen_and_abstained": 5
+              },
+              {
+                "region": 6,
+                "captured": 19,
+                "delivered_correct": 9,
+                "delivered_other_branch": 2,
+                "artifact_delivered": 0,
+                "seen_and_abstained": 8
+              }
+            ],
+            "joint": 7,
+            "old_pool_correct": 12,
+            "suffix_valid": 11,
+            "mean_time_s": 33.9421052631579,
+            "mean_travel_mm": 975.4714375317723,
+            "mean_correct_mm": 268.32761744449016,
+            "mean_longest_mm": 53.630292992842826,
+            "independent_strict": {
+              "proof_0": 6,
+              "proof_1": 7
+            }
+          },
+          "vs_mpc": {
+            "strict": {
+              "actual": {
+                "delta": -0.21052631578947367,
+                "lower95": -0.42105263157894735,
+                "upper95": -0.05263157894736842,
+                "added_or_increased": 0,
+                "removed_or_decreased": 4
+              },
+              "proof_0": {
+                "delta": -0.10526315789473684,
+                "lower95": -0.3157894736842105,
+                "upper95": 0.10526315789473684,
+                "added_or_increased": 1,
+                "removed_or_decreased": 3
+              },
+              "proof_1": {
+                "delta": -0.10526315789473684,
+                "lower95": -0.3157894736842105,
+                "upper95": 0.10526315789473684,
+                "added_or_increased": 1,
+                "removed_or_decreased": 3
+              },
+              "independent_tape_expected": {
+                "delta": -0.10526315789473684,
+                "lower95": -0.2894736842105263,
+                "upper95": 0.05263157894736842
+              }
+            },
+            "joint": {
+              "actual": {
+                "delta": -0.15789473684210525,
+                "lower95": -0.3157894736842105,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 3
+              },
+              "proof_0": {
+                "delta": -0.15789473684210525,
+                "lower95": -0.3157894736842105,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 3
+              },
+              "proof_1": {
+                "delta": -0.21052631578947367,
+                "lower95": -0.42105263157894735,
+                "upper95": -0.05263157894736842,
+                "added_or_increased": 0,
+                "removed_or_decreased": 4
+              },
+              "independent_tape_expected": {
+                "delta": -0.18421052631578946,
+                "lower95": -0.3684210526315789,
+                "upper95": -0.05263157894736842
+              }
+            },
+            "wrong_branch": {
+              "actual": {
+                "delta": 0.05263157894736842,
+                "lower95": -0.10526315789473684,
+                "upper95": 0.21052631578947367,
+                "added_or_increased": 2,
+                "removed_or_decreased": 1
+              },
+              "proof_0": {
+                "delta": -0.21052631578947367,
+                "lower95": -0.42105263157894735,
+                "upper95": -0.05263157894736842,
+                "added_or_increased": 0,
+                "removed_or_decreased": 4
+              },
+              "proof_1": {
+                "delta": 0.0,
+                "lower95": -0.15789473684210525,
+                "upper95": 0.15789473684210525,
+                "added_or_increased": 1,
+                "removed_or_decreased": 1
+              },
+              "independent_tape_expected": {
+                "delta": -0.10526315789473684,
+                "lower95": -0.21052631578947367,
+                "upper95": 0.0
+              }
+            },
+            "wrong_region_count": {
+              "actual": {
+                "delta": 0.05263157894736842,
+                "lower95": -0.15789473684210525,
+                "upper95": 0.2631578947368421,
+                "added_or_increased": 3,
+                "removed_or_decreased": 2
+              },
+              "proof_0": {
+                "delta": -0.21052631578947367,
+                "lower95": -0.5263157894736842,
+                "upper95": 0.05263157894736842,
+                "added_or_increased": 1,
+                "removed_or_decreased": 4
+              },
+              "proof_1": {
+                "delta": 0.0,
+                "lower95": -0.21052631578947367,
+                "upper95": 0.2631578947368421,
+                "added_or_increased": 1,
+                "removed_or_decreased": 2
+              },
+              "independent_tape_expected": {
+                "delta": -0.10526315789473684,
+                "lower95": -0.3157894736842105,
+                "upper95": 0.10526315789473684
+              }
+            },
+            "old_pool_correct": {
+              "actual": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_0": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_1": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "independent_tape_expected": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0
+              }
+            },
+            "suffix_valid": {
+              "actual": {
+                "delta": -0.21052631578947367,
+                "lower95": -0.42105263157894735,
+                "upper95": -0.05263157894736842,
+                "added_or_increased": 0,
+                "removed_or_decreased": 4
+              },
+              "proof_0": {
+                "delta": -0.10526315789473684,
+                "lower95": -0.3157894736842105,
+                "upper95": 0.10526315789473684,
+                "added_or_increased": 1,
+                "removed_or_decreased": 3
+              },
+              "proof_1": {
+                "delta": -0.2631578947368421,
+                "lower95": -0.47368421052631576,
+                "upper95": -0.10526315789473684,
+                "added_or_increased": 0,
+                "removed_or_decreased": 5
+              },
+              "independent_tape_expected": {
+                "delta": -0.18421052631578946,
+                "lower95": -0.3684210526315789,
+                "upper95": -0.02631578947368421
+              }
+            },
+            "time_s": {
+              "actual": {
+                "delta": 0.5105263157894738,
+                "lower95": -0.02381578947368421,
+                "upper95": 1.0052631578947373,
+                "added_or_increased": 12,
+                "removed_or_decreased": 2
+              },
+              "proof_0": {
+                "delta": 0.5526315789473688,
+                "lower95": 0.06565789473684226,
+                "upper95": 1.0315789473684212,
+                "added_or_increased": 13,
+                "removed_or_decreased": 2
+              },
+              "proof_1": {
+                "delta": 0.5157894736842108,
+                "lower95": -0.01855263157894731,
+                "upper95": 1.005263157894737,
+                "added_or_increased": 12,
+                "removed_or_decreased": 2
+              },
+              "independent_tape_expected": {
+                "delta": 0.5342105263157898,
+                "lower95": 0.024934210526315715,
+                "upper95": 1.0171710526315796
+              }
+            },
+            "travel_mm": {
+              "actual": {
+                "delta": 24.14024676694848,
+                "lower95": 0.046727288336288385,
+                "upper95": 46.73996209504683,
+                "added_or_increased": 13,
+                "removed_or_decreased": 4
+              },
+              "proof_0": {
+                "delta": 25.826263752959623,
+                "lower95": 3.742964590250524,
+                "upper95": 47.44944495806411,
+                "added_or_increased": 14,
+                "removed_or_decreased": 3
+              },
+              "proof_1": {
+                "delta": 24.36584022266909,
+                "lower95": 0.2342293835290023,
+                "upper95": 46.54668951108922,
+                "added_or_increased": 13,
+                "removed_or_decreased": 4
+              },
+              "independent_tape_expected": {
+                "delta": 25.096051987814356,
+                "lower95": 2.126281596997484,
+                "upper95": 46.96863950235301
+              }
+            }
+          },
+          "outcomes_by_hidden_hypothesis": {
+            "a_target": {
+              "supports_a": 2,
+              "unresolved": 10,
+              "supports_b": 3
+            },
+            "b_target": {
+              "unresolved": 18
+            },
+            "neither_target": {
+              "unresolved": 21,
+              "supports_a": 1,
+              "supports_b": 2
+            }
+          },
+          "target_side_mechanism": {
+            "linked": 5,
+            "linked_without_positive_role_shift_ge_0.02": 3,
+            "edge_score": 18,
+            "linked_positive_role_shift_ge_0.02": 2,
+            "matching": 8,
+            "no_distinct_echo": 2
+          },
+          "fixed_old_on_probe": 3,
+          "fixed_old_and_preserved_required_suffix": 0,
+          "fixed_reference_id_on_probe": 3,
+          "fixed_reference_id_and_suffix_vs_mpc": [
+            0,
+            0
+          ],
+          "actual_path_changed_vs_mpc": 17
+        },
+        "prefer_b": {
+          "applicable_layouts": 19,
+          "scores": {
+            "strict": 10,
+            "acquired_ceiling": 19,
+            "wrong_delivery": 6,
+            "wrong_branch": 4,
+            "wrong_region_count": 7,
+            "wrong_branch_regions": 4,
+            "artifact_regions": 3,
+            "correct_regions": 94,
+            "submitted": 101,
+            "cases": 19,
+            "captured_regions": 114,
+            "reader_misses_on_seen": 20,
+            "regions": [
+              {
+                "region": 1,
+                "captured": 19,
+                "delivered_correct": 19,
+                "delivered_other_branch": 0,
+                "artifact_delivered": 0,
+                "seen_and_abstained": 0
+              },
+              {
+                "region": 2,
+                "captured": 19,
+                "delivered_correct": 19,
+                "delivered_other_branch": 0,
+                "artifact_delivered": 0,
+                "seen_and_abstained": 0
+              },
+              {
+                "region": 3,
+                "captured": 19,
+                "delivered_correct": 19,
+                "delivered_other_branch": 0,
+                "artifact_delivered": 0,
+                "seen_and_abstained": 0
+              },
+              {
+                "region": 4,
+                "captured": 19,
+                "delivered_correct": 14,
+                "delivered_other_branch": 0,
+                "artifact_delivered": 2,
+                "seen_and_abstained": 3
+              },
+              {
+                "region": 5,
+                "captured": 19,
+                "delivered_correct": 11,
+                "delivered_other_branch": 2,
+                "artifact_delivered": 1,
+                "seen_and_abstained": 5
+              },
+              {
+                "region": 6,
+                "captured": 19,
+                "delivered_correct": 12,
+                "delivered_other_branch": 2,
+                "artifact_delivered": 0,
+                "seen_and_abstained": 5
+              }
+            ],
+            "joint": 9,
+            "old_pool_correct": 12,
+            "suffix_valid": 13,
+            "mean_time_s": 34.17894736842105,
+            "mean_travel_mm": 984.8186423660638,
+            "mean_correct_mm": 280.5010986328125,
+            "mean_longest_mm": 52.53295637431898,
+            "independent_strict": {
+              "proof_0": 7,
+              "proof_1": 9
+            }
+          },
+          "vs_mpc": {
+            "strict": {
+              "actual": {
+                "delta": -0.05263157894736842,
+                "lower95": -0.21052631578947367,
+                "upper95": 0.10526315789473684,
+                "added_or_increased": 1,
+                "removed_or_decreased": 2
+              },
+              "proof_0": {
+                "delta": -0.05263157894736842,
+                "lower95": -0.21052631578947367,
+                "upper95": 0.10526315789473684,
+                "added_or_increased": 1,
+                "removed_or_decreased": 2
+              },
+              "proof_1": {
+                "delta": 0.0,
+                "lower95": -0.21052631578947367,
+                "upper95": 0.21052631578947367,
+                "added_or_increased": 2,
+                "removed_or_decreased": 2
+              },
+              "independent_tape_expected": {
+                "delta": -0.02631578947368421,
+                "lower95": -0.15789473684210525,
+                "upper95": 0.10526315789473684
+              }
+            },
+            "joint": {
+              "actual": {
+                "delta": -0.05263157894736842,
+                "lower95": -0.21052631578947367,
+                "upper95": 0.10526315789473684,
+                "added_or_increased": 1,
+                "removed_or_decreased": 2
+              },
+              "proof_0": {
+                "delta": -0.10526315789473684,
+                "lower95": -0.2631578947368421,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 2
+              },
+              "proof_1": {
+                "delta": -0.10526315789473684,
+                "lower95": -0.2631578947368421,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 2
+              },
+              "independent_tape_expected": {
+                "delta": -0.10526315789473684,
+                "lower95": -0.21052631578947367,
+                "upper95": -0.02631578947368421
+              }
+            },
+            "wrong_branch": {
+              "actual": {
+                "delta": 0.05263157894736842,
+                "lower95": 0.0,
+                "upper95": 0.15789473684210525,
+                "added_or_increased": 1,
+                "removed_or_decreased": 0
+              },
+              "proof_0": {
+                "delta": -0.10526315789473684,
+                "lower95": -0.3684210526315789,
+                "upper95": 0.15789473684210525,
+                "added_or_increased": 2,
+                "removed_or_decreased": 4
+              },
+              "proof_1": {
+                "delta": -0.05263157894736842,
+                "lower95": -0.21052631578947367,
+                "upper95": 0.10526315789473684,
+                "added_or_increased": 1,
+                "removed_or_decreased": 2
+              },
+              "independent_tape_expected": {
+                "delta": -0.07894736842105263,
+                "lower95": -0.21052631578947367,
+                "upper95": 0.05263157894736842
+              }
+            },
+            "wrong_region_count": {
+              "actual": {
+                "delta": 0.05263157894736842,
+                "lower95": -0.10526315789473684,
+                "upper95": 0.21052631578947367,
+                "added_or_increased": 2,
+                "removed_or_decreased": 1
+              },
+              "proof_0": {
+                "delta": 0.05263157894736842,
+                "lower95": -0.10526315789473684,
+                "upper95": 0.21052631578947367,
+                "added_or_increased": 2,
+                "removed_or_decreased": 1
+              },
+              "proof_1": {
+                "delta": -0.15789473684210525,
+                "lower95": -0.42105263157894735,
+                "upper95": 0.10526315789473684,
+                "added_or_increased": 1,
+                "removed_or_decreased": 3
+              },
+              "independent_tape_expected": {
+                "delta": -0.05263157894736842,
+                "lower95": -0.23684210526315788,
+                "upper95": 0.10526315789473684
+              }
+            },
+            "old_pool_correct": {
+              "actual": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_0": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_1": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "independent_tape_expected": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0
+              }
+            },
+            "suffix_valid": {
+              "actual": {
+                "delta": -0.10526315789473684,
+                "lower95": -0.3684210526315789,
+                "upper95": 0.15789473684210525,
+                "added_or_increased": 2,
+                "removed_or_decreased": 4
+              },
+              "proof_0": {
+                "delta": -0.05263157894736842,
+                "lower95": -0.2631578947368421,
+                "upper95": 0.15789473684210525,
+                "added_or_increased": 2,
+                "removed_or_decreased": 3
+              },
+              "proof_1": {
+                "delta": -0.15789473684210525,
+                "lower95": -0.3684210526315789,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 3
+              },
+              "independent_tape_expected": {
+                "delta": -0.10526315789473684,
+                "lower95": -0.2631578947368421,
+                "upper95": 0.02631578947368421
+              }
+            },
+            "time_s": {
+              "actual": {
+                "delta": 0.7473684210526316,
+                "lower95": 0.4263157894736841,
+                "upper95": 1.0894736842105266,
+                "added_or_increased": 14,
+                "removed_or_decreased": 0
+              },
+              "proof_0": {
+                "delta": 0.7368421052631579,
+                "lower95": 0.4235526315789473,
+                "upper95": 1.0631578947368432,
+                "added_or_increased": 14,
+                "removed_or_decreased": 0
+              },
+              "proof_1": {
+                "delta": 0.7526315789473684,
+                "lower95": 0.42631578947368426,
+                "upper95": 1.0947368421052643,
+                "added_or_increased": 14,
+                "removed_or_decreased": 0
+              },
+              "independent_tape_expected": {
+                "delta": 0.7447368421052631,
+                "lower95": 0.42631578947368415,
+                "upper95": 1.078947368421052
+              }
+            },
+            "travel_mm": {
+              "actual": {
+                "delta": 33.48745160123994,
+                "lower95": 19.640131174245486,
+                "upper95": 48.32030088887944,
+                "added_or_increased": 14,
+                "removed_or_decreased": 3
+              },
+              "proof_0": {
+                "delta": 32.87677840557162,
+                "lower95": 19.58751193151567,
+                "upper95": 47.06251629488039,
+                "added_or_increased": 14,
+                "removed_or_decreased": 3
+              },
+              "proof_1": {
+                "delta": 33.501690456322585,
+                "lower95": 19.64488691664335,
+                "upper95": 48.33566239054066,
+                "added_or_increased": 14,
+                "removed_or_decreased": 3
+              },
+              "independent_tape_expected": {
+                "delta": 33.1892344309471,
+                "lower95": 19.610963194690733,
+                "upper95": 47.715217171381624
+              }
+            }
+          },
+          "outcomes_by_hidden_hypothesis": {
+            "a_target": {
+              "supports_a": 2,
+              "unresolved": 10,
+              "supports_b": 3
+            },
+            "b_target": {
+              "unresolved": 17,
+              "supports_b": 1
+            },
+            "neither_target": {
+              "unresolved": 23,
+              "supports_a": 1
+            }
+          },
+          "target_side_mechanism": {
+            "linked": 7,
+            "linked_without_positive_role_shift_ge_0.02": 4,
+            "edge_score": 17,
+            "linked_positive_role_shift_ge_0.02": 3,
+            "matching": 6,
+            "no_distinct_echo": 2,
+            "retrieval": 1
+          },
+          "fixed_old_on_probe": 3,
+          "fixed_old_and_preserved_required_suffix": 2,
+          "fixed_reference_id_on_probe": 3,
+          "fixed_reference_id_and_suffix_vs_mpc": [
+            2,
+            0
+          ],
+          "actual_path_changed_vs_mpc": 17
+        },
+        "both": {
+          "applicable_layouts": 19,
+          "scores": {
+            "strict": 9,
+            "acquired_ceiling": 18,
+            "wrong_delivery": 7,
+            "wrong_branch": 4,
+            "wrong_region_count": 9,
+            "wrong_branch_regions": 4,
+            "artifact_regions": 5,
+            "correct_regions": 94,
+            "submitted": 103,
+            "cases": 19,
+            "captured_regions": 113,
+            "reader_misses_on_seen": 19,
+            "regions": [
+              {
+                "region": 1,
+                "captured": 19,
+                "delivered_correct": 19,
+                "delivered_other_branch": 0,
+                "artifact_delivered": 0,
+                "seen_and_abstained": 0
+              },
+              {
+                "region": 2,
+                "captured": 19,
+                "delivered_correct": 19,
+                "delivered_other_branch": 0,
+                "artifact_delivered": 0,
+                "seen_and_abstained": 0
+              },
+              {
+                "region": 3,
+                "captured": 18,
+                "delivered_correct": 18,
+                "delivered_other_branch": 0,
+                "artifact_delivered": 0,
+                "seen_and_abstained": 0
+              },
+              {
+                "region": 4,
+                "captured": 19,
+                "delivered_correct": 14,
+                "delivered_other_branch": 0,
+                "artifact_delivered": 2,
+                "seen_and_abstained": 3
+              },
+              {
+                "region": 5,
+                "captured": 19,
+                "delivered_correct": 12,
+                "delivered_other_branch": 2,
+                "artifact_delivered": 2,
+                "seen_and_abstained": 3
+              },
+              {
+                "region": 6,
+                "captured": 19,
+                "delivered_correct": 12,
+                "delivered_other_branch": 2,
+                "artifact_delivered": 1,
+                "seen_and_abstained": 4
+              }
+            ],
+            "joint": 8,
+            "old_pool_correct": 12,
+            "suffix_valid": 13,
+            "mean_time_s": 33.621052631578955,
+            "mean_travel_mm": 960.4359447223981,
+            "mean_correct_mm": 276.6518040707237,
+            "mean_longest_mm": 53.630292992842826,
+            "independent_strict": {
+              "proof_0": 8,
+              "proof_1": 9
+            }
+          },
+          "vs_mpc": {
+            "strict": {
+              "actual": {
+                "delta": -0.10526315789473684,
+                "lower95": -0.2631578947368421,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 2
+              },
+              "proof_0": {
+                "delta": 0.0,
+                "lower95": -0.21052631578947367,
+                "upper95": 0.21052631578947367,
+                "added_or_increased": 2,
+                "removed_or_decreased": 2
+              },
+              "proof_1": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "independent_tape_expected": {
+                "delta": 0.0,
+                "lower95": -0.10526315789473684,
+                "upper95": 0.10526315789473684
+              }
+            },
+            "joint": {
+              "actual": {
+                "delta": -0.10526315789473684,
+                "lower95": -0.2631578947368421,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 2
+              },
+              "proof_0": {
+                "delta": -0.10526315789473684,
+                "lower95": -0.2631578947368421,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 2
+              },
+              "proof_1": {
+                "delta": -0.05263157894736842,
+                "lower95": -0.15789473684210525,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 1
+              },
+              "independent_tape_expected": {
+                "delta": -0.07894736842105263,
+                "lower95": -0.21052631578947367,
+                "upper95": 0.0
+              }
+            },
+            "wrong_branch": {
+              "actual": {
+                "delta": 0.05263157894736842,
+                "lower95": -0.10526315789473684,
+                "upper95": 0.21052631578947367,
+                "added_or_increased": 2,
+                "removed_or_decreased": 1
+              },
+              "proof_0": {
+                "delta": -0.15789473684210525,
+                "lower95": -0.3157894736842105,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 3
+              },
+              "proof_1": {
+                "delta": -0.10526315789473684,
+                "lower95": -0.2631578947368421,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 2
+              },
+              "independent_tape_expected": {
+                "delta": -0.13157894736842105,
+                "lower95": -0.23684210526315788,
+                "upper95": -0.02631578947368421
+              }
+            },
+            "wrong_region_count": {
+              "actual": {
+                "delta": 0.15789473684210525,
+                "lower95": -0.10526315789473684,
+                "upper95": 0.42105263157894735,
+                "added_or_increased": 3,
+                "removed_or_decreased": 1
+              },
+              "proof_0": {
+                "delta": -0.10526315789473684,
+                "lower95": -0.42105263157894735,
+                "upper95": 0.15789473684210525,
+                "added_or_increased": 2,
+                "removed_or_decreased": 3
+              },
+              "proof_1": {
+                "delta": -0.05263157894736842,
+                "lower95": -0.21052631578947367,
+                "upper95": 0.10526315789473684,
+                "added_or_increased": 1,
+                "removed_or_decreased": 2
+              },
+              "independent_tape_expected": {
+                "delta": -0.07894736842105263,
+                "lower95": -0.2894736842105263,
+                "upper95": 0.10526315789473684
+              }
+            },
+            "old_pool_correct": {
+              "actual": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_0": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "proof_1": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 0
+              },
+              "independent_tape_expected": {
+                "delta": 0.0,
+                "lower95": 0.0,
+                "upper95": 0.0
+              }
+            },
+            "suffix_valid": {
+              "actual": {
+                "delta": -0.10526315789473684,
+                "lower95": -0.3157894736842105,
+                "upper95": 0.10526315789473684,
+                "added_or_increased": 1,
+                "removed_or_decreased": 3
+              },
+              "proof_0": {
+                "delta": 0.0,
+                "lower95": -0.21052631578947367,
+                "upper95": 0.21052631578947367,
+                "added_or_increased": 2,
+                "removed_or_decreased": 2
+              },
+              "proof_1": {
+                "delta": -0.05263157894736842,
+                "lower95": -0.15789473684210525,
+                "upper95": 0.0,
+                "added_or_increased": 0,
+                "removed_or_decreased": 1
+              },
+              "independent_tape_expected": {
+                "delta": -0.02631578947368421,
+                "lower95": -0.18421052631578946,
+                "upper95": 0.10526315789473684
+              }
+            },
+            "time_s": {
+              "actual": {
+                "delta": 0.18947368421052638,
+                "lower95": -0.2578947368421058,
+                "upper95": 0.5684210526315797,
+                "added_or_increased": 10,
+                "removed_or_decreased": 2
+              },
+              "proof_0": {
+                "delta": 0.22631578947368444,
+                "lower95": -0.171184210526316,
+                "upper95": 0.5789473684210531,
+                "added_or_increased": 11,
+                "removed_or_decreased": 2
+              },
+              "proof_1": {
+                "delta": 0.19473684210526332,
+                "lower95": -0.25263157894736915,
+                "upper95": 0.5684210526315797,
+                "added_or_increased": 10,
+                "removed_or_decreased": 2
+              },
+              "independent_tape_expected": {
+                "delta": 0.21052631578947387,
+                "lower95": -0.21315789473684216,
+                "upper95": 0.5736842105263165
+              }
+            },
+            "travel_mm": {
+              "actual": {
+                "delta": 9.104753957574045,
+                "lower95": -10.98178631318271,
+                "upper95": 25.891321357406245,
+                "added_or_increased": 12,
+                "removed_or_decreased": 5
+              },
+              "proof_0": {
+                "delta": 10.384288808301767,
+                "lower95": -7.2153754832584385,
+                "upper95": 25.99277895746014,
+                "added_or_increased": 13,
+                "removed_or_decreased": 4
+              },
+              "proof_1": {
+                "delta": 9.108965674765601,
+                "lower95": -10.975574030325163,
+                "upper95": 25.893532508931813,
+                "added_or_increased": 12,
+                "removed_or_decreased": 5
+              },
+              "independent_tape_expected": {
+                "delta": 9.746627241533684,
+                "lower95": -8.99674968390635,
+                "upper95": 25.925556420338445
+              }
+            }
+          },
+          "outcomes_by_hidden_hypothesis": {
+            "a_target": {
+              "supports_a": 2,
+              "unresolved": 10,
+              "supports_b": 3
+            },
+            "b_target": {
+              "unresolved": 18
+            },
+            "neither_target": {
+              "unresolved": 22,
+              "supports_b": 2
+            }
+          },
+          "target_side_mechanism": {
+            "linked": 5,
+            "linked_without_positive_role_shift_ge_0.02": 3,
+            "edge_score": 18,
+            "linked_positive_role_shift_ge_0.02": 2,
+            "matching": 8,
+            "no_distinct_echo": 2
+          },
+          "fixed_old_on_probe": 3,
+          "fixed_old_and_preserved_required_suffix": 0,
+          "fixed_reference_id_on_probe": 3,
+          "fixed_reference_id_and_suffix_vs_mpc": [
+            0,
+            0
+          ],
+          "actual_path_changed_vs_mpc": 17
+        }
+      }
+    }
+  }
+}

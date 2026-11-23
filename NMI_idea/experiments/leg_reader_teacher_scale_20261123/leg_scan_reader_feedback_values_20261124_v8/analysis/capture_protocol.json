@@ -1,0 +1,15 @@
+{
+  "base_git": "2f2c704eb0085f78e638d41cd2467c436713b695",
+  "sources": {
+    "study_v8.py": "2173c1546209b1fb551cc331591776f191304110ca64a78075bb147cc96a58a5",
+    "capture_v8.py": "0cc234d7b04dee6f9090e353d0605aff3da43b3d3fcbd4b1a2405e70c3011122"
+  },
+  "atlas_sha256": "aad4100d6e594de6279a2297fae3c5cb6e84a68077bfde56435113d5b0c352d5",
+  "cohort": [
+    24,
+    72
+  ],
+  "case_seed": 2612408000000000,
+  "fixed_actor": "common MPC; auxiliary before/after_hold/after_probe histories",
+  "dird": false
+}

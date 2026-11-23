@@ -1,0 +1,126 @@
+{
+  "base_git": "2f2c704eb0085f78e638d41cd2467c436713b695",
+  "sources": {
+    "study_v8.py": "2173c1546209b1fb551cc331591776f191304110ca64a78075bb147cc96a58a5",
+    "edge_v8.py": "dbf0bcc70acf73abb7703f205aeb02e473620a47cde267dd6810674d424732d4",
+    "reader_v8.py": "a511645b0d725ba2eb6436938fc5de899db41e00e551f9d2b356d46c147773f5",
+    "motion_v8.py": "311a364698198b02a188b81f171a1f490221855579043431d1cbe27a02b729bd",
+    "evidence_v8.py": "23fc92953f0aa05a8b0f1c7a0762e55a652921c7750bb7c09c4d2b8e3ce31619",
+    "value_v8.py": "e52691b50a2d29b9c542a69f5ba0715f5cd049aac8481c4a455c1b9f448fa094",
+    "cycles_v8.py": "d8999691a927d5d85a71ac650240c9917b7f052ba546c6837d61a1874ba3ea0c"
+  },
+  "experiment": "v8 stage-specific supervision on actual student visits",
+  "atlas_sha256": "aad4100d6e594de6279a2297fae3c5cb6e84a68077bfde56435113d5b0c352d5",
+  "reader_sha256": "cc756b054f271d626ecc55a16fb0ae702e10091284002f7b768e75ba0d0de2b8",
+  "edge_bundle_sha256": "be5c0a9dd30fa960378c57edb94037d10c62d27a8094e5c3c090535e1875c851",
+  "actions": [
+    "continue",
+    "hold",
+    "prefer_a",
+    "prefer_b",
+    "both"
+  ],
+  "cohorts": {
+    "phase2_fit": {
+      "counts": [
+        12,
+        28
+      ],
+      "seed": 2612408036000000
+    },
+    "phase1_fit": {
+      "counts": [
+        12,
+        28
+      ],
+      "seed": 2612408048000000
+    },
+    "student_test": {
+      "counts": [
+        16,
+        32
+      ],
+      "seed": 2612408060000000
+    }
+  },
+  "teaching_offsets_by_phase": {
+    "1": [
+      201000000000000,
+      201090000000000,
+      201180000000000,
+      201270000000000,
+      201360000000000,
+      201450000000000,
+      201540000000000,
+      201630000000000,
+      201720000000000,
+      201810000000000,
+      201900000000000,
+      201990000000000,
+      202080000000000,
+      202170000000000,
+      202260000000000,
+      202350000000000,
+      202440000000000,
+      202530000000000,
+      202620000000000,
+      202710000000000,
+      202800000000000,
+      202890000000000,
+      202980000000000,
+      203070000000000,
+      203160000000000,
+      203250000000000,
+      203340000000000,
+      203430000000000,
+      203520000000000,
+      203610000000000,
+      203700000000000,
+      203790000000000
+    ],
+    "2": [
+      301000000000000,
+      301090000000000,
+      301180000000000,
+      301270000000000,
+      301360000000000,
+      301450000000000,
+      301540000000000,
+      301630000000000,
+      301720000000000,
+      301810000000000,
+      301900000000000,
+      301990000000000,
+      302080000000000,
+      302170000000000,
+      302260000000000,
+      302350000000000,
+      302440000000000,
+      302530000000000,
+      302620000000000,
+      302710000000000,
+      302800000000000,
+      302890000000000,
+      302980000000000,
+      303070000000000,
+      303160000000000,
+      303250000000000,
+      303340000000000,
+      303430000000000,
+      303520000000000,
+      303610000000000,
+      303700000000000,
+      303790000000000
+    ]
+  },
+  "verification_offsets": [
+    null,
+    107000000000000,
+    108000000000000
+  ],
+  "dird": false,
+  "phase2_label": "after physically visited phase-one endpoint; complete the macro and common MPC",
+  "phase1_label": "first two physical steps followed by the frozen phase-two policy at actual reached observations",
+  "teacher_evaluation": "search first action and execute with same second policy as the student",
+  "soft_reward": "strict, correct regions, deduplicated correct and longest consecutive millimeters, wrong branches and artifacts"
+}

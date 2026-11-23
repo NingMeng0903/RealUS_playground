@@ -1,0 +1,36 @@
+{
+  "experiment": "leg_scan_reader_feedback_values_20261124_v8",
+  "base_v7": "60a77233b60686cfeed377757503c1fa95f8ff6f",
+  "atlas_sha256": "aad4100d6e594de6279a2297fae3c5cb6e84a68077bfde56435113d5b0c352d5",
+  "v6_reader_freeze_sha256": "4b17a308a9aa6c74863d7a6596263c347580013505402ef70d684a599687597d",
+  "development_shards": {
+    "00000": "1bfc25cef0135f6057040fcb86fb484f6a4e0ab98abd57d1a4ae586d07ea57c9",
+    "00001": "2cb7a75abb2da500b0217063641cb0636e2d0cdf9a48879809c9f288c427abde",
+    "00002": "04e29e6c2fd1909dfa60c614e25c741143366c22648a32d1ad061e23836ae290",
+    "00003": "09983c9ed63eff52f6da888f6e530953e946c0e530aa461049fb0a00bce51aae",
+    "00004": "00237fa4a3dbb718939daa48ba1032569b72e66055862041c202c63af27cea43",
+    "00005": "be25080ca1b968678f305cd4ce2af0de8d9ab70302cca1be3a2592964bff71ca"
+  },
+  "test_shards": {
+    "00000": "aab9c1ec8abd2fa72a2a76a5a2bc90f7c572843a476d37c8cd3d87d8dd3042f4",
+    "00001": "b772581398954bf714b482323bac84413b7f6d704332d7d45203ac10e76cb1b1",
+    "00002": "be81194334d67109bd6899ec3bb13253064fab32b37c50771e09375bcca20635",
+    "00003": "18a2538a1dd7a6d841c01c8d3065a911c53cc7237d6f6213d0a872303440d69b",
+    "00004": "a1417ccbbc467643cec1123585d70fd9042a5b8b76e01ff6313cb3824e839082"
+  },
+  "graphs": [
+    "public",
+    "oracle"
+  ],
+  "joint_modes": [
+    "frozen",
+    "refit"
+  ],
+  "winner_modes": [
+    "frozen",
+    "refit"
+  ],
+  "split_rule": "v6 select_reader ordinal//2 modulo 3, candidate fold0, winner fold1, threshold fold2",
+  "same_case_budget": "test submit_count equals frozen unary reader per layout",
+  "dird": false
+}
