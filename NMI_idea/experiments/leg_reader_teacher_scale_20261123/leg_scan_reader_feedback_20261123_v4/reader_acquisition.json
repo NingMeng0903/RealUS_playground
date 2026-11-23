@@ -1,0 +1,58 @@
+{
+  "experiment": "leg_scan_reader_feedback_20261123_v4",
+  "base_commit": "22d1f9c8c1e048f64ba6546c166c0b748e9d3893",
+  "dird": false,
+  "atlas_sha256": "aad4100d6e594de6279a2297fae3c5cb6e84a68077bfde56435113d5b0c352d5",
+  "counts": {
+    "fit": 8192,
+    "calibrate": 512,
+    "select_reader": 512,
+    "reader_test": 1024
+  },
+  "shard": 96,
+  "seeds": {
+    "smoke": 1988630000000000,
+    "fit": 1988630010000000,
+    "calibrate": 1988630020000000,
+    "select_reader": 1988630030000000,
+    "reader_test": 1988630040000000,
+    "search_dev": 1988630050000000,
+    "search_test": 1988630060000000,
+    "feedback_test": 1988630070000000
+  },
+  "input_assets": {
+    "bonehub_right_leg_occupancy.npz": "52bf8c974c0c02b7ab6aaf7f7a2cf5eb7a5ab21f7333ef5edc4966c608704d94",
+    "leg_chart.py": "807a838c95b8e994c0759ce995f995d5021abed74d7d7c1f65d61e678f3353c0",
+    "atlas_right.npz": "f1a42becc403ebf7687025d4ab8b7d3480e52d4713df8c6357449b23d4ebba1c"
+  },
+  "source_sha256": {
+    "leg_scan_reader_feedback_20261123_v4/study_worlds.py": "31d925fac8696db5443ae9a7c523d1b22e62e357f930c6491fbdb8ab5e43caf6",
+    "leg_scan_reader_feedback_20261123_v4/public_features.py": "d2ad13860dfcb56a9adc811adbf87cae7a185146225ebaf7233edce941d0a679",
+    "leg_scan_reader_feedback_20261123_v4/collect_reader.py": "4d4bfe8d8017eb2ae940376467e87a6bad22833d8eda9c0c95cb6caf6d5ffcfc",
+    "leg_reader_teacher_scale_20261123_v3/scale_worlds.py": "22ff4c93addb04238c713918f3f1eb262891898bb4dfa0634051a20fb1f7a5e0",
+    "leg_reader_teacher_scale_20261123_v3/fast_embedding.py": "1f690924358cfe193e2a53232f49e45a043fd10f711f4bf5806bbc55cdfa8e5f",
+    "leg_scan_target_routes_20261123_v2/route_rollouts.py": "db71da0502d1e9cc680a434db82ca460d32d5812ec7eb78f88212b7a25195075",
+    "leg_scan_target_routes_20261123_v2/connected_reader.py": "ae002659f1ed9b5bca124234ccc357e4c652eaee3aad73218e579061d46a9a66",
+    "leg_scan_target_routes_20261123_v2/public_embedding.py": "66564f3b0247308c59a646a3edba7040f8508d6b931e9921eb66a4e353bf8743",
+    "leg_closed_loop_20261122_v1/src/audits.py": "e2fa08caadeb7b60ecae3ab3f415dc0308405caf2a4fb206f01db5fa84ba0603",
+    "leg_closed_loop_20261122_v1/src/environment.py": "1e662a73e94324ee853dc77b9e36f34c4cde51580d41f52a864340eb3a304d18",
+    "leg_closed_loop_20261122_v1/src/material_assets.py": "916c7d39ff690282a5866a2a5dc632b7fd4c6c6607bca5b0df5d8a5bd8071691",
+    "leg_closed_loop_20261122_v1/src/material_check.py": "5f99d6b34b413bc127208d8789c39534aaa3476955b3d02f27903883e58d8d4e",
+    "leg_closed_loop_20261122_v1/src/material_motion.py": "e6b02b3bffa076b4c1314a0f4d9d115975b3ef91645a4bbfc6ea41e1433e4c11",
+    "leg_closed_loop_20261122_v1/src/motion.py": "7bc27665dbf14897976d9fbb57e0c56212ab89af3f0d44b244741426ea936860",
+    "leg_closed_loop_20261122_v1/src/motion_checks.py": "12fdd16b5463121c5aeecf3432a0f573770405af74e1ff20cdb0d6e981e707b3",
+    "leg_closed_loop_20261122_v1/src/online_reader.py": "b01486ae1be0ebdafd586675e6fea7a8a6e95d4a5d4c5df4725164ccb34e4b4f",
+    "leg_closed_loop_20261122_v1/src/policy.py": "db6d8a2c677656b9b83834d13203adb63ff6c8e4f881ce5eda9e2935ff1577cc",
+    "leg_closed_loop_20261122_v1/src/prodmp/ab_leg_bifurcation_20261112/learned_prodmp.py": "f41167e7b2ee7b24782053b87aa957f7da0a7d52055c90ce2486a50bddba4791",
+    "leg_closed_loop_20261122_v1/src/prodmp/ab_observation_stress_20261111/motion.py": "d2138760422dc4ccf073d797d2c4bfd853f9662d07a50102bc2d7496e6e7c884",
+    "leg_closed_loop_20261122_v1/src/run_online.py": "bddfc1eb607b26fd1b5cf8773b5a41fe46bba34c4a1504440a68c061cdebd900",
+    "leg_closed_loop_20261122_v1/src/scan_kernel.py": "745af4f7700c8ea31aa7bc2bfb6b458d48054cb706465f9e1fd6beb83a4e730b",
+    "leg_closed_loop_20261122_v1/src/soft_identity.py": "eceed27724f7d087a95fffca43f5ea3c9fc4b4f27acce4d835417fdda471d81b",
+    "leg_closed_loop_20261122_v1/src/storage.py": "c7e8e5564f8eea2a7bbe55d5a6c69adaf5938a808bddc5f9a6a77c2b6791b916",
+    "leg_closed_loop_20261122_v1/src/synthetic_anatomy.py": "f72b94e21557054766d57b870ad039c824fb7c3d2e0b003a8489b60d59e79d73",
+    "leg_closed_loop_20261122_v1/src/teacher.py": "733b86761a805965a6a3dec2215a3a76aa1f56086934719ca493027dbc39fd43",
+    "leg_closed_loop_20261122_v1/src/windows.py": "8929426a91181ab7360ff6c29052230c89b314b95d7b6c8af69f572bbe085684"
+  },
+  "fit_data": "chronological prefix, actual cross-view or revisit history, full physical scan",
+  "evaluation": "matched ordinary MPC terminal tracks and paired probe/hold histories"
+}
