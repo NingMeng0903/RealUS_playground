@@ -1,0 +1,2753 @@
+{
+  "counts": {
+    "ppo_only": {
+      "complete": 1152,
+      "macros": 28607,
+      "cuda_ppo_steps": 192
+    },
+    "teacher": {
+      "complete": 1152,
+      "macros": 28615,
+      "cuda_ppo_steps": 192
+    }
+  },
+  "route_counts": {
+    "ppo_only": {
+      "femoral": {
+        "completed": 384,
+        "macros": 4690
+      },
+      "groin_to_distal_calf": {
+        "completed": 768,
+        "macros": 23917
+      }
+    },
+    "teacher": {
+      "femoral": {
+        "completed": 384,
+        "macros": 4688
+      },
+      "groin_to_distal_calf": {
+        "completed": 768,
+        "macros": 23927
+      }
+    }
+  },
+  "behaviour_replay_max_error": {
+    "logp": 0.0,
+    "value": 0.0
+  },
+  "teacher_branches": {
+    "paired_visits": 574,
+    "executed_branches": 2502,
+    "strict_rescues": 90,
+    "strict_losses": 75,
+    "wrong_added": 58,
+    "wrong_removed": 51,
+    "negative": 487,
+    "positive": 677,
+    "zero": 190
+  },
+  "teacher_branch_selection": {
+    "same_tapes_average_margin": 0.1902652392042569,
+    "cross_tape_average_margin": 0.03756832173742657
+  },
+  "teacher_validation": {
+    "labelled_actions": 126,
+    "nonzero_labelled_actions": 117,
+    "mse": 0.43321519829924143,
+    "zero_mse": 0.5072743084932131,
+    "sign_accuracy": 0.5641025641025641
+  },
+  "teacher_cuda_rounds": [
+    {
+      "batch": 0,
+      "cuda_updates": 64,
+      "validation": {
+        "measured": 10,
+        "positive": 6,
+        "negative": 4,
+        "zero": 0,
+        "mse": 1.1735970973968506,
+        "zero_mse": 1.2320951223373413,
+        "signed_accuracy": 0.6,
+        "by_sign": {
+          "positive": {
+            "n": 6,
+            "mse": 1.000529170036316,
+            "zero_mse": 0.8904273509979248,
+            "mean_actual": 0.6860365271568298,
+            "mean_predicted": -0.12333723157644272
+          },
+          "negative": {
+            "n": 4,
+            "mse": 1.4331992864608765,
+            "zero_mse": 1.7445969581604004,
+            "mean_actual": -1.3207755088806152,
+            "mean_predicted": -0.2919051945209503
+          },
+          "zero": {
+            "n": 0,
+            "mse": null,
+            "zero_mse": null,
+            "mean_actual": null,
+            "mean_predicted": null
+          }
+        }
+      }
+    },
+    {
+      "batch": 1,
+      "cuda_updates": 64,
+      "validation": {
+        "measured": 11,
+        "positive": 5,
+        "negative": 5,
+        "zero": 1,
+        "mse": 0.5462032556533813,
+        "zero_mse": 0.46377208828926086,
+        "signed_accuracy": 0.1,
+        "by_sign": {
+          "positive": {
+            "n": 5,
+            "mse": 0.38322311639785767,
+            "zero_mse": 0.351169615983963,
+            "mean_actual": 0.2735833525657654,
+            "mean_predicted": -0.054545748978853226
+          },
+          "negative": {
+            "n": 5,
+            "mse": 0.805270791053772,
+            "zero_mse": 0.6691290140151978,
+            "mean_actual": -0.5222574472427368,
+            "mean_predicted": 0.08218658715486526
+          },
+          "zero": {
+            "n": 1,
+            "mse": 0.06576565653085709,
+            "zero_mse": 0.0,
+            "mean_actual": 0.0,
+            "mean_predicted": -0.2564481496810913
+          }
+        }
+      }
+    },
+    {
+      "batch": 2,
+      "cuda_updates": 64,
+      "validation": {
+        "measured": 9,
+        "positive": 5,
+        "negative": 2,
+        "zero": 2,
+        "mse": 0.36418217420578003,
+        "zero_mse": 0.3763595521450043,
+        "signed_accuracy": 0.5714285714285714,
+        "by_sign": {
+          "positive": {
+            "n": 5,
+            "mse": 0.38426533341407776,
+            "zero_mse": 0.3389088809490204,
+            "mean_actual": 0.263948917388916,
+            "mean_predicted": -0.023788850754499435
+          },
+          "negative": {
+            "n": 2,
+            "mse": 0.6681635975837708,
+            "zero_mse": 0.8463457226753235,
+            "mean_actual": -0.6511190533638,
+            "mean_predicted": -0.09109639376401901
+          },
+          "zero": {
+            "n": 2,
+            "mse": 0.009992919862270355,
+            "zero_mse": 0.0,
+            "mean_actual": 0.0,
+            "mean_predicted": -0.07942640781402588
+          }
+        }
+      }
+    },
+    {
+      "batch": 3,
+      "cuda_updates": 64,
+      "validation": {
+        "measured": 10,
+        "positive": 5,
+        "negative": 5,
+        "zero": 0,
+        "mse": 0.9347589612007141,
+        "zero_mse": 1.0034716129302979,
+        "signed_accuracy": 0.5,
+        "by_sign": {
+          "positive": {
+            "n": 5,
+            "mse": 0.6481478810310364,
+            "zero_mse": 0.6448818445205688,
+            "mean_actual": 0.5082452893257141,
+            "mean_predicted": 0.04456254094839096
+          },
+          "negative": {
+            "n": 5,
+            "mse": 1.2213701009750366,
+            "zero_mse": 1.3620613813400269,
+            "mean_actual": -0.5261128544807434,
+            "mean_predicted": 0.03734070807695389
+          },
+          "zero": {
+            "n": 0,
+            "mse": null,
+            "zero_mse": null,
+            "mean_actual": null,
+            "mean_predicted": null
+          }
+        }
+      }
+    },
+    {
+      "batch": 4,
+      "cuda_updates": 64,
+      "validation": {
+        "measured": 11,
+        "positive": 8,
+        "negative": 3,
+        "zero": 0,
+        "mse": 0.2176532745361328,
+        "zero_mse": 0.1646888107061386,
+        "signed_accuracy": 0.8181818181818182,
+        "by_sign": {
+          "positive": {
+            "n": 8,
+            "mse": 0.018217450007796288,
+            "zero_mse": 0.0025961166247725487,
+            "mean_actual": 0.024644410237669945,
+            "mean_predicted": 0.11005137860774994
+          },
+          "negative": {
+            "n": 3,
+            "mse": 0.7494820952415466,
+            "zero_mse": 0.5969359874725342,
+            "mean_actual": -0.4470979869365692,
+            "mean_predicted": -0.0018764535197988153
+          },
+          "zero": {
+            "n": 0,
+            "mse": null,
+            "zero_mse": null,
+            "mean_actual": null,
+            "mean_predicted": null
+          }
+        }
+      }
+    },
+    {
+      "batch": 5,
+      "cuda_updates": 64,
+      "validation": {
+        "measured": 10,
+        "positive": 4,
+        "negative": 5,
+        "zero": 1,
+        "mse": 0.07625514268875122,
+        "zero_mse": 0.16802449524402618,
+        "signed_accuracy": 0.5555555555555556,
+        "by_sign": {
+          "positive": {
+            "n": 4,
+            "mse": 0.09532930701971054,
+            "zero_mse": 0.4162777364253998,
+            "mean_actual": 0.3255841135978699,
+            "mean_predicted": 0.2162567526102066
+          },
+          "negative": {
+            "n": 5,
+            "mse": 0.07624049484729767,
+            "zero_mse": 0.0030268195550888777,
+            "mean_actual": -0.032235823571681976,
+            "mean_predicted": 0.17270007729530334
+          },
+          "zero": {
+            "n": 1,
+            "mse": 3.164643203490414e-05,
+            "zero_mse": 0.0,
+            "mean_actual": 0.0,
+            "mean_predicted": 0.005625516176223755
+          }
+        }
+      }
+    },
+    {
+      "batch": 6,
+      "cuda_updates": 64,
+      "validation": {
+        "measured": 9,
+        "positive": 4,
+        "negative": 5,
+        "zero": 0,
+        "mse": 0.6278700828552246,
+        "zero_mse": 1.132538914680481,
+        "signed_accuracy": 0.5555555555555556,
+        "by_sign": {
+          "positive": {
+            "n": 4,
+            "mse": 0.8158929347991943,
+            "zero_mse": 1.7058844566345215,
+            "mean_actual": 0.7004961371421814,
+            "mean_predicted": -0.024710476398468018
+          },
+          "negative": {
+            "n": 5,
+            "mse": 0.4774518609046936,
+            "zero_mse": 0.6738624572753906,
+            "mean_actual": -0.5327537059783936,
+            "mean_predicted": -0.29760852456092834
+          },
+          "zero": {
+            "n": 0,
+            "mse": null,
+            "zero_mse": null,
+            "mean_actual": null,
+            "mean_predicted": null
+          }
+        }
+      }
+    },
+    {
+      "batch": 7,
+      "cuda_updates": 64,
+      "validation": {
+        "measured": 12,
+        "positive": 5,
+        "negative": 5,
+        "zero": 2,
+        "mse": 0.3885209858417511,
+        "zero_mse": 0.439719557762146,
+        "signed_accuracy": 0.4,
+        "by_sign": {
+          "positive": {
+            "n": 5,
+            "mse": 0.8307210803031921,
+            "zero_mse": 1.0552356243133545,
+            "mean_actual": 0.8081983327865601,
+            "mean_predicted": 0.1771276295185089
+          },
+          "negative": {
+            "n": 5,
+            "mse": 0.07783066481351852,
+            "zero_mse": 9.130129910772666e-05,
+            "mean_actual": -0.006681924220174551,
+            "mean_predicted": 0.13358411192893982
+          },
+          "zero": {
+            "n": 2,
+            "mse": 0.05974677950143814,
+            "zero_mse": 0.0,
+            "mean_actual": 0.0,
+            "mean_predicted": 0.1990015059709549
+          }
+        }
+      }
+    },
+    {
+      "batch": 8,
+      "cuda_updates": 64,
+      "validation": {
+        "measured": 11,
+        "positive": 6,
+        "negative": 4,
+        "zero": 1,
+        "mse": 0.2853195071220398,
+        "zero_mse": 0.3047468662261963,
+        "signed_accuracy": 1.0,
+        "by_sign": {
+          "positive": {
+            "n": 6,
+            "mse": 0.5092214345932007,
+            "zero_mse": 0.5586833953857422,
+            "mean_actual": 0.4333020746707916,
+            "mean_predicted": 0.152064710855484
+          },
+          "negative": {
+            "n": 4,
+            "mse": 0.004142894875258207,
+            "zero_mse": 2.8779935746570118e-05,
+            "mean_actual": -0.0032703974284231663,
+            "mean_predicted": -0.06105706840753555
+          },
+          "zero": {
+            "n": 1,
+            "mse": 0.06661433726549149,
+            "zero_mse": 0.0,
+            "mean_actual": 0.0,
+            "mean_predicted": 0.2580975294113159
+          }
+        }
+      }
+    },
+    {
+      "batch": 9,
+      "cuda_updates": 64,
+      "validation": {
+        "measured": 9,
+        "positive": 5,
+        "negative": 3,
+        "zero": 1,
+        "mse": 0.4116729497909546,
+        "zero_mse": 0.3849785029888153,
+        "signed_accuracy": 0.375,
+        "by_sign": {
+          "positive": {
+            "n": 5,
+            "mse": 0.37795349955558777,
+            "zero_mse": 0.33982038497924805,
+            "mean_actual": 0.2639046311378479,
+            "mean_predicted": -0.07630382478237152
+          },
+          "negative": {
+            "n": 3,
+            "mse": 0.5965723395347595,
+            "zero_mse": 0.5885682106018066,
+            "mean_actual": -0.446078896522522,
+            "mean_predicted": -0.05002046748995781
+          },
+          "zero": {
+            "n": 1,
+            "mse": 0.025572197511792183,
+            "zero_mse": 0.0,
+            "mean_actual": 0.0,
+            "mean_predicted": -0.1599130928516388
+          }
+        }
+      }
+    },
+    {
+      "batch": 10,
+      "cuda_updates": 64,
+      "validation": {
+        "measured": 12,
+        "positive": 7,
+        "negative": 4,
+        "zero": 1,
+        "mse": 0.10668123513460159,
+        "zero_mse": 0.14387433230876923,
+        "signed_accuracy": 0.45454545454545453,
+        "by_sign": {
+          "positive": {
+            "n": 7,
+            "mse": 0.007945365272462368,
+            "zero_mse": 9.2889176812605e-06,
+            "mean_actual": 0.002729398664087057,
+            "mean_predicted": -0.0457424595952034
+          },
+          "negative": {
+            "n": 4,
+            "mse": 0.30589714646339417,
+            "zero_mse": 0.4316067695617676,
+            "mean_actual": -0.3459835648536682,
+            "mean_predicted": -0.1545630693435669
+          },
+          "zero": {
+            "n": 1,
+            "mse": 0.0009687594720162451,
+            "zero_mse": 0.0,
+            "mean_actual": 0.0,
+            "mean_predicted": -0.03112490102648735
+          }
+        }
+      }
+    },
+    {
+      "batch": 11,
+      "cuda_updates": 64,
+      "validation": {
+        "measured": 12,
+        "positive": 7,
+        "negative": 5,
+        "zero": 0,
+        "mse": 0.21850942075252533,
+        "zero_mse": 0.4639454782009125,
+        "signed_accuracy": 0.75,
+        "by_sign": {
+          "positive": {
+            "n": 7,
+            "mse": 0.02083592303097248,
+            "zero_mse": 0.000598209269810468,
+            "mean_actual": 0.015176869928836823,
+            "mean_predicted": 0.08162055164575577
+          },
+          "negative": {
+            "n": 5,
+            "mse": 0.4952523708343506,
+            "zero_mse": 1.1126315593719482,
+            "mean_actual": -0.8179817199707031,
+            "mean_predicted": -0.34421518445014954
+          },
+          "zero": {
+            "n": 0,
+            "mse": null,
+            "zero_mse": null,
+            "mean_actual": null,
+            "mean_predicted": null
+          }
+        }
+      }
+    }
+  ],
+  "protocol_sha256": "7d3a086291493cc6d0cbe465fc99eb1e081174a4c95582d945dd959a314198da",
+  "freeze_sha256": "98a9aa483156890b2251d04dbf529e3ba76b788035a8d10d56ded37cc75f35d9",
+  "independent_score_rows": 2880,
+  "independent_physical_executions": 2400,
+  "partition_layouts": {
+    "smoke": 64,
+    "demonstration": 128,
+    "training": 1152,
+    "development": 48,
+    "independent": 160
+  },
+  "reader_partition_layouts": {
+    "fit": 9249,
+    "validation": 479,
+    "calibration": 512,
+    "heldout": 96
+  },
+  "paired_outcomes_sha256": "32ead9e0c3871f0a56742a92d5d58b3d87f09ec9aa3c21f3c36983eb971537bf",
+  "panel": {
+    "femoral": {
+      "arms": {
+        "MPC_old": {
+          "layouts": 53,
+          "strict": [
+            27,
+            27,
+            25
+          ],
+          "wrong_branch": [
+            0,
+            0,
+            0
+          ],
+          "acquisition_ceiling": [
+            38,
+            38,
+            37
+          ],
+          "wrong_delivery": 1,
+          "one_failed_region": 23,
+          "multi_failed_region": 3,
+          "all_captured_failed": 11,
+          "artifacts_by_region": [
+            0,
+            0,
+            0,
+            1,
+            0,
+            0
+          ],
+          "rejected_with_capture_by_region": [
+            0,
+            0,
+            0,
+            0,
+            6,
+            7
+          ],
+          "correct_by_region": [
+            53,
+            53,
+            53,
+            52,
+            47,
+            31
+          ],
+          "named_branch_by_region": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "MPC_new": {
+          "layouts": 53,
+          "strict": [
+            32,
+            26,
+            28
+          ],
+          "wrong_branch": [
+            0,
+            0,
+            0
+          ],
+          "acquisition_ceiling": [
+            38,
+            38,
+            37
+          ],
+          "wrong_delivery": 4,
+          "one_failed_region": 17,
+          "multi_failed_region": 4,
+          "all_captured_failed": 6,
+          "artifacts_by_region": [
+            0,
+            1,
+            0,
+            1,
+            1,
+            1
+          ],
+          "rejected_with_capture_by_region": [
+            1,
+            0,
+            1,
+            0,
+            1,
+            3
+          ],
+          "correct_by_region": [
+            52,
+            52,
+            52,
+            52,
+            51,
+            34
+          ],
+          "named_branch_by_region": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "student_old": {
+          "layouts": 53,
+          "strict": [
+            23,
+            25,
+            26
+          ],
+          "wrong_branch": [
+            0,
+            0,
+            0
+          ],
+          "acquisition_ceiling": [
+            36,
+            33,
+            38
+          ],
+          "wrong_delivery": 4,
+          "one_failed_region": 28,
+          "multi_failed_region": 2,
+          "all_captured_failed": 13,
+          "artifacts_by_region": [
+            0,
+            1,
+            1,
+            1,
+            2,
+            0
+          ],
+          "rejected_with_capture_by_region": [
+            0,
+            0,
+            0,
+            0,
+            2,
+            9
+          ],
+          "correct_by_region": [
+            53,
+            52,
+            52,
+            52,
+            49,
+            27
+          ],
+          "named_branch_by_region": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "student_new": {
+          "layouts": 53,
+          "strict": [
+            28,
+            26,
+            26
+          ],
+          "wrong_branch": [
+            0,
+            0,
+            0
+          ],
+          "acquisition_ceiling": [
+            36,
+            34,
+            38
+          ],
+          "wrong_delivery": 2,
+          "one_failed_region": 24,
+          "multi_failed_region": 1,
+          "all_captured_failed": 8,
+          "artifacts_by_region": [
+            0,
+            1,
+            0,
+            0,
+            0,
+            1
+          ],
+          "rejected_with_capture_by_region": [
+            0,
+            0,
+            1,
+            1,
+            1,
+            5
+          ],
+          "correct_by_region": [
+            53,
+            52,
+            52,
+            52,
+            52,
+            31
+          ],
+          "named_branch_by_region": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "PPO_only_old": {
+          "layouts": 53,
+          "strict": [
+            25,
+            29,
+            30
+          ],
+          "wrong_branch": [
+            1,
+            0,
+            0
+          ],
+          "acquisition_ceiling": [
+            42,
+            41,
+            41
+          ],
+          "wrong_delivery": 4,
+          "one_failed_region": 27,
+          "multi_failed_region": 1,
+          "all_captured_failed": 17,
+          "artifacts_by_region": [
+            0,
+            0,
+            1,
+            0,
+            1,
+            2
+          ],
+          "rejected_with_capture_by_region": [
+            0,
+            0,
+            0,
+            0,
+            3,
+            10
+          ],
+          "correct_by_region": [
+            53,
+            53,
+            51,
+            53,
+            49,
+            30
+          ],
+          "named_branch_by_region": [
+            0,
+            0,
+            1,
+            0,
+            0,
+            0
+          ]
+        },
+        "PPO_only_new": {
+          "layouts": 53,
+          "strict": [
+            33,
+            33,
+            29
+          ],
+          "wrong_branch": [
+            1,
+            0,
+            0
+          ],
+          "acquisition_ceiling": [
+            42,
+            41,
+            41
+          ],
+          "wrong_delivery": 2,
+          "one_failed_region": 19,
+          "multi_failed_region": 1,
+          "all_captured_failed": 9,
+          "artifacts_by_region": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "rejected_with_capture_by_region": [
+            0,
+            0,
+            1,
+            1,
+            0,
+            6
+          ],
+          "correct_by_region": [
+            53,
+            53,
+            51,
+            52,
+            53,
+            35
+          ],
+          "named_branch_by_region": [
+            0,
+            0,
+            1,
+            0,
+            0,
+            0
+          ]
+        }
+      },
+      "contrasts": {
+        "MPC_new_vs_MPC_old": {
+          "strict": {
+            "actual": [
+              0.09433962264150944,
+              -0.018867924528301886,
+              0.20754716981132076
+            ],
+            "proof_layout_ci95": [
+              0.018867924528301886,
+              -0.04716981132075472,
+              0.09433962264150944
+            ],
+            "added": 7,
+            "lost": 2
+          },
+          "wrong_branch": {
+            "actual": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "proof_layout_ci95": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "added": 0,
+            "lost": 0
+          },
+          "time_s": {
+            "actual": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "proof_layout_ci95": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "added": 0,
+            "lost": 0
+          },
+          "travel_mm": {
+            "actual": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "proof_layout_ci95": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "added": 0,
+            "lost": 0
+          },
+          "mm": {
+            "actual": [
+              1.1962183826374557,
+              -0.44357609658871056,
+              2.7598114589475236
+            ],
+            "proof_layout_ci95": [
+              2.0905132653578273,
+              0.7149010874190421,
+              3.569508554350655
+            ],
+            "added": 19,
+            "lost": 12
+          },
+          "longest_mm": {
+            "actual": [
+              -2.530164106836859,
+              -5.3122009583239285,
+              -0.010316391710964032
+            ],
+            "proof_layout_ci95": [
+              0.14412421100544479,
+              -2.1485414963848184,
+              2.4556211156665153
+            ],
+            "added": 5,
+            "lost": 9
+          }
+        },
+        "student_old_vs_MPC_old": {
+          "strict": {
+            "actual": [
+              -0.07547169811320754,
+              -0.20754716981132076,
+              0.05660377358490566
+            ],
+            "proof_layout_ci95": [
+              -0.009433962264150943,
+              -0.11320754716981132,
+              0.09433962264150944
+            ],
+            "added": 4,
+            "lost": 8
+          },
+          "wrong_branch": {
+            "actual": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "proof_layout_ci95": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "added": 0,
+            "lost": 0
+          },
+          "time_s": {
+            "actual": [
+              4.190566037735849,
+              3.388679245283019,
+              5.016084905660377
+            ],
+            "proof_layout_ci95": [
+              4.197169811320754,
+              3.400400943396226,
+              5.013254716981132
+            ],
+            "added": 49,
+            "lost": 0
+          },
+          "travel_mm": {
+            "actual": [
+              84.05334907496021,
+              67.4699750998942,
+              100.75030097524086
+            ],
+            "proof_layout_ci95": [
+              83.82853280715206,
+              67.61940249507036,
+              100.14166716313912
+            ],
+            "added": 47,
+            "lost": 1
+          },
+          "mm": {
+            "actual": [
+              -0.17996935574513562,
+              -4.101964425140957,
+              3.5797323730756663
+            ],
+            "proof_layout_ci95": [
+              1.9925329100410893,
+              -1.040172749645305,
+              4.875585471459154
+            ],
+            "added": 21,
+            "lost": 25
+          },
+          "longest_mm": {
+            "actual": [
+              -3.2919283453023658,
+              -10.199349285521597,
+              4.6082878652608645
+            ],
+            "proof_layout_ci95": [
+              0.7896053206245854,
+              -5.294261330478596,
+              6.3766695859297275
+            ],
+            "added": 19,
+            "lost": 27
+          }
+        },
+        "student_new_vs_MPC_new": {
+          "strict": {
+            "actual": [
+              -0.07547169811320754,
+              -0.20754716981132076,
+              0.05660377358490566
+            ],
+            "proof_layout_ci95": [
+              -0.018867924528301886,
+              -0.1320754716981132,
+              0.09433962264150944
+            ],
+            "added": 4,
+            "lost": 8
+          },
+          "wrong_branch": {
+            "actual": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "proof_layout_ci95": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "added": 0,
+            "lost": 0
+          },
+          "time_s": {
+            "actual": [
+              4.1415094339622645,
+              3.3565094339622648,
+              4.938726415094339
+            ],
+            "proof_layout_ci95": [
+              4.1745283018867925,
+              3.388679245283018,
+              4.978844339622642
+            ],
+            "added": 49,
+            "lost": 0
+          },
+          "travel_mm": {
+            "actual": [
+              82.6195873881549,
+              66.44157445793431,
+              98.37616493234347
+            ],
+            "proof_layout_ci95": [
+              83.028875763983,
+              67.11329899745002,
+              99.09941589526578
+            ],
+            "added": 47,
+            "lost": 1
+          },
+          "mm": {
+            "actual": [
+              -0.10536553724756781,
+              -3.9696228171294585,
+              3.7113665346829405
+            ],
+            "proof_layout_ci95": [
+              2.1629187385990933,
+              -0.8407731236151929,
+              5.21911218211336
+            ],
+            "added": 24,
+            "lost": 25
+          },
+          "longest_mm": {
+            "actual": [
+              -1.6072263717651367,
+              -8.877660107162763,
+              6.146938976251855
+            ],
+            "proof_layout_ci95": [
+              2.158404917087195,
+              -2.8587516078409156,
+              6.753020902399749
+            ],
+            "added": 18,
+            "lost": 26
+          }
+        },
+        "student_new_vs_student_old": {
+          "strict": {
+            "actual": [
+              0.09433962264150944,
+              -0.018867924528301886,
+              0.20754716981132076
+            ],
+            "proof_layout_ci95": [
+              0.009433962264150943,
+              -0.08490566037735849,
+              0.11320754716981132
+            ],
+            "added": 7,
+            "lost": 2
+          },
+          "wrong_branch": {
+            "actual": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "proof_layout_ci95": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "added": 0,
+            "lost": 0
+          },
+          "time_s": {
+            "actual": [
+              -0.0490566037735849,
+              -0.14150943396226415,
+              0.0
+            ],
+            "proof_layout_ci95": [
+              -0.022641509433962252,
+              -0.07641509433962262,
+              0.009433962264150943
+            ],
+            "added": 0,
+            "lost": 2
+          },
+          "travel_mm": {
+            "actual": [
+              -1.4337616868053067,
+              -3.6921332427591724,
+              0.0
+            ],
+            "proof_layout_ci95": [
+              -0.7996570431690679,
+              -2.4237122866473353,
+              0.4511288468911838
+            ],
+            "added": 0,
+            "lost": 2
+          },
+          "mm": {
+            "actual": [
+              1.2708222011350236,
+              -0.11668934012359043,
+              2.831142087252635
+            ],
+            "proof_layout_ci95": [
+              2.2608990939158313,
+              1.1309278182263645,
+              3.445865760659272
+            ],
+            "added": 18,
+            "lost": 10
+          },
+          "longest_mm": {
+            "actual": [
+              -0.8454621332996296,
+              -2.3240802198086143,
+              0.36975773640398707
+            ],
+            "proof_layout_ci95": [
+              1.5129238074680544,
+              -0.8947945615030685,
+              3.8976727114533487
+            ],
+            "added": 3,
+            "lost": 6
+          }
+        },
+        "PPO_only_old_vs_MPC_old": {
+          "strict": {
+            "actual": [
+              -0.03773584905660377,
+              -0.1509433962264151,
+              0.07547169811320754
+            ],
+            "proof_layout_ci95": [
+              0.0660377358490566,
+              -0.009433962264150943,
+              0.14150943396226415
+            ],
+            "added": 4,
+            "lost": 6
+          },
+          "wrong_branch": {
+            "actual": [
+              0.018867924528301886,
+              0.0,
+              0.05660377358490566
+            ],
+            "proof_layout_ci95": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "added": 1,
+            "lost": 0
+          },
+          "time_s": {
+            "actual": [
+              3.016981132075472,
+              2.4358490566037734,
+              3.6075471698113204
+            ],
+            "proof_layout_ci95": [
+              3.0235849056603774,
+              2.4457311320754713,
+              3.61186320754717
+            ],
+            "added": 46,
+            "lost": 0
+          },
+          "travel_mm": {
+            "actual": [
+              63.8528959899153,
+              51.71541127754184,
+              75.93302799012856
+            ],
+            "proof_layout_ci95": [
+              63.83011344913178,
+              51.78739842584066,
+              75.80091902778076
+            ],
+            "added": 44,
+            "lost": 0
+          },
+          "mm": {
+            "actual": [
+              0.47141524980653005,
+              -2.670040749603847,
+              3.728920439954074
+            ],
+            "proof_layout_ci95": [
+              2.013859802821897,
+              -0.3430424096449366,
+              4.3595979996447305
+            ],
+            "added": 21,
+            "lost": 21
+          },
+          "longest_mm": {
+            "actual": [
+              -2.2831031871291825,
+              -9.223470735549927,
+              4.9710156575688815
+            ],
+            "proof_layout_ci95": [
+              3.389012633629565,
+              -1.814264932893357,
+              8.162396413875076
+            ],
+            "added": 14,
+            "lost": 23
+          }
+        },
+        "PPO_only_new_vs_MPC_new": {
+          "strict": {
+            "actual": [
+              0.018867924528301886,
+              -0.1320754716981132,
+              0.16981132075471697
+            ],
+            "proof_layout_ci95": [
+              0.07547169811320754,
+              0.0,
+              0.1509433962264151
+            ],
+            "added": 8,
+            "lost": 7
+          },
+          "wrong_branch": {
+            "actual": [
+              0.018867924528301886,
+              0.0,
+              0.05660377358490566
+            ],
+            "proof_layout_ci95": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "added": 1,
+            "lost": 0
+          },
+          "time_s": {
+            "actual": [
+              3.018867924528302,
+              2.4377358490566037,
+              3.609528301886792
+            ],
+            "proof_layout_ci95": [
+              3.023584905660377,
+              2.4452830188679244,
+              3.6113679245283015
+            ],
+            "added": 46,
+            "lost": 0
+          },
+          "travel_mm": {
+            "actual": [
+              63.679016188553206,
+              51.474480038947256,
+              75.70173853189371
+            ],
+            "proof_layout_ci95": [
+              63.690029433440586,
+              51.598809289410546,
+              75.73485227059625
+            ],
+            "added": 44,
+            "lost": 0
+          },
+          "mm": {
+            "actual": [
+              0.8567863320404628,
+              -1.9764672657228866,
+              3.7496866478110267
+            ],
+            "proof_layout_ci95": [
+              2.393441326213333,
+              0.0970227493430084,
+              4.678122973891924
+            ],
+            "added": 26,
+            "lost": 18
+          },
+          "longest_mm": {
+            "actual": [
+              -1.888212060028652,
+              -9.821647544177074,
+              6.398610942768607
+            ],
+            "proof_layout_ci95": [
+              2.98307466506958,
+              -2.078646475189137,
+              7.787771737125687
+            ],
+            "added": 15,
+            "lost": 22
+          }
+        },
+        "student_new_vs_PPO_only_new": {
+          "strict": {
+            "actual": [
+              -0.09433962264150944,
+              -0.20754716981132076,
+              0.018867924528301886
+            ],
+            "proof_layout_ci95": [
+              -0.09433962264150944,
+              -0.19811320754716982,
+              0.009433962264150943
+            ],
+            "added": 3,
+            "lost": 8
+          },
+          "wrong_branch": {
+            "actual": [
+              -0.018867924528301886,
+              -0.05660377358490566,
+              0.0
+            ],
+            "proof_layout_ci95": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "added": 0,
+            "lost": 1
+          },
+          "time_s": {
+            "actual": [
+              1.1226415094339623,
+              0.6602830188679245,
+              1.5773584905660376
+            ],
+            "proof_layout_ci95": [
+              1.150943396226415,
+              0.6839622641509435,
+              1.6160849056603777
+            ],
+            "added": 34,
+            "lost": 10
+          },
+          "travel_mm": {
+            "actual": [
+              18.940571199601724,
+              8.067923130379421,
+              29.13641707275817
+            ],
+            "proof_layout_ci95": [
+              19.338846330542413,
+              8.461664519892702,
+              29.578592619208035
+            ],
+            "added": 37,
+            "lost": 9
+          },
+          "mm": {
+            "actual": [
+              -0.9621518692880306,
+              -3.7478227291467054,
+              1.8337529776231305
+            ],
+            "proof_layout_ci95": [
+              -0.23052258761423938,
+              -2.7421387096620955,
+              2.11045563715809
+            ],
+            "added": 20,
+            "lost": 18
+          },
+          "longest_mm": {
+            "actual": [
+              0.2809856882635153,
+              -3.9800569376855526,
+              4.47985480281542
+            ],
+            "proof_layout_ci95": [
+              -0.824669747982385,
+              -3.821062396607309,
+              2.111719835929152
+            ],
+            "added": 14,
+            "lost": 13
+          }
+        },
+        "student_old_vs_PPO_only_old": {
+          "strict": {
+            "actual": [
+              -0.03773584905660377,
+              -0.1320754716981132,
+              0.05660377358490566
+            ],
+            "proof_layout_ci95": [
+              -0.07547169811320754,
+              -0.1792452830188679,
+              0.018867924528301886
+            ],
+            "added": 3,
+            "lost": 5
+          },
+          "wrong_branch": {
+            "actual": [
+              -0.018867924528301886,
+              -0.05660377358490566,
+              0.0
+            ],
+            "proof_layout_ci95": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "added": 0,
+            "lost": 1
+          },
+          "time_s": {
+            "actual": [
+              1.1735849056603773,
+              0.6971226415094339,
+              1.6528301886792454
+            ],
+            "proof_layout_ci95": [
+              1.1735849056603773,
+              0.6956367924528303,
+              1.6495518867924528
+            ],
+            "added": 34,
+            "lost": 10
+          },
+          "travel_mm": {
+            "actual": [
+              20.20045308504495,
+              9.035604703947396,
+              31.041995503308996
+            ],
+            "proof_layout_ci95": [
+              19.99841935802029,
+              9.032024736273744,
+              30.632049322630873
+            ],
+            "added": 37,
+            "lost": 9
+          },
+          "mm": {
+            "actual": [
+              -0.6513846055516657,
+              -3.277242757689278,
+              1.8886886488716566
+            ],
+            "proof_layout_ci95": [
+              -0.021326892780807783,
+              -2.57487649737664,
+              2.4491103910050303
+            ],
+            "added": 18,
+            "lost": 19
+          },
+          "longest_mm": {
+            "actual": [
+              -1.0088251581731833,
+              -5.15922722726498,
+              3.3470610681569823
+            ],
+            "proof_layout_ci95": [
+              -2.5994073130049795,
+              -6.552107430853934,
+              1.0013790333046109
+            ],
+            "added": 13,
+            "lost": 17
+          }
+        },
+        "student_new_vs_MPC_old": {
+          "strict": {
+            "actual": [
+              0.018867924528301886,
+              -0.11320754716981132,
+              0.1509433962264151
+            ],
+            "proof_layout_ci95": [
+              0.0,
+              -0.12264150943396226,
+              0.11320754716981132
+            ],
+            "added": 7,
+            "lost": 6
+          },
+          "wrong_branch": {
+            "actual": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "proof_layout_ci95": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "added": 0,
+            "lost": 0
+          },
+          "time_s": {
+            "actual": [
+              4.1415094339622645,
+              3.3565094339622648,
+              4.938726415094339
+            ],
+            "proof_layout_ci95": [
+              4.1745283018867925,
+              3.388679245283018,
+              4.978844339622642
+            ],
+            "added": 49,
+            "lost": 0
+          },
+          "travel_mm": {
+            "actual": [
+              82.6195873881549,
+              66.44157445793431,
+              98.37616493234347
+            ],
+            "proof_layout_ci95": [
+              83.028875763983,
+              67.11329899745002,
+              99.09941589526578
+            ],
+            "added": 47,
+            "lost": 1
+          },
+          "mm": {
+            "actual": [
+              1.090852845389888,
+              -3.251778087975844,
+              5.188352401301546
+            ],
+            "proof_layout_ci95": [
+              4.253432003956921,
+              0.8543542610024506,
+              7.523191792110228
+            ],
+            "added": 27,
+            "lost": 23
+          },
+          "longest_mm": {
+            "actual": [
+              -4.137390478601995,
+              -10.653078364426234,
+              2.887973883916749
+            ],
+            "proof_layout_ci95": [
+              2.30252912809264,
+              -3.309737096417625,
+              7.204582061182779
+            ],
+            "added": 17,
+            "lost": 27
+          }
+        }
+      },
+      "strict_factorial_interaction": {
+        "actual": [
+          0.0,
+          -0.1509433962264151,
+          0.1509433962264151
+        ],
+        "proof_layout_ci95": [
+          -0.009433962264150943,
+          -0.1320754716981132,
+          0.10377358490566038
+        ]
+      }
+    },
+    "groin_to_distal_calf": {
+      "arms": {
+        "MPC_old": {
+          "layouts": 107,
+          "strict": [
+            46,
+            49,
+            43
+          ],
+          "wrong_branch": [
+            30,
+            26,
+            29
+          ],
+          "acquisition_ceiling": [
+            107,
+            107,
+            107
+          ],
+          "wrong_delivery": 44,
+          "one_failed_region": 35,
+          "multi_failed_region": 26,
+          "all_captured_failed": 61,
+          "artifacts_by_region": [
+            1,
+            1,
+            3,
+            12,
+            3,
+            4
+          ],
+          "rejected_with_capture_by_region": [
+            0,
+            0,
+            0,
+            5,
+            19,
+            15
+          ],
+          "correct_by_region": [
+            106,
+            106,
+            103,
+            85,
+            68,
+            76
+          ],
+          "named_branch_by_region": [
+            0,
+            0,
+            1,
+            5,
+            17,
+            12
+          ]
+        },
+        "MPC_new": {
+          "layouts": 107,
+          "strict": [
+            55,
+            59,
+            54
+          ],
+          "wrong_branch": [
+            18,
+            20,
+            20
+          ],
+          "acquisition_ceiling": [
+            107,
+            107,
+            107
+          ],
+          "wrong_delivery": 36,
+          "one_failed_region": 35,
+          "multi_failed_region": 17,
+          "all_captured_failed": 52,
+          "artifacts_by_region": [
+            0,
+            2,
+            1,
+            7,
+            3,
+            8
+          ],
+          "rejected_with_capture_by_region": [
+            0,
+            0,
+            0,
+            2,
+            21,
+            8
+          ],
+          "correct_by_region": [
+            107,
+            105,
+            106,
+            95,
+            77,
+            81
+          ],
+          "named_branch_by_region": [
+            0,
+            0,
+            0,
+            3,
+            6,
+            10
+          ]
+        },
+        "student_old": {
+          "layouts": 107,
+          "strict": [
+            53,
+            51,
+            44
+          ],
+          "wrong_branch": [
+            21,
+            25,
+            29
+          ],
+          "acquisition_ceiling": [
+            101,
+            101,
+            101
+          ],
+          "wrong_delivery": 35,
+          "one_failed_region": 31,
+          "multi_failed_region": 23,
+          "all_captured_failed": 48,
+          "artifacts_by_region": [
+            2,
+            1,
+            3,
+            7,
+            6,
+            3
+          ],
+          "rejected_with_capture_by_region": [
+            0,
+            0,
+            0,
+            3,
+            16,
+            14
+          ],
+          "correct_by_region": [
+            105,
+            106,
+            98,
+            93,
+            78,
+            79
+          ],
+          "named_branch_by_region": [
+            0,
+            0,
+            0,
+            4,
+            7,
+            11
+          ]
+        },
+        "student_new": {
+          "layouts": 107,
+          "strict": [
+            61,
+            57,
+            48
+          ],
+          "wrong_branch": [
+            12,
+            21,
+            22
+          ],
+          "acquisition_ceiling": [
+            101,
+            101,
+            101
+          ],
+          "wrong_delivery": 27,
+          "one_failed_region": 20,
+          "multi_failed_region": 26,
+          "all_captured_failed": 40,
+          "artifacts_by_region": [
+            1,
+            0,
+            2,
+            4,
+            6,
+            7
+          ],
+          "rejected_with_capture_by_region": [
+            0,
+            0,
+            0,
+            2,
+            21,
+            12
+          ],
+          "correct_by_region": [
+            106,
+            107,
+            99,
+            98,
+            75,
+            82
+          ],
+          "named_branch_by_region": [
+            0,
+            0,
+            0,
+            3,
+            5,
+            6
+          ]
+        },
+        "PPO_only_old": {
+          "layouts": 107,
+          "strict": [
+            50,
+            46,
+            49
+          ],
+          "wrong_branch": [
+            24,
+            19,
+            33
+          ],
+          "acquisition_ceiling": [
+            102,
+            102,
+            102
+          ],
+          "wrong_delivery": 36,
+          "one_failed_region": 31,
+          "multi_failed_region": 26,
+          "all_captured_failed": 52,
+          "artifacts_by_region": [
+            2,
+            1,
+            2,
+            8,
+            3,
+            3
+          ],
+          "rejected_with_capture_by_region": [
+            0,
+            0,
+            1,
+            5,
+            17,
+            14
+          ],
+          "correct_by_region": [
+            105,
+            106,
+            100,
+            89,
+            77,
+            76
+          ],
+          "named_branch_by_region": [
+            0,
+            0,
+            0,
+            4,
+            10,
+            14
+          ]
+        },
+        "PPO_only_new": {
+          "layouts": 107,
+          "strict": [
+            57,
+            54,
+            53
+          ],
+          "wrong_branch": [
+            15,
+            24,
+            21
+          ],
+          "acquisition_ceiling": [
+            102,
+            102,
+            102
+          ],
+          "wrong_delivery": 28,
+          "one_failed_region": 31,
+          "multi_failed_region": 19,
+          "all_captured_failed": 45,
+          "artifacts_by_region": [
+            0,
+            0,
+            0,
+            8,
+            6,
+            5
+          ],
+          "rejected_with_capture_by_region": [
+            0,
+            0,
+            0,
+            2,
+            16,
+            15
+          ],
+          "correct_by_region": [
+            107,
+            107,
+            102,
+            92,
+            82,
+            77
+          ],
+          "named_branch_by_region": [
+            0,
+            0,
+            0,
+            4,
+            3,
+            10
+          ]
+        }
+      },
+      "contrasts": {
+        "MPC_new_vs_MPC_old": {
+          "strict": {
+            "actual": [
+              0.08411214953271028,
+              0.0,
+              0.17757009345794392
+            ],
+            "proof_layout_ci95": [
+              0.09813084112149532,
+              0.037383177570093455,
+              0.1588785046728972
+            ],
+            "added": 17,
+            "lost": 8
+          },
+          "wrong_branch": {
+            "actual": [
+              -0.11214953271028037,
+              -0.205607476635514,
+              -0.018691588785046728
+            ],
+            "proof_layout_ci95": [
+              -0.07009345794392523,
+              -0.1308411214953271,
+              -0.009345794392523364
+            ],
+            "added": 8,
+            "lost": 20
+          },
+          "time_s": {
+            "actual": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "proof_layout_ci95": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "added": 0,
+            "lost": 0
+          },
+          "travel_mm": {
+            "actual": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "proof_layout_ci95": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "added": 0,
+            "lost": 0
+          },
+          "mm": {
+            "actual": [
+              27.676204788350613,
+              23.09290828526577,
+              32.37942358355656
+            ],
+            "proof_layout_ci95": [
+              25.163576999557353,
+              20.95646743596157,
+              29.52592728160252
+            ],
+            "added": 92,
+            "lost": 14
+          },
+          "longest_mm": {
+            "actual": [
+              2.0907183673894294,
+              -0.07607869121515862,
+              4.391827488836841
+            ],
+            "proof_layout_ci95": [
+              0.9546264220620985,
+              -0.5529955616621213,
+              2.630928007687364
+            ],
+            "added": 27,
+            "lost": 10
+          }
+        },
+        "student_old_vs_MPC_old": {
+          "strict": {
+            "actual": [
+              0.06542056074766354,
+              -0.028037383177570093,
+              0.16822429906542055
+            ],
+            "proof_layout_ci95": [
+              0.014018691588785047,
+              -0.07009345794392523,
+              0.09345794392523364
+            ],
+            "added": 18,
+            "lost": 11
+          },
+          "wrong_branch": {
+            "actual": [
+              -0.08411214953271028,
+              -0.18691588785046728,
+              0.009345794392523364
+            ],
+            "proof_layout_ci95": [
+              -0.004672897196261682,
+              -0.07721962616822425,
+              0.07009345794392523
+            ],
+            "added": 10,
+            "lost": 19
+          },
+          "time_s": {
+            "actual": [
+              6.806542056074768,
+              6.317266355140188,
+              7.3093457943925255
+            ],
+            "proof_layout_ci95": [
+              6.816355140186917,
+              6.330771028037384,
+              7.314731308411215
+            ],
+            "added": 107,
+            "lost": 0
+          },
+          "travel_mm": {
+            "actual": [
+              124.97193800598824,
+              114.16500078415538,
+              135.91869237317044
+            ],
+            "proof_layout_ci95": [
+              125.3563867564598,
+              114.6440690280806,
+              136.4705214531309
+            ],
+            "added": 104,
+            "lost": 3
+          },
+          "mm": {
+            "actual": [
+              0.6749755288952979,
+              -6.3320279451174155,
+              7.510051331564646
+            ],
+            "proof_layout_ci95": [
+              1.5957613080461448,
+              -4.072322392686505,
+              6.907831921087247
+            ],
+            "added": 52,
+            "lost": 55
+          },
+          "longest_mm": {
+            "actual": [
+              -1.0026224350260797,
+              -5.480368261693794,
+              3.9032187987710834
+            ],
+            "proof_layout_ci95": [
+              -0.7055008166304259,
+              -4.3956468042926256,
+              2.9665965459057118
+            ],
+            "added": 33,
+            "lost": 39
+          }
+        },
+        "student_new_vs_MPC_new": {
+          "strict": {
+            "actual": [
+              0.056074766355140186,
+              -0.056074766355140186,
+              0.1588785046728972
+            ],
+            "proof_layout_ci95": [
+              -0.037383177570093455,
+              -0.11682242990654206,
+              0.037383177570093455
+            ],
+            "added": 20,
+            "lost": 14
+          },
+          "wrong_branch": {
+            "actual": [
+              -0.056074766355140186,
+              -0.14953271028037382,
+              0.028037383177570093
+            ],
+            "proof_layout_ci95": [
+              0.014018691588785047,
+              -0.0514018691588785,
+              0.0794392523364486
+            ],
+            "added": 8,
+            "lost": 14
+          },
+          "time_s": {
+            "actual": [
+              6.791588785046731,
+              6.30605140186916,
+              7.2990654205607495
+            ],
+            "proof_layout_ci95": [
+              6.806542056074767,
+              6.315151869158879,
+              7.3075
+            ],
+            "added": 107,
+            "lost": 0
+          },
+          "travel_mm": {
+            "actual": [
+              124.57824605636756,
+              113.8347344870804,
+              135.4922025316928
+            ],
+            "proof_layout_ci95": [
+              124.90312811319595,
+              114.10064979585142,
+              136.00520339247524
+            ],
+            "added": 104,
+            "lost": 3
+          },
+          "mm": {
+            "actual": [
+              -8.400097428081192,
+              -15.788294979345018,
+              -1.312413206724363
+            ],
+            "proof_layout_ci95": [
+              -1.6639277377975321,
+              -8.25879454211654,
+              4.395213957813301
+            ],
+            "added": 47,
+            "lost": 59
+          },
+          "longest_mm": {
+            "actual": [
+              -2.4187590875358227,
+              -6.78062906309823,
+              2.3566152594913947
+            ],
+            "proof_layout_ci95": [
+              -0.3932589860720055,
+              -4.948369038662063,
+              3.926731680932446
+            ],
+            "added": 38,
+            "lost": 40
+          }
+        },
+        "student_new_vs_student_old": {
+          "strict": {
+            "actual": [
+              0.07476635514018691,
+              0.0,
+              0.1588785046728972
+            ],
+            "proof_layout_ci95": [
+              0.04672897196261682,
+              -0.009345794392523364,
+              0.102803738317757
+            ],
+            "added": 14,
+            "lost": 6
+          },
+          "wrong_branch": {
+            "actual": [
+              -0.08411214953271028,
+              -0.1588785046728972,
+              -0.018691588785046728
+            ],
+            "proof_layout_ci95": [
+              -0.0514018691588785,
+              -0.11682242990654206,
+              0.014018691588785047
+            ],
+            "added": 3,
+            "lost": 12
+          },
+          "time_s": {
+            "actual": [
+              -0.014953271028037464,
+              -0.066355140186916,
+              0.02056074766355136
+            ],
+            "proof_layout_ci95": [
+              -0.009813084112149506,
+              -0.02803738317756998,
+              0.006320093457943921
+            ],
+            "added": 3,
+            "lost": 4
+          },
+          "travel_mm": {
+            "actual": [
+              -0.39369194962065857,
+              -1.2915724891854263,
+              0.06827018195948441
+            ],
+            "proof_layout_ci95": [
+              -0.45325864326385223,
+              -1.0780426993961365,
+              0.06619465777784392
+            ],
+            "added": 3,
+            "lost": 5
+          },
+          "mm": {
+            "actual": [
+              18.601131831374122,
+              14.252491606952988,
+              22.77775972312856
+            ],
+            "proof_layout_ci95": [
+              21.903887953713674,
+              18.019354634864307,
+              25.72704177036464
+            ],
+            "added": 85,
+            "lost": 20
+          },
+          "longest_mm": {
+            "actual": [
+              0.6745817148796865,
+              -1.0650861679950607,
+              2.3436058389806305
+            ],
+            "proof_layout_ci95": [
+              1.2668682526205188,
+              -0.372461075203441,
+              3.0827197792374093
+            ],
+            "added": 20,
+            "lost": 11
+          }
+        },
+        "PPO_only_old_vs_MPC_old": {
+          "strict": {
+            "actual": [
+              0.037383177570093455,
+              -0.056074766355140186,
+              0.12149532710280374
+            ],
+            "proof_layout_ci95": [
+              0.014018691588785047,
+              -0.07476635514018691,
+              0.09813084112149532
+            ],
+            "added": 13,
+            "lost": 9
+          },
+          "wrong_branch": {
+            "actual": [
+              -0.056074766355140186,
+              -0.14953271028037382,
+              0.037383177570093455
+            ],
+            "proof_layout_ci95": [
+              -0.014018691588785047,
+              -0.08878504672897196,
+              0.06074766355140187
+            ],
+            "added": 10,
+            "lost": 16
+          },
+          "time_s": {
+            "actual": [
+              5.357943925233647,
+              4.800443925233647,
+              5.909836448598132
+            ],
+            "proof_layout_ci95": [
+              5.353271028037385,
+              4.806051401869159,
+              5.903294392523366
+            ],
+            "added": 105,
+            "lost": 1
+          },
+          "travel_mm": {
+            "actual": [
+              98.6697222799892,
+              87.65088317215394,
+              109.56602496134167
+            ],
+            "proof_layout_ci95": [
+              99.24773596967218,
+              87.61927279463427,
+              110.3835743207388
+            ],
+            "added": 103,
+            "lost": 4
+          },
+          "mm": {
+            "actual": [
+              3.7924877416307683,
+              -2.8363437973450276,
+              10.509871887492245
+            ],
+            "proof_layout_ci95": [
+              3.016243052259784,
+              -2.4411974951485607,
+              8.16271766947809
+            ],
+            "added": 58,
+            "lost": 47
+          },
+          "longest_mm": {
+            "actual": [
+              -0.9588057348661334,
+              -4.697562770085914,
+              3.0224346100726978
+            ],
+            "proof_layout_ci95": [
+              -0.07250707394608827,
+              -3.5435608718996847,
+              3.417213606611591
+            ],
+            "added": 30,
+            "lost": 36
+          }
+        },
+        "PPO_only_new_vs_MPC_new": {
+          "strict": {
+            "actual": [
+              0.018691588785046728,
+              -0.08411214953271028,
+              0.12149532710280374
+            ],
+            "proof_layout_ci95": [
+              -0.028037383177570093,
+              -0.09813084112149532,
+              0.037383177570093455
+            ],
+            "added": 17,
+            "lost": 15
+          },
+          "wrong_branch": {
+            "actual": [
+              -0.028037383177570093,
+              -0.12149532710280374,
+              0.056074766355140186
+            ],
+            "proof_layout_ci95": [
+              0.02336448598130841,
+              -0.04205607476635514,
+              0.09345794392523364
+            ],
+            "added": 10,
+            "lost": 13
+          },
+          "time_s": {
+            "actual": [
+              5.35140186915888,
+              4.794345794392525,
+              5.905607476635515
+            ],
+            "proof_layout_ci95": [
+              5.392523364485982,
+              4.840829439252337,
+              5.940210280373834
+            ],
+            "added": 105,
+            "lost": 1
+          },
+          "travel_mm": {
+            "actual": [
+              98.47839591415554,
+              87.15423129970252,
+              109.6306778864206
+            ],
+            "proof_layout_ci95": [
+              100.106830321571,
+              88.73866165148576,
+              111.29349102804136
+            ],
+            "added": 103,
+            "lost": 4
+          },
+          "mm": {
+            "actual": [
+              -2.657632203859704,
+              -9.518828803802204,
+              3.7197821697342066
+            ],
+            "proof_layout_ci95": [
+              0.41735704368520005,
+              -5.21479502704656,
+              5.588824019030991
+            ],
+            "added": 51,
+            "lost": 55
+          },
+          "longest_mm": {
+            "actual": [
+              0.2669240737629828,
+              -3.729390407722687,
+              4.545984707146048
+            ],
+            "proof_layout_ci95": [
+              0.22845280727493428,
+              -4.0885488028838255,
+              4.292640826635273
+            ],
+            "added": 31,
+            "lost": 42
+          }
+        },
+        "student_new_vs_PPO_only_new": {
+          "strict": {
+            "actual": [
+              0.037383177570093455,
+              -0.056074766355140186,
+              0.1308411214953271
+            ],
+            "proof_layout_ci95": [
+              -0.009345794392523364,
+              -0.0794392523364486,
+              0.06542056074766354
+            ],
+            "added": 16,
+            "lost": 12
+          },
+          "wrong_branch": {
+            "actual": [
+              -0.028037383177570093,
+              -0.08411214953271028,
+              0.028037383177570093
+            ],
+            "proof_layout_ci95": [
+              -0.009345794392523364,
+              -0.07476635514018691,
+              0.0514018691588785
+            ],
+            "added": 4,
+            "lost": 7
+          },
+          "time_s": {
+            "actual": [
+              1.4401869158878506,
+              1.0480607476635515,
+              1.8570560747663556
+            ],
+            "proof_layout_ci95": [
+              1.414018691588785,
+              1.02589953271028,
+              1.826191588785047
+            ],
+            "added": 77,
+            "lost": 26
+          },
+          "travel_mm": {
+            "actual": [
+              26.099850142212023,
+              16.82424074414379,
+              36.197139462673555
+            ],
+            "proof_layout_ci95": [
+              24.796297791624948,
+              15.789719836335186,
+              34.666058820495486
+            ],
+            "added": 73,
+            "lost": 31
+          },
+          "mm": {
+            "actual": [
+              -5.742465224221488,
+              -13.353945110000181,
+              2.1564799709854845
+            ],
+            "proof_layout_ci95": [
+              -2.081284781482732,
+              -7.960027716092974,
+              4.066360044033728
+            ],
+            "added": 46,
+            "lost": 54
+          },
+          "longest_mm": {
+            "actual": [
+              -2.6856831612988055,
+              -7.75375057358608,
+              2.593682064074223
+            ],
+            "proof_layout_ci95": [
+              -0.6217117933469398,
+              -3.735626791570788,
+              2.474264434119253
+            ],
+            "added": 26,
+            "lost": 34
+          }
+        },
+        "student_old_vs_PPO_only_old": {
+          "strict": {
+            "actual": [
+              0.028037383177570093,
+              -0.06542056074766354,
+              0.12149532710280374
+            ],
+            "proof_layout_ci95": [
+              0.0,
+              -0.07721962616822425,
+              0.0794392523364486
+            ],
+            "added": 15,
+            "lost": 12
+          },
+          "wrong_branch": {
+            "actual": [
+              -0.028037383177570093,
+              -0.12149532710280374,
+              0.06542056074766354
+            ],
+            "proof_layout_ci95": [
+              0.009345794392523364,
+              -0.06542056074766354,
+              0.0794392523364486
+            ],
+            "added": 11,
+            "lost": 14
+          },
+          "time_s": {
+            "actual": [
+              1.448598130841122,
+              1.0499766355140185,
+              1.8687149532710285
+            ],
+            "proof_layout_ci95": [
+              1.463084112149533,
+              1.0742990654205604,
+              1.8736098130841123
+            ],
+            "added": 76,
+            "lost": 27
+          },
+          "travel_mm": {
+            "actual": [
+              26.302215725999005,
+              16.88535235749586,
+              36.28759878189354
+            ],
+            "proof_layout_ci95": [
+              26.10865078678762,
+              16.943996215633664,
+              35.91685522913394
+            ],
+            "added": 72,
+            "lost": 32
+          },
+          "mm": {
+            "actual": [
+              -3.11751221273547,
+              -10.244929832387193,
+              4.413016969912523
+            ],
+            "proof_layout_ci95": [
+              -1.420481744213639,
+              -6.873354770981263,
+              4.488581322286732
+            ],
+            "added": 41,
+            "lost": 61
+          },
+          "longest_mm": {
+            "actual": [
+              -0.043816700159946334,
+              -4.883594044123854,
+              4.8792265673664135
+            ],
+            "proof_layout_ci95": [
+              -0.6329937426843376,
+              -3.156780308874968,
+              2.02532074340036
+            ],
+            "added": 23,
+            "lost": 27
+          }
+        },
+        "student_new_vs_MPC_old": {
+          "strict": {
+            "actual": [
+              0.14018691588785046,
+              0.037383177570093455,
+              0.24299065420560748
+            ],
+            "proof_layout_ci95": [
+              0.06074766355140187,
+              -0.018691588785046728,
+              0.13551401869158877
+            ],
+            "added": 23,
+            "lost": 8
+          },
+          "wrong_branch": {
+            "actual": [
+              -0.16822429906542055,
+              -0.2523364485981308,
+              -0.08411214953271028
+            ],
+            "proof_layout_ci95": [
+              -0.056074766355140186,
+              -0.1261682242990654,
+              0.018691588785046728
+            ],
+            "added": 4,
+            "lost": 22
+          },
+          "time_s": {
+            "actual": [
+              6.791588785046731,
+              6.30605140186916,
+              7.2990654205607495
+            ],
+            "proof_layout_ci95": [
+              6.806542056074767,
+              6.315151869158879,
+              7.3075
+            ],
+            "added": 107,
+            "lost": 0
+          },
+          "travel_mm": {
+            "actual": [
+              124.57824605636756,
+              113.8347344870804,
+              135.4922025316928
+            ],
+            "proof_layout_ci95": [
+              124.90312811319595,
+              114.10064979585142,
+              136.00520339247524
+            ],
+            "added": 104,
+            "lost": 3
+          },
+          "mm": {
+            "actual": [
+              19.27610736026942,
+              11.965484558533285,
+              26.35782701011016
+            ],
+            "proof_layout_ci95": [
+              23.49964926175982,
+              17.09861987996324,
+              29.847694461145135
+            ],
+            "added": 76,
+            "lost": 31
+          },
+          "longest_mm": {
+            "actual": [
+              -0.3280407201463931,
+              -4.682974770804432,
+              4.457404403151753
+            ],
+            "proof_layout_ci95": [
+              0.5613674359900929,
+              -3.541632160962185,
+              4.661208283121343
+            ],
+            "added": 39,
+            "lost": 34
+          }
+        }
+      },
+      "strict_factorial_interaction": {
+        "actual": [
+          -0.009345794392523364,
+          -0.14018691588785046,
+          0.12149532710280374
+        ],
+        "proof_layout_ci95": [
+          -0.0514018691588785,
+          -0.13551401869158877,
+          0.028037383177570093
+        ]
+      }
+    }
+  },
+  "supplementary_bc": {
+    "physical_executions": 480,
+    "scores_sha256": "d9c8fe5e6289d2dbac25367806106146833edcbffe2aa0095c219e3a02ae2077",
+    "freeze_sha256": "754de79cd87ee70ac498bab3bdaeb75d7ba927a92bffbbf1e6e0a4f5bf5c614b"
+  }
+}

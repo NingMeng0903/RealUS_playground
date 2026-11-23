@@ -1,0 +1,43 @@
+{
+  "metrics": {
+    "complete": 64,
+    "macros": 1604,
+    "actions": {
+      "continue": 682,
+      "hold": 303,
+      "shift_right": 165,
+      "shift_left": 159,
+      "revisit_right": 122,
+      "revisit_left": 109,
+      "finish": 64
+    },
+    "strict": 27,
+    "wrong_branch": 5
+  },
+  "cuda": {
+    "loss": 0.3091379404067993,
+    "actor_loss": -0.0005846603307873011,
+    "critic_loss": 0.6517000198364258,
+    "entropy": 1.0751591920852661,
+    "teacher_loss": 0.0,
+    "kl": 3.497190118650906e-05,
+    "clip_fraction": 0.0,
+    "device": "cuda:0",
+    "actor_parameters": 8871,
+    "critic_parameters": 1825,
+    "optimizer_steps": 12,
+    "gradient_norm_max": 1.8547438383102417,
+    "actor_delta_l2": 0.47810715436935425,
+    "critic_delta_l2": 0.22412820160388947,
+    "cuda_optimizer_step_verified": true,
+    "routes": 64,
+    "macro_steps": 1604,
+    "duration_ticks_min": 0,
+    "duration_ticks_max": 47,
+    "duration_ticks_total": 22908,
+    "gamma_per_macro": 1.0,
+    "gae_lambda_per_macro": 0.92,
+    "teacher_labelled_states": 0
+  },
+  "protocol_sha256": "7d3a086291493cc6d0cbe465fc99eb1e081174a4c95582d945dd959a314198da"
+}

@@ -1,0 +1,11 @@
+{
+  "protocol_sha256": "7d3a086291493cc6d0cbe465fc99eb1e081174a4c95582d945dd959a314198da",
+  "primary_freeze_sha256": "98a9aa483156890b2251d04dbf529e3ba76b788035a8d10d56ded37cc75f35d9",
+  "bc_actor_sha256": "7426a401a3a7815198aca12e036d0febe225147051f209b4062ba6297e7d91f8",
+  "reader_sha256": "1e7de7e3c88729069a1ef033514460c735315135b25aa158e465ae0a8e342628",
+  "source_sha256": "c99bf416314bf83f3f490da223dcbf1058b8d2776e680903f7b5e3c9ce105f71",
+  "action_rule": "sample",
+  "arm": "BC_new",
+  "devices": "frozen CPU rollout",
+  "purpose": "supplementary pre-PPO policy; no primary selection change"
+}

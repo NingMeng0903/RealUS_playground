@@ -1,0 +1,68 @@
+{
+  "base_git": "0e498eb2f4702f2efed997389cc8e09917f3dc47",
+  "atlas_sha256": "aad4100d6e594de6279a2297fae3c5cb6e84a68077bfde56435113d5b0c352d5",
+  "reader_sha256": "1e7de7e3c88729069a1ef033514460c735315135b25aa158e465ae0a8e342628",
+  "sources": {
+    "study_v9.py": "a474e2944c4a2a940e2bdc51cd21902caaa6ea6569f13f9d5416e79e2cb3ee08",
+    "public_v9.py": "966f5c18b11f36f2e1aa07a0e953ca3e0691e65314f6c75d4a3d54d1659b0b61",
+    "reader_v9.py": "d55abff43c71c8f1a28f82f42f7e5f63d0674be52656652706935360069e9154",
+    "policy_v9.py": "5b7015fd960b542f88c558e5ba5126abd8ad8341805f0fcff779a8f81abcf1dd",
+    "scan_v9.py": "4cbae254ddac62b3776dbde823de4dc8fde6272ff221e9603c3a6f1602620d18",
+    "teacher_v9.py": "b966dc3b7cbc867bc562a8c2267cf25f234fcf7c9e706fa1aa11a6f30e3f9b16",
+    "run_v9.py": "8d9a8d703b12d185925fa44b6abf0d837962ddbc061dac14d1e2e91adc2a8e2f"
+  },
+  "roster_seeds": {
+    "smoke": 6419240000000000,
+    "bc": 6419250000000000,
+    "train": 6419260000000000,
+    "dev": 6419270000000000,
+    "test": 6419280000000000,
+    "reader_confirm": 6419290000000000
+  },
+  "student_seed": 261124090,
+  "rounds_per_branch": 12,
+  "cases_per_round": 96,
+  "common_smoke": 64,
+  "common_BC": 128,
+  "development_layouts": 48,
+  "independent_test_layouts": 160,
+  "arms": [
+    "MPC_old",
+    "MPC_new",
+    "student_old",
+    "student_new",
+    "PPO_only_old",
+    "PPO_only_new"
+  ],
+  "actions": [
+    "continue",
+    "shift_left",
+    "shift_right",
+    "hold",
+    "revisit_left",
+    "revisit_right",
+    "finish"
+  ],
+  "validation_selection": "post-PPO checkpoint; full-route strict then wrong, femoral strict then wrong, then time; greedy and sampled",
+  "teacher_execution_budget": "one actual visited prefix in selected episodes, at most three legal actions, two paired tapes",
+  "new_old_training": "independent seeded reader assignment per layout; both policies initialized from identical BC",
+  "score_tapes": [
+    null,
+    9100000000000,
+    9200000000000
+  ],
+  "teacher_tapes": [
+    10100000000000,
+    10200000000000
+  ],
+  "teacher_auxiliary_weight": 0.12,
+  "teacher_estimate_blend": 0.35,
+  "dense_reward": "delta .62 correct/6 + .14 correct mm + .16 consecutive mm - .45 wrong branch/6 - .16 artifact/6, length normalized; 2.50 strict at stop",
+  "scope": {
+    "dird": false,
+    "medseg": false,
+    "blender_opened": false,
+    "controller_intervention_stride_stations": 5,
+    "course_motion": "common legal forward MPC, steering, fixed hold, checked returning feedback ProDMP, legal finish"
+  }
+}

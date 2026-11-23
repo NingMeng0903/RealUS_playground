@@ -1,0 +1,586 @@
+{
+  "ppo_only": {
+    "002": {
+      "actor_sha256": "a24195f83e8f7b66d03f5dd16f37d72e2c3210b80893d60328f92113486e4ed9",
+      "protocol_sha256": "7d3a086291493cc6d0cbe465fc99eb1e081174a4c95582d945dd959a314198da",
+      "scores": {
+        "femoral": {
+          "mpc_old": {
+            "layouts": 16,
+            "strict": 10,
+            "wrong_branch": 0,
+            "time_s": 8.5
+          },
+          "mpc_new": {
+            "layouts": 16,
+            "strict": 11,
+            "wrong_branch": 0,
+            "time_s": 8.5
+          },
+          "greedy_new": {
+            "layouts": 16,
+            "strict": 11,
+            "wrong_branch": 0,
+            "time_s": 8.5
+          },
+          "sample_new": {
+            "layouts": 16,
+            "strict": 10,
+            "wrong_branch": 0,
+            "time_s": 11.16875
+          }
+        },
+        "groin_to_distal_calf": {
+          "mpc_old": {
+            "layouts": 32,
+            "strict": 17,
+            "wrong_branch": 10,
+            "time_s": 31.559375000000003
+          },
+          "mpc_new": {
+            "layouts": 32,
+            "strict": 19,
+            "wrong_branch": 8,
+            "time_s": 31.559375000000003
+          },
+          "greedy_new": {
+            "layouts": 32,
+            "strict": 19,
+            "wrong_branch": 8,
+            "time_s": 31.559375000000003
+          },
+          "sample_new": {
+            "layouts": 32,
+            "strict": 20,
+            "wrong_branch": 4,
+            "time_s": 37.896875
+          }
+        }
+      }
+    },
+    "005": {
+      "actor_sha256": "c210385e766a4c73dc0f8ae8de59c02daf94931d838ed5ed8e89f3036d7a0934",
+      "protocol_sha256": "7d3a086291493cc6d0cbe465fc99eb1e081174a4c95582d945dd959a314198da",
+      "scores": {
+        "femoral": {
+          "mpc_old": {
+            "layouts": 16,
+            "strict": 10,
+            "wrong_branch": 0,
+            "time_s": 8.5
+          },
+          "mpc_new": {
+            "layouts": 16,
+            "strict": 11,
+            "wrong_branch": 0,
+            "time_s": 8.5
+          },
+          "greedy_new": {
+            "layouts": 16,
+            "strict": 11,
+            "wrong_branch": 0,
+            "time_s": 8.5
+          },
+          "sample_new": {
+            "layouts": 16,
+            "strict": 10,
+            "wrong_branch": 0,
+            "time_s": 12.193750000000001
+          }
+        },
+        "groin_to_distal_calf": {
+          "mpc_old": {
+            "layouts": 32,
+            "strict": 17,
+            "wrong_branch": 10,
+            "time_s": 31.559375000000003
+          },
+          "mpc_new": {
+            "layouts": 32,
+            "strict": 19,
+            "wrong_branch": 8,
+            "time_s": 31.559375000000003
+          },
+          "greedy_new": {
+            "layouts": 32,
+            "strict": 19,
+            "wrong_branch": 8,
+            "time_s": 31.559375000000003
+          },
+          "sample_new": {
+            "layouts": 32,
+            "strict": 20,
+            "wrong_branch": 7,
+            "time_s": 40.81875000000001
+          }
+        }
+      }
+    },
+    "008": {
+      "actor_sha256": "89c824616e5061b7c47260fec56ff62f0d00979f4546f79f3a2a84a32de65ee1",
+      "protocol_sha256": "7d3a086291493cc6d0cbe465fc99eb1e081174a4c95582d945dd959a314198da",
+      "scores": {
+        "femoral": {
+          "mpc_old": {
+            "layouts": 16,
+            "strict": 10,
+            "wrong_branch": 0,
+            "time_s": 8.5
+          },
+          "mpc_new": {
+            "layouts": 16,
+            "strict": 11,
+            "wrong_branch": 0,
+            "time_s": 8.5
+          },
+          "greedy_new": {
+            "layouts": 16,
+            "strict": 11,
+            "wrong_branch": 0,
+            "time_s": 8.5
+          },
+          "sample_new": {
+            "layouts": 16,
+            "strict": 10,
+            "wrong_branch": 0,
+            "time_s": 13.64375
+          }
+        },
+        "groin_to_distal_calf": {
+          "mpc_old": {
+            "layouts": 32,
+            "strict": 17,
+            "wrong_branch": 10,
+            "time_s": 31.559375000000003
+          },
+          "mpc_new": {
+            "layouts": 32,
+            "strict": 19,
+            "wrong_branch": 8,
+            "time_s": 31.559375000000003
+          },
+          "greedy_new": {
+            "layouts": 32,
+            "strict": 19,
+            "wrong_branch": 8,
+            "time_s": 31.559375000000003
+          },
+          "sample_new": {
+            "layouts": 32,
+            "strict": 18,
+            "wrong_branch": 8,
+            "time_s": 42.171875
+          }
+        }
+      }
+    },
+    "011": {
+      "actor_sha256": "6e2d337c079b2d7f79e80da6b53dbb4acca77b534b6b0c0a6d7320903bf2f30e",
+      "protocol_sha256": "7d3a086291493cc6d0cbe465fc99eb1e081174a4c95582d945dd959a314198da",
+      "scores": {
+        "femoral": {
+          "mpc_old": {
+            "layouts": 16,
+            "strict": 10,
+            "wrong_branch": 0,
+            "time_s": 8.5
+          },
+          "mpc_new": {
+            "layouts": 16,
+            "strict": 11,
+            "wrong_branch": 0,
+            "time_s": 8.5
+          },
+          "greedy_new": {
+            "layouts": 16,
+            "strict": 11,
+            "wrong_branch": 0,
+            "time_s": 8.5
+          },
+          "sample_new": {
+            "layouts": 16,
+            "strict": 11,
+            "wrong_branch": 0,
+            "time_s": 16.0125
+          }
+        },
+        "groin_to_distal_calf": {
+          "mpc_old": {
+            "layouts": 32,
+            "strict": 17,
+            "wrong_branch": 10,
+            "time_s": 31.559375000000003
+          },
+          "mpc_new": {
+            "layouts": 32,
+            "strict": 19,
+            "wrong_branch": 8,
+            "time_s": 31.559375000000003
+          },
+          "greedy_new": {
+            "layouts": 32,
+            "strict": 19,
+            "wrong_branch": 8,
+            "time_s": 31.559375000000003
+          },
+          "sample_new": {
+            "layouts": 32,
+            "strict": 19,
+            "wrong_branch": 8,
+            "time_s": 43.21875
+          }
+        }
+      }
+    },
+    "bc": {
+      "actor_sha256": "7426a401a3a7815198aca12e036d0febe225147051f209b4062ba6297e7d91f8",
+      "protocol_sha256": "7d3a086291493cc6d0cbe465fc99eb1e081174a4c95582d945dd959a314198da",
+      "scores": {
+        "femoral": {
+          "mpc_old": {
+            "layouts": 16,
+            "strict": 10,
+            "wrong_branch": 0,
+            "time_s": 8.5
+          },
+          "mpc_new": {
+            "layouts": 16,
+            "strict": 11,
+            "wrong_branch": 0,
+            "time_s": 8.5
+          },
+          "greedy_new": {
+            "layouts": 16,
+            "strict": 11,
+            "wrong_branch": 0,
+            "time_s": 8.5
+          },
+          "sample_new": {
+            "layouts": 16,
+            "strict": 10,
+            "wrong_branch": 0,
+            "time_s": 11.10625
+          }
+        },
+        "groin_to_distal_calf": {
+          "mpc_old": {
+            "layouts": 32,
+            "strict": 17,
+            "wrong_branch": 10,
+            "time_s": 31.559375000000003
+          },
+          "mpc_new": {
+            "layouts": 32,
+            "strict": 19,
+            "wrong_branch": 8,
+            "time_s": 31.559375000000003
+          },
+          "greedy_new": {
+            "layouts": 32,
+            "strict": 19,
+            "wrong_branch": 8,
+            "time_s": 31.559375000000003
+          },
+          "sample_new": {
+            "layouts": 32,
+            "strict": 20,
+            "wrong_branch": 3,
+            "time_s": 36.178125
+          }
+        }
+      }
+    }
+  },
+  "teacher": {
+    "002": {
+      "actor_sha256": "57e8ebab40339de5e2c03874cd81b177d0fbf66dd7b231c5abb6e6de005428da",
+      "protocol_sha256": "7d3a086291493cc6d0cbe465fc99eb1e081174a4c95582d945dd959a314198da",
+      "scores": {
+        "femoral": {
+          "mpc_old": {
+            "layouts": 16,
+            "strict": 10,
+            "wrong_branch": 0,
+            "time_s": 8.5
+          },
+          "mpc_new": {
+            "layouts": 16,
+            "strict": 11,
+            "wrong_branch": 0,
+            "time_s": 8.5
+          },
+          "greedy_new": {
+            "layouts": 16,
+            "strict": 11,
+            "wrong_branch": 0,
+            "time_s": 8.5
+          },
+          "sample_new": {
+            "layouts": 16,
+            "strict": 10,
+            "wrong_branch": 0,
+            "time_s": 11.16875
+          }
+        },
+        "groin_to_distal_calf": {
+          "mpc_old": {
+            "layouts": 32,
+            "strict": 17,
+            "wrong_branch": 10,
+            "time_s": 31.559375000000003
+          },
+          "mpc_new": {
+            "layouts": 32,
+            "strict": 19,
+            "wrong_branch": 8,
+            "time_s": 31.559375000000003
+          },
+          "greedy_new": {
+            "layouts": 32,
+            "strict": 19,
+            "wrong_branch": 8,
+            "time_s": 31.559375000000003
+          },
+          "sample_new": {
+            "layouts": 32,
+            "strict": 21,
+            "wrong_branch": 3,
+            "time_s": 37.775
+          }
+        }
+      }
+    },
+    "005": {
+      "actor_sha256": "b38d43a378d465615d143a68ca12e991e3f4706c218fa48074c9c30a7241c4a4",
+      "protocol_sha256": "7d3a086291493cc6d0cbe465fc99eb1e081174a4c95582d945dd959a314198da",
+      "scores": {
+        "femoral": {
+          "mpc_old": {
+            "layouts": 16,
+            "strict": 10,
+            "wrong_branch": 0,
+            "time_s": 8.5
+          },
+          "mpc_new": {
+            "layouts": 16,
+            "strict": 11,
+            "wrong_branch": 0,
+            "time_s": 8.5
+          },
+          "greedy_new": {
+            "layouts": 16,
+            "strict": 11,
+            "wrong_branch": 0,
+            "time_s": 8.5
+          },
+          "sample_new": {
+            "layouts": 16,
+            "strict": 8,
+            "wrong_branch": 0,
+            "time_s": 11.83125
+          }
+        },
+        "groin_to_distal_calf": {
+          "mpc_old": {
+            "layouts": 32,
+            "strict": 17,
+            "wrong_branch": 10,
+            "time_s": 31.559375000000003
+          },
+          "mpc_new": {
+            "layouts": 32,
+            "strict": 19,
+            "wrong_branch": 8,
+            "time_s": 31.559375000000003
+          },
+          "greedy_new": {
+            "layouts": 32,
+            "strict": 19,
+            "wrong_branch": 8,
+            "time_s": 31.559375000000003
+          },
+          "sample_new": {
+            "layouts": 32,
+            "strict": 22,
+            "wrong_branch": 5,
+            "time_s": 40.246875
+          }
+        }
+      }
+    },
+    "008": {
+      "actor_sha256": "187452d5c1c6d66c1f2decb6ef612d12b9fc69dd343647960f69b9232c7ccfed",
+      "protocol_sha256": "7d3a086291493cc6d0cbe465fc99eb1e081174a4c95582d945dd959a314198da",
+      "scores": {
+        "femoral": {
+          "mpc_old": {
+            "layouts": 16,
+            "strict": 10,
+            "wrong_branch": 0,
+            "time_s": 8.5
+          },
+          "mpc_new": {
+            "layouts": 16,
+            "strict": 11,
+            "wrong_branch": 0,
+            "time_s": 8.5
+          },
+          "greedy_new": {
+            "layouts": 16,
+            "strict": 11,
+            "wrong_branch": 0,
+            "time_s": 8.5
+          },
+          "sample_new": {
+            "layouts": 16,
+            "strict": 12,
+            "wrong_branch": 0,
+            "time_s": 12.431250000000002
+          }
+        },
+        "groin_to_distal_calf": {
+          "mpc_old": {
+            "layouts": 32,
+            "strict": 17,
+            "wrong_branch": 10,
+            "time_s": 31.559375000000003
+          },
+          "mpc_new": {
+            "layouts": 32,
+            "strict": 19,
+            "wrong_branch": 8,
+            "time_s": 31.559375000000003
+          },
+          "greedy_new": {
+            "layouts": 32,
+            "strict": 19,
+            "wrong_branch": 8,
+            "time_s": 31.559375000000003
+          },
+          "sample_new": {
+            "layouts": 32,
+            "strict": 20,
+            "wrong_branch": 7,
+            "time_s": 41.340625
+          }
+        }
+      }
+    },
+    "011": {
+      "actor_sha256": "a128dded43e69d38cae245d4d7c470b2e495fe5983686abf63ece430eefb6ce7",
+      "protocol_sha256": "7d3a086291493cc6d0cbe465fc99eb1e081174a4c95582d945dd959a314198da",
+      "scores": {
+        "femoral": {
+          "mpc_old": {
+            "layouts": 16,
+            "strict": 10,
+            "wrong_branch": 0,
+            "time_s": 8.5
+          },
+          "mpc_new": {
+            "layouts": 16,
+            "strict": 11,
+            "wrong_branch": 0,
+            "time_s": 8.5
+          },
+          "greedy_new": {
+            "layouts": 16,
+            "strict": 11,
+            "wrong_branch": 0,
+            "time_s": 8.5
+          },
+          "sample_new": {
+            "layouts": 16,
+            "strict": 12,
+            "wrong_branch": 0,
+            "time_s": 15.09375
+          }
+        },
+        "groin_to_distal_calf": {
+          "mpc_old": {
+            "layouts": 32,
+            "strict": 17,
+            "wrong_branch": 10,
+            "time_s": 31.559375000000003
+          },
+          "mpc_new": {
+            "layouts": 32,
+            "strict": 19,
+            "wrong_branch": 8,
+            "time_s": 31.559375000000003
+          },
+          "greedy_new": {
+            "layouts": 32,
+            "strict": 19,
+            "wrong_branch": 8,
+            "time_s": 31.559375000000003
+          },
+          "sample_new": {
+            "layouts": 32,
+            "strict": 15,
+            "wrong_branch": 6,
+            "time_s": 42.871875
+          }
+        }
+      }
+    },
+    "bc": {
+      "actor_sha256": "7426a401a3a7815198aca12e036d0febe225147051f209b4062ba6297e7d91f8",
+      "protocol_sha256": "7d3a086291493cc6d0cbe465fc99eb1e081174a4c95582d945dd959a314198da",
+      "scores": {
+        "femoral": {
+          "mpc_old": {
+            "layouts": 16,
+            "strict": 10,
+            "wrong_branch": 0,
+            "time_s": 8.5
+          },
+          "mpc_new": {
+            "layouts": 16,
+            "strict": 11,
+            "wrong_branch": 0,
+            "time_s": 8.5
+          },
+          "greedy_new": {
+            "layouts": 16,
+            "strict": 11,
+            "wrong_branch": 0,
+            "time_s": 8.5
+          },
+          "sample_new": {
+            "layouts": 16,
+            "strict": 10,
+            "wrong_branch": 0,
+            "time_s": 11.10625
+          }
+        },
+        "groin_to_distal_calf": {
+          "mpc_old": {
+            "layouts": 32,
+            "strict": 17,
+            "wrong_branch": 10,
+            "time_s": 31.559375000000003
+          },
+          "mpc_new": {
+            "layouts": 32,
+            "strict": 19,
+            "wrong_branch": 8,
+            "time_s": 31.559375000000003
+          },
+          "greedy_new": {
+            "layouts": 32,
+            "strict": 19,
+            "wrong_branch": 8,
+            "time_s": 31.559375000000003
+          },
+          "sample_new": {
+            "layouts": 32,
+            "strict": 20,
+            "wrong_branch": 3,
+            "time_s": 36.178125
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "protocol_sha256": "7d3a086291493cc6d0cbe465fc99eb1e081174a4c95582d945dd959a314198da",
+  "actors": {
+    "ppo_only": {
+      "development_key": [
+        20,
+        -4,
+        10,
+        0,
+        -37.896875
+      ],
+      "checkpoint": "002",
+      "source_actor_sha256": "a24195f83e8f7b66d03f5dd16f37d72e2c3210b80893d60328f92113486e4ed9",
+      "actor_only_sha256": "ac60f29e4d3ee1b8112fbc37524b4d825e8f5f462e1cf0bc36ee4191791f71d6",
+      "action_rule": "sample"
+    },
+    "teacher": {
+      "development_key": [
+        22,
+        -5,
+        8,
+        0,
+        -40.246875
+      ],
+      "checkpoint": "005",
+      "source_actor_sha256": "b38d43a378d465615d143a68ca12e991e3f4706c218fa48074c9c30a7241c4a4",
+      "actor_only_sha256": "9d156c121b369d918ce0162354de639030c625b43fa9f790640be330baf92896",
+      "action_rule": "sample"
+    }
+  },
+  "reader_sha256": "1e7de7e3c88729069a1ef033514460c735315135b25aa158e465ae0a8e342628"
+}
