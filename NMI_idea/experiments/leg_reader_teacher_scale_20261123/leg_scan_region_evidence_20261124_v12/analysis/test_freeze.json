@@ -1,0 +1,12 @@
+{
+  "protocol_sha256": "9601c13e45d555393e249c93686b216d4160a42e6bd53cf2b6fb4224c2c970cb",
+  "model": "r1_v1",
+  "rule": {
+    "margin": 0.06,
+    "r5_weight": 0.035
+  },
+  "actor_sha256": "1a9babc5ed0cfc9f9ac09044e9725224361d93a89af210f90646364a5298768a",
+  "reader_sha256": "5cdce7f7badcc54dc20bde295d45bef18b5cab19c7b4be4a09a232924e70857b",
+  "association_sha256": "3f986d97e2b44ad6ec36988a8bea9081988d82b5b7e19d95fddfb0d3e7d3d6b9",
+  "blend": 1.0
+}

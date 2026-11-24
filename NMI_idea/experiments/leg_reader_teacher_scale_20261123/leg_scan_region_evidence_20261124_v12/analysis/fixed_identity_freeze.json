@@ -1,0 +1,6 @@
+{
+  "source_sha256": "453c49660997d630bd6affc5306bc688448d132f6c944e09562ccaa7dae35418",
+  "test_sha256": "dc588e88673fcd5da0778c7a4578790c5d749b3f4feefaac7793880275502d18",
+  "scan_freeze": "6845f3d581fb2cca428aecf2aa46ca25e066c5c08d7012f8d8c610264edce66d",
+  "design": "latch only pre-program role and delivery scores for candidates in queried tracks; replay all interventions"
+}

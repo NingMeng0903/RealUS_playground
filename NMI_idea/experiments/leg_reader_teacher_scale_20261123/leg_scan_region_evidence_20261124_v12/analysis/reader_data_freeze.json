@@ -1,0 +1,27 @@
+{
+  "atlas_sha256": "aad4100d6e594de6279a2297fae3c5cb6e84a68077bfde56435113d5b0c352d5",
+  "actor_sha256": "c75ec017f36a005e3f9db4bcfdba43f8c12f99dc4f7bbd6afd9546494656581c",
+  "reader_sha256": "5bf341e5262e37194ced028d104fbe5b227f9acb01f954fc7bf0fb8c3441f609",
+  "sources": {
+    "replay_v11.py": "cdc51f83c0eecb930ac5a4e4471e04ca70aaa7ae6ca4fc14eab768a2b9504596",
+    "track_state.py": "ed3fbaf36c2b646a74383f2c2852c261faaeda66cf79f1d2ef0912b915af6b91",
+    "closed_scan.py": "df3805baf4145d1ae937dbb1bbb525b308c021d9d45090fb5e8b0200640d686f",
+    "data_v12.py": "94b14b906938ebb920109d17c0ba92b391d48a8073a6d2c675b6833af27ce563"
+  },
+  "layout_seeds": {
+    "fit": 8202730000000000,
+    "cal": 8202730001000000,
+    "reader_dev": 8202730002000000,
+    "teach_fit": 8202730003000000,
+    "teach_cal": 8202730004000000,
+    "policy_dev": 8202730005000000,
+    "test": 8202730006000000,
+    "femoral": 8202730007000000
+  },
+  "cohorts": {
+    "fit": 168,
+    "cal": 42,
+    "reader_dev": 48
+  },
+  "acquisition": "common v10 history to the end of R5, legal sound-window and bridge traces, same v10 continuation"
+}

@@ -1,0 +1,18 @@
+{
+  "student_sha256": "d13b1ece63c287973466bc448bea0874d1d6435cb1a41c9c3ed217df4e238ae5",
+  "follow_rule": {
+    "margin": 0.06,
+    "r5_weight": 0.035
+  },
+  "eval_tapes": [
+    [
+      182715831,
+      182735891
+    ],
+    182815979
+  ],
+  "rows": {
+    "adapt_fit": 48,
+    "adapt_cal": 24
+  }
+}

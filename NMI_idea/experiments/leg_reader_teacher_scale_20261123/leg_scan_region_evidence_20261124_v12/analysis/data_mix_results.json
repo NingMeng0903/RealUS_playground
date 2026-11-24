@@ -1,0 +1,72 @@
+{
+  "freeze_sha256": "9efb7aded784d2ecca050b03b22023bf34dc498b9061c3713f196a6f11d0c4c0",
+  "results": {
+    "ordinary": {
+      "strict": 115,
+      "wrong": 50,
+      "r5_correct": 159,
+      "r5_artery": 14,
+      "layout_count": 48,
+      "trajectories": 192,
+      "checkpoint_sha256": "a337fe98ee8565c8d40b17d1d4373a6deb022af5d5933bfe630dfc9bccd045a2"
+    },
+    "relative_anatomy": {
+      "strict": 118,
+      "wrong": 52,
+      "r5_correct": 162,
+      "r5_artery": 10,
+      "layout_count": 48,
+      "trajectories": 192,
+      "checkpoint_sha256": "66529a3e11dadd8db18246a07fba09cf9be694923c852cdd877a5bc9796f8a13",
+      "paired_strict_wrong_r5_artery": [
+        [
+          0.015625,
+          0.010416666666666666,
+          0.015625,
+          -0.020833333333333332
+        ],
+        [
+          -0.03125,
+          -0.03125,
+          -0.03125,
+          -0.0625
+        ],
+        [
+          0.06770833333333333,
+          0.052083333333333336,
+          0.0625,
+          0.015625
+        ]
+      ]
+    },
+    "targeted_recovery": {
+      "strict": 114,
+      "wrong": 52,
+      "r5_correct": 161,
+      "r5_artery": 17,
+      "layout_count": 48,
+      "trajectories": 192,
+      "checkpoint_sha256": "bbd9ca46d55bd2a1e6622febf47f7307826c11935dd51b03bf7669cf887d62f9",
+      "paired_strict_wrong_r5_artery": [
+        [
+          -0.005208333333333333,
+          0.010416666666666666,
+          0.010416666666666666,
+          0.015625
+        ],
+        [
+          -0.08854166666666667,
+          -0.06770833333333333,
+          -0.078125,
+          -0.036458333333333336
+        ],
+        [
+          0.078125,
+          0.09375,
+          0.08854166666666667,
+          0.08333333333333333
+        ]
+      ]
+    }
+  }
+}

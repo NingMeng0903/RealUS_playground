@@ -1,0 +1,49 @@
+{
+  "source": {
+    "data_v12.py": "94b14b906938ebb920109d17c0ba92b391d48a8073a6d2c675b6833af27ce563",
+    "closed_scan.py": "df3805baf4145d1ae937dbb1bbb525b308c021d9d45090fb5e8b0200640d686f",
+    "track_state.py": "ed3fbaf36c2b646a74383f2c2852c261faaeda66cf79f1d2ef0912b915af6b91",
+    "fit_v12.py": "f6e1faef9fa41be2303aa76be552b6456bcb7fcb7704141dba3ee6da071194fe",
+    "region_policy.py": "455d25cab0dfef16593de1714db057bffffd3cd96f86e44b63ee24049765e16b",
+    "run_v12.py": "33c87e833be24dffa8a5741db241017c73d98683a2f12d5225a040bc153bd98f",
+    "replay_v11.py": "cdc51f83c0eecb930ac5a4e4471e04ca70aaa7ae6ca4fc14eab768a2b9504596"
+  },
+  "atlas_sha256": "aad4100d6e594de6279a2297fae3c5cb6e84a68077bfde56435113d5b0c352d5",
+  "reader_data_sha256": "4e1740c84b7ca2ac0b391e01454d20830087472b7535c744d988158c18e9bf6d",
+  "reader_manifest_sha256": "1a12a9c7b7ee344e1e251eaba709084c5de231aa462aa3809a01eb6b74ede092",
+  "actor_sha256": "c75ec017f36a005e3f9db4bcfdba43f8c12f99dc4f7bbd6afd9546494656581c",
+  "v10_reader_sha256": "5bf341e5262e37194ced028d104fbe5b227f9acb01f954fc7bf0fb8c3441f609",
+  "geometry_reader_sha256": "48c6a7acb4095b8ef1de550065549b6a4d22bdf7ec358533c1dcfc5cab5e7253",
+  "v11_model_sha256": "c5e93eacafda93cc70f8db2fa0fe1c7343e24047708d80cd364be547039e3a9b",
+  "heldout_tapes": [
+    null,
+    176145763,
+    176215945
+  ],
+  "search_tapes": [
+    182715831,
+    182735891
+  ],
+  "teacher_proof": 182815979,
+  "settings_seed": {
+    "fit": 8202730000000000,
+    "cal": 8202730001000000,
+    "reader_dev": 8202730002000000,
+    "teach_fit": 8202730003000000,
+    "teach_cal": 8202730004000000,
+    "policy_dev": 8202730005000000,
+    "test": 8202730006000000,
+    "femoral": 8202730007000000
+  },
+  "refine_seed_offset": 320000,
+  "main_comparison": "joint versus v11 geometry with v10 reader, strict delivery and wrong branch",
+  "counts": {
+    "teach_fit": 132,
+    "teach_cal": 42,
+    "adapt_fit": 48,
+    "adapt_cal": 24,
+    "policy_dev": 48,
+    "test": 108,
+    "femoral": 36
+  }
+}
