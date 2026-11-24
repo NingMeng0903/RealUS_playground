@@ -1,0 +1,68 @@
+{
+  "cal": {
+    "layouts": 64,
+    "events": {
+      "completed": 64,
+      "v10_strict": 44,
+      "v12_strict": 42,
+      "relative": 0,
+      "acoustic": 0,
+      "r6_wrong": 13,
+      "multi_region": 53,
+      "multiple_programs": 62,
+      "exact_old_candidate_pairs": 0,
+      "r6_a_wrong_b_target": 5
+    },
+    "programs_by_region": {
+      "5": 174,
+      "4": 102,
+      "6": 23
+    }
+  },
+  "reader_dev": {
+    "layouts": 72,
+    "events": {
+      "completed": 72,
+      "v10_strict": 51,
+      "v12_strict": 44,
+      "relative": 0,
+      "acoustic": 0,
+      "r6_wrong": 11,
+      "multi_region": 66,
+      "multiple_programs": 68,
+      "exact_old_candidate_pairs": 0,
+      "r6_a_wrong_b_target": 5
+    },
+    "programs_by_region": {
+      "4": 134,
+      "5": 187,
+      "6": 27
+    }
+  },
+  "fit": {
+    "layouts": 1024,
+    "events": {
+      "completed": 1024,
+      "v10_strict": 734,
+      "v12_strict": 677,
+      "relative": 98,
+      "acoustic": 256,
+      "r6_wrong": 161,
+      "multi_region": 896,
+      "multiple_programs": 988,
+      "exact_old_candidate_pairs": 10227,
+      "r6_a_wrong_b_target": 67,
+      "edits": 213,
+      "r6_edits": 110,
+      "edit_proof_strict": 44,
+      "edit_both_strict": 22,
+      "edit_proof_correct_region": 54,
+      "edit_wrong": 96
+    },
+    "programs_by_region": {
+      "4": 1898,
+      "5": 2636,
+      "6": 374
+    }
+  }
+}

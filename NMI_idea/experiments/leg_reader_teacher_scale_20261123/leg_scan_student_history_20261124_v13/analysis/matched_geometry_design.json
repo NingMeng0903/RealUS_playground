@@ -1,0 +1,20 @@
+{
+  "frozen_test_sha256": "a3ab1b9c302b0fb04d914bafe146b45952172d9ec9eb60fbdfc25a1291c14072",
+  "source_sha256": "d8867aa4c476c8bf983f5f8149903c944821f75a537dcf14475ac82fe16a59dd",
+  "grid": [
+    0.04,
+    0.08,
+    0.12,
+    0.16,
+    0.2,
+    0.23
+  ],
+  "bands": [
+    null,
+    226208173,
+    226249871
+  ],
+  "calibration": 48,
+  "confirm": 108,
+  "criterion": "choose by mean acquisition time on development; the holdout is never used to select"
+}

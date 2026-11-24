@@ -1,0 +1,40 @@
+{
+  "sources": {
+    "trajectory_v13.py": "79359ff8f731a369594623681a7e1be409367bf970b47826b5f56afa864dbc31",
+    "collect_v13.py": "79009561418505c48c698fbd5851f9ee289ef5220795642e78cb91e25edee578"
+  },
+  "atlas_sha256": "aad4100d6e594de6279a2297fae3c5cb6e84a68077bfde56435113d5b0c352d5",
+  "base_freeze": "6845f3d581fb2cca428aecf2aa46ca25e066c5c08d7012f8d8c610264edce66d",
+  "model_hashes": {
+    "edge": "3f986d97e2b44ad6ec36988a8bea9081988d82b5b7e19d95fddfb0d3e7d3d6b9",
+    "reader": "5cdce7f7badcc54dc20bde295d45bef18b5cab19c7b4be4a09a232924e70857b",
+    "student": "1a9babc5ed0cfc9f9ac09044e9725224361d93a89af210f90646364a5298768a",
+    "v10_reader": "5bf341e5262e37194ced028d104fbe5b227f9acb01f954fc7bf0fb8c3441f609",
+    "v10_actor": "c75ec017f36a005e3f9db4bcfdba43f8c12f99dc4f7bbd6afd9546494656581c"
+  },
+  "counts": {
+    "cal": 64,
+    "reader_dev": 72,
+    "fit": 1024
+  },
+  "seeds": {
+    "fit": 8420130000000000,
+    "cal": 8420130001000000,
+    "reader_dev": 8420130002000000,
+    "teach": 8420130003000000,
+    "teach_cal": 8420130004000000,
+    "policy_dev": 8420130005000000,
+    "test": 8420130006000000,
+    "femoral": 8420130007000000
+  },
+  "case_layout": "original route/source, fixed anatomy per scan, acoustic and relative layout perturbations on fit only",
+  "v12_rule": {
+    "margin": 0.06,
+    "r5_weight": 0.035
+  },
+  "edit_tapes": [
+    222668201,
+    222668271
+  ],
+  "shard": 12
+}

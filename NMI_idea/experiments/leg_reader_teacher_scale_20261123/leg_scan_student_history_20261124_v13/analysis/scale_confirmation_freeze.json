@@ -1,0 +1,19 @@
+{
+  "sources": {
+    "scale_v13.py": "cab711906198a44dbf47f2367aacdeb4b55c38224f0db8089bad18963cbeef15"
+  },
+  "test_freeze_sha256": "a3ab1b9c302b0fb04d914bafe146b45952172d9ec9eb60fbdfc25a1291c14072",
+  "heads": {
+    "random_256": "118ddec1cc8d5bf853395a7b5d06e653d564c6f803f5cece8c075fd67ffb36f1",
+    "random_512": "b253472cc6c0cc5291ed3db6a8554b735b5a3e2dafce49f65d1f17ad361fa22f",
+    "random_1024": "2ac9b591b39fbf6ac654caffde44dbc683ee3326bce0e9b15a11a3e4c926daf7",
+    "failure_512": "ff8be7c34bbad20ec978441f960e951e8c36820ef70cb6c92282a0589bc59b45",
+    "edited_512": "a54accd8ba3d954d06379a0db5bd1047ea838f539782b53bae37f3e0b4a9453b"
+  },
+  "bands": [
+    null,
+    226208173,
+    226249871
+  ],
+  "scope": "fixed original v12 acquisition and all saved preselected checkpoints; no reselection"
+}

@@ -1,0 +1,30 @@
+{
+  "training_sha256": "61059f8af414ab4b1a6ab8cc96ab2176a06c9e05b6aa63fa7167b0ec76a48aa9",
+  "candidate": "random_256",
+  "candidate_sha256": "118ddec1cc8d5bf853395a7b5d06e653d564c6f803f5cece8c075fd67ffb36f1",
+  "terminal_mode": "new",
+  "v10_dev": {
+    "layouts": 72,
+    "strict": 51,
+    "wrong": 7,
+    "r6_correct": 62,
+    "r6_artery": 4,
+    "r6_reject": 0
+  },
+  "v12_dev": {
+    "layouts": 72,
+    "strict": 44,
+    "wrong": 15,
+    "r6_correct": 61,
+    "r6_artery": 7,
+    "r6_reject": 0
+  },
+  "candidate_dev": {
+    "layouts": 72,
+    "strict": 52,
+    "wrong": 5,
+    "r6_correct": 65,
+    "r6_artery": 0,
+    "r6_reject": 1
+  }
+}

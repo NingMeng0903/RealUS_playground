@@ -1,0 +1,68 @@
+{
+  "protocol_sha256": "c79316e00500feb7b92b6821460769537239fe0ee6effc9bb05dad982e8139e1",
+  "teacher_sha256": "bf1ad94ab9f195b27940d3fa26ccc1e9c16b25ddda79682125a387568ae55790",
+  "reader_mode": "new",
+  "reader_sha256": "118ddec1cc8d5bf853395a7b5d06e653d564c6f803f5cece8c075fd67ffb36f1",
+  "actor_sha256": "b7eb3265c58720a56c87b48ba7067a9716ab17828bb07a8995071db2b656620e",
+  "selection": {
+    "selected": "student_0",
+    "candidate": "student_0",
+    "comparison": {
+      "v12_same_reader": {
+        "strict": 29,
+        "wrong": 10,
+        "r6_correct": 37,
+        "mean_seconds": 109.30625000000002
+      },
+      "student_0": {
+        "strict": 30,
+        "wrong": 12,
+        "r6_correct": 38,
+        "mean_seconds": 96.96458333333334
+      },
+      "student_1": {
+        "strict": 29,
+        "wrong": 10,
+        "r6_correct": 36,
+        "mean_seconds": 81.02499999999999
+      },
+      "student_2": {
+        "strict": 27,
+        "wrong": 11,
+        "r6_correct": 35,
+        "mean_seconds": 53.60208333333333
+      },
+      "geometry_0.25": {
+        "strict": 27,
+        "wrong": 10,
+        "r6_correct": 38,
+        "mean_seconds": 75.02708333333335
+      },
+      "geometry_0.38": {
+        "strict": 29,
+        "wrong": 10,
+        "r6_correct": 35,
+        "mean_seconds": 45.36041666666667
+      },
+      "geometry_0.49": {
+        "strict": 27,
+        "wrong": 16,
+        "r6_correct": 35,
+        "mean_seconds": 41.96666666666667
+      },
+      "geometry_0.59": {
+        "strict": 26,
+        "wrong": 16,
+        "r6_correct": 33,
+        "mean_seconds": 38.483333333333334
+      }
+    },
+    "geometry": "geometry_0.25",
+    "geometry_target_s": 96.96458333333334,
+    "candidate_rule": {
+      "margin": 0.02,
+      "r6_bias": 0.0
+    },
+    "geometry_threshold": 0.25
+  }
+}
