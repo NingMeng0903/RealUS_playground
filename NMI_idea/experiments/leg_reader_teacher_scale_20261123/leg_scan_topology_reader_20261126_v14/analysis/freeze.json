@@ -1,0 +1,49 @@
+{
+  "models": {
+    "relative": {
+      "model_sha256": "24d0196ab6a67f42e908f921c7fccd22605103bd846c1d14899ba8ace71f5e45",
+      "checkpoint_sha256": "acf0b16d50e6471f706b1f666bcbf9af204d8316749fc455cfc9ec1efe1c8216",
+      "selected": {
+        "strict": 52,
+        "wrong": 5,
+        "r6_correct": 66,
+        "r6_artery": 0,
+        "r6_wrong_branch": 2,
+        "r6_reject": 1,
+        "r6_ghost_or_blend": 3,
+        "changed": 5,
+        "possible": 72,
+        "captured": 72
+      },
+      "parity_max": 2.384185791015625e-07
+    },
+    "graph": {
+      "model_sha256": "ed08a60719890d687d0096d7fb310dcef998a987e688eb55e0ff91865ef19cae",
+      "checkpoint_sha256": "f02dbaec0566ef119be3b70127c9275b1cb2b9056e059ed9cebbe1586617a5f9",
+      "selected": {
+        "strict": 53,
+        "wrong": 5,
+        "r6_correct": 67,
+        "r6_artery": 0,
+        "r6_wrong_branch": 2,
+        "r6_reject": 0,
+        "r6_ghost_or_blend": 3,
+        "changed": 4,
+        "possible": 72,
+        "captured": 72
+      },
+      "parity_max": 2.384185791015625e-07
+    }
+  },
+  "swap_invariance_verified": true,
+  "protocol_sha256": "7cefcae40f533a59946b133e308cd54ad929d70d9b2938dfd0771051a5d6e4c5",
+  "selection_rule": "Developer strict deliveries, then fewer wrong branches and R6 success; no test selection",
+  "readout_scope": "R6 only on the subsequential frozen acquisition. Full six-region strict and wrong branches scored.",
+  "comparison": "v13 / v14 relative layout only / v14 graph",
+  "r6_joint_outcomes": [
+    "A",
+    "B",
+    "unknown"
+  ],
+  "bootstrap_seed": 282717611
+}

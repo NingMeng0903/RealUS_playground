@@ -1,0 +1,65 @@
+{
+  "fit": {
+    "layouts": 1024,
+    "baseline": {
+      "strict": 727,
+      "wrong": 156,
+      "r6_correct": 881,
+      "r6_artery": 74,
+      "r6_wrong_branch": 80,
+      "r6_reject": 7,
+      "r6_ghost_or_blend": 56,
+      "changed": 0,
+      "possible": 1015,
+      "captured": 1024
+    },
+    "proposal_coverage": {
+      "A_and_B": 874,
+      "alternative_only": 130,
+      "candidate_correct": 1015,
+      "no_target_proposal": 9
+    }
+  },
+  "cal": {
+    "layouts": 64,
+    "baseline": {
+      "strict": 42,
+      "wrong": 9,
+      "r6_correct": 50,
+      "r6_artery": 6,
+      "r6_wrong_branch": 6,
+      "r6_reject": 0,
+      "r6_ghost_or_blend": 8,
+      "changed": 0,
+      "possible": 63,
+      "captured": 64
+    },
+    "proposal_coverage": {
+      "A_and_B": 50,
+      "alternative_only": 13,
+      "candidate_correct": 63,
+      "no_target_proposal": 1
+    }
+  },
+  "dev": {
+    "layouts": 72,
+    "baseline": {
+      "strict": 52,
+      "wrong": 5,
+      "r6_correct": 65,
+      "r6_artery": 0,
+      "r6_wrong_branch": 2,
+      "r6_reject": 1,
+      "r6_ghost_or_blend": 4,
+      "changed": 0,
+      "possible": 72,
+      "captured": 72
+    },
+    "proposal_coverage": {
+      "A_and_B": 65,
+      "alternative_only": 6,
+      "candidate_correct": 72,
+      "no_target_proposal": 0
+    }
+  }
+}

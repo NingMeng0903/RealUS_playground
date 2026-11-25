@@ -1,0 +1,61 @@
+{
+  "actual_frozen_public_histories": 12,
+  "rigid_transverse_shift_mm": [
+    31.0,
+    -22.0
+  ],
+  "max_feature_change": 0.0,
+  "same_A_B_candidates": true,
+  "all_motif_terms_equal": true,
+  "scope": "conditional structural graph diagnostic; association IDs, public role mixture and legacy unary held fixed",
+  "cases": [
+    {
+      "case": "v13_reader_dev_00000",
+      "max_feature_change": 0.0
+    },
+    {
+      "case": "v13_reader_dev_00001",
+      "max_feature_change": 0.0
+    },
+    {
+      "case": "v13_reader_dev_00002",
+      "max_feature_change": 0.0
+    },
+    {
+      "case": "v13_reader_dev_00003",
+      "max_feature_change": 0.0
+    },
+    {
+      "case": "v13_reader_dev_00004",
+      "max_feature_change": 0.0
+    },
+    {
+      "case": "v13_reader_dev_00005",
+      "max_feature_change": 0.0
+    },
+    {
+      "case": "v13_reader_dev_00006",
+      "max_feature_change": 0.0
+    },
+    {
+      "case": "v13_reader_dev_00007",
+      "max_feature_change": 0.0
+    },
+    {
+      "case": "v13_reader_dev_00008",
+      "max_feature_change": 0.0
+    },
+    {
+      "case": "v13_reader_dev_00009",
+      "max_feature_change": 0.0
+    },
+    {
+      "case": "v13_reader_dev_00010",
+      "max_feature_change": 0.0
+    },
+    {
+      "case": "v13_reader_dev_00011",
+      "max_feature_change": 0.0
+    }
+  ]
+}

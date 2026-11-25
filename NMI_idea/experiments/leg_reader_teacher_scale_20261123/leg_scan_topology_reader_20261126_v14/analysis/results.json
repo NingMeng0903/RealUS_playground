@@ -1,0 +1,1019 @@
+{
+  "test_layouts": 108,
+  "invalid_warps": [
+    {
+      "case": "v13_test_00089",
+      "band": "deformation",
+      "invalid_warp": {
+        "fraction": 0.0,
+        "reason": "no checked R6 transform",
+        "rejected": {
+          "bone": 58,
+          "skin": 14
+        }
+      }
+    }
+  ],
+  "branches": {
+    "actual": {
+      "layouts": 108,
+      "v13": {
+        "strict": 78,
+        "wrong": 13,
+        "r6_correct": 90,
+        "r6_artery": 6,
+        "r6_wrong_branch": 7,
+        "r6_reject": 2,
+        "r6_ghost_or_blend": 9,
+        "changed": 0,
+        "possible": 108,
+        "captured": 108
+      },
+      "relative": {
+        "strict": 78,
+        "wrong": 13,
+        "r6_correct": 90,
+        "r6_artery": 6,
+        "r6_wrong_branch": 7,
+        "r6_reject": 2,
+        "r6_ghost_or_blend": 9,
+        "changed": 3,
+        "possible": 108,
+        "captured": 108,
+        "paired": {
+          "strict": {
+            "gained": 0,
+            "lost": 0,
+            "net": 0
+          },
+          "wrong": {
+            "gained": 0,
+            "lost": 0,
+            "net": 0
+          },
+          "r6_correct": {
+            "gained": 0,
+            "lost": 0,
+            "net": 0
+          },
+          "r6_wrong_branch": {
+            "gained": 0,
+            "lost": 0,
+            "net": 0
+          },
+          "r6_artery": {
+            "gained": 0,
+            "lost": 0,
+            "net": 0
+          }
+        },
+        "layout_ci": {
+          "strict": {
+            "point_pp": 0.0,
+            "ci95_pp": [
+              0.0,
+              0.0
+            ]
+          },
+          "wrong": {
+            "point_pp": 0.0,
+            "ci95_pp": [
+              0.0,
+              0.0
+            ]
+          },
+          "r6_correct": {
+            "point_pp": 0.0,
+            "ci95_pp": [
+              0.0,
+              0.0
+            ]
+          },
+          "r6_wrong_branch": {
+            "point_pp": 0.0,
+            "ci95_pp": [
+              0.0,
+              0.0
+            ]
+          },
+          "r6_artery": {
+            "point_pp": 0.0,
+            "ci95_pp": [
+              0.0,
+              0.0
+            ]
+          }
+        }
+      },
+      "graph": {
+        "strict": 79,
+        "wrong": 14,
+        "r6_correct": 91,
+        "r6_artery": 7,
+        "r6_wrong_branch": 8,
+        "r6_reject": 2,
+        "r6_ghost_or_blend": 7,
+        "changed": 4,
+        "possible": 108,
+        "captured": 108,
+        "paired": {
+          "strict": {
+            "gained": 1,
+            "lost": 0,
+            "net": 1
+          },
+          "wrong": {
+            "gained": 1,
+            "lost": 0,
+            "net": 1
+          },
+          "r6_correct": {
+            "gained": 1,
+            "lost": 0,
+            "net": 1
+          },
+          "r6_wrong_branch": {
+            "gained": 1,
+            "lost": 0,
+            "net": 1
+          },
+          "r6_artery": {
+            "gained": 1,
+            "lost": 0,
+            "net": 1
+          }
+        },
+        "layout_ci": {
+          "strict": {
+            "point_pp": 0.9259259259259259,
+            "ci95_pp": [
+              0.0,
+              2.7777777777777777
+            ]
+          },
+          "wrong": {
+            "point_pp": 0.9259259259259259,
+            "ci95_pp": [
+              0.0,
+              2.7777777777777777
+            ]
+          },
+          "r6_correct": {
+            "point_pp": 0.9259259259259259,
+            "ci95_pp": [
+              0.0,
+              2.7777777777777777
+            ]
+          },
+          "r6_wrong_branch": {
+            "point_pp": 0.9259259259259259,
+            "ci95_pp": [
+              0.0,
+              2.7777777777777777
+            ]
+          },
+          "r6_artery": {
+            "point_pp": 0.9259259259259259,
+            "ci95_pp": [
+              0.0,
+              2.7777777777777777
+            ]
+          }
+        }
+      }
+    },
+    "proof_0": {
+      "layouts": 108,
+      "v13": {
+        "strict": 67,
+        "wrong": 17,
+        "r6_correct": 93,
+        "r6_artery": 5,
+        "r6_wrong_branch": 8,
+        "r6_reject": 0,
+        "r6_ghost_or_blend": 7,
+        "changed": 0,
+        "possible": 104,
+        "captured": 108
+      },
+      "relative": {
+        "strict": 67,
+        "wrong": 17,
+        "r6_correct": 93,
+        "r6_artery": 5,
+        "r6_wrong_branch": 8,
+        "r6_reject": 0,
+        "r6_ghost_or_blend": 7,
+        "changed": 6,
+        "possible": 104,
+        "captured": 108,
+        "paired": {
+          "strict": {
+            "gained": 0,
+            "lost": 0,
+            "net": 0
+          },
+          "wrong": {
+            "gained": 0,
+            "lost": 0,
+            "net": 0
+          },
+          "r6_correct": {
+            "gained": 0,
+            "lost": 0,
+            "net": 0
+          },
+          "r6_wrong_branch": {
+            "gained": 0,
+            "lost": 0,
+            "net": 0
+          },
+          "r6_artery": {
+            "gained": 0,
+            "lost": 0,
+            "net": 0
+          }
+        },
+        "layout_ci": {
+          "strict": {
+            "point_pp": 0.0,
+            "ci95_pp": [
+              0.0,
+              0.0
+            ]
+          },
+          "wrong": {
+            "point_pp": 0.0,
+            "ci95_pp": [
+              0.0,
+              0.0
+            ]
+          },
+          "r6_correct": {
+            "point_pp": 0.0,
+            "ci95_pp": [
+              0.0,
+              0.0
+            ]
+          },
+          "r6_wrong_branch": {
+            "point_pp": 0.0,
+            "ci95_pp": [
+              0.0,
+              0.0
+            ]
+          },
+          "r6_artery": {
+            "point_pp": 0.0,
+            "ci95_pp": [
+              0.0,
+              0.0
+            ]
+          }
+        }
+      },
+      "graph": {
+        "strict": 68,
+        "wrong": 16,
+        "r6_correct": 93,
+        "r6_artery": 4,
+        "r6_wrong_branch": 7,
+        "r6_reject": 0,
+        "r6_ghost_or_blend": 8,
+        "changed": 9,
+        "possible": 104,
+        "captured": 108,
+        "paired": {
+          "strict": {
+            "gained": 1,
+            "lost": 0,
+            "net": 1
+          },
+          "wrong": {
+            "gained": 0,
+            "lost": 1,
+            "net": -1
+          },
+          "r6_correct": {
+            "gained": 1,
+            "lost": 1,
+            "net": 0
+          },
+          "r6_wrong_branch": {
+            "gained": 0,
+            "lost": 1,
+            "net": -1
+          },
+          "r6_artery": {
+            "gained": 0,
+            "lost": 1,
+            "net": -1
+          }
+        },
+        "layout_ci": {
+          "strict": {
+            "point_pp": 0.9259259259259259,
+            "ci95_pp": [
+              0.0,
+              2.7777777777777777
+            ]
+          },
+          "wrong": {
+            "point_pp": -0.9259259259259259,
+            "ci95_pp": [
+              -2.7777777777777777,
+              0.0
+            ]
+          },
+          "r6_correct": {
+            "point_pp": 0.0,
+            "ci95_pp": [
+              -2.7777777777777777,
+              2.7777777777777777
+            ]
+          },
+          "r6_wrong_branch": {
+            "point_pp": -0.9259259259259259,
+            "ci95_pp": [
+              -2.7777777777777777,
+              0.0
+            ]
+          },
+          "r6_artery": {
+            "point_pp": -0.9259259259259259,
+            "ci95_pp": [
+              -2.7777777777777777,
+              0.0
+            ]
+          }
+        }
+      }
+    },
+    "proof_1": {
+      "layouts": 108,
+      "v13": {
+        "strict": 71,
+        "wrong": 20,
+        "r6_correct": 91,
+        "r6_artery": 5,
+        "r6_wrong_branch": 8,
+        "r6_reject": 6,
+        "r6_ghost_or_blend": 3,
+        "changed": 0,
+        "possible": 107,
+        "captured": 108
+      },
+      "relative": {
+        "strict": 71,
+        "wrong": 20,
+        "r6_correct": 91,
+        "r6_artery": 5,
+        "r6_wrong_branch": 8,
+        "r6_reject": 6,
+        "r6_ghost_or_blend": 3,
+        "changed": 4,
+        "possible": 107,
+        "captured": 108,
+        "paired": {
+          "strict": {
+            "gained": 0,
+            "lost": 0,
+            "net": 0
+          },
+          "wrong": {
+            "gained": 0,
+            "lost": 0,
+            "net": 0
+          },
+          "r6_correct": {
+            "gained": 0,
+            "lost": 0,
+            "net": 0
+          },
+          "r6_wrong_branch": {
+            "gained": 0,
+            "lost": 0,
+            "net": 0
+          },
+          "r6_artery": {
+            "gained": 0,
+            "lost": 0,
+            "net": 0
+          }
+        },
+        "layout_ci": {
+          "strict": {
+            "point_pp": 0.0,
+            "ci95_pp": [
+              0.0,
+              0.0
+            ]
+          },
+          "wrong": {
+            "point_pp": 0.0,
+            "ci95_pp": [
+              0.0,
+              0.0
+            ]
+          },
+          "r6_correct": {
+            "point_pp": 0.0,
+            "ci95_pp": [
+              0.0,
+              0.0
+            ]
+          },
+          "r6_wrong_branch": {
+            "point_pp": 0.0,
+            "ci95_pp": [
+              0.0,
+              0.0
+            ]
+          },
+          "r6_artery": {
+            "point_pp": 0.0,
+            "ci95_pp": [
+              0.0,
+              0.0
+            ]
+          }
+        }
+      },
+      "graph": {
+        "strict": 71,
+        "wrong": 20,
+        "r6_correct": 91,
+        "r6_artery": 5,
+        "r6_wrong_branch": 8,
+        "r6_reject": 6,
+        "r6_ghost_or_blend": 3,
+        "changed": 4,
+        "possible": 107,
+        "captured": 108,
+        "paired": {
+          "strict": {
+            "gained": 0,
+            "lost": 0,
+            "net": 0
+          },
+          "wrong": {
+            "gained": 0,
+            "lost": 0,
+            "net": 0
+          },
+          "r6_correct": {
+            "gained": 0,
+            "lost": 0,
+            "net": 0
+          },
+          "r6_wrong_branch": {
+            "gained": 0,
+            "lost": 0,
+            "net": 0
+          },
+          "r6_artery": {
+            "gained": 0,
+            "lost": 0,
+            "net": 0
+          }
+        },
+        "layout_ci": {
+          "strict": {
+            "point_pp": 0.0,
+            "ci95_pp": [
+              0.0,
+              0.0
+            ]
+          },
+          "wrong": {
+            "point_pp": 0.0,
+            "ci95_pp": [
+              0.0,
+              0.0
+            ]
+          },
+          "r6_correct": {
+            "point_pp": 0.0,
+            "ci95_pp": [
+              0.0,
+              0.0
+            ]
+          },
+          "r6_wrong_branch": {
+            "point_pp": 0.0,
+            "ci95_pp": [
+              0.0,
+              0.0
+            ]
+          },
+          "r6_artery": {
+            "point_pp": 0.0,
+            "ci95_pp": [
+              0.0,
+              0.0
+            ]
+          }
+        }
+      }
+    },
+    "translation": {
+      "layouts": 108,
+      "v13": {
+        "strict": 39,
+        "wrong": 13,
+        "r6_correct": 46,
+        "r6_artery": 6,
+        "r6_wrong_branch": 9,
+        "r6_reject": 39,
+        "r6_ghost_or_blend": 14,
+        "changed": 0,
+        "possible": 106,
+        "captured": 108
+      },
+      "realized_geometry": {
+        "r6_median_mm": 3.6000000000000014,
+        "r6_max_mm": 3.600000000000005,
+        "max_rotation_degrees": 0.0
+      },
+      "relative": {
+        "strict": 43,
+        "wrong": 13,
+        "r6_correct": 52,
+        "r6_artery": 6,
+        "r6_wrong_branch": 8,
+        "r6_reject": 34,
+        "r6_ghost_or_blend": 14,
+        "changed": 7,
+        "possible": 106,
+        "captured": 108,
+        "paired": {
+          "strict": {
+            "gained": 4,
+            "lost": 0,
+            "net": 4
+          },
+          "wrong": {
+            "gained": 0,
+            "lost": 0,
+            "net": 0
+          },
+          "r6_correct": {
+            "gained": 6,
+            "lost": 0,
+            "net": 6
+          },
+          "r6_wrong_branch": {
+            "gained": 0,
+            "lost": 1,
+            "net": -1
+          },
+          "r6_artery": {
+            "gained": 0,
+            "lost": 0,
+            "net": 0
+          }
+        },
+        "layout_ci": {
+          "strict": {
+            "point_pp": 3.7037037037037037,
+            "ci95_pp": [
+              0.9259259259259259,
+              7.407407407407407
+            ]
+          },
+          "wrong": {
+            "point_pp": 0.0,
+            "ci95_pp": [
+              0.0,
+              0.0
+            ]
+          },
+          "r6_correct": {
+            "point_pp": 5.555555555555555,
+            "ci95_pp": [
+              1.8518518518518519,
+              10.185185185185185
+            ]
+          },
+          "r6_wrong_branch": {
+            "point_pp": -0.9259259259259259,
+            "ci95_pp": [
+              -2.7777777777777777,
+              0.0
+            ]
+          },
+          "r6_artery": {
+            "point_pp": 0.0,
+            "ci95_pp": [
+              0.0,
+              0.0
+            ]
+          }
+        }
+      },
+      "graph": {
+        "strict": 44,
+        "wrong": 14,
+        "r6_correct": 53,
+        "r6_artery": 7,
+        "r6_wrong_branch": 9,
+        "r6_reject": 35,
+        "r6_ghost_or_blend": 11,
+        "changed": 8,
+        "possible": 106,
+        "captured": 108,
+        "paired": {
+          "strict": {
+            "gained": 5,
+            "lost": 0,
+            "net": 5
+          },
+          "wrong": {
+            "gained": 1,
+            "lost": 0,
+            "net": 1
+          },
+          "r6_correct": {
+            "gained": 7,
+            "lost": 0,
+            "net": 7
+          },
+          "r6_wrong_branch": {
+            "gained": 1,
+            "lost": 1,
+            "net": 0
+          },
+          "r6_artery": {
+            "gained": 1,
+            "lost": 0,
+            "net": 1
+          }
+        },
+        "layout_ci": {
+          "strict": {
+            "point_pp": 4.62962962962963,
+            "ci95_pp": [
+              0.9259259259259259,
+              9.25925925925926
+            ]
+          },
+          "wrong": {
+            "point_pp": 0.9259259259259259,
+            "ci95_pp": [
+              0.0,
+              2.7777777777777777
+            ]
+          },
+          "r6_correct": {
+            "point_pp": 6.481481481481482,
+            "ci95_pp": [
+              1.8518518518518519,
+              11.11111111111111
+            ]
+          },
+          "r6_wrong_branch": {
+            "point_pp": 0.0,
+            "ci95_pp": [
+              -2.7777777777777777,
+              2.7777777777777777
+            ]
+          },
+          "r6_artery": {
+            "point_pp": 0.9259259259259259,
+            "ci95_pp": [
+              0.0,
+              2.7777777777777777
+            ]
+          }
+        }
+      }
+    },
+    "deformation": {
+      "layouts": 107,
+      "v13": {
+        "strict": 44,
+        "wrong": 24,
+        "r6_correct": 57,
+        "r6_artery": 16,
+        "r6_wrong_branch": 18,
+        "r6_reject": 6,
+        "r6_ghost_or_blend": 26,
+        "changed": 0,
+        "possible": 99,
+        "captured": 107
+      },
+      "realized_geometry": {
+        "r6_median_mm": 3.3270837359621774,
+        "r6_max_mm": 8.390454246124335,
+        "max_rotation_degrees": 13.059072879823598
+      },
+      "relative": {
+        "strict": 46,
+        "wrong": 23,
+        "r6_correct": 60,
+        "r6_artery": 16,
+        "r6_wrong_branch": 17,
+        "r6_reject": 6,
+        "r6_ghost_or_blend": 24,
+        "changed": 7,
+        "possible": 99,
+        "captured": 107,
+        "paired": {
+          "strict": {
+            "gained": 3,
+            "lost": 1,
+            "net": 2
+          },
+          "wrong": {
+            "gained": 1,
+            "lost": 2,
+            "net": -1
+          },
+          "r6_correct": {
+            "gained": 4,
+            "lost": 1,
+            "net": 3
+          },
+          "r6_wrong_branch": {
+            "gained": 1,
+            "lost": 2,
+            "net": -1
+          },
+          "r6_artery": {
+            "gained": 1,
+            "lost": 1,
+            "net": 0
+          }
+        },
+        "layout_ci": {
+          "strict": {
+            "point_pp": 1.8691588785046729,
+            "ci95_pp": [
+              -1.8691588785046729,
+              5.607476635514018
+            ]
+          },
+          "wrong": {
+            "point_pp": -0.9345794392523364,
+            "ci95_pp": [
+              -4.672897196261682,
+              1.8691588785046729
+            ]
+          },
+          "r6_correct": {
+            "point_pp": 2.803738317757009,
+            "ci95_pp": [
+              -0.9345794392523364,
+              7.4766355140186915
+            ]
+          },
+          "r6_wrong_branch": {
+            "point_pp": -0.9345794392523364,
+            "ci95_pp": [
+              -4.672897196261682,
+              1.8691588785046729
+            ]
+          },
+          "r6_artery": {
+            "point_pp": 0.0,
+            "ci95_pp": [
+              -2.803738317757009,
+              2.803738317757009
+            ]
+          }
+        }
+      },
+      "graph": {
+        "strict": 45,
+        "wrong": 25,
+        "r6_correct": 59,
+        "r6_artery": 19,
+        "r6_wrong_branch": 20,
+        "r6_reject": 6,
+        "r6_ghost_or_blend": 22,
+        "changed": 7,
+        "possible": 99,
+        "captured": 107,
+        "paired": {
+          "strict": {
+            "gained": 2,
+            "lost": 1,
+            "net": 1
+          },
+          "wrong": {
+            "gained": 2,
+            "lost": 1,
+            "net": 1
+          },
+          "r6_correct": {
+            "gained": 3,
+            "lost": 1,
+            "net": 2
+          },
+          "r6_wrong_branch": {
+            "gained": 3,
+            "lost": 1,
+            "net": 2
+          },
+          "r6_artery": {
+            "gained": 3,
+            "lost": 0,
+            "net": 3
+          }
+        },
+        "layout_ci": {
+          "strict": {
+            "point_pp": 0.9345794392523364,
+            "ci95_pp": [
+              -1.8691588785046729,
+              3.7383177570093458
+            ]
+          },
+          "wrong": {
+            "point_pp": 0.9345794392523364,
+            "ci95_pp": [
+              -1.8691588785046729,
+              4.672897196261682
+            ]
+          },
+          "r6_correct": {
+            "point_pp": 1.8691588785046729,
+            "ci95_pp": [
+              -1.8691588785046729,
+              5.607476635514018
+            ]
+          },
+          "r6_wrong_branch": {
+            "point_pp": 1.8691588785046729,
+            "ci95_pp": [
+              -1.8691588785046729,
+              5.607476635514018
+            ]
+          },
+          "r6_artery": {
+            "point_pp": 2.803738317757009,
+            "ci95_pp": [
+              0.0,
+              6.542056074766355
+            ]
+          }
+        }
+      }
+    }
+  },
+  "band_intervals": {
+    "three_tapes": {
+      "relative": {
+        "strict": {
+          "point_pp": 0.0,
+          "ci95_pp": [
+            0.0,
+            0.0
+          ]
+        },
+        "wrong": {
+          "point_pp": 0.0,
+          "ci95_pp": [
+            0.0,
+            0.0
+          ]
+        },
+        "r6_correct": {
+          "point_pp": 0.0,
+          "ci95_pp": [
+            0.0,
+            0.0
+          ]
+        },
+        "r6_wrong_branch": {
+          "point_pp": 0.0,
+          "ci95_pp": [
+            0.0,
+            0.0
+          ]
+        },
+        "r6_artery": {
+          "point_pp": 0.0,
+          "ci95_pp": [
+            0.0,
+            0.0
+          ]
+        }
+      },
+      "graph": {
+        "strict": {
+          "point_pp": 0.6172839506172839,
+          "ci95_pp": [
+            0.0,
+            1.5432098765432096
+          ]
+        },
+        "wrong": {
+          "point_pp": 0.0,
+          "ci95_pp": [
+            -0.9259259259259258,
+            0.9259259259259258
+          ]
+        },
+        "r6_correct": {
+          "point_pp": 0.30864197530864196,
+          "ci95_pp": [
+            -0.6172839506172839,
+            1.5432098765432096
+          ]
+        },
+        "r6_wrong_branch": {
+          "point_pp": 0.0,
+          "ci95_pp": [
+            -0.9259259259259258,
+            0.9259259259259258
+          ]
+        },
+        "r6_artery": {
+          "point_pp": 0.0,
+          "ci95_pp": [
+            -0.9259259259259258,
+            0.9259259259259258
+          ]
+        }
+      }
+    },
+    "proof_only": {
+      "relative": {
+        "strict": {
+          "point_pp": 0.0,
+          "ci95_pp": [
+            0.0,
+            0.0
+          ]
+        },
+        "wrong": {
+          "point_pp": 0.0,
+          "ci95_pp": [
+            0.0,
+            0.0
+          ]
+        },
+        "r6_correct": {
+          "point_pp": 0.0,
+          "ci95_pp": [
+            0.0,
+            0.0
+          ]
+        },
+        "r6_wrong_branch": {
+          "point_pp": 0.0,
+          "ci95_pp": [
+            0.0,
+            0.0
+          ]
+        },
+        "r6_artery": {
+          "point_pp": 0.0,
+          "ci95_pp": [
+            0.0,
+            0.0
+          ]
+        }
+      },
+      "graph": {
+        "strict": {
+          "point_pp": 0.46296296296296297,
+          "ci95_pp": [
+            0.0,
+            1.3888888888888888
+          ]
+        },
+        "wrong": {
+          "point_pp": -0.46296296296296297,
+          "ci95_pp": [
+            -1.3888888888888888,
+            0.0
+          ]
+        },
+        "r6_correct": {
+          "point_pp": 0.0,
+          "ci95_pp": [
+            -1.3888888888888888,
+            1.3888888888888888
+          ]
+        },
+        "r6_wrong_branch": {
+          "point_pp": -0.46296296296296297,
+          "ci95_pp": [
+            -1.3888888888888888,
+            0.0
+          ]
+        },
+        "r6_artery": {
+          "point_pp": -0.46296296296296297,
+          "ci95_pp": [
+            -1.3888888888888888,
+            0.0
+          ]
+        }
+      }
+    }
+  },
+  "mean_time_s_actual": 98.71944444444443
+}

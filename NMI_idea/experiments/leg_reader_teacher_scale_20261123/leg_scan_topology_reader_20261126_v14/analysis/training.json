@@ -1,0 +1,324 @@
+{
+  "relative": {
+    "key": [
+      52,
+      -5,
+      66,
+      0,
+      -5
+    ],
+    "selected": {
+      "strict": 52,
+      "wrong": 5,
+      "r6_correct": 66,
+      "r6_artery": 0,
+      "r6_wrong_branch": 2,
+      "r6_reject": 1,
+      "r6_ghost_or_blend": 3,
+      "changed": 5,
+      "possible": 72,
+      "captured": 72
+    },
+    "parity_max": 2.384185791015625e-07,
+    "history": [
+      {
+        "epoch": 1,
+        "loss": 0.6048698303056881,
+        "dev": {
+          "strict": 52,
+          "wrong": 5,
+          "r6_correct": 65,
+          "r6_artery": 0,
+          "r6_wrong_branch": 2,
+          "r6_reject": 1,
+          "r6_ghost_or_blend": 4,
+          "changed": 0,
+          "possible": 72,
+          "captured": 72
+        },
+        "rule": {
+          "probability": 1.01,
+          "margin": 1.01,
+          "reject": 1.01,
+          "accept": 1.01
+        }
+      },
+      {
+        "epoch": 6,
+        "loss": 0.5309924328466877,
+        "dev": {
+          "strict": 52,
+          "wrong": 5,
+          "r6_correct": 66,
+          "r6_artery": 0,
+          "r6_wrong_branch": 2,
+          "r6_reject": 1,
+          "r6_ghost_or_blend": 3,
+          "changed": 5,
+          "possible": 72,
+          "captured": 72
+        },
+        "rule": {
+          "probability": 0.48,
+          "margin": 0.22,
+          "reject": 0.8,
+          "accept": 0.58
+        }
+      },
+      {
+        "epoch": 12,
+        "loss": 0.5174923849117476,
+        "dev": {
+          "strict": 52,
+          "wrong": 5,
+          "r6_correct": 65,
+          "r6_artery": 0,
+          "r6_wrong_branch": 2,
+          "r6_reject": 1,
+          "r6_ghost_or_blend": 4,
+          "changed": 0,
+          "possible": 72,
+          "captured": 72
+        },
+        "rule": {
+          "probability": 1.01,
+          "margin": 1.01,
+          "reject": 1.01,
+          "accept": 1.01
+        }
+      },
+      {
+        "epoch": 24,
+        "loss": 0.4896438906143885,
+        "dev": {
+          "strict": 52,
+          "wrong": 5,
+          "r6_correct": 65,
+          "r6_artery": 0,
+          "r6_wrong_branch": 2,
+          "r6_reject": 1,
+          "r6_ghost_or_blend": 4,
+          "changed": 0,
+          "possible": 72,
+          "captured": 72
+        },
+        "rule": {
+          "probability": 1.01,
+          "margin": 1.01,
+          "reject": 1.01,
+          "accept": 1.01
+        }
+      },
+      {
+        "epoch": 36,
+        "loss": 0.4245868454017909,
+        "dev": {
+          "strict": 52,
+          "wrong": 5,
+          "r6_correct": 65,
+          "r6_artery": 0,
+          "r6_wrong_branch": 2,
+          "r6_reject": 1,
+          "r6_ghost_or_blend": 4,
+          "changed": 0,
+          "possible": 72,
+          "captured": 72
+        },
+        "rule": {
+          "probability": 1.01,
+          "margin": 1.01,
+          "reject": 1.01,
+          "accept": 1.01
+        }
+      },
+      {
+        "epoch": 48,
+        "loss": 0.35876980697503313,
+        "dev": {
+          "strict": 52,
+          "wrong": 5,
+          "r6_correct": 65,
+          "r6_artery": 0,
+          "r6_wrong_branch": 2,
+          "r6_reject": 1,
+          "r6_ghost_or_blend": 4,
+          "changed": 0,
+          "possible": 72,
+          "captured": 72
+        },
+        "rule": {
+          "probability": 1.01,
+          "margin": 1.01,
+          "reject": 1.01,
+          "accept": 1.01
+        }
+      }
+    ],
+    "parameters": 4826,
+    "updated_cuda_weights": true,
+    "model_sha256": "24d0196ab6a67f42e908f921c7fccd22605103bd846c1d14899ba8ace71f5e45",
+    "checkpoint_sha256": "acf0b16d50e6471f706b1f666bcbf9af204d8316749fc455cfc9ec1efe1c8216"
+  },
+  "graph": {
+    "key": [
+      53,
+      -5,
+      67,
+      0,
+      -4
+    ],
+    "selected": {
+      "strict": 53,
+      "wrong": 5,
+      "r6_correct": 67,
+      "r6_artery": 0,
+      "r6_wrong_branch": 2,
+      "r6_reject": 0,
+      "r6_ghost_or_blend": 3,
+      "changed": 4,
+      "possible": 72,
+      "captured": 72
+    },
+    "parity_max": 2.384185791015625e-07,
+    "history": [
+      {
+        "epoch": 1,
+        "loss": 0.6037424334208481,
+        "dev": {
+          "strict": 52,
+          "wrong": 5,
+          "r6_correct": 65,
+          "r6_artery": 0,
+          "r6_wrong_branch": 2,
+          "r6_reject": 1,
+          "r6_ghost_or_blend": 4,
+          "changed": 0,
+          "possible": 72,
+          "captured": 72
+        },
+        "rule": {
+          "probability": 1.01,
+          "margin": 1.01,
+          "reject": 1.01,
+          "accept": 1.01
+        }
+      },
+      {
+        "epoch": 6,
+        "loss": 0.5259814387827646,
+        "dev": {
+          "strict": 53,
+          "wrong": 5,
+          "r6_correct": 67,
+          "r6_artery": 0,
+          "r6_wrong_branch": 2,
+          "r6_reject": 0,
+          "r6_ghost_or_blend": 3,
+          "changed": 4,
+          "possible": 72,
+          "captured": 72
+        },
+        "rule": {
+          "probability": 0.48,
+          "margin": 0.22,
+          "reject": 0.8,
+          "accept": 0.58
+        }
+      },
+      {
+        "epoch": 12,
+        "loss": 0.5083931873959955,
+        "dev": {
+          "strict": 53,
+          "wrong": 5,
+          "r6_correct": 67,
+          "r6_artery": 0,
+          "r6_wrong_branch": 2,
+          "r6_reject": 0,
+          "r6_ghost_or_blend": 3,
+          "changed": 7,
+          "possible": 72,
+          "captured": 72
+        },
+        "rule": {
+          "probability": 0.48,
+          "margin": 0.22,
+          "reject": 0.8,
+          "accept": 0.58
+        }
+      },
+      {
+        "epoch": 24,
+        "loss": 0.46775886765681207,
+        "dev": {
+          "strict": 52,
+          "wrong": 5,
+          "r6_correct": 65,
+          "r6_artery": 0,
+          "r6_wrong_branch": 2,
+          "r6_reject": 1,
+          "r6_ghost_or_blend": 4,
+          "changed": 0,
+          "possible": 72,
+          "captured": 72
+        },
+        "rule": {
+          "probability": 1.01,
+          "margin": 1.01,
+          "reject": 1.01,
+          "accept": 1.01
+        }
+      },
+      {
+        "epoch": 36,
+        "loss": 0.3939178745204117,
+        "dev": {
+          "strict": 53,
+          "wrong": 5,
+          "r6_correct": 66,
+          "r6_artery": 0,
+          "r6_wrong_branch": 2,
+          "r6_reject": 0,
+          "r6_ghost_or_blend": 4,
+          "changed": 1,
+          "possible": 72,
+          "captured": 72
+        },
+        "rule": {
+          "probability": 0.84,
+          "margin": 0.025,
+          "reject": 0.8,
+          "accept": 0.58
+        }
+      },
+      {
+        "epoch": 48,
+        "loss": 0.3167451217886992,
+        "dev": {
+          "strict": 53,
+          "wrong": 5,
+          "r6_correct": 66,
+          "r6_artery": 0,
+          "r6_wrong_branch": 2,
+          "r6_reject": 0,
+          "r6_ghost_or_blend": 4,
+          "changed": 1,
+          "possible": 72,
+          "captured": 72
+        },
+        "rule": {
+          "probability": 0.75,
+          "margin": 0.025,
+          "reject": 0.8,
+          "accept": 0.58
+        }
+      }
+    ],
+    "parameters": 4826,
+    "updated_cuda_weights": true,
+    "model_sha256": "ed08a60719890d687d0096d7fb310dcef998a987e688eb55e0ff91865ef19cae",
+    "checkpoint_sha256": "f02dbaec0566ef119be3b70127c9275b1cb2b9056e059ed9cebbe1586617a5f9"
+  },
+  "gpu": "NVIDIA GeForce RTX 4080 Laptop GPU",
+  "seed": 26112614
+}

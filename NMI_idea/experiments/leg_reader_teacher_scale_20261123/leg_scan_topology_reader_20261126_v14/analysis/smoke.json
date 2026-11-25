@@ -1,0 +1,27 @@
+{
+  "named_bifurcation_bonus": 0.6016862988471985,
+  "named_confluence_bonus": 0.6016862988471985,
+  "contradiction_bonus": -0.6016862988471985,
+  "missing_bonus": 0.0,
+  "rigid_relation_invariance": true,
+  "checked_bent_branch_bonus": 0.5921411514282227,
+  "zero_warp_baseline_parity": true,
+  "pretraining_developer_replays": {
+    "actual": {
+      "layouts": 4,
+      "capture": 4,
+      "candidate_target_present": 4
+    },
+    "translation": {
+      "layouts": 4,
+      "capture": 4,
+      "candidate_target_present": 4
+    },
+    "deformation": {
+      "layouts": 4,
+      "capture": 4,
+      "candidate_target_present": 4
+    }
+  },
+  "invalid_warps": 0
+}
