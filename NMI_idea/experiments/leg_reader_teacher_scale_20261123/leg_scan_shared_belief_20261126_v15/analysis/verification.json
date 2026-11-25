@@ -1,0 +1,405 @@
+{
+  "layout_count": 108,
+  "paired_tapes": [
+    "actual",
+    "proof_0",
+    "proof_1"
+  ],
+  "matched_early_regions_and_candidates": true,
+  "checked_full_scans": 972,
+  "old_evidence_pairs": 71,
+  "recounted_teacher": {
+    "teach": {
+      "prefixes": 108,
+      "selected_program": 37,
+      "proof_rescue": 7,
+      "proof_loss": 5,
+      "proof_strict": 71,
+      "continue_strict": 69
+    },
+    "teach_cal": {
+      "prefixes": 36,
+      "selected_program": 18,
+      "proof_rescue": 6,
+      "proof_loss": 4,
+      "proof_strict": 23,
+      "continue_strict": 21
+    }
+  },
+  "recounted": {
+    "actual": {
+      "v13": {
+        "strict": 67,
+        "wrong": 19,
+        "r_correct": [
+          108,
+          108,
+          103,
+          94,
+          91,
+          88
+        ],
+        "r_wrong": [
+          0,
+          0,
+          1,
+          6,
+          9,
+          8
+        ]
+      },
+      "v14_terminal": {
+        "strict": 68,
+        "wrong": 19,
+        "r_correct": [
+          108,
+          108,
+          103,
+          94,
+          91,
+          91
+        ],
+        "r_wrong": [
+          0,
+          0,
+          1,
+          6,
+          9,
+          8
+        ]
+      },
+      "v15_terminal": {
+        "strict": 65,
+        "wrong": 19,
+        "r_correct": [
+          108,
+          108,
+          103,
+          92,
+          89,
+          89
+        ],
+        "r_wrong": [
+          0,
+          0,
+          1,
+          5,
+          8,
+          9
+        ]
+      },
+      "v15_online_reference": {
+        "strict": 66,
+        "wrong": 27,
+        "r_correct": [
+          108,
+          108,
+          103,
+          104,
+          89,
+          86
+        ],
+        "r_wrong": [
+          0,
+          0,
+          2,
+          3,
+          11,
+          13
+        ]
+      },
+      "v15_student": {
+        "strict": 67,
+        "wrong": 18,
+        "r_correct": [
+          108,
+          108,
+          103,
+          102,
+          88,
+          90
+        ],
+        "r_wrong": [
+          0,
+          0,
+          2,
+          3,
+          8,
+          6
+        ]
+      }
+    },
+    "proof_0": {
+      "v13": {
+        "strict": 75,
+        "wrong": 21,
+        "r_correct": [
+          108,
+          108,
+          105,
+          99,
+          95,
+          91
+        ],
+        "r_wrong": [
+          0,
+          0,
+          0,
+          4,
+          8,
+          10
+        ]
+      },
+      "v14_terminal": {
+        "strict": 75,
+        "wrong": 21,
+        "r_correct": [
+          108,
+          108,
+          105,
+          99,
+          95,
+          91
+        ],
+        "r_wrong": [
+          0,
+          0,
+          0,
+          4,
+          8,
+          9
+        ]
+      },
+      "v15_terminal": {
+        "strict": 74,
+        "wrong": 23,
+        "r_correct": [
+          108,
+          108,
+          105,
+          100,
+          92,
+          91
+        ],
+        "r_wrong": [
+          0,
+          0,
+          0,
+          4,
+          10,
+          10
+        ]
+      },
+      "v15_online_reference": {
+        "strict": 79,
+        "wrong": 14,
+        "r_correct": [
+          108,
+          108,
+          106,
+          103,
+          95,
+          88
+        ],
+        "r_wrong": [
+          0,
+          0,
+          0,
+          0,
+          7,
+          8
+        ]
+      },
+      "v15_student": {
+        "strict": 71,
+        "wrong": 17,
+        "r_correct": [
+          108,
+          108,
+          106,
+          102,
+          87,
+          92
+        ],
+        "r_wrong": [
+          0,
+          0,
+          0,
+          4,
+          8,
+          8
+        ]
+      }
+    },
+    "proof_1": {
+      "v13": {
+        "strict": 65,
+        "wrong": 23,
+        "r_correct": [
+          106,
+          107,
+          106,
+          99,
+          88,
+          86
+        ],
+        "r_wrong": [
+          0,
+          0,
+          0,
+          5,
+          6,
+          13
+        ]
+      },
+      "v14_terminal": {
+        "strict": 65,
+        "wrong": 23,
+        "r_correct": [
+          106,
+          107,
+          106,
+          99,
+          88,
+          86
+        ],
+        "r_wrong": [
+          0,
+          0,
+          0,
+          5,
+          6,
+          13
+        ]
+      },
+      "v15_terminal": {
+        "strict": 65,
+        "wrong": 22,
+        "r_correct": [
+          106,
+          107,
+          106,
+          98,
+          87,
+          90
+        ],
+        "r_wrong": [
+          0,
+          0,
+          0,
+          5,
+          7,
+          12
+        ]
+      },
+      "v15_online_reference": {
+        "strict": 76,
+        "wrong": 18,
+        "r_correct": [
+          106,
+          107,
+          106,
+          105,
+          93,
+          90
+        ],
+        "r_wrong": [
+          0,
+          0,
+          0,
+          2,
+          9,
+          9
+        ]
+      },
+      "v15_student": {
+        "strict": 79,
+        "wrong": 11,
+        "r_correct": [
+          106,
+          107,
+          106,
+          103,
+          94,
+          96
+        ],
+        "r_wrong": [
+          0,
+          0,
+          0,
+          0,
+          5,
+          6
+        ]
+      }
+    }
+  },
+  "recounted_student_proof": {
+    "v15_student-vs-v13": {
+      "strict": {
+        "increase": 36,
+        "decrease": 26,
+        "net": 10,
+        "point_pp": 4.62962962962963,
+        "ci95_pp": [
+          -2.7777777777777777,
+          12.037037037037036
+        ]
+      },
+      "wrong_branch": {
+        "increase": 17,
+        "decrease": 33,
+        "net": -16,
+        "point_pp": -7.407407407407407,
+        "ci95_pp": [
+          -13.425925925925926,
+          -1.8518518518518519
+        ]
+      }
+    },
+    "v15_student-vs-v14_terminal": {
+      "strict": {
+        "increase": 36,
+        "decrease": 26,
+        "net": 10,
+        "point_pp": 4.62962962962963,
+        "ci95_pp": [
+          -2.7777777777777777,
+          12.037037037037036
+        ]
+      },
+      "wrong_branch": {
+        "increase": 17,
+        "decrease": 33,
+        "net": -16,
+        "point_pp": -7.407407407407407,
+        "ci95_pp": [
+          -13.425925925925926,
+          -1.8518518518518519
+        ]
+      }
+    },
+    "v15_student-vs-v15_online_reference": {
+      "strict": {
+        "increase": 26,
+        "decrease": 31,
+        "net": -5,
+        "point_pp": -2.314814814814815,
+        "ci95_pp": [
+          -9.25925925925926,
+          4.62962962962963
+        ]
+      },
+      "wrong_branch": {
+        "increase": 15,
+        "decrease": 19,
+        "net": -4,
+        "point_pp": -1.8518518518518519,
+        "ci95_pp": [
+          -6.944444444444445,
+          2.7777777777777777
+        ]
+      }
+    }
+  }
+}

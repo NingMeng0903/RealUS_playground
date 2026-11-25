@@ -1,0 +1,5268 @@
+{
+  "device": "NVIDIA GeForce RTX 4080 Laptop GPU",
+  "cuda_version": "12.6",
+  "seed": 8614173,
+  "epochs": 18,
+  "selected_epoch": 1,
+  "elapsed_s": 13.833033599999908,
+  "reader_sha256": "b1a3248d6ee06a3784cc23bbac5f46f4b7897e46b3444fc79c79759df0fd7ffc",
+  "max_cuda_bytes": 226684928,
+  "weights_max_change": {
+    "encode1.weight": 0.29694169759750366,
+    "encode1.bias": 0.09588814526796341,
+    "encode2.weight": 0.20604676008224487,
+    "encode2.bias": 0.11341971158981323,
+    "scene.weight": 0.2456492930650711,
+    "scene.bias": 0.13939550518989563,
+    "fuse.weight": 0.2582179009914398,
+    "fuse.bias": 0.17965465784072876,
+    "rank.weight": 0.14370104670524597,
+    "rank.bias": 0.04288603365421295,
+    "role.weight": 0.3821718096733093,
+    "role.bias": 0.26635250449180603,
+    "unknown1.weight": 0.18148881196975708,
+    "unknown1.bias": 0.139628604054451,
+    "unknown2.weight": 0.1404186189174652,
+    "unknown2.bias": 0.06973378360271454
+  },
+  "cuda_numpy_max_abs": {
+    "identity": 1.9073486328125e-06,
+    "semantic": 9.5367431640625e-07,
+    "object": 9.5367431640625e-07,
+    "unknown": 1.1920928955078125e-07
+  },
+  "seen": {
+    "steps": 396,
+    "terminal_histories": 4608,
+    "paired_histories": 4608,
+    "terminal_echoes": 10956546,
+    "fixed_address_echoes": 242964
+  },
+  "unique_fit": {
+    "complete_histories": 256,
+    "paired_histories": 256,
+    "matched_old_echoes": 13498
+  },
+  "feature_schema": {
+    "v13_observation_width": 177,
+    "public_graph_context": 40,
+    "case_state_per_region": 16,
+    "late_regions": [
+      4,
+      5,
+      6
+    ]
+  },
+  "history": [
+    {
+      "epoch": 1,
+      "terminal_loss": 1.1444752216339111,
+      "paired_loss": 0.4532727003097534,
+      "dev": {
+        "layouts": 72,
+        "strict": 46,
+        "wrong": 15,
+        "correct_regions": 398,
+        "r1_correct": 71,
+        "r1_artery": 0,
+        "r1_wrong_branch": 0,
+        "r1_reject": 0,
+        "r1_artifact": 1,
+        "r2_correct": 71,
+        "r2_artery": 0,
+        "r2_wrong_branch": 0,
+        "r2_reject": 0,
+        "r2_artifact": 1,
+        "r3_correct": 69,
+        "r3_artery": 0,
+        "r3_wrong_branch": 0,
+        "r3_reject": 0,
+        "r3_artifact": 3,
+        "r4_correct": 65,
+        "r4_artery": 1,
+        "r4_wrong_branch": 1,
+        "r4_reject": 0,
+        "r4_artifact": 6,
+        "r5_correct": 64,
+        "r5_artery": 1,
+        "r5_wrong_branch": 4,
+        "r5_reject": 0,
+        "r5_artifact": 4,
+        "r6_correct": 58,
+        "r6_artery": 8,
+        "r6_wrong_branch": 10,
+        "r6_reject": 0,
+        "r6_artifact": 4
+      },
+      "calibration": {
+        "threshold": 0.12,
+        "temperature": 1.3283872017043334,
+        "calibration_nll": 0.36183828115463257,
+        "outcome": {
+          "layouts": 48,
+          "strict": 27,
+          "wrong": 13,
+          "correct_regions": 258,
+          "r1_correct": 48,
+          "r1_artery": 0,
+          "r1_wrong_branch": 0,
+          "r1_reject": 0,
+          "r1_artifact": 0,
+          "r2_correct": 47,
+          "r2_artery": 0,
+          "r2_wrong_branch": 0,
+          "r2_reject": 0,
+          "r2_artifact": 1,
+          "r3_correct": 48,
+          "r3_artery": 0,
+          "r3_wrong_branch": 0,
+          "r3_reject": 0,
+          "r3_artifact": 0,
+          "r4_correct": 43,
+          "r4_artery": 0,
+          "r4_wrong_branch": 1,
+          "r4_reject": 0,
+          "r4_artifact": 4,
+          "r5_correct": 38,
+          "r5_artery": 4,
+          "r5_wrong_branch": 6,
+          "r5_reject": 0,
+          "r5_artifact": 4,
+          "r6_correct": 34,
+          "r6_artery": 8,
+          "r6_wrong_branch": 8,
+          "r6_reject": 0,
+          "r6_artifact": 6
+        },
+        "threshold_sweep": [
+          {
+            "threshold": 0.0,
+            "strict": 27,
+            "wrong": 13
+          },
+          {
+            "threshold": 0.035,
+            "strict": 27,
+            "wrong": 13
+          },
+          {
+            "threshold": 0.06,
+            "strict": 27,
+            "wrong": 13
+          },
+          {
+            "threshold": 0.09,
+            "strict": 27,
+            "wrong": 13
+          },
+          {
+            "threshold": 0.12,
+            "strict": 27,
+            "wrong": 13
+          },
+          {
+            "threshold": 0.16,
+            "strict": 27,
+            "wrong": 13
+          },
+          {
+            "threshold": 0.21,
+            "strict": 27,
+            "wrong": 13
+          },
+          {
+            "threshold": 0.28,
+            "strict": 24,
+            "wrong": 9
+          },
+          {
+            "threshold": 0.36,
+            "strict": 21,
+            "wrong": 9
+          },
+          {
+            "threshold": 0.46,
+            "strict": 13,
+            "wrong": 6
+          },
+          {
+            "threshold": 0.58,
+            "strict": 6,
+            "wrong": 1
+          },
+          {
+            "threshold": 0.7,
+            "strict": 1,
+            "wrong": 1
+          },
+          {
+            "threshold": 0.82,
+            "strict": 1,
+            "wrong": 1
+          }
+        ]
+      },
+      "elapsed_s": 6.209456417000183
+    },
+    {
+      "epoch": 3,
+      "terminal_loss": 0.9537255167961121,
+      "paired_loss": 0.5958938002586365,
+      "dev": {
+        "layouts": 72,
+        "strict": 43,
+        "wrong": 12,
+        "correct_regions": 396,
+        "r1_correct": 71,
+        "r1_artery": 0,
+        "r1_wrong_branch": 0,
+        "r1_reject": 0,
+        "r1_artifact": 1,
+        "r2_correct": 71,
+        "r2_artery": 0,
+        "r2_wrong_branch": 0,
+        "r2_reject": 0,
+        "r2_artifact": 1,
+        "r3_correct": 69,
+        "r3_artery": 0,
+        "r3_wrong_branch": 0,
+        "r3_reject": 0,
+        "r3_artifact": 3,
+        "r4_correct": 63,
+        "r4_artery": 1,
+        "r4_wrong_branch": 1,
+        "r4_reject": 1,
+        "r4_artifact": 7,
+        "r5_correct": 63,
+        "r5_artery": 1,
+        "r5_wrong_branch": 2,
+        "r5_reject": 4,
+        "r5_artifact": 3,
+        "r6_correct": 59,
+        "r6_artery": 7,
+        "r6_wrong_branch": 9,
+        "r6_reject": 0,
+        "r6_artifact": 4
+      },
+      "calibration": {
+        "threshold": 0.21,
+        "temperature": 1.2898127384463323,
+        "calibration_nll": 0.3956940472126007,
+        "outcome": {
+          "layouts": 48,
+          "strict": 27,
+          "wrong": 10,
+          "correct_regions": 258,
+          "r1_correct": 48,
+          "r1_artery": 0,
+          "r1_wrong_branch": 0,
+          "r1_reject": 0,
+          "r1_artifact": 0,
+          "r2_correct": 47,
+          "r2_artery": 0,
+          "r2_wrong_branch": 0,
+          "r2_reject": 0,
+          "r2_artifact": 1,
+          "r3_correct": 48,
+          "r3_artery": 0,
+          "r3_wrong_branch": 0,
+          "r3_reject": 0,
+          "r3_artifact": 0,
+          "r4_correct": 42,
+          "r4_artery": 1,
+          "r4_wrong_branch": 2,
+          "r4_reject": 0,
+          "r4_artifact": 4,
+          "r5_correct": 38,
+          "r5_artery": 1,
+          "r5_wrong_branch": 2,
+          "r5_reject": 4,
+          "r5_artifact": 4,
+          "r6_correct": 35,
+          "r6_artery": 6,
+          "r6_wrong_branch": 6,
+          "r6_reject": 0,
+          "r6_artifact": 7
+        },
+        "threshold_sweep": [
+          {
+            "threshold": 0.0,
+            "strict": 27,
+            "wrong": 12
+          },
+          {
+            "threshold": 0.035,
+            "strict": 27,
+            "wrong": 12
+          },
+          {
+            "threshold": 0.06,
+            "strict": 27,
+            "wrong": 12
+          },
+          {
+            "threshold": 0.09,
+            "strict": 27,
+            "wrong": 12
+          },
+          {
+            "threshold": 0.12,
+            "strict": 27,
+            "wrong": 12
+          },
+          {
+            "threshold": 0.16,
+            "strict": 27,
+            "wrong": 12
+          },
+          {
+            "threshold": 0.21,
+            "strict": 27,
+            "wrong": 10
+          },
+          {
+            "threshold": 0.28,
+            "strict": 21,
+            "wrong": 9
+          },
+          {
+            "threshold": 0.36,
+            "strict": 20,
+            "wrong": 8
+          },
+          {
+            "threshold": 0.46,
+            "strict": 15,
+            "wrong": 6
+          },
+          {
+            "threshold": 0.58,
+            "strict": 7,
+            "wrong": 1
+          },
+          {
+            "threshold": 0.7,
+            "strict": 2,
+            "wrong": 1
+          },
+          {
+            "threshold": 0.82,
+            "strict": 1,
+            "wrong": 1
+          }
+        ]
+      },
+      "elapsed_s": 7.1637190669998745
+    },
+    {
+      "epoch": 6,
+      "terminal_loss": 0.8894988298416138,
+      "paired_loss": 0.5650905966758728,
+      "dev": {
+        "layouts": 72,
+        "strict": 42,
+        "wrong": 13,
+        "correct_regions": 392,
+        "r1_correct": 71,
+        "r1_artery": 0,
+        "r1_wrong_branch": 0,
+        "r1_reject": 0,
+        "r1_artifact": 1,
+        "r2_correct": 71,
+        "r2_artery": 0,
+        "r2_wrong_branch": 0,
+        "r2_reject": 0,
+        "r2_artifact": 1,
+        "r3_correct": 69,
+        "r3_artery": 0,
+        "r3_wrong_branch": 0,
+        "r3_reject": 0,
+        "r3_artifact": 3,
+        "r4_correct": 64,
+        "r4_artery": 1,
+        "r4_wrong_branch": 2,
+        "r4_reject": 0,
+        "r4_artifact": 6,
+        "r5_correct": 59,
+        "r5_artery": 3,
+        "r5_wrong_branch": 4,
+        "r5_reject": 5,
+        "r5_artifact": 4,
+        "r6_correct": 58,
+        "r6_artery": 6,
+        "r6_wrong_branch": 8,
+        "r6_reject": 2,
+        "r6_artifact": 4
+      },
+      "calibration": {
+        "threshold": 0.16,
+        "temperature": 1.4885286621373193,
+        "calibration_nll": 0.4264742136001587,
+        "outcome": {
+          "layouts": 48,
+          "strict": 24,
+          "wrong": 14,
+          "correct_regions": 252,
+          "r1_correct": 48,
+          "r1_artery": 0,
+          "r1_wrong_branch": 0,
+          "r1_reject": 0,
+          "r1_artifact": 0,
+          "r2_correct": 47,
+          "r2_artery": 0,
+          "r2_wrong_branch": 0,
+          "r2_reject": 0,
+          "r2_artifact": 1,
+          "r3_correct": 48,
+          "r3_artery": 0,
+          "r3_wrong_branch": 0,
+          "r3_reject": 0,
+          "r3_artifact": 0,
+          "r4_correct": 41,
+          "r4_artery": 1,
+          "r4_wrong_branch": 2,
+          "r4_reject": 0,
+          "r4_artifact": 5,
+          "r5_correct": 36,
+          "r5_artery": 3,
+          "r5_wrong_branch": 4,
+          "r5_reject": 2,
+          "r5_artifact": 6,
+          "r6_correct": 32,
+          "r6_artery": 8,
+          "r6_wrong_branch": 8,
+          "r6_reject": 0,
+          "r6_artifact": 8
+        },
+        "threshold_sweep": [
+          {
+            "threshold": 0.0,
+            "strict": 24,
+            "wrong": 14
+          },
+          {
+            "threshold": 0.035,
+            "strict": 24,
+            "wrong": 14
+          },
+          {
+            "threshold": 0.06,
+            "strict": 24,
+            "wrong": 14
+          },
+          {
+            "threshold": 0.09,
+            "strict": 24,
+            "wrong": 14
+          },
+          {
+            "threshold": 0.12,
+            "strict": 24,
+            "wrong": 14
+          },
+          {
+            "threshold": 0.16,
+            "strict": 24,
+            "wrong": 14
+          },
+          {
+            "threshold": 0.21,
+            "strict": 23,
+            "wrong": 12
+          },
+          {
+            "threshold": 0.28,
+            "strict": 20,
+            "wrong": 11
+          },
+          {
+            "threshold": 0.36,
+            "strict": 17,
+            "wrong": 8
+          },
+          {
+            "threshold": 0.46,
+            "strict": 14,
+            "wrong": 5
+          },
+          {
+            "threshold": 0.58,
+            "strict": 6,
+            "wrong": 1
+          },
+          {
+            "threshold": 0.7,
+            "strict": 3,
+            "wrong": 1
+          },
+          {
+            "threshold": 0.82,
+            "strict": 2,
+            "wrong": 1
+          }
+        ]
+      },
+      "elapsed_s": 8.331570678999924
+    },
+    {
+      "epoch": 10,
+      "terminal_loss": 0.8306266665458679,
+      "paired_loss": 0.540287971496582,
+      "dev": {
+        "layouts": 72,
+        "strict": 43,
+        "wrong": 13,
+        "correct_regions": 390,
+        "r1_correct": 71,
+        "r1_artery": 0,
+        "r1_wrong_branch": 0,
+        "r1_reject": 0,
+        "r1_artifact": 1,
+        "r2_correct": 71,
+        "r2_artery": 0,
+        "r2_wrong_branch": 0,
+        "r2_reject": 0,
+        "r2_artifact": 1,
+        "r3_correct": 69,
+        "r3_artery": 0,
+        "r3_wrong_branch": 0,
+        "r3_reject": 0,
+        "r3_artifact": 3,
+        "r4_correct": 66,
+        "r4_artery": 0,
+        "r4_wrong_branch": 1,
+        "r4_reject": 1,
+        "r4_artifact": 4,
+        "r5_correct": 57,
+        "r5_artery": 2,
+        "r5_wrong_branch": 3,
+        "r5_reject": 8,
+        "r5_artifact": 4,
+        "r6_correct": 56,
+        "r6_artery": 7,
+        "r6_wrong_branch": 9,
+        "r6_reject": 3,
+        "r6_artifact": 4
+      },
+      "calibration": {
+        "threshold": 0.21,
+        "temperature": 1.486507922427129,
+        "calibration_nll": 0.3916817903518677,
+        "outcome": {
+          "layouts": 48,
+          "strict": 25,
+          "wrong": 11,
+          "correct_regions": 255,
+          "r1_correct": 48,
+          "r1_artery": 0,
+          "r1_wrong_branch": 0,
+          "r1_reject": 0,
+          "r1_artifact": 0,
+          "r2_correct": 47,
+          "r2_artery": 0,
+          "r2_wrong_branch": 0,
+          "r2_reject": 0,
+          "r2_artifact": 1,
+          "r3_correct": 48,
+          "r3_artery": 0,
+          "r3_wrong_branch": 0,
+          "r3_reject": 0,
+          "r3_artifact": 0,
+          "r4_correct": 44,
+          "r4_artery": 1,
+          "r4_wrong_branch": 2,
+          "r4_reject": 0,
+          "r4_artifact": 2,
+          "r5_correct": 36,
+          "r5_artery": 3,
+          "r5_wrong_branch": 3,
+          "r5_reject": 3,
+          "r5_artifact": 6,
+          "r6_correct": 32,
+          "r6_artery": 6,
+          "r6_wrong_branch": 6,
+          "r6_reject": 1,
+          "r6_artifact": 9
+        },
+        "threshold_sweep": [
+          {
+            "threshold": 0.0,
+            "strict": 25,
+            "wrong": 13
+          },
+          {
+            "threshold": 0.035,
+            "strict": 25,
+            "wrong": 13
+          },
+          {
+            "threshold": 0.06,
+            "strict": 25,
+            "wrong": 13
+          },
+          {
+            "threshold": 0.09,
+            "strict": 25,
+            "wrong": 12
+          },
+          {
+            "threshold": 0.12,
+            "strict": 25,
+            "wrong": 12
+          },
+          {
+            "threshold": 0.16,
+            "strict": 25,
+            "wrong": 12
+          },
+          {
+            "threshold": 0.21,
+            "strict": 25,
+            "wrong": 11
+          },
+          {
+            "threshold": 0.28,
+            "strict": 23,
+            "wrong": 9
+          },
+          {
+            "threshold": 0.36,
+            "strict": 20,
+            "wrong": 9
+          },
+          {
+            "threshold": 0.46,
+            "strict": 17,
+            "wrong": 7
+          },
+          {
+            "threshold": 0.58,
+            "strict": 10,
+            "wrong": 3
+          },
+          {
+            "threshold": 0.7,
+            "strict": 6,
+            "wrong": 0
+          },
+          {
+            "threshold": 0.82,
+            "strict": 5,
+            "wrong": 0
+          }
+        ]
+      },
+      "elapsed_s": 9.701466757000162
+    },
+    {
+      "epoch": 14,
+      "terminal_loss": 0.7914100289344788,
+      "paired_loss": 0.5131421089172363,
+      "dev": {
+        "layouts": 72,
+        "strict": 41,
+        "wrong": 11,
+        "correct_regions": 388,
+        "r1_correct": 71,
+        "r1_artery": 0,
+        "r1_wrong_branch": 0,
+        "r1_reject": 0,
+        "r1_artifact": 1,
+        "r2_correct": 71,
+        "r2_artery": 0,
+        "r2_wrong_branch": 0,
+        "r2_reject": 0,
+        "r2_artifact": 1,
+        "r3_correct": 69,
+        "r3_artery": 0,
+        "r3_wrong_branch": 0,
+        "r3_reject": 0,
+        "r3_artifact": 3,
+        "r4_correct": 65,
+        "r4_artery": 0,
+        "r4_wrong_branch": 0,
+        "r4_reject": 1,
+        "r4_artifact": 6,
+        "r5_correct": 55,
+        "r5_artery": 2,
+        "r5_wrong_branch": 3,
+        "r5_reject": 9,
+        "r5_artifact": 5,
+        "r6_correct": 57,
+        "r6_artery": 7,
+        "r6_wrong_branch": 8,
+        "r6_reject": 3,
+        "r6_artifact": 4
+      },
+      "calibration": {
+        "threshold": 0.16,
+        "temperature": 1.4650052280505756,
+        "calibration_nll": 0.40980374813079834,
+        "outcome": {
+          "layouts": 48,
+          "strict": 26,
+          "wrong": 11,
+          "correct_regions": 255,
+          "r1_correct": 48,
+          "r1_artery": 0,
+          "r1_wrong_branch": 0,
+          "r1_reject": 0,
+          "r1_artifact": 0,
+          "r2_correct": 47,
+          "r2_artery": 0,
+          "r2_wrong_branch": 0,
+          "r2_reject": 0,
+          "r2_artifact": 1,
+          "r3_correct": 48,
+          "r3_artery": 0,
+          "r3_wrong_branch": 0,
+          "r3_reject": 0,
+          "r3_artifact": 0,
+          "r4_correct": 44,
+          "r4_artery": 1,
+          "r4_wrong_branch": 2,
+          "r4_reject": 0,
+          "r4_artifact": 2,
+          "r5_correct": 37,
+          "r5_artery": 3,
+          "r5_wrong_branch": 3,
+          "r5_reject": 2,
+          "r5_artifact": 6,
+          "r6_correct": 31,
+          "r6_artery": 6,
+          "r6_wrong_branch": 6,
+          "r6_reject": 1,
+          "r6_artifact": 10
+        },
+        "threshold_sweep": [
+          {
+            "threshold": 0.0,
+            "strict": 26,
+            "wrong": 13
+          },
+          {
+            "threshold": 0.035,
+            "strict": 26,
+            "wrong": 13
+          },
+          {
+            "threshold": 0.06,
+            "strict": 26,
+            "wrong": 13
+          },
+          {
+            "threshold": 0.09,
+            "strict": 26,
+            "wrong": 12
+          },
+          {
+            "threshold": 0.12,
+            "strict": 26,
+            "wrong": 12
+          },
+          {
+            "threshold": 0.16,
+            "strict": 26,
+            "wrong": 11
+          },
+          {
+            "threshold": 0.21,
+            "strict": 25,
+            "wrong": 11
+          },
+          {
+            "threshold": 0.28,
+            "strict": 23,
+            "wrong": 10
+          },
+          {
+            "threshold": 0.36,
+            "strict": 21,
+            "wrong": 9
+          },
+          {
+            "threshold": 0.46,
+            "strict": 16,
+            "wrong": 8
+          },
+          {
+            "threshold": 0.58,
+            "strict": 9,
+            "wrong": 2
+          },
+          {
+            "threshold": 0.7,
+            "strict": 6,
+            "wrong": 2
+          },
+          {
+            "threshold": 0.82,
+            "strict": 4,
+            "wrong": 0
+          }
+        ]
+      },
+      "elapsed_s": 11.124035292000372
+    },
+    {
+      "epoch": 18,
+      "terminal_loss": 0.7755128741264343,
+      "paired_loss": 0.5051045417785645,
+      "dev": {
+        "layouts": 72,
+        "strict": 43,
+        "wrong": 11,
+        "correct_regions": 391,
+        "r1_correct": 71,
+        "r1_artery": 0,
+        "r1_wrong_branch": 0,
+        "r1_reject": 0,
+        "r1_artifact": 1,
+        "r2_correct": 71,
+        "r2_artery": 0,
+        "r2_wrong_branch": 0,
+        "r2_reject": 0,
+        "r2_artifact": 1,
+        "r3_correct": 69,
+        "r3_artery": 0,
+        "r3_wrong_branch": 0,
+        "r3_reject": 0,
+        "r3_artifact": 3,
+        "r4_correct": 65,
+        "r4_artery": 0,
+        "r4_wrong_branch": 0,
+        "r4_reject": 1,
+        "r4_artifact": 6,
+        "r5_correct": 58,
+        "r5_artery": 2,
+        "r5_wrong_branch": 3,
+        "r5_reject": 7,
+        "r5_artifact": 4,
+        "r6_correct": 57,
+        "r6_artery": 7,
+        "r6_wrong_branch": 8,
+        "r6_reject": 3,
+        "r6_artifact": 4
+      },
+      "calibration": {
+        "threshold": 0.16,
+        "temperature": 1.4780901829546753,
+        "calibration_nll": 0.40670046210289,
+        "outcome": {
+          "layouts": 48,
+          "strict": 26,
+          "wrong": 12,
+          "correct_regions": 255,
+          "r1_correct": 48,
+          "r1_artery": 0,
+          "r1_wrong_branch": 0,
+          "r1_reject": 0,
+          "r1_artifact": 0,
+          "r2_correct": 47,
+          "r2_artery": 0,
+          "r2_wrong_branch": 0,
+          "r2_reject": 0,
+          "r2_artifact": 1,
+          "r3_correct": 48,
+          "r3_artery": 0,
+          "r3_wrong_branch": 0,
+          "r3_reject": 0,
+          "r3_artifact": 0,
+          "r4_correct": 44,
+          "r4_artery": 1,
+          "r4_wrong_branch": 2,
+          "r4_reject": 0,
+          "r4_artifact": 2,
+          "r5_correct": 37,
+          "r5_artery": 3,
+          "r5_wrong_branch": 3,
+          "r5_reject": 2,
+          "r5_artifact": 6,
+          "r6_correct": 31,
+          "r6_artery": 7,
+          "r6_wrong_branch": 7,
+          "r6_reject": 0,
+          "r6_artifact": 10
+        },
+        "threshold_sweep": [
+          {
+            "threshold": 0.0,
+            "strict": 26,
+            "wrong": 13
+          },
+          {
+            "threshold": 0.035,
+            "strict": 26,
+            "wrong": 13
+          },
+          {
+            "threshold": 0.06,
+            "strict": 26,
+            "wrong": 13
+          },
+          {
+            "threshold": 0.09,
+            "strict": 26,
+            "wrong": 12
+          },
+          {
+            "threshold": 0.12,
+            "strict": 26,
+            "wrong": 12
+          },
+          {
+            "threshold": 0.16,
+            "strict": 26,
+            "wrong": 12
+          },
+          {
+            "threshold": 0.21,
+            "strict": 25,
+            "wrong": 11
+          },
+          {
+            "threshold": 0.28,
+            "strict": 24,
+            "wrong": 10
+          },
+          {
+            "threshold": 0.36,
+            "strict": 21,
+            "wrong": 9
+          },
+          {
+            "threshold": 0.46,
+            "strict": 16,
+            "wrong": 8
+          },
+          {
+            "threshold": 0.58,
+            "strict": 9,
+            "wrong": 3
+          },
+          {
+            "threshold": 0.7,
+            "strict": 6,
+            "wrong": 1
+          },
+          {
+            "threshold": 0.82,
+            "strict": 5,
+            "wrong": 0
+          }
+        ]
+      },
+      "elapsed_s": 12.481156970000484
+    }
+  ],
+  "same_snapshot_development": {
+    "v13": {
+      "layouts": 72,
+      "strict": 44,
+      "wrong": 16,
+      "correct_regions": 395,
+      "r1_correct": 71,
+      "r1_artery": 0,
+      "r1_wrong_branch": 0,
+      "r1_reject": 0,
+      "r1_artifact": 1,
+      "r2_correct": 71,
+      "r2_artery": 0,
+      "r2_wrong_branch": 0,
+      "r2_reject": 0,
+      "r2_artifact": 1,
+      "r3_correct": 69,
+      "r3_artery": 0,
+      "r3_wrong_branch": 0,
+      "r3_reject": 0,
+      "r3_artifact": 3,
+      "r4_correct": 65,
+      "r4_artery": 1,
+      "r4_wrong_branch": 1,
+      "r4_reject": 0,
+      "r4_artifact": 6,
+      "r5_correct": 62,
+      "r5_artery": 4,
+      "r5_wrong_branch": 5,
+      "r5_reject": 0,
+      "r5_artifact": 5,
+      "r6_correct": 57,
+      "r6_artery": 8,
+      "r6_wrong_branch": 10,
+      "r6_reject": 1,
+      "r6_artifact": 4
+    },
+    "v15": {
+      "layouts": 72,
+      "strict": 46,
+      "wrong": 15,
+      "correct_regions": 398,
+      "r1_correct": 71,
+      "r1_artery": 0,
+      "r1_wrong_branch": 0,
+      "r1_reject": 0,
+      "r1_artifact": 1,
+      "r2_correct": 71,
+      "r2_artery": 0,
+      "r2_wrong_branch": 0,
+      "r2_reject": 0,
+      "r2_artifact": 1,
+      "r3_correct": 69,
+      "r3_artery": 0,
+      "r3_wrong_branch": 0,
+      "r3_reject": 0,
+      "r3_artifact": 3,
+      "r4_correct": 65,
+      "r4_artery": 1,
+      "r4_wrong_branch": 1,
+      "r4_reject": 0,
+      "r4_artifact": 6,
+      "r5_correct": 64,
+      "r5_artery": 1,
+      "r5_wrong_branch": 4,
+      "r5_reject": 0,
+      "r5_artifact": 4,
+      "r6_correct": 58,
+      "r6_artery": 8,
+      "r6_wrong_branch": 10,
+      "r6_reject": 0,
+      "r6_artifact": 4
+    },
+    "cases": [
+      {
+        "case": "v15_reader_dev_00000",
+        "v13": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "v15": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "candidate_rows": [
+          -1,
+          -1,
+          -1,
+          2695,
+          2931,
+          3034
+        ],
+        "unknown_probability": [
+          0.0,
+          0.0,
+          0.0,
+          3.449046198511496e-05,
+          0.00015426224854309112,
+          0.0001339511654805392
+        ]
+      },
+      {
+        "case": "v15_reader_dev_00001",
+        "v13": [
+          0,
+          0,
+          0,
+          0,
+          -1,
+          0
+        ],
+        "v15": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "candidate_rows": [
+          -1,
+          -1,
+          -1,
+          494,
+          1208,
+          1406
+        ],
+        "unknown_probability": [
+          0.0,
+          0.0,
+          0.0,
+          0.0005504251457750797,
+          0.0002083676226902753,
+          0.004054536111652851
+        ]
+      },
+      {
+        "case": "v15_reader_dev_00002",
+        "v13": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "v15": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "candidate_rows": [
+          -1,
+          -1,
+          -1,
+          2419,
+          1530,
+          1934
+        ],
+        "unknown_probability": [
+          0.0,
+          0.0,
+          0.0,
+          6.892079545650631e-05,
+          8.213625551434234e-05,
+          0.0010936605976894498
+        ]
+      },
+      {
+        "case": "v15_reader_dev_00003",
+        "v13": [
+          0,
+          -1,
+          0,
+          -1,
+          0,
+          0
+        ],
+        "v15": [
+          0,
+          -1,
+          0,
+          -1,
+          0,
+          0
+        ],
+        "candidate_rows": [
+          -1,
+          -1,
+          -1,
+          1636,
+          1074,
+          2255
+        ],
+        "unknown_probability": [
+          0.0,
+          0.0,
+          0.0,
+          0.0004571210010908544,
+          0.0014600222930312157,
+          0.004498839378356934
+        ]
+      },
+      {
+        "case": "v15_reader_dev_00004",
+        "v13": [
+          0,
+          0,
+          0,
+          0,
+          3,
+          0
+        ],
+        "v15": [
+          0,
+          0,
+          0,
+          0,
+          3,
+          0
+        ],
+        "candidate_rows": [
+          -1,
+          -1,
+          -1,
+          555,
+          1924,
+          1436
+        ],
+        "unknown_probability": [
+          0.0,
+          0.0,
+          0.0,
+          0.000509266450535506,
+          0.0017015294870361686,
+          0.0008252464467659593
+        ]
+      },
+      {
+        "case": "v15_reader_dev_00005",
+        "v13": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "v15": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "candidate_rows": [
+          -1,
+          -1,
+          -1,
+          1975,
+          1902,
+          2233
+        ],
+        "unknown_probability": [
+          0.0,
+          0.0,
+          0.0,
+          0.0002830438897944987,
+          0.00044379953760653734,
+          0.06711667031049728
+        ]
+      },
+      {
+        "case": "v15_reader_dev_00006",
+        "v13": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "v15": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "candidate_rows": [
+          -1,
+          -1,
+          -1,
+          1140,
+          2400,
+          2820
+        ],
+        "unknown_probability": [
+          0.0,
+          0.0,
+          0.0,
+          7.596879731863737e-05,
+          0.0008089702459983528,
+          0.0012913431273773313
+        ]
+      },
+      {
+        "case": "v15_reader_dev_00007",
+        "v13": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "v15": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "candidate_rows": [
+          -1,
+          -1,
+          -1,
+          1690,
+          2207,
+          2765
+        ],
+        "unknown_probability": [
+          0.0,
+          0.0,
+          0.0,
+          4.319241634220816e-05,
+          0.0009502136963419616,
+          0.0010662872809916735
+        ]
+      },
+      {
+        "case": "v15_reader_dev_00008",
+        "v13": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "v15": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "candidate_rows": [
+          -1,
+          -1,
+          -1,
+          942,
+          2877,
+          2944
+        ],
+        "unknown_probability": [
+          0.0,
+          0.0,
+          0.0,
+          6.626534013776109e-05,
+          0.0004690692003350705,
+          0.013026522472500801
+        ]
+      },
+      {
+        "case": "v15_reader_dev_00009",
+        "v13": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "v15": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "candidate_rows": [
+          -1,
+          -1,
+          -1,
+          729,
+          3996,
+          1843
+        ],
+        "unknown_probability": [
+          0.0,
+          0.0,
+          0.0,
+          0.005370884668081999,
+          0.0024017547257244587,
+          0.0019445470534265041
+        ]
+      },
+      {
+        "case": "v15_reader_dev_00010",
+        "v13": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "v15": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "candidate_rows": [
+          -1,
+          -1,
+          -1,
+          1545,
+          1878,
+          3268
+        ],
+        "unknown_probability": [
+          0.0,
+          0.0,
+          0.0,
+          0.000687411695253104,
+          0.001221838523633778,
+          0.0011370792053639889
+        ]
+      },
+      {
+        "case": "v15_reader_dev_00011",
+        "v13": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "v15": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "candidate_rows": [
+          -1,
+          -1,
+          -1,
+          840,
+          2302,
+          2326
+        ],
+        "unknown_probability": [
+          0.0,
+          0.0,
+          0.0,
+          0.0002455741632729769,
+          0.005216682329773903,
+          0.003988530486822128
+        ]
+      },
+      {
+        "case": "v15_reader_dev_00012",
+        "v13": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "v15": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "candidate_rows": [
+          -1,
+          -1,
+          -1,
+          1238,
+          2229,
+          2529
+        ],
+        "unknown_probability": [
+          0.0,
+          0.0,
+          0.0,
+          8.716722368262708e-05,
+          0.00036392963374964893,
+          0.0004764962359331548
+        ]
+      },
+      {
+        "case": "v15_reader_dev_00013",
+        "v13": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "v15": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "candidate_rows": [
+          -1,
+          -1,
+          -1,
+          461,
+          563,
+          2316
+        ],
+        "unknown_probability": [
+          0.0,
+          0.0,
+          0.0,
+          0.0016296133399009705,
+          0.0002680050674825907,
+          0.00011658938456093892
+        ]
+      },
+      {
+        "case": "v15_reader_dev_00014",
+        "v13": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "v15": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "candidate_rows": [
+          -1,
+          -1,
+          -1,
+          3105,
+          849,
+          1733
+        ],
+        "unknown_probability": [
+          0.0,
+          0.0,
+          0.0,
+          0.00010253300570184365,
+          0.00017262031906284392,
+          0.00012727481953334063
+        ]
+      },
+      {
+        "case": "v15_reader_dev_00015",
+        "v13": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "v15": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "candidate_rows": [
+          -1,
+          -1,
+          -1,
+          1812,
+          1543,
+          2076
+        ],
+        "unknown_probability": [
+          0.0,
+          0.0,
+          0.0,
+          0.0001916366018122062,
+          0.0003333120548631996,
+          0.0019648694433271885
+        ]
+      },
+      {
+        "case": "v15_reader_dev_00016",
+        "v13": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "v15": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "candidate_rows": [
+          -1,
+          -1,
+          -1,
+          1231,
+          2670,
+          2918
+        ],
+        "unknown_probability": [
+          0.0,
+          0.0,
+          0.0,
+          0.00044793132110498846,
+          0.0006690876907669008,
+          0.00022765887842979282
+        ]
+      },
+      {
+        "case": "v15_reader_dev_00017",
+        "v13": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "v15": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "candidate_rows": [
+          -1,
+          -1,
+          -1,
+          578,
+          1631,
+          1639
+        ],
+        "unknown_probability": [
+          0.0,
+          0.0,
+          0.0,
+          0.0007602334953844547,
+          0.0008004052215255797,
+          0.0012534299166873097
+        ]
+      },
+      {
+        "case": "v15_reader_dev_00018",
+        "v13": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "v15": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "candidate_rows": [
+          -1,
+          -1,
+          -1,
+          537,
+          1469,
+          1594
+        ],
+        "unknown_probability": [
+          0.0,
+          0.0,
+          0.0,
+          0.0021474729292094707,
+          0.00035239418502897024,
+          0.0008131350041367114
+        ]
+      },
+      {
+        "case": "v15_reader_dev_00019",
+        "v13": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "v15": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "candidate_rows": [
+          -1,
+          -1,
+          -1,
+          1430,
+          2449,
+          3853
+        ],
+        "unknown_probability": [
+          0.0,
+          0.0,
+          0.0,
+          0.000113321264507249,
+          0.00010224715515505522,
+          0.00017830386059358716
+        ]
+      },
+      {
+        "case": "v15_reader_dev_00020",
+        "v13": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "v15": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "candidate_rows": [
+          -1,
+          -1,
+          -1,
+          555,
+          920,
+          1475
+        ],
+        "unknown_probability": [
+          0.0,
+          0.0,
+          0.0,
+          0.0015824706060811877,
+          0.0002460791147314012,
+          0.00018238079792354256
+        ]
+      },
+      {
+        "case": "v15_reader_dev_00021",
+        "v13": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "v15": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "candidate_rows": [
+          -1,
+          -1,
+          -1,
+          456,
+          558,
+          980
+        ],
+        "unknown_probability": [
+          0.0,
+          0.0,
+          0.0,
+          0.01983311027288437,
+          0.009157471358776093,
+          0.0055232904851436615
+        ]
+      },
+      {
+        "case": "v15_reader_dev_00022",
+        "v13": [
+          0,
+          0,
+          0,
+          0,
+          -1,
+          0
+        ],
+        "v15": [
+          0,
+          0,
+          0,
+          0,
+          -1,
+          0
+        ],
+        "candidate_rows": [
+          -1,
+          -1,
+          -1,
+          1037,
+          1848,
+          1906
+        ],
+        "unknown_probability": [
+          0.0,
+          0.0,
+          0.0,
+          0.0005480399704538286,
+          0.001014396664686501,
+          0.01114627718925476
+        ]
+      },
+      {
+        "case": "v15_reader_dev_00023",
+        "v13": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "v15": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "candidate_rows": [
+          -1,
+          -1,
+          -1,
+          917,
+          1975,
+          2215
+        ],
+        "unknown_probability": [
+          0.0,
+          0.0,
+          0.0,
+          0.0003257708449382335,
+          0.000317537400405854,
+          0.0006781064439564943
+        ]
+      },
+      {
+        "case": "v15_reader_dev_00024",
+        "v13": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "v15": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "candidate_rows": [
+          -1,
+          -1,
+          -1,
+          907,
+          2339,
+          2585
+        ],
+        "unknown_probability": [
+          0.0,
+          0.0,
+          0.0,
+          0.000143560697324574,
+          0.0003353360225446522,
+          0.0022180189844220877
+        ]
+      },
+      {
+        "case": "v15_reader_dev_00025",
+        "v13": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "v15": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "candidate_rows": [
+          -1,
+          -1,
+          -1,
+          729,
+          2529,
+          3498
+        ],
+        "unknown_probability": [
+          0.0,
+          0.0,
+          0.0,
+          6.354194920277223e-05,
+          0.0005284150829538703,
+          0.0052257743664085865
+        ]
+      },
+      {
+        "case": "v15_reader_dev_00026",
+        "v13": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "v15": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "candidate_rows": [
+          -1,
+          -1,
+          -1,
+          1478,
+          1936,
+          3161
+        ],
+        "unknown_probability": [
+          0.0,
+          0.0,
+          0.0,
+          8.11494974186644e-05,
+          0.0005135306855663657,
+          0.004752915818244219
+        ]
+      },
+      {
+        "case": "v15_reader_dev_00027",
+        "v13": [
+          0,
+          0,
+          0,
+          -2,
+          0,
+          0
+        ],
+        "v15": [
+          0,
+          0,
+          0,
+          -2,
+          0,
+          0
+        ],
+        "candidate_rows": [
+          -1,
+          -1,
+          -1,
+          1734,
+          3383,
+          3181
+        ],
+        "unknown_probability": [
+          0.0,
+          0.0,
+          0.0,
+          0.0010236091911792755,
+          0.001257268013432622,
+          0.0004900911590084434
+        ]
+      },
+      {
+        "case": "v15_reader_dev_00028",
+        "v13": [
+          0,
+          0,
+          0,
+          -1,
+          0,
+          0
+        ],
+        "v15": [
+          0,
+          0,
+          0,
+          -1,
+          0,
+          0
+        ],
+        "candidate_rows": [
+          -1,
+          -1,
+          -1,
+          868,
+          1786,
+          2375
+        ],
+        "unknown_probability": [
+          0.0,
+          0.0,
+          0.0,
+          0.0004256593529134989,
+          0.0018172846175730228,
+          0.0037699888925999403
+        ]
+      },
+      {
+        "case": "v15_reader_dev_00029",
+        "v13": [
+          0,
+          0,
+          0,
+          0,
+          1,
+          0
+        ],
+        "v15": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "candidate_rows": [
+          -1,
+          -1,
+          -1,
+          922,
+          1941,
+          2982
+        ],
+        "unknown_probability": [
+          0.0,
+          0.0,
+          0.0,
+          0.002320119645446539,
+          0.004758152645081282,
+          0.0050513967871665955
+        ]
+      },
+      {
+        "case": "v15_reader_dev_00030",
+        "v13": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "v15": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "candidate_rows": [
+          -1,
+          -1,
+          -1,
+          758,
+          2263,
+          2558
+        ],
+        "unknown_probability": [
+          0.0,
+          0.0,
+          0.0,
+          3.782918429351412e-05,
+          0.0001287394989049062,
+          0.0002611198287922889
+        ]
+      },
+      {
+        "case": "v15_reader_dev_00031",
+        "v13": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "v15": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "candidate_rows": [
+          -1,
+          -1,
+          -1,
+          480,
+          1300,
+          1401
+        ],
+        "unknown_probability": [
+          0.0,
+          0.0,
+          0.0,
+          0.0011363099329173565,
+          0.0006068596267141402,
+          0.0016110213473439217
+        ]
+      },
+      {
+        "case": "v15_reader_dev_00032",
+        "v13": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "v15": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "candidate_rows": [
+          -1,
+          -1,
+          -1,
+          468,
+          1205,
+          2060
+        ],
+        "unknown_probability": [
+          0.0,
+          0.0,
+          0.0,
+          0.0005352525040507317,
+          0.0002079839032376185,
+          0.0004783247131854296
+        ]
+      },
+      {
+        "case": "v15_reader_dev_00033",
+        "v13": [
+          0,
+          0,
+          0,
+          -2,
+          0,
+          0
+        ],
+        "v15": [
+          0,
+          0,
+          0,
+          -2,
+          0,
+          0
+        ],
+        "candidate_rows": [
+          -1,
+          -1,
+          -1,
+          1148,
+          1381,
+          1816
+        ],
+        "unknown_probability": [
+          0.0,
+          0.0,
+          0.0,
+          0.0008242705371230841,
+          0.003880872158333659,
+          0.005766863469034433
+        ]
+      },
+      {
+        "case": "v15_reader_dev_00034",
+        "v13": [
+          0,
+          0,
+          0,
+          0,
+          -1,
+          1
+        ],
+        "v15": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "candidate_rows": [
+          -1,
+          -1,
+          -1,
+          536,
+          1846,
+          2391
+        ],
+        "unknown_probability": [
+          0.0,
+          0.0,
+          0.0,
+          0.00025483814533799887,
+          0.0005751412245444953,
+          0.0019155775662511587
+        ]
+      },
+      {
+        "case": "v15_reader_dev_00035",
+        "v13": [
+          0,
+          0,
+          0,
+          0,
+          -2,
+          0
+        ],
+        "v15": [
+          0,
+          0,
+          0,
+          0,
+          -2,
+          0
+        ],
+        "candidate_rows": [
+          -1,
+          -1,
+          -1,
+          536,
+          1788,
+          2552
+        ],
+        "unknown_probability": [
+          0.0,
+          0.0,
+          0.0,
+          0.000253413338214159,
+          0.00155946658924222,
+          0.0006206575781106949
+        ]
+      },
+      {
+        "case": "v15_reader_dev_00036",
+        "v13": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "v15": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "candidate_rows": [
+          -1,
+          -1,
+          -1,
+          2005,
+          1005,
+          2501
+        ],
+        "unknown_probability": [
+          0.0,
+          0.0,
+          0.0,
+          2.8212321922183037e-05,
+          0.000806096417363733,
+          0.00031983107328414917
+        ]
+      },
+      {
+        "case": "v15_reader_dev_00037",
+        "v13": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "v15": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "candidate_rows": [
+          -1,
+          -1,
+          -1,
+          2333,
+          897,
+          3298
+        ],
+        "unknown_probability": [
+          0.0,
+          0.0,
+          0.0,
+          3.095768261118792e-05,
+          0.00024119520094245672,
+          0.00051586126210168
+        ]
+      },
+      {
+        "case": "v15_reader_dev_00038",
+        "v13": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "v15": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "candidate_rows": [
+          -1,
+          -1,
+          -1,
+          505,
+          602,
+          777
+        ],
+        "unknown_probability": [
+          0.0,
+          0.0,
+          0.0,
+          0.0008614251855760813,
+          0.005275810603052378,
+          0.001594927511177957
+        ]
+      },
+      {
+        "case": "v15_reader_dev_00039",
+        "v13": [
+          0,
+          0,
+          0,
+          1,
+          0,
+          -2
+        ],
+        "v15": [
+          0,
+          0,
+          0,
+          1,
+          0,
+          -2
+        ],
+        "candidate_rows": [
+          -1,
+          -1,
+          -1,
+          483,
+          1460,
+          2785
+        ],
+        "unknown_probability": [
+          0.0,
+          0.0,
+          0.0,
+          0.0006813612999394536,
+          0.0004423601203598082,
+          0.0010669520124793053
+        ]
+      },
+      {
+        "case": "v15_reader_dev_00040",
+        "v13": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          5
+        ],
+        "v15": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          5
+        ],
+        "candidate_rows": [
+          -1,
+          -1,
+          -1,
+          1753,
+          1679,
+          1893
+        ],
+        "unknown_probability": [
+          0.0,
+          0.0,
+          0.0,
+          0.0008469720487482846,
+          0.0010022756177932024,
+          0.0009907452622428536
+        ]
+      },
+      {
+        "case": "v15_reader_dev_00041",
+        "v13": [
+          0,
+          0,
+          -2,
+          0,
+          0,
+          -2
+        ],
+        "v15": [
+          0,
+          0,
+          -2,
+          0,
+          0,
+          -2
+        ],
+        "candidate_rows": [
+          -1,
+          -1,
+          -1,
+          1189,
+          1600,
+          2130
+        ],
+        "unknown_probability": [
+          0.0,
+          0.0,
+          0.0,
+          0.0005565866595134139,
+          0.0012036451371386647,
+          0.00515736872330308
+        ]
+      },
+      {
+        "case": "v15_reader_dev_00042",
+        "v13": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "v15": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "candidate_rows": [
+          -1,
+          -1,
+          -1,
+          1455,
+          2085,
+          2302
+        ],
+        "unknown_probability": [
+          0.0,
+          0.0,
+          0.0,
+          4.4348995288601145e-05,
+          0.0031045805662870407,
+          0.003569682128727436
+        ]
+      },
+      {
+        "case": "v15_reader_dev_00043",
+        "v13": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "v15": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "candidate_rows": [
+          -1,
+          -1,
+          -1,
+          1092,
+          2222,
+          3055
+        ],
+        "unknown_probability": [
+          0.0,
+          0.0,
+          0.0,
+          5.068446625955403e-05,
+          0.00034164683893322945,
+          0.00337946112267673
+        ]
+      },
+      {
+        "case": "v15_reader_dev_00044",
+        "v13": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "v15": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "candidate_rows": [
+          -1,
+          -1,
+          -1,
+          1890,
+          2767,
+          3632
+        ],
+        "unknown_probability": [
+          0.0,
+          0.0,
+          0.0,
+          6.048422437743284e-05,
+          0.0012480844743549824,
+          0.006604983005672693
+        ]
+      },
+      {
+        "case": "v15_reader_dev_00045",
+        "v13": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          -2
+        ],
+        "v15": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          -2
+        ],
+        "candidate_rows": [
+          -1,
+          -1,
+          -1,
+          722,
+          1094,
+          2537
+        ],
+        "unknown_probability": [
+          0.0,
+          0.0,
+          0.0,
+          0.005082401912659407,
+          0.0013886893866583705,
+          0.0006459730793721974
+        ]
+      },
+      {
+        "case": "v15_reader_dev_00046",
+        "v13": [
+          -2,
+          0,
+          -1,
+          -1,
+          0,
+          1
+        ],
+        "v15": [
+          -2,
+          0,
+          -1,
+          -1,
+          0,
+          1
+        ],
+        "candidate_rows": [
+          -1,
+          -1,
+          -1,
+          713,
+          1159,
+          4296
+        ],
+        "unknown_probability": [
+          0.0,
+          0.0,
+          0.0,
+          0.0017351050628349185,
+          0.0011420093942433596,
+          0.0019103074446320534
+        ]
+      },
+      {
+        "case": "v15_reader_dev_00047",
+        "v13": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          -99
+        ],
+        "v15": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "candidate_rows": [
+          -1,
+          -1,
+          -1,
+          663,
+          1450,
+          2173
+        ],
+        "unknown_probability": [
+          0.0,
+          0.0,
+          0.0,
+          0.0007584411650896072,
+          0.0010984062682837248,
+          0.07060807198286057
+        ]
+      },
+      {
+        "case": "v15_reader_dev_00048",
+        "v13": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "v15": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "candidate_rows": [
+          -1,
+          -1,
+          -1,
+          484,
+          1227,
+          2105
+        ],
+        "unknown_probability": [
+          0.0,
+          0.0,
+          0.0,
+          0.000891382631380111,
+          0.0002294922451255843,
+          0.00013999955262988806
+        ]
+      },
+      {
+        "case": "v15_reader_dev_00049",
+        "v13": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "v15": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "candidate_rows": [
+          -1,
+          -1,
+          -1,
+          3329,
+          2823,
+          4271
+        ],
+        "unknown_probability": [
+          0.0,
+          0.0,
+          0.0,
+          5.651347601087764e-05,
+          9.502048487775028e-05,
+          0.0005800660001114011
+        ]
+      },
+      {
+        "case": "v15_reader_dev_00050",
+        "v13": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "v15": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "candidate_rows": [
+          -1,
+          -1,
+          -1,
+          1592,
+          1038,
+          2400
+        ],
+        "unknown_probability": [
+          0.0,
+          0.0,
+          0.0,
+          6.579644104931504e-05,
+          0.00042208857485093176,
+          0.001016997150145471
+        ]
+      },
+      {
+        "case": "v15_reader_dev_00051",
+        "v13": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "v15": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "candidate_rows": [
+          -1,
+          -1,
+          -1,
+          1993,
+          1863,
+          2309
+        ],
+        "unknown_probability": [
+          0.0,
+          0.0,
+          0.0,
+          0.0005073341890238225,
+          0.0005333645967766643,
+          0.008971601724624634
+        ]
+      },
+      {
+        "case": "v15_reader_dev_00052",
+        "v13": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "v15": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "candidate_rows": [
+          -1,
+          -1,
+          -1,
+          650,
+          896,
+          1741
+        ],
+        "unknown_probability": [
+          0.0,
+          0.0,
+          0.0,
+          0.00042607885552570224,
+          0.0009114732965826988,
+          0.00033265218371525407
+        ]
+      },
+      {
+        "case": "v15_reader_dev_00053",
+        "v13": [
+          0,
+          0,
+          0,
+          -1,
+          1,
+          0
+        ],
+        "v15": [
+          0,
+          0,
+          0,
+          -1,
+          -2,
+          0
+        ],
+        "candidate_rows": [
+          -1,
+          -1,
+          -1,
+          828,
+          1473,
+          2446
+        ],
+        "unknown_probability": [
+          0.0,
+          0.0,
+          0.0,
+          0.0005842752289026976,
+          0.0017623173771426082,
+          0.00041931658051908016
+        ]
+      },
+      {
+        "case": "v15_reader_dev_00054",
+        "v13": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "v15": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "candidate_rows": [
+          -1,
+          -1,
+          -1,
+          557,
+          2510,
+          2729
+        ],
+        "unknown_probability": [
+          0.0,
+          0.0,
+          0.0,
+          0.0002055904915323481,
+          0.0002592887612991035,
+          0.00020657094137277454
+        ]
+      },
+      {
+        "case": "v15_reader_dev_00055",
+        "v13": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "v15": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "candidate_rows": [
+          -1,
+          -1,
+          -1,
+          526,
+          979,
+          1052
+        ],
+        "unknown_probability": [
+          0.0,
+          0.0,
+          0.0,
+          0.00034355284878984094,
+          0.0005898769595660269,
+          0.0004870449483860284
+        ]
+      },
+      {
+        "case": "v15_reader_dev_00056",
+        "v13": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "v15": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "candidate_rows": [
+          -1,
+          -1,
+          -1,
+          495,
+          1012,
+          1446
+        ],
+        "unknown_probability": [
+          0.0,
+          0.0,
+          0.0,
+          0.003288047853857279,
+          0.0004981548408977687,
+          0.0003194376768078655
+        ]
+      },
+      {
+        "case": "v15_reader_dev_00057",
+        "v13": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "v15": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "candidate_rows": [
+          -1,
+          -1,
+          -1,
+          729,
+          1239,
+          1575
+        ],
+        "unknown_probability": [
+          0.0,
+          0.0,
+          0.0,
+          0.0013827451039105654,
+          0.001113711390644312,
+          0.024855947121977806
+        ]
+      },
+      {
+        "case": "v15_reader_dev_00058",
+        "v13": [
+          0,
+          0,
+          -2,
+          0,
+          0,
+          0
+        ],
+        "v15": [
+          0,
+          0,
+          -2,
+          0,
+          0,
+          0
+        ],
+        "candidate_rows": [
+          -1,
+          -1,
+          -1,
+          1787,
+          1557,
+          2473
+        ],
+        "unknown_probability": [
+          0.0,
+          0.0,
+          0.0,
+          0.0004381833132356405,
+          0.0027143151964992285,
+          0.013847297057509422
+        ]
+      },
+      {
+        "case": "v15_reader_dev_00059",
+        "v13": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          5
+        ],
+        "v15": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          5
+        ],
+        "candidate_rows": [
+          -1,
+          -1,
+          -1,
+          2806,
+          1777,
+          3095
+        ],
+        "unknown_probability": [
+          0.0,
+          0.0,
+          0.0,
+          0.001364013529382646,
+          0.0005988990887999535,
+          0.01941812038421631
+        ]
+      },
+      {
+        "case": "v15_reader_dev_00060",
+        "v13": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "v15": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "candidate_rows": [
+          -1,
+          -1,
+          -1,
+          1243,
+          2167,
+          3964
+        ],
+        "unknown_probability": [
+          0.0,
+          0.0,
+          0.0,
+          6.801370182074606e-05,
+          0.00013379724987316877,
+          0.0007698048138990998
+        ]
+      },
+      {
+        "case": "v15_reader_dev_00061",
+        "v13": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "v15": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "candidate_rows": [
+          -1,
+          -1,
+          -1,
+          1583,
+          2455,
+          3612
+        ],
+        "unknown_probability": [
+          0.0,
+          0.0,
+          0.0,
+          7.382736657746136e-05,
+          0.0007353349938057363,
+          0.0010974789038300514
+        ]
+      },
+      {
+        "case": "v15_reader_dev_00062",
+        "v13": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "v15": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "candidate_rows": [
+          -1,
+          -1,
+          -1,
+          3236,
+          2668,
+          3979
+        ],
+        "unknown_probability": [
+          0.0,
+          0.0,
+          0.0,
+          8.405419066548347e-05,
+          0.00029771350091323256,
+          0.005112671758979559
+        ]
+      },
+      {
+        "case": "v15_reader_dev_00063",
+        "v13": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "v15": [
+          0,
+          0,
+          0,
+          0,
+          5,
+          0
+        ],
+        "candidate_rows": [
+          -1,
+          -1,
+          -1,
+          1044,
+          1704,
+          3359
+        ],
+        "unknown_probability": [
+          0.0,
+          0.0,
+          0.0,
+          0.002565310336649418,
+          0.010581407696008682,
+          0.0022373581305146217
+        ]
+      },
+      {
+        "case": "v15_reader_dev_00064",
+        "v13": [
+          0,
+          0,
+          0,
+          0,
+          1,
+          0
+        ],
+        "v15": [
+          0,
+          0,
+          0,
+          0,
+          5,
+          0
+        ],
+        "candidate_rows": [
+          -1,
+          -1,
+          -1,
+          557,
+          1136,
+          2798
+        ],
+        "unknown_probability": [
+          0.0,
+          0.0,
+          0.0,
+          0.0013394252164289355,
+          0.00656914571300149,
+          0.002068408764898777
+        ]
+      },
+      {
+        "case": "v15_reader_dev_00065",
+        "v13": [
+          0,
+          0,
+          0,
+          0,
+          -2,
+          -1
+        ],
+        "v15": [
+          0,
+          0,
+          0,
+          0,
+          -2,
+          -1
+        ],
+        "candidate_rows": [
+          -1,
+          -1,
+          -1,
+          717,
+          1397,
+          2356
+        ],
+        "unknown_probability": [
+          0.0,
+          0.0,
+          0.0,
+          0.00035623155417852104,
+          0.0017233708640560508,
+          0.012234381400048733
+        ]
+      },
+      {
+        "case": "v15_reader_dev_00066",
+        "v13": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "v15": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "candidate_rows": [
+          -1,
+          -1,
+          -1,
+          482,
+          975,
+          1954
+        ],
+        "unknown_probability": [
+          0.0,
+          0.0,
+          0.0,
+          0.0002645559434313327,
+          0.00015871014329604805,
+          0.00018298052600584924
+        ]
+      },
+      {
+        "case": "v15_reader_dev_00067",
+        "v13": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "v15": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "candidate_rows": [
+          -1,
+          -1,
+          -1,
+          487,
+          1220,
+          1565
+        ],
+        "unknown_probability": [
+          0.0,
+          0.0,
+          0.0,
+          0.00047135597560554743,
+          0.00032495634513907135,
+          0.0013680930715054274
+        ]
+      },
+      {
+        "case": "v15_reader_dev_00068",
+        "v13": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "v15": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "candidate_rows": [
+          -1,
+          -1,
+          -1,
+          1378,
+          2381,
+          2915
+        ],
+        "unknown_probability": [
+          0.0,
+          0.0,
+          0.0,
+          6.724088598275557e-05,
+          0.00023385109670925885,
+          0.00026028681895695627
+        ]
+      },
+      {
+        "case": "v15_reader_dev_00069",
+        "v13": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "v15": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "candidate_rows": [
+          -1,
+          -1,
+          -1,
+          377,
+          989,
+          1899
+        ],
+        "unknown_probability": [
+          0.0,
+          0.0,
+          0.0,
+          0.0354745052754879,
+          0.0006006936309859157,
+          0.0015772063052281737
+        ]
+      },
+      {
+        "case": "v15_reader_dev_00070",
+        "v13": [
+          0,
+          0,
+          0,
+          0,
+          1,
+          0
+        ],
+        "v15": [
+          0,
+          0,
+          0,
+          0,
+          1,
+          0
+        ],
+        "candidate_rows": [
+          -1,
+          -1,
+          -1,
+          1460,
+          798,
+          2370
+        ],
+        "unknown_probability": [
+          0.0,
+          0.0,
+          0.0,
+          0.0028029708191752434,
+          0.0012420332059264183,
+          0.002850643824785948
+        ]
+      },
+      {
+        "case": "v15_reader_dev_00071",
+        "v13": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "v15": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "candidate_rows": [
+          -1,
+          -1,
+          -1,
+          463,
+          1460,
+          2011
+        ],
+        "unknown_probability": [
+          0.0,
+          0.0,
+          0.0,
+          0.000282875495031476,
+          0.0008721360354684293,
+          0.0011978182010352612
+        ]
+      }
+    ],
+    "paired": {
+      "programs": 71,
+      "matched": 3643,
+      "measured": 493,
+      "proposed": 142,
+      "v15_direction": 205,
+      "v13_direction": 247
+    },
+    "paired_focus": [
+      {
+        "case": "v15_reader_dev_00000",
+        "region": 4,
+        "key": [
+          197,
+          1
+        ],
+        "label": 0,
+        "new_same_instance_view": true,
+        "v13_delta": 2.890795946121216,
+        "v15_delta": 4.499205589294434
+      },
+      {
+        "case": "v15_reader_dev_00000",
+        "region": 4,
+        "key": [
+          197,
+          2
+        ],
+        "label": 1,
+        "new_same_instance_view": false,
+        "v13_delta": 0.4316580295562744,
+        "v15_delta": -0.13506126403808594
+      },
+      {
+        "case": "v15_reader_dev_00001",
+        "region": 5,
+        "key": [
+          283,
+          1
+        ],
+        "label": 0,
+        "new_same_instance_view": true,
+        "v13_delta": 2.4503440856933594,
+        "v15_delta": 2.6711463928222656
+      },
+      {
+        "case": "v15_reader_dev_00001",
+        "region": 5,
+        "key": [
+          283,
+          2
+        ],
+        "label": 1,
+        "new_same_instance_view": false,
+        "v13_delta": -0.10391616821289062,
+        "v15_delta": -0.1966085433959961
+      },
+      {
+        "case": "v15_reader_dev_00002",
+        "region": 6,
+        "key": [
+          682,
+          0
+        ],
+        "label": 1,
+        "new_same_instance_view": false,
+        "v13_delta": 2.2926478385925293,
+        "v15_delta": 2.4474191665649414
+      },
+      {
+        "case": "v15_reader_dev_00002",
+        "region": 6,
+        "key": [
+          682,
+          1
+        ],
+        "label": 0,
+        "new_same_instance_view": false,
+        "v13_delta": 0.3794827461242676,
+        "v15_delta": -0.1171720027923584
+      },
+      {
+        "case": "v15_reader_dev_00003",
+        "region": 4,
+        "key": [
+          197,
+          1
+        ],
+        "label": 0,
+        "new_same_instance_view": false,
+        "v13_delta": 0.5570611953735352,
+        "v15_delta": 0.6392369270324707
+      },
+      {
+        "case": "v15_reader_dev_00003",
+        "region": 4,
+        "key": [
+          197,
+          2
+        ],
+        "label": -1,
+        "new_same_instance_view": false,
+        "v13_delta": 0.05847597122192383,
+        "v15_delta": -0.01754283905029297
+      },
+      {
+        "case": "v15_reader_dev_00004",
+        "region": 5,
+        "key": [
+          352,
+          3
+        ],
+        "label": 1,
+        "new_same_instance_view": false,
+        "v13_delta": 0.1470351219177246,
+        "v15_delta": 0.13568496704101562
+      },
+      {
+        "case": "v15_reader_dev_00004",
+        "region": 5,
+        "key": [
+          352,
+          4
+        ],
+        "label": 0,
+        "new_same_instance_view": false,
+        "v13_delta": 0.16850900650024414,
+        "v15_delta": 0.11178874969482422
+      },
+      {
+        "case": "v15_reader_dev_00005",
+        "region": 4,
+        "key": [
+          201,
+          1
+        ],
+        "label": 0,
+        "new_same_instance_view": false,
+        "v13_delta": 0.334949254989624,
+        "v15_delta": 0.0575711727142334
+      },
+      {
+        "case": "v15_reader_dev_00005",
+        "region": 4,
+        "key": [
+          201,
+          2
+        ],
+        "label": 1,
+        "new_same_instance_view": false,
+        "v13_delta": -0.7761516571044922,
+        "v15_delta": -1.3295695781707764
+      },
+      {
+        "case": "v15_reader_dev_00006",
+        "region": 4,
+        "key": [
+          172,
+          0
+        ],
+        "label": 0,
+        "new_same_instance_view": true,
+        "v13_delta": -0.31269335746765137,
+        "v15_delta": -0.0855255126953125
+      },
+      {
+        "case": "v15_reader_dev_00006",
+        "region": 4,
+        "key": [
+          172,
+          1
+        ],
+        "label": 1,
+        "new_same_instance_view": true,
+        "v13_delta": -0.8502163887023926,
+        "v15_delta": -0.4805030822753906
+      },
+      {
+        "case": "v15_reader_dev_00007",
+        "region": 5,
+        "key": [
+          697,
+          1
+        ],
+        "label": 0,
+        "new_same_instance_view": true,
+        "v13_delta": 0.9232783317565918,
+        "v15_delta": 0.9074482917785645
+      },
+      {
+        "case": "v15_reader_dev_00007",
+        "region": 5,
+        "key": [
+          697,
+          2
+        ],
+        "label": 1,
+        "new_same_instance_view": false,
+        "v13_delta": -0.5169887542724609,
+        "v15_delta": -0.6407070159912109
+      },
+      {
+        "case": "v15_reader_dev_00008",
+        "region": 4,
+        "key": [
+          175,
+          0
+        ],
+        "label": 1,
+        "new_same_instance_view": true,
+        "v13_delta": -1.715094804763794,
+        "v15_delta": -1.0627446174621582
+      },
+      {
+        "case": "v15_reader_dev_00008",
+        "region": 4,
+        "key": [
+          175,
+          1
+        ],
+        "label": 0,
+        "new_same_instance_view": true,
+        "v13_delta": 0.7271784543991089,
+        "v15_delta": 0.9275585412979126
+      },
+      {
+        "case": "v15_reader_dev_00009",
+        "region": 4,
+        "key": [
+          210,
+          0
+        ],
+        "label": -2,
+        "new_same_instance_view": true,
+        "v13_delta": -0.12252408266067505,
+        "v15_delta": -0.08523273468017578
+      },
+      {
+        "case": "v15_reader_dev_00009",
+        "region": 4,
+        "key": [
+          210,
+          1
+        ],
+        "label": 5,
+        "new_same_instance_view": false,
+        "v13_delta": 0.12622547149658203,
+        "v15_delta": 0.09037017822265625
+      },
+      {
+        "case": "v15_reader_dev_00010",
+        "region": 5,
+        "key": [
+          300,
+          0
+        ],
+        "label": 0,
+        "new_same_instance_view": false,
+        "v13_delta": 2.2385902404785156,
+        "v15_delta": 1.6943875551223755
+      },
+      {
+        "case": "v15_reader_dev_00010",
+        "region": 5,
+        "key": [
+          300,
+          1
+        ],
+        "label": 5,
+        "new_same_instance_view": false,
+        "v13_delta": 0.5396041870117188,
+        "v15_delta": 0.8625988960266113
+      },
+      {
+        "case": "v15_reader_dev_00011",
+        "region": 4,
+        "key": [
+          172,
+          0
+        ],
+        "label": 0,
+        "new_same_instance_view": true,
+        "v13_delta": -1.2342902421951294,
+        "v15_delta": -0.8696829080581665
+      },
+      {
+        "case": "v15_reader_dev_00011",
+        "region": 4,
+        "key": [
+          172,
+          1
+        ],
+        "label": -1,
+        "new_same_instance_view": false,
+        "v13_delta": -0.6936526298522949,
+        "v15_delta": -0.4604778289794922
+      },
+      {
+        "case": "v15_reader_dev_00012",
+        "region": 4,
+        "key": [
+          181,
+          1
+        ],
+        "label": 0,
+        "new_same_instance_view": true,
+        "v13_delta": -0.6326103210449219,
+        "v15_delta": -0.9966220855712891
+      },
+      {
+        "case": "v15_reader_dev_00012",
+        "region": 4,
+        "key": [
+          185,
+          0
+        ],
+        "label": 0,
+        "new_same_instance_view": false,
+        "v13_delta": -0.24623656272888184,
+        "v15_delta": -0.3373194932937622
+      },
+      {
+        "case": "v15_reader_dev_00013",
+        "region": 5,
+        "key": [
+          234,
+          1
+        ],
+        "label": 0,
+        "new_same_instance_view": true,
+        "v13_delta": 0.32863593101501465,
+        "v15_delta": 0.25279998779296875
+      },
+      {
+        "case": "v15_reader_dev_00013",
+        "region": 5,
+        "key": [
+          234,
+          2
+        ],
+        "label": 1,
+        "new_same_instance_view": false,
+        "v13_delta": -0.0056915283203125,
+        "v15_delta": -0.188751220703125
+      },
+      {
+        "case": "v15_reader_dev_00014",
+        "region": 6,
+        "key": [
+          440,
+          0
+        ],
+        "label": 0,
+        "new_same_instance_view": true,
+        "v13_delta": 0.3406682014465332,
+        "v15_delta": 0.3323688507080078
+      },
+      {
+        "case": "v15_reader_dev_00014",
+        "region": 6,
+        "key": [
+          440,
+          1
+        ],
+        "label": 1,
+        "new_same_instance_view": false,
+        "v13_delta": -0.017096519470214844,
+        "v15_delta": -0.02553415298461914
+      },
+      {
+        "case": "v15_reader_dev_00015",
+        "region": 4,
+        "key": [
+          678,
+          0
+        ],
+        "label": 0,
+        "new_same_instance_view": false,
+        "v13_delta": 0.2505919337272644,
+        "v15_delta": 0.09230953454971313
+      },
+      {
+        "case": "v15_reader_dev_00015",
+        "region": 4,
+        "key": [
+          681,
+          0
+        ],
+        "label": 0,
+        "new_same_instance_view": false,
+        "v13_delta": -0.15232014656066895,
+        "v15_delta": -0.16072845458984375
+      },
+      {
+        "case": "v15_reader_dev_00016",
+        "region": 5,
+        "key": [
+          647,
+          1
+        ],
+        "label": 0,
+        "new_same_instance_view": false,
+        "v13_delta": -0.12318134307861328,
+        "v15_delta": -0.3111623525619507
+      },
+      {
+        "case": "v15_reader_dev_00016",
+        "region": 5,
+        "key": [
+          652,
+          0
+        ],
+        "label": 0,
+        "new_same_instance_view": false,
+        "v13_delta": 0.11191093921661377,
+        "v15_delta": -0.019710540771484375
+      },
+      {
+        "case": "v15_reader_dev_00017",
+        "region": 4,
+        "key": [
+          176,
+          0
+        ],
+        "label": -1,
+        "new_same_instance_view": false,
+        "v13_delta": -1.5018645524978638,
+        "v15_delta": -2.086286783218384
+      },
+      {
+        "case": "v15_reader_dev_00017",
+        "region": 4,
+        "key": [
+          176,
+          1
+        ],
+        "label": 0,
+        "new_same_instance_view": false,
+        "v13_delta": -0.8304445743560791,
+        "v15_delta": -1.41192626953125
+      },
+      {
+        "case": "v15_reader_dev_00018",
+        "region": 5,
+        "key": [
+          247,
+          2
+        ],
+        "label": 0,
+        "new_same_instance_view": true,
+        "v13_delta": 1.9798405170440674,
+        "v15_delta": 2.0280909538269043
+      },
+      {
+        "case": "v15_reader_dev_00018",
+        "region": 5,
+        "key": [
+          247,
+          3
+        ],
+        "label": 5,
+        "new_same_instance_view": false,
+        "v13_delta": 0.10584163665771484,
+        "v15_delta": 0.21387767791748047
+      },
+      {
+        "case": "v15_reader_dev_00019",
+        "region": 5,
+        "key": [
+          258,
+          3
+        ],
+        "label": 0,
+        "new_same_instance_view": false,
+        "v13_delta": 2.5673470497131348,
+        "v15_delta": 3.079695224761963
+      },
+      {
+        "case": "v15_reader_dev_00019",
+        "region": 5,
+        "key": [
+          258,
+          4
+        ],
+        "label": 1,
+        "new_same_instance_view": false,
+        "v13_delta": 0.26059722900390625,
+        "v15_delta": 0.42830610275268555
+      },
+      {
+        "case": "v15_reader_dev_00020",
+        "region": 5,
+        "key": [
+          292,
+          1
+        ],
+        "label": 0,
+        "new_same_instance_view": true,
+        "v13_delta": 4.128568172454834,
+        "v15_delta": 4.765199661254883
+      },
+      {
+        "case": "v15_reader_dev_00020",
+        "region": 5,
+        "key": [
+          292,
+          2
+        ],
+        "label": 5,
+        "new_same_instance_view": false,
+        "v13_delta": 0.8330962657928467,
+        "v15_delta": 0.7237715721130371
+      },
+      {
+        "case": "v15_reader_dev_00021",
+        "region": 5,
+        "key": [
+          257,
+          0
+        ],
+        "label": 0,
+        "new_same_instance_view": false,
+        "v13_delta": 2.821324348449707,
+        "v15_delta": 3.782034158706665
+      },
+      {
+        "case": "v15_reader_dev_00021",
+        "region": 5,
+        "key": [
+          257,
+          1
+        ],
+        "label": -2,
+        "new_same_instance_view": false,
+        "v13_delta": 0.14127731323242188,
+        "v15_delta": 0.35559558868408203
+      },
+      {
+        "case": "v15_reader_dev_00022",
+        "region": 5,
+        "key": [
+          698,
+          1
+        ],
+        "label": 0,
+        "new_same_instance_view": false,
+        "v13_delta": 0.017735004425048828,
+        "v15_delta": -0.5433111190795898
+      },
+      {
+        "case": "v15_reader_dev_00022",
+        "region": 5,
+        "key": [
+          698,
+          2
+        ],
+        "label": 1,
+        "new_same_instance_view": false,
+        "v13_delta": 0.3746509552001953,
+        "v15_delta": 0.518896222114563
+      },
+      {
+        "case": "v15_reader_dev_00023",
+        "region": 6,
+        "key": [
+          834,
+          0
+        ],
+        "label": 0,
+        "new_same_instance_view": false,
+        "v13_delta": -0.2796440124511719,
+        "v15_delta": -0.31592321395874023
+      },
+      {
+        "case": "v15_reader_dev_00023",
+        "region": 6,
+        "key": [
+          834,
+          2
+        ],
+        "label": 1,
+        "new_same_instance_view": false,
+        "v13_delta": -0.018207073211669922,
+        "v15_delta": 0.30971670150756836
+      },
+      {
+        "case": "v15_reader_dev_00024",
+        "region": 4,
+        "key": [
+          173,
+          0
+        ],
+        "label": 0,
+        "new_same_instance_view": true,
+        "v13_delta": -0.019300460815429688,
+        "v15_delta": 0.03114032745361328
+      },
+      {
+        "case": "v15_reader_dev_00024",
+        "region": 4,
+        "key": [
+          173,
+          3
+        ],
+        "label": -1,
+        "new_same_instance_view": false,
+        "v13_delta": -1.0625855922698975,
+        "v15_delta": -0.7380499839782715
+      },
+      {
+        "case": "v15_reader_dev_00025",
+        "region": 5,
+        "key": [
+          680,
+          0
+        ],
+        "label": 0,
+        "new_same_instance_view": false,
+        "v13_delta": 0.703715443611145,
+        "v15_delta": 1.0765089988708496
+      },
+      {
+        "case": "v15_reader_dev_00025",
+        "region": 5,
+        "key": [
+          680,
+          1
+        ],
+        "label": 1,
+        "new_same_instance_view": false,
+        "v13_delta": 0.2974390983581543,
+        "v15_delta": 0.34411048889160156
+      },
+      {
+        "case": "v15_reader_dev_00026",
+        "region": 4,
+        "key": [
+          176,
+          0
+        ],
+        "label": 0,
+        "new_same_instance_view": false,
+        "v13_delta": -0.14823883771896362,
+        "v15_delta": -0.09790921211242676
+      },
+      {
+        "case": "v15_reader_dev_00026",
+        "region": 4,
+        "key": [
+          176,
+          1
+        ],
+        "label": 1,
+        "new_same_instance_view": true,
+        "v13_delta": -1.3454065322875977,
+        "v15_delta": -1.0678892135620117
+      },
+      {
+        "case": "v15_reader_dev_00027",
+        "region": 4,
+        "key": [
+          180,
+          1
+        ],
+        "label": 1,
+        "new_same_instance_view": false,
+        "v13_delta": -0.1502223014831543,
+        "v15_delta": -0.10709667205810547
+      },
+      {
+        "case": "v15_reader_dev_00027",
+        "region": 4,
+        "key": [
+          185,
+          1
+        ],
+        "label": 0,
+        "new_same_instance_view": false,
+        "v13_delta": -0.2001032829284668,
+        "v15_delta": 0.34049034118652344
+      },
+      {
+        "case": "v15_reader_dev_00028",
+        "region": 5,
+        "key": [
+          691,
+          1
+        ],
+        "label": 0,
+        "new_same_instance_view": true,
+        "v13_delta": 1.0291759967803955,
+        "v15_delta": 1.5409507751464844
+      },
+      {
+        "case": "v15_reader_dev_00028",
+        "region": 5,
+        "key": [
+          691,
+          2
+        ],
+        "label": -1,
+        "new_same_instance_view": false,
+        "v13_delta": 0.04226112365722656,
+        "v15_delta": -0.11313056945800781
+      },
+      {
+        "case": "v15_reader_dev_00029",
+        "region": 6,
+        "key": [
+          938,
+          0
+        ],
+        "label": 0,
+        "new_same_instance_view": false,
+        "v13_delta": -0.4649732708930969,
+        "v15_delta": -0.4276469349861145
+      },
+      {
+        "case": "v15_reader_dev_00029",
+        "region": 6,
+        "key": [
+          938,
+          1
+        ],
+        "label": -1,
+        "new_same_instance_view": true,
+        "v13_delta": -0.2507810592651367,
+        "v15_delta": -0.10454940795898438
+      },
+      {
+        "case": "v15_reader_dev_00030",
+        "region": 4,
+        "key": [
+          182,
+          1
+        ],
+        "label": 0,
+        "new_same_instance_view": true,
+        "v13_delta": -1.302649736404419,
+        "v15_delta": -1.6082682609558105
+      },
+      {
+        "case": "v15_reader_dev_00030",
+        "region": 4,
+        "key": [
+          182,
+          3
+        ],
+        "label": -1,
+        "new_same_instance_view": false,
+        "v13_delta": -0.1377565860748291,
+        "v15_delta": -0.314170241355896
+      },
+      {
+        "case": "v15_reader_dev_00031",
+        "region": 5,
+        "key": [
+          258,
+          1
+        ],
+        "label": 0,
+        "new_same_instance_view": false,
+        "v13_delta": -0.5019881725311279,
+        "v15_delta": -0.42478418350219727
+      },
+      {
+        "case": "v15_reader_dev_00031",
+        "region": 5,
+        "key": [
+          258,
+          2
+        ],
+        "label": 1,
+        "new_same_instance_view": false,
+        "v13_delta": -0.7216939926147461,
+        "v15_delta": -0.6296119689941406
+      },
+      {
+        "case": "v15_reader_dev_00032",
+        "region": 6,
+        "key": [
+          488,
+          0
+        ],
+        "label": 0,
+        "new_same_instance_view": false,
+        "v13_delta": -0.31765127182006836,
+        "v15_delta": -0.2598600387573242
+      },
+      {
+        "case": "v15_reader_dev_00032",
+        "region": 6,
+        "key": [
+          488,
+          1
+        ],
+        "label": 1,
+        "new_same_instance_view": false,
+        "v13_delta": 0.2590677738189697,
+        "v15_delta": 1.3248311281204224
+      },
+      {
+        "case": "v15_reader_dev_00033",
+        "region": 4,
+        "key": [
+          181,
+          1
+        ],
+        "label": 0,
+        "new_same_instance_view": false,
+        "v13_delta": -0.4061267375946045,
+        "v15_delta": -0.4418337345123291
+      },
+      {
+        "case": "v15_reader_dev_00033",
+        "region": 4,
+        "key": [
+          185,
+          0
+        ],
+        "label": 0,
+        "new_same_instance_view": false,
+        "v13_delta": -0.7394450902938843,
+        "v15_delta": -1.678648591041565
+      },
+      {
+        "case": "v15_reader_dev_00034",
+        "region": 5,
+        "key": [
+          656,
+          3
+        ],
+        "label": 1,
+        "new_same_instance_view": false,
+        "v13_delta": 0.7218914031982422,
+        "v15_delta": 0.6577959060668945
+      },
+      {
+        "case": "v15_reader_dev_00034",
+        "region": 5,
+        "key": [
+          659,
+          0
+        ],
+        "label": 1,
+        "new_same_instance_view": false,
+        "v13_delta": 3.6310861110687256,
+        "v15_delta": 4.138975143432617
+      },
+      {
+        "case": "v15_reader_dev_00035",
+        "region": 6,
+        "key": [
+          867,
+          0
+        ],
+        "label": 0,
+        "new_same_instance_view": true,
+        "v13_delta": -0.9642456769943237,
+        "v15_delta": -1.099141001701355
+      },
+      {
+        "case": "v15_reader_dev_00035",
+        "region": 6,
+        "key": [
+          867,
+          1
+        ],
+        "label": 5,
+        "new_same_instance_view": false,
+        "v13_delta": -0.24480295181274414,
+        "v15_delta": -0.40277671813964844
+      },
+      {
+        "case": "v15_reader_dev_00036",
+        "region": 4,
+        "key": [
+          197,
+          1
+        ],
+        "label": 0,
+        "new_same_instance_view": true,
+        "v13_delta": -0.12960577011108398,
+        "v15_delta": -0.10436439514160156
+      },
+      {
+        "case": "v15_reader_dev_00036",
+        "region": 4,
+        "key": [
+          197,
+          2
+        ],
+        "label": 1,
+        "new_same_instance_view": false,
+        "v13_delta": -0.07716226577758789,
+        "v15_delta": 0.01905989646911621
+      },
+      {
+        "case": "v15_reader_dev_00037",
+        "region": 5,
+        "key": [
+          276,
+          1
+        ],
+        "label": 0,
+        "new_same_instance_view": false,
+        "v13_delta": 1.26619553565979,
+        "v15_delta": 1.72444486618042
+      },
+      {
+        "case": "v15_reader_dev_00037",
+        "region": 5,
+        "key": [
+          276,
+          2
+        ],
+        "label": 5,
+        "new_same_instance_view": false,
+        "v13_delta": 0.12264728546142578,
+        "v15_delta": -0.14978790283203125
+      },
+      {
+        "case": "v15_reader_dev_00039",
+        "region": 4,
+        "key": [
+          246,
+          1
+        ],
+        "label": 0,
+        "new_same_instance_view": false,
+        "v13_delta": 0.21353256702423096,
+        "v15_delta": 0.28377091884613037
+      },
+      {
+        "case": "v15_reader_dev_00039",
+        "region": 4,
+        "key": [
+          268,
+          0
+        ],
+        "label": 1,
+        "new_same_instance_view": false,
+        "v13_delta": 0.02086925506591797,
+        "v15_delta": 0.05573129653930664
+      },
+      {
+        "case": "v15_reader_dev_00040",
+        "region": 5,
+        "key": [
+          306,
+          0
+        ],
+        "label": 0,
+        "new_same_instance_view": false,
+        "v13_delta": -0.0744621753692627,
+        "v15_delta": -0.062494754791259766
+      },
+      {
+        "case": "v15_reader_dev_00040",
+        "region": 5,
+        "key": [
+          310,
+          2
+        ],
+        "label": 5,
+        "new_same_instance_view": false,
+        "v13_delta": -0.05249476432800293,
+        "v15_delta": -0.42783117294311523
+      },
+      {
+        "case": "v15_reader_dev_00041",
+        "region": 6,
+        "key": [
+          897,
+          0
+        ],
+        "label": 0,
+        "new_same_instance_view": false,
+        "v13_delta": 0.11124014854431152,
+        "v15_delta": 0.10995841026306152
+      },
+      {
+        "case": "v15_reader_dev_00041",
+        "region": 6,
+        "key": [
+          897,
+          1
+        ],
+        "label": -2,
+        "new_same_instance_view": false,
+        "v13_delta": 0.0011544227600097656,
+        "v15_delta": 0.1522693634033203
+      },
+      {
+        "case": "v15_reader_dev_00042",
+        "region": 4,
+        "key": [
+          172,
+          0
+        ],
+        "label": 0,
+        "new_same_instance_view": true,
+        "v13_delta": 0.13674616813659668,
+        "v15_delta": 0.595463752746582
+      },
+      {
+        "case": "v15_reader_dev_00042",
+        "region": 4,
+        "key": [
+          172,
+          1
+        ],
+        "label": 1,
+        "new_same_instance_view": true,
+        "v13_delta": -1.2791838645935059,
+        "v15_delta": -1.165820598602295
+      },
+      {
+        "case": "v15_reader_dev_00043",
+        "region": 5,
+        "key": [
+          688,
+          0
+        ],
+        "label": 0,
+        "new_same_instance_view": true,
+        "v13_delta": 0.844557523727417,
+        "v15_delta": 0.9455366134643555
+      },
+      {
+        "case": "v15_reader_dev_00043",
+        "region": 5,
+        "key": [
+          688,
+          1
+        ],
+        "label": 5,
+        "new_same_instance_view": false,
+        "v13_delta": 0.17701148986816406,
+        "v15_delta": 0.3237648010253906
+      },
+      {
+        "case": "v15_reader_dev_00044",
+        "region": 4,
+        "key": [
+          176,
+          0
+        ],
+        "label": 0,
+        "new_same_instance_view": true,
+        "v13_delta": -0.06454610824584961,
+        "v15_delta": -0.20293283462524414
+      },
+      {
+        "case": "v15_reader_dev_00044",
+        "region": 4,
+        "key": [
+          176,
+          1
+        ],
+        "label": 1,
+        "new_same_instance_view": true,
+        "v13_delta": -0.3883695602416992,
+        "v15_delta": -0.16672182083129883
+      },
+      {
+        "case": "v15_reader_dev_00045",
+        "region": 4,
+        "key": [
+          182,
+          0
+        ],
+        "label": -2,
+        "new_same_instance_view": false,
+        "v13_delta": 1.0724451541900635,
+        "v15_delta": 1.1746950149536133
+      },
+      {
+        "case": "v15_reader_dev_00045",
+        "region": 4,
+        "key": [
+          182,
+          2
+        ],
+        "label": 1,
+        "new_same_instance_view": false,
+        "v13_delta": 0.8260278701782227,
+        "v15_delta": 1.8428773880004883
+      },
+      {
+        "case": "v15_reader_dev_00046",
+        "region": 5,
+        "key": [
+          367,
+          2
+        ],
+        "label": 0,
+        "new_same_instance_view": false,
+        "v13_delta": 0.3327372074127197,
+        "v15_delta": 0.6013364791870117
+      },
+      {
+        "case": "v15_reader_dev_00046",
+        "region": 5,
+        "key": [
+          367,
+          3
+        ],
+        "label": -2,
+        "new_same_instance_view": false,
+        "v13_delta": 0.12399148941040039,
+        "v15_delta": 0.051253318786621094
+      },
+      {
+        "case": "v15_reader_dev_00047",
+        "region": 4,
+        "key": [
+          203,
+          0
+        ],
+        "label": 0,
+        "new_same_instance_view": true,
+        "v13_delta": -0.264534592628479,
+        "v15_delta": -0.013933658599853516
+      },
+      {
+        "case": "v15_reader_dev_00047",
+        "region": 4,
+        "key": [
+          203,
+          2
+        ],
+        "label": 1,
+        "new_same_instance_view": false,
+        "v13_delta": 0.08147048950195312,
+        "v15_delta": 0.29565906524658203
+      },
+      {
+        "case": "v15_reader_dev_00048",
+        "region": 5,
+        "key": [
+          236,
+          1
+        ],
+        "label": 0,
+        "new_same_instance_view": true,
+        "v13_delta": 0.0014491081237792969,
+        "v15_delta": 0.20011281967163086
+      },
+      {
+        "case": "v15_reader_dev_00048",
+        "region": 5,
+        "key": [
+          236,
+          2
+        ],
+        "label": 5,
+        "new_same_instance_view": false,
+        "v13_delta": -0.1913585662841797,
+        "v15_delta": -0.0658884048461914
+      },
+      {
+        "case": "v15_reader_dev_00049",
+        "region": 5,
+        "key": [
+          243,
+          0
+        ],
+        "label": 0,
+        "new_same_instance_view": true,
+        "v13_delta": 0.6632766723632812,
+        "v15_delta": 0.9228396415710449
+      },
+      {
+        "case": "v15_reader_dev_00049",
+        "region": 5,
+        "key": [
+          243,
+          1
+        ],
+        "label": 1,
+        "new_same_instance_view": false,
+        "v13_delta": -0.03015899658203125,
+        "v15_delta": -0.43289756774902344
+      },
+      {
+        "case": "v15_reader_dev_00050",
+        "region": 6,
+        "key": [
+          717,
+          0
+        ],
+        "label": 0,
+        "new_same_instance_view": true,
+        "v13_delta": 1.3688366413116455,
+        "v15_delta": 1.645258903503418
+      },
+      {
+        "case": "v15_reader_dev_00050",
+        "region": 6,
+        "key": [
+          717,
+          2
+        ],
+        "label": 1,
+        "new_same_instance_view": true,
+        "v13_delta": -0.07439136505126953,
+        "v15_delta": 0.0073871612548828125
+      },
+      {
+        "case": "v15_reader_dev_00051",
+        "region": 4,
+        "key": [
+          179,
+          0
+        ],
+        "label": 0,
+        "new_same_instance_view": true,
+        "v13_delta": -0.07508647441864014,
+        "v15_delta": 0.118355393409729
+      },
+      {
+        "case": "v15_reader_dev_00051",
+        "region": 4,
+        "key": [
+          179,
+          1
+        ],
+        "label": 1,
+        "new_same_instance_view": false,
+        "v13_delta": -0.9245150089263916,
+        "v15_delta": -1.301060676574707
+      },
+      {
+        "case": "v15_reader_dev_00052",
+        "region": 5,
+        "key": [
+          387,
+          0
+        ],
+        "label": 0,
+        "new_same_instance_view": false,
+        "v13_delta": -0.13607335090637207,
+        "v15_delta": -0.539459228515625
+      },
+      {
+        "case": "v15_reader_dev_00052",
+        "region": 5,
+        "key": [
+          387,
+          2
+        ],
+        "label": 5,
+        "new_same_instance_view": false,
+        "v13_delta": 0.18276643753051758,
+        "v15_delta": -0.33460330963134766
+      },
+      {
+        "case": "v15_reader_dev_00053",
+        "region": 6,
+        "key": [
+          979,
+          0
+        ],
+        "label": -2,
+        "new_same_instance_view": false,
+        "v13_delta": -0.3088853359222412,
+        "v15_delta": -0.4602165222167969
+      },
+      {
+        "case": "v15_reader_dev_00053",
+        "region": 6,
+        "key": [
+          979,
+          1
+        ],
+        "label": 5,
+        "new_same_instance_view": false,
+        "v13_delta": -0.12724781036376953,
+        "v15_delta": -0.1385812759399414
+      },
+      {
+        "case": "v15_reader_dev_00054",
+        "region": 4,
+        "key": [
+          197,
+          0
+        ],
+        "label": -1,
+        "new_same_instance_view": false,
+        "v13_delta": 0.023137569427490234,
+        "v15_delta": 0.002602100372314453
+      },
+      {
+        "case": "v15_reader_dev_00054",
+        "region": 4,
+        "key": [
+          197,
+          2
+        ],
+        "label": 0,
+        "new_same_instance_view": true,
+        "v13_delta": -2.8669075965881348,
+        "v15_delta": -3.179452419281006
+      },
+      {
+        "case": "v15_reader_dev_00055",
+        "region": 5,
+        "key": [
+          273,
+          2
+        ],
+        "label": 0,
+        "new_same_instance_view": true,
+        "v13_delta": 1.8742941617965698,
+        "v15_delta": 1.910050868988037
+      },
+      {
+        "case": "v15_reader_dev_00055",
+        "region": 5,
+        "key": [
+          273,
+          4
+        ],
+        "label": 1,
+        "new_same_instance_view": false,
+        "v13_delta": 1.47800874710083,
+        "v15_delta": 1.5158395767211914
+      },
+      {
+        "case": "v15_reader_dev_00056",
+        "region": 6,
+        "key": [
+          412,
+          0
+        ],
+        "label": 0,
+        "new_same_instance_view": false,
+        "v13_delta": -0.58563232421875,
+        "v15_delta": -0.5741610527038574
+      },
+      {
+        "case": "v15_reader_dev_00056",
+        "region": 6,
+        "key": [
+          412,
+          1
+        ],
+        "label": 1,
+        "new_same_instance_view": false,
+        "v13_delta": 0.08509421348571777,
+        "v15_delta": -0.2838062047958374
+      },
+      {
+        "case": "v15_reader_dev_00057",
+        "region": 4,
+        "key": [
+          220,
+          1
+        ],
+        "label": -2,
+        "new_same_instance_view": false,
+        "v13_delta": 0.9698662757873535,
+        "v15_delta": 0.3732917308807373
+      },
+      {
+        "case": "v15_reader_dev_00057",
+        "region": 4,
+        "key": [
+          225,
+          1
+        ],
+        "label": 0,
+        "new_same_instance_view": true,
+        "v13_delta": 1.323132038116455,
+        "v15_delta": 1.615840196609497
+      },
+      {
+        "case": "v15_reader_dev_00058",
+        "region": 5,
+        "key": [
+          597,
+          0
+        ],
+        "label": -1,
+        "new_same_instance_view": false,
+        "v13_delta": 0.568932294845581,
+        "v15_delta": 0.6679134368896484
+      },
+      {
+        "case": "v15_reader_dev_00058",
+        "region": 5,
+        "key": [
+          602,
+          2
+        ],
+        "label": 3,
+        "new_same_instance_view": false,
+        "v13_delta": 1.1079479455947876,
+        "v15_delta": 1.1558098793029785
+      },
+      {
+        "case": "v15_reader_dev_00059",
+        "region": 4,
+        "key": [
+          225,
+          0
+        ],
+        "label": 0,
+        "new_same_instance_view": false,
+        "v13_delta": 1.7510912418365479,
+        "v15_delta": 1.9556097984313965
+      },
+      {
+        "case": "v15_reader_dev_00059",
+        "region": 4,
+        "key": [
+          229,
+          1
+        ],
+        "label": -2,
+        "new_same_instance_view": false,
+        "v13_delta": 0.6838474273681641,
+        "v15_delta": 0.9244804382324219
+      },
+      {
+        "case": "v15_reader_dev_00060",
+        "region": 4,
+        "key": [
+          172,
+          1
+        ],
+        "label": 0,
+        "new_same_instance_view": true,
+        "v13_delta": -0.009616613388061523,
+        "v15_delta": 0.46390867233276367
+      },
+      {
+        "case": "v15_reader_dev_00060",
+        "region": 4,
+        "key": [
+          172,
+          2
+        ],
+        "label": 1,
+        "new_same_instance_view": true,
+        "v13_delta": -0.7669415473937988,
+        "v15_delta": -0.5078010559082031
+      },
+      {
+        "case": "v15_reader_dev_00061",
+        "region": 5,
+        "key": [
+          707,
+          0
+        ],
+        "label": 0,
+        "new_same_instance_view": true,
+        "v13_delta": 0.17768144607543945,
+        "v15_delta": 0.3151130676269531
+      },
+      {
+        "case": "v15_reader_dev_00061",
+        "region": 5,
+        "key": [
+          707,
+          3
+        ],
+        "label": 1,
+        "new_same_instance_view": false,
+        "v13_delta": -0.7434301376342773,
+        "v15_delta": -1.1169805526733398
+      },
+      {
+        "case": "v15_reader_dev_00062",
+        "region": 4,
+        "key": [
+          175,
+          0
+        ],
+        "label": -1,
+        "new_same_instance_view": false,
+        "v13_delta": -0.1002187728881836,
+        "v15_delta": -0.05443572998046875
+      },
+      {
+        "case": "v15_reader_dev_00062",
+        "region": 4,
+        "key": [
+          175,
+          1
+        ],
+        "label": -2,
+        "new_same_instance_view": true,
+        "v13_delta": 0.13751447200775146,
+        "v15_delta": 0.7036421298980713
+      },
+      {
+        "case": "v15_reader_dev_00063",
+        "region": 4,
+        "key": [
+          170,
+          1
+        ],
+        "label": 0,
+        "new_same_instance_view": false,
+        "v13_delta": -0.6262233257293701,
+        "v15_delta": -0.17044687271118164
+      },
+      {
+        "case": "v15_reader_dev_00063",
+        "region": 4,
+        "key": [
+          170,
+          2
+        ],
+        "label": -1,
+        "new_same_instance_view": false,
+        "v13_delta": -0.4236016273498535,
+        "v15_delta": 1.4039568901062012
+      },
+      {
+        "case": "v15_reader_dev_00064",
+        "region": 5,
+        "key": [
+          448,
+          1
+        ],
+        "label": 5,
+        "new_same_instance_view": false,
+        "v13_delta": 0.19004583358764648,
+        "v15_delta": 0.34313154220581055
+      },
+      {
+        "case": "v15_reader_dev_00064",
+        "region": 5,
+        "key": [
+          448,
+          2
+        ],
+        "label": 1,
+        "new_same_instance_view": false,
+        "v13_delta": 1.9510471820831299,
+        "v15_delta": 2.190992832183838
+      },
+      {
+        "case": "v15_reader_dev_00065",
+        "region": 4,
+        "key": [
+          174,
+          0
+        ],
+        "label": 0,
+        "new_same_instance_view": true,
+        "v13_delta": 0.004381895065307617,
+        "v15_delta": 0.22467577457427979
+      },
+      {
+        "case": "v15_reader_dev_00065",
+        "region": 4,
+        "key": [
+          174,
+          2
+        ],
+        "label": -1,
+        "new_same_instance_view": false,
+        "v13_delta": -1.0649335384368896,
+        "v15_delta": -0.24433326721191406
+      },
+      {
+        "case": "v15_reader_dev_00066",
+        "region": 5,
+        "key": [
+          254,
+          2
+        ],
+        "label": 0,
+        "new_same_instance_view": false,
+        "v13_delta": 0.13530635833740234,
+        "v15_delta": 0.15034961700439453
+      },
+      {
+        "case": "v15_reader_dev_00066",
+        "region": 5,
+        "key": [
+          254,
+          3
+        ],
+        "label": 1,
+        "new_same_instance_view": false,
+        "v13_delta": -0.7893962860107422,
+        "v15_delta": -0.7645082473754883
+      },
+      {
+        "case": "v15_reader_dev_00067",
+        "region": 5,
+        "key": [
+          235,
+          0
+        ],
+        "label": 0,
+        "new_same_instance_view": true,
+        "v13_delta": 0.6973037719726562,
+        "v15_delta": 0.872532844543457
+      },
+      {
+        "case": "v15_reader_dev_00067",
+        "region": 5,
+        "key": [
+          235,
+          1
+        ],
+        "label": 5,
+        "new_same_instance_view": false,
+        "v13_delta": 0.029314041137695312,
+        "v15_delta": 0.020792007446289062
+      },
+      {
+        "case": "v15_reader_dev_00068",
+        "region": 4,
+        "key": [
+          179,
+          1
+        ],
+        "label": -2,
+        "new_same_instance_view": false,
+        "v13_delta": 0.4354064464569092,
+        "v15_delta": 0.5930262207984924
+      },
+      {
+        "case": "v15_reader_dev_00068",
+        "region": 4,
+        "key": [
+          183,
+          1
+        ],
+        "label": 0,
+        "new_same_instance_view": true,
+        "v13_delta": -0.8138977289199829,
+        "v15_delta": -0.6042423248291016
+      },
+      {
+        "case": "v15_reader_dev_00069",
+        "region": 5,
+        "key": [
+          249,
+          0
+        ],
+        "label": 0,
+        "new_same_instance_view": false,
+        "v13_delta": -0.2707635164260864,
+        "v15_delta": -0.5490909814834595
+      },
+      {
+        "case": "v15_reader_dev_00069",
+        "region": 5,
+        "key": [
+          249,
+          1
+        ],
+        "label": -2,
+        "new_same_instance_view": false,
+        "v13_delta": -0.2319951057434082,
+        "v15_delta": -0.30385541915893555
+      },
+      {
+        "case": "v15_reader_dev_00070",
+        "region": 5,
+        "key": [
+          262,
+          0
+        ],
+        "label": -2,
+        "new_same_instance_view": false,
+        "v13_delta": 1.4729632139205933,
+        "v15_delta": 1.7563904523849487
+      },
+      {
+        "case": "v15_reader_dev_00070",
+        "region": 5,
+        "key": [
+          262,
+          2
+        ],
+        "label": 5,
+        "new_same_instance_view": false,
+        "v13_delta": 0.09167194366455078,
+        "v15_delta": -0.3797464370727539
+      },
+      {
+        "case": "v15_reader_dev_00071",
+        "region": 6,
+        "key": [
+          739,
+          0
+        ],
+        "label": -2,
+        "new_same_instance_view": false,
+        "v13_delta": 0.5102734565734863,
+        "v15_delta": 0.6598801612854004
+      },
+      {
+        "case": "v15_reader_dev_00071",
+        "region": 6,
+        "key": [
+          741,
+          0
+        ],
+        "label": 1,
+        "new_same_instance_view": false,
+        "v13_delta": 2.138031482696533,
+        "v15_delta": 2.573206901550293
+      }
+    ]
+  }
+}

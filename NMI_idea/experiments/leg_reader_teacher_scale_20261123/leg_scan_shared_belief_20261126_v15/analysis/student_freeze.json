@@ -1,0 +1,8 @@
+{
+  "teacher": "ed56eeb6a26ca2b5b4162d1ba040c4dac8817151b75a14677433820cda8d5758",
+  "models": {
+    "reader.json": "b1a3248d6ee06a3784cc23bbac5f46f4b7897e46b3444fc79c79759df0fd7ffc",
+    "student.json": "96656c9e7a0ddab23a6d2a84e14b4af90f82a0b45fb4dd88c8de2379f14540aa",
+    "student.pt": "d90b220ba12db6d81a87041db2ee7237ce384338df2ac50ed4a24eb767ad5ed1"
+  }
+}

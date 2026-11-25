@@ -1,0 +1,11 @@
+{
+  "source_sha256": {
+    "data_v15.py": "5d18479a09dd55b6e47d71c0394c6eac9d369a90cfb7b198c1806fccc62b833c",
+    "identity_v15.py": "6bbd57d03d8d62591b6563f7ce30bd5609b6a53e479e92a442d5160b40308b83",
+    "reader_fit_v15.py": "c928a32011d4c48668de406c408e1799f89053c53bc278d4480b4d5c540d6cfa"
+  },
+  "data_sha256": "cb1c69baeff9d0b5172a958283b40f91e8a83bcddc679d8d6863bb334e3b5242",
+  "seed": 8614173,
+  "gpu_preflight_sha256": "9abd72222fb6f517d16914cc4228c3d59bfd39cee96ecee714e5d14fdf609ea8",
+  "reader_sha256": "b1a3248d6ee06a3784cc23bbac5f46f4b7897e46b3444fc79c79759df0fd7ffc"
+}

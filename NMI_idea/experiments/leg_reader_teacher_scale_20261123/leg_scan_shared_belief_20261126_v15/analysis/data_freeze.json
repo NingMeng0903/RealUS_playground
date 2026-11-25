@@ -1,0 +1,30 @@
+{
+  "counts": {
+    "reader_fit": 256,
+    "reader_cal": 48,
+    "reader_dev": 72,
+    "teach": 108,
+    "teach_cal": 36,
+    "student_dev": 36,
+    "blind": 108
+  },
+  "stages_seeds": {
+    "reader_fit": 8614150000000000,
+    "reader_cal": 8614150001000000,
+    "reader_dev": 8614150002000000,
+    "teach": 8614150003000000,
+    "teach_cal": 8614150004000000,
+    "student_dev": 8614150005000000,
+    "blind": 8614150006000000
+  },
+  "blind_tapes": [
+    null,
+    227194021,
+    227216577
+  ],
+  "atlas_sha256": "aad4100d6e594de6279a2297fae3c5cb6e84a68077bfde56435113d5b0c352d5",
+  "source_sha256": "5d18479a09dd55b6e47d71c0394c6eac9d369a90cfb7b198c1806fccc62b833c",
+  "v13_freeze": "a3ab1b9c302b0fb04d914bafe146b45952172d9ec9eb60fbdfc25a1291c14072",
+  "assignment": "R4/R5/R6 by layout ordinal; capture first naturally selected action in assigned region",
+  "input_schema": "177 original embedding channels including identity + public history and exact frame, slot"
+}

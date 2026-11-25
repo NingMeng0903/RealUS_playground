@@ -1,0 +1,314 @@
+{
+  "protocol": "18f6218696441030c7c1b09d813ab0c59e7ee5d572b67007cf3e5817cefdf2d5",
+  "student": "c844d98f6d4d4a7bc1a9e92e82913f6d9ca0785dfa2b4709881541169da765f6",
+  "models": {
+    "reader.json": "b1a3248d6ee06a3784cc23bbac5f46f4b7897e46b3444fc79c79759df0fd7ffc",
+    "student.json": "96656c9e7a0ddab23a6d2a84e14b4af90f82a0b45fb4dd88c8de2379f14540aa",
+    "student.pt": "d90b220ba12db6d81a87041db2ee7237ce384338df2ac50ed4a24eb767ad5ed1"
+  },
+  "blind_offsets": {
+    "actual": null,
+    "proof_0": 227194021,
+    "proof_1": 227216577
+  },
+  "development": {
+    "rule": {
+      "margin": 0.0,
+      "r6_bias": 0.0
+    },
+    "rule_index": 0,
+    "scores": {
+      "reference": {
+        "layouts": 36,
+        "strict": 28,
+        "wrong": 5,
+        "wrong_regions": 5,
+        "correct_regions": 208,
+        "all_captured": 36,
+        "r_correct": [
+          36,
+          35,
+          36,
+          35,
+          33,
+          33
+        ],
+        "r_wrong": [
+          0,
+          0,
+          0,
+          0,
+          2,
+          3
+        ],
+        "r_artifact": [
+          0,
+          1,
+          0,
+          1,
+          1,
+          0
+        ],
+        "r_rejected": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "r_capture": [
+          36,
+          36,
+          36,
+          36,
+          36,
+          36
+        ],
+        "seconds": 117.22222222222223,
+        "travel_mm": 3480.6639945790903,
+        "correct_coverage_mm": 454.9296103583442,
+        "reviews": 246,
+        "reviews_before_last": 193,
+        "bridge_windows": 429,
+        "bridge_with_echo_key": 429,
+        "forward_windows": 2628,
+        "forward_with_echo_key": 1772,
+        "forward_different_from_local_mpc": 1739
+      },
+      "0": {
+        "layouts": 36,
+        "strict": 25,
+        "wrong": 4,
+        "wrong_regions": 4,
+        "correct_regions": 202,
+        "all_captured": 36,
+        "r_correct": [
+          36,
+          35,
+          36,
+          35,
+          28,
+          32
+        ],
+        "r_wrong": [
+          0,
+          0,
+          0,
+          1,
+          2,
+          1
+        ],
+        "r_artifact": [
+          0,
+          1,
+          0,
+          0,
+          6,
+          3
+        ],
+        "r_rejected": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "r_capture": [
+          36,
+          36,
+          36,
+          36,
+          36,
+          36
+        ],
+        "seconds": 160.0388888888889,
+        "travel_mm": 4594.838314927673,
+        "correct_coverage_mm": 475.2034089830187,
+        "reviews": 271,
+        "reviews_before_last": 85,
+        "bridge_windows": 535,
+        "bridge_with_echo_key": 535,
+        "forward_windows": 2628,
+        "forward_with_echo_key": 1964,
+        "forward_different_from_local_mpc": 1748
+      },
+      "1": {
+        "layouts": 36,
+        "strict": 24,
+        "wrong": 6,
+        "wrong_regions": 6,
+        "correct_regions": 201,
+        "all_captured": 36,
+        "r_correct": [
+          36,
+          35,
+          36,
+          35,
+          27,
+          32
+        ],
+        "r_wrong": [
+          0,
+          0,
+          0,
+          1,
+          4,
+          1
+        ],
+        "r_artifact": [
+          0,
+          1,
+          0,
+          0,
+          5,
+          3
+        ],
+        "r_rejected": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "r_capture": [
+          36,
+          36,
+          36,
+          36,
+          36,
+          36
+        ],
+        "seconds": 140.47222222222226,
+        "travel_mm": 4085.1907690439507,
+        "correct_coverage_mm": 462.046629163954,
+        "reviews": 211,
+        "reviews_before_last": 61,
+        "bridge_windows": 450,
+        "bridge_with_echo_key": 450,
+        "forward_windows": 2628,
+        "forward_with_echo_key": 1962,
+        "forward_different_from_local_mpc": 1736
+      },
+      "2": {
+        "layouts": 36,
+        "strict": 20,
+        "wrong": 6,
+        "wrong_regions": 6,
+        "correct_regions": 199,
+        "all_captured": 36,
+        "r_correct": [
+          36,
+          35,
+          36,
+          34,
+          28,
+          30
+        ],
+        "r_wrong": [
+          0,
+          0,
+          0,
+          1,
+          4,
+          1
+        ],
+        "r_artifact": [
+          0,
+          1,
+          0,
+          1,
+          4,
+          5
+        ],
+        "r_rejected": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "r_capture": [
+          36,
+          36,
+          36,
+          36,
+          36,
+          36
+        ],
+        "seconds": 112.76388888888889,
+        "travel_mm": 3347.4713052076227,
+        "correct_coverage_mm": 446.70954683091907,
+        "reviews": 143,
+        "reviews_before_last": 39,
+        "bridge_windows": 335,
+        "bridge_with_echo_key": 335,
+        "forward_windows": 2628,
+        "forward_with_echo_key": 1984,
+        "forward_different_from_local_mpc": 1723
+      },
+      "3": {
+        "layouts": 36,
+        "strict": 21,
+        "wrong": 9,
+        "wrong_regions": 10,
+        "correct_regions": 197,
+        "all_captured": 36,
+        "r_correct": [
+          36,
+          35,
+          36,
+          34,
+          26,
+          30
+        ],
+        "r_wrong": [
+          0,
+          0,
+          0,
+          2,
+          7,
+          1
+        ],
+        "r_artifact": [
+          0,
+          1,
+          0,
+          0,
+          3,
+          5
+        ],
+        "r_rejected": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "r_capture": [
+          36,
+          36,
+          36,
+          36,
+          36,
+          36
+        ],
+        "seconds": 77.8111111111111,
+        "travel_mm": 2385.622815677192,
+        "correct_coverage_mm": 426.57825809054907,
+        "reviews": 58,
+        "reviews_before_last": 13,
+        "bridge_windows": 109,
+        "bridge_with_echo_key": 109,
+        "forward_windows": 2628,
+        "forward_with_echo_key": 1961,
+        "forward_different_from_local_mpc": 1743
+      }
+    },
+    "criterion": "most strict, then fewer wrong layouts, then more correct regions on student development"
+  }
+}
